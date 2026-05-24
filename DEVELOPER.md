@@ -74,7 +74,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 2. /connector-standards — Load the relevant standards
 3. /tdd               — Write pytest tests first
 4.                       Implement using topology pattern
-5.                       make py_format && make lint
+5.                       make py_format && make py_format_check
 6. /test-enforcement   — Verify 90% coverage
 7. /verification       — Show test + lint output
 8. /connector-review   — Full review against golden standards (for connectors)

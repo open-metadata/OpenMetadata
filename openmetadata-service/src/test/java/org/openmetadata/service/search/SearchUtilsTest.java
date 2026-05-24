@@ -24,6 +24,9 @@ import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.Credentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -335,5 +338,244 @@ class SearchUtilsTest {
     assertNotNull(provider);
     assertNotNull(provider.getCredentials(new AuthScope("localhost", 9200), null));
     assertNull(provider.getCredentials(new AuthScope("other-host", 9200), null));
+  }
+
+  // ===========================================================================
+  // Fuzzy heuristic tests — pin the clause-explosion fix.
+  // The contract: once the query analyzes into more than 2 alphanumeric
+  // sub-tokens (matching how the om_ngram tokenizer splits on
+  // non-alphanumeric characters), fuzziness drops to "0" and max_expansions
+  // drops to 1. This bounds the per-query clause count for ngram fuzzy paths
+  // and prevents Lucene's max_clause_count from rejecting the whole query.
+  // ===========================================================================
+
+  @ParameterizedTest(name = "getFuzziness(\"{0}\") == \"{1}\"")
+  @CsvSource(
+      // query | expectedFuzziness
+      // single-token queries keep fuzziness=1 so typo tolerance still works
+      // (e.g. "custmer" → "customer" must keep matching)
+      delimiter = '|',
+      value = {
+        "customer | 1",
+        "custmer | 1",
+        "fct_orders | 1", // 2 sub-tokens - boundary, still fuzzy
+        "customer orders | 1", // 2 whitespace tokens
+        "LhrIncomingFlightsArrivalsScheduleV1 | 1", // 1 long sub-token
+        // multi-segment identifiers drop to fuzziness=0 to bound clause count
+        "my.customer.table | 0", // 3 sub-tokens
+        "lhr__incoming_flights | 0", // 3 sub-tokens
+        "kochi__expected_vessels__portcall_v1 | 0", // 5 sub-tokens
+        "scraped/kochi/expected_vessels/parsed/portcall/v1 | 0",
+        "foo-bar.baz_qux | 0", // 4 sub-tokens via mixed separators
+      })
+  void getFuzzinessReturnsExpected(String query, String expected) {
+    assertEquals(expected, SearchUtils.getFuzziness(query));
+  }
+
+  @ParameterizedTest(name = "getFuzziness(blank) defaults to \"1\"")
+  @ValueSource(strings = {"", " ", "\t", "\n"})
+  void getFuzzinessDefaultsToOneForBlankInput(String blank) {
+    assertEquals("1", SearchUtils.getFuzziness(blank));
+  }
+
+  @Test
+  void getFuzzinessHandlesNull() {
+    assertEquals("1", SearchUtils.getFuzziness(null));
+  }
+
+  @Test
+  void getFuzzinessTreatsOnlySeparatorsAsZeroSubTokens() {
+    // Pure separator strings analyze to 0 sub-tokens, which is not > 2,
+    // so the fuzzy path stays active. This is mostly a no-op regardless
+    // (downstream the query produces no analyzed terms) but the heuristic
+    // must not regress to throwing or returning null.
+    assertEquals("1", SearchUtils.getFuzziness("___"));
+    assertEquals("1", SearchUtils.getFuzziness("..."));
+    assertEquals("1", SearchUtils.getFuzziness("/-/"));
+  }
+
+  @ParameterizedTest(name = "getMaxExpansions(\"{0}\") == {1}")
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        // single/two sub-tokens preserve the wide expansion count
+        "customer | 10",
+        "fct_orders | 10",
+        "customer orders | 10",
+        // multi-segment drops expansions to 1 to bound clause count
+        "my.customer.table | 1",
+        "lhr__incoming_flights | 1",
+        "kochi__expected_vessels__portcall_v1 | 1",
+        "scraped/kochi/expected_vessels/parsed/portcall/v1 | 1",
+      })
+  void getMaxExpansionsReturnsExpected(String query, int expected) {
+    assertEquals(expected, SearchUtils.getMaxExpansions(query));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", " ", "\t"})
+  void getMaxExpansionsDefaultsToTenForBlankInput(String blank) {
+    assertEquals(10, SearchUtils.getMaxExpansions(blank));
+  }
+
+  @Test
+  void getMaxExpansionsHandlesNull() {
+    assertEquals(10, SearchUtils.getMaxExpansions(null));
+  }
+
+  /**
+   * The two heuristics must agree on the boundary: any query that disables fuzziness must also
+   * collapse expansions, and vice versa. Any drift between them would re-introduce the clause
+   * explosion (fuzziness=1 with max_expansions=10 is the dangerous combination).
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "a",
+        "customer",
+        "fct_orders",
+        "customer orders",
+        "my.customer.table",
+        "lhr__incoming_flights",
+        "kochi__expected_vessels__portcall_v1",
+        "foo-bar.baz/qux"
+      })
+  void fuzzinessAndMaxExpansionsAgreeOnBoundary(String query) {
+    boolean fuzzyOff = "0".equals(SearchUtils.getFuzziness(query));
+    boolean expansionsCollapsed = SearchUtils.getMaxExpansions(query) == 1;
+    assertEquals(
+        fuzzyOff,
+        expansionsCollapsed,
+        "fuzziness and max_expansions must scale together for query \"" + query + "\"");
+  }
+
+  // ===========================================================================
+  // Index classification tests — pin which index names route to which
+  // search-builder code path. Drift here changes behavior silently.
+  // ===========================================================================
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "table_search_index",
+        Entity.TABLE,
+        "topic_search_index",
+        Entity.TOPIC,
+        "dashboard_search_index",
+        Entity.DASHBOARD,
+        "pipeline_search_index",
+        Entity.PIPELINE,
+        "container_search_index",
+        Entity.CONTAINER,
+        "metric_search_index",
+        Entity.METRIC,
+        "directory_search_index",
+        Entity.DIRECTORY,
+        "file_search_index",
+        Entity.FILE
+      })
+  void isDataAssetIndexRecognizesDataAssetIndices(String index) {
+    assertTrue(SearchUtils.isDataAssetIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        // services are NOT data assets — they go through a different builder path
+        "database_service_search_index",
+        "messaging_service_index",
+        // time-series indices are NOT data assets
+        "test_case_result_search_index",
+        // user/team/dataAsset alias are NOT data assets in this classifier's sense
+        "user_search_index",
+        "team_search_index",
+        "dataAsset",
+        "all",
+        "garbage"
+      })
+  void isDataAssetIndexRejectsNonDataAssetIndices(String index) {
+    assertFalse(SearchUtils.isDataAssetIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "api_service_search_index",
+        "database_service_search_index",
+        "databaseService",
+        "messaging_service_index",
+        "messagingService",
+        "drive_service_index",
+        "driveService"
+      })
+  void isServiceIndexRecognizesServiceIndices(String index) {
+    assertTrue(SearchUtils.isServiceIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"table_search_index", Entity.TABLE, "user_search_index", "garbage"})
+  void isServiceIndexRejectsNonServiceIndices(String index) {
+    assertFalse(SearchUtils.isServiceIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "test_case_result_search_index",
+        "testCaseResult",
+        "test_case_resolution_status_search_index",
+        "raw_cost_analysis_report_data_index",
+        "aggregated_cost_analysis_report_data_index"
+      })
+  void isTimeSeriesIndexRecognizesTimeSeriesIndices(String index) {
+    assertTrue(SearchUtils.isTimeSeriesIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"table_search_index", "test_case_search_index", "garbage"})
+  void isTimeSeriesIndexRejectsNonTimeSeriesIndices(String index) {
+    assertFalse(SearchUtils.isTimeSeriesIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"test_case_search_index", "testCase", "test_suite_search_index", "testSuite"})
+  void isDataQualityIndexRecognizesDataQualityIndices(String index) {
+    assertTrue(SearchUtils.isDataQualityIndex(index));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"table_search_index", "test_case_result_search_index", "garbage"})
+  void isDataQualityIndexRejectsNonDataQualityIndices(String index) {
+    assertFalse(SearchUtils.isDataQualityIndex(index));
+  }
+
+  @Test
+  void isColumnIndexRecognizesColumnIndices() {
+    assertTrue(SearchUtils.isColumnIndex("column_search_index"));
+    assertTrue(SearchUtils.isColumnIndex(Entity.TABLE_COLUMN));
+    assertFalse(SearchUtils.isColumnIndex("table_search_index"));
+    assertFalse(SearchUtils.isColumnIndex("garbage"));
+  }
+
+  @ParameterizedTest(name = "mapEntityTypesToIndexNames(\"{0}\") == \"{1}\"")
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "table_search_index | table",
+        "table | table",
+        "topic_search_index | topic",
+        "pipeline_search_index | pipeline",
+        "container_search_index | container",
+        "metric_search_index | metric",
+        "user_search_index | user",
+        "team_search_index | team",
+        "dataAsset | dataAsset",
+        // unknown values fall through to dataAsset (the catch-all default)
+        "totally_unknown_index | dataAsset"
+      })
+  void mapEntityTypesToIndexNamesProducesEntityNameOrDataAssetFallback(
+      String index, String expected) {
+    assertEquals(expected, SearchUtils.mapEntityTypesToIndexNames(index));
   }
 }

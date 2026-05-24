@@ -13,16 +13,21 @@
 @import (reference) '../../../styles/variables.less';
 
 .app-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   background-color: #06a4a4;
   border-radius: 13px;
   padding: 4px 8px;
   color: #fff;
+  white-space: nowrap;
 
   .ant-typography {
     color: inherit;
     font-weight: 600;
     font-size: 10px;
     line-height: 12px;
+    white-space: nowrap;
   }
 }
 

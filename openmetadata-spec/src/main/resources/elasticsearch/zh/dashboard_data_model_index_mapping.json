@@ -549,6 +549,9 @@
           },
           "ordinalPosition": {
             "type": "integer"
+          },
+          "children": {
+            "type": "flattened"
           }
         }
       },
@@ -724,6 +727,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

@@ -15,7 +15,6 @@
 import Icon from '@ant-design/icons';
 import { Divider, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
@@ -63,6 +62,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
@@ -70,9 +70,12 @@ import {
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
+import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
+
+const { t } = i18n;
 
 export const ExtraInfoLabel = ({
   label,
@@ -166,7 +169,7 @@ export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
-  parentContainers: Container[]
+  parentContainers: EntityReference[]
 ) => {
   const returnData: DataAssetHeaderInfo = {
     extraInfo: <></>,

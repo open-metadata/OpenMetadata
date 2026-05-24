@@ -17,7 +17,7 @@ import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './upload-file.less';
@@ -35,20 +35,23 @@ const UploadFile: FC<UploadFileProps> = ({
   const handleUpload: UploadProps['customRequest'] = useCallback(
     (options: UploadRequestOption) => {
       setUploading(true);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploading(false);
+        onCSVUploaded(e);
+      };
+      reader.onerror = () => {
+        setUploading(false);
+        showErrorToast(new Error(t('server.unexpected-error')) as AxiosError);
+      };
       try {
-        const reader = new FileReader();
-        reader.onload = onCSVUploaded;
-        reader.onerror = () => {
-          throw t('server.unexpected-error');
-        };
         reader.readAsText(options.file as Blob);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
         setUploading(false);
+        showErrorToast(error as AxiosError);
       }
     },
-    [onCSVUploaded]
+    [onCSVUploaded, t]
   );
 
   return uploading ? (

@@ -11,6 +11,7 @@
 """
 Pub/Sub service spec
 """
+
 from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
 from metadata.utils.service_spec import BaseSpec
 

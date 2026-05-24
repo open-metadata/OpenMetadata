@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 
 export const IndexNotFoundBanner = () => {

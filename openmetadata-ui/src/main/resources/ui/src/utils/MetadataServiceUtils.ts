@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import alationSinkConnection from '../jsons/connectionSchemas/connections/metadata/alationSinkConnection.json';
 import amundsenConnection from '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json';

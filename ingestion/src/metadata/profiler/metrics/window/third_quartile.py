@@ -72,9 +72,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
                 0.75,
             )
 
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Third Quartile"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing Third Quartile")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -82,7 +80,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         if is_quantifiable(self.col.type):
             # we can't compute the median unless we have
@@ -99,7 +97,5 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
             # check if nan
             third_quartile = df.quantile(0.75, interpolation="midpoint")
             return None if pd.isnull(third_quartile) else third_quartile
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Third Quartile"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing Third Quartile")
         return None

@@ -10,8 +10,8 @@
 #  limitations under the License.
 """Base database (supporting SQA) test container for integration tests"""
 
-from ...sqa import SQATestUtils
-from ..abstract_test_container import AbstractTestContainer
+from ...sqa import SQATestUtils  # noqa: TID252
+from ..abstract_test_container import AbstractTestContainer  # noqa: TID252
 
 
 class DataBaseTestContainer(AbstractTestContainer):

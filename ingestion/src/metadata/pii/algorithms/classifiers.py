@@ -11,9 +11,10 @@
 """
 Classifier for PII detection and sensitivity tagging.
 """
+
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import (
+from typing import (  # noqa: UP035
     Any,
     DefaultDict,
     Dict,
@@ -27,7 +28,7 @@ from typing import (
     final,
 )
 
-from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer import AnalyzerEngine  # noqa: TC002
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
@@ -64,8 +65,8 @@ class ColumnClassifier(ABC, Generic[T]):
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        column_data_type: Optional[DataType] = None,
+        column_name: Optional[str] = None,  # noqa: UP045
+        column_data_type: Optional[DataType] = None,  # noqa: UP045
     ) -> Mapping[T, float]:
         """
         Predict the scores for the given column and sample data of the column.
@@ -74,9 +75,7 @@ class ColumnClassifier(ABC, Generic[T]):
         """
 
     def classify(self, column: Column, sample_data: Sequence[Any]) -> Mapping[T, float]:
-        return self.predict_scores(
-            sample_data, column_name=column.name.root, column_data_type=column.dataType
-        )
+        return self.predict_scores(sample_data, column_name=column.name.root, column_data_type=column.dataType)
 
 
 @final
@@ -93,7 +92,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         column_name_contribution: float = 0.5,
         score_cutoff: float = 0.1,
         relative_cardinality_cutoff: float = 0.01,
-        extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,
+        extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,  # noqa: UP045
     ):
         set_presidio_logger_level()
         self._presidio_analyzer: AnalyzerEngine = build_analyzer_engine()
@@ -107,8 +106,8 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        column_data_type: Optional[DataType] = None,
+        column_name: Optional[str] = None,  # noqa: UP045
+        column_data_type: Optional[DataType] = None,  # noqa: UP045
     ) -> Mapping[PIITag, float]:
         if column_data_type is not None and is_non_pii_datatype(column_data_type):
             return {}
@@ -136,14 +135,12 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             ),
         )
 
-        column_name_matches: Set[PIITag] = set()
+        column_name_matches: Set[PIITag] = set()  # noqa: UP006
 
         if column_name is not None:
-            column_name_matches = extract_pii_from_column_names(
-                column_name, patterns=self._column_name_patterns
-            )
+            column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
 
-        final_results: Dict[PIITag, float] = {}
+        final_results: Dict[PIITag, float] = {}  # noqa: UP006
 
         for tag, score in content_results.items():
             final_score = score
@@ -163,22 +160,18 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
     using the HeuristicPIIColumnClassifier.
     """
 
-    def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):
-        self.classifier: ColumnClassifier[PIITag] = (
-            classifier or HeuristicPIIClassifier()
-        )
+    def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):  # noqa: UP045
+        self.classifier: ColumnClassifier[PIITag] = classifier or HeuristicPIIClassifier()
 
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        column_data_type: Optional[DataType] = None,
+        column_name: Optional[str] = None,  # noqa: UP045
+        column_data_type: Optional[DataType] = None,  # noqa: UP045
     ) -> Mapping[PIISensitivityTag, float]:
-        pii_tags = self.classifier.predict_scores(
-            sample_data, column_name, column_data_type
-        )
-        results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)
-        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)
+        pii_tags = self.classifier.predict_scores(sample_data, column_name, column_data_type)
+        results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)  # noqa: UP006
+        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)  # noqa: UP006
 
         for tag, score in pii_tags.items():
             # Convert PIITag to PIISensitivityTag

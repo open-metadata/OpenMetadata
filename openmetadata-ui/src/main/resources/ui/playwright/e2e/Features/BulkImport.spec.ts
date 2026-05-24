@@ -350,8 +350,8 @@ test.describe('Bulk Import Export', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '7',
-        processed: '7',
+        passed: '6',
+        processed: '6',
         failed: '0',
       });
       const rowStatus = [
@@ -551,8 +551,8 @@ test.describe('Bulk Import Export', () => {
       });
 
       await validateImportStatus(page, {
-        passed: '13',
-        processed: '13',
+        passed: '12',
+        processed: '12',
         failed: '0',
       });
 
@@ -734,8 +734,8 @@ test.describe('Bulk Import Export', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '5',
-        processed: '5',
+        passed: '4',
+        processed: '4',
         failed: '0',
       });
 
@@ -817,8 +817,8 @@ test.describe('Bulk Import Export', () => {
       await fillColumnDetails(columnDetails2, page);
 
       await page.getByRole('button', { name: 'Next' }).click();
-      // total column count +1 for header row and +2 for newly added columns
-      const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
+      // total column count +2 for newly added columns
+      const count = `${tableEntity.entityLinkColumnsName.length + 2}`;
       await validateImportStatus(page, {
         passed: count,
         processed: count,
@@ -906,8 +906,8 @@ test.describe('Bulk Import Export', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '9',
-        processed: '9',
+        passed: '8',
+        processed: '8',
         failed: '0',
       });
 
@@ -976,8 +976,8 @@ test.describe('Bulk Import Export', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '10',
-        processed: '10',
+        passed: '9',
+        processed: '9',
         failed: '0',
       });
 

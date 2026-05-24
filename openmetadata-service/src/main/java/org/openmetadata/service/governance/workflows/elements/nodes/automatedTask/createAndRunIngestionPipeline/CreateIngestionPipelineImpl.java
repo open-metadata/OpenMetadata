@@ -41,6 +41,7 @@ import org.openmetadata.schema.metadataIngestion.MlmodelServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SearchServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.StorageServiceAutoClassificationPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ProviderType;
@@ -79,6 +80,17 @@ public class CreateIngestionPipelineImpl {
     DATABASE_PIPELINE_MAP.put(
         PipelineType.AUTO_CLASSIFICATION,
         CreateIngestionPipelineImpl::getDatabaseServiceAutoClassificationPipeline);
+  }
+
+  private static final Map<PipelineType, Function<Map<String, FilterPattern>, Object>>
+      STORAGE_PIPELINE_MAP = new HashMap<>();
+
+  static {
+    STORAGE_PIPELINE_MAP.put(
+        PipelineType.METADATA, CreateIngestionPipelineImpl::getStorageServiceMetadataPipeline);
+    STORAGE_PIPELINE_MAP.put(
+        PipelineType.AUTO_CLASSIFICATION,
+        CreateIngestionPipelineImpl::getStorageServiceAutoClassificationPipeline);
   }
 
   private static final Map<String, Function<Map<String, FilterPattern>, Object>>
@@ -317,6 +329,15 @@ public class CreateIngestionPipelineImpl {
     Map<String, FilterPattern> serviceDefaultFilters = getServiceDefaultFilters(service);
     if (entityType.equals(DATABASE_SERVICE)) {
       return DATABASE_PIPELINE_MAP.get(pipelineType).apply(serviceDefaultFilters);
+    } else if (entityType.equals(STORAGE_SERVICE)) {
+      Function<Map<String, FilterPattern>, Object> mapper = STORAGE_PIPELINE_MAP.get(pipelineType);
+      if (mapper == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Storage service does not support pipeline type '%s'. Supported types: %s",
+                pipelineType, STORAGE_PIPELINE_MAP.keySet()));
+      }
+      return mapper.apply(serviceDefaultFilters);
     } else if (pipelineType.equals(PipelineType.METADATA)) {
       return SERVICE_TO_PIPELINE_MAP.get(entityType).apply(serviceDefaultFilters);
     } else {
@@ -405,6 +426,14 @@ public class CreateIngestionPipelineImpl {
       Map<String, FilterPattern> defaultFilters) {
     return new StorageServiceMetadataPipeline()
         .withContainerFilterPattern(defaultFilters.get(CONTAINER_FILTER_PATTERN));
+  }
+
+  private static StorageServiceAutoClassificationPipeline
+      getStorageServiceAutoClassificationPipeline(Map<String, FilterPattern> defaultFilters) {
+    return new StorageServiceAutoClassificationPipeline()
+        .withBucketFilterPattern(defaultFilters.get(CONTAINER_FILTER_PATTERN))
+        .withEnableAutoClassification(true)
+        .withStoreSampleData(false);
   }
 
   private static SearchServiceMetadataPipeline getSearchServiceMetadataPipeline(

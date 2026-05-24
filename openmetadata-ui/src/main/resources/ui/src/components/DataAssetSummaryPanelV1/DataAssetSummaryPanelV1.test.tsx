@@ -12,7 +12,6 @@
  */
 
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -20,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { act } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -31,15 +31,17 @@ import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
+import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityOverview } from '../../utils/EntityUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataAssetSummaryPanelV1 } from './DataAssetSummaryPanelV1';
 import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface';
+
+type DataAssetType = DataAssetSummaryPanelProps['dataAsset'];
 
 // Mock TableUtils first to ensure getTierTags is available
 jest.mock('../../utils/TableUtils', () => {
@@ -93,7 +95,7 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => {
+jest.mock('../../utils/DataAssetSummaryPanelUtils', () => {
   const mockGetEntityOverview = jest.fn(() => []);
 
   return {
@@ -199,9 +201,7 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
     <div data-testid="description-section">
       <button
         data-testid="update-description-btn"
-        onClick={() =>
-          onDescriptionUpdate && onDescriptionUpdate('New description')
-        }>
+        onClick={() => onDescriptionUpdate?.('New description')}>
         Update Description
       </button>
     </div>
@@ -211,10 +211,10 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
 jest.mock('../common/OverviewSection/OverviewSection', () => {
   return jest.fn().mockImplementation(({ entityInfoV1 }) => (
     <div data-testid="overview-section">
-      {(entityInfoV1 || []).map((item: any, index: number) => (
+      {(entityInfoV1 || []).map((item: { name: string; value: string }) => (
         <div
           data-testid={`overview-item-${String(item.name).toLowerCase()}`}
-          key={index}>
+          key={item.name + item.value}>
           {item.name} {item.value}
         </div>
       ))}
@@ -226,8 +226,8 @@ jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   return jest.fn().mockImplementation(({ tests, totalTests }) => (
     <div data-testid="data-quality-section">
       <div data-testid="total-tests">{totalTests}</div>
-      {tests.map((test: any, index: number) => (
-        <div data-testid={`test-${test.type}`} key={index}>
+      {tests.map((test: { type: string; count: number }) => (
+        <div data-testid={`test-${test.type}`} key={test.type}>
           {test.type}: {test.count}
         </div>
       ))}
@@ -387,7 +387,7 @@ describe('DataAssetSummaryPanelV1', () => {
   const mockOnDescriptionUpdate = jest.fn();
 
   const defaultProps: DataAssetSummaryPanelProps = {
-    dataAsset: mockDataAsset as any,
+    dataAsset: mockDataAsset as unknown as DataAssetType,
     entityType: EntityType.TABLE,
     isLoading: false,
     onOwnerUpdate: mockOnOwnerUpdate,
@@ -434,10 +434,7 @@ describe('DataAssetSummaryPanelV1', () => {
         { name: 'Queries', value: 250, visible: ['explore'] },
         {
           name: 'Incidents',
-          value:
-            (additionalInfo && additionalInfo.incidentCount) !== undefined
-              ? additionalInfo.incidentCount
-              : 0,
+          value: additionalInfo?.incidentCount ?? 0,
           visible: ['explore'],
         },
       ]
@@ -608,7 +605,7 @@ describe('DataAssetSummaryPanelV1', () => {
         dataAsset: {
           ...mockDataAsset,
           deleted: true,
-        } as any,
+        } as unknown as DataAssetType,
       };
 
       await act(async () => {
@@ -916,7 +913,7 @@ describe('DataAssetSummaryPanelV1', () => {
         name: 'new-table',
         displayName: 'New Table',
         fullyQualifiedName: 'new.fqn',
-      } as any;
+      } as unknown as DataAssetType;
 
       await act(async () => {
         rerender(

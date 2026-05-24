@@ -11,9 +11,10 @@
 """
 Snowflake usage module
 """
+
 import traceback
 from datetime import timedelta
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -45,7 +46,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
         'COPY','COMMIT','CREATE_TABLE','PUT_FILES','GET_FILES', 'CREATE_TABLE_AS_SELECT','SHOW', 'DESCRIBE')
     """
 
-    life_cycle_filters = [
+    life_cycle_filters = [  # noqa: RUF012
         "DROP",
         "DELETE",
         "TRUNCATE_TABLE",
@@ -69,13 +70,11 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
             query = None
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 for engine in self.get_engine():
                     while total_fetched < max_results:
-                        batch_size = min(
-                            SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched
-                        )
+                        batch_size = min(SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched)
                         query = self.get_sql_statement(
                             start_time=self.start + timedelta(days=days),
                             end_time=self.start + timedelta(days=days + 1),
@@ -87,7 +86,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                             queries = []
                             row_count = 0
                             for row in rows:
-                                row = row._asdict()
+                                row = row._asdict()  # noqa: PLW2901
                                 row_count += 1
                                 try:
                                     row.update({k.lower(): v for k, v in row.items()})
@@ -117,9 +116,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                                     )
                                 except Exception as exc:
                                     logger.debug(traceback.format_exc())
-                                    logger.warning(
-                                        f"Unexpected exception processing row [{row}]: {exc}"
-                                    )
+                                    logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                         if queries:
                             yield TableQueries(queries=queries)
                         total_fetched += row_count
@@ -133,7 +130,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
             except Exception as exc:
                 if query:
                     logger.debug(
-                        (
+                        (  # noqa: UP034
                             f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )
