@@ -28,20 +28,14 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import {
   addFollower,
-  getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
   updateDashboardVotes,
@@ -62,7 +56,6 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useRequiredParams } from '../../utils/useRequiredParams';
 
 export type ChartType = {
   displayName: string;
@@ -75,7 +68,6 @@ const DashboardDetailsPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
-  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const queryClient = useQueryClient();
 
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
@@ -178,16 +170,6 @@ const DashboardDetailsPage = () => {
     () => queryClient.invalidateQueries({ queryKey: dashboardCacheKey }),
     [queryClient, dashboardCacheKey]
   );
-
-  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
-  useLazyEntityExtension<Dashboard>({
-    entityType: EntityType.DASHBOARD,
-    fqn: dashboardFQN,
-    activeTab,
-    fetcher: getDashboardByFqn,
-    onResolve: (extension) =>
-      setDashboardDetails((prev) => (prev ? { ...prev, extension } : prev)),
-  });
 
   const { id: dashboardId, version, charts } = dashboardDetails ?? {};
   const isFollowing = useMemo(

@@ -104,18 +104,6 @@ jest.mock('./utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-/**
- * Global mock for useLazyEntityExtension. The real hook calls `useQuery`, which
- * requires a `QueryClientProvider` ancestor in the render tree. Entity-detail page
- * tests render the page component directly without that provider; mock the hook
- * to a no-op here so existing tests do not need to set up React Query plumbing
- * just to render. Individual tests that exercise the lazy-extension behaviour
- * can override this mock locally.
- */
-jest.mock('./hooks/useLazyEntityExtension', () => ({
-  useLazyEntityExtension: jest.fn(),
-}));
-
 jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
   FeedEditor: jest.fn().mockImplementation(() => 'FeedEditor'),
 }));

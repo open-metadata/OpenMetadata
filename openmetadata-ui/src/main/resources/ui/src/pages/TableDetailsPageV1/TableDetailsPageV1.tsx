@@ -58,7 +58,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
-import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
@@ -67,7 +66,6 @@ import { tableQueryFn, tableQueryKey } from '../../rest/queries/tableQuery';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
-  getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
   restoreTable,
@@ -290,20 +288,6 @@ const TableDetailsPageV1: React.FC = () => {
     () => queryClient.invalidateQueries({ queryKey: tableCacheKey }),
     [queryClient, tableCacheKey]
   );
-
-  // Lazy custom-properties fetch — see {@link useLazyEntityExtension} for rationale.
-  // `EXTENSION` is omitted from the eager `defaultFieldsWithColumns` because the blob can
-  // be hundreds of KB on tables with many user-defined properties and only the Custom
-  // Properties tab consumes it. Suppressed while the tour is open since the tour drives
-  // its own canned dataset.
-  useLazyEntityExtension<Table>({
-    entityType: EntityType.TABLE,
-    fqn: tableFqn,
-    activeTab: isTourOpen ? undefined : activeTab,
-    fetcher: getTableDetailsByFQN,
-    onResolve: (extension) =>
-      setTableDetails((prev) => (prev ? { ...prev, extension } : prev)),
-  });
 
   const isViewTableType = useMemo(
     () => tableDetails?.tableType === TableType.View,

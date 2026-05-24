@@ -105,7 +105,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-  useParams: jest.fn().mockReturnValue({ tab: 'worksheets' }),
   MemoryRouter: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="memory-router">{children}</div>
   ),
@@ -368,7 +367,7 @@ describe('SpreadsheetDetailsPage', () => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
           'test-service.test-spreadsheet',
           EntityType.SPREADSHEET,
-          'owners,worksheets,followers,tags,domains,dataProducts,votes,mimeType,createdTime,modifiedTime'
+          'owners,worksheets,followers,tags,domains,dataProducts,votes,extension,mimeType,createdTime,modifiedTime'
         );
       });
     });

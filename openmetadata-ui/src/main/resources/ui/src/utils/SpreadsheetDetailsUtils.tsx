@@ -35,8 +35,6 @@ export interface SpreadsheetDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
-// `EXTENSION` (custom-property values) is fetched lazily by {@link useLazyEntityExtension}
-// when the user activates the Custom Properties tab. See DatasetDetailsUtils.ts for context.
 export const defaultFields = [
   TabSpecificField.OWNERS,
   TabSpecificField.WORKSHEETS,
@@ -45,6 +43,7 @@ export const defaultFields = [
   TabSpecificField.DOMAINS,
   TabSpecificField.DATA_PRODUCTS,
   TabSpecificField.VOTES,
+  TabSpecificField.EXTENSION,
   TabSpecificField.MIME_TYPE,
   TabSpecificField.CREATED_TIME,
   TabSpecificField.MODIFIED_TIME,
