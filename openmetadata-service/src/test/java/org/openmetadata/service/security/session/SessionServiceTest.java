@@ -34,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.jdbi3.SessionRepository;
 
 @ExtendWith(MockitoExtension.class)
 class SessionServiceTest {
@@ -42,7 +41,7 @@ class SessionServiceTest {
   private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
 
   @Mock private AuthenticationConfiguration authConfig;
-  @Mock private SessionRepository repository;
+  @Mock private SessionStore repository;
   @Mock private ScheduledExecutorService scheduler;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;

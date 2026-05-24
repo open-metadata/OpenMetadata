@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,18 +24,20 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.Base64;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SessionMultiNodeCluster;
-import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -31,19 +45,28 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.security.session.SessionStatus;
-import org.openmetadata.service.security.session.UserSession;
 
+/**
+ * Multi-node session lifecycle assertions when SessionService is routed to Redis (cache.provider
+ * = redis). Mirrors the scenarios in {@link SessionMultiNodeIT} but asserts entirely through
+ * HTTP — the {@code user_session} table is empty in this mode and Redis state is opaque to the
+ * test harness.
+ *
+ * <p>Adds Redis-specific scenarios on top of the shared multi-node contract:
+ *
+ * <ul>
+ *   <li>Revocation issued on node B is visible on node A within one HTTP round-trip (no 60s
+ *       Caffeine cache lag — the JDBC path's mitigation is to reload from the store; we verify
+ *       the Redis path matches that behavior).
+ *   <li>CAS contention from two pods refreshing the same session simultaneously — exactly one
+ *       wins and gets a fresh access token; the other should see HTTP 503 (refresh-in-progress)
+ *       or HTTP 200 against the rotated session, never an inconsistent state.
+ * </ul>
+ */
 @Tag("session")
 @ExtendWith(TestNamespaceExtension.class)
-// Gated to DB-backed sessions. The assertions here read directly from the user_session table
-// (sessionCountForUser, loadSession, persistSession), which produce no rows when SessionService
-// is routed to Redis by SessionStoreFactory. SessionRedisMultiNodeIT covers the same scenarios
-// against Redis through HTTP-only checks.
-@org.junit.jupiter.api.condition.DisabledIf(
-    value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled",
-    disabledReason = "Sessions live in Redis on this profile; see SessionRedisMultiNodeIT")
-class SessionMultiNodeIT {
+@EnabledIf(value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
+class SessionRedisMultiNodeIT {
 
   @Test
   void refreshAndLogoutAreSharedAcrossNodes(TestNamespace ns) throws Exception {
@@ -69,21 +92,10 @@ class SessionMultiNodeIT {
     HttpResponse<String> refreshAfterLogout =
         postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
     assertEquals(401, refreshAfterLogout.statusCode());
-
-    List<String> statuses =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery("SELECT status FROM user_session WHERE userId = :userId")
-                        .bind("userId", user.getId().toString())
-                        .mapTo(String.class)
-                        .list());
-    assertTrue(statuses.contains("REVOKED"));
   }
 
   @Test
-  void refreshOnAnotherNodeReusesTheSameSessionRow(TestNamespace ns) throws Exception {
+  void revocationOnOneNodeIsImmediatelyVisibleOnOther(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
 
@@ -91,89 +103,73 @@ class SessionMultiNodeIT {
     HttpClient client = HttpClient.newHttpClient();
 
     login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
-    String sessionId = cookies.get("OM_SESSION");
 
-    JsonNode refreshResponse =
-        post(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
-    assertNotNull(refreshResponse.get("accessToken"));
+    // First refresh on A primes A's session cache. With the Caffeine + Redis combo, the cache
+    // would normally hold the entry for ~10s — long enough to mask a logout from another pod.
+    JsonNode firstRefresh =
+        post(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+    assertNotNull(firstRefresh.get("accessToken"));
 
-    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
-    long sessionCount =
-        jdbi.withHandle(
-            handle ->
-                handle
-                    .createQuery("SELECT COUNT(*) FROM user_session WHERE userId = :userId")
-                    .bind("userId", user.getId().toString())
-                    .mapTo(Long.class)
-                    .one());
-    assertEquals(1L, sessionCount);
+    // Logout from B — Redis row deleted immediately.
+    HttpResponse<String> logout =
+        postRaw(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/logout", null);
+    assertEquals(200, logout.statusCode());
 
-    String persistedSessionId =
-        jdbi.withHandle(
-            handle ->
-                handle
-                    .createQuery("SELECT id FROM user_session WHERE userId = :userId")
-                    .bind("userId", user.getId().toString())
-                    .mapTo(String.class)
-                    .one());
-    assertEquals(sessionId, persistedSessionId);
+    // Next request to A must see the revocation despite the Caffeine cache. SessionService
+    // reloads from the store on getActiveSession to avoid the cache-lag race.
+    HttpResponse<String> refreshAfterLogout =
+        postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+    assertEquals(401, refreshAfterLogout.statusCode());
   }
 
   @Test
-  void refreshReturnsRetryAfterWhenLeaseIsHeldAcrossNodes(TestNamespace ns) throws Exception {
+  void simultaneousRefreshFromTwoNodesResolvesConsistently(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
 
     SessionCookies cookies = new SessionCookies();
     HttpClient client = HttpClient.newHttpClient();
-
     login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
-    UserSession currentSession = loadSession(cookies.get("OM_SESSION"));
-    persistSession(
-        currentSession.toBuilder()
-            .status(SessionStatus.REFRESHING)
-            .refreshLeaseUntil(System.currentTimeMillis() + 10_000)
-            .updatedAt(System.currentTimeMillis())
-            .version(safeVersion(currentSession) + 1)
-            .build());
 
-    HttpResponse<String> response =
-        postRaw(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<HttpResponse<String>> a =
+          pool.submit(
+              () ->
+                  postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null));
+      Future<HttpResponse<String>> b =
+          pool.submit(
+              () ->
+                  postRaw(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null));
+      HttpResponse<String> respA = a.get(15, TimeUnit.SECONDS);
+      HttpResponse<String> respB = b.get(15, TimeUnit.SECONDS);
 
-    assertEquals(503, response.statusCode());
-    assertTrue(response.headers().firstValue("Retry-After").isPresent());
-    assertEquals(
-        "Session refresh already in progress",
-        JsonUtils.readTree(response.body()).get("error").asText());
+      // Exactly one should return 200 with a fresh access token. The other is allowed to be 200
+      // (won the CAS retry) or 503 (saw the in-progress lease) — anything else (e.g. 500, 401)
+      // means the CAS pathway is broken.
+      assertTrue(
+          isOkOrInProgress(respA),
+          "Unexpected status from node A: " + respA.statusCode() + " body=" + respA.body());
+      assertTrue(
+          isOkOrInProgress(respB),
+          "Unexpected status from node B: " + respB.statusCode() + " body=" + respB.body());
+      assertTrue(
+          respA.statusCode() == 200 || respB.statusCode() == 200,
+          "At least one concurrent refresh must succeed");
+    } catch (ExecutionException ee) {
+      throw new AssertionError("Concurrent refresh threw", ee.getCause());
+    } finally {
+      pool.shutdownNow();
+    }
+
+    // After the dust settles a follow-up refresh must succeed cleanly.
+    JsonNode finalRefresh =
+        post(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+    assertNotNull(finalRefresh.get("accessToken"));
   }
 
   @Test
-  void refreshRecoversStaleLeaseAcrossNodes(TestNamespace ns) throws Exception {
-    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
-    User user = createUser(ns);
-
-    SessionCookies cookies = new SessionCookies();
-    HttpClient client = HttpClient.newHttpClient();
-
-    login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
-    UserSession currentSession = loadSession(cookies.get("OM_SESSION"));
-    persistSession(
-        currentSession.toBuilder()
-            .status(SessionStatus.REFRESHING)
-            .refreshLeaseUntil(System.currentTimeMillis() - 1_000)
-            .updatedAt(System.currentTimeMillis())
-            .version(safeVersion(currentSession) + 1)
-            .build());
-
-    JsonNode refreshResponse =
-        post(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
-
-    assertNotNull(refreshResponse.get("accessToken"));
-    assertEquals(SessionStatus.ACTIVE, loadSession(cookies.get("OM_SESSION")).getStatus());
-  }
-
-  @Test
-  void multipleSessionsRemainIsolatedAcrossNodes(TestNamespace ns) throws Exception {
+  void multipleBrowsersOnOneUserStayIsolatedAcrossNodes(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
 
@@ -185,7 +181,6 @@ class SessionMultiNodeIT {
     login(client, secondBrowser, cluster.nodeBBaseUrl(), user.getEmail(), passwordFor(ns));
 
     assertNotEquals(firstBrowser.get("OM_SESSION"), secondBrowser.get("OM_SESSION"));
-    assertEquals(2L, sessionCountForUser(user));
 
     HttpResponse<String> logoutResponse =
         postRaw(client, firstBrowser, cluster.nodeBBaseUrl() + "/api/v1/auth/logout", null);
@@ -198,22 +193,14 @@ class SessionMultiNodeIT {
     JsonNode activeRefresh =
         post(client, secondBrowser, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
     assertNotNull(activeRefresh.get("accessToken"));
+  }
 
-    List<String> statuses =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery("SELECT status FROM user_session WHERE userId = :userId")
-                        .bind("userId", user.getId().toString())
-                        .mapTo(String.class)
-                        .list());
-    assertEquals(1L, statuses.stream().filter("ACTIVE"::equals).count());
-    assertEquals(1L, statuses.stream().filter("REVOKED"::equals).count());
+  private static boolean isOkOrInProgress(HttpResponse<String> response) {
+    return response.statusCode() == 200 || response.statusCode() == 503;
   }
 
   private User createUser(TestNamespace ns) {
-    String username = ns.shortPrefix("session-user");
+    String username = ns.shortPrefix("session-redis-user");
     String password = passwordFor(ns);
     return SdkClients.adminClient()
         .users()
@@ -221,7 +208,7 @@ class SessionMultiNodeIT {
             new CreateUser()
                 .withName(username)
                 .withEmail(username + "@example.com")
-                .withDisplayName("Session User " + username)
+                .withDisplayName("Session Redis User " + username)
                 .withPassword(password)
                 .withConfirmPassword(password)
                 .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
@@ -267,63 +254,6 @@ class SessionMultiNodeIT {
         client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
     cookies.capture(response);
     return response;
-  }
-
-  private UserSession loadSession(String sessionId) {
-    String json =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery("SELECT json FROM user_session WHERE id = :id")
-                        .bind("id", sessionId)
-                        .mapTo(String.class)
-                        .one());
-    return JsonUtils.readValue(json, UserSession.class);
-  }
-
-  private void persistSession(UserSession session) {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              String sql =
-                  isPostgres(handle)
-                      ? "UPDATE user_session SET json = CAST(:json AS jsonb) WHERE id = :id"
-                      : "UPDATE user_session SET json = CAST(:json AS JSON) WHERE id = :id";
-              handle
-                  .createUpdate(sql)
-                  .bind("id", session.getId())
-                  .bind("json", JsonUtils.pojoToJson(session))
-                  .execute();
-            });
-  }
-
-  private long sessionCountForUser(User user) {
-    return TestSuiteBootstrap.getJdbi()
-        .withHandle(
-            handle ->
-                handle
-                    .createQuery("SELECT COUNT(*) FROM user_session WHERE userId = :userId")
-                    .bind("userId", user.getId().toString())
-                    .mapTo(Long.class)
-                    .one());
-  }
-
-  private boolean isPostgres(org.jdbi.v3.core.Handle handle) {
-    try {
-      return handle
-          .getConnection()
-          .getMetaData()
-          .getDatabaseProductName()
-          .toLowerCase()
-          .contains("postgres");
-    } catch (SQLException e) {
-      throw new IllegalStateException("Failed to determine database type", e);
-    }
-  }
-
-  private long safeVersion(UserSession session) {
-    return session.getVersion() == null ? 0L : session.getVersion();
   }
 
   private static final class SessionCookies {

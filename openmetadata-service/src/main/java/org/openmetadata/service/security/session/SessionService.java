@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.jdbi3.SessionRepository;
 
 @Slf4j
 public class SessionService implements Managed {
@@ -32,16 +31,20 @@ public class SessionService implements Managed {
   private static final int SESSION_LIMIT_RETRIES = 3;
 
   private volatile AuthenticationConfiguration authConfig;
-  private final SessionRepository repository;
+  private final SessionStore repository;
   private final Cache<String, UserSession> cache;
   private final ScheduledExecutorService scheduler;
   private final AtomicBoolean started = new AtomicBoolean(false);
   private final AtomicBoolean lowIdleTimeoutLogged = new AtomicBoolean(false);
 
   public SessionService(AuthenticationConfiguration authConfig) {
+    this(authConfig, SessionStoreFactory.create());
+  }
+
+  public SessionService(AuthenticationConfiguration authConfig, SessionStore store) {
     this(
         authConfig,
-        new SessionRepository(),
+        store,
         Caffeine.newBuilder().maximumSize(10_000).expireAfterAccess(10, TimeUnit.SECONDS).build(),
         Executors.newSingleThreadScheduledExecutor(
             runnable ->
@@ -50,7 +53,7 @@ public class SessionService implements Managed {
 
   SessionService(
       AuthenticationConfiguration authConfig,
-      SessionRepository repository,
+      SessionStore repository,
       Cache<String, UserSession> cache,
       ScheduledExecutorService scheduler) {
     this.authConfig = authConfig;
