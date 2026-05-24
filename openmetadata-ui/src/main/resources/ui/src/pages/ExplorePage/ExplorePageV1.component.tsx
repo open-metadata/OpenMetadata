@@ -302,7 +302,11 @@ const ExplorePageV1: FC<unknown> = () => {
     }
   }, [parsedSearch]);
 
-  const { getCached, setCached } = useExploreCache();
+  // Per-function selectors — without these, every cache write (including the SWR background
+  // refresh on tab switch) would re-render ExplorePageV1 even though the cache is not part of
+  // its render output. The function refs are stable, so the selectors never trigger re-renders.
+  const getCached = useExploreCache((s) => s.getCached);
+  const setCached = useExploreCache((s) => s.setCached);
 
   // Create a dependency string to trigger fetch only when dependencies actually change. Also
   // doubles as the SWR cache key for {@link useExploreCache}.

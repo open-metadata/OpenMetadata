@@ -825,33 +825,44 @@ public class LineageResource {
       List<UUID> ids,
       String fieldsParam,
       Include include) {
-    EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
-    Fields fields = repo.getFields(fieldsParam);
-    List<UUID> authorizedIds = filterAuthorizedIds(securityContext, entityType, ids);
-    if (authorizedIds.isEmpty()) {
-      return List.of();
-    }
-    return repo.get(uriInfo, authorizedIds, fields, include);
+    return hydrateAndAuthorize(
+        uriInfo,
+        securityContext,
+        entityType,
+        ids,
+        fieldsParam,
+        include,
+        Entity.getEntityRepository(entityType));
   }
 
   /**
-   * Filter the supplied ids to only those the principal can VIEW_BASIC. Uses the non-throwing
-   * {@link Authorizer#getPermission} so denied entities don't pay for an exception walk —
-   * material when the batch is large (up to 200) and the user has restricted access. The
-   * {@code authorize()} variant throws on deny, which would cost an exception construction per
-   * denied entity; for batches that skew denied, that's measurable overhead and the wrong
-   * idiom (exceptions for flow control).
+   * Load entities first, then authorize each against the loaded reference. Using the
+   * {@link ResourceContext#ResourceContext(String, EntityInterface, EntityRepository) entity-aware
+   * constructor} means {@code authorizer.getPermission} sees an already-resolved entity, so the
+   * lazy {@code resolveEntity} call inside {@link ResourceContext#getOwners} is a no-op — no
+   * second per-id repository fetch (and, for glossary terms / tags / data products, no parent
+   * lookup) just to evaluate VIEW_BASIC. With {@link Authorizer#getPermission} (non-throwing) the
+   * denied entities are dropped from the in-memory list before return, no exception walk per
+   * deny.
    */
-  private List<UUID> filterAuthorizedIds(
-      SecurityContext securityContext, String entityType, List<UUID> ids) {
+  private <T extends EntityInterface> List<T> hydrateAndAuthorize(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String entityType,
+      List<UUID> ids,
+      String fieldsParam,
+      Include include,
+      EntityRepository<T> repo) {
+    Fields fields = repo.getFields(fieldsParam);
+    List<T> entities = repo.get(uriInfo, ids, fields, include);
     String userName = securityContext.getUserPrincipal().getName();
-    List<UUID> authorized = new ArrayList<>(ids.size());
-    for (UUID id : ids) {
-      ResourceContext<?> resourceContext = new ResourceContext<>(entityType, id, null);
+    List<T> authorized = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      ResourceContext<T> resourceContext = new ResourceContext<>(entityType, entity, repo);
       ResourcePermission permission =
           authorizer.getPermission(securityContext, userName, resourceContext);
       if (isViewBasicAllowed(permission)) {
-        authorized.add(id);
+        authorized.add(entity);
       }
     }
     return authorized;

@@ -66,19 +66,19 @@ export const useExploreCache = create<ExploreCacheState>()((set, get) => ({
     return entry;
   },
   setCached: <T = unknown>(key: string, data: T): void => {
-    const { entries } = get();
+    // Clone first, mutate the clone, then commit — the previous `entries` Map stays untouched
+    // so any consumer holding a snapshot reference doesn't observe interim state.
+    const next = new Map(get().entries);
     // Re-set keeps insertion order: drop and re-add so this entry is youngest.
-    entries.delete(key);
-    entries.set(key, { data, timestamp: Date.now() });
-    if (entries.size > MAX_ENTRIES) {
-      const oldest = entries.keys().next().value;
+    next.delete(key);
+    next.set(key, { data, timestamp: Date.now() });
+    if (next.size > MAX_ENTRIES) {
+      const oldest = next.keys().next().value;
       if (oldest !== undefined) {
-        entries.delete(oldest);
+        next.delete(oldest);
       }
     }
-    // New Map reference forces subscribers depending on entries to re-render. We don't have any
-    // such subscribers today (consumers pull via getCached), but the discipline is cheap.
-    set({ entries: new Map(entries) });
+    set({ entries: next });
   },
   clearCache: () => set({ entries: new Map() }),
 }));
