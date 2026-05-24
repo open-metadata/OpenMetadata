@@ -441,13 +441,37 @@ public final class SecurityUtil {
       if (nullOrEmpty(rawPath) || !rawPath.startsWith("/")) {
         throw new IllegalArgumentException("Redirect URI must be absolute or root-relative");
       }
-      return trustedUris.get(0).resolve(candidate).toString();
+      return canonicalize(trustedUris.get(0), candidate);
     }
 
-    if (trustedUris.stream().noneMatch(trustedUri -> sameOrigin(trustedUri, candidate))) {
-      throw new IllegalArgumentException("Redirect URI must match a trusted origin");
+    if (!nullOrEmpty(candidate.getRawUserInfo())) {
+      throw new IllegalArgumentException("Redirect URI must not contain user-info");
     }
-    return candidate.toString();
+
+    URI matchedTrustedUri =
+        trustedUris.stream()
+            .filter(trustedUri -> sameOrigin(trustedUri, candidate))
+            .findFirst()
+            .orElseThrow(
+                () -> new IllegalArgumentException("Redirect URI must match a trusted origin"));
+    return canonicalize(matchedTrustedUri, candidate);
+  }
+
+  private static String canonicalize(URI trustedBase, URI candidate) {
+    URI resolved = trustedBase.resolve(candidate);
+    try {
+      return new URI(
+              trustedBase.getScheme(),
+              null,
+              trustedBase.getHost(),
+              trustedBase.getPort(),
+              resolved.getPath(),
+              resolved.getQuery(),
+              resolved.getFragment())
+          .toString();
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Redirect URI cannot be canonicalized", e);
+    }
   }
 
   public static String buildRedirectWithToken(
@@ -484,6 +508,9 @@ public final class SecurityUtil {
   }
 
   private static boolean sameOrigin(URI trustedUri, URI candidate) {
+    if (StringUtils.isBlank(trustedUri.getHost()) || StringUtils.isBlank(candidate.getHost())) {
+      return false;
+    }
     return StringUtils.equalsIgnoreCase(trustedUri.getScheme(), candidate.getScheme())
         && StringUtils.equalsIgnoreCase(trustedUri.getHost(), candidate.getHost())
         && normalizedPort(trustedUri) == normalizedPort(candidate);
