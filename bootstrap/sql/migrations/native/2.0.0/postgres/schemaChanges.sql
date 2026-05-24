@@ -308,7 +308,7 @@ CREATE TABLE IF NOT EXISTS context_memory (
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
 
 -- Database-backed user session store for multi-pod session management (issue #21971).
-CREATE TABLE IF NOT EXISTS public.user_session (
+CREATE TABLE IF NOT EXISTS user_session (
     id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
     userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
     status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
@@ -324,7 +324,7 @@ CREATE TABLE IF NOT EXISTS public.user_session (
     CONSTRAINT user_session_pkey PRIMARY KEY (id)
 );
 
-CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON public.user_session USING btree (userid, status);
-CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON public.user_session USING btree (status, expiresat);
-CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON public.user_session USING btree (status, idleexpiresat);
-CREATE INDEX IF NOT EXISTS user_session_prune_idx ON public.user_session USING btree (status, updatedat);
+CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING btree (userid, status);
+CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
+CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
+CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
