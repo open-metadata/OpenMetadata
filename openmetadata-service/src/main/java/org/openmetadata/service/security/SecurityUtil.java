@@ -444,30 +444,10 @@ public final class SecurityUtil {
       return trustedUris.get(0).resolve(candidate).toString();
     }
 
-    if (trustedUris.stream()
-        .noneMatch(trustedUri -> matchesTrustedRedirect(trustedUri, candidate))) {
-      throw new IllegalArgumentException("Redirect URI is not a trusted callback");
+    if (trustedUris.stream().noneMatch(trustedUri -> sameOrigin(trustedUri, candidate))) {
+      throw new IllegalArgumentException("Redirect URI must match a trusted origin");
     }
     return candidate.toString();
-  }
-
-  private static boolean matchesTrustedRedirect(URI trustedUri, URI candidate) {
-    if (!sameOrigin(trustedUri, candidate)) {
-      return false;
-    }
-    String trustedPath = trustedUri.getRawPath();
-    String candidatePath = candidate.getRawPath();
-    if (nullOrEmpty(trustedPath) || "/".equals(trustedPath)) {
-      return true;
-    }
-    if (nullOrEmpty(candidatePath)) {
-      return false;
-    }
-    if (candidatePath.equals(trustedPath)) {
-      return true;
-    }
-    String boundary = trustedPath.endsWith("/") ? trustedPath : trustedPath + "/";
-    return candidatePath.startsWith(boundary);
   }
 
   public static String buildRedirectWithToken(
