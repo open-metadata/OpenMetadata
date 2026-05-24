@@ -2758,6 +2758,25 @@ public interface CollectionDAO {
     void deleteLineageBySourcePipeline(
         @BindUUID("toId") UUID toId, @Bind("source") String source, @Bind("relation") int relation);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE relation = :relation "
+                + "AND CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.updatedAt')) AS UNSIGNED) < :cutoffTimestamp "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) IN (<sources>)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE relation = :relation "
+                + "AND (json->>'updatedAt')::bigint < :cutoffTimestamp "
+                + "AND json->>'source' IN (<sources>)",
+        connectionType = POSTGRES)
+    int deleteStaleLineage(
+        @Bind("relation") int relation,
+        @Bind("cutoffTimestamp") long cutoffTimestamp,
+        @BindList("sources") List<String> sources);
+
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override
       public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
