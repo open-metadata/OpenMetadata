@@ -1752,6 +1752,43 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_recursiveHardDeleteCascadesPastResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_cascade_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
+    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
+    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
+    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus newStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    client.testCaseResolutionStatuses().create(newStatus);
+
+    String testCaseId = testCase.getId().toString();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(testCaseId),
+        "Test case should be deleted along with its resolution-status children");
+  }
+
+  @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

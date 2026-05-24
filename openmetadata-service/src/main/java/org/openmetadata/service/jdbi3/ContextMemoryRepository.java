@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -39,6 +40,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
+  static {
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+  }
+
   public ContextMemoryRepository() {
     super(
         ContextMemoryResource.COLLECTION_PATH,
@@ -47,7 +52,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         Entity.getCollectionDAO().contextMemoryDAO(),
         "",
         "");
-    supportsSearch = false;
+    supportsSearch = true;
   }
 
   @Override

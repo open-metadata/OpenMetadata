@@ -238,6 +238,10 @@ public final class Topics {
     public TopicDeleter delete() {
       return new TopicDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Topic> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.topics(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

@@ -65,7 +65,7 @@ const CustomiseLandingPageHeader = ({
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, applicationConfig } = useApplicationStore();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
@@ -73,7 +73,10 @@ const CustomiseLandingPageHeader = ({
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
-  const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
+  const adminPanelBackgroundColor =
+    applicationConfig?.customTheme?.panelBackgroundColor;
+  const bgColor =
+    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)

@@ -969,10 +969,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+    if (testCase.getTestSuite() != null) {
+      try {
+        var testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+        var original = TestSuiteRepository.copyTestSuite(testSuite);
+        testSuiteRepository.postUpdate(original, testSuite);
+      } catch (EntityNotFoundException ignored) {
+        // TestSuite already deleted as part of the same cascade — nothing to update.
+      }
+    }
   }
 
   private void updateLogicalTestSuite(UUID testSuiteId) {
