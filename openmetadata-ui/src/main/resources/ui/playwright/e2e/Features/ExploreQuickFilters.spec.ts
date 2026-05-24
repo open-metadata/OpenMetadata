@@ -200,7 +200,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 
   await page.getByTestId('searchBox').click();
@@ -208,7 +208,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 });
 
@@ -235,8 +235,11 @@ test('Filter by column entity type shows only column results', async ({
   await columnCheckbox.check();
   await page.getByTestId('update-btn').click();
 
-  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-  await expect(quickFilter).toContainText('tablecolumn');
+  await page.getByTestId('search-dropdown-Data Assets').click();
+  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
+    '(1)'
+  );
 });
 
 test.describe('Tier filter - aggregation-based options', () => {
@@ -322,6 +325,93 @@ test.describe('Tier filter - aggregation-based options', () => {
           `table-data-card_${table.entityResponseData?.fullyQualifiedName}`
         )
       ).toBeVisible();
+    });
+  });
+});
+
+test.describe('Filter persistence after bug fixes', () => {
+  test('explore tree sidebar selection is not cleared when a top dropdown filter is applied', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Click on Databases in the explore tree to select it', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the Databases node is marked as selected', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const queryRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('update-btn').click();
+      await queryRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify Databases node selection is still preserved after filter change', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+  });
+
+  test('sort order is preserved in URL when explore tree node is clicked after applying a top dropdown filter', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Toggle sort order to ascending', async () => {
+      const sortRes = page.waitForResponse(
+        '/api/v1/search/query?*sort_order=asc*'
+      );
+      await page.getByTestId('sort-order-button').click();
+      await sortRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const queryRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('update-btn').click();
+      await queryRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Click on Databases in the explore tree', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify sort order is preserved in the URL after tree node click', async () => {
+      await expect(page).toHaveURL(/sortOrder=asc/);
     });
   });
 });

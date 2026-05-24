@@ -166,6 +166,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+    return entity.getColumns();
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();

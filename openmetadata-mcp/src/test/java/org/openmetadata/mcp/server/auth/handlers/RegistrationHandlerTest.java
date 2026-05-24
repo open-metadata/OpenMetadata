@@ -224,6 +224,51 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testClientSecretBasic_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_basic");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_basic");
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testClientSecretPost_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_post");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_post");
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testNoneAuthMethod_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("none");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("none");
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testUnsupportedAuthMethod_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("private_key_jwt");
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class);
+
+    verify(clientRepository, never()).register(any());
+  }
+
+  @Test
   void testFieldLengthExceeded_throwsRegistrationException() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setClientName("x".repeat(256));

@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -29,6 +31,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
@@ -36,6 +39,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ContainerRepository;
 
 /**
  * Integration tests for Container entity operations.
@@ -1308,6 +1314,742 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     return createEntity(request);
   }
 
+  /**
+   * Reproduces the production symptom on aws_s3 where leaf parquet / integration-dataset
+   * containers leaked into {@code ?root=true&service=...} listings. The leak happens when
+   * a child container exists in {@code storage_container_entity} with a multi-segment FQN
+   * but the {@code (parent, CONTAINS, child)} row is missing from
+   * {@code entity_relationship} — produced by the cascade-delete bug in
+   * {@code processDeletionBatch} that wiped relationship rows before per-entity cleanup
+   * (see {@link org.openmetadata.service.jdbi3.EntityRepository#processDeletionBatch}).
+   * We simulate that exact state here by deleting the relationship row directly and
+   * assert the root listing now excludes the orphan via the FQN-depth predicate
+   * ({@code fqnHash NOT LIKE :serviceHashChild}).
+   */
+  @Test
+  void test_rootListingExcludesOrphanedChild(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("orphan_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container child = createChild(ns, service, parent, "orphan_child");
+
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                parent.getId(),
+                "container",
+                child.getId(),
+                "container",
+                Relationship.CONTAINS.ordinal());
+    assertEquals(
+        1, rowsRemoved, "Setup: should have removed exactly one (parent, CONTAINS, child) row");
+
+    ListParams rootParams = new ListParams();
+    rootParams.addFilter("root", "true");
+    rootParams.setService(service.getFullyQualifiedName());
+    ListResponse<Container> rootContainers = listEntities(rootParams);
+
+    Set<UUID> ids =
+        rootContainers.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(
+        ids.contains(parent.getId()),
+        "Real root container must still appear in ?root=true listing");
+    assertFalse(
+        ids.contains(child.getId()),
+        "Orphaned child (multi-segment FQN, no parent CONTAINS row) must be excluded from "
+            + "?root=true listing — fqnHash depth predicate is the safety net.");
+  }
+
+  /**
+   * Exercises the {@code bulkHardDeleteSubtree} path that replaced the legacy
+   * {@code batchDeleteChildren} / {@code processDeletionBatch} flow. The legacy path opened
+   * an independent JDBI transaction per child via {@code cleanup()} and could leave an
+   * entity row alive with its relationship rows wiped (orphan with multi-segment FQN) when
+   * a per-child cleanup failed mid-loop. The replacement runs the entire subtree in a
+   * single {@code @Transaction} that rolls back atomically on any failure. 101 is one above
+   * the size that the legacy implementation gated its batch path on — keeping the test
+   * value pins the regression scenario in place even though the gating threshold no longer
+   * exists in the code.
+   */
+  @Test
+  void test_recursiveHardDelete_largeBatch_leavesNoOrphans(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("batch_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    // Sequential creation is deliberate: each child must round-trip through the regular
+    // POST /containers path so ContainerRepository.storeRelationships writes a real
+    // (parent, CONTAINS, child) row — that's the row whose cleanup we're stress-testing.
+    int childCount = 101;
+    List<UUID> childIds = new ArrayList<>(childCount);
+    for (int i = 0; i < childCount; i++) {
+      Container child = createChild(ns, service, parent, "batch_child_" + i);
+      childIds.add(child.getId());
+    }
+
+    java.util.Map<String, String> deleteParams = new java.util.HashMap<>();
+    deleteParams.put("hardDelete", "true");
+    deleteParams.put("recursive", "true");
+    SdkClients.adminClient().containers().delete(parent.getId().toString(), deleteParams);
+
+    assertThrows(
+        Exception.class, () -> getEntity(parent.getId().toString()), "Parent must be hard-deleted");
+
+    for (UUID childId : childIds) {
+      assertThrows(
+          Exception.class,
+          () -> getEntity(childId.toString()),
+          "Child " + childId + " must be hard-deleted (no orphan entity row)");
+    }
+
+    List<String> childIdStrings = childIds.stream().map(UUID::toString).toList();
+    List<CollectionDAO.EntityRelationshipObject> orphanParentRows =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFromBatch(childIdStrings, Relationship.CONTAINS.ordinal());
+    assertTrue(
+        orphanParentRows.isEmpty(),
+        "No (parent, CONTAINS, child) entity_relationship rows must survive — "
+            + "found "
+            + orphanParentRows.size()
+            + " orphan rows after recursive hard delete of >100 children");
+  }
+
+  /**
+   * The {@code ?root=true} listing must reject anything whose FQN is two or more segments
+   * below the service — not just immediate children of containers, but grandchildren and
+   * deeper. The previous implementation (a NOT EXISTS anti-join over entity_relationship)
+   * relied on the parent CONTAINS edge being present on every non-root container; orphans
+   * and bulk-imported leaves missing that edge would surface at the service root with a
+   * deeply-nested FQN, contradicting the breadcrumb the UI shows on click. The FQN-depth
+   * predicate ({@code fqnHash NOT LIKE :serviceHashChild}) makes the FQN itself the source
+   * of truth. This test exercises the depth check at three levels (root, child, grandchild)
+   * to guard against regressions in either direction (over-filtering or under-filtering).
+   */
+  @Test
+  void test_rootListing_excludesContainersBelowFirstLevel(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("depth_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container child = createChild(ns, service, root, "depth_child");
+    Container grandchild = createChild(ns, service, child, "depth_grandchild");
+
+    ListParams params = new ListParams();
+    params.addFilter("root", "true");
+    params.setService(service.getFullyQualifiedName());
+
+    ListResponse<Container> rootContainers = listEntities(params);
+    assertNotNull(rootContainers);
+    assertNotNull(rootContainers.getData());
+
+    Set<UUID> ids =
+        rootContainers.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(ids.contains(root.getId()), "root container must appear in ?root=true listing");
+    assertFalse(ids.contains(child.getId()), "child must not appear in ?root=true listing");
+    assertFalse(
+        ids.contains(grandchild.getId()),
+        "grandchild must not appear in ?root=true listing — depth check must exclude descendants below the immediate level");
+  }
+
+  /**
+   * {@code ?root=true} without {@code ?service=} must succeed: it returns every direct
+   * child of any service across the whole tenant. The depth predicate
+   * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the bind to be present even in
+   * this case, but {@link org.openmetadata.service.jdbi3.ListFilter#getServiceCondition}
+   * only adds it when {@code ?service=} is present — the
+   * {@code ContainerDAO.rootListingParams} default ({@code '%.%.%'}) is what makes the
+   * SQL runnable here.
+   *
+   * <p>Regression guard for the "GET /containers?root=true (no service) crashes with a
+   * missing-named-parameter error" bug. Also verifies the depth check still excludes
+   * non-root descendants when no service prefix narrows the candidate set.
+   */
+  @Test
+  void test_rootListing_withoutServiceFilter_returnsRootsAcrossAllServices(TestNamespace ns) {
+    // Two distinct services. Each gets a root container and a child container so we can
+    // assert the listing covers both services and excludes children regardless of which
+    // service they belong to.
+    StorageService serviceA = StorageServiceTestFactory.createS3(ns);
+    StorageService serviceB = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootARequest = new CreateContainer();
+    rootARequest.setName(ns.prefix("noservice_rootA"));
+    rootARequest.setService(serviceA.getFullyQualifiedName());
+    Container rootA = createEntity(rootARequest);
+    Container childA = createChild(ns, serviceA, rootA, "noservice_childA");
+
+    CreateContainer rootBRequest = new CreateContainer();
+    rootBRequest.setName(ns.prefix("noservice_rootB"));
+    rootBRequest.setService(serviceB.getFullyQualifiedName());
+    Container rootB = createEntity(rootBRequest);
+    Container childB = createChild(ns, serviceB, rootB, "noservice_childB");
+
+    // ListParams with root=true but no service filter. Pagination: ask for a large page
+    // so both roots fit even if the tenant has unrelated rows from earlier tests.
+    ListParams params = new ListParams();
+    params.addFilter("root", "true");
+    params.setLimit(1000);
+
+    ListResponse<Container> rootContainers = listEntities(params);
+    assertNotNull(rootContainers);
+    assertNotNull(rootContainers.getData());
+
+    Set<UUID> ids =
+        rootContainers.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+
+    assertTrue(
+        ids.contains(rootA.getId()),
+        "Root in serviceA must appear in ?root=true (no service filter) — rootListingParams default must allow cross-service listing");
+    assertTrue(
+        ids.contains(rootB.getId()),
+        "Root in serviceB must appear in ?root=true (no service filter)");
+    assertFalse(
+        ids.contains(childA.getId()),
+        "Child in serviceA must not appear — depth check must run even without service filter");
+    assertFalse(
+        ids.contains(childB.getId()),
+        "Child in serviceB must not appear — depth check must run even without service filter");
+  }
+
+  /**
+   * Soft-deleted root containers must respect the {@code ?include=} flag the UI's "Deleted"
+   * toggle sends. {@code include=non-deleted} (the default) hides them; {@code include=all}
+   * surfaces them; {@code include=deleted} surfaces only deleted rows. The depth-check
+   * predicate runs alongside the include filter via {@code <sqlCondition>}; this guards
+   * against the include slot getting dropped or hardcoded to non-deleted in the listRoot
+   * SQL.
+   */
+  @Test
+  void test_rootListing_respectsIncludeFlag(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer liveRequest = new CreateContainer();
+    liveRequest.setName(ns.prefix("include_live"));
+    liveRequest.setService(service.getFullyQualifiedName());
+    Container liveRoot = createEntity(liveRequest);
+
+    CreateContainer deletedRequest = new CreateContainer();
+    deletedRequest.setName(ns.prefix("include_deleted"));
+    deletedRequest.setService(service.getFullyQualifiedName());
+    Container deletedRoot = createEntity(deletedRequest);
+
+    deleteEntity(deletedRoot.getId().toString());
+
+    // Default: include=non-deleted → only live root visible.
+    ListParams ndParams = new ListParams();
+    ndParams.addFilter("root", "true");
+    ndParams.setService(service.getFullyQualifiedName());
+    Set<UUID> ndIds =
+        listEntities(ndParams).getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(ndIds.contains(liveRoot.getId()), "live root must appear under include=non-deleted");
+    assertFalse(
+        ndIds.contains(deletedRoot.getId()),
+        "soft-deleted root must NOT appear under include=non-deleted (default)");
+
+    // include=all → both live and soft-deleted roots visible.
+    ListParams allParams = new ListParams();
+    allParams.addFilter("root", "true");
+    allParams.addFilter("include", "all");
+    allParams.setService(service.getFullyQualifiedName());
+    Set<UUID> allIds =
+        listEntities(allParams).getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(allIds.contains(liveRoot.getId()), "live root must appear under include=all");
+    assertTrue(
+        allIds.contains(deletedRoot.getId()),
+        "soft-deleted root must appear under include=all (UI Deleted toggle ON)");
+  }
+
+  /**
+   * The {@code /containers/name/{fqn}/children} endpoint must list direct children only —
+   * grandchildren stay hidden. The previous entity_relationship implementation got this
+   * right when the parent CONTAINS edges existed. The FQN-depth implementation gets it
+   * right by construction (a grandchild has two more segments than the parent and so is
+   * excluded by {@code fqnHash NOT LIKE :parentHashChild}).
+   */
+  @Test
+  void test_listChildren_excludesGrandchildren(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container child = createChild(ns, service, parent, "kids_child");
+    Container grandchild = createChild(ns, service, child, "kids_grandchild");
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+    assertNotNull(page);
+    assertNotNull(page.getData());
+    Set<UUID> ids =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertTrue(ids.contains(child.getId()), "direct child must appear in /children listing");
+    assertFalse(
+        ids.contains(grandchild.getId()),
+        "grandchild must not appear in /children — depth check is exactly one level below the parent");
+    assertEquals(
+        1,
+        page.getData().stream()
+            .filter(c -> c.getId().equals(child.getId()) || c.getId().equals(grandchild.getId()))
+            .count(),
+        "page must contain exactly the direct child");
+  }
+
+  /**
+   * The {@code /children} endpoint accepts {@code ?include=all|deleted|non-deleted}
+   * to drive the soft-delete toggle on the navigation tree. The cache key for the
+   * children-page cache embeds the include value, so toggling does not return a stale
+   * page from the other side; this test exercises both the SQL filter and (when Redis
+   * is enabled) the cache key separation.
+   */
+  @Test
+  void test_listChildren_respectsIncludeFlag(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_include_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container live = createChild(ns, service, parent, "kids_include_live");
+    Container deleted = createChild(ns, service, parent, "kids_include_deleted");
+    deleteEntity(deleted.getId().toString());
+
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
+
+    ContainerResultList nonDeletedPage =
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+    Set<UUID> ndIds =
+        nonDeletedPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(ndIds.contains(live.getId()), "live child must appear by default");
+    assertFalse(
+        ndIds.contains(deleted.getId()),
+        "soft-deleted child must NOT appear under default include=non-deleted");
+
+    ContainerResultList allPage =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?include=all", null, ContainerResultList.class);
+    Set<UUID> allIds =
+        allPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(allIds.contains(live.getId()), "live child must appear under include=all");
+    assertTrue(
+        allIds.contains(deleted.getId()),
+        "soft-deleted child must appear under include=all (cache must not return the non-deleted page from a previous read)");
+  }
+
+  /**
+   * The {@code ?q=} substring filter on {@code /children} narrows a parent's direct-child
+   * page to names containing the query (case-insensitive). Asserts both that matches are
+   * returned and that non-matching siblings under the same parent are excluded — so a UI
+   * that issues both an unfiltered and a filtered request hits two distinct result sets.
+   * Also pins the count semantics: {@code paging.total} must reflect the filtered count,
+   * not the parent's full child count, so the table footer doesn't lie about the result
+   * size when the user has typed in the search box.
+   */
+  @Test
+  void test_listChildren_filterByQuery_matchesByNameSubstring(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_q_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container alpha = createChild(ns, service, parent, "kids_q_AlphaReports");
+    Container beta = createChild(ns, service, parent, "kids_q_betaReports");
+    Container gamma = createChild(ns, service, parent, "kids_q_gamma_log");
+
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
+
+    ContainerResultList allPage =
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+    assertEquals(
+        3,
+        allPage.getPaging().getTotal().intValue(),
+        "without ?q= every direct child counts toward total");
+
+    // Substring match — the query "report" should hit both alpha and beta (different
+    // capitalisations) but never the gamma_log child whose name has no overlap.
+    ContainerResultList reportsPage =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=report", null, ContainerResultList.class);
+    Set<UUID> reportIds =
+        reportsPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(reportIds.contains(alpha.getId()), "AlphaReports must match q=report");
+    assertTrue(reportIds.contains(beta.getId()), "betaReports must match q=report");
+    assertFalse(reportIds.contains(gamma.getId()), "gamma_log must not match q=report");
+    assertEquals(
+        2,
+        reportsPage.getPaging().getTotal().intValue(),
+        "paging.total must reflect the filtered count, not the parent's full child count");
+
+    // No-result query: a substring that no sibling contains returns an empty page with a
+    // zero total, not a failure or the unfiltered list.
+    ContainerResultList emptyPage =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=zzznomatch", null, ContainerResultList.class);
+    assertTrue(
+        emptyPage.getData().isEmpty(),
+        "no children should be returned when the query matches nothing");
+    assertEquals(0, emptyPage.getPaging().getTotal().intValue(), "filtered total is 0");
+  }
+
+  /**
+   * Verify that {@code _} and {@code %} in the query are escaped before being sent to the
+   * SQL LIKE clause — without escaping, {@code _} would match any single character and a
+   * search for "foo_bar" would also return "fooXbar". OpenMetadata container/folder names
+   * frequently contain underscores (e.g. {@code etl_run_2024_07}) so this is the more
+   * common foot-gun than {@code %}, but both wildcards are escaped uniformly via the
+   * {@link
+   * org.openmetadata.service.jdbi3.ContainerRepository#buildNameLikeBind(String)}
+   * helper which prepends {@code !} to {@code %}, {@code _}, and {@code !} itself, and
+   * the SQL declares {@code ESCAPE '!'} explicitly. {@code !} is preferred over
+   * backslash because JDBI's ColonPrefixSqlParser mishandles literal {@code '\'} inside
+   * single-quoted SQL strings and silently drops a downstream {@code :includeDeleted}
+   * bind.
+   */
+  @Test
+  void test_listChildren_filterByQuery_escapesLikeWildcards(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer parentRequest = new CreateContainer();
+    parentRequest.setName(ns.prefix("kids_q_escape_parent"));
+    parentRequest.setService(service.getFullyQualifiedName());
+    Container parent = createEntity(parentRequest);
+
+    Container literal = createChild(ns, service, parent, "kids_q_foo_bar");
+    Container wildcardImpostor = createChild(ns, service, parent, "kids_q_fooXbar");
+
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children";
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, basePath + "?q=foo_bar", null, ContainerResultList.class);
+    Set<UUID> ids =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertTrue(
+        ids.contains(literal.getId()),
+        "literal underscore in the query must match the literal-underscore name");
+    assertFalse(
+        ids.contains(wildcardImpostor.getId()),
+        "underscore in the query must not behave as a single-char LIKE wildcard");
+  }
+
+  /**
+   * Pins the rule that {@code ?include=deleted} is scoped per-level — at level X, the
+   * toggle returns only direct children of X whose own {@code deleted=true}. A
+   * soft-deleted descendant deeper than one level below X must NOT appear at X's
+   * {@code /children} listing, regardless of the include toggle. Each parent shows
+   * only its own direct children; the toggle filters that direct-children set by
+   * deleted flag, never recurses.
+   *
+   * <p>Both the direct-children-only depth predicate
+   * ({@code fqnHash NOT LIKE :parentHashChild}) and the include filter contribute to
+   * this guarantee; a regression that drops the depth check while keeping the include
+   * check would silently start surfacing deleted descendants from deeper levels at
+   * ancestor /children listings.
+   *
+   * <p>Builds chain root → l1 → l2 → l3 (l3 soft-deleted), then asserts /children at
+   * each level under all three include modes. l3 must only appear under l2 with
+   * include=deleted or include=all; never under root or l1.
+   */
+  @Test
+  void test_listChildren_includeDeleted_scopedToDirectChildrenAtEachLevel(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("delete_scoping_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container l1 = createChild(ns, service, root, "delete_scoping_l1");
+    Container l2 = createChild(ns, service, l1, "delete_scoping_l2");
+    Container l3 = createChild(ns, service, l2, "delete_scoping_l3");
+    deleteEntity(l3.getId().toString());
+
+    assertChildren(client, root, "include=non-deleted (default)", "", Set.of(l1.getId()));
+    assertChildren(
+        client, root, "include=deleted at root", "?include=deleted", Set.of() /* none */);
+    assertChildren(client, root, "include=all at root", "?include=all", Set.of(l1.getId()));
+
+    assertChildren(client, l1, "include=non-deleted (default)", "", Set.of(l2.getId()));
+    assertChildren(client, l1, "include=deleted at l1", "?include=deleted", Set.of() /* none */);
+    assertChildren(client, l1, "include=all at l1", "?include=all", Set.of(l2.getId()));
+
+    assertChildren(client, l2, "include=non-deleted (default)", "", Set.of() /* none */);
+    assertChildren(client, l2, "include=deleted at l2", "?include=deleted", Set.of(l3.getId()));
+    assertChildren(client, l2, "include=all at l2", "?include=all", Set.of(l3.getId()));
+  }
+
+  private void assertChildren(
+      OpenMetadataClient client, Container parent, String label, String query, Set<UUID> expected)
+      throws Exception {
+    String basePath = "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children" + query;
+    ContainerResultList page =
+        client.getHttpClient().execute(HttpMethod.GET, basePath, null, ContainerResultList.class);
+    Set<UUID> actual =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertEquals(
+        expected,
+        actual,
+        () ->
+            String.format(
+                "/children of %s with %s — expected %s, got %s",
+                parent.getName(), label, expected, actual));
+    assertEquals(
+        expected.size(),
+        page.getPaging().getTotal().intValue(),
+        () ->
+            String.format(
+                "paging.total at %s with %s must reflect filtered direct-children count",
+                parent.getName(), label));
+  }
+
+  /**
+   * The FQN-depth predicate must produce direct-children-only at <em>any</em> level of
+   * the hierarchy, not just the service root. Build a 5-level chain
+   * (root → l1 → l2 → l3 → l4) and walk down, asserting at each non-leaf level that
+   * {@code /children} returns exactly the immediate next level — no deeper descendants
+   * leak through, no immediate child is missed.
+   *
+   * <p>This is the per-level dual of {@link #test_rootListing_excludesContainersBelowFirstLevel}.
+   * The depth check is mathematical (a fqnHash exactly one MD5 segment below the parent
+   * has exactly one extra '.' separator), so it should hold uniformly at every depth;
+   * a regression at level N (e.g. a planner choosing the wrong index, or someone
+   * computing parentHashChild from the wrong prefix) would only surface in this kind of
+   * iterative test.
+   */
+  @Test
+  void test_listChildren_atArbitraryDepth_returnsOnlyDirectChildren(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("depth_chain_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    // Build the chain: root → l1 → l2 → l3 → l4. List<Container> chain captures each
+    // level so we can inspect the FQNs and IDs in order.
+    List<Container> chain = new ArrayList<>();
+    chain.add(root);
+    Container current = root;
+    for (int level = 1; level <= 4; level++) {
+      current = createChild(ns, service, current, "depth_chain_l" + level);
+      chain.add(current);
+    }
+
+    // For each non-leaf level i in [0, 3], /children of chain[i] must contain
+    // exactly chain[i+1] and nothing deeper from this branch.
+    for (int i = 0; i < chain.size() - 1; i++) {
+      Container parent = chain.get(i);
+      Container expectedChild = chain.get(i + 1);
+
+      ContainerResultList page =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  "/v1/containers/name/" + parent.getFullyQualifiedName() + "/children",
+                  null,
+                  ContainerResultList.class);
+      assertNotNull(page);
+      assertNotNull(page.getData());
+
+      Set<UUID> ids =
+          page.getData().stream()
+              .map(Container::getId)
+              .collect(java.util.stream.Collectors.toSet());
+
+      assertTrue(
+          ids.contains(expectedChild.getId()),
+          "Level " + i + ": direct child " + expectedChild.getName() + " must appear in /children");
+
+      // Every deeper level in the same chain must NOT leak through.
+      for (int j = i + 2; j < chain.size(); j++) {
+        Container deeper = chain.get(j);
+        assertFalse(
+            ids.contains(deeper.getId()),
+            "Level "
+                + i
+                + ": deeper descendant "
+                + deeper.getName()
+                + " (level "
+                + j
+                + ") must not appear in /children — FQN-depth check must hold at every level");
+      }
+    }
+  }
+
+  /**
+   * The dual of {@link #test_rootListingExcludesOrphanedChild}: when a container's parent
+   * CONTAINS row is missing, the orphan must <em>still</em> be discoverable under its
+   * FQN-implied parent's {@code /children} listing. The current FQN-based listing reads
+   * the FQN as the source of truth, so the orphan appears under its real ancestor even
+   * though the relationship row is gone — which is what the breadcrumb UI assumes.
+   *
+   * <p>This is the correctness invariant we lose if {@code /children} ever falls back to
+   * an {@code entity_relationship}-based lookup again.
+   */
+  @Test
+  void test_listChildren_orphanWithMissingRelationship_isStillDiscoverable(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("orphan_kids_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container intermediate = createChild(ns, service, root, "orphan_kids_intermediate");
+    Container leaf = createChild(ns, service, intermediate, "orphan_kids_leaf");
+
+    // Drop the (intermediate, CONTAINS, leaf) relationship row to simulate the cascade
+    // bug's residue. The leaf's row stays in storage_container_entity, its FQN still
+    // points at intermediate, but the relationship table no longer says "intermediate
+    // contains leaf".
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                intermediate.getId(),
+                "container",
+                leaf.getId(),
+                "container",
+                Relationship.CONTAINS.ordinal());
+    assertEquals(1, rowsRemoved, "Setup: should have dropped exactly one CONTAINS row");
+
+    // Despite the missing relationship, /children of intermediate must surface the leaf
+    // because the listing is FQN-driven. This is the correctness payoff of moving off
+    // entity_relationship for hierarchy listings.
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + intermediate.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+    assertNotNull(page);
+    assertNotNull(page.getData());
+
+    Set<UUID> ids =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+    assertTrue(
+        ids.contains(leaf.getId()),
+        "Leaf must still appear in /children of its FQN-implied parent even though the "
+            + "(parent, CONTAINS, leaf) row was lost — FQN is the source of truth.");
+  }
+
+  /**
+   * Sibling subtrees at any depth must not bleed into one another. Build a small
+   * branching shape — root with two children A and B, each with one grandchild —
+   * and verify {@code /children} of A returns only its grandchild, never B's. Guards
+   * against a regression where {@code parentHash} computation accidentally captures
+   * sibling prefixes (e.g. by stripping fewer separators than intended) or the depth
+   * check is dropped at a non-root level.
+   */
+  @Test
+  void test_listChildren_doesNotLeakSiblingSubtree(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("siblings_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    Container branchA = createChild(ns, service, root, "siblings_branchA");
+    Container branchB = createChild(ns, service, root, "siblings_branchB");
+    Container grandchildA = createChild(ns, service, branchA, "siblings_grandchildA");
+    Container grandchildB = createChild(ns, service, branchB, "siblings_grandchildB");
+
+    // /children of branchA: only grandchildA, never grandchildB.
+    ContainerResultList branchAPage =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + branchA.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+    Set<UUID> aIds =
+        branchAPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(aIds.contains(grandchildA.getId()), "grandchildA must appear under branchA");
+    assertFalse(
+        aIds.contains(grandchildB.getId()),
+        "grandchildB must not leak into branchA's /children — sibling subtree isolation");
+    assertFalse(
+        aIds.contains(branchB.getId()), "branchB must not appear under branchA's /children");
+
+    // /children of branchB: only grandchildB, never grandchildA.
+    ContainerResultList branchBPage =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + branchB.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+    Set<UUID> bIds =
+        branchBPage.getData().stream()
+            .map(Container::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(bIds.contains(grandchildB.getId()), "grandchildB must appear under branchB");
+    assertFalse(
+        bIds.contains(grandchildA.getId()),
+        "grandchildA must not leak into branchB's /children — sibling subtree isolation");
+  }
+
   @Test
   void test_listAncestors_handlesQuotedServiceName(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2090,6 +2832,344 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertTrue(
         piiColumn.getTags().stream()
             .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  // ===================================================================
+  // PATCH PARENT UPDATE (issue #24294)
+  // ===================================================================
+
+  private Container createUnderService(TestNamespace ns, StorageService service, String name) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix(name));
+    request.setService(service.getFullyQualifiedName());
+    return createEntity(request);
+  }
+
+  private Container createUnderParent(
+      TestNamespace ns, StorageService service, Container parent, String name) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix(name));
+    request.setService(service.getFullyQualifiedName());
+    request.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    return createEntity(request);
+  }
+
+  private static EntityReference parentRefOf(Container parent) {
+    return new EntityReference()
+        .withId(parent.getId())
+        .withType("container")
+        .withFullyQualifiedName(parent.getFullyQualifiedName());
+  }
+
+  @Test
+  void patch_containerParent_movesContainer_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "moveA");
+    Container parentB = createUnderService(ns, service, "moveB");
+    Container child = createUnderParent(ns, service, parentA, "moveChild");
+
+    assertEquals(parentA.getId(), child.getParent().getId());
+    String oldFqn = child.getFullyQualifiedName();
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    assertNotNull(moved.getParent());
+    assertEquals(parentB.getId(), moved.getParent().getId());
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(parentB.getFullyQualifiedName() + "."),
+        "child FQN should now nest under new parent " + parentB.getFullyQualifiedName());
+    assertNotEquals(oldFqn, moved.getFullyQualifiedName());
+
+    Container refetched = getEntityWithFields(moved.getId().toString(), "parent");
+    assertEquals(parentB.getId(), refetched.getParent().getId());
+  }
+
+  @Test
+  void patch_containerParent_preservesMetadata_200(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "metaA");
+    Container parentB = createUnderService(ns, service, "metaB");
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("metaChild"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(parentRefOf(parentA));
+    childRequest.setDescription("Keep me through the move");
+    childRequest.setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL)));
+    Container child = createEntity(childRequest);
+
+    Container loaded =
+        SdkClients.adminClient()
+            .containers()
+            .get(child.getId().toString(), "tags,description,parent");
+
+    loaded.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    Container refetched =
+        SdkClients.adminClient()
+            .containers()
+            .get(moved.getId().toString(), "tags,description,parent");
+    assertEquals(parentB.getId(), refetched.getParent().getId());
+    assertEquals("Keep me through the move", refetched.getDescription());
+    assertNotNull(refetched.getTags());
+    assertTrue(
+        refetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+        "PII tag must survive parent reassignment");
+  }
+
+  @Test
+  void patch_containerParent_cascadesFqnToChildren_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "cascA");
+    Container parentB = createUnderService(ns, service, "cascB");
+    Container child = createUnderParent(ns, service, parentA, "cascChild");
+    Container grandchild = createUnderParent(ns, service, child, "cascGrandchild");
+
+    String oldGrandFqn = grandchild.getFullyQualifiedName();
+    assertTrue(oldGrandFqn.startsWith(parentA.getFullyQualifiedName() + "."));
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    Container refetchedGrand = getEntity(grandchild.getId().toString());
+    assertNotNull(refetchedGrand);
+    assertTrue(
+        refetchedGrand.getFullyQualifiedName().startsWith(moved.getFullyQualifiedName() + "."),
+        "grandchild FQN should cascade under moved child: "
+            + refetchedGrand.getFullyQualifiedName());
+    assertNotEquals(oldGrandFqn, refetchedGrand.getFullyQualifiedName());
+  }
+
+  @Test
+  void patch_containerParent_cascadesToColumnFqns_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "colA");
+    Container parentB = createUnderService(ns, service, "colB");
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("colOne").withDataType(ColumnDataType.INT),
+            new Column().withName("colTwo").withDataType(ColumnDataType.STRING));
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("colChild"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(parentRefOf(parentA));
+    childRequest.setDataModel(dataModel);
+    Container child = createEntity(childRequest);
+
+    Container loaded =
+        SdkClients.adminClient().containers().get(child.getId().toString(), "dataModel,parent");
+    loaded.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    Container refetched =
+        SdkClients.adminClient().containers().get(moved.getId().toString(), "dataModel,parent");
+    assertNotNull(refetched.getDataModel());
+    assertEquals(2, refetched.getDataModel().getColumns().size());
+    String expectedColumnPrefix = refetched.getFullyQualifiedName() + ".";
+    for (Column c : refetched.getDataModel().getColumns()) {
+      assertNotNull(c.getFullyQualifiedName(), "column must have an FQN");
+      assertTrue(
+          c.getFullyQualifiedName().startsWith(expectedColumnPrefix),
+          "column FQN should cascade under new container FQN: " + c.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void patch_containerParent_toNull_promotesToTopLevel_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "promA");
+    Container child = createUnderParent(ns, service, parentA, "promChild");
+    assertNotNull(child.getParent());
+
+    // Pre-fetch with `parent` so the SDK's JSON-diff sees the original parent and emits a
+    // proper "remove /parent" operation. Without this, the SDK's NON_NULL serialization
+    // omits the cleared `parent` from the patch document and the change is lost.
+    Container loaded =
+        SdkClients.adminClient().containers().get(child.getId().toString(), "parent");
+    loaded.setParent(null);
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    assertNull(moved.getParent(), "parent should be cleared");
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(service.getFullyQualifiedName() + "."),
+        "FQN should now sit directly under the service: " + moved.getFullyQualifiedName());
+    assertFalse(
+        moved.getFullyQualifiedName().contains(parentA.getName()),
+        "FQN should no longer reference the old parent");
+  }
+
+  @Test
+  void patch_containerParent_fromNull_assignsParent_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container top = createUnderService(ns, service, "topLvl");
+    Container target = createUnderService(ns, service, "newParent");
+    assertNull(top.getParent());
+
+    top.setParent(parentRefOf(target));
+    Container moved = patchEntity(top.getId().toString(), top);
+
+    assertNotNull(moved.getParent());
+    assertEquals(target.getId(), moved.getParent().getId());
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(target.getFullyQualifiedName() + "."),
+        "FQN should now nest under the new parent");
+  }
+
+  @Test
+  void patch_containerParent_rejectsCycle_400(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container root = createUnderService(ns, service, "cycRoot");
+    Container child = createUnderParent(ns, service, root, "cycChild");
+
+    // Try to make root.parent = child (cycle: root → child → root)
+    root.setParent(parentRefOf(child));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(root.getId().toString(), root),
+        "moving a container under its own descendant must be rejected");
+
+    Container refetched = getEntity(root.getId().toString());
+    assertNull(refetched.getParent(), "rejected PATCH must not mutate root");
+  }
+
+  @Test
+  void patch_containerParent_rejectsSelfParent_400(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container c = createUnderService(ns, service, "selfRef");
+
+    c.setParent(parentRefOf(c));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(c.getId().toString(), c),
+        "self-parent must be rejected");
+  }
+
+  @Test
+  void patch_containerParent_rejectsCrossServiceParent_400(TestNamespace ns) {
+    StorageService serviceA = StorageServiceTestFactory.createS3(ns);
+    StorageService serviceB = StorageServiceTestFactory.createS3(ns);
+    Container child = createUnderService(ns, serviceA, "xsChild");
+    Container parentInB = createUnderService(ns, serviceB, "xsParent");
+
+    child.setParent(parentRefOf(parentInB));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(child.getId().toString(), child),
+        "reparenting across StorageServices must be rejected");
+  }
+
+  @Test
+  void patch_containerParent_rejectsNonExistentParent_404(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container c = createUnderService(ns, service, "noParent");
+
+    c.setParent(new EntityReference().withId(UUID.randomUUID()).withType("container"));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(c.getId().toString(), c),
+        "non-existent parent must be rejected");
+  }
+
+  @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
+  void patch_containerParent_rejectsOversizedSubtree_400(TestNamespace ns) {
+    // Force a tiny threshold for this test only via a package-private test override. The
+    // override is read on every PATCH so it takes effect immediately. We do NOT use
+    // System.setProperty because the property is JVM-global and concurrent tests doing other
+    // re-parents would observe the artificially low value. @ResourceLock above serializes any
+    // test that mutates this override.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "bigA");
+      Container parentB = createUnderService(ns, service, "bigB");
+      Container child = createUnderParent(ns, service, parentA, "bigChild");
+      // 3 grandchildren — exceeds the threshold of 2 descendants.
+      createUnderParent(ns, service, child, "gc1");
+      createUnderParent(ns, service, child, "gc2");
+      createUnderParent(ns, service, child, "gc3");
+
+      child.setParent(parentRefOf(parentB));
+      Exception ex =
+          assertThrows(
+              Exception.class,
+              () -> patchEntity(child.getId().toString(), child),
+              "subtree of 3 descendants must exceed the configured limit of 2");
+      String message = ex.getMessage();
+      assertNotNull(message);
+      assertTrue(
+          message.contains("subtree has 3 descendant"),
+          "error message should report the actual descendant count: " + message);
+      assertTrue(
+          message.contains("maximum of 2"),
+          "error message should report the configured maximum: " + message);
+
+      // The rejection must not have partially mutated state: child still points at parentA.
+      Container refetched = getEntityWithFields(child.getId().toString(), "parent");
+      assertEquals(parentA.getId(), refetched.getParent().getId());
+    } finally {
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+    }
+  }
+
+  @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
+  void patch_containerParent_allowsMoveAtConfiguredLimit_200(TestNamespace ns) {
+    // Exactly at the limit (descendantCount == max) must still be allowed — the guard uses
+    // strict `>` not `>=`. Same package-private test override mechanism as above.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "limA");
+      Container parentB = createUnderService(ns, service, "limB");
+      Container child = createUnderParent(ns, service, parentA, "limChild");
+      createUnderParent(ns, service, child, "lgc1");
+      createUnderParent(ns, service, child, "lgc2");
+
+      child.setParent(parentRefOf(parentB));
+      Container moved = patchEntity(child.getId().toString(), child);
+      assertEquals(parentB.getId(), moved.getParent().getId());
+    } finally {
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+    }
+  }
+
+  @Test
+  void patch_containerParent_emitsChangeDescription_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "cdA");
+    Container parentB = createUnderService(ns, service, "cdB");
+    Container child = createUnderParent(ns, service, parentA, "cdChild");
+    Double initialVersion = child.getVersion();
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    assertNotNull(moved.getChangeDescription(), "change description should be populated");
+    assertTrue(
+        moved.getVersion() > initialVersion,
+        "version should bump after parent change: " + initialVersion + " -> " + moved.getVersion());
+    boolean parentInChangeDescription =
+        moved.getChangeDescription().getFieldsUpdated().stream()
+                .anyMatch(f -> "parent".equals(f.getName()))
+            || moved.getChangeDescription().getFieldsAdded().stream()
+                .anyMatch(f -> "parent".equals(f.getName()))
+            || moved.getChangeDescription().getFieldsDeleted().stream()
+                .anyMatch(f -> "parent".equals(f.getName()));
+    assertTrue(
+        parentInChangeDescription, "change description should record the parent field change");
   }
 
   // ===================================================================

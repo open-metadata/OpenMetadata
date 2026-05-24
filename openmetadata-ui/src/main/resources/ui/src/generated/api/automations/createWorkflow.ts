@@ -300,6 +300,8 @@ export interface RequestConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -646,6 +648,8 @@ export interface ConfigObject {
      * Host and port of the Informix service.
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
      * URL to the Looker instance.
      *
@@ -1069,6 +1073,8 @@ export interface ConfigObject {
      *
      * Username to connect to IOMETE.
      *
+     * Username to connect to QuestDB.
+     *
      * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
@@ -1172,6 +1178,10 @@ export interface ConfigObject {
     httpPath?: string;
     /**
      * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
      */
     queryHistoryTable?: string;
     /**
@@ -3767,6 +3777,12 @@ export interface ConfigConnection {
      */
     databaseName?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -4467,6 +4483,12 @@ export interface HiveMetastoreConnectionDetails {
      */
     databaseSchema?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -4688,7 +4710,7 @@ export enum ConfigScheme {
     ClickhouseNative = "clickhouse+native",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
@@ -5084,6 +5106,7 @@ export enum ConfigType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",

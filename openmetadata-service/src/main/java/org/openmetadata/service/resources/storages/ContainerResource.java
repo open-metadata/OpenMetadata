@@ -621,7 +621,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Container.",
-      description = "Restore a soft deleted Container.",
+      description =
+          "Restore a soft deleted Container. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id; useful for deep container"
+              + " hierarchies.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -629,13 +632,27 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Container.class)))
+                    schema = @Schema(implementation = Container.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreContainer(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @PUT
@@ -757,12 +774,23 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          Integer offset) {
+          Integer offset,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted children.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Optional case-insensitive substring filter on the child container name.")
+          @QueryParam("q")
+          String q) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listChildren(fqn, limit, offset);
+    return repository.listChildren(fqn, limit, offset, include, q);
   }
 
   @GET

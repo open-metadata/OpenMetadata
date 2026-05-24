@@ -233,6 +233,10 @@ public final class Teams {
     public TeamDeleter delete() {
       return new TeamDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Team> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.teams(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

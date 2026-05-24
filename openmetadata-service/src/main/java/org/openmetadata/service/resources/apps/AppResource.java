@@ -271,8 +271,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<App> applications =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    applications
+        .getData()
+        .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
+    return applications;
   }
 
   @GET

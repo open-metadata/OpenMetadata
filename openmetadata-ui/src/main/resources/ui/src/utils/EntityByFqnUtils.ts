@@ -20,6 +20,7 @@ import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../rest/apiEndpointsAPI';
 import { getApplicationByName } from '../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../rest/applicationMarketPlaceAPI';
+import { getBotByName } from '../rest/botsAPI';
 import { getChartByFqn } from '../rest/chartsAPI';
 import { getContract } from '../rest/contractAPI';
 import { getDashboardByFqn } from '../rest/dashboardAPI';
@@ -32,6 +33,7 @@ import { getDataProductByName } from '../rest/dataProductAPI';
 import { getDomainByName } from '../rest/domainAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getIngestionPipelineByFqn } from '../rest/ingestionPipelineAPI';
+import { getKnowledgePageByFqn } from '../rest/knowledgeCenterAPI';
 import { getKPIByName } from '../rest/KpiAPI';
 import { getTypeByFQN } from '../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
@@ -49,7 +51,7 @@ import { getClassificationByName, getTagByFqn } from '../rest/tagAPI';
 import { getTeamByName } from '../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../rest/testAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getBotByName, getUserByName } from '../rest/userAPI';
+import { getUserByName } from '../rest/userAPI';
 
 export const getEntityByFqnUtil = (
   entityType: string,
@@ -208,6 +210,10 @@ export const getEntityByFqnUtil = (
 
     case EntityType.QUERY:
       return getQueryByFqn(entityFQN);
+
+    case EntityType.KNOWLEDGE_PAGE:
+    case EntityType.KNOWLEDGE_CENTER:
+      return getKnowledgePageByFqn(entityFQN);
 
     default:
       return null;
