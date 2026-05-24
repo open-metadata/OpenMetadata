@@ -14,6 +14,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -38,7 +39,7 @@ import org.openmetadata.sdk.network.HttpMethod;
  *       flattened/object envelope, not exploded into top-level fields.
  * </ul>
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class IndexFieldExplosionIT {

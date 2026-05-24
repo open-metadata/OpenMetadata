@@ -25,6 +25,9 @@
 #     pre-built image artifact, restore the Maven cache, then run `mvn verify -P ui-it`
 #     with OM_TEST_IMAGE pointing at the pre-loaded tag so ContainerizedServer skips
 #     its own build.
+#   - search-it-nightly: server-global destructive search ITs (tests/search/*IT.java) via
+#     `mvn verify -P search-it`. They run on the embedded bootstrap (testcontainers), not the
+#     baked image, so this job is independent of build-image and runs them serially.
 
 name: JavaUIIT Integration Tests (Nightly)
 
@@ -320,5 +323,89 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  search-it-nightly:
+    # Server-global destructive search ITs (tests/search/*IT.java): full reindex with
+    # recreateIndex, alias swaps, and ES container pause. They mutate cluster-wide state, so
+    # the default PR profiles exclude them; here the `search-it` Maven profile runs them
+    # serially on their own embedded-bootstrap server (testcontainers). That bootstrap is
+    # independent of the baked image, so this job does not need build-image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Run isolated search ITs (postgres + opensearch)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-search-it-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}

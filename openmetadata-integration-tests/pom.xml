@@ -338,7 +338,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -433,7 +432,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -530,7 +528,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -628,7 +625,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -722,7 +718,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -817,7 +812,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -926,7 +920,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1024,7 +1017,6 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
-                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -1180,6 +1172,53 @@
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                     <includedGroups>scale</includedGroups>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Server-global destructive search ITs: full reindex/recreate, alias swaps, ES container
+         pause. They mutate cluster-wide state on the shared embedded server, so they must never
+         run alongside the parallel corpus or the other sequential tests (which is why the default
+         profiles exclude **/tests/search/*IT.java). Like scale-it, this profile runs them on their
+         own fork + server, serially, and is invoked on demand / nightly via
+         `mvn verify -P search-it` (pass -DsearchType= / -DdatabaseType= to choose the backend). -->
+    <profile>
+      <id>search-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>search-isolated-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/*IT.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/tests/search/scale/**</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

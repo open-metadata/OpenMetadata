@@ -21,6 +21,7 @@ import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoader;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -45,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * cardinality(_id) == count gives us "no double-indexing while two backing
  * indices coexist."
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class NoDuplicatesDuringReindexIT {

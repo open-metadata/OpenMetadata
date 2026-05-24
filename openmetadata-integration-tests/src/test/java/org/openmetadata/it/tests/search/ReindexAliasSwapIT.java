@@ -18,6 +18,7 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -38,7 +39,7 @@ import org.openmetadata.sdk.fluent.Apps;
  * swap is broken, reads get partial results during the window or the alias
  * disappears entirely.
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexAliasSwapIT {

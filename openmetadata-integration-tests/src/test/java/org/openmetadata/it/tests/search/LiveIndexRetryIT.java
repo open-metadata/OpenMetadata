@@ -15,6 +15,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.search.EsOutageInjector;
 import org.openmetadata.it.search.SearchAssertions;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -38,7 +39,7 @@ import org.openmetadata.service.Entity;
  * <p>Catches regressions where a SearchRepository call swallows the failure without
  * enqueuing, or the worker doesn't drain after the engine recovers.
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_RETRY", mode = ResourceAccessMode.READ_WRITE)
 class LiveIndexRetryIT {

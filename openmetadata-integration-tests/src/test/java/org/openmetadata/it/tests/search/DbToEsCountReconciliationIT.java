@@ -20,6 +20,7 @@ import org.openmetadata.it.search.DbCountQuerier;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -40,7 +41,7 @@ import org.openmetadata.sdk.fluent.Apps;
  * vector embedding step, etc.), the reconciliation count for that entity
  * type drifts and this test fails with a per-entity-type table.
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class DbToEsCountReconciliationIT {

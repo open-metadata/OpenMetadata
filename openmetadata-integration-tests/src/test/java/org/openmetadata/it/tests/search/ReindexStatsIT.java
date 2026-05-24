@@ -12,6 +12,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -43,7 +44,7 @@ import org.openmetadata.service.Entity;
  * asserts the next reindex surfaces at least one warning. The fixture mirrors
  * {@code LineageBrokenReferenceIT}'s broken-reference pattern.
  */
-@ExtendWith(TestNamespaceExtension.class)
+@ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexStatsIT {
