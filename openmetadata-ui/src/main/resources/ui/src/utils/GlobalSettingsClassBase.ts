@@ -69,8 +69,8 @@ import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
-import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
+import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
