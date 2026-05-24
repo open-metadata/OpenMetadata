@@ -61,7 +61,6 @@ export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -170,6 +169,7 @@ export const ROUTES = {
   CONTEXT_CENTER_ARTICLE_VERSION: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   CONTEXT_CENTER_DOCUMENTS: '/context-center/documents',
   CONTEXT_CENTER_FILTER: '/context-center/filter',
+  CONTEXT_CENTER_MEMORIES: '/context-center/memories',
   CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
   CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
@@ -363,6 +363,7 @@ export const SOCKET_EVENTS = {
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
+  QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
 
 export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';

@@ -184,13 +184,11 @@
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
       <artifactId>jersey-apache-connector</artifactId>
-      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -211,17 +209,21 @@
       <version>1.1.7</version>
       <scope>test</scope>
     </dependency>
-    <!-- RDF support (Apache Jena) for RDF tests -->
+    <!-- RDF support (Apache Jena) for RDF tests. Version unified with
+         openmetadata-service via the root pom's <jena.version> property —
+         previously this module was on 5.0.0 while openmetadata-service was
+         on 4.10.0, which forced the production code to abstract over Jena 4
+         vs 5 API drift. -->
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-core</artifactId>
-      <version>5.0.0</version>
+      <version>${jena.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-arq</artifactId>
-      <version>5.0.0</version>
+      <version>${jena.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -954,7 +956,7 @@
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -992,7 +994,7 @@
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
