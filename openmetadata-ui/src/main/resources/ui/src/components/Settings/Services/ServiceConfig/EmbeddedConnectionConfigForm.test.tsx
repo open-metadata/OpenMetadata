@@ -18,7 +18,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
+import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
 import EmbeddedConnectionConfigForm from './EmbeddedConnectionConfigForm';
 
 const formData = {
@@ -64,10 +64,10 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockResolvedValue({
-    connSch: { schema: { name: 'test' }, uiSchema: {} },
-    validConfig: {},
-  }),
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest
+    .fn()
+    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
@@ -175,9 +175,9 @@ describe('EmbeddedConnectionConfigForm', () => {
   });
 
   it('shows no-config message when schema is empty', async () => {
-    (getConnectionSchemas as jest.Mock).mockResolvedValueOnce({
-      connSch: { schema: {}, uiSchema: {} },
-      validConfig: {},
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {},
+      uiSchema: {},
     });
 
     await act(async () => {

@@ -21,10 +21,11 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  buildValidConfig,
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
-  getConnectionSchemas,
   getFilteredSchema,
+  loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
@@ -48,35 +49,35 @@ function FiltersConfigForm({
   const customFields: RegistryFieldsType = {
     ArrayField: WorkflowArrayFieldTemplate,
   };
-  const [connectionSchemaResult, setConnectionSchemaResult] =
-    useState<ConnectionSchemaResult>({
-      connSch: EMPTY_CONNECTION_SCHEMA,
-      validConfig: {} as ConfigData,
-    });
+  const [connSch, setConnSch] = useState<ConnectionSchemaResult['connSch']>(
+    EMPTY_CONNECTION_SCHEMA
+  );
 
+  // {@code validConfig} is the sanitized initial form data — sync useMemo on {@code data}
+  // so RJSF's {@code formData} prop is stable until the parent commits a new prop. See
+  // {@link EmbeddedConnectionConfigForm} for the original bug context.
+  const validConfig = useMemo(() => buildValidConfig(data), [data]);
+
+  // Schema only depends on serviceCategory + serviceType. Refetching on every {@code data}
+  // change reset the RJSF form mid-edit.
   useEffect(() => {
     let cancelled = false;
-    getConnectionSchemas({ data, serviceCategory, serviceType })
-      .then((result) => {
+    loadConnectionSchema(serviceCategory, serviceType)
+      .then((schema) => {
         if (!cancelled) {
-          setConnectionSchemaResult(result);
+          setConnSch(schema);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setConnectionSchemaResult({
-            connSch: EMPTY_CONNECTION_SCHEMA,
-            validConfig: {} as ConfigData,
-          });
+          setConnSch(EMPTY_CONNECTION_SCHEMA);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [data, serviceCategory, serviceType]);
-
-  const { connSch, validConfig } = connectionSchemaResult;
+  }, [serviceCategory, serviceType]);
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);

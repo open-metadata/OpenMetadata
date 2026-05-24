@@ -44,7 +44,7 @@ export const EMPTY_CONNECTION_SCHEMA: ConnectionSchemaResult['connSch'] = {
   uiSchema: {},
 };
 
-const buildValidConfig = (data?: ServicesType): ConfigData => {
+export const buildValidConfig = (data?: ServicesType): ConfigData => {
   const config = isNil(data)
     ? ({} as ConfigData)
     : (data.connection?.config as ConfigData);
@@ -58,7 +58,7 @@ const buildValidConfig = (data?: ServicesType): ConfigData => {
   return validConfig;
 };
 
-const loadConnectionSchema = async (
+export const loadConnectionSchema = async (
   serviceCategory: ServiceCategory,
   serviceType: string
 ): Promise<ConnectionSchemaResult['connSch']> => {

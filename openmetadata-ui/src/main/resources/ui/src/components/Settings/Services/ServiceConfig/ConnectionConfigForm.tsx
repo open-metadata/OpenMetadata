@@ -33,11 +33,12 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  buildValidConfig,
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
-  getConnectionSchemas,
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
+  loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -67,11 +68,18 @@ const ConnectionConfigForm = ({
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
-  const [connectionSchemaResult, setConnectionSchemaResult] =
-    useState<ConnectionSchemaResult>({
-      connSch: EMPTY_CONNECTION_SCHEMA,
-      validConfig: {} as ConfigData,
-    });
+  const [connSch, setConnSch] = useState<ConnectionSchemaResult['connSch']>(
+    EMPTY_CONNECTION_SCHEMA
+  );
+
+  // {@code validConfig} is the sanitized initial form data — it only depends on the
+  // {@code data} prop, NOT on {@code serviceType}/{@code serviceCategory}. Keep it as a
+  // sync {@link useMemo} so RJSF's {@code formData} prop has a stable reference until the
+  // parent commits a new {@code data} (after a successful PATCH). The earlier async
+  // {@link useState} approach re-derived {@code validConfig} every time the schema fetch
+  // re-fired, which collided with RJSF's controlled-formData reset and wiped the user's
+  // edits mid-input.
+  const validConfig = useMemo(() => buildValidConfig(data), [data]);
 
   const fetchHostIp = async () => {
     try {
@@ -92,27 +100,28 @@ const ConnectionConfigForm = ({
     }
   }, [isAirflowAvailable]);
 
+  // Schema only depends on serviceCategory + serviceType. Re-fetching it on every
+  // {@code data} change (which was the previous useEffect dep list) tore down the form
+  // state mid-edit because the async resolve re-set {@code connSch} and re-rendered the
+  // RJSF form with a fresh schema reference.
   useEffect(() => {
     let cancelled = false;
-    getConnectionSchemas({ data, serviceCategory, serviceType })
-      .then((result) => {
+    loadConnectionSchema(serviceCategory, serviceType)
+      .then((schema) => {
         if (!cancelled) {
-          setConnectionSchemaResult(result);
+          setConnSch(schema);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setConnectionSchemaResult({
-            connSch: EMPTY_CONNECTION_SCHEMA,
-            validConfig: {} as ConfigData,
-          });
+          setConnSch(EMPTY_CONNECTION_SCHEMA);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [data, serviceCategory, serviceType]);
+  }, [serviceCategory, serviceType]);
 
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());
@@ -129,7 +138,6 @@ const ConnectionConfigForm = ({
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
-  const { connSch, validConfig } = connectionSchemaResult;
   const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {

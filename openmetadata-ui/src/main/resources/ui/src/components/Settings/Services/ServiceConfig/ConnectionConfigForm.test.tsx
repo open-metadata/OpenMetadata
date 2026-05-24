@@ -18,7 +18,7 @@ import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
+import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -119,15 +119,10 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockResolvedValue({
-    connSch: {
-      schema: {
-        name: 'test',
-      },
-      uiSchema: {},
-    },
-    validConfig: {},
-  }),
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest
+    .fn()
+    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
@@ -250,12 +245,9 @@ describe('ServiceConfig', () => {
   });
 
   it('should render no config available if form data has no schema', async () => {
-    (getConnectionSchemas as jest.Mock).mockResolvedValueOnce({
-      connSch: {
-        schema: {},
-        uiSchema: {},
-      },
-      validConfig: {},
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {},
+      uiSchema: {},
     });
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);

@@ -38,19 +38,18 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockResolvedValue({
-    connSch: {
-      schema: {
-        type: 'object',
-        properties: {
-          filter1: { type: 'string' },
-          filter2: { type: 'string' },
-          someOtherProperty: { type: 'string' },
-        },
-        additionalProperties: true,
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest.fn().mockResolvedValue({
+    schema: {
+      type: 'object',
+      properties: {
+        filter1: { type: 'string' },
+        filter2: { type: 'string' },
+        someOtherProperty: { type: 'string' },
       },
+      additionalProperties: true,
     },
-    validConfig: {},
+    uiSchema: {},
   }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn(
@@ -103,9 +102,13 @@ jest.mock('../../../common/InlineAlert/InlineAlert', () => {
     .mockImplementation(() => <div data-testid="inline-alert">Alert</div>);
 });
 
-const mockGetConnectionSchemas = jest.requireMock(
+const mockLoadConnectionSchema = jest.requireMock(
   '../../../../utils/ServiceConnectionUtils'
-).getConnectionSchemas;
+).loadConnectionSchema;
+
+const mockBuildValidConfig = jest.requireMock(
+  '../../../../utils/ServiceConnectionUtils'
+).buildValidConfig;
 
 const mockGetFilteredSchema = jest.requireMock(
   '../../../../utils/ServiceConnectionUtils'
@@ -145,20 +148,19 @@ describe('FiltersConfigForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetConnectionSchemas.mockResolvedValue({
-      connSch: {
-        schema: {
-          type: 'object',
-          properties: {
-            filter1: { type: 'string' },
-            filter2: { type: 'string' },
-            someOtherProperty: { type: 'string' },
-          },
-          additionalProperties: true,
+    mockLoadConnectionSchema.mockResolvedValue({
+      schema: {
+        type: 'object',
+        properties: {
+          filter1: { type: 'string' },
+          filter2: { type: 'string' },
+          someOtherProperty: { type: 'string' },
         },
+        additionalProperties: true,
       },
-      validConfig: {},
+      uiSchema: {},
     });
+    mockBuildValidConfig.mockReturnValue({});
     mockGetFilteredSchema.mockImplementation(
       (properties: Record<string, unknown> | undefined) => {
         const {
@@ -350,26 +352,17 @@ describe('FiltersConfigForm', () => {
   });
 
   describe('Connection Schema Integration', () => {
-    it('should call getConnectionSchemas with correct parameters', async () => {
+    it('should call loadConnectionSchema with correct parameters', async () => {
       await renderForm(defaultProps);
 
-      expect(mockGetConnectionSchemas).toHaveBeenCalledWith({
-        data: undefined,
-        serviceCategory: ServiceCategory.DATABASE_SERVICES,
-        serviceType: DatabaseServiceType.Mysql,
-      });
+      expect(mockLoadConnectionSchema).toHaveBeenCalledWith(
+        ServiceCategory.DATABASE_SERVICES,
+        DatabaseServiceType.Mysql
+      );
     });
 
-    it('should use validConfig from getConnectionSchemas', async () => {
-      mockGetConnectionSchemas.mockResolvedValue({
-        connSch: {
-          schema: {
-            type: 'object',
-            properties: {},
-          },
-        },
-        validConfig: { customConfig: 'value' },
-      });
+    it('should use validConfig from buildValidConfig', async () => {
+      mockBuildValidConfig.mockReturnValue({ customConfig: 'value' });
 
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
