@@ -28,6 +28,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
+import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.DataCompletenessImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 import org.openmetadata.service.governance.workflows.flowable.builders.InclusiveGatewayBuilder;
@@ -51,6 +52,10 @@ public class MainWorkflow {
     process.setName(
         Optional.ofNullable(workflowDefinition.getDisplayName())
             .orElse(workflowDefinition.getFullyQualifiedName()));
+
+    TriggerInterface.getWorkflowInstanceListeners(List.of("start", "end"))
+        .forEach(process.getExecutionListeners()::add);
+
     model.addProcess(process);
 
     List<EdgeDefinition> edges = workflowDefinition.getEdges();

@@ -83,6 +83,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskPriorityCondition(tableName));
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition(tableName));
+    conditions.add(getScheduleRunIdCondition());
     conditions.add(getNameFilterCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
@@ -584,6 +585,11 @@ public class ListFilter extends Filter<ListFilter> {
     return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
         ? ""
         : "serverId = :serverId";
+  }
+
+  private String getScheduleRunIdCondition() {
+    String scheduleRunId = queryParams.get("scheduleRunId");
+    return scheduleRunId == null ? "" : "scheduleRunId = :scheduleRunId";
   }
 
   private String getEntityFQNHashCondition() {

@@ -14,12 +14,11 @@ public interface TriggerInterface {
   void addToWorkflow(BpmnModel model);
 
   default void attachWorkflowInstanceListeners(Process process) {
-    for (FlowableListener listener : getWorkflowInstanceListeners()) {
-      process.getExecutionListeners().add(listener);
-    }
+    getWorkflowInstanceListeners(List.of("start", "end"))
+        .forEach(process.getExecutionListeners()::add);
   }
 
-  default List<FlowableListener> getWorkflowInstanceListeners(List<String> events) {
+  static List<FlowableListener> getWorkflowInstanceListeners(List<String> events) {
     List<FlowableListener> listeners = new ArrayList<>();
 
     for (String event : events) {
@@ -32,9 +31,5 @@ public interface TriggerInterface {
     }
 
     return listeners;
-  }
-
-  private List<FlowableListener> getWorkflowInstanceListeners() {
-    return getWorkflowInstanceListeners(List.of("start", "end"));
   }
 }

@@ -79,7 +79,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(workflowTrigger);
-    for (FlowableListener listener : getWorkflowInstanceListeners(List.of("end"))) {
+    for (FlowableListener listener :
+        TriggerInterface.getWorkflowInstanceListeners(List.of("end"))) {
       runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
     }
     process.addFlowElement(runtimeExceptionBoundaryEvent);

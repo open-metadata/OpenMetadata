@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps.bundles.autoPilot;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -80,8 +80,8 @@ public class AutoPilotApp extends AbstractNativeApplication {
     if (runtimeConfig.getActive()) {
       Map<String, Object> variables = new HashMap<>();
       variables.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-          runtimeConfig.getEntityLink());
+          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE),
+          List.of(runtimeConfig.getEntityLink()));
 
       WorkflowHandler.getInstance()
           .triggerByKey(

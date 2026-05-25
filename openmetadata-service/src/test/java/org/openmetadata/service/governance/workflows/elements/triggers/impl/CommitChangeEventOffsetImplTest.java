@@ -140,6 +140,39 @@ class CommitChangeEventOffsetImplTest {
         .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
   }
 
+  // -------------------------------------------------------------------------
+  // ChangeEventOffsetUtils.commitOffset — null offset → no-op
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testCommitOffset_nullOffset_isNoOp() {
+    ChangeEventOffsetUtils.commitOffset("wf", "table", null);
+
+    verify(eventSubscriptionDAO, never()).getSubscriberExtension(anyString(), anyString());
+    verify(eventSubscriptionDAO, never())
+        .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
+  }
+
+  // -------------------------------------------------------------------------
+  // ChangeEventOffsetUtils.commitOffset — stored offset >= processed → skip
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testCommitOffset_storedOffsetHigher_skipsUpsert() {
+    EventSubscriptionOffset existing =
+        new EventSubscriptionOffset().withCurrentOffset(100L).withStartingOffset(100L);
+    when(eventSubscriptionDAO.getSubscriberExtension(anyString(), anyString()))
+        .thenReturn(JsonUtils.pojoToJson(existing));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      ChangeEventOffsetUtils.commitOffset("certificationWorkflow", "table", 50L);
+    }
+
+    verify(eventSubscriptionDAO, never())
+        .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
+  }
+
   private void injectField(Object target, String fieldName, Object value) throws Exception {
     Field field = CommitChangeEventOffsetImpl.class.getDeclaredField(fieldName);
     field.setAccessible(true);

@@ -11,17 +11,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.PROCESSED_FQNS_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.CURRENT_BATCH_OFFSET_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.MAX_PROCESSED_OFFSET_VARIABLE;
+import static org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl.PROCESSED_FQNS_MAX_SIZE;
 
 import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
 import java.util.List;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -187,7 +191,8 @@ class FetchChangeEventsImplTest {
   @Test
   void testExecute_usesStoredOffsetFromExecution() {
     when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(100L);
-    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+    // existingMax == batchMaxOffset (100L == 100L) → inline commit is skipped
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(100L);
     when(changeEventDAO.listByEntityTypesWithOffset(anyList(), eq(100L), any(int.class)))
         .thenReturn(List.of());
 
@@ -196,9 +201,7 @@ class FetchChangeEventsImplTest {
       impl.execute(execution);
     }
 
-    // DAO called with the stored offset
     verify(changeEventDAO).listByEntityTypesWithOffset(anyList(), eq(100L), any(int.class));
-    // eventSubscriptionDAO never queried when offset already in execution
     verify(eventSubscriptionDAO, never()).getSubscriberExtension(anyString(), anyString());
   }
 
@@ -235,6 +238,156 @@ class FetchChangeEventsImplTest {
     verify(execution).setVariable(eq("numberOfEntities"), eq(1));
     // Max offset across both records is 20
     verify(execution).setVariable(eq(MAX_PROCESSED_OFFSET_VARIABLE), eq(20L));
+  }
+
+  // -------------------------------------------------------------------------
+  // execute — cross-batch FQN dedup: FQN already in processedFqns is skipped
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_skipsFqnAlreadyDispatchedInPriorBatch() {
+    LinkedHashMap<String, Boolean> priorBatchCache = new LinkedHashMap<>();
+    priorBatchCache.put("schema.myTable", Boolean.TRUE);
+    when(execution.getVariable(PROCESSED_FQNS_VARIABLE)).thenReturn(priorBatchCache);
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(null);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("schema.myTable");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(30L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(execution).setVariable(eq("numberOfEntities"), eq(0));
+    verify(execution).setVariable(eq(ENTITY_LIST_VARIABLE), eq(List.of()));
+  }
+
+  // -------------------------------------------------------------------------
+  // execute — bounded LRU: oldest entry evicted when cache exceeds cap
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_evictsOldestFqnWhenCacheExceedsCap() {
+    LinkedHashMap<String, Boolean> bigCache = new LinkedHashMap<>();
+    for (int i = 0; i < PROCESSED_FQNS_MAX_SIZE; i++) {
+      bigCache.put("fqn-" + i, Boolean.TRUE);
+    }
+    when(execution.getVariable(PROCESSED_FQNS_VARIABLE)).thenReturn(bigCache);
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(0L);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("fqn-new");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(50L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq(PROCESSED_FQNS_VARIABLE), captor.capture());
+
+    @SuppressWarnings("unchecked")
+    LinkedHashMap<String, Boolean> capturedCache =
+        (LinkedHashMap<String, Boolean>) captor.getValue();
+    assertEquals(PROCESSED_FQNS_MAX_SIZE, capturedCache.size());
+    assertFalse(capturedCache.containsKey("fqn-0"));
+    assertTrue(capturedCache.containsKey("fqn-new"));
+  }
+
+  // -------------------------------------------------------------------------
+  // execute — Fix 1: offset is committed inline when max advances
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_commitsOffsetInlineWhenBatchAdvancesMax() {
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(null);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("schema.myTable");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(55L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(eventSubscriptionDAO)
+        .upsertSubscriberExtension(
+            eq("certificationWorkflowTrigger-table"),
+            anyString(),
+            eq("eventSubscriptionOffset"),
+            anyString());
+  }
+
+  // -------------------------------------------------------------------------
+  // execute — Fix 1: inline commit skipped when offset has not advanced
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_skipsInlineCommitWhenBatchDoesNotAdvanceMax() {
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(42L);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(42L);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("schema.myTable");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(42L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(eventSubscriptionDAO, never())
+        .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
+  }
+
+  // -------------------------------------------------------------------------
+  // execute — all records deduped away → entityList empty → hasFinished=true
+  // Without the fix, records.isEmpty()=false → notFinished path taken →
+  // singleExecution's loopCardinality=1 accesses entityList.get(0) → NoSuchElementException.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testExecute_allRecordsDedupedAway_setsHasFinishedTrue() {
+    LinkedHashMap<String, Boolean> priorBatchCache = new LinkedHashMap<>();
+    priorBatchCache.put("schema.myTable", Boolean.TRUE);
+    when(execution.getVariable(PROCESSED_FQNS_VARIABLE)).thenReturn(priorBatchCache);
+    when(execution.getVariable(CURRENT_BATCH_OFFSET_VARIABLE)).thenReturn(null);
+    when(execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE)).thenReturn(null);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityFullyQualifiedName("schema.myTable");
+    changeEvent.setEntityType("table");
+    ChangeEventRecord record = new ChangeEventRecord(99L, JsonUtils.pojoToJson(changeEvent));
+    when(changeEventDAO.listByEntityTypesWithOffset(anyList(), anyLong(), any(int.class)))
+        .thenReturn(List.of(record));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      impl.execute(execution);
+    }
+
+    verify(execution).setVariable(eq(HAS_FINISHED_VARIABLE), eq(true));
+    verify(execution).setVariable(eq(ENTITY_LIST_VARIABLE), eq(List.of()));
+    verify(execution).setVariable(eq("numberOfEntities"), eq(0));
   }
 
   private void injectField(Object target, String fieldName, Object value) throws Exception {

@@ -18,6 +18,7 @@ public class Workflow {
   public static final String FALSE_ENTITY_LIST_VARIABLE = "false_entityList";
   public static final String HAS_TRUE_ENTITIES_VARIABLE = "hasTrueEntities";
   public static final String HAS_FALSE_ENTITIES_VARIABLE = "hasFalseEntities";
+  public static final String PROCESSED_FQNS_VARIABLE = "processedFqnsInRun";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
@@ -26,6 +27,7 @@ public class Workflow {
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";
+  public static final String WORKFLOW_SCHEDULE_RUN_ID_VARIABLE = "scheduleRunId";
   public static final String WORKFLOW_RUNTIME_EXCEPTION = "workflowRuntimeException";
   public static final String EXCEPTION_VARIABLE = "exception";
   public static final String FAILURE_VARIABLE = "failure";
