@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -144,7 +145,7 @@ public class ColumnRepository {
       case TABLE -> fetchTableColumnByFQN(
           columnFQN, parentFQN, fieldsParam, include, securityContext);
       case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(
-          columnFQN, parentFQN, fieldsParam, include);
+          columnFQN, parentFQN, fieldsParam, include, securityContext);
       default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
     };
   }
@@ -155,6 +156,12 @@ public class ColumnRepository {
       String fieldsParam,
       Include include,
       SecurityContext securityContext) {
+    ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, null, parentFQN, include);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(TABLE, MetadataOperation.VIEW_BASIC),
+        resourceContext);
+
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
     Table table = tableRepo.findByName(parentFQN, include);
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
@@ -163,11 +170,22 @@ public class ColumnRepository {
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
     return tableRepo.enrichSingleColumnFields(
-        table, column, fieldsParam, authorizer, securityContext);
+        table, column, fieldsParam, resourceContext.getOwners(), authorizer, securityContext);
   }
 
   private Column fetchDataModelColumnByFQN(
-      String columnFQN, String parentFQN, String fieldsParam, Include include) {
+      String columnFQN,
+      String parentFQN,
+      String fieldsParam,
+      Include include,
+      SecurityContext securityContext) {
+    ResourceContext<DashboardDataModel> resourceContext =
+        new ResourceContext<>(DASHBOARD_DATA_MODEL, null, parentFQN, include);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(DASHBOARD_DATA_MODEL, MetadataOperation.VIEW_BASIC),
+        resourceContext);
+
     DashboardDataModelRepository dataModelRepo =
         (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
     DashboardDataModel dataModel = dataModelRepo.findByName(parentFQN, include);

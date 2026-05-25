@@ -2975,6 +2975,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table table,
       Column column,
       String fieldsParam,
+      List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
     if (fieldsParam == null) {
@@ -2995,8 +2996,12 @@ public class TableRepository extends EntityRepository<Table> {
       if (!fieldsParam.contains("tags")) {
         populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
       }
-      PIIMasker.getTableProfile(
-          table.getFullyQualifiedName(), singleton, authorizer, securityContext);
+      if (piiOwners != null) {
+        PIIMasker.getTableProfile(piiOwners, singleton, authorizer, securityContext);
+      } else {
+        PIIMasker.getTableProfile(
+            table.getFullyQualifiedName(), singleton, authorizer, securityContext);
+      }
     }
     return column;
   }
