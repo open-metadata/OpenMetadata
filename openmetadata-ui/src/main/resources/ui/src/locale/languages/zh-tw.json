@@ -722,6 +722,7 @@
     "edit-workflow-agent": "編輯 {{workflow}} 代理程式",
     "edited": "已編輯",
     "edited-columns": "已編輯的欄位",
+    "editor": "編輯器",
     "effect": "效果",
     "elastic-search-re-index": "Elasticsearch 重建索引",
     "elasticsearch": "Elasticsearch",

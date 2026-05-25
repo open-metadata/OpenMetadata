@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { uploadAsset } from 'rest/assetAPI';
+import { uploadAsset } from '../../../rest/assetAPI';
 import UploadDocumentModal from './UploadDocumentModal.component';
 
 jest.mock('rest/assetAPI', () => ({

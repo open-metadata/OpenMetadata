@@ -192,7 +192,7 @@ const ContextCenterArticlesPage = () => {
                 {t('label.create')}
               </Button>
 
-              <Dropdown.Popover placement="bottom start">
+              <Dropdown.Popover className="tw:w-30">
                 <Dropdown.Menu aria-label="create knowledge page">
                   <Dropdown.Item
                     data-testid="create-article-btn"
