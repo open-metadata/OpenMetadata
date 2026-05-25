@@ -143,6 +143,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
       await page.click('[data-menu-id*="profiler"]');
 
+      await waitForAllLoadersToDisappear(page);
+
+      const sampleConfigTypeSelect = page.getByTestId('sample-config-type-select');
+      await expect(sampleConfigTypeSelect).toBeVisible();
+      await sampleConfigTypeSelect.click();
+      await page.locator('[data-key="STATIC"]').click();
+
       await page.getByTestId('profile-sample-input').waitFor();
       await page
         .getByTestId('profile-sample-input')
