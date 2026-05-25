@@ -569,8 +569,7 @@ class SearchUtilsTest {
 
   @Test
   void searchAfterSingleValueContainingCommaNotSplit() {
-    String commaFqn =
-        "x alation archive.system glossary.sfmc (salesforce marketing cloud, exacttarget) (it system)";
+    String commaFqn = "service.database.schema.glossary term (with comma, inside name)";
     assertEquals(List.of(commaFqn), SearchUtils.searchAfter(List.of(commaFqn)));
   }
 
