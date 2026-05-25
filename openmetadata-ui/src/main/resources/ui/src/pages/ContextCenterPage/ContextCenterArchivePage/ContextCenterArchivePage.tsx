@@ -80,7 +80,7 @@ const ContextCenterArchivePage: FC = () => {
       const [pagesResponse, files] = await Promise.all([
         getListKnowledgePages({
           include: Include.Deleted,
-          limit: 100,
+          limit: 1000,
           pageType: PageType.ARTICLE,
         }),
         listArchivedContextFiles(),

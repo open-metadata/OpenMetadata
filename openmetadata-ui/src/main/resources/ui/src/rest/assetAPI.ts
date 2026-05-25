@@ -135,7 +135,7 @@ export const deleteDriveFile = async (
 export const listArchivedContextFiles = async (): Promise<ContextFile[]> => {
   const response = await APIClient.get<{ data: ContextFile[] }>(
     '/contextCenter/drive/files',
-    { params: { include: 'deleted', limit: 100 } }
+    { params: { include: 'deleted', limit: 1000 } }
   );
 
   return response.data.data ?? [];
