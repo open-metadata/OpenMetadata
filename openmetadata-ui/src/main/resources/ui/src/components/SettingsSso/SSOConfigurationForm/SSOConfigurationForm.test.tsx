@@ -168,7 +168,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   RadioGroup: ({
     children,
     value,
-    onChange,
+    onChange: _onChange,
     ...rest
   }: React.PropsWithChildren<{
     value?: string;
