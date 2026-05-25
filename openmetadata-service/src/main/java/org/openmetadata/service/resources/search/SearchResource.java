@@ -853,12 +853,6 @@ public class SearchResource {
   public Response reindexEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
-          @DefaultValue("false")
-          @QueryParam("recreate")
-          boolean recreate,
       @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
           @DefaultValue("5")
           @QueryParam("timeoutMinutes")
@@ -905,9 +899,8 @@ public class SearchResource {
                   long startTime = System.currentTimeMillis();
 
                   LOG.info(
-                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      "Starting reindex job for {} entities. Timeout: {} minutes",
                       totalEntities,
-                      recreate,
                       timeoutMinutes);
 
                   for (EntityReference ref : entities) {
@@ -976,27 +969,18 @@ public class SearchResource {
                             reducedSize);
                       }
 
-                      if (recreate) {
-                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
-                        LOG.debug(
-                            "Deleted entity {} ({}) from index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
-                        LOG.debug(
-                            "Recreated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      } else {
-                        searchRepository.updateEntityIndex(entity);
-                        LOG.debug(
-                            "Updated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      }
+                      searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                      LOG.debug(
+                          "Deleted entity {} ({}) from index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
+                      searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                      LOG.debug(
+                          "Recreated entity {} ({}) in index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
 
                       successCount++;
 
