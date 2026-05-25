@@ -129,10 +129,50 @@ export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   extension: {},
 };
 
+// Custom-property types that the form renders with a USER_TEAM_SELECT_INPUT
+// picker. The picker emits an array of DomainFormSelectItem regardless of
+// the property's cardinality, so we unwrap to a single value for the
+// single-cardinality `entityReference` type before submit.
+export const ENTITY_REFERENCE_PROPERTY_TYPES = [
+  'entityReference',
+  'entityReferenceList',
+] as const;
+
+const unwrapEntityReferenceExtension = (
+  extension: Record<string, unknown> | undefined,
+  customProperties: CustomProperty[]
+): Record<string, unknown> | undefined => {
+  if (!extension || customProperties.length === 0) {
+    return extension;
+  }
+  const normalized = { ...extension };
+  for (const cp of customProperties) {
+    const propName = cp.name as string;
+    const typeName = cp.propertyType?.name;
+    const raw = normalized[propName];
+    if (raw === undefined) {
+      continue;
+    }
+    // The picker stores DomainFormSelectItem[]; extract the .value
+    // (EntityReference) onto a property-shape-appropriate container.
+    if (Array.isArray(raw) && typeName === 'entityReference') {
+      const first = raw[0] as DomainFormSelectItem | undefined;
+      normalized[propName] = first?.value as EntityReference | undefined;
+    } else if (Array.isArray(raw) && typeName === 'entityReferenceList') {
+      normalized[propName] = (raw as DomainFormSelectItem[]).map(
+        (item) => item.value as EntityReference
+      );
+    }
+  }
+
+  return normalized;
+};
+
 export const transformDomainFormData = (
   formData: DomainFormValues,
   type: DomainFormType,
-  parentDomain?: Domain
+  parentDomain?: Domain,
+  customProperties: CustomProperty[] = []
 ): CreateDomain | CreateDataProduct => {
   const tags = formData.tags.map((item) => item.value as TagLabel);
   const expertsList = formData.experts.map(
@@ -172,6 +212,10 @@ export const transformDomainFormData = (
     ...updatedData,
     domainType: (formData.domainType?.value as DomainType) ?? undefined,
     experts: expertsList.map((item) => item.name ?? ''),
+    extension: unwrapEntityReferenceExtension(
+      formData.extension,
+      customProperties
+    ),
     owners: ownersList,
     style,
     tags: [...tags, ...formData.glossaryTerms],
@@ -1011,6 +1055,40 @@ const AddDomainForm = ({
             type: FieldTypes.SELECT,
           };
         }
+        case 'entityReference':
+        case 'entityReferenceList': {
+          // Custom-property entityReference fields are constrained by an
+          // `allowedTypes` array (e.g. ['user'], ['team'], or a mix). We
+          // reuse the existing user/team search options here — userOnly =
+          // strictly the user list, anything else (incl. team-only) falls
+          // back to the combined user+team listing because we don't yet
+          // fetch teams in isolation.
+          const allowedTypes = Array.isArray(config)
+            ? (config as string[])
+            : [];
+          const isUserOnly =
+            allowedTypes.length === 1 && allowedTypes[0] === 'user';
+          const isMulti = propertyTypeName === 'entityReferenceList';
+
+          return {
+            id: baseId,
+            label: rf.fieldLabel,
+            name: baseName,
+            placeholder: rf.fieldLabel,
+            props: {
+              'data-testid': dataTestId,
+              filterOption: () => true,
+              multiple: isMulti,
+              onFocus: handleUserTeamFocus,
+              onSearchChange: (searchText: string) =>
+                debouncedUserTeamSearch(searchText),
+              options: isUserOnly ? userOnlyOptions : userTeamOptions,
+            },
+            required: true,
+            rules: requiredRule,
+            type: FieldTypes.USER_TEAM_SELECT_INPUT,
+          };
+        }
         case 'integer':
         case 'number': {
           return {
@@ -1039,7 +1117,15 @@ const AddDomainForm = ({
         }
       }
     });
-  }, [extensionRequiredFields, customProperties, t]);
+  }, [
+    extensionRequiredFields,
+    customProperties,
+    t,
+    debouncedUserTeamSearch,
+    handleUserTeamFocus,
+    userOnlyOptions,
+    userTeamOptions,
+  ]);
 
   const descriptionRequiredRule = useMemo(
     () => ({
@@ -1060,12 +1146,27 @@ const AddDomainForm = ({
   const isDomain =
     type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN;
 
+  // Unwrap entityReference picker shape (DomainFormSelectItem[]) onto the
+  // schema-mandated EntityReference / EntityReference[] before the parent's
+  // onSubmit runs, so callers don't need to know about the picker contract.
+  const handleSubmit = useCallback(
+    (data: DomainFormValues) =>
+      onSubmit({
+        ...data,
+        extension: unwrapEntityReferenceExtension(
+          data.extension,
+          customProperties
+        ),
+      }),
+    [onSubmit, customProperties]
+  );
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-6"
       data-testid="add-domain-form"
       form={form}
-      onSubmit={form.handleSubmit(onSubmit)}>
+      onSubmit={form.handleSubmit(handleSubmit)}>
       {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
 
       <Box align="start" gap={4}>

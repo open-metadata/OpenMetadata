@@ -117,6 +117,14 @@ const ensureStringCustomProperty = async (
   expect(put.status()).toBe(200);
 };
 
+// The two describes below both create intake forms for entityType=dataProduct.
+// The DB enforces UNIQUE(entityType), so even though each describe has its own
+// beforeEach/beforeAll cleanup, running them in parallel on different workers
+// makes the POST race against the sibling describe's just-created form and
+// 409. Serialize the whole file so worker N is fully done before worker N+1
+// starts here.
+test.describe.configure({ mode: 'serial' });
+
 test.describe(
   'IntakeForm — Settings → Governance → Forms',
   { tag: ['@Governance'] },
@@ -293,20 +301,19 @@ test.describe(
           await dpTab.click();
         }
         await page.getByRole('button', { name: /Add Data Product/i }).click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Type field is rendered and marked required by intake form', async () => {
         await expect(page.getByTestId('dataProductType')).toBeVisible();
 
-        // SELECT_MUI renders the required marker as a MUI asterisk span
-        // (.MuiFormLabel-asterisk) inside its wrapper. Scope to the form-item
-        // that contains the Type combobox so this can't match a different
-        // required field.
-        const typeItem = page
-          .locator('.ant-form-item')
-          .filter({ has: page.getByTestId('dataProductType') });
-        await expect(typeItem.locator('.MuiFormLabel-asterisk')).toBeVisible();
+        // core-components Select renders the required marker as a
+        // react-aria `aria-required="true"` on the combobox button. We assert
+        // on the field by data-testid (the wrapper Select renders this on
+        // the button when the field is required via rules).
+        await expect(
+          page.getByTestId('dataProductType').locator('[aria-required="true"]')
+        ).toBeAttached();
       });
 
       await test.step('Client blocks submit without Type; backend ALSO blocks via API', async () => {
@@ -333,7 +340,7 @@ test.describe(
           }
         };
         page.on('response', postListener);
-        await page.getByTestId('save-btn').click();
+        await page.getByTestId('save-domain').click();
 
         // Poll for up to 3s and confirm no POST ever fires. We intentionally
         // avoid `page.waitForTimeout` (linted as flaky) and instead use
@@ -453,7 +460,7 @@ test.describe(
         await dpTab.click();
       }
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
 
       // The field is rendered; its required marker is widget-specific. The
       // enforcement is covered end-to-end by the entity-reference test below
@@ -663,7 +670,7 @@ test.describe(
           r.request().method() === 'GET'
       );
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
       await intakeFetch;
 
       const dpName = `intake-ref-e2e-${uuid()}`;
@@ -700,7 +707,7 @@ test.describe(
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        await page.getByTestId('save-domain').click();
         const response = await createResponse;
         expect(response.status()).toBe(201);
 
