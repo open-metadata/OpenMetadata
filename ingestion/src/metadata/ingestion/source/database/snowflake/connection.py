@@ -318,6 +318,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 ),
                 engine=self.client,
             ),
+            "GetAccessHistory": partial(
+                test_query,
+                statement=SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                    account_usage=self.service_connection.accountUsageSchema
+                ),
+                engine=self.client,
+            ),
             "GetTags": partial(
                 test_query,
                 statement=SNOWFLAKE_TEST_FETCH_TAG.format(
