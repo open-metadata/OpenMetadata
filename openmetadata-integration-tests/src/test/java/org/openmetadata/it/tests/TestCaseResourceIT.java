@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1768,10 +1770,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
     // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
     // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
-    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus newStatus =
-        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
-    newStatus.setTestCaseResolutionStatusType(
-        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.New);
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
     newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
     client.testCaseResolutionStatuses().create(newStatus);
 

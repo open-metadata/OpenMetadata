@@ -375,15 +375,26 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
+  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
+  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
+  // delete query that always returns a non-zero count (e.g., rows it can't actually
+  // delete due to FK constraints) would otherwise spin forever and block the rest of
+  // the DataRetention job.
+  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
+
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
     int totalDeleted = 0;
     int totalFailed = 0;
+    boolean stoppedByCondition = false;
 
-    while (true) {
+    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
       try {
         int deleted = deleteFunction.get();
         totalDeleted += deleted;
-        if (deleted == 0) break;
+        if (deleted == 0) {
+          stoppedByCondition = true;
+          break;
+        }
       } catch (Exception ex) {
         LOG.error("Failed to clean orphan time-series rows for {}", entity, ex);
         totalFailed += BATCH_SIZE;
@@ -394,8 +405,17 @@ public class DataRetention extends AbstractNativeApplication {
           failureDetails.put("message", ex.getMessage());
           failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
         }
+        stoppedByCondition = true;
         break;
       }
+    }
+
+    if (!stoppedByCondition) {
+      LOG.warn(
+          "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          MAX_ORPHAN_CLEANUP_ITERATIONS);
     }
 
     updateStats(entity, totalDeleted, totalFailed);
