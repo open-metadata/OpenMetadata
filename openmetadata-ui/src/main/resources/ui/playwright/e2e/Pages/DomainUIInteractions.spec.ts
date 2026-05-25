@@ -26,6 +26,7 @@ import {
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{
@@ -57,15 +58,13 @@ test.describe('Domain Owner Management', () => {
       await page.getByTestId('add-owner').click();
 
       // Wait for popover to appear
-      await page.waitForSelector('[data-testid="select-owner-tabs"]', {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'visible',
       });
 
       // Switch to Users tab
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('owner-select-users-search-bar');
@@ -80,15 +79,13 @@ test.describe('Domain Owner Management', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         await searchBar.clear();
         // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         const isVisible = await ownerItem.isVisible().catch(() => false);
         if (isVisible) {
@@ -96,6 +93,7 @@ test.describe('Domain Owner Management', () => {
         }
 
         if (retry < maxRetries - 1) {
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
           await page.waitForTimeout(2000);
         }
       }
@@ -109,7 +107,7 @@ test.describe('Domain Owner Management', () => {
       await patchRes;
 
       // Wait for popover to close
-      await page.waitForSelector('[data-testid="select-owner-tabs"]', {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'detached',
       });
 
@@ -167,15 +165,13 @@ test.describe('Domain Owner Management', () => {
       await page.getByTestId('edit-owner').click();
 
       // Wait for popover to appear
-      await page.waitForSelector('[data-testid="select-owner-tabs"]', {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'visible',
       });
 
       // Switch to Users tab
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Click clear all button to remove all owners
       await page.getByTestId('clear-all-button').click();
@@ -214,7 +210,7 @@ test.describe('Domain Expert Management', () => {
       await page.getByTestId('domain-expert-name').getByTestId('Add').click();
 
       // Wait for the popover to appear (UserSelectableList - simpler, no tabs)
-      await page.waitForSelector('[data-testid="selectable-list"]', {
+      await page.getByTestId('selectable-list').waitFor({
         state: 'visible',
       });
 
@@ -232,15 +228,13 @@ test.describe('Domain Expert Management', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         await searchBar.clear();
         // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Check if user is visible
         const isVisible = await expertItem.isVisible().catch(() => false);
@@ -250,6 +244,7 @@ test.describe('Domain Expert Management', () => {
 
         // Wait before retry (ES indexing delay)
         if (retry < maxRetries - 1) {
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
           await page.waitForTimeout(2000);
         }
       }
@@ -401,15 +396,13 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('add-owner').click();
 
       // Wait for popover to appear
-      await page.waitForSelector('[data-testid="select-owner-tabs"]', {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'visible',
       });
 
       // Switch to Users tab
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('owner-select-users-search-bar');
@@ -424,15 +417,13 @@ test.describe('Data Product UI Operations', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         await searchBar.clear();
         // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         const isVisible = await ownerItem.isVisible().catch(() => false);
         if (isVisible) {
@@ -440,6 +431,7 @@ test.describe('Data Product UI Operations', () => {
         }
 
         if (retry < maxRetries - 1) {
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
           await page.waitForTimeout(2000);
         }
       }
@@ -453,7 +445,7 @@ test.describe('Data Product UI Operations', () => {
       await patchRes;
 
       // Wait for popover to close
-      await page.waitForSelector('[data-testid="select-owner-tabs"]', {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'detached',
       });
 
@@ -497,9 +489,7 @@ test.describe('Subdomain Management', () => {
       }
 
       await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
       await expect(page.getByTestId('manage-button')).toBeVisible({
@@ -546,9 +536,7 @@ test.describe('Subdomain Management', () => {
       }
 
       await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
       await expect(page.getByTestId('manage-button')).toBeVisible({
@@ -589,15 +577,17 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.waitForSelector('h6:has-text("Add Domain")');
+    await page.getByTestId('form-heading').waitFor();
 
-    await page.locator('#root\\/name').fill('Invalid@Name#Test');
+    await page.locator('#root\\/name').fill('Invalid::Name');
     await page.locator('#root\\/displayName').fill('Test Domain');
 
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(
-      page.locator('.ant-form-item-explain-error').first()
+      page.getByText(
+        'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
+      )
     ).toBeVisible();
   });
 
@@ -605,7 +595,7 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.waitForSelector('h6:has-text("Add Domain")');
+    await page.getByTestId('form-heading').waitFor();
 
     const longName = 'a'.repeat(150);
     await page.locator('#root\\/name').fill(longName);
@@ -621,7 +611,7 @@ test.describe('Domain Form Validation', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await page.click('[data-testid="add-domain"]');
-    await page.waitForSelector('h6:has-text("Add Domain")');
+    await expect(page.getByTestId('form-heading')).toHaveText('Add Domain');
 
     await page.locator('#root\\/name').fill('ValidName');
     await page.locator('#root\\/displayName').fill('Valid Display Name');

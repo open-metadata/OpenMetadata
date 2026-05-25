@@ -4,18 +4,20 @@ import java.util.Map;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.service.Entity;
 
-public record MessagingServiceIndex(MessagingService messagingService) implements SearchIndex {
+public record MessagingServiceIndex(MessagingService messagingService)
+    implements TaggableIndex, LineageIndex {
 
   @Override
   public Object getEntity() {
     return messagingService;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.MESSAGING_SERVICE;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(messagingService, Entity.MESSAGING_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(messagingService.getEntityReference()));
     return doc;
   }
 }

@@ -86,7 +86,7 @@ setup(
 
     await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
 
-    // To avoid checking earlier status which is not relevant
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to start before polling status
     await page.waitForTimeout(2000);
 
     await expect

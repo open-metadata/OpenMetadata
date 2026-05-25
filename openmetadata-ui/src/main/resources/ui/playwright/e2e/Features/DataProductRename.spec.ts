@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -46,7 +45,6 @@ test.describe('Data Product Rename', () => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
       await table.create(apiContext);
@@ -75,7 +73,6 @@ test.describe('Data Product Rename', () => {
     await table.delete(apiContext);
     await dataProduct.delete(apiContext);
     await domain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await adminUser.delete(apiContext);
     await afterAction();
   });
@@ -154,7 +151,6 @@ test.describe('Data Product Rename', () => {
         `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
       )
       .click();
-
 
     // Navigate back to data product and verify assets tab still shows the asset
     await page.goBack();
@@ -330,7 +326,6 @@ test.describe('Data Product Rename', () => {
           `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
         )
         .click();
-
 
       // Navigate back and verify assets still there
       await page.goBack();

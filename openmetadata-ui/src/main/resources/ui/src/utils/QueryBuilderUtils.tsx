@@ -528,7 +528,7 @@ export interface ElasticsearchQuery {
 }
 
 export interface JsonLogic {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {

@@ -213,7 +213,6 @@ test.describe('Term Status Transitions', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
 
-
     // Click on the term name to navigate to term details
     await page.click(`[data-testid="${termName}"]`);
 
@@ -274,7 +273,6 @@ test('non-reviewer should not see approve/reject buttons', async ({
     await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
 
-
     const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
     await expect(termRow).toBeVisible();
@@ -327,7 +325,6 @@ test('should display correct status badge color and icon', async ({ page }) => {
     await expect(
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
-
 
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
@@ -486,7 +483,6 @@ test('should change status when non-reviewer edits approved term', async ({
       const saveRes = reviewer2Page.waitForResponse('/api/v1/glossaryTerms/*');
       await reviewer2Page.getByTestId('save').click();
       await saveRes;
-
     }
   } finally {
     await glossary.delete(apiContext);
@@ -529,7 +525,7 @@ test.describe('Workflow History', () => {
     );
 
     if (await approveBtn.isVisible()) {
-      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      const taskResolve = page.waitForResponse('/api/v1/tasks/*/resolve');
       await approveBtn.click();
       await taskResolve;
     }
@@ -567,7 +563,6 @@ test.describe('Workflow History', () => {
     if (await statusIndicator.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Hover to potentially trigger popover
       await statusIndicator.hover();
-      await page.waitForTimeout(500);
 
       // Verify element is interactive
       await expect(statusIndicator).toBeVisible();
@@ -659,7 +654,6 @@ test('should delete parent term and cascade delete children', async ({
     const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
     await page.getByTestId('confirm-button').click();
     await deleteRes;
-
 
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);

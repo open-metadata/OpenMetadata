@@ -16,6 +16,14 @@ import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import {
+  addTestCaseListFilterByFirstColumn,
+  addTestCaseListFilterByStatus,
+  addTestCaseListFilterByTable,
+  addTestCaseListFilterByTestType,
+  addTestCaseListResetFilters,
+  addTestCaseListToggleSelectAll,
+} from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
@@ -25,7 +33,16 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
+import {
+  addTestCaseToLogicalTestSuite,
+  addTestSuitePipeline,
+  removeFirstNTestCasesFromLogicalTestSuite,
+} from '../../utils/dataQuality';
+import {
+  addMultiOwner,
+  removeOwnersFromList,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const table = new TableClass();
@@ -71,28 +88,71 @@ test(
     const loggedInUserResponse = await loggedInUserRequest;
     const loggedInUser = await loggedInUserResponse.json();
 
-    await test.step('Create', async () => {
+    await test.step('Open create test suite form', async () => {
+      const initialListResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list*`
+      );
       await page.click('[data-testid="add-test-suite-btn"]');
+      await initialListResponse;
       await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
-
-      const getTestCase = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*`
-      );
-      await page.fill(
-        '[data-testid="test-case-selection-card"] [data-testid="searchbar"]',
-        testCaseName1
-      );
-      await getTestCase;
-
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
       );
+    });
 
-      await page.click(
-        `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
+    await test.step('Verify add test case modal filter dropdowns are visible', async () => {
+      await expect(page.getByTestId('search-dropdown-Status')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Test Type')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Table')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Column')).toBeVisible();
+    });
+
+    await test.step('Filter by Test Type Table and wait for API', async () => {
+      await addTestCaseListFilterByTestType(page, 'Table');
+    });
+
+    await test.step('Filter by Status Success and wait for API', async () => {
+      await addTestCaseListFilterByStatus(page, 'Success');
+    });
+
+    await test.step('Filter by Table and wait for API', async () => {
+      await addTestCaseListFilterByTable(
+        page,
+        table.entity?.name ?? '',
+        table.entityResponseData?.fullyQualifiedName ?? ''
       );
+    });
+
+    await test.step('Filter by Column and wait for API', async () => {
+      await addTestCaseListFilterByFirstColumn(page);
+    });
+
+    await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
+      await addTestCaseListResetFilters(
+        page,
+        table.entityResponseData?.fullyQualifiedName ?? ''
+      );
+    });
+
+    await test.step('Select all then unselect all test cases', async () => {
+      await addTestCaseListToggleSelectAll(page);
+    });
+
+    await test.step('Select test case and create suite', async () => {
+      const testCaseSelectionCard = page.getByTestId(
+        'test-case-selection-card'
+      );
+      const getTestCase = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list?*`
+      );
+      await testCaseSelectionCard
+        .getByTestId('searchbar')
+        .fill(testCaseName1 ?? '');
+      await getTestCase;
+
+      await testCaseSelectionCard.getByTestId(testCaseName1 ?? '').click();
       const createTestSuiteResponse = page.waitForResponse(
         '/api/v1/dataQuality/testSuites'
       );
@@ -100,9 +160,7 @@ test(
       await createTestSuiteResponse;
       await toastNotification(page, 'Test Suite created successfully.');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Domain Add, Update and Remove', async () => {
@@ -134,78 +192,19 @@ test(
     });
 
     await test.step('Add test case to logical test suite by owner', async () => {
-      await ownerPage.goto(`test-suites/${NEW_TEST_SUITE.name}`);
-      await ownerPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      const testCaseResponse = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list*'
+      await addTestCaseToLogicalTestSuite(
+        ownerPage,
+        NEW_TEST_SUITE.name,
+        testCaseName2 ?? ''
       );
-      await ownerPage.click('[data-testid="add-test-case-btn"]');
-      await testCaseResponse;
-
-      const getTestCase = ownerPage.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?*`
-      );
-      await ownerPage.fill('[data-testid="searchbar"]', testCaseName2);
-      await getTestCase;
-
-      await ownerPage.click(`[data-testid="${testCaseName2}"]`);
-      const updateTestCase = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases'
-      );
-      await ownerPage.click('[data-testid="submit"]');
-      await updateTestCase;
-      await ownerPage.waitForSelector('.ant-modal-content', {
-        state: 'detached',
-      });
     });
 
     await test.step('Add test suite pipeline', async () => {
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-
-      await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
-
-      await page.getByTestId('add-placeholder-button').click();
-      await page.getByTestId('select-all-test-cases').click();
-
-      await expect(
-        page.getByTestId('cron-type').getByText('Day')
-      ).toBeAttached();
-
-      await page.getByTestId('deploy-button').click();
-
-      await expect(page.getByTestId('view-service-button')).toBeVisible();
-
-      await page.waitForSelector('[data-testid="body-text"]', {
-        state: 'detached',
-      });
-
-      await expect(page.getByTestId('success-line')).toContainText(
-        /has been created and deployed successfully/
-      );
-
-      await page.getByTestId('view-service-button').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await addTestSuitePipeline(page);
     });
 
     await test.step('Remove test case from logical test suite by owner', async () => {
-      await ownerPage.getByTestId(`action-dropdown-${testCaseName1}`).click();
-      await ownerPage.click(`[data-testid="remove-${testCaseName1}"]`);
-      const removeTestCase1 = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
-      );
-      await ownerPage.click('[data-testid="save-button"]');
-      await removeTestCase1;
-      await ownerPage.getByTestId(`action-dropdown-${testCaseName2}`).click();
-      await ownerPage.click(`[data-testid="remove-${testCaseName2}"]`);
-      const removeTestCase2 = ownerPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
-      );
-      await ownerPage.click('[data-testid="save-button"]');
-      await removeTestCase2;
+      await removeFirstNTestCasesFromLogicalTestSuite(ownerPage, 1);
     });
 
     await test.step('Test suite filters', async () => {
@@ -217,23 +216,19 @@ test(
       await testSuite;
 
       await page.click('[data-testid="owner-select-filter"]');
-      await page.waitForSelector("[data-testid='select-owner-tabs']", {
+      await page.getByTestId('select-owner-tabs').waitFor({
         state: 'visible',
       });
-      await page.waitForSelector(`[data-testid="loader"]`, {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const getOwnerList = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user_search_index&*'
+        '/api/v1/search/query?q=&index=user&*'
       );
       await page.click('.ant-tabs [id*=tab-users]');
       await getOwnerList;
-      await page.waitForSelector(`[data-testid="loader"]`, {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       const searchOwner = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
       await searchOwner;
@@ -243,7 +238,7 @@ test(
       );
       await page.click(`.ant-popover [title="${owner}"]`);
       await testSuiteByOwner;
-      await page.waitForSelector(`[data-testid="${NEW_TEST_SUITE.name}"]`, {
+      await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
         state: 'visible',
       });
 

@@ -32,6 +32,11 @@ public class ColumnSearchIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TABLE_COLUMN;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return Set.of(
         "children",
@@ -128,6 +133,10 @@ public class ColumnSearchIndex implements SearchIndex {
       if (tableParseTags.getTierTag() != null) {
         doc.put("tier", tableParseTags.getTierTag());
       }
+    }
+
+    if (parentTable.getCertification() != null) {
+      doc.put("certification", parentTable.getCertification());
     }
 
     if (column.getExtension() != null) {

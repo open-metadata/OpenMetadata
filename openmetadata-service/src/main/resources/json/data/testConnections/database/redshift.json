@@ -35,12 +35,6 @@
       "mandatory": false
     },
     {
-      "name": "GetPartitionTableDetails",
-      "description": "Check if we can access the SVV_TABLE_INFO table to fetch table partition details.",
-      "errorMessage": "Failed to fetch partition table details, please validate if the user has select privilege for table SVV_TABLE_INFO",
-      "mandatory": false
-    },
-    {
       "name": "GetQueries",
       "description": "Check if we can access the `SVV_TABLE_INFO`, `STL_QUERY`, `STL_QUERYTEXT`, `STL_SCAN` and `SVL_STORED_PROC_CALL` (Provisioned Cluster) OR `SYS_QUERY_HISTORY`, `SYS_QUERY_TEXT`, `SYS_QUERY_DETAIL` and `SYS_PROCEDURE_CALL` (Serverless Cluster) to get query logs, These queries are analyzed in the usage & lineage workflow.",
       "errorMessage": "Failed to fetch queries, please validate if user has select privilege for tables `SVV_TABLE_INFO`, `STL_QUERY`, `STL_QUERYTEXT`, `STL_SCAN` and `SVL_STORED_PROC_CALL` (Provisioned Cluster) OR `SYS_QUERY_HISTORY`, `SYS_QUERY_TEXT`, `SYS_QUERY_DETAIL` and `SYS_PROCEDURE_CALL` (Serverless Cluster) to get query logs.",

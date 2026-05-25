@@ -14,7 +14,7 @@ Inter Quartile Range Composed Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
@@ -34,7 +34,7 @@ class InterQuartileRange(ComposedMetric):
         return MetricType.interQuartileRange.value
 
     @classmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> Tuple[str, ...]:  # noqa: UP006
         return FirstQuartile.name(), ThirdQuartile.name()
 
     @property
@@ -45,7 +45,7 @@ class InterQuartileRange(ComposedMetric):
         """
         return float
 
-    def fn(self, res: Dict[str, Any]) -> Optional[float]:
+    def fn(self, res: Dict[str, Any]) -> Optional[float]:  # noqa: UP006, UP045
         """
         Safely compute null ratio based on the profiler
         results of other Metrics

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -20,12 +21,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import {
   addAssetsToTag,
   editTagPageDescription,
@@ -41,8 +39,6 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
-import { sidebarClick } from '../../utils/sidebar';
-import { SidebarItem } from '../../constant/sidebar';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -178,9 +174,8 @@ test.describe('Tag Page with Admin Roles', () => {
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
-    await adminPage.locator('button[type="submit"]').click();
+    await adminPage.getByTestId('save-button').click();
     await updateColor;
-
 
     await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
@@ -239,12 +234,13 @@ test.describe('Tag Page with Admin Roles', () => {
           classification.responseData.name
       )}`
     );
-    await adminPage.waitForSelector(
-      '[data-testid="tags-container"] [data-testid="loader"]',
-      {
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
         state: 'detached',
-      }
-    );
+      });
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -269,14 +265,17 @@ test.describe('Tag Page with Admin Roles', () => {
     const createdTagData = await createdTagResponse.json();
 
     await adminPage.goto(
-      `/tag/${encodeURIComponent(createdTagData.fullyQualifiedName ?? NEW_TAG.name)}`
+      `/tag/${encodeURIComponent(
+        createdTagData.fullyQualifiedName ?? NEW_TAG.name
+      )}`
     );
-    await adminPage.waitForSelector(
-      '[data-testid="tags-container"] [data-testid="loader"]',
-      {
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
         state: 'detached',
-      }
-    );
+      });
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -369,10 +368,11 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
 
       const classificationEntry = adminPage
         .locator('[data-testid="side-panel-classification"]')
@@ -389,7 +389,9 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await openClassification();
 
-    const tagToggle = adminPage.getByTestId(tagToggleTestId).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(tagToggleTestId)
+      .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeVisible({ timeout: 60000 });
@@ -414,10 +416,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeDisabled();
 
@@ -438,10 +441,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage.waitForSelector(
-        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-        { state: 'detached' }
-      );
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeEnabled();
     } finally {

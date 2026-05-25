@@ -11,26 +11,49 @@
  *  limitations under the License.
  */
 
-import { upperFirst } from 'lodash';
 import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { getEntityStatsData } from './ApplicationUtils';
-import {
-  MOCK_APPLICATION_ENTITY_STATS,
-  MOCK_APPLICATION_ENTITY_STATS_DATA,
-} from './mocks/ApplicationUtils.mock';
+import { MOCK_APPLICATION_ENTITY_STATS } from './mocks/ApplicationUtils.mock';
 
 describe('ApplicationUtils tests', () => {
-  it('getEntityStatsData should return stats data in array', () => {
+  it('getEntityStatsData should return stats data in array with vector embeddings', () => {
     const resultData = getEntityStatsData(
       MOCK_APPLICATION_ENTITY_STATS as unknown as EntityStats
     );
 
-    const sortedMockData = MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
-      ...data,
-      name: upperFirst(data.name),
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    // Verify basic structure
+    expect(resultData.length).toBeGreaterThan(0);
 
-    // Verify the result matches the sorted mock data
-    expect(resultData).toEqual(sortedMockData);
+    // Verify sorted by name
+    for (let i = 1; i < resultData.length; i++) {
+      expect(
+        resultData[i - 1].name.localeCompare(resultData[i].name)
+      ).toBeLessThanOrEqual(0);
+    }
+
+    // Verify each entry has required fields including vectorEmbeddings
+    for (const entry of resultData) {
+      expect(entry).toHaveProperty('name');
+      expect(entry).toHaveProperty('totalRecords');
+      expect(entry).toHaveProperty('successRecords');
+      expect(entry).toHaveProperty('failedRecords');
+      expect(entry).toHaveProperty('vectorEmbeddings');
+    }
+
+    // Verify vector-indexable entities get a number (0 when no vectorSuccessRecords in mock)
+    const tableEntry = resultData.find((e) => e.name === 'Table');
+
+    expect(tableEntry?.vectorEmbeddings).toBe(0);
+
+    // Verify non-vector-indexable entities get null
+    const userEntry = resultData.find((e) => e.name === 'User');
+
+    expect(userEntry?.vectorEmbeddings).toBeNull();
+
+    const classificationEntry = resultData.find(
+      (e) => e.name === 'Classification'
+    );
+
+    expect(classificationEntry?.vectorEmbeddings).toBeNull();
   });
 });

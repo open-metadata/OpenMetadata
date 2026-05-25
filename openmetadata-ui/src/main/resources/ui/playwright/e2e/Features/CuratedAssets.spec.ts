@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -181,7 +181,6 @@ test.describe('Curated Assets Widget', () => {
       await page.locator('[data-testid="saveButton"]').click();
       await queryResponse;
 
-
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
       await expect(
@@ -195,7 +194,6 @@ test.describe('Curated Assets Widget', () => {
       await redirectToHomePage(page);
       await removeLandingBanner(page);
 
-
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
       await expect(
@@ -207,7 +205,6 @@ test.describe('Curated Assets Widget', () => {
           .getByTestId('KnowledgePanel.CuratedAssets')
           .getByText(`${entityType.displayName} - Display Name Filter`)
       ).toBeVisible();
-
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -287,14 +284,12 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-
     await waitForAllLoadersToDisappear(page);
 
     // Save and verify widget creation
     await expect(
       page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
     ).toBeVisible();
-
 
     await expect(
       page
@@ -392,7 +387,6 @@ test.describe('Curated Assets Widget', () => {
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
-
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     await expect(
@@ -476,7 +470,6 @@ test.describe('Curated Assets Widget', () => {
     await ruleLocator2.locator('.rule--value input').clear();
     await ruleLocator2.locator('.rule--value input').fill('pw');
 
-
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
@@ -491,7 +484,6 @@ test.describe('Curated Assets Widget', () => {
 
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
-
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -512,7 +504,6 @@ test.describe('Curated Assets Widget', () => {
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
-
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -589,7 +580,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description',
+      'Description Status',
       true
     );
     await selectOption(
@@ -639,7 +630,6 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
@@ -659,7 +649,6 @@ test.describe('Curated Assets Widget', () => {
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
-
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 

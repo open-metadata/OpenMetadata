@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -42,31 +43,33 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
-import { SearchSourceAlias } from '../../../interface/search.interface';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
+import { hasEditAccess } from '../../../utils/CommonUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -79,11 +82,13 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -145,6 +150,7 @@ export const DataAssetsHeader = ({
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser } = useApplicationStore();
+  const { getResourcePermission } = usePermissionProvider();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
@@ -152,7 +158,9 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
+    []
+  );
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -160,6 +168,23 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const [canCreateTask, setCanCreateTask] = useState(false);
+  const {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: refetchExistingDar,
+  } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
+
+  useEffect(() => {
+    getResourcePermission(ResourceEntity.TASK)
+      .then((perm) => setCanCreateTask(Boolean(perm.Create)))
+      .catch(() => setCanCreateTask(false));
+  }, [getResourcePermission]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -177,12 +202,13 @@ export const DataAssetsHeader = ({
       <img
         alt={get(dataAsset, 'service.displayName', '')}
         className="header-icon"
-        src={serviceUtilClassBase.getServiceTypeLogo(
-          dataAsset as SearchSourceAlias
-        )}
+        src={serviceUtilClassBase.getServiceTypeLogo({
+          ...dataAsset,
+          entityType,
+        })}
       />
     ) : null;
-  }, [dataAsset]);
+  }, [dataAsset, entityType]);
 
   const excludeEntityService = useMemo(() => {
     const filteredServiceTypes = SERVICE_TYPES.filter(
@@ -224,7 +250,8 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -320,7 +347,7 @@ export const DataAssetsHeader = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
@@ -332,27 +359,14 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    if (isEmpty(parentName)) {
+  const fetchContainerAncestors = async (fqn: string) => {
+    if (isEmpty(fqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, {
-        fields: TabSpecificField.PARENT,
-      });
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
+      const ancestors = await getContainerAncestors(fqn);
+      setParentContainers(ancestors);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -366,8 +380,7 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset as Container;
-      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
+      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
@@ -434,12 +447,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -551,7 +568,8 @@ export const DataAssetsHeader = ({
   const triggerAutoPilotApplicationButton = useMemo(() => {
     if (
       !SERVICE_TYPES.includes(entityType) ||
-      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType)
+      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType) ||
+      !permissions.Trigger
     ) {
       return null;
     }
@@ -582,6 +600,58 @@ export const DataAssetsHeader = ({
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
     disableRunAgentsButtonMessage,
+    permissions.Trigger,
+  ]);
+
+  const isOwner = useMemo(
+    () =>
+      Boolean(
+        currentUser &&
+          dataAsset.owners?.length &&
+          hasEditAccess(dataAsset.owners, currentUser)
+      ),
+    [dataAsset.owners, currentUser]
+  );
+
+  const requestDataAccessButton = useMemo(() => {
+    if (
+      !tableClassBase.getShowRequestDataAccess() ||
+      SERVICE_TYPES.includes(entityType) ||
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      isOwner ||
+      !canCreateTask
+    ) {
+      return null;
+    }
+
+    const tooltipTitle = getDarButtonTooltip(
+      isDarDisabled,
+      isDarGranted,
+      isDarAwaitingGrant,
+      t
+    );
+
+    return (
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDarDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
+    );
+  }, [
+    entityType,
+    deleted,
+    isOwner,
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    canCreateTask,
+    t,
   ]);
 
   useEffect(() => {
@@ -596,6 +666,16 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
+        {isDarAwaitingGrant && (
+          <Col span={24}>
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </Col>
+        )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
@@ -685,6 +765,7 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
+                  {requestDataAccessButton}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -763,67 +844,46 @@ export const DataAssetsHeader = ({
             />
             <Divider className="self-center vertical-divider" type="vertical" />
             {tierSuggestionRender ?? (
-              <TierCard
-                currentTier={tier?.tagFQN}
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
-                <Space
-                  className="d-flex align-start"
-                  data-testid="header-tier-container">
+              <Space
+                className="d-flex align-start"
+                data-testid="header-tier-container">
+                <div className="d-flex flex-col gap-2">
+                  <div className="tier-heading-container d-flex items-center gap-1">
+                    <span className="entity-no-tier">{t('label.tier')}</span>
+                    {editTierPermission && (
+                      <TierCard
+                        currentTier={tier?.tagFQN}
+                        footerActionButtonsClassName="p-x-md"
+                        updateTier={onTierUpdate}>
+                        <EditIconButton
+                          newLook
+                          data-testid="edit-tier"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        />
+                      </TierCard>
+                    )}
+                  </div>
                   {tier ? (
-                    <div className="d-flex flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier ">
-                          {t('label.tier')}
-                        </span>
-
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-
-                      <TagsV1
-                        hideIcon
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    </div>
+                    <TagsV1
+                      hideIcon
+                      startWith={TAG_START_WITH.SOURCE_ICON}
+                      tag={tier}
+                      tagProps={{
+                        'data-testid': 'Tier',
+                      }}
+                    />
                   ) : (
-                    <div className="flex items-center flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier">
-                          {t('label.tier')}
-                        </span>
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-                      <span
-                        className="font-medium no-tier-text text-sm"
-                        data-testid="Tier">
-                        {NO_DATA_PLACEHOLDER}
-                      </span>
-                    </div>
+                    <span
+                      className="font-medium no-tier-text text-sm"
+                      data-testid="Tier">
+                      {NO_DATA_PLACEHOLDER}
+                    </span>
                   )}
-                </Space>
-              </TierCard>
+                </div>
+              </Space>
             )}
 
             {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
@@ -834,7 +894,7 @@ export const DataAssetsHeader = ({
                 />
                 <RetentionPeriod
                   hasPermission={permissions.EditAll && !dataAsset.deleted}
-                  retentionPeriod={(dataAsset as Table).retentionPeriod}
+                  retentionPeriod={dataAsset.retentionPeriod}
                   onUpdate={onUpdateRetentionPeriod}
                 />
               </>
@@ -854,24 +914,24 @@ export const DataAssetsHeader = ({
                   className="self-center vertical-divider"
                   type="vertical"
                 />
-                <Certification
-                  currentCertificate={
-                    'certification' in dataAsset
-                      ? dataAsset.certification?.tagLabel?.tagFQN
-                      : undefined
-                  }
-                  permission={false}
-                  onCertificationUpdate={onCertificationUpdate}>
-                  <div className="d-flex align-start extra-info-container">
-                    <Typography.Text
-                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                      data-testid="certification-label">
-                      <div className="flex gap-2">
-                        <span className="extra-info-label-heading">
-                          {t('label.certification')}
-                        </span>
+                <div className="d-flex align-start extra-info-container">
+                  <Typography.Text
+                    className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                    data-testid="certification-label">
+                    <div className="flex gap-2">
+                      <span className="extra-info-label-heading">
+                        {t('label.certification')}
+                      </span>
 
-                        {editCertificationPermission && (
+                      {editCertificationPermission && (
+                        <Certification
+                          currentCertificate={
+                            'certification' in dataAsset
+                              ? dataAsset.certification?.tagLabel?.tagFQN
+                              : undefined
+                          }
+                          permission={editCertificationPermission}
+                          onCertificationUpdate={onCertificationUpdate}>
                           <EditIconButton
                             newLook
                             data-testid="edit-certification"
@@ -880,21 +940,23 @@ export const DataAssetsHeader = ({
                               entity: t('label.certification'),
                             })}
                           />
-                        )}
-                      </div>
-                      <div className="font-medium certification-value">
-                        {(dataAsset as Table).certification ? (
-                          <CertificationTag
-                            showName
-                            certification={(dataAsset as Table).certification!}
-                          />
-                        ) : (
-                          NO_DATA_PLACEHOLDER
-                        )}
-                      </div>
-                    </Typography.Text>
-                  </div>
-                </Certification>
+                        </Certification>
+                      )}
+                    </div>
+                    <div
+                      className="font-medium certification-value"
+                      data-testid="certification-value">
+                      {(dataAsset as Table).certification ? (
+                        <CertificationTag
+                          showName
+                          certification={(dataAsset as Table).certification!}
+                        />
+                      ) : (
+                        NO_DATA_PLACEHOLDER
+                      )}
+                    </div>
+                  </Typography.Text>
+                </div>
               </>
             )}
 
@@ -911,6 +973,15 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
+      )}
+
+      {tableClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataAsset.fullyQualifiedName ?? '',
+        getEntityName(dataAsset),
+        entityType,
+        refetchExistingDar
       )}
     </>
   );

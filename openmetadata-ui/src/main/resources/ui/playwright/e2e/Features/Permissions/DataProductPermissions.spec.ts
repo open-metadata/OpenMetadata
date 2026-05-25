@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
-import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { selectDataProduct } from '../../../utils/domain';
 import {
   assignRoleToUser,
@@ -34,7 +33,6 @@ const adminUser = new UserClass();
 const testUser = new UserClass();
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
-const customPropertyName = `pwDataProductCustomProperty${uuid()}`;
 
 const test = base.extend<{
   page: Page;
@@ -71,12 +69,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 
   await redirectToHomePage(page);
   await settingClick(page, 'dataProducts' as SettingOptionsType, true);
-  await addCustomPropertiesForEntity({
-    page,
-    propertyName: customPropertyName,
-    customPropertyData: { description: 'Test data product custom property' },
-    customType: 'String',
-  });
   await afterAction();
 });
 
@@ -110,7 +102,6 @@ test.describe('Data Product Permissions', () => {
     const directElements = ['edit-description', 'add-tag'];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
 
     for (const testId of directElements) {
       let element;
@@ -165,7 +156,6 @@ test.describe('Data Product Permissions', () => {
     const directElements = ['edit-description', 'add-tag'];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
 
     for (const testId of directElements) {
       let element;

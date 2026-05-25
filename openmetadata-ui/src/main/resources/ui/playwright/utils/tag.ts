@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,7 +31,6 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -56,38 +54,27 @@ export const visitClassificationPage = async (
   classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
-  const classificationResponse = page.waitForResponse(
-    '/api/v1/classifications?**'
-  );
   const fetchTags = page.waitForResponse(
     `/api/v1/tags?*parent=${classificationName}**`
   );
-  await sidebarClick(page, SidebarItem.TAGS);
-  await classificationResponse;
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
-
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
-
-  const classificationEntry = page
-    .getByTestId('side-panel-classification')
-    .filter({ hasText: classificationDisplayName })
-    .first();
-
-  await expect(classificationEntry).toBeVisible();
-  await classificationEntry.click();
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
   );
 
   await fetchTags;
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -102,10 +89,10 @@ export const addAssetsToTag = async (
 
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -134,7 +121,6 @@ export const addAssetsToTag = async (
       await expect
         .poll(
           async () => {
-
             return assetSelectionModal
               .locator(`[data-testid="table-data-card_${fqn}"]`)
               .count();
@@ -186,10 +172,10 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -203,10 +189,10 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.reload();
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
   await checkAssetsCount(page, 0);
 };
 
@@ -330,7 +316,7 @@ export const addTagToTableColumn = async (
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 
-  await page.waitForSelector('.ant-select-dropdown', {
+  await page.locator('.ant-select-dropdown').first().waitFor({
     state: 'detached',
   });
 
@@ -354,10 +340,10 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -394,10 +380,10 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
 
@@ -417,10 +403,10 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
   await page.getByTestId('save').click();
   await editDescription;
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
@@ -530,7 +516,7 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await waitForAllLoadersToDisappear(adminPage);
 
   const searchDomain = adminPage.waitForResponse(
-    `/api/v1/search/query?q=*index=domain_search_index*`
+    `/api/v1/search/query?q=*index=domain*`
   );
 
   await domainInput.fill(domain.responseData.displayName);
@@ -630,23 +616,22 @@ export const selectTagInTagSuggestion = async (
   }
 ) => {
   const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
 
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
       url.includes('/api/v1/search/query') &&
-      url.includes('index=tag_search_index') &&
+      url.includes('index=tag') &&
       response.request().method() === 'GET'
     );
   });
 
+  await tagInput.click();
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.waitForSelector('[role="listbox"]', { state: 'visible' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.waitForSelector('[role="listbox"]', { state: 'hidden' });
+  await tagOption.waitFor({ state: 'hidden' });
 };

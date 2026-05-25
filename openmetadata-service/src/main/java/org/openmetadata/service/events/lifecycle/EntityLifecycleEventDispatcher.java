@@ -48,8 +48,9 @@ public class EntityLifecycleEventDispatcher {
             maxThreads,
             60L,
             TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory());
+            new LinkedBlockingQueue<>(5000),
+            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
     pool.allowCoreThreadTimeOut(true);
     this.asyncExecutor = pool;
   }
@@ -157,6 +158,30 @@ public class EntityLifecycleEventDispatcher {
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
           () -> handler.onEntityUpdated(entity, changeDescription, subjectContext), handler);
+    }
+  }
+
+  /**
+   * Dispatch a bulk entity updated event to all applicable handlers.
+   * Handlers can implement onEntitiesUpdated for optimized bulk handling. Fallback to
+   * per-entity onEntityUpdated if the handler does not override onEntitiesUpdated.
+   * Assumes all the entity are of the same type for efficient dispatching (i.e. no loop for validation)
+   *
+   */
+  public void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    String entityType = entities.getFirst().getEntityReference().getType();
+    LOG.debug(
+        "Dispatching bulk entity updated event for {} ({} entities)", entityType, entities.size());
+    for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+      executeHandler(
+          () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext), handler);
     }
   }
 

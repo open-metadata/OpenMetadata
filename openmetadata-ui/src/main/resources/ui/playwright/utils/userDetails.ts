@@ -21,7 +21,7 @@ export const redirectToUserPage = async (page: Page) => {
   // Hover on the profile avatar to close the name tooltip
   await page.getByTestId('profile-avatar').first().hover();
 
-  await page.waitForSelector('.profile-dropdown', { state: 'visible' });
+  await page.locator('.profile-dropdown').waitFor({ state: 'visible' });
 
   const getUserDetails = page.waitForResponse(`/api/v1/users/name/*`);
 
@@ -33,10 +33,7 @@ export const redirectToUserPage = async (page: Page) => {
   await clickOutside(page);
 };
 
-export const openTeamEditorAndSelect = async (
-  page: Page,
-  teamName: string
-) => {
+export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   const teamHierarchyResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/teams/hierarchy?isJoinable=false') &&
@@ -58,6 +55,7 @@ export const openTeamEditorAndSelect = async (
     .first();
 
   if (await directTeamOption.isVisible().catch(() => false)) {
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await directTeamOption.click({ force: true });
 
     return;
@@ -73,5 +71,6 @@ export const openTeamEditorAndSelect = async (
   });
 
   await expect(teamOption).toBeVisible({ timeout: 30000 });
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await teamOption.click({ force: true });
 };

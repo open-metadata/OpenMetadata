@@ -147,6 +147,29 @@ export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
   return response.data;
 };
 
+// Batch fetch up to 100 glossary terms by Id in a single round-trip.
+// 100 matches the backend MAX_BATCH_BY_IDS cap — going higher would 400
+// (or 431 once the URL clears Jetty's 8 KB header limit). Replaces the
+// per-Id resolution N+1 inside the Relations Graph hook
+// (useOntologyExplorer). Missing/unauthorized Ids are silently dropped
+// by the backend, so callers should compare response length to input.
+export const getGlossaryTermsByIds = async (
+  ids: string[],
+  params?: ListParams
+): Promise<GlossaryTerm[]> => {
+  if (ids.length === 0) {
+    return [];
+  }
+  const response = await APIClient.get<GlossaryTerm[]>('/glossaryTerms/byIds', {
+    params: {
+      ...params,
+      ids: ids.join(','),
+    },
+  });
+
+  return response.data;
+};
+
 export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
   const response = await APIClient.get<GlossaryTerm>(
     `/glossaryTerms/name/${getEncodedFqn(fqn)}`,
@@ -309,6 +332,30 @@ export const removeAssetsFromGlossaryTerm = async (
   return response.data;
 };
 
+export const getGlossaryTermAssets = async (
+  termId: string,
+  limit = 100,
+  offset = 0
+) => {
+  const response = await APIClient.get<PagingResponse<EntityReference[]>>(
+    `/glossaryTerms/${termId}/assets`,
+    { params: { limit, offset } }
+  );
+
+  return response.data;
+};
+
+export const getGlossaryTermsAssetCounts = async (
+  parent?: string
+): Promise<Record<string, number>> => {
+  const response = await APIClient.get<Record<string, number>>(
+    '/glossaryTerms/assets/counts',
+    { params: parent ? { parent } : undefined }
+  );
+
+  return response.data;
+};
+
 export const searchGlossaryTerms = async (search: string, page = 1) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
@@ -391,4 +438,94 @@ export const getGlossaryTermChildrenLazy = async (
   });
 
   return data;
+};
+
+export interface TermRelation {
+  relationType: string;
+  term: EntityReference;
+}
+
+export interface TermRelationGraph {
+  nodes: Array<{
+    id: string;
+    name: string;
+    fullyQualifiedName: string;
+    displayName?: string;
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    relationType: string;
+  }>;
+}
+
+export const addTermRelation = async (
+  termId: string,
+  termRelation: TermRelation
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.post<
+    TermRelation,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${termId}/relations`, termRelation);
+
+  return response.data;
+};
+
+export const removeTermRelation = async (
+  termId: string,
+  toTermId: string,
+  relationType?: string
+): Promise<GlossaryTerm> => {
+  const params: Record<string, string> = {};
+  if (relationType) {
+    params.relationType = relationType;
+  }
+  const response = await APIClient.delete<GlossaryTerm>(
+    `/glossaryTerms/${termId}/relations/${toTermId}`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getTermRelationGraph = async (
+  termId: string,
+  depth = 1,
+  relationTypes?: string[]
+): Promise<TermRelationGraph> => {
+  const params: Record<string, number | string> = { depth };
+  if (relationTypes && relationTypes.length > 0) {
+    params.relationTypes = relationTypes.join(',');
+  }
+  const response = await APIClient.get<TermRelationGraph>(
+    `/glossaryTerms/${termId}/relationsGraph`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getGlossaryTermRelationSettings = async () => {
+  const response = await APIClient.get(
+    '/system/settings/glossaryTermRelationSettings'
+  );
+
+  return response.data?.config_value;
+};
+
+export const updateGlossaryTermRelationSettings = async (settings: unknown) => {
+  const response = await APIClient.put('/system/settings', {
+    config_type: 'glossaryTermRelationSettings',
+    config_value: settings,
+  });
+
+  return response.data;
+};
+
+export const getRelationTypeUsageCounts = async (): Promise<
+  Record<string, number>
+> => {
+  const response = await APIClient.get('/glossaryTerms/relationTypes/usage');
+
+  return response.data;
 };

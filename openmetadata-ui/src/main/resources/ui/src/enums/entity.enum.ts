@@ -87,6 +87,7 @@ export enum EntityType {
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
   NOTIFICATION_TEMPLATE = 'notificationTemplate',
+  KNOWLEDGE_CENTER = 'knowledgeCenter',
 }
 
 export enum EntityLineageDirection {
@@ -251,6 +252,7 @@ export enum EntityTabs {
   WORKSHEETS = 'worksheets',
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
+  RELATIONS_GRAPH = 'relations_graph',
   DATA_OBSERVABILITY = 'data_observability',
   RECOGNIZER = 'recognizer',
 }

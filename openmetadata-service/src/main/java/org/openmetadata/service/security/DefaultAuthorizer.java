@@ -252,9 +252,13 @@ public class DefaultAuthorizer implements Authorizer {
       LOG.error("Failed to get bot user: {}", subjectContext.impersonatedBy(), e);
       throw new AuthorizationException("Bot user not found: " + subjectContext.impersonatedBy());
     }
+    if (bot == null) {
+      LOG.warn("Impersonation denied: bot user {} was not found", subjectContext.impersonatedBy());
+      throw new AuthorizationException("Bot user not found: " + subjectContext.impersonatedBy());
+    }
 
     // Verify bot has allowImpersonation flag enabled
-    if (Boolean.FALSE.equals(bot.getIsBot()) || Boolean.FALSE.equals(bot.getAllowImpersonation())) {
+    if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
       LOG.warn(
           "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
       throw new AuthorizationException(

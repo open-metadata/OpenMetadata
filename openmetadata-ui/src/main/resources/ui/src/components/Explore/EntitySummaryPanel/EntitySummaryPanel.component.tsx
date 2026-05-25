@@ -16,7 +16,7 @@ import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -139,6 +139,9 @@ export default function EntitySummaryPanel({
   pipelineViewMode,
   nodesPerLayer,
   onEntityUpdate,
+  afterEntityUpdate,
+  ontologyExplorerRelationsSlot,
+  sideDrawerOverviewOnly = false,
 }: Readonly<EntitySummaryPanelProps>) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -148,7 +151,8 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, getEntityPermissionByFqn } =
+    usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -168,6 +172,37 @@ export default function EntitySummaryPanel({
   const id = entityDetails?.details?.id ?? '';
   const fqn = entityDetails?.details?.fullyQualifiedName ?? '';
 
+  const ontologyExplorerMinimalTwoTabNav = useMemo(
+    () =>
+      Boolean(
+        panelPath === 'ontology-explorer' &&
+          isSideDrawer &&
+          ontologyExplorerRelationsSlot != null
+      ),
+    [panelPath, isSideDrawer, ontologyExplorerRelationsSlot]
+  );
+
+  const ontologyExplorerAppendRelationsTab = useMemo(
+    () =>
+      Boolean(
+        panelPath === 'glossary-term-assets-tab' &&
+          isSideDrawer &&
+          ontologyExplorerRelationsSlot != null
+      ),
+    [panelPath, isSideDrawer, ontologyExplorerRelationsSlot]
+  );
+
+  const ontologyExplorerGraphRelationsTabActive = useMemo(
+    () =>
+      Boolean(
+        isSideDrawer &&
+          ontologyExplorerRelationsSlot != null &&
+          (panelPath === 'ontology-explorer' ||
+            panelPath === 'glossary-term-assets-tab')
+      ),
+    [isSideDrawer, ontologyExplorerRelationsSlot, panelPath]
+  );
+
   const entityType = useMemo(
     () => get(entityDetails, 'details.entityType') as EntityType | undefined,
     [entityDetails]
@@ -176,21 +211,38 @@ export default function EntitySummaryPanel({
   const fetchResourcePermission = async (id: string) => {
     try {
       setIsPermissionLoading(true);
-      let type = get(entityDetails, 'details.entityType');
+      let type = get(entityDetails, 'details.entityType') as
+        | ResourceEntity
+        | undefined;
       let idForPermission = id;
+
+      if (isUndefined(type)) {
+        setIsPermissionLoading(false);
+
+        return;
+      }
 
       // For tableColumn entities, use the parent table's resource type and ID
       // since columns inherit permissions from their parent table
       if (type === ResourceEntity.TABLE_COLUMN) {
         type = ResourceEntity.TABLE;
         // Get the parent table ID from the column's table reference
-        const tableId = get(entityDetails, 'details.table.id') as string;
+        const tableId = get(entityDetails, 'details.table.id');
         if (tableId) {
           idForPermission = tableId;
         }
       }
 
-      const permissions = await getEntityPermission(type, idForPermission);
+      // In ontology data-mode, nodes are built with id=FQN (not a UUID).
+      // Passing that FQN to the by-ID endpoint returns empty permissions even
+      // for admins.
+      const isOntologyPanel =
+        panelPath === 'ontology-explorer' ||
+        panelPath === 'glossary-term-assets-tab';
+      const permissions =
+        isOntologyPanel && fqn
+          ? await getEntityPermissionByFqn(type, fqn)
+          : await getEntityPermission(type, idForPermission);
       setEntityPermissions(permissions);
     } catch {
       // Error - set default permission to allow viewing
@@ -306,6 +358,11 @@ export default function EntitySummaryPanel({
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.TABLE_COLUMN) {
+        setEntityData(entityDetails.details as EntityData);
+        setIsEntityDataLoading(false);
+
+        return;
       } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
         entityPromise = entityUtilClassBase.getEntityByFqn(
           entityType,
@@ -439,16 +496,15 @@ export default function EntitySummaryPanel({
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        setEntityData(
-          (prev) =>
-            ({
-              ...(prev ?? entityDetails.details),
-              ...updatedData,
-            } as EntityData)
-        );
+        const newData = {
+          ...(entityData ?? entityDetails.details),
+          ...updatedData,
+        } as EntityData;
+        setEntityData(newData);
+        afterEntityUpdate?.(newData);
       }
     },
-    [entityDetails.details, onEntityUpdate]
+    [entityData, entityDetails.details, onEntityUpdate, afterEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -465,6 +521,30 @@ export default function EntitySummaryPanel({
     [updateEntityData]
   );
 
+  const handleEntityUpdate = useCallback(
+    <T,>(
+      result: Partial<EntityData>,
+      entityLabel: string,
+      returnValue?: T
+    ): T | undefined => {
+      const newData = {
+        ...(entityData || entityDetails.details),
+        ...result,
+      } as EntityData;
+      setEntityData(newData);
+      afterEntityUpdate?.(newData);
+
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t(entityLabel),
+        })
+      );
+
+      return returnValue;
+    },
+    [entityData, entityDetails.details, afterEntityUpdate, t]
+  );
+
   const handleTagsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
       if (onEntityUpdate) {
@@ -479,12 +559,8 @@ export default function EntitySummaryPanel({
         tags: updatedTags,
       });
 
-      if (isEmpty(jsonPatch)) {
+      if (isEmpty(jsonPatch) || isUndefined(entityType)) {
         return updatedTags;
-      }
-
-      if (!entityType) {
-        return;
       }
 
       try {
@@ -493,27 +569,20 @@ export default function EntitySummaryPanel({
           res = await updateTableColumn(fqn, {
             tags: updatedTags,
           });
+
+          return handleEntityUpdate(res, 'label.tag-plural', res.tags);
         } else {
-          const apiFunc = entityUpdateMap[entityType];
+          const apiFunc =
+            entityUpdateMap[entityType] ??
+            entityUtilClassBase.getEntityPatchAPI(entityType);
           if (apiFunc && id) {
             res = await apiFunc(id, jsonPatch);
+
+            return handleEntityUpdate(res, 'label.tag-plural', res.tags);
           }
+
+          return updatedTags;
         }
-        setEntityData(
-          (prev) =>
-            ({
-              ...(prev || entityDetails.details),
-              ...res,
-            } as EntityData)
-        );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.tag-plural'),
-          })
-        );
-
-        return res.tags;
       } catch (error) {
         showErrorToast(error as AxiosError);
 
@@ -527,6 +596,7 @@ export default function EntitySummaryPanel({
       entityType,
       id,
       entityUpdateMap,
+      handleEntityUpdate,
       t,
       fqn,
     ]
@@ -567,12 +637,8 @@ export default function EntitySummaryPanel({
         tags: updatedTags,
       });
 
-      if (isEmpty(jsonPatch)) {
+      if (isEmpty(jsonPatch) || isUndefined(entityType)) {
         return updatedTags;
-      }
-
-      if (!entityType) {
-        return;
       }
 
       try {
@@ -581,27 +647,28 @@ export default function EntitySummaryPanel({
           res = await updateTableColumn(fqn, {
             tags: updatedTags,
           });
+
+          return handleEntityUpdate(
+            res,
+            'label.glossary-term-plural',
+            res.tags
+          );
         } else {
-          const apiFunc = entityUpdateMap[entityType];
+          const apiFunc =
+            entityUpdateMap[entityType] ??
+            entityUtilClassBase.getEntityPatchAPI(entityType);
           if (apiFunc && id) {
             res = await apiFunc(id, jsonPatch);
+
+            return handleEntityUpdate(
+              res,
+              'label.glossary-term-plural',
+              res.tags
+            );
           }
+
+          return updatedTags;
         }
-        setEntityData(
-          (prev) =>
-            ({
-              ...(prev || entityDetails.details),
-              ...res,
-            } as EntityData)
-        );
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
-
-        return res.tags;
       } catch (error) {
         showErrorToast(error as AxiosError);
 
@@ -615,6 +682,7 @@ export default function EntitySummaryPanel({
       entityType,
       id,
       entityUpdateMap,
+      handleEntityUpdate,
       t,
       fqn,
     ]
@@ -653,6 +721,8 @@ export default function EntitySummaryPanel({
                 ) as Record<string, unknown>),
               },
             });
+
+            handleEntityUpdate(res, 'label.extension');
           } else {
             const baseData = entityData ?? entityDetails.details;
             const jsonPatch = compare(baseData, {
@@ -660,22 +730,19 @@ export default function EntitySummaryPanel({
               extension: updatedExtension,
             });
 
-            if (isEmpty(jsonPatch)) {
+            if (isEmpty(jsonPatch) || isUndefined(entityType)) {
               return;
             }
 
-            const apiFunc = entityUpdateMap[entityType];
+            const apiFunc =
+              entityUpdateMap[entityType] ??
+              entityUtilClassBase.getEntityPatchAPI(entityType);
             if (apiFunc && id) {
               res = await apiFunc(id, jsonPatch);
+
+              handleEntityUpdate(res, 'label.extension');
             }
           }
-          setEntityData(
-            (prev) =>
-              ({
-                ...(prev || entityDetails.details),
-                ...res,
-              } as EntityData)
-          );
         } catch (error) {
           showErrorToast(error as AxiosError);
 
@@ -689,6 +756,7 @@ export default function EntitySummaryPanel({
       entityType,
       id,
       entityUpdateMap,
+      handleEntityUpdate,
       entityData,
       fqn,
     ]
@@ -723,6 +791,12 @@ export default function EntitySummaryPanel({
   }, [entityDetails?.details?.id]);
 
   useEffect(() => {
+    if (
+      activeTab === EntityRightPanelTab.RELATIONS &&
+      ontologyExplorerGraphRelationsTabActive
+    ) {
+      return;
+    }
     if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
       fetchEntityData();
       fetchEntityTypeDetail();
@@ -738,6 +812,7 @@ export default function EntitySummaryPanel({
     fetchEntityData,
     fetchEntityTypeDetail,
     fetchLineageData,
+    ontologyExplorerGraphRelationsTabActive,
   ]);
 
   const viewPermission = useMemo(
@@ -839,6 +914,17 @@ export default function EntitySummaryPanel({
   };
 
   const renderTabContent = () => {
+    if (
+      activeTab === EntityRightPanelTab.RELATIONS &&
+      ontologyExplorerGraphRelationsTabActive
+    ) {
+      return (
+        <div className="entity-summary-panel-tab-content">
+          <div className="p-x-md p-md">{ontologyExplorerRelationsSlot}</div>
+        </div>
+      );
+    }
+
     if (isPermissionLoading) {
       return <Loader />;
     }
@@ -988,6 +1074,8 @@ export default function EntitySummaryPanel({
           </>
         );
       }
+      case EntityRightPanelTab.RELATIONS:
+        return null;
       default:
         return null;
     }
@@ -999,6 +1087,7 @@ export default function EntitySummaryPanel({
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
         'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+        'ontology-explorer': panelPath === 'ontology-explorer',
       })}
       data-testid="entity-summary-panel-container">
       {isSideDrawer && (
@@ -1030,8 +1119,8 @@ export default function EntitySummaryPanel({
       <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
-          className={`summary-panel-container ${
-            isSideDrawer ? 'drawer-summary-panel-container' : ''
+          className={`summary-panel-container${
+            isSideDrawer ? ' drawer-summary-panel-container' : ''
           }`}>
           <Card
             className={`content-area ${
@@ -1041,11 +1130,13 @@ export default function EntitySummaryPanel({
             {renderTabContent()}
           </Card>
         </Card>
-        {entityType && (
+        {entityType && !sideDrawerOverviewOnly && (
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
+            appendOntologyRelationsTab={ontologyExplorerAppendRelationsTab}
             entityType={entityType}
             isSideDrawer={isSideDrawer}
+            ontologyExplorerNav={ontologyExplorerMinimalTwoTabNav}
             onTabChange={handleTabChange}
           />
         )}

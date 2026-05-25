@@ -11,6 +11,7 @@
 """
 Test DB2 using the topology
 """
+
 import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -91,9 +92,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="db2_source_test.sample_database",
     displayName="sample_database",
     description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -192,9 +191,7 @@ EXPECTED_TABLE = [
             ),
         ],
         tableConstraints=[],
-        databaseSchema=FullyQualifiedEntityName(
-            "db2_source_test.sample_database.sample_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("db2_source_test.sample_database.sample_schema"),
     )
 ]
 
@@ -206,12 +203,10 @@ class Db2UnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.common_db_source.get_connection")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
         get_connection,
     ) -> None:
@@ -220,51 +215,32 @@ class Db2UnitTest(TestCase):
         get_connection.return_value = MagicMock()
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_db2_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_db2_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_db2_config["workflowConfig"]["openMetadataServerConfig"])
         )
         self.db2 = Db2Source.create(
             mock_db2_config["source"],
             self.metadata,
         )
-        self.db2.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.db2.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.db2.context.get_current_thread_id()
         self.db2._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_columns = (
-            lambda table_name, schema_name, db_name, table_type=None: MOCK_COLUMN_VALUE
+        self.db2._inspector_map[self.thread_id].get_columns = lambda table_name, schema_name, db_name, table_type=None: (
+            MOCK_COLUMN_VALUE
         )
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
-        self.db2._inspector_map[
-            self.thread_id
-        ].get_table_comment = lambda table_name, schema_name: {"text": None}
+        self.db2._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_table_comment = lambda table_name, schema_name: {"text": None}
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [
-            either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)
-        ]
+        assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
         self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
-            either.right
-            for either in self.db2.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
+            either.right for either in self.db2.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
-        self.db2.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.db2.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
 
 class Db2ColumnTypeParserTest(TestCase):
@@ -273,7 +249,7 @@ class Db2ColumnTypeParserTest(TestCase):
     in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE
     """
 
-    DB2_TYPE_MAPPINGS = {
+    DB2_TYPE_MAPPINGS = {  # noqa: RUF012
         # DB2 XML Extender types
         "XMLVARCHAR": "XML",
         "XMLCLOB": "XML",
@@ -290,7 +266,7 @@ class Db2ColumnTypeParserTest(TestCase):
     }
 
     def test_db2_type_mappings_exist(self):
-        for db2_type, expected_om_type in self.DB2_TYPE_MAPPINGS.items():
+        for db2_type, expected_om_type in self.DB2_TYPE_MAPPINGS.items():  # noqa: B007, PERF102
             self.assertIn(
                 db2_type,
                 ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE,
@@ -360,7 +336,7 @@ class Db2GetColumnsOS390Test(TestCase):
     empty and unrecognized column types from DB2 z/OS.
     """
 
-    ISCHEMA_NAMES = {
+    ISCHEMA_NAMES = {  # noqa: RUF012
         "CHAR": sa_types.CHAR,
         "VARCHAR": sa_types.VARCHAR,
         "INTEGER": sa_types.INTEGER,
@@ -399,17 +375,13 @@ class Db2GetColumnsOS390Test(TestCase):
         mock_connection = MagicMock()
         mock_connection.execute.return_value = rows
 
-        with patch(
-            "metadata.ingestion.source.database.db2.utils.sql.select"
-        ) as mock_select:
+        with patch("metadata.ingestion.source.database.db2.utils.sql.select") as mock_select:
             mock_query = MagicMock()
             mock_select.return_value = mock_query
             mock_query.where.return_value = mock_query
             mock_query.order_by.return_value = mock_query
 
-            return get_columns_os390.__wrapped__(
-                mock_self, mock_connection, "TEST_TABLE"
-            )
+            return get_columns_os390.__wrapped__(mock_self, mock_connection, "TEST_TABLE")
 
     def test_varchar_column(self):
         rows = [("COL1", "VARCHAR", None, "Y", 100, 0, " ", None)]

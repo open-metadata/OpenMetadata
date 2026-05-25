@@ -95,7 +95,6 @@ async function updateDescription(
   );
   await page.getByTestId('save').click();
   await patchResponse;
-
 }
 
 test.describe(
@@ -317,7 +316,7 @@ test.describe(
 
         // Navigate to classification
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.waitForSelector('[data-testid="side-panel-classification"]');
+        await page.getByTestId('side-panel-classification').first().waitFor();
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -380,7 +379,7 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.waitForSelector('[data-testid="side-panel-classification"]');
+        await page.getByTestId('side-panel-classification').first().waitFor();
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -444,7 +443,7 @@ test.describe(
 
         // Navigate to tag
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.waitForSelector('[data-testid="side-panel-classification"]');
+        await page.getByTestId('side-panel-classification').first().waitFor();
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -498,7 +497,7 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.waitForSelector('[data-testid="side-panel-classification"]');
+        await page.getByTestId('side-panel-classification').first().waitFor();
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -644,6 +643,7 @@ test.describe(
     // DOMAIN TESTS
     // ===================================================================
 
+    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
     test.skip('Domain - rename then update description should work', async ({
       page,
       browser,
@@ -699,6 +699,7 @@ test.describe(
       }
     });
 
+    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
     test.skip('Domain - multiple rename + update cycles should work', async ({
       page,
       browser,

@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -32,6 +31,7 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -50,7 +50,6 @@ const tag = new TagClass({ classification: classification.data.name });
 test.describe('Data Product Rename + Field Update Consolidation', () => {
   test.beforeAll('Setup domain and admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
     await domain.create(apiContext);
     await classification.create(apiContext);
     await tag.create(apiContext);
@@ -62,7 +61,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await tag.delete(apiContext);
     await classification.delete(apiContext);
     await domain.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 
@@ -121,7 +119,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     );
     await page.getByTestId('save').click();
     await patchResponse;
-
   }
 
   test('Rename then update description - assets should be preserved', async ({
@@ -286,7 +283,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.getByTestId('saveAssociatedTag').click();
       await patchResponse;
 
-
       // Step 3: Verify assets
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
@@ -367,21 +363,17 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.getByTestId('documentation').click();
       // Use add-owner since there's no owner initially
       await page.getByTestId('add-owner').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Users' }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Wait for search response after typing user name
       const ownerDisplayName = newOwner.getUserDisplayName();
       const searchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await page
         .getByTestId('owner-select-users-search-bar')
@@ -398,7 +390,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       );
       await page.getByTestId('selectable-list-update-btn').click();
       await patchResponse;
-
 
       // Step 3: Verify assets
       await page.getByTestId('assets').click();

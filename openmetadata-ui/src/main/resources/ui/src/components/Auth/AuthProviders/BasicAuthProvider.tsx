@@ -19,7 +19,7 @@ import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
 } from '../../../constants/Auth.constants';
-import { ROUTES } from '../../../constants/constants';
+import { APP_ROUTER_ROUTES as ROUTES } from '../../../constants/router.constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
 import {
@@ -29,7 +29,6 @@ import {
   logoutUser,
   resetPassword,
 } from '../../../rest/auth-API';
-import { getBase64EncodedString } from '../../../utils/CommonUtils';
 import {
   showErrorToast,
   showInfoToast,
@@ -89,7 +88,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
       try {
         const response = await basicAuthSignIn({
           email,
-          password: getBase64EncodedString(password),
+          password: btoa(password),
         });
 
         if (response.accessToken) {

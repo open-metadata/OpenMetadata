@@ -44,11 +44,25 @@ def test_timestamp_to_datetime(timestamp, expected_datetime):
     assert timestamp_to_datetime(timestamp) == expected_datetime
 
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
-from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "timestamp_input, expected_datetime",
+    [
+        (0, datetime(1970, 1, 1, 0, 0, 0)),
+        (1625127852, datetime(2021, 7, 1, 8, 24, 12)),
+        (1625127852.5, datetime(2021, 7, 1, 8, 24, 12, 500000)),
+    ],
+)
+def test_utc_from_timestamp(timestamp_input, expected_datetime):
+    result = utc_from_timestamp(timestamp_input)
+    assert result == expected_datetime
+    assert result.tzinfo is None
 
 
 @pytest.mark.parametrize(

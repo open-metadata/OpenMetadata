@@ -11,23 +11,25 @@
  *  limitations under the License.
  */
 
-import { Checkbox, TableCell, TableRow, useTheme } from '@mui/material';
+import { Table } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import Loader from '../../../../components/common/Loader/Loader';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
 interface ColumnGridTableRowProps {
+  /** Width percent per column id for fixed column layout */
+  columnWidthPercent?: Record<string, string>;
   entity: ColumnGridRowData;
   isSelected: boolean;
-  isIndeterminate?: boolean;
   /** When true, show loader in place of checkbox until refetch completes */
   isPendingRefetch?: boolean;
   /** When true, row shows highlighted (theme warning) background for recently bulk-updated columns */
   isRecentlyUpdated?: boolean;
-  /** When true, parent/child row colors are shown (only when group/struct is expanded) */
+  /** When true, parent (grey) vs child (light grey) backgrounds and child row indent are applied */
   showParentChildColors?: boolean;
-  onSelect: (id: string, checked: boolean) => void;
-  onGroupSelect?: (groupId: string, checked: boolean) => void;
+  /** Column definitions for Table.Row (id only), used for core Table layout */
+  tableColumns: { id: string }[];
   renderColumnNameCell: (entity: ColumnGridRowData) => React.ReactNode;
   renderPathCell: (entity: ColumnGridRowData) => React.ReactNode;
   renderDescriptionCell: (entity: ColumnGridRowData) => React.ReactNode;
@@ -35,131 +37,154 @@ interface ColumnGridTableRowProps {
   renderGlossaryTermsCell: (entity: ColumnGridRowData) => React.ReactNode;
 }
 
-const ROW_BG_TRANSITION = 'background-color 0.4s ease-in-out';
+const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
+
+const CHILD_ROW_INDENT_PX = 24;
+const BASE_CELL_PADDING_PX = 24;
+const PARENT_ROW_BG_CLASS = 'tw:bg-gray-100';
+const CHILD_ROW_BG_CLASS = 'tw:bg-gray-50';
 
 export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
+  columnWidthPercent = {},
   entity,
   isSelected,
-  isIndeterminate,
   isPendingRefetch = false,
   isRecentlyUpdated,
   showParentChildColors = false,
-  onSelect,
-  onGroupSelect,
+  tableColumns,
   renderColumnNameCell,
   renderPathCell,
   renderDescriptionCell,
   renderTagsCell,
   renderGlossaryTermsCell,
 }) => {
-  const theme = useTheme();
+  const isChildRow = Boolean(entity.parentId || entity.isStructChild);
 
-  const { rowSx, cellSx, rowType } = useMemo(() => {
-    const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+  const { rowClassName, cellClassName, rowType } = useMemo(() => {
     const type = isChildRow ? 'child' : 'parent';
-
-    const yellowHighlightBg =
-      theme.palette.allShades?.warning?.[50] ??
-      theme.palette.warning?.light ??
-      theme.palette.warning?.main;
 
     if (isRecentlyUpdated) {
       return {
         rowType: type,
-        rowSx: {
-          backgroundColor: yellowHighlightBg,
-          transition: ROW_BG_TRANSITION,
-          '&.Mui-selected': { backgroundColor: yellowHighlightBg },
-          '&.Mui-selected:hover': { backgroundColor: yellowHighlightBg },
-        },
-        cellSx: {
-          backgroundColor: yellowHighlightBg,
-          transition: ROW_BG_TRANSITION,
-        },
+        rowClassName: classNames(
+          'tw:transition-colors',
+          'tw:bg-utility-warning-50',
+          isSelected && 'tw:bg-utility-warning-50'
+        ),
+        cellClassName: classNames('tw:bg-utility-warning-50'),
       };
     }
 
     if (!showParentChildColors) {
-      return { rowType: type, rowSx: undefined, cellSx: undefined };
+      return {
+        rowType: type,
+        rowClassName: classNames(
+          'tw:transition-colors tw:hover:bg-secondary',
+          isSelected && 'tw:bg-secondary'
+        ),
+      };
     }
 
-    const parentBg =
-      theme.palette.allShades?.gray?.[100] ?? theme.palette.grey?.[100];
-    const childBg =
-      theme.palette.allShades?.gray?.[50] ?? theme.palette.grey?.[50];
-    const bg = isChildRow ? childBg : parentBg;
+    const bgClass = isChildRow ? CHILD_ROW_BG_CLASS : PARENT_ROW_BG_CLASS;
 
     return {
       rowType: type,
-      rowSx: {
-        backgroundColor: bg,
-        transition: ROW_BG_TRANSITION,
-        '&.Mui-selected': { backgroundColor: bg },
-        '&.Mui-selected:hover': { backgroundColor: bg },
-      },
-      cellSx: { backgroundColor: bg, transition: ROW_BG_TRANSITION },
+      rowClassName: classNames(
+        'tw:transition-colors',
+        bgClass,
+        isSelected && bgClass,
+        'tw:hover:opacity-95'
+      ),
+      cellClassName: classNames(bgClass),
     };
   }, [
     isRecentlyUpdated,
     showParentChildColors,
     entity.parentId,
     entity.isStructChild,
-    theme,
+    isSelected,
   ]);
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
+  const renderCellContent = (columnId: string) => {
+    const content = (() => {
+      switch (columnId) {
+        case 'columnName':
+          return renderColumnNameCell(entity);
+        case 'path':
+          return renderPathCell(entity);
+        case 'description':
+          return renderDescriptionCell(entity);
+        case 'dataType':
+          return entity.dataType || '-';
+        case 'tags':
+          return renderTagsCell(entity);
+        case 'glossaryTerms':
+          return renderGlossaryTermsCell(entity);
+        default:
+          return null;
+      }
+    })();
 
-    if (entity.isGroup && entity.occurrenceCount > 1 && onGroupSelect) {
-      onGroupSelect(entity.id, checked);
-    } else {
-      onSelect(entity.id, checked);
+    if (content == null) {
+      return null;
     }
+
+    const wrapped = <div className={CELL_ELLIPSIS_CLASS}>{content}</div>;
+
+    if (columnId === 'columnName' && isPendingRefetch) {
+      return (
+        <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
+          <Loader className="tw:shrink-0" size="x-small" />
+          {wrapped}
+        </div>
+      );
+    }
+
+    return wrapped;
+  };
+
+  const getCellStyle = (columnId: string): React.CSSProperties | undefined => {
+    const width = columnWidthPercent[columnId];
+    const base = width ? { width, minWidth: 0, maxWidth: width } : undefined;
+    const isFirstCell = columnId === 'columnName';
+    const shouldIndent = showParentChildColors && isChildRow && isFirstCell;
+    const level = entity.nestingLevel ?? (entity.parentId ? 1 : 0);
+    const indentPx = shouldIndent
+      ? BASE_CELL_PADDING_PX + level * CHILD_ROW_INDENT_PX
+      : 0;
+
+    if (indentPx === 0) {
+      return base;
+    }
+
+    return { ...base, paddingLeft: indentPx };
+  };
+
+  const cellTestIdMap: Record<string, string | undefined> = {
+    columnName: 'column-name-cell',
+    path: 'column-path-cell',
+    description: 'column-description-cell',
+    dataType: 'column-datatype-cell',
+    tags: 'column-tags-cell',
+    glossaryTerms: 'column-glossary-cell',
   };
 
   return (
-    <TableRow
-      hover
+    <Table.Row
+      className={rowClassName}
+      columns={tableColumns}
       data-row-id={entity.id}
       data-row-type={rowType}
       data-testid={`column-row-${entity.columnName}`}
-      key={entity.id}
-      selected={isSelected}
-      sx={rowSx}>
-      <TableCell padding="checkbox" sx={cellSx}>
-        {isPendingRefetch ? (
-          <Loader size="small" />
-        ) : (
-          <Checkbox
-            checked={isSelected}
-            data-testid={`column-checkbox-${entity.columnName}`}
-            indeterminate={isIndeterminate}
-            inputProps={{
-              'aria-label': entity.columnName,
-              'data-testid': `column-checkbox-input-${entity.columnName}`,
-            }}
-            onChange={handleCheckboxChange}
-          />
-        )}
-      </TableCell>
-      <TableCell data-testid="column-name-cell" sx={cellSx}>
-        {renderColumnNameCell(entity)}
-      </TableCell>
-      <TableCell data-testid="column-path-cell" sx={cellSx}>
-        {renderPathCell(entity)}
-      </TableCell>
-      <TableCell data-testid="column-description-cell" sx={cellSx}>
-        {renderDescriptionCell(entity)}
-      </TableCell>
-      <TableCell data-testid="column-datatype-cell" sx={cellSx}>
-        {entity.dataType || '-'}
-      </TableCell>
-      <TableCell data-testid="column-tags-cell" sx={cellSx}>
-        {renderTagsCell(entity)}
-      </TableCell>
-      <TableCell data-testid="column-glossary-cell" sx={cellSx}>
-        {renderGlossaryTermsCell(entity)}
-      </TableCell>
-    </TableRow>
+      id={entity.id}>
+      {(column) => (
+        <Table.Cell
+          className={classNames(cellClassName, 'tw:overflow-hidden')}
+          data-testid={cellTestIdMap[column.id]}
+          style={getCellStyle(column.id)}>
+          {renderCellContent(column.id)}
+        </Table.Cell>
+      )}
+    </Table.Row>
   );
 };

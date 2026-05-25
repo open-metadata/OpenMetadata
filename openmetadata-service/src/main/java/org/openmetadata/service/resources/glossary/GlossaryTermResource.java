@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,9 +49,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -65,12 +68,14 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -79,6 +84,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -91,6 +97,7 @@ import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
+@Slf4j
 @Path("/v1/glossaryTerms")
 @Tag(
     name = "Glossaries",
@@ -106,13 +113,21 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+  // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
+  // separators) well below Jetty's default 8 KB request-header limit
+  // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
+  private static final int MAX_BATCH_BY_IDS = 100;
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
     super.addHref(uriInfo, term);
     Entity.withHref(uriInfo, term.getGlossary());
     Entity.withHref(uriInfo, term.getParent());
-    Entity.withHref(uriInfo, term.getRelatedTerms());
+    if (term.getRelatedTerms() != null) {
+      for (TermRelation tr : term.getRelatedTerms()) {
+        Entity.withHref(uriInfo, tr.getTerm());
+      }
+    }
     return term;
   }
 
@@ -392,6 +407,58 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @GET
+  @Path("/relationTypes/usage")
+  @Operation(
+      operationId = "getRelationTypeUsageCounts",
+      summary = "Get usage counts for all relation types",
+      description =
+          "Get a map of relation types to the count of glossary term relations using that type. "
+              + "Useful for determining if a relation type can be safely deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of relation type to usage count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRelationTypeUsageCounts(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    java.util.Map<String, Integer> result = repository.getRelationTypeUsageCounts();
+    return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllGlossaryTermsWithAssetsCount",
+      summary = "Get all glossary terms with their asset counts",
+      description =
+          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of glossary term FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllGlossaryTermsWithAssetsCount(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Filter by parent glossary or glossary term FQN. "
+                      + "When provided, only returns asset counts for children whose FQN starts with this value.")
+          @QueryParam("parent")
+          String parent) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
+    return Response.ok(result).build();
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(
       operationId = "getGlossaryTermByID",
@@ -436,6 +503,103 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("includeRelations")
           String includeRelations) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+  }
+
+  @GET
+  @Path("/byIds")
+  @Operation(
+      operationId = "getGlossaryTermsByIds",
+      summary = "Get multiple glossary terms by Ids",
+      description =
+          "Get multiple glossary terms in a single request by passing a comma-separated list of UUIDs. "
+              + "Exists to eliminate the per-Id round-trip pattern when hydrating related-term "
+              + "graphs in the UI. Ids that are missing, deleted, or not visible to the caller "
+              + "are silently omitted from the response, so callers should compare the response "
+              + "size against the input.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of glossary terms (may be shorter than the input ids list)",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = GlossaryTerm.class)))),
+        @ApiResponse(responseCode = "400", description = "Invalid ids parameter")
+      })
+  public List<GlossaryTerm> getByIds(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Comma-separated list of glossary term Ids (UUIDs). Max 100 per call. "
+                      + "Omit or pass blank to receive an empty list.",
+              schema = @Schema(type = "string"))
+          @QueryParam("ids")
+          String idsParam,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    List<UUID> ids = parseIdsParam(idsParam);
+    List<GlossaryTerm> result = new ArrayList<>(ids.size());
+    for (UUID id : ids) {
+      try {
+        result.add(
+            getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
+      } catch (EntityNotFoundException | AuthorizationException ex) {
+        // Expected per-id misses — silently omit so a single bad Id doesn't
+        // 404/403 the whole batch. Matches the documented contract and the
+        // old Promise.allSettled semantics on the client.
+        LOG.debug("byIds: glossary term {} not found or not visible — {}", id, ex.getMessage());
+      } catch (RuntimeException ex) {
+        // Unexpected per-id failure (validation, downstream 5xx surfaced as
+        // WebApplicationException, etc.). Keep the batch best-effort —
+        // dropping one term beats failing the whole request — but log at
+        // WARN so a real bug isn't silently swallowed.
+        LOG.warn("byIds: unexpected error hydrating glossary term {}", id, ex);
+      }
+    }
+    return result;
+  }
+
+  private List<UUID> parseIdsParam(String idsParam) {
+    if (idsParam == null || idsParam.isBlank()) {
+      return List.of();
+    }
+    List<UUID> ids;
+    try {
+      ids =
+          Arrays.stream(idsParam.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .map(UUID::fromString)
+              .toList();
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("ids parameter contains an invalid UUID");
+    }
+    if (ids.size() > MAX_BATCH_BY_IDS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Too many ids: %d (max %d). Split the request into multiple batches.",
+              ids.size(), MAX_BATCH_BY_IDS));
+    }
+    return ids;
   }
 
   @GET
@@ -1043,23 +1207,119 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  @GET
-  @Path("/assets/counts")
+  @POST
+  @Path("/{id}/relations")
   @Operation(
-      operationId = "getAllGlossaryTermsWithAssetsCount",
-      summary = "Get all glossary terms with their asset counts",
+      operationId = "addTermRelation",
+      summary = "Add a typed relation to another glossary term",
       description =
-          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+          "Add a typed semantic relation (e.g., broader, narrower, synonym) from this glossary term to another.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Map of glossary term FQN to asset count",
-            content = @Content(mediaType = "application/json"))
+            description = "The updated glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "404", description = "Glossary term not found")
       })
-  public Response getAllGlossaryTermsWithAssetsCount(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
-    return Response.ok(result).build();
+  public Response addTermRelation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TermRelation termRelation) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    GlossaryTerm term = repository.addTermRelation(id, termRelation);
+    return Response.ok(addHref(uriInfo, term)).build();
+  }
+
+  @DELETE
+  @Path("/{id}/relations/{toTermId}")
+  @Operation(
+      operationId = "removeTermRelation",
+      summary = "Remove a relation to another glossary term",
+      description = "Remove a relation from this glossary term to another term.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "404", description = "Glossary term not found")
+      })
+  public Response removeTermRelation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the related glossary term to remove",
+              schema = @Schema(type = "UUID"))
+          @PathParam("toTermId")
+          UUID toTermId,
+      @Parameter(
+              description =
+                  "Type of relation to remove (optional, removes all types if not specified)")
+          @QueryParam("relationType")
+          String relationType) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    GlossaryTerm term = repository.removeTermRelation(id, toTermId, relationType);
+    return Response.ok(addHref(uriInfo, term)).build();
+  }
+
+  @GET
+  @Path("/{id}/relationsGraph")
+  @Operation(
+      operationId = "getTermRelationGraph",
+      summary = "Get the relation graph for a glossary term",
+      description =
+          "Get a graph of related terms up to a specified depth, optionally filtered by relation types.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Graph of related terms",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Glossary term not found")
+      })
+  public Response getTermRelationGraph(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Depth of the graph (1-5, default = 1)")
+          @DefaultValue("1")
+          @Min(1)
+          @Max(5)
+          @QueryParam("depth")
+          int depth,
+      @Parameter(description = "Comma-separated list of relation types to include")
+          @QueryParam("relationTypes")
+          String relationTypes) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    List<String> types = null;
+    if (relationTypes != null && !relationTypes.isEmpty()) {
+      types = List.of(relationTypes.split(","));
+    }
+    return Response.ok(repository.getTermRelationGraph(id, depth, types)).build();
   }
 
   @GET

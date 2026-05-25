@@ -23,6 +23,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobContext;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
 
@@ -228,13 +229,14 @@ public class QuartzProgressListener implements ReindexingProgressListener {
   private AppRunRecord getUpdatedAppRunRecord() {
     AppRunRecord appRecord = readExistingRecord();
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+    OmAppJobListener.fillTerminalTimings(appRecord);
 
     if (jobData.getStats() != null) {
       SuccessContext ctx = appRecord.getSuccessContext();
       if (ctx == null) {
         ctx = new SuccessContext();
       }
-      ctx.withAdditionalProperty("stats", jobData.getStats());
+      ctx.setStats(jobData.getStats());
 
       Map<String, Object> metadata = latestDistributedMetadata;
       if (metadata != null) {
@@ -247,8 +249,7 @@ public class QuartzProgressListener implements ReindexingProgressListener {
     }
 
     if (jobData.getFailure() != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
+      appRecord.setFailureContext(new FailureContext().withFailure(jobData.getFailure()));
     }
 
     return appRecord;

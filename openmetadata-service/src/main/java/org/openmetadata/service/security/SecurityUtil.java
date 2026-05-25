@@ -264,6 +264,11 @@ public final class SecurityUtil {
       return nameClaim.trim();
     }
 
+    String displayName = getClaimOrObject(claims.get("displayName"));
+    if (!nullOrEmpty(displayName)) {
+      return displayName.trim();
+    }
+
     String displayNameClaim = getClaimOrObject(claims.get("displayname"));
     if (!nullOrEmpty(displayNameClaim)) {
       return displayNameClaim.trim();

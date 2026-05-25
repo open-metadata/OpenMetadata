@@ -588,6 +588,11 @@ export interface AuthorizerConfiguration {
      */
     containerRequestFilter: string;
     /**
+     * Default role assigned to new OAuth users during self-signup. If not specified, users will
+     * be created without roles.
+     */
+    defaultOAuthRole?: string;
+    /**
      * Enable Secure Socket Connection.
      */
     enableSecureSocketConnection: boolean;

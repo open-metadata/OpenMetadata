@@ -11,6 +11,7 @@
 """
 Hive Metastore Mysql Dialect
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine import reflection
@@ -39,9 +40,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        schema_names = [
-            row[0] for row in connection.execute(text("select NAME from DBS;"))
-        ]
+        schema_names = [row[0] for row in connection.execute(text("select NAME from DBS;"))]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 
@@ -86,7 +85,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
                 AND tbsl.TBL_NAME = '{table_name}'
             {schema_join}
-        """
+        """  # noqa: W291
 
         return connection.execute(text(query)).fetchall()
 
@@ -99,7 +98,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
 
     def get_table_names(self, connection, schema=None, **kw):
         query = self._get_table_names_base_query(schema=schema)
-        query += """ WHERE TBL_TYPE != 'VIRTUAL_VIEW'"""
+        query += """ WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"""
         table_names = [row[0] for row in connection.execute(text(query))]
         logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names
@@ -116,7 +115,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
                 JOIN DBS dbs on tbls.DB_ID = dbs.DB_ID
             where 
                 tbls.VIEW_ORIGINAL_TEXT is not null;
-        """
+        """  # noqa: W291
         return get_view_definition_wrapper(
             self,
             connection,
@@ -138,7 +137,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
                 TBLS ON DBS.DB_ID = TBLS.DB_ID 
                 LEFT JOIN TABLE_PARAMS ON TBLS.TBL_ID = TABLE_PARAMS.TBL_ID 
                 and TABLE_PARAMS.PARAM_KEY = 'comment'
-        """
+        """  # noqa: W291
         return get_table_comment_wrapper(
             self,
             connection,

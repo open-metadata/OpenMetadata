@@ -25,7 +25,7 @@ public class MigrationOps {
     try {
       this.result = handle.createQuery(query).mapTo(Long.class).one();
     } catch (Exception ex) {
-      LOG.debug(String.format("Migration Op [%s] failed due to [%s]", name, ex));
+      LOG.debug("Migration Op [{}] failed due to ", name, ex);
     }
   }
 }

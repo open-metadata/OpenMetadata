@@ -16,10 +16,10 @@
  * Use this instead of dynamic template literals (e.g. `tw:text-${fontSize}`)
  * so that Tailwind's static scanner can detect all variants at build time.
  */
-export const fontSizeClass: Record<"xs" | "sm" | "md" | "lg" | "xl", string> = {
-    xs: "tw:text-xs",
-    sm: "tw:text-sm",
-    md: "tw:text-md",
-    lg: "tw:text-lg",
-    xl: "tw:text-xl",
+export const fontSizeClass: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string> = {
+  xs: 'tw:text-xs',
+  sm: 'tw:text-sm',
+  md: 'tw:text-md',
+  lg: 'tw:text-lg',
+  xl: 'tw:text-xl',
 };

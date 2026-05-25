@@ -19,13 +19,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
-import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   addFollower,
   deleteDataProduct,
@@ -37,11 +37,8 @@ import {
   updateDataProductVotes,
 } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getDomainPath,
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../utils/RouterUtils';
+import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -53,6 +50,7 @@ import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDeta
 const DataProductsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { dataProductBasePath } = useMarketplaceStore();
   const { version } = useRequiredParams<{ version: string }>();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
@@ -83,10 +81,9 @@ const DataProductsPage = () => {
 
         if (dataProduct?.name !== updatedData.name) {
           navigate(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
+            `${dataProductBasePath}/${getEncodedFqn(
               response.fullyQualifiedName ?? ''
-            )
+            )}`
           );
         }
       } catch (error) {
@@ -109,7 +106,7 @@ const DataProductsPage = () => {
           entity: t('label.data-product'),
         })
       );
-      navigate(ROUTES.DATA_PRODUCT);
+      navigate(dataProductBasePath);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -188,7 +185,7 @@ const DataProductsPage = () => {
   };
 
   const onBackHandler = () => {
-    navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
+    navigate(`${dataProductBasePath}/${getEncodedFqn(dataProductFqn)}`);
   };
 
   const followDataProduct = async () => {

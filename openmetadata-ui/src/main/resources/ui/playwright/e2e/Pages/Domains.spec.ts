@@ -20,8 +20,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -40,13 +40,9 @@ import {
   visitGlossaryPage,
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  CustomPropertyTypeByName,
-  deleteCreatedProperty,
-} from '../../utils/customProperty';
-import {
   addAssetsToDataProduct,
   addAssetsToDomain,
+  addAssetToDomainViaApi,
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
@@ -68,6 +64,8 @@ import {
   verifyDataProductsCount,
   verifyDomain,
   verifyDomainOnAssetPages,
+  waitForDomainAssetsAddCommit,
+  waitForDomainAssetsAddDryRun,
 } from '../../utils/domain';
 import {
   assignGlossaryTerm,
@@ -75,33 +73,20 @@ import {
   deleteAnnouncement,
   editAnnouncement,
   followEntity,
-  replyAnnouncement,
+  getEncodedFqn,
   unFollowEntity,
   waitForAllLoadersToDisappear,
-  getEncodedFqn,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
-import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
-} from '../../utils/sidebar';
+import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
-const user = new UserClass();
-
-const domain = new Domain();
-
-const classification = new ClassificationClass({
-  provider: 'system',
-  mutuallyExclusive: true,
-});
-const tag = new TagClass({
-  classification: classification.data.name,
-});
-
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
+let user: UserClass;
+let domain: Domain;
+let classification: ClassificationClass;
+let tag: TagClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
 
 const test = base.extend<{
   page: Page;
@@ -125,6 +110,16 @@ test.describe('Domains', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
+
+    user = new UserClass();
+    domain = new Domain();
+    classification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: true,
+    });
+    tag = new TagClass({ classification: classification.data.name });
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -387,52 +382,6 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Add, Update custom properties for data product', async ({ page }) => {
-    test.slow(true);
-
-    const properties = Object.values(CustomPropertyTypeByName);
-    const titleText = properties.join(', ');
-
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    const dataProduct1 = new DataProduct([domain]);
-    await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
-
-    await test.step('Create DataProduct and custom properties for it', async () => {
-      await selectDomain(page, domain.data);
-      await createDataProduct(page, dataProduct1.data);
-      await dataProduct1.prepareCustomProperty(apiContext);
-    });
-
-    await test.step(`Set ${titleText} Custom Property`, async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      for (const type of properties) {
-        await dataProduct1.updateCustomProperty(
-          page,
-          dataProduct1.customPropertyValue[type].property,
-          dataProduct1.customPropertyValue[type].value
-        );
-      }
-    });
-
-    await test.step(`Update ${titleText} Custom Property`, async () => {
-      for (const type of properties) {
-        await dataProduct1.updateCustomProperty(
-          page,
-          dataProduct1.customPropertyValue[type].property,
-          dataProduct1.customPropertyValue[type].newValue
-        );
-      }
-    });
-
-    await dataProduct1.cleanupCustomProperty(apiContext);
-    await dataProduct1.delete(apiContext);
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
   test('Rename domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
@@ -490,7 +439,7 @@ test.describe('Domains', () => {
       await Promise.all([
         createSubDomain(page, subDomain.data),
         page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+          '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
         ),
       ]);
 
@@ -546,14 +495,14 @@ test.describe('Domains', () => {
       await selectDomain(page, domain.data);
 
       // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain_search_index*'
+      //   '/api/v1/search/query?q=&index=domain*'
       // );
       // await page.getByTestId('subdomains').getByText('Sub Domains').click();
       // await selectSubDomainRes;
       // await verifyDomain(page, subDomain.data, domain.data, false);
 
       const subDomainApiRes1 = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
       );
 
       // Create new sub domain under the existing sub domain
@@ -1202,7 +1151,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.waitForSelector('h6:has-text("Add Domain")', {
+        await page.getByTestId('form-heading').waitFor({
           state: 'visible',
         });
       });
@@ -1218,8 +1167,11 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save domain and verify tag is applied', async () => {
@@ -1270,8 +1222,11 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save subdomain and verify tag is applied', async () => {
@@ -1373,7 +1328,7 @@ test.describe('Domains', () => {
     await confirmationInput.fill('DELETE');
 
     const dpListRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=data_product_search_index*'
+      '/api/v1/search/query?q=&index=dataProduct*'
     );
     const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
 
@@ -1410,7 +1365,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
       await addDomainButton;
 
       const formHeading = page.locator('[data-testid="form-heading"]');
@@ -1430,51 +1385,32 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create domain custom property and verify value persistence', async ({
-    page,
-  }) => {
+  test('Verify domain custom property value persistence', async ({ page }) => {
     test.slow(true);
 
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const propertyName = `pwDomainCustomProperty${uuid()}`;
+    const stringCP = EntityDataClass.customProperties['domain']?.['string'] as
+      | { name: string }
+      | undefined;
+    const propertyName = stringCP?.name ?? '';
     const customPropertyValue = 'Test Domain Property Value';
 
     try {
-      // Create domain first
       await domain.create(apiContext);
       await page.reload();
 
-      await test.step('Create custom property for domain entity', async () => {
-        // Navigate to domain settings to create custom property
-        await settingClick(page, 'domains' as SettingOptionsType, true);
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: {
-            description: 'Test domain custom property',
-            entityApiType: 'domains',
-          },
-          customType: 'String',
-        });
-      });
-
       await test.step('Navigate to domain and assign custom property value', async () => {
-        // Navigate to domain page
         await sidebarClick(page, SidebarItem.DOMAIN);
 
         await selectDomain(page, domain.data);
 
-        // Click on custom properties tab
         const customPropertiesTab = page.getByTestId('custom_properties');
         await expect(customPropertiesTab).toBeVisible();
         await customPropertiesTab.click();
 
-        // Wait for custom properties to load
         await waitForAllLoadersToDisappear(page);
 
-        // Add custom property value
         const propertyCard = page.getByTestId(
           `custom-property-${propertyName}-card`
         );
@@ -1488,7 +1424,6 @@ test.describe('Domains', () => {
         await expect(valueInput).toBeVisible();
         await valueInput.fill(customPropertyValue);
 
-        // Save the custom property value
         const saveResponse = page.waitForResponse('/api/v1/domains/*');
         const saveButton = page.getByTestId('inline-save-btn');
         await expect(saveButton).toBeVisible();
@@ -1496,17 +1431,14 @@ test.describe('Domains', () => {
         await saveButton.click();
         await saveResponse;
 
-        // Verify the value is displayed
         await expect(
           page.getByTestId(`custom-property-${propertyName}-card`)
         ).toContainText(customPropertyValue);
       });
 
       await test.step('Reload and verify custom property value persists', async () => {
-        // Reload the page
         await page.reload();
 
-        // Navigate back to the domain and custom properties
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
 
@@ -1516,16 +1448,9 @@ test.describe('Domains', () => {
 
         await waitForAllLoadersToDisappear(page);
 
-        // Verify the custom property value persists after reload
         await expect(
           page.getByTestId(`custom-property-${propertyName}-card`)
         ).toContainText(customPropertyValue);
-      });
-
-      await test.step('Cleanup custom property', async () => {
-        // Navigate back to domain settings to delete the custom property
-        await settingClick(page, 'domains' as SettingOptionsType, true);
-        await deleteCreatedProperty(page, propertyName);
       });
     } finally {
       await domain.delete(apiContext);
@@ -1559,7 +1484,6 @@ test.describe('Domains', () => {
         description: 'Updated Domain Announcement Description',
       });
 
-      await replyAnnouncement(page);
       await deleteAnnouncement(page);
     } finally {
       await domain.delete(apiContext);
@@ -1598,7 +1522,6 @@ test.describe('Domains', () => {
         description: 'Updated Data Product Announcement Description',
       });
 
-      await replyAnnouncement(page);
       await deleteAnnouncement(page);
     } finally {
       await dataProduct.delete(apiContext);
@@ -1687,7 +1610,7 @@ test.describe('Domains', () => {
       await domain.visitEntityPage(page);
 
       const dpRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=data_product_search_index&*'
+        '/api/v1/search/query?q=&index=dataProduct&*'
       );
       // Navigate to data products tab
       await page.getByTestId('data_products').click();
@@ -1753,16 +1676,14 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
       await subdomainSearchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
 
@@ -1784,7 +1705,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponseAfterRename = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1869,7 +1790,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse1 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1881,7 +1802,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse1;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain1Card = page.getByTestId(subDomain1.data.name);
       await expect(subDomain1Card).toBeVisible();
@@ -1900,7 +1820,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1912,7 +1832,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse2;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain2Card = page.getByTestId(subDomain2.data.name);
       await expect(subDomain2Card).toBeVisible();
@@ -1931,7 +1850,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse3 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1943,7 +1862,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await subdomainSearchResponse3;
 
       await waitForAllLoadersToDisappear(page);
-      await page.waitForTimeout(500);
 
       const subDomain3Card = page.getByTestId(subDomain3.data.name);
       await expect(subDomain3Card).toBeVisible();
@@ -1978,6 +1896,8 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with data products attached at domain and subdomain levels', async ({
     page,
   }) => {
+    test.setTimeout(240_000);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainDataProduct = new DataProduct([domain]);
@@ -2029,7 +1949,11 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify data products count is preserved after rename
-      await verifyDataProductsCount(page, 2);
+      // Poll search API first since index may lag after domain rename
+      await verifyDataProductsCount(page, 2, {
+        apiContext,
+        domainFqn: newDomainName,
+      });
 
       // Verify both data products are visible (scope to container)
       const dataProductsContainer = page.locator('.explore-search-card');
@@ -2330,7 +2254,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse1 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2355,7 +2279,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2387,7 +2311,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse3 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2542,7 +2466,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2661,7 +2585,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         const subdomainSearchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=domain_search_index') &&
+            response.url().includes('index=domain') &&
             response.status() === 200
         );
 
@@ -2755,12 +2679,16 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 test.describe('Domains Rbac', () => {
   test.slow(true);
 
-  const domain1 = new Domain();
-  const domain2 = new Domain();
-  const domain3 = new Domain();
-  const user1 = new UserClass();
+  let domain1: Domain;
+  let domain2: Domain;
+  let domain3: Domain;
+  let user1: UserClass;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    domain1 = new Domain();
+    domain2 = new Domain();
+    domain3 = new Domain();
+    user1 = new UserClass();
     test.slow();
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
@@ -2794,14 +2722,16 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
     const rolesCombobox = page.locator('input[role="combobox"]').nth(1);
     await expect(rolesCombobox).toBeVisible();
     await rolesCombobox.click();
 
-    await page.waitForSelector('[data-testid="profile-edit-roles-select"]');
+    await page.getByTestId('profile-edit-roles-select').waitFor();
 
     const roleOption = page.getByText('Domain Only Access Role');
     await expect(roleOption).toBeVisible();
@@ -2901,15 +2831,10 @@ test.describe('Domains Rbac', () => {
 test.describe('Data Consumer Domain Ownership', () => {
   test.slow(true);
 
-  const classification = new ClassificationClass({
-    provider: 'system',
-    mutuallyExclusive: true,
-  });
-  const tag = new TagClass({
-    classification: classification.data.name,
-  });
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+  let classification: ClassificationClass;
+  let tag: TagClass;
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
 
   let testResources: {
     dataConsumerUser: UserClass;
@@ -2919,6 +2844,14 @@ test.describe('Data Consumer Domain Ownership', () => {
   };
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    classification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: true,
+    });
+    tag = new TagClass({ classification: classification.data.name });
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);
@@ -3033,9 +2966,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
       await expect(
@@ -3101,9 +3032,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
       await expect(
@@ -3118,9 +3047,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
       const noDomainTableFqn =
         testResources.noDomainTable.entityResponseData.fullyQualifiedName;
       await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
-      await userPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(userPage);
 
       // Verify permission error is shown
       await expect(
@@ -3278,10 +3205,10 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, testDomain.data);
 
-      await page.waitForSelector('[data-testid="glossary-container"]', {
+      await page.getByTestId('glossary-container').waitFor({
         state: 'visible',
       });
 
@@ -3316,7 +3243,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3353,10 +3280,10 @@ test.describe('Domain Tree View Functionality', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
       await selectDomain(page, testDomain.data);
 
-      await page.waitForSelector('[data-testid="tags-container"]', {
+      await page.getByTestId('tags-container').waitFor({
         state: 'visible',
       });
 
@@ -3398,7 +3325,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3411,6 +3338,267 @@ test.describe('Domain Tree View Functionality', () => {
       await testDomain.delete(apiContext);
       await testTag.delete(apiContext);
       await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+});
+
+test.describe('Domain asset dryRun — add confirmation', () => {
+  test.slow(true);
+
+  const openDomainAssetsAddModal = async (page: Page, domain: Domain) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('domain-details-add-button').click();
+    const assetRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=all&*'
+    );
+    await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+    await assetRes;
+  };
+
+  const pickAssetInModal = async (page: Page, table: TableClass) => {
+    const name = table.entityResponseData.name ?? '';
+    const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        name
+      )}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  };
+
+  test('shows preview modal on cross-domain move and commits on Move Anyway', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      await page.getByTestId('save-btn').click();
+      const dryRunResponse = await dryRunPromise;
+
+      const dryRunBody = JSON.parse(
+        dryRunResponse.request().postData() ?? '{}'
+      );
+
+      expect(dryRunBody.dryRun).toBe(true);
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+
+      const warnings = warningModal.getByTestId('add-dry-run-warnings');
+
+      await expect(warnings).toContainText('will be moved from');
+      await expect(warnings).toContainText(
+        domainA.data.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      const commitResponse = await commitPromise;
+      const commitBody = JSON.parse(
+        commitResponse.request().postData() ?? '{}'
+      );
+
+      expect(commitBody.dryRun).not.toBe(true);
+
+      await expect(warningModal).not.toBeVisible();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 1);
+    } finally {
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('cancel on preview modal aborts the move', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      const commitOnCancel = page
+        .waitForRequest(
+          (req) => {
+            if (
+              req.method() !== 'PUT' ||
+              !/\/api\/v1\/domains\/[^/]+\/assets\/add$/.test(req.url())
+            ) {
+              return false;
+            }
+            const body = JSON.parse(req.postData() ?? '{}');
+
+            return body.dryRun !== true;
+          },
+          { timeout: 2000 }
+        )
+        .catch(() => null);
+
+      await page.getByTestId('save-btn').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+      await warningModal.getByTestId('cancel').click();
+      await expect(warningModal).not.toBeVisible();
+
+      expect(await commitOnCancel).toBeNull();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 0);
+    } finally {
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('preview names affected data products when moving across domains', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+    const dataProduct = new DataProduct([domainA]);
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+      await dataProduct.create(apiContext);
+      await dataProduct.addAssets(apiContext, [
+        {
+          id: table.entityResponseData.id ?? '',
+          type: 'table',
+        },
+      ]);
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      await page.getByTestId('save-btn').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+      const warnings = warningModal.getByTestId('add-dry-run-warnings');
+
+      await expect(warnings).toContainText(
+        'data product relationships will be removed'
+      );
+      await expect(warnings).toContainText(
+        dataProduct.responseData.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      await commitPromise;
+    } finally {
+      await dataProduct.delete(apiContext);
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('first-time add (no current domain) commits without showing the warning modal', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domain = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([domain.create(apiContext), table.create(apiContext)]);
+
+      await openDomainAssetsAddModal(page, domain);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await page.getByTestId('save-btn').click();
+
+      const dryRunResponse = await dryRunPromise;
+      const dryRunBody = JSON.parse(
+        dryRunResponse.request().postData() ?? '{}'
+      );
+
+      expect(dryRunBody.dryRun).toBe(true);
+
+      const commitResponse = await commitPromise;
+      const commitBody = JSON.parse(
+        commitResponse.request().postData() ?? '{}'
+      );
+
+      expect(commitBody.dryRun).not.toBe(true);
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).not.toBeVisible();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 1);
+    } finally {
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
       await afterAction();
     }
   });

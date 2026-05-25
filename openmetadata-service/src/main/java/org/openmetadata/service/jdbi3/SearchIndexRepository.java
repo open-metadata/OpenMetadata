@@ -24,7 +24,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
-import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -34,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -65,6 +65,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
 
   public SearchIndexRepository() {
     super(
@@ -73,7 +74,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -261,8 +263,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Then, if fields are requested, also fetch field-level tags
     if (fields.contains("fields")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(searchIndexes, SearchIndex::getFields);
     }
   }
 
@@ -461,7 +462,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         break;
       }
     }
-    if (!"".equals(childSchemaName) && schemaField != null) {
+    if (!childSchemaName.isEmpty() && schemaField != null) {
       schemaField = getChildSchemaField(schemaField.getChildren(), childSchemaName);
     }
     if (schemaField == null) {
@@ -547,28 +548,24 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           });
       compareAndUpdate(
           "searchIndexSettings",
-          () -> {
-            recordChange(
-                "searchIndexSettings",
-                original.getSearchIndexSettings(),
-                updated.getSearchIndexSettings());
-          });
+          () ->
+              recordChange(
+                  "searchIndexSettings",
+                  original.getSearchIndexSettings(),
+                  updated.getSearchIndexSettings()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "indexType",
-          () -> {
-            recordChange("indexType", original.getIndexType(), updated.getIndexType());
-          });
+          () -> recordChange("indexType", original.getIndexType(), updated.getIndexType()));
     }
 
     private void updateSearchIndexFields(
@@ -615,53 +612,59 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        updateFieldDescription(stored, updated);
-        updateFieldDataTypeDisplay(stored, updated);
-        updateFieldDisplayName(stored, updated);
+        String searchFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        updateFieldDescription(searchFieldPrefix, stored, updated);
+        updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
+        updateFieldDisplayName(searchFieldPrefix, stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
             stored.getTags(),
             updated.getTags());
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
           updateSearchIndexFields(
-              childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+              searchFieldPrefix, stored.getChildren(), updated.getChildren(), fieldMatch);
         }
       }
       majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
     }
 
-    private void updateFieldDescription(SearchIndexField origField, SearchIndexField updatedField) {
+    private void updateFieldDescription(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
         updatedField.setDescription(origField.getDescription());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DESCRIPTION);
-      recordChange(field, origField.getDescription(), updatedField.getDescription());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DESCRIPTION),
+          origField.getDescription(),
+          updatedField.getDescription());
     }
 
-    private void updateFieldDisplayName(SearchIndexField origField, SearchIndexField updatedField) {
-      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
+    private void updateFieldDisplayName(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
         updatedField.setDisplayName(origField.getDisplayName());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DISPLAY_NAME);
-      recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DISPLAY_NAME),
+          origField.getDisplayName(),
+          updatedField.getDisplayName());
     }
 
     private void updateFieldDataTypeDisplay(
-        SearchIndexField origField, SearchIndexField updatedField) {
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
       if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
-        // Revert the non-empty field dataTypeDisplay if being updated by a bot
         updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
         return;
       }
-      String field = getSearchIndexField(original, origField, FIELD_DATA_TYPE_DISPLAY);
-      recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DATA_TYPE_DISPLAY),
+          origField.getDataTypeDisplay(),
+          updatedField.getDataTypeDisplay());
     }
   }
 }

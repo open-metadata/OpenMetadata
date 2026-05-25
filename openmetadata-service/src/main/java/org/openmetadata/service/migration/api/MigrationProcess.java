@@ -40,12 +40,14 @@ import org.openmetadata.service.migration.context.MigrationOps;
  * Even for pure Java migrations, the directory structure MUST exist - SQL files can be empty but the
  * directory structure is mandatory.
  *
- * <p>Java migrations must follow this naming convention:
+ * <p>Native OpenMetadata Java migrations must follow this naming convention:
  * {@code org.openmetadata.service.migration.[dbPackageName].[versionPackage].Migration}
  * Example: {@code org.openmetadata.service.migration.postgres.v120.Migration}
  *
- * In collate:
- * {@code io.collate.service.migration.[dbPackageName].[versionPackage].Migration}
+ * <p>Migrations that ship outside of OpenMetadata (extension migration directories) are resolved
+ * by implementations of {@link MigrationProcessExtensionProvider} registered via
+ * {@code java.util.ServiceLoader}. When no provider handles a given extension version, the
+ * workflow falls back to {@link MigrationProcessImpl} (SQL changes only, no Java data migration).
  *
  * <p>Java migrations should extend {@code MigrationProcessImpl} and override required methods,
  * particularly {@code runDataMigration()} and {@code getMigrationOps()}.
@@ -78,11 +80,16 @@ public interface MigrationProcess {
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);
 
-  // This method is to run code to fix any data
+  // This method is to run code to fix any data. Implementations must be idempotent because
+  // force mode and continuous reprocessing can invoke it multiple times for the same version.
   void runDataMigration();
 
   // This method is to run SQL which can be part of the transaction post data migrations
   Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration);
+
+  boolean isReprocessing();
+
+  boolean hasNewStatements();
 
   void close();
 }

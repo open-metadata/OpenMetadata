@@ -82,11 +82,6 @@ public class SecurityServiceResource
   }
 
   @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    return null;
-  }
-
-  @Override
   protected SecurityService nullifyConnection(SecurityService service) {
     return service.withConnection(null);
   }

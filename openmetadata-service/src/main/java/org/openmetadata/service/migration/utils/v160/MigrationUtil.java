@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TABLE;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,9 @@ public class MigrationUtil {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      if (organizationPolicy.getRules() == null) {
+        organizationPolicy.setRules(new ArrayList<>());
+      }
       boolean noViewAllRule = true;
       for (Rule rule : organizationPolicy.getRules()) {
         if (rule.getName().equals("OrganizationPolicy-ViewAll-Rule")) {

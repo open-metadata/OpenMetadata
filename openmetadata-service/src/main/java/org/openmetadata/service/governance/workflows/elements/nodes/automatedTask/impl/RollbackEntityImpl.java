@@ -61,7 +61,7 @@ public class RollbackEntityImpl implements JavaDelegate {
         updatedBy = "governance-bot";
       }
 
-      EntityInterface currentEntity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface currentEntity = Entity.getEntity(entityLink, "", Include.ALL);
 
       String entityType = currentEntity.getEntityReference().getType();
       UUID entityId = currentEntity.getId();
@@ -211,8 +211,7 @@ public class RollbackEntityImpl implements JavaDelegate {
         return null;
       }
 
-      if (statusObj instanceof EntityStatus) {
-        EntityStatus status = (EntityStatus) statusObj;
+      if (statusObj instanceof EntityStatus status) {
         LOG.debug(
             "[RollbackEntity] Checking status: '{}' for version {}", status, entity.getVersion());
 

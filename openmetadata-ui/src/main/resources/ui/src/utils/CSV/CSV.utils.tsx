@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse, unparse } from 'papaparse';
-import { Column } from 'react-data-grid';
+import { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -52,6 +53,7 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   fullyQualifiedName: 300,
   tiers: 120,
   status: 70,
+  parameterValues: 300,
 };
 
 export const CSV_DISABLED_COLUMNS = [
@@ -103,6 +105,19 @@ export const renderColumnDataEditor = (
           reducePreviewLineClass="max-one-line"
         />
       );
+    case 'parameterValues':
+      return value ? (
+        <Tooltip
+          containerClassName="tw:max-w-sm tw:break-all"
+          placement="top"
+          title={value}>
+          <TooltipTrigger>
+            <span className="tw:block tw:truncate">{value}</span>
+          </TooltipTrigger>
+        </Tooltip>
+      ) : (
+        value
+      );
 
     default:
       return value;
@@ -118,7 +133,7 @@ export const getColumnConfig = (
   },
   editable = false,
   isBulkEdit = false
-): Column<any> => {
+): Column<Record<string, unknown>> => {
   const colType = column.split('.').pop() ?? '';
   const disabledColumns = isBulkEdit
     ? CSV_DISABLED_COLUMNS.includes(colType)
@@ -136,13 +151,13 @@ export const getColumnConfig = (
       entityType,
       multipleOwner
     ),
-    renderCell: (data: any) =>
+    renderCell: (data: RenderCellProps<Record<string, unknown>>) =>
       renderColumnDataEditor(colType, {
-        value: data.row[column],
+        value: data.row[column] as string | undefined,
         data: { details: '', glossaryStatus: '' },
       }),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-  } as Column<any>;
+  } as Column<Record<string, unknown>>;
 };
 
 export const getEntityColumnsAndDataSourceFromCSV = (

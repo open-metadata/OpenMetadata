@@ -12,12 +12,24 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/constants';
+import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
 import { Column } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import VirtualColumnList, {
   VirtualColumnListProps,
 } from './VirtualColumnList.component';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ children, onClick, disabled, 'data-testid': testId }) => (
+        <button data-testid={testId} disabled={disabled} onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+}));
 
 const mockUpdateColumnsInCurrentPages = jest.fn();
 const mockUseLineageStore = {

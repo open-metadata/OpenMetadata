@@ -17,11 +17,9 @@ export interface InformixConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is an optional parameter, if you would like to restrict
-     * the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts
-     * to scan all the databases.
+     * Database of the data source.
      */
-    database?: string;
+    database: string;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
@@ -30,6 +28,11 @@ export interface InformixConnection {
      * Host and port of the Informix service.
      */
     hostPort: string;
+    /**
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
+     */
+    ingestAllDatabases?: boolean;
     /**
      * Password to connect to Informix.
      */
@@ -62,6 +65,7 @@ export interface InformixConnection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
     supportsProfiler?:             boolean;

@@ -19,87 +19,87 @@ export const navbarSearchItems = [
   },
   {
     label: 'Database',
-    searchIndex: 'database_search_index',
+    searchIndex: 'database',
   },
   {
     label: 'Database Schema',
-    searchIndex: 'database_schema_search_index',
+    searchIndex: 'databaseSchema',
   },
   {
     label: 'Table',
-    searchIndex: 'table_search_index',
+    searchIndex: 'table',
   },
   {
     label: 'Topic',
-    searchIndex: 'topic_search_index',
+    searchIndex: 'topic',
   },
   {
     label: 'Dashboard',
-    searchIndex: 'dashboard_search_index',
+    searchIndex: 'dashboard',
   },
   {
     label: 'Pipeline',
-    searchIndex: 'pipeline_search_index',
+    searchIndex: 'pipeline',
   },
   {
     label: 'ML Model',
-    searchIndex: 'mlmodel_search_index',
+    searchIndex: 'mlmodel',
   },
   {
     label: 'Container',
-    searchIndex: 'container_search_index',
+    searchIndex: 'container',
   },
   {
     label: 'Stored Procedure',
-    searchIndex: 'stored_procedure_search_index',
+    searchIndex: 'storedProcedure',
   },
   {
     label: 'Data Model',
-    searchIndex: 'dashboard_data_model_search_index',
+    searchIndex: 'dashboardDataModel',
   },
   {
     label: 'Glossary',
-    searchIndex: 'glossary_term_search_index',
+    searchIndex: 'glossaryTerm',
   },
   {
     label: 'Tag',
-    searchIndex: 'tag_search_index',
+    searchIndex: 'tag',
   },
   {
     label: 'Search Index',
-    searchIndex: 'search_entity_search_index',
+    searchIndex: 'searchIndex',
   },
   {
     label: 'Data Product',
-    searchIndex: 'data_product_search_index',
+    searchIndex: 'dataProduct',
   },
   {
     label: 'API Endpoint',
-    searchIndex: 'api_endpoint_search_index',
+    searchIndex: 'apiEndpoint',
   },
   {
     label: 'API Collection',
-    searchIndex: 'api_collection_search_index',
+    searchIndex: 'apiCollection',
   },
   {
     label: 'Metric',
-    searchIndex: 'metric_search_index',
+    searchIndex: 'metric',
   },
   {
     label: 'Directory',
-    searchIndex: 'directory_search_index',
+    searchIndex: 'directory',
   },
   {
     label: 'File',
-    searchIndex: 'file_search_index',
+    searchIndex: 'file',
   },
   {
     label: 'Spreadsheet',
-    searchIndex: 'spreadsheet_search_index',
+    searchIndex: 'spreadsheet',
   },
   {
     label: 'Worksheet',
-    searchIndex: 'worksheet_search_index',
+    searchIndex: 'worksheet',
   },
 ];
 
@@ -112,7 +112,7 @@ export const selectOption = async (
   await page.mouse.move(1280, 0);
 
   await dropdownLocator.click();
-  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -144,7 +144,7 @@ export const selectOption = async (
     // Scroll down
     await page.mouse.wheel(0, scrollStep);
 
-    // Small delay to allow DOM to update
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- DOM update delay after scroll
     await page.waitForTimeout(100);
 
     scrollAttempts++;

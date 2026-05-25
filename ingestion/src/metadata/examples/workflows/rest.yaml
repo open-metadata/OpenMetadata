@@ -4,10 +4,21 @@ source:
   serviceConnection:
     config:
       type: Rest
+      # Provide one of the following openAPISchemaConnection options:
+      # Option 1: Fetch schema from a URL
       openAPISchemaConnection:
         openAPISchemaURL: https://petstore3.swagger.io/api/v3/openapi.json
-        # Or use a local file path instead:
-        # openAPISchemaFilePath: /path/to/openapi.json
+      # Option 2: Read schema from a local file path
+      # openAPISchemaConnection:
+      #   openAPISchemaFilePath: /path/to/openapi.json
+      # Option 3: Download schema from an S3 file
+      # openAPISchemaConnection:
+      #   openAPISchemaS3URL: https://<bucket>.s3.<region>.amazonaws.com/path/to/openapi.json
+      #   awsCredentials:
+      #     awsRegion: <aws-region>
+      #     awsAccessKeyId: <aws-access-key-id>
+      #     awsSecretAccessKey: <aws-secret-access-key>
+      #     awsSessionToken: <aws-session-token>
       docURL: https://petstore3.swagger.io/
       # token: <jwt_token>
   sourceConfig:

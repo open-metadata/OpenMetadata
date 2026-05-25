@@ -1,7 +1,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import io.dropwizard.core.setup.Bootstrap;
@@ -11,6 +10,7 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import jakarta.servlet.ServletRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -69,7 +69,7 @@ public class MicrometerBundleTest {
 
     // The bundle creates real objects, not mocks, so we can't verify mock calls
     // Instead, verify that the objects were created correctly
-    assertTrue(bundle.getPrometheusMeterRegistry().getMeters().size() > 0);
+    assertFalse(bundle.getPrometheusMeterRegistry().getMeters().isEmpty());
     verify(jerseyEnv, times(1))
         .register(any(org.glassfish.jersey.internal.inject.AbstractBinder.class));
   }
@@ -85,7 +85,8 @@ public class MicrometerBundleTest {
 
     // Add some test metrics
     registry.counter("test_counter", "type", "test").increment();
-    registry.gauge("test_gauge", 42.0);
+    AtomicReference<Double> testGauge = new AtomicReference<>(42.0);
+    registry.gauge("test_gauge", testGauge, AtomicReference::get);
 
     // Scrape metrics
     String metrics = registry.scrape();
@@ -119,7 +120,7 @@ public class MicrometerBundleTest {
 
     // Verify the registry has meters registered
     assertTrue(
-        bundle.getPrometheusMeterRegistry().getMeters().size() > 0,
+        !bundle.getPrometheusMeterRegistry().getMeters().isEmpty(),
         "Should have registered meters");
     assertTrue(metrics.length() > 1000, "Should have substantial metrics output");
   }

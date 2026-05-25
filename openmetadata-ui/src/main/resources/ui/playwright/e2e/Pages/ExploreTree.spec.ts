@@ -12,7 +12,6 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -47,12 +46,15 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
-  const table1 = new TableClass();
-  const table2 = new TableClass();
+test.describe('Explore Tree scenarios', () => {
+  let table1: TableClass;
+  let table2: TableClass;
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+
+    table1 = new TableClass();
+    table2 = new TableClass();
 
     await table1.create(apiContext);
     await table2.create(apiContext);
@@ -62,10 +64,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('explore-tree-title-Databases')
@@ -134,23 +133,32 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     await test.step('Click on tree item and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Glossaries').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryterm');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'glossaryterm' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('glossaryterm-checkbox')).toBeChecked();
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: tag');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'tag' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('tag-checkbox')).toBeChecked();
     });
 
     await test.step('Click on tree item metrics and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Metrics').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: metric');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'metric' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('metric-checkbox')).toBeChecked();
     });
   });
 
@@ -219,11 +227,9 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       await expect(page.getByTestId('table')).toBeVisible();
 
       // Verify all table column headers are correct
-      const headers = await page
-        .locator('.ant-table-thead > tr > .ant-table-cell')
-        .allTextContents();
-
-      expect(headers).toEqual([
+      await expect(
+        page.locator('.ant-table-thead > tr > .ant-table-cell')
+      ).toHaveText([
         'Enabled',
         'Tag',
         'Display Name',
@@ -332,7 +338,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   });
 });
 
-test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Explore page', () => {
   const table = EntityDataClass.table1;
   const dashboard = EntityDataClass.dashboard1;
   const apiEndpoint = EntityDataClass.apiEndpoint1;
@@ -372,9 +378,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   });
 
   test('Verify charts are visible in explore tree', async ({ page }) => {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     const serviceName = dashboard.serviceResponseData.name;
 
@@ -451,7 +455,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   }) => {
     await searchIndex.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await testCopyLinkButton({
       page,
@@ -467,7 +471,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   }) => {
     await apiEndpoint.visitEntityPage(page);
 
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await testCopyLinkButton({
       page,
@@ -482,7 +486,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     page,
   }) => {
     await searchIndex.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
 
@@ -524,7 +528,7 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     page,
   }) => {
     await apiEndpoint.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('schema-fields-table')).toBeVisible();
 
@@ -621,7 +625,11 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     await page.getByTestId('explore-tree-title-tableColumn').click();
     await filterRes;
 
-    const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-    await expect(quickFilter).toContainText('tablecolumn');
+    // Click on filter dropdown
+    await page.getByTestId('search-dropdown-Data Assets').click();
+    // assert on dropdown item visibility
+    await page.getByRole('menuitem', { name: 'tablecolumn' }).waitFor();
+    // assert on checkbox state
+    await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   });
 });

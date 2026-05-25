@@ -76,13 +76,14 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
     List<BulkOperation> requests = new ArrayList<>();
     List<CountDownLatch> pendingRequests = new ArrayList<>();
     long currentBatchSize = 0L;
+    int conversionFailures = 0;
 
     for (Object entity : entities) {
       try {
         BulkOperation request = convertEntityToRequest(entity, entityType);
         long requestSize = estimateOperationSize(request);
 
-        if (currentBatchSize + requestSize > maxPayloadSizeInBytes) {
+        if (!requests.isEmpty() && currentBatchSize + requestSize > maxPayloadSizeInBytes) {
           CountDownLatch latch = new CountDownLatch(1);
           pendingRequests.add(latch);
           sendBulkRequestAsyncWithCallback(new ArrayList<>(requests), entityErrorList, latch);
@@ -94,6 +95,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
         currentBatchSize += requestSize;
 
       } catch (Exception e) {
+        conversionFailures++;
         entityErrorList.add(
             new EntityError()
                 .withMessage(
@@ -103,6 +105,10 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
                 .withEntity(entity.toString()));
         LOG.error("Error converting entity to request", e);
       }
+    }
+
+    if (conversionFailures > 0) {
+      updateStats(0, conversionFailures);
     }
 
     if (!requests.isEmpty()) {
@@ -124,9 +130,10 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
     int totalEntities = entities.size();
     int failedEntities = entityErrorList.size();
     int successfulEntities = totalEntities - failedEntities;
-    updateStats(successfulEntities, failedEntities);
 
     if (!entityErrorList.isEmpty()) {
+      // Async callbacks already update sink stats; these counts are for the surfaced failure
+      // payload.
       throw new SearchIndexException(
           new IndexingError()
               .withErrorSource(SINK)

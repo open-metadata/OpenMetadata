@@ -22,11 +22,12 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
-  addTestCaseToLogicalTestSuite,
+  addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -47,23 +48,74 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    Dialog: ({
+    DialogTrigger: ({
       children,
-      className,
+      isOpen,
+      onOpenChange,
       ...props
     }: {
       children: React.ReactNode;
-      className?: string;
+      isOpen?: boolean;
+      onOpenChange?: (open: boolean) => void;
       [key: string]: unknown;
-    }) => (
-      <div
-        aria-modal="true"
-        className={className}
-        data-testid="dialog"
-        role="dialog"
-        {...props}>
-        {children}
-      </div>
+    }) => {
+      const childArray = React.Children.toArray(children);
+      const trigger = childArray[0];
+      const overlay = childArray.slice(1);
+
+      return (
+        <div data-testid="dialog-trigger" {...props}>
+          {React.isValidElement(trigger) &&
+            React.cloneElement(
+              trigger as React.ReactElement<{ onPress?: () => void }>,
+              {
+                onPress: () => onOpenChange?.(true),
+              }
+            )}
+          {isOpen &&
+            overlay.map((child) =>
+              React.isValidElement(child)
+                ? React.cloneElement(
+                    child as React.ReactElement<{ isOpen?: boolean }>,
+                    { isOpen: true }
+                  )
+                : child
+            )}
+        </div>
+      );
+    },
+    Dialog: Object.assign(
+      ({
+        children,
+        className,
+        ...props
+      }: {
+        children: React.ReactNode;
+        className?: string;
+        [key: string]: unknown;
+      }) => (
+        <div
+          aria-modal="true"
+          className={className}
+          data-testid="dialog"
+          role="dialog"
+          {...props}>
+          {children}
+        </div>
+      ),
+      {
+        Content: ({
+          children,
+          ...contentProps
+        }: {
+          children: React.ReactNode;
+          [key: string]: unknown;
+        }) => (
+          <div data-testid="dialog-content" {...contentProps}>
+            {children}
+          </div>
+        ),
+      }
     ),
     Modal: ({
       children,
@@ -256,21 +308,27 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
     </div>
   ));
 });
+const mockDataQualityTab = jest.fn();
 jest.mock(
   '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
   () => {
-    return jest.fn().mockImplementation(({ onTestUpdate }) => (
-      <div>
-        DataQualityTab.component
-        <button
-          data-testid="update-test-btn"
-          onClick={() =>
-            onTestUpdate?.({ id: 'test-1', name: 'updated-test' })
-          }>
-          Update Test
-        </button>
-      </div>
-    ));
+    return jest.fn().mockImplementation((props) => {
+      const { onTestUpdate } = props;
+      mockDataQualityTab(props);
+
+      return (
+        <div>
+          DataQualityTab.component
+          <button
+            data-testid="update-test-btn"
+            onClick={() =>
+              onTestUpdate?.({ id: 'test-1', name: 'updated-test' })
+            }>
+            Update Test
+          </button>
+        </div>
+      );
+    });
   }
 );
 jest.mock('../../hooks/useApplicationStore', () => {
@@ -367,19 +425,81 @@ jest.mock('../../hooks/useEntityRules', () => ({
 jest.mock(
   '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component',
   () => ({
-    AddTestCaseList: jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <div data-testid="add-test-case-list">
-        AddTestCaseList.component
-        <button
-          data-testid="submit-test-cases-btn"
-          onClick={() => onSubmit(mockTestCases)}>
-          Submit
-        </button>
-        <button data-testid="cancel-test-cases-btn" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    )),
+    AddTestCaseList: jest.fn(
+      (props: {
+        onSubmit: (payload: {
+          selectAll: boolean;
+          includeIds: string[];
+          excludeIds: string[];
+        }) => void | Promise<void>;
+        onCancel?: () => void;
+      }) => {
+        const { onSubmit, onCancel } = props;
+
+        const MockAddTestCaseListPanel = () => {
+          const [filtersApplied, setFiltersApplied] = React.useState(false);
+
+          return (
+            <div data-testid="add-test-case-list">
+              AddTestCaseList.component
+              <button
+                data-testid="mock-apply-test-case-filters"
+                type="button"
+                onClick={() => setFiltersApplied(true)}>
+                Mock apply filters
+              </button>
+              {filtersApplied ? (
+                <span data-testid="mock-filters-applied">Filters applied</span>
+              ) : null}
+              <button
+                data-testid="submit-bulk-partial-single-id"
+                type="button"
+                onClick={() =>
+                  onSubmit({
+                    selectAll: false,
+                    includeIds: ['test-case-1'],
+                    excludeIds: [],
+                  })
+                }>
+                Submit IDs mode (single)
+              </button>
+              <button
+                data-testid="submit-bulk-select-all"
+                type="button"
+                onClick={() =>
+                  onSubmit({
+                    selectAll: true,
+                    includeIds: [],
+                    excludeIds: [],
+                  })
+                }>
+                Submit All mode
+              </button>
+              <button
+                data-testid="submit-bulk-select-all-with-excludes"
+                type="button"
+                onClick={() =>
+                  onSubmit({
+                    selectAll: true,
+                    includeIds: [],
+                    excludeIds: ['test-case-1', 'test-case-2'],
+                  })
+                }>
+                Submit All mode with excludes
+              </button>
+              <button
+                data-testid="cancel-test-cases-btn"
+                type="button"
+                onClick={onCancel}>
+                Cancel
+              </button>
+            </div>
+          );
+        };
+
+        return <MockAddTestCaseListPanel />;
+      }
+    ),
   })
 );
 
@@ -415,7 +535,7 @@ describe('TestSuiteDetailsPage component', () => {
   let mockGetTestSuiteByName: jest.Mock;
   let mockGetListTestCaseBySearch: jest.Mock;
   let mockUpdateTestSuiteById: jest.Mock;
-  let mockAddTestCaseToLogicalTestSuite: jest.Mock;
+  let mockAddTestCasesToLogicalTestSuiteBulk: jest.Mock;
   let mockGetIngestionPipelines: jest.Mock;
   let mockGetEntityPermissionByFqn: jest.Mock;
 
@@ -425,8 +545,8 @@ describe('TestSuiteDetailsPage component', () => {
     mockGetTestSuiteByName = getTestSuiteByName as jest.Mock;
     mockGetListTestCaseBySearch = getListTestCaseBySearch as jest.Mock;
     mockUpdateTestSuiteById = updateTestSuiteById as jest.Mock;
-    mockAddTestCaseToLogicalTestSuite =
-      addTestCaseToLogicalTestSuite as jest.Mock;
+    mockAddTestCasesToLogicalTestSuiteBulk =
+      addTestCasesToLogicalTestSuiteBulk as jest.Mock;
     mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
 
     mockGetEntityPermissionByFqn = jest
@@ -448,7 +568,7 @@ describe('TestSuiteDetailsPage component', () => {
       paging: { total: 0 },
     });
     mockUpdateTestSuiteById.mockResolvedValue(mockTestSuite);
-    mockAddTestCaseToLogicalTestSuite.mockResolvedValue({});
+    mockAddTestCasesToLogicalTestSuiteBulk.mockResolvedValue({});
   });
 
   describe('Render & Initial State', () => {
@@ -513,6 +633,34 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    });
+
+    describe('observabilityRouterClassBase migration', () => {
+      it('DataQualityTab breadcrumbData should include test suite item with url from observabilityRouterClassBase.getTestSuitePath', async () => {
+        await act(async () => {
+          render(<TestSuiteDetailsPage />);
+        });
+
+        await waitFor(() => {
+          expect(mockDataQualityTab).toHaveBeenCalled();
+        });
+
+        const fqn = mockTestSuite.fullyQualifiedName;
+        const expectedUrl = observabilityRouterClassBase.getTestSuitePath(fqn);
+
+        const lastCallProps =
+          mockDataQualityTab.mock.calls[
+            mockDataQualityTab.mock.calls.length - 1
+          ][0];
+
+        expect(lastCallProps.breadcrumbData).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              url: expectedUrl,
+            }),
+          ])
+        );
+      });
     });
   });
 
@@ -623,33 +771,6 @@ describe('TestSuiteDetailsPage component', () => {
       });
     });
 
-    it('should submit test cases and close modal', async () => {
-      await act(async () => {
-        render(<TestSuiteDetailsPage />);
-      });
-
-      const addButton = await screen.findByTestId('add-test-case-btn');
-      await act(async () => {
-        fireEvent.click(addButton);
-      });
-
-      const submitButton = screen.getByTestId('submit-test-cases-btn');
-      await act(async () => {
-        fireEvent.click(submitButton);
-      });
-
-      await waitFor(() => {
-        expect(mockAddTestCaseToLogicalTestSuite).toHaveBeenCalledWith({
-          testCaseIds: ['test-case-1', 'test-case-2'],
-          testSuiteId: 'test-suite-id',
-        });
-      });
-
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      });
-    });
-
     it('should refetch test cases after adding new ones', async () => {
       await act(async () => {
         render(<TestSuiteDetailsPage />);
@@ -663,13 +784,100 @@ describe('TestSuiteDetailsPage component', () => {
         fireEvent.click(addButton);
       });
 
-      const submitButton = screen.getByTestId('submit-test-cases-btn');
+      const submitButton = screen.getByTestId('submit-bulk-partial-single-id');
       await act(async () => {
         fireEvent.click(submitButton);
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Add test cases — bulk API (IDS vs All mode)', () => {
+    const openAddTestCaseModal = async () => {
+      await act(async () => {
+        render(<TestSuiteDetailsPage />);
+      });
+      const addButton = await screen.findByTestId('add-test-case-btn');
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+      await screen.findByTestId('add-test-case-list');
+    };
+
+    it('after filters, selecting one row calls bulk with IDS mode payload (selectAll false, includeIds)', async () => {
+      await openAddTestCaseModal();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mock-apply-test-case-filters'));
+      });
+
+      expect(screen.getByTestId('mock-filters-applied')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-bulk-partial-single-id'));
+      });
+
+      await waitFor(() => {
+        expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
+          'test-suite-id',
+          {
+            selectAll: false,
+            includeIds: ['test-case-1'],
+            excludeIds: [],
+          }
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('without filters, select all calls bulk with All mode payload (selectAll true, empty excludeIds)', async () => {
+      await openAddTestCaseModal();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-bulk-select-all'));
+      });
+
+      await waitFor(() => {
+        expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
+          'test-suite-id',
+          {
+            selectAll: true,
+            includeIds: [],
+            excludeIds: [],
+          }
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('without filters, select all then removing top rows calls bulk with All mode and excludeIds', async () => {
+      await openAddTestCaseModal();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByTestId('submit-bulk-select-all-with-excludes')
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
+          'test-suite-id',
+          {
+            selectAll: true,
+            includeIds: [],
+            excludeIds: ['test-case-1', 'test-case-2'],
+          }
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
     });
   });
@@ -847,7 +1055,7 @@ describe('TestSuiteDetailsPage component', () => {
 
     it('should handle add test case error', async () => {
       const error = new Error('Failed to add test cases');
-      mockAddTestCaseToLogicalTestSuite.mockRejectedValue(error);
+      mockAddTestCasesToLogicalTestSuiteBulk.mockRejectedValue(error);
 
       await act(async () => {
         render(<TestSuiteDetailsPage />);
@@ -858,7 +1066,7 @@ describe('TestSuiteDetailsPage component', () => {
         fireEvent.click(addButton);
       });
 
-      const submitButton = screen.getByTestId('submit-test-cases-btn');
+      const submitButton = screen.getByTestId('submit-bulk-partial-single-id');
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -1004,11 +1212,6 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     it('should handle test cases with no IDs', async () => {
-      const testCasesWithoutIds = [
-        { name: 'test-1', displayName: 'Test 1' },
-        { name: 'test-2', displayName: 'Test 2' },
-      ];
-
       await act(async () => {
         render(<TestSuiteDetailsPage />);
       });
@@ -1018,21 +1221,34 @@ describe('TestSuiteDetailsPage component', () => {
         fireEvent.click(addButton);
       });
 
-      // Mock the submit with test cases without IDs
+      await screen.findByTestId('add-test-case-list');
+
       const AddTestCaseList =
         require('../../components/DataQuality/AddTestCaseList/AddTestCaseList.component')
           .AddTestCaseList as jest.Mock;
+      const lastCall =
+        AddTestCaseList.mock.calls[AddTestCaseList.mock.calls.length - 1];
+      const onSubmit = lastCall?.[0]?.onSubmit;
 
-      const onSubmit = AddTestCaseList.mock.calls[0][0].onSubmit;
+      expect(onSubmit).toBeDefined();
+
       await act(async () => {
-        onSubmit(testCasesWithoutIds);
+        onSubmit({
+          selectAll: false,
+          includeIds: [],
+          excludeIds: [],
+        });
       });
 
       await waitFor(() => {
-        expect(mockAddTestCaseToLogicalTestSuite).toHaveBeenCalledWith({
-          testCaseIds: [],
-          testSuiteId: 'test-suite-id',
-        });
+        expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
+          'test-suite-id',
+          {
+            selectAll: false,
+            includeIds: [],
+            excludeIds: [],
+          }
+        );
       });
     });
   });

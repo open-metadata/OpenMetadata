@@ -14,11 +14,36 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
+
+export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
+export { RelationCardinality };
+
+export interface GlossaryTermRelationType {
+  name: string;
+  displayName: string;
+  description?: string;
+  inverseRelation?: string;
+  rdfPredicate?: string;
+  cardinality?: RelationCardinality;
+  sourceMax?: number | null;
+  targetMax?: number | null;
+  isSymmetric?: boolean;
+  isTransitive?: boolean;
+  isCrossGlossaryAllowed?: boolean;
+  category: RelationCategory;
+  isSystemDefined?: boolean;
+  color?: string;
+}
+
+export interface GlossaryTermRelationSettings {
+  relationTypes: GlossaryTermRelationType[];
+}
 
 export const getSettingsConfigFromConfigType = async (
   configType: SettingType
@@ -85,6 +110,26 @@ export const getSystemConfig = async () => {
     basePath: string;
     rdfEnabled: boolean;
   }>(`system/config/rdf`);
+
+  return response.data;
+};
+
+export const getGlossaryTermRelationSettings =
+  async (): Promise<GlossaryTermRelationSettings> => {
+    const response = await axiosClient.get<Settings>(
+      `/system/settings/glossaryTermRelationSettings`
+    );
+
+    return response.data.config_value as GlossaryTermRelationSettings;
+  };
+
+export const updateGlossaryTermRelationSettings = async (
+  settings: GlossaryTermRelationSettings
+): Promise<Settings> => {
+  const response = await axiosClient.put<Settings>(`/system/settings`, {
+    config_type: 'glossaryTermRelationSettings',
+    config_value: settings,
+  });
 
   return response.data;
 };

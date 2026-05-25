@@ -28,6 +28,7 @@ export type TabsInfoData = {
     | ForwardRefExoticComponent<
         Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>
       >;
+  iconClassName?: string;
 };
 
 export type FieldValue = string | boolean | null | number | undefined;

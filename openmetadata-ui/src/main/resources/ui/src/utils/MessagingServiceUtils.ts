@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import {
   MessagingConnection,
   MessagingServiceType,
@@ -20,6 +20,7 @@ import {
 import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
 import kinesisConnection from '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json';
+import pubSubConnection from '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json';
 import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
@@ -30,7 +31,13 @@ export const getBrokers = (config: MessagingConnection['config']) => {
     retVal = config.bootstrapServers;
   }
 
-  return !isUndefined(retVal) ? retVal : '--';
+  return isUndefined(retVal) ? '--' : retVal;
+};
+
+const SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA = {
+  schemaRegistryTopicSuffixName: {
+    'ui:emptyValue': '',
+  },
 };
 
 export const getMessagingConfig = (type: MessagingServiceType) => {
@@ -40,11 +47,13 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
   switch (type) {
     case MessagingServiceType.Kafka:
       schema = kafkaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
 
       break;
 
@@ -55,6 +64,11 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.Kinesis:
       schema = kinesisConnection;
+
+      break;
+
+    case MessagingServiceType.PubSub:
+      schema = pubSubConnection;
 
       break;
 

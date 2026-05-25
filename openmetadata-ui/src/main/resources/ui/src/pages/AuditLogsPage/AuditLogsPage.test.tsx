@@ -23,6 +23,41 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import AuditLogsPage from './AuditLogsPage';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest
+    .fn()
+    .mockImplementation(({ children, 'data-testid': testId }) => (
+      <span data-testid={testId}>{children}</span>
+    )),
+  Button: jest
+    .fn()
+    .mockImplementation(
+      ({ children, onPress, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onPress ?? onClick}>
+          {children}
+        </button>
+      )
+    ),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ children, onPress, onClick, 'data-testid': testId, icon }) => (
+        <button data-testid={testId} onClick={onPress ?? onClick}>
+          {icon}
+          {children}
+        </button>
+      )
+    ),
+  Card: jest
+    .fn()
+    .mockImplementation(({ children, 'data-testid': testId }) => (
+      <div data-testid={testId}>{children}</div>
+    )),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+}));
+
 const mockAuditLogEntry: AuditLogEntry = {
   id: 1,
   changeEventId: 'ce-1',

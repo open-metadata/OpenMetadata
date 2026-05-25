@@ -15,6 +15,7 @@ package org.openmetadata.service.clients.pipeline.k8s;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.kubernetes.client.openapi.models.V1ConfigMapKeySelector;
@@ -317,6 +318,6 @@ class CronOMJobSerializationTest {
     Map<String, Object> mainPodSpecMap = (Map<String, Object>) omJobSpecMap.get("mainPodSpec");
 
     // Environment variables should be null when input is null
-    assertEquals(null, mainPodSpecMap.get("env"));
+    assertNull(mainPodSpecMap.get("env"));
   }
 }

@@ -40,6 +40,9 @@
         },
         {
           "$ref": "../driveService.json#/definitions/driveConnection"
+        },
+        {
+          "$ref": "../mcpService.json#/definitions/mcpConnection"
         }
       ]
     }

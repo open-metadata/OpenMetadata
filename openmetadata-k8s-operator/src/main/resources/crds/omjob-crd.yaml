@@ -134,6 +134,35 @@ spec:
                     additionalProperties:
                       type: string
                     description: Node selector for pod placement
+                  tolerations:
+                    type: array
+                    description: Tolerations for pod scheduling
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: Taint key to match
+                        operator:
+                          type: string
+                          description: Operator (Exists or Equal)
+                          enum:
+                          - Exists
+                          - Equal
+                        value:
+                          type: string
+                          description: Taint value to match (used with Equal operator)
+                        effect:
+                          type: string
+                          description: Taint effect to match
+                          enum:
+                          - NoSchedule
+                          - PreferNoSchedule
+                          - NoExecute
+                        tolerationSeconds:
+                          type: integer
+                          format: int64
+                          description: Duration in seconds a pod tolerates the taint (for NoExecute)
                   securityContext:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -269,6 +298,35 @@ spec:
                     additionalProperties:
                       type: string
                     description: Node selector for pod placement
+                  tolerations:
+                    type: array
+                    description: Tolerations for pod scheduling
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: Taint key to match
+                        operator:
+                          type: string
+                          description: Operator (Exists or Equal)
+                          enum:
+                          - Exists
+                          - Equal
+                        value:
+                          type: string
+                          description: Taint value to match (used with Equal operator)
+                        effect:
+                          type: string
+                          description: Taint effect to match
+                          enum:
+                          - NoSchedule
+                          - PreferNoSchedule
+                          - NoExecute
+                        tolerationSeconds:
+                          type: integer
+                          format: int64
+                          description: Duration in seconds a pod tolerates the taint (for NoExecute)
                   securityContext:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true

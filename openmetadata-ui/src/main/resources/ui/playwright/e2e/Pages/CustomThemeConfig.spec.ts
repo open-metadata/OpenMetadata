@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect, Request } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
-import { SidebarItem } from '../../constant/sidebar';
-import { redirectToHomePage } from '../../utils/common';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { redirectToHomePage } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 
 const config = {
   logo: 'https://custom-logo.png',
@@ -204,7 +203,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.locator('[data-testid="save-btn"]').click();
     await saveResponse;
 
-    // Wait a bit more to catch any additional requests
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait to catch any additional monogram requests after save
     await page.waitForTimeout(2000);
 
     // Assert monogram URL was called at most once after save

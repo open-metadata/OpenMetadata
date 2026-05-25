@@ -28,6 +28,7 @@ import {
   selectDataProduct,
   verifyAssetsInDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -289,9 +290,7 @@ test.describe('Data Product Domain Migration', () => {
 
       // Refresh page to see updated domain
       await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify domain changed
       await expect(page.getByTestId('domain-link').first()).toContainText(

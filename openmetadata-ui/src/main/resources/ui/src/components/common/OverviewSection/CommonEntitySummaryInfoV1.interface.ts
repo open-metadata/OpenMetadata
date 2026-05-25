@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
 import { To } from 'react-router-dom';
 
 export interface EntityInfoItemV1 {
   name: string;
-  value?: any;
+  value?: React.ReactNode;
   url?: string;
   linkProps?: To;
   isLink?: boolean;

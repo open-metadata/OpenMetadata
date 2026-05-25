@@ -77,9 +77,9 @@ public class OpenMetadataConnectionBuilder {
       initializeBotUser(getBotFromPipeline(ingestionPipeline));
     } catch (Exception e) {
       LOG.warn(
-          String.format(
-              "Could not initialize bot for pipeline [%s] due to [%s]",
-              ingestionPipeline.getPipelineType(), e));
+          "Could not initialize bot for pipeline [{}] due to ",
+          ingestionPipeline.getPipelineType(),
+          e);
       initializeBotUser(Entity.INGESTION_BOT_NAME);
     }
   }
@@ -87,7 +87,7 @@ public class OpenMetadataConnectionBuilder {
   private String getBotFromPipeline(IngestionPipeline ingestionPipeline) {
     String botName;
     switch (ingestionPipeline.getPipelineType()) {
-      case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
+      case METADATA, DBT, POLICY_AGENT -> botName = Entity.INGESTION_BOT_NAME;
       case AUTO_CLASSIFICATION -> botName = "autoClassification-bot";
       case APPLICATION -> {
         String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
@@ -215,7 +215,7 @@ public class OpenMetadataConnectionBuilder {
       }
       return user;
     } catch (EntityNotFoundException ex) {
-      LOG.debug((String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+      LOG.debug("User for bot [{}] not found.", botName);
       return null;
     }
   }

@@ -16,7 +16,7 @@ import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
@@ -26,12 +26,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import {
-  getDataQualityPagePath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
-} from '../../utils/RouterUtils';
-import { useRequiredParams } from '../../utils/useRequiredParams';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
@@ -39,7 +34,7 @@ import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
   const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
-    useRequiredParams<{ tab: DataQualityPageTabs }>();
+    useParams<{ tab?: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -49,7 +44,6 @@ const DataQualityPage = () => {
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
   const [isBundleSuiteModalOpen, setIsBundleSuiteModalOpen] = useState(false);
 
-  // Add handlers for modal
   const handleOpenTestCaseModal = () => {
     setIsTestCaseModalOpen(true);
   };
@@ -68,7 +62,11 @@ const DataQualityPage = () => {
 
   const handleBundleSuiteSuccess = (testSuite: TestSuite) => {
     if (testSuite.fullyQualifiedName) {
-      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -115,13 +113,21 @@ const DataQualityPage = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
+      navigate(
+        observabilityRouterClassBase.getDataQualityPagePath(
+          activeKey as DataQualityPageTabs
+        )
+      );
     }
   };
 
   const handleFormSubmit = (testCase: TestCase) => {
     if (testCase.fullyQualifiedName) {
-      navigate(getTestCaseDetailPagePath(testCase.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          testCase.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -215,9 +221,7 @@ const DataQualityPage = () => {
       )}
       {isBundleSuiteModalOpen && (
         <BundleSuiteForm
-          drawerProps={{
-            open: isBundleSuiteModalOpen,
-          }}
+          drawerProps={{ open: isBundleSuiteModalOpen }}
           onCancel={handleCloseBundleSuiteModal}
           onSuccess={handleBundleSuiteSuccess}
         />

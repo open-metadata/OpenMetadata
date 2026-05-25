@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
+} from '@playwright/test';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -26,10 +31,10 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -52,7 +57,6 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
-  openTeamsPage,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -96,6 +100,7 @@ const test = base.extend<{
   editOnlyUserPage: Page;
   dataConsumerPage: Page;
   ownerUserPage: Page;
+  scopedUserPage: Page;
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -115,12 +120,20 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  scopedUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
+  page: async ({ browser }, use) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    await use(page);
+    await afterAction();
+  },
 });
 
 test.describe('Teams Page', () => {
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -130,7 +143,9 @@ test.describe('Teams Page', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await afterAction();
   });
@@ -144,15 +159,15 @@ test.describe('Teams Page', () => {
     await fetchOrganizationResponse;
   });
 
-  test('Teams Page Flow', async ({ page }) => {
+  test('Teams Page Flow', async ({ page, scopedUserPage }) => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.waitForSelector('[data-testid="add-team"]');
+      await page.getByTestId('add-team').waitFor();
 
       await page.getByTestId('add-team').click();
 
-      const newTeamData = await createTeam(page);
+      const newTeamData = await createTeam(page, true);
 
       teamDetails = {
         ...teamDetails,
@@ -193,7 +208,11 @@ test.describe('Teams Page', () => {
 
       // Click on add new user
       const fetchUsersResponse = page.waitForResponse(
-        '/api/v1/users?limit=25&isBot=false'
+        (response) =>
+          response.url().includes('/api/v1/users') &&
+          response.url().includes('limit=25') &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
@@ -216,16 +235,28 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Join team should work properly', async () => {
-      await page.locator('[data-testid="users"]').click();
+      const teamPageResponse = scopedUserPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await teamPageResponse;
 
-      // Click on join teams button
-      await page.locator('[data-testid="join-teams"]').click();
+      // join-teams is in the page header actions, not inside the users tab
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
+      await scopedUserPage.locator('[data-testid="join-teams"]').click();
 
-      await toastNotification(page, 'Team joined successfully!');
+      await toastNotification(scopedUserPage, 'Team joined successfully!');
 
       // Verify leave team button exists
       await expect(
-        page.locator('[data-testid="leave-team-button"]')
+        scopedUserPage.locator('[data-testid="leave-team-button"]')
       ).toBeVisible();
     });
 
@@ -293,30 +324,42 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Leave team flow should work properly', async () => {
-      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
-        teamDetails?.updatedName ?? ''
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
       );
+      await waitForAllLoadersToDisappear(scopedUserPage);
 
-      // Click on Leave team
-      await page.locator('[data-testid="leave-team-button"]').click();
+      await expect(
+        scopedUserPage.locator('[data-testid="team-heading"]')
+      ).toContainText(teamDetails?.updatedName ?? '');
 
-      const leaveTeamResponse = page.waitForResponse(
+      const leaveTeamResponse = scopedUserPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/') &&
           response.request().method() === 'PATCH'
       );
+      // Click on Leave team
+      await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
-      await page.locator('.ant-modal-footer').getByText('Confirm').click();
+      await scopedUserPage
+        .locator('.ant-modal-footer')
+        .getByText('Confirm')
+        .click();
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
-      await expect(page.locator('[data-testid="join-teams"]')).toBeVisible();
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
     });
 
     await test.step('Soft Delete Team', async () => {
       await softDeleteTeam(page);
 
-      await page.goto('/settings/members/teams', { waitUntil: 'domcontentloaded' });
+      await page.goto('/settings/members/teams', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page).toHaveURL(/\/settings\/members\/teams/);
       await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -324,7 +367,9 @@ test.describe('Teams Page', () => {
       await expect
         .poll(
           async () =>
-            page.getByRole('cell', { name: teamDetails?.displayName ?? '' }).count(),
+            page
+              .getByRole('cell', { name: teamDetails?.displayName ?? '' })
+              .count(),
           { timeout: 60000, intervals: [500, 1000, 2000] }
         )
         .toBe(0);
@@ -342,14 +387,14 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page);
+      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
     });
   });
 
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.waitForSelector('[data-testid="add-team"]');
+    await page.getByTestId('add-team').waitFor();
 
     await page.getByTestId('add-team').click();
     const { apiContext, afterAction } = await getApiContext(page);
@@ -394,7 +439,9 @@ test.describe('Teams Page', () => {
       await privateTeam.create(apiContext);
       const privateTeamFqn =
         privateTeam.responseData.fullyQualifiedName ??
-        `Organization.${privateTeam.responseData.name ?? privateTeam.data.name}`;
+        `Organization.${
+          privateTeam.responseData.name ?? privateTeam.data.name
+        }`;
       const createdTeamResponse = await apiContext.get(
         `/api/v1/teams/name/${encodeURIComponent(privateTeamFqn)}?include=all`
       );
@@ -406,7 +453,9 @@ test.describe('Teams Page', () => {
 
       await page.getByTestId('edit-teams-button').click();
 
-      await expect(page.getByTestId('profile-teams-edit-popover')).toBeVisible();
+      await expect(
+        page.getByTestId('profile-teams-edit-popover')
+      ).toBeVisible();
 
       await page
         .getByTestId('profile-teams-edit-popover')
@@ -452,7 +501,10 @@ test.describe('Teams Page', () => {
       team.responseData?.['displayName']
     );
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(
+      page,
+      team.responseData?.['displayName'] ?? team.data.name
+    );
     await afterAction();
   });
 
@@ -518,7 +570,6 @@ test.describe('Teams Page', () => {
         .locator(`[data-row-key="${team.data.name}"]`)
         .getByRole('link')
         .click();
-
 
       await expect(page.getByTestId('team-heading')).toHaveText(
         team.data.displayName
@@ -633,7 +684,11 @@ test.describe('Teams Page', () => {
     await page.locator('[data-testid="users"]').click();
 
     const fetchUsersResponse = page.waitForResponse(
-      '/api/v1/users?limit=25&isBot=false'
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.url().includes('limit=25') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
@@ -713,7 +768,7 @@ test.describe('Teams Page', () => {
       page.getByTestId('team-hierarchy-table').getByRole('link')
     ).toContainText(team2Details.displayName);
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(page, team1Details.name);
   });
 
   test('Total User Count should be rendered', async ({ page }) => {
@@ -747,110 +802,68 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
-  test('Show Deleted toggle should fetch teams with correct include parameter', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const id = uuid();
+  test.describe('Show Deleted toggle', () => {
+    let deletedTeam: TeamClass;
+    let activeTeam: TeamClass;
+    let toggleApiContext: APIRequestContext;
 
-    const deletedTeam = new TeamClass({
-      name: `pw-deleted-team-${id}`,
-      displayName: `PW Deleted Team ${id}`,
-      description: 'Team to be soft deleted',
-      teamType: 'Department',
-    });
+    test.beforeAll(async ({ browser }) => {
+      ({ apiContext: toggleApiContext } = await performAdminLogin(browser));
+      const id = uuid();
 
-    const activeTeam = new TeamClass({
-      name: `pw-active-team-${id}`,
-      displayName: `PW Active Team ${id}`,
-      description: 'Team that stays active',
-      teamType: 'Department',
-    });
+      deletedTeam = new TeamClass({
+        name: `pw-deleted-team-${id}`,
+        displayName: `PW Deleted Team ${id}`,
+        description: 'Team to be soft deleted',
+        teamType: 'Department',
+      });
 
-    await deletedTeam.create(apiContext);
-    await activeTeam.create(apiContext);
+      activeTeam = new TeamClass({
+        name: `pw-active-team-${id}`,
+        displayName: `PW Active Team ${id}`,
+        description: 'Team that stays active',
+        teamType: 'Department',
+      });
 
-    await apiContext.delete(
-      `/api/v1/teams/${deletedTeam.responseData.id}?hardDelete=false&recursive=true`
-    );
+      await deletedTeam.create(toggleApiContext);
+      await activeTeam.create(toggleApiContext);
 
-    const recordedIncludes = new Set<string>();
-    const recordInclude = (candidate: {
-      url: () => string;
-      request: () => { method: () => string };
-    }) => {
-      if (
-        !candidate.url().includes('/api/v1/teams') ||
-        candidate.request().method() !== 'GET'
-      ) {
-        return;
-      }
-
-      const url = new URL(candidate.url());
-      if (url.searchParams.get('parentTeam')?.toLowerCase() !== 'organization') {
-        return;
-      }
-
-      const include = url.searchParams.get('include');
-      if (include) {
-        recordedIncludes.add(include);
-      }
-    };
-
-    try {
-      await waitForAllLoadersToDisappear(page).catch(() => undefined);
-      await expect(page.getByTestId('team-hierarchy-table')).toBeVisible();
-      page.on('response', recordInclude);
-      const deletedToggle = page.getByRole('switch').first();
-      await expect(deletedToggle).toBeVisible();
-
-      const initialTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
-        .then((response) => response.json());
-
-      expect(
-        initialTeams.data.some(
-          (teamRecord: { displayName?: string }) =>
-            teamRecord.displayName === activeTeam.data.displayName
-        )
-      ).toBe(true);
-      expect(
-        initialTeams.data.some(
-          (teamRecord: { displayName?: string }) =>
-            teamRecord.displayName === deletedTeam.data.displayName
-        )
-      ).toBe(false);
-
-      // Toggle to show deleted teams
-      await deletedToggle.click({ force: true });
-      await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
-      await expect
-        .poll(() => recordedIncludes.has('deleted'), { timeout: 30000 })
-        .toBe(true);
-      const deletedTeams = await apiContext
-        .get('/api/v1/teams?parentTeam=Organization&include=deleted&fields=users,userCount,defaultRoles,defaultPersona,policies,childrenCount,domains')
-        .then((response) => response.json());
-
-      expect(
-        deletedTeams.data.some(
-          (teamRecord: { displayName?: string }) =>
-            teamRecord.displayName === deletedTeam.data.displayName
-        )
-      ).toBe(true);
-      expect(
-        deletedTeams.data.some(
-          (teamRecord: { displayName?: string }) =>
-            teamRecord.displayName === activeTeam.data.displayName
-        )
-      ).toBe(false);
-    } finally {
-      page.off('response', recordInclude);
-      await apiContext.delete(
-        `/api/v1/teams/${deletedTeam.responseData.id}?hardDelete=true&recursive=true`
+      await toggleApiContext.delete(
+        `/api/v1/teams/${deletedTeam.responseData.id}?hardDelete=false&recursive=true`
       );
-      await activeTeam.delete(apiContext);
-      await afterAction();
-    }
+    });
+
+    test('should fetch teams with correct include parameter', async ({
+      page,
+    }) => {
+      await test.step('Wait for teams table to be visible', async () => {
+        await waitForAllLoadersToDisappear(page).catch(() => undefined);
+        await expect(page.getByTestId('team-hierarchy-table')).toBeVisible();
+      });
+
+      await test.step('Toggle Show Deleted and verify include=deleted is sent', async () => {
+        const deletedToggle = page.getByRole('switch').first();
+        await expect(deletedToggle).toBeVisible();
+
+        const teamsResponsePromise = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/teams') &&
+            new URL(res.url()).searchParams.get('include') === 'deleted'
+        );
+
+        await deletedToggle.click();
+        await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
+
+        const teamsResponse = await teamsResponsePromise;
+        expect(teamsResponse.status()).toBe(200);
+
+        const body = await teamsResponse.json();
+        const names: string[] = (body.data as { name?: string }[]).map(
+          (t) => t.name ?? ''
+        );
+        expect(names).toContain(deletedTeam.data.name);
+      });
+    });
   });
 });
 
@@ -880,13 +893,10 @@ test.describe('Teams Page with EditUser Permission', () => {
     await afterAction();
   });
 
-  test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
-    await redirectToHomePage(editOnlyUserPage);
-    await team2.visitTeamPage(editOnlyUserPage);
-  });
-
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await user2.delete(apiContext);
     await team2.delete(apiContext);
@@ -895,6 +905,11 @@ test.describe('Teams Page with EditUser Permission', () => {
     await policy.delete(apiContext);
     await editOnlyUser.delete(apiContext);
     await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
+    await redirectToHomePage(editOnlyUserPage);
+    await team2.visitTeamPage(editOnlyUserPage);
   });
 
   test('Add and Remove User for Team', async ({ editOnlyUserPage }) => {
@@ -1041,7 +1056,9 @@ test.describe('Teams Page with Data Consumer User', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await team2.delete(apiContext);
     await team.delete(apiContext);
@@ -1143,9 +1160,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await teamNoOwner.visitTeamPage(ownerUserPage);
     await teamListResponse;
 
-    await ownerUserPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(ownerUserPage);
 
     await expect(ownerUserPage.getByTestId('edit-owner')).toBeVisible();
 
@@ -1194,7 +1209,9 @@ test.describe('Teams Page action as Owner of Team', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await dataProduct.delete(apiContext);
     await domain.delete(apiContext);

@@ -23,6 +23,7 @@ import {
   ExtraTableDropdownOptions,
   fieldExistsByFQN,
   findColumnByEntityLink,
+  getCertificationTag,
   getColumnOptionsFromTableColumn,
   getEntityIcon,
   getExpandAllKeysToDepth,
@@ -33,8 +34,10 @@ import {
   getSchemaDepth,
   getSchemaFieldCount,
   getTableDetailPageBaseTabs,
+  getTagsWithoutCertification,
   getTagsWithoutTier,
   getTierTags,
+  isCertificationTag,
   isLargeSchema,
   normalizeTags,
   pruneEmptyChildren,
@@ -106,6 +109,86 @@ describe('TableUtils', () => {
       { tagFQN: 'RandomTag' },
       { tagFQN: 'OtherTag' },
     ]);
+  });
+
+  describe('isCertificationTag', () => {
+    it('should return true for a tag starting with Certification.', () => {
+      expect(isCertificationTag('Certification.Gold')).toBe(true);
+    });
+
+    it('should return false for a Tier tag', () => {
+      expect(isCertificationTag('Tier.Tier1')).toBe(false);
+    });
+
+    it('should return false for an unrelated tag', () => {
+      expect(isCertificationTag('PersonalData.Personal')).toBe(false);
+    });
+
+    it('should return false for a tag that contains Certification but does not start with it', () => {
+      expect(isCertificationTag('Custom.Certification.Gold')).toBe(false);
+    });
+  });
+
+  describe('getCertificationTag', () => {
+    it('should return the certification tag when present', () => {
+      const tags = [
+        { tagFQN: 'Tier.Tier1' },
+        { tagFQN: 'Certification.Gold' },
+        { tagFQN: 'PersonalData.Personal' },
+      ] as TagLabel[];
+
+      expect(getCertificationTag(tags)).toStrictEqual({
+        tagFQN: 'Certification.Gold',
+      });
+    });
+
+    it('should return undefined when no certification tag is present', () => {
+      const tags = [
+        { tagFQN: 'Tier.Tier1' },
+        { tagFQN: 'PersonalData.Personal' },
+      ] as TagLabel[];
+
+      expect(getCertificationTag(tags)).toBeUndefined();
+    });
+
+    it('should return undefined for an empty array', () => {
+      expect(getCertificationTag([])).toBeUndefined();
+    });
+  });
+
+  describe('getTagsWithoutCertification', () => {
+    it('should remove certification tags and keep the rest', () => {
+      const tags = [
+        { tagFQN: 'Tier.Tier1' },
+        { tagFQN: 'Certification.Gold' },
+        { tagFQN: 'PersonalData.Personal' },
+      ];
+      const result = getTagsWithoutCertification(tags);
+
+      expect(result).toStrictEqual([
+        { tagFQN: 'Tier.Tier1' },
+        { tagFQN: 'PersonalData.Personal' },
+      ]);
+    });
+
+    it('should return all tags when none are certification tags', () => {
+      const tags = [
+        { tagFQN: 'Tier.Tier1' },
+        { tagFQN: 'PersonalData.Personal' },
+      ];
+
+      expect(getTagsWithoutCertification(tags)).toStrictEqual(tags);
+    });
+
+    it('should return empty array when all tags are certification tags', () => {
+      const tags = [{ tagFQN: 'Certification.Gold' }];
+
+      expect(getTagsWithoutCertification(tags)).toStrictEqual([]);
+    });
+
+    it('should return empty array for an empty input', () => {
+      expect(getTagsWithoutCertification([])).toStrictEqual([]);
+    });
   });
 
   it('getEntityIcon should return null if no icon is found', () => {

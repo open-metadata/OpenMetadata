@@ -14,12 +14,12 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
+import { getEncodedFqn } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 import { SubDomain } from './SubDomain';
-import { getEncodedFqn } from '../../utils/entity';
 
 type UserTeamRef = {
   name: string;
@@ -131,6 +131,10 @@ export class DataProduct extends EntityClass {
     );
 
     return response.body;
+  }
+
+  getDomains(): Domain[] {
+    return this.domains;
   }
 
   private getFqn() {

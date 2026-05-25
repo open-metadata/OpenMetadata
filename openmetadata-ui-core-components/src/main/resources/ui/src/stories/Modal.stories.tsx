@@ -10,30 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react";
-import { AlertTriangle, Building07, Mail01, User01 } from "@untitledui/icons";
-import { Button } from "../components/base/buttons/button";
-import { Input } from "../components/base/input/input";
-import { TextArea } from "../components/base/textarea/textarea";
-import { Select } from "../components/base/select/select";
-import { SelectItem } from "../components/base/select/select-item";
-import { Badge } from "../components/base/badges/badges";
-import { FeaturedIcon } from "../components/foundations/featured-icon/featured-icon";
+import { useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
+import { AlertTriangle, Building07, Mail01, User01 } from '@untitledui/icons';
+import { Button } from '../components/base/buttons/button';
+import { Input } from '../components/base/input/input';
+import { TextArea } from '../components/base/textarea/textarea';
+import { Select } from '../components/base/select/select';
+import { SelectItem } from '../components/base/select/select-item';
+import { Badge } from '../components/base/badges/badges';
+import { FeaturedIcon } from '../components/foundations/featured-icon/featured-icon';
 import {
   Dialog,
   DialogTrigger,
   Modal,
   ModalOverlay,
-} from "../components/application/modals/modal";
+} from '../components/application/modals/modal';
 
 const meta = {
-  title: "Components/Modal",
+  title: 'Components/Modal',
   component: Modal,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Modal>;
 
 export default meta;
@@ -42,7 +42,7 @@ type Story = StoryObj<typeof meta>;
 // ─── Simple title prop ────────────────────────────────────────────────────────
 
 export const WithTitleProp: Story = {
-  name: "Title prop (no sub-components)",
+  name: 'Title prop (no sub-components)',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -53,7 +53,10 @@ export const WithTitleProp: Story = {
         </Button>
         <ModalOverlay>
           <Modal>
-            <Dialog title="Add your company" showCloseButton onClose={() => setIsOpen(false)}>
+            <Dialog
+              showCloseButton
+              title="Add your company"
+              onClose={() => setIsOpen(false)}>
               <Dialog.Content>
                 <p className="tw:text-sm tw:text-secondary">
                   Provide a few details about your organisation to get started.
@@ -81,7 +84,7 @@ export const WithTitleProp: Story = {
 // ─── Full sub-component composition ──────────────────────────────────────────
 
 export const SubComponentComposition: Story = {
-  name: "Sub-component composition",
+  name: 'Sub-component composition',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -95,11 +98,11 @@ export const SubComponentComposition: Story = {
             <Dialog showCloseButton onClose={() => setIsOpen(false)}>
               <Dialog.Header>
                 <FeaturedIcon
-                  color="gray"
-                  theme="modern"
-                  size="lg"
-                  icon={User01}
                   className="tw:max-sm:hidden"
+                  color="gray"
+                  icon={User01}
+                  size="lg"
+                  theme="modern"
                 />
                 <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
                   <span className="tw:text-md tw:font-semibold tw:text-primary">
@@ -114,30 +117,27 @@ export const SubComponentComposition: Story = {
               <div className="tw:w-full tw:border-t tw:border-secondary" />
               <Dialog.Content>
                 <Input
+                  icon={User01}
                   label="Full name"
                   name="name"
                   placeholder="Jane Doe"
-                  icon={User01}
                 />
                 <Input
+                  icon={Mail01}
                   label="Email address"
                   name="email"
-                  type="email"
                   placeholder="jane@acme.com"
-                  icon={Mail01}
+                  type="email"
                 />
                 <Select
-                  label="Role"
-                  placeholder="Select a role"
                   items={[
-                    { id: "admin", label: "Admin" },
-                    { id: "editor", label: "Editor" },
-                    { id: "viewer", label: "Viewer" },
+                    { id: 'admin', label: 'Admin' },
+                    { id: 'editor', label: 'Editor' },
+                    { id: 'viewer', label: 'Viewer' },
                   ]}
-                >
-                  {(item) => (
-                    <SelectItem id={item.id}>{item.label}</SelectItem>
-                  )}
+                  label="Role"
+                  placeholder="Select a role">
+                  {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
                 </Select>
               </Dialog.Content>
               <Dialog.Footer>
@@ -157,7 +157,7 @@ export const SubComponentComposition: Story = {
 // ─── Custom header (no title, custom children) ────────────────────────────────
 
 export const CustomHeader: Story = {
-  name: "Custom header with icon + badge",
+  name: 'Custom header with icon + badge',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -171,11 +171,11 @@ export const CustomHeader: Story = {
             <Dialog showCloseButton onClose={() => setIsOpen(false)}>
               <Dialog.Header>
                 <FeaturedIcon
-                  color="gray"
-                  theme="modern"
-                  size="lg"
-                  icon={Building07}
                   className="tw:max-sm:hidden"
+                  color="gray"
+                  icon={Building07}
+                  size="lg"
+                  theme="modern"
                 />
                 <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
                   <div className="tw:flex tw:items-center tw:gap-2">
@@ -187,7 +187,7 @@ export const CustomHeader: Story = {
                     </Badge>
                   </div>
                   <p className="tw:text-sm tw:text-tertiary">
-                    Create your company profile for free{" "}
+                    Create your company profile for free{' '}
                     <span className="tw:max-md:hidden">
                       in less than 5 minutes.
                     </span>
@@ -203,10 +203,10 @@ export const CustomHeader: Story = {
                   placeholder="e.g. Linear"
                 />
                 <TextArea
+                  className="tw:h-24"
                   label="Description"
                   name="description"
                   placeholder="Write a few sentences about the company..."
-                  className="tw:h-24"
                 />
               </Dialog.Content>
               <Dialog.Footer>
@@ -226,7 +226,7 @@ export const CustomHeader: Story = {
 // ─── Custom footer layout ─────────────────────────────────────────────────────
 
 export const CustomFooter: Story = {
-  name: "Custom footer layout",
+  name: 'Custom footer layout',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -237,29 +237,32 @@ export const CustomFooter: Story = {
         </Button>
         <ModalOverlay>
           <Modal>
-            <Dialog title="Notification settings" showCloseButton onClose={() => setIsOpen(false)}>
+            <Dialog
+              showCloseButton
+              title="Notification settings"
+              onClose={() => setIsOpen(false)}>
               <Dialog.Content>
                 <p className="tw:text-sm tw:text-secondary">
                   Choose how you want to be notified about activity.
                 </p>
                 <Select
-                  label="Email frequency"
-                  placeholder="Select frequency"
                   items={[
-                    { id: "realtime", label: "Real-time" },
-                    { id: "daily", label: "Daily digest" },
-                    { id: "weekly", label: "Weekly digest" },
-                    { id: "never", label: "Never" },
+                    { id: 'realtime', label: 'Real-time' },
+                    { id: 'daily', label: 'Daily digest' },
+                    { id: 'weekly', label: 'Weekly digest' },
+                    { id: 'never', label: 'Never' },
                   ]}
-                >
-                  {(item) => (
-                    <SelectItem id={item.id}>{item.label}</SelectItem>
-                  )}
+                  label="Email frequency"
+                  placeholder="Select frequency">
+                  {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
                 </Select>
               </Dialog.Content>
               {/* Custom footer — full-width single button */}
               <Dialog.Footer className="tw:[&>div:last-child]:tw:grid-cols-1">
-                <Button color="primary" className="tw:w-full" onPress={() => setIsOpen(false)}>
+                <Button
+                  className="tw:w-full"
+                  color="primary"
+                  onPress={() => setIsOpen(false)}>
                   Save settings
                 </Button>
               </Dialog.Footer>
@@ -274,7 +277,7 @@ export const CustomFooter: Story = {
 // ─── Destructive / confirmation ───────────────────────────────────────────────
 
 export const Destructive: Story = {
-  name: "Destructive confirmation",
+  name: 'Destructive confirmation',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -285,14 +288,17 @@ export const Destructive: Story = {
         </Button>
         <ModalOverlay>
           <Modal>
-            <Dialog showCloseButton width={400} onClose={() => setIsOpen(false)}>
+            <Dialog
+              showCloseButton
+              width={400}
+              onClose={() => setIsOpen(false)}>
               <Dialog.Header className="tw:flex-col">
                 <div className="tw:relative tw:w-max">
                   <FeaturedIcon
                     color="error"
-                    theme="light"
-                    size="lg"
                     icon={AlertTriangle}
+                    size="lg"
+                    theme="light"
                   />
                 </div>
                 <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5 tw:mt-4">
@@ -306,10 +312,13 @@ export const Destructive: Story = {
                 </div>
               </Dialog.Header>
               <div className="tw:z-10 tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:p-4 tw:pt-6 tw:*:grow tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6">
-                <Button size="lg" color="secondary" onPress={() => setIsOpen(false)}>
+                <Button
+                  color="secondary"
+                  size="lg"
+                  onPress={() => setIsOpen(false)}>
                   Cancel
                 </Button>
-                <Button size="lg" color="primary-destructive">
+                <Button color="primary-destructive" size="lg">
                   Delete workspace
                 </Button>
               </div>
@@ -324,7 +333,7 @@ export const Destructive: Story = {
 // ─── No close button, controlled open state ───────────────────────────────────
 
 export const ControlledWithNoCloseButton: Story = {
-  name: "Controlled open state (no close button)",
+  name: 'Controlled open state (no close button)',
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -349,10 +358,9 @@ export const ControlledWithNoCloseButton: Story = {
                 </Dialog.Content>
                 <Dialog.Footer>
                   <Button
-                    color="secondary"
                     className="tw:col-span-2"
-                    onPress={() => setIsOpen(false)}
-                  >
+                    color="secondary"
+                    onPress={() => setIsOpen(false)}>
                     Cancel payment
                   </Button>
                 </Dialog.Footer>
@@ -368,7 +376,7 @@ export const ControlledWithNoCloseButton: Story = {
 // ─── Content-only (no header or footer) ──────────────────────────────────────
 
 export const ContentOnly: Story = {
-  name: "Content only (no header/footer)",
+  name: 'Content only (no header/footer)',
   render: () => (
     <DialogTrigger>
       <Button color="secondary">View details</Button>
@@ -379,9 +387,9 @@ export const ContentOnly: Story = {
               <div className="tw:flex tw:flex-col tw:items-center tw:gap-3 tw:text-center">
                 <FeaturedIcon
                   color="success"
-                  theme="modern"
-                  size="lg"
                   icon={Mail01}
+                  size="lg"
+                  theme="modern"
                 />
                 <p className="tw:text-lg tw:font-semibold tw:text-primary">
                   Check your email
@@ -390,7 +398,7 @@ export const ContentOnly: Story = {
                   We sent a verification link to <strong>jane@acme.com</strong>.
                   Click the link to continue.
                 </p>
-                <Button color="primary" className="tw:mt-2">
+                <Button className="tw:mt-2" color="primary">
                   Open email app
                 </Button>
               </div>

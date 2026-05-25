@@ -6,7 +6,6 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
 @Provider
@@ -24,7 +23,7 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
   }
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws IOException {
+  public void filter(ContainerRequestContext requestContext) {
     if (jettyMetrics == null) {
       return;
     }
@@ -39,8 +38,7 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
 
   @Override
   public void filter(
-      ContainerRequestContext requestContext, ContainerResponseContext responseContext)
-      throws IOException {
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     if (!Boolean.TRUE.equals(requestContext.getProperty(ACTIVE_REQUEST_TRACKED))) {
       return;
     }

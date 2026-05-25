@@ -73,11 +73,13 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Test 1: Search for specific term
     const searchInput = page.getByPlaceholder(/search.*term/i);
-    const searchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const searchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('SearchTestTerm5');
 
     await searchResponse;
@@ -98,7 +100,9 @@ test.describe('Glossary tests', () => {
     await searchInput.clear();
     await clearResponse;
 
-    const partialSearchResponse = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const partialSearchResponse = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('TestTerm');
     await partialSearchResponse;
 
@@ -124,7 +128,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Navigate to parent term
     await page.click(
@@ -183,7 +187,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
@@ -235,12 +239,14 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     const searchInput = page.getByPlaceholder(/search.*term/i);
 
     // Search for a term that doesn't exist
-    const noResultsRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
+    const noResultsRes = page.waitForResponse(
+      '**/api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('NonExistentTermXYZ12345');
     await noResultsRes;
 
@@ -262,7 +268,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');
@@ -297,7 +303,7 @@ test.describe('Glossary tests', () => {
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
 
     // Open status filter dropdown
     const dropdownButton = page.getByTestId('glossary-status-dropdown');

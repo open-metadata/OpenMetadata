@@ -77,7 +77,7 @@ public class PrometheusEventMonitor extends EventMonitor {
         default -> throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
       }
     } catch (IllegalArgumentException | CloudWatchException e) {
-      LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to " + e.getMessage());
+      LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to {}", e.getMessage());
     }
   }
 

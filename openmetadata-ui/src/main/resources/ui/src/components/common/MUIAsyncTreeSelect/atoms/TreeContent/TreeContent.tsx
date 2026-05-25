@@ -18,6 +18,14 @@ import React, { FC, memo, MutableRefObject, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../Loader/Loader';
 
+export interface TreeViewApi {
+  setItemExpansion?: (
+    event: React.SyntheticEvent,
+    itemId: string,
+    isExpanded: boolean
+  ) => void;
+}
+
 export interface TreeContentProps {
   loading: boolean;
   error: string | null;
@@ -26,7 +34,7 @@ export interface TreeContentProps {
   selectedItems?: string | null;
   expandedItems?: string[];
   focusedItem?: string;
-  apiRef?: MutableRefObject<any>;
+  apiRef?: MutableRefObject<TreeViewApi | null>;
   loadingMessage?: string;
   noDataMessage?: string;
   onNodeToggle?: SimpleTreeViewProps<boolean>['onExpandedItemsChange'];

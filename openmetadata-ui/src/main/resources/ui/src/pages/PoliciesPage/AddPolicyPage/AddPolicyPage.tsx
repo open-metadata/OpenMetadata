@@ -31,8 +31,8 @@ import {
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';

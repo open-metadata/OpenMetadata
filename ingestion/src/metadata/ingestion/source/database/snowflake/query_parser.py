@@ -11,9 +11,10 @@
 """
 Snowflake Query parser module
 """
+
 from abc import ABC
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import event
 
@@ -43,15 +44,11 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
-            raise InvalidSourceException(
-                f"Expected SnowflakeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SnowflakeConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_sql_statement(
@@ -59,7 +56,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         start_time: datetime,
         end_time: datetime,
         offset: int = 0,
-        limit: int = None,
+        limit: int = None,  # noqa: RUF013
     ) -> str:
         """
         returns sql statement to fetch query logs
@@ -72,23 +69,18 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             result_limit=limit,
             filters=self.get_filters(),
             account_usage=self.service_connection.accountUsageSchema,
-            credit_cost=self.service_connection.creditCost
-            * self.service_connection.creditCost,
+            credit_cost=self.service_connection.creditCost * self.service_connection.creditCost,
             offset=offset,
         )
 
-    def check_life_cycle_query(
-        self, query_type: Optional[str], query_text: Optional[str]
-    ) -> bool:
+    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:  # noqa: UP045
         """
         returns true if query is to be used for life cycle processing.
 
         Override if we have specific parameters
         """
-        if (
-            query_type
-            and query_type.upper()
-            in self.life_cycle_filters  # pylint: disable=no-member
+        if (  # noqa: SIM103
+            query_type and query_type.upper() in self.life_cycle_filters  # pylint: disable=no-member
         ):
             return True
         return False

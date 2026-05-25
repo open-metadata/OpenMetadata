@@ -21,7 +21,7 @@ public interface DataInsightAggregatorClient {
     return buildDIChart(diChart, start, end, false);
   }
 
-  default List<Map<String, String>> fetchDIChartFields() throws IOException {
+  default List<Map<String, String>> fetchDIChartFields() {
     return null;
   }
 

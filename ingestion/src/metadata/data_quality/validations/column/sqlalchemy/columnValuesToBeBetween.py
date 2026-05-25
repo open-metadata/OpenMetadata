@@ -12,8 +12,10 @@
 """
 Validator for column values to be between test case
 """
+
 import math
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -24,22 +26,34 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import is_date_time
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()
 
 
 class ColumnValuesToBeBetweenValidator(
-    BaseColumnValuesToBeBetweenValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeBetweenValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -67,7 +81,7 @@ class ColumnValuesToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for values to be between with proper aggregation
 
         Uses the statistical aggregation helper to:
@@ -93,14 +107,10 @@ class ColumnValuesToBeBetweenValidator(
                 DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
                 Metrics.min.name: Metrics.min(column).fn(),
                 Metrics.max.name: Metrics.max(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
-                    column
-                ),
+                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(column),
             }
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -109,9 +119,7 @@ class ColumnValuesToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -146,3 +154,38 @@ class ColumnValuesToBeBetweenValidator(
         )
 
         return row_count, failed_rows
+
+    def filter(self):
+        column = self.get_column()
+        if is_date_time(column.type):
+            min_bound = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "minValue",
+                type_=datetime.fromtimestamp,
+                default=datetime.min,
+                pre_processor=convert_timestamp,
+            )
+            max_bound = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "maxValue",
+                type_=datetime.fromtimestamp,
+                default=datetime.max,
+                pre_processor=convert_timestamp,
+            )
+        else:
+            min_bound = self.get_min_bound("minValue")
+            max_bound = self.get_max_bound("maxValue")
+
+        filters = []
+        if min_bound is not None:
+            filters.append((column, "lt", min_bound))
+        if max_bound is not None:
+            filters.append((column, "gt", max_bound))
+        return {
+            "filters": filters,
+            "or_filter": True,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

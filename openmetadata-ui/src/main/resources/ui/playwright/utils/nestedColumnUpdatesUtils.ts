@@ -58,6 +58,20 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
         expand: false,
       };
     }
+    case 'Container': {
+      const field0 = entityData.dataModel.columns[3];
+      const field1 = field0.children[0];
+      const field2 = field1.children[0];
+      return {
+        level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
+        level1Key:
+          field1.fullyQualifiedName ?? `${fqn}.${field0.name}.${field1.name}`,
+        level2Key:
+          field2.fullyQualifiedName ??
+          `${fqn}.${field0.name}.${field1.name}.${field2.name}`,
+        expand: true,
+      };
+    }
     case 'Data Model': {
       const field0 = entityData.columns[1];
       const field1 = field0.children[0];

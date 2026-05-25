@@ -33,11 +33,13 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table as TableEntity } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { EntityReference } from '../generated/entity/type';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
@@ -500,7 +502,7 @@ const TopicFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredFields.map((field: any) => (
+      {filteredFields.map((field) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={field}
@@ -556,7 +558,7 @@ const ContainerFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredColumns.map((column: any) => (
+      {filteredColumns.map((column) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={column}
@@ -603,7 +605,7 @@ const PipelineTasksV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredTasks.map((task: any) => {
+        {filteredTasks.map((task: Task) => {
           const isHighlighted = highlights?.tasks?.includes(task.name);
 
           return (
@@ -721,7 +723,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredEndpoints.map((endpoint: any) => {
+        {filteredEndpoints.map((endpoint: EntityReference) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -880,7 +882,7 @@ const DashboardChartsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredCharts.map((chart: any) => {
+        {filteredCharts.map((chart: EntityReference) => {
           const isHighlighted = highlights?.chart?.includes(chart.name);
 
           return (
@@ -1112,7 +1114,7 @@ const APIEndpointSchemaV1: React.FC<{
 
 // Component for Database schemas
 const DatabaseSchemasV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Database;
   highlights?: Record<string, string[]>;
   loading?: boolean;
   searchText?: string;
@@ -1143,7 +1145,7 @@ const DatabaseSchemasV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {filteredSchemas.map((schema: any) => {
+        {filteredSchemas.map((schema: EntityReference) => {
           return (
             <Col key={schema.id} span={24}>
               <FieldCard
@@ -1202,7 +1204,7 @@ const SearchIndexFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      {filteredFields.map((field: any) => (
+      {filteredFields.map((field) => (
         <NestedSchemaFieldCard
           expandedRowKeys={expandedRowKeys}
           field={field}

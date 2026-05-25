@@ -31,6 +31,11 @@ export interface QueryRunnerResponse {
      */
     message?: string;
     /**
+     * S3 or GCS key path where the query results CSV is stored. Present when storage mode is
+     * enabled; mutually exclusive with 'results'.
+     */
+    resultPath?: string;
+    /**
      * Results of the query execution
      */
     results?: TableData;

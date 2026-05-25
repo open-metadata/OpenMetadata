@@ -136,22 +136,22 @@ export const AssetsFilterOptions: Array<{
       entity: i18n.t('label.api-uppercase'),
     }),
     key: EntityType.API_SERVICE,
-    value: SearchIndex.API_SERVICE_INDEX,
+    value: SearchIndex.API_SERVICE,
   },
   {
     label: i18n.t('label.api-collection-plural'),
     key: EntityType.API_COLLECTION,
-    value: SearchIndex.API_COLLECTION_INDEX,
+    value: SearchIndex.API_COLLECTION,
   },
   {
     label: i18n.t('label.api-endpoint-plural'),
     key: EntityType.API_ENDPOINT,
-    value: SearchIndex.API_ENDPOINT_INDEX,
+    value: SearchIndex.API_ENDPOINT,
   },
   {
     label: i18n.t('label.metric-plural'),
     key: EntityType.METRIC,
-    value: SearchIndex.METRIC_SEARCH_INDEX,
+    value: SearchIndex.METRIC,
   },
 ];
 

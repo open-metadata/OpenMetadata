@@ -180,13 +180,13 @@ public class CreateMetricTool implements McpTool {
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
     MetricRepository repo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
-    repo.prepare(metric, true);
-    repo.setFullyQualifiedName(metric);
+    repo.prepareInternal(metric, false);
 
+    String userName = securityContext.getUserPrincipal().getName();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     RestUtil.PutResponse<Metric> response =
-        repo.createOrUpdate(
-            null, metric, securityContext.getUserPrincipal().getName(), impersonatedBy);
+        repo.createOrUpdate(null, metric, userName, impersonatedBy);
+    McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return JsonUtils.getMap(response.getEntity());
   }
 }

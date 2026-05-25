@@ -23,6 +23,8 @@ export const ZOOM_VALUE = 0.65;
 export const MIN_ZOOM_VALUE = 0.1;
 export const MAX_ZOOM_VALUE = 2.5;
 
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
+
 export const ZOOM_TRANSITION_DURATION = 800;
 export const DATATYPES_HAVING_SUBFIELDS = [
   'RECORD',
@@ -40,6 +42,10 @@ export const entityData = [
   {
     type: SearchIndex.DASHBOARD,
     label: 'label.dashboard-plural',
+  },
+  {
+    type: SearchIndex.CHART,
+    label: 'label.chart-plural',
   },
   {
     type: SearchIndex.STORED_PROCEDURE,
@@ -70,33 +76,35 @@ export const entityData = [
     label: 'label.data-model-plural',
   },
   {
-    type: SearchIndex.API_ENDPOINT_INDEX,
+    type: SearchIndex.API_ENDPOINT,
     label: 'label.api-endpoint-plural',
   },
   {
-    type: SearchIndex.METRIC_SEARCH_INDEX,
+    type: SearchIndex.METRIC,
     label: 'label.metric-plural',
   },
   {
-    type: SearchIndex.DIRECTORY_SEARCH_INDEX,
+    type: SearchIndex.DIRECTORY,
     label: 'label.directory-plural',
   },
   {
-    type: SearchIndex.FILE_SEARCH_INDEX,
+    type: SearchIndex.FILE,
     label: 'label.file-plural',
   },
   {
-    type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+    type: SearchIndex.SPREADSHEET,
     label: 'label.spreadsheet-plural',
   },
   {
-    type: SearchIndex.WORKSHEET_SEARCH_INDEX,
+    type: SearchIndex.WORKSHEET,
     label: 'label.worksheet-plural',
   },
 ];
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 66;
+export const TEMP_LINEAGE_NODE_HEIGHT = 40;
+export const NODE_BASE_HEIGHT = 48;
 export const NODE_HEIGHT_WITH_CHILDREN = 109;
 export const COLUMN_NODE_HEIGHT = 32.85;
 

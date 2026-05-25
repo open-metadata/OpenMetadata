@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from '@storybook/react';
 import {
   CheckboxBlankIcon,
   CheckboxCheckedIcon,
   CheckboxIndeterminateIcon,
-} from "../components/checkbox-icons";
+} from '../components/checkbox-icons';
 
 const meta = {
-  title: "Components/CheckboxIcons",
+  title: 'Components/CheckboxIcons',
   component: CheckboxBlankIcon,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof CheckboxBlankIcon>;
 
 export default meta;
@@ -39,7 +39,7 @@ export const Blank: Story = {
 
 export const Checked: Story = {
   render: () => (
-    <div style={{ width: 24, height: 24, color: "#1976d2" }}>
+    <div style={{ width: 24, height: 24, color: '#1976d2' }}>
       <CheckboxCheckedIcon />
     </div>
   ),
@@ -47,7 +47,7 @@ export const Checked: Story = {
 
 export const Indeterminate: Story = {
   render: () => (
-    <div style={{ width: 24, height: 24, color: "#1976d2" }}>
+    <div style={{ width: 24, height: 24, color: '#1976d2' }}>
       <CheckboxIndeterminateIcon />
     </div>
   ),

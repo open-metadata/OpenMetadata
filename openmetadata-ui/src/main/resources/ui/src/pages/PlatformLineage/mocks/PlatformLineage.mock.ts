@@ -12,6 +12,7 @@
  */
 import { SourceType } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { AppPreferences } from '../../../interface/store.interface';
 
@@ -23,7 +24,6 @@ export const MOCK_TABLE_ENTITY: SourceType = {
   description: 'Customer dimension table',
   entityType: EntityType.TABLE,
   deleted: false,
-  href: 'http://localhost:8585/api/v1/tables/123e4567-e89b-12d3-a456-426614174000',
 };
 
 export const MOCK_DASHBOARD_ENTITY: SourceType = {
@@ -34,7 +34,6 @@ export const MOCK_DASHBOARD_ENTITY: SourceType = {
   description: 'Sales analytics dashboard',
   entityType: EntityType.DASHBOARD,
   deleted: false,
-  href: 'http://localhost:8585/api/v1/dashboards/223e4567-e89b-12d3-a456-426614174001',
 };
 
 export const MOCK_PIPELINE_ENTITY: SourceType = {
@@ -45,7 +44,6 @@ export const MOCK_PIPELINE_ENTITY: SourceType = {
   description: 'ETL pipeline for customer data',
   entityType: EntityType.PIPELINE,
   deleted: false,
-  href: 'http://localhost:8585/api/v1/pipelines/323e4567-e89b-12d3-a456-426614174002',
 };
 
 export const MOCK_TOPIC_ENTITY: SourceType = {
@@ -56,7 +54,6 @@ export const MOCK_TOPIC_ENTITY: SourceType = {
   description: 'Customer event stream',
   entityType: EntityType.TOPIC,
   deleted: false,
-  href: 'http://localhost:8585/api/v1/topics/423e4567-e89b-12d3-a456-426614174003',
 };
 
 export const MOCK_DOMAIN_ENTITY: SourceType = {
@@ -67,7 +64,6 @@ export const MOCK_DOMAIN_ENTITY: SourceType = {
   description: 'Customer data domain',
   entityType: EntityType.DOMAIN,
   deleted: false,
-  href: 'http://localhost:8585/api/v1/domains/523e4567-e89b-12d3-a456-426614174004',
 };
 
 export const MOCK_SERVICE_ENTITY = {
@@ -89,27 +85,27 @@ export const MOCK_SEARCH_RESULTS = {
     },
     hits: [
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _id: MOCK_TABLE_ENTITY.id,
         _source: MOCK_TABLE_ENTITY,
       },
       {
-        _index: 'dashboard_search_index',
+        _index: SearchIndex.DASHBOARD,
         _id: MOCK_DASHBOARD_ENTITY.id,
         _source: MOCK_DASHBOARD_ENTITY,
       },
       {
-        _index: 'pipeline_search_index',
+        _index: SearchIndex.PIPELINE,
         _id: MOCK_PIPELINE_ENTITY.id,
         _source: MOCK_PIPELINE_ENTITY,
       },
       {
-        _index: 'topic_search_index',
+        _index: SearchIndex.TOPIC,
         _id: MOCK_TOPIC_ENTITY.id,
         _source: MOCK_TOPIC_ENTITY,
       },
       {
-        _index: 'domain_search_index',
+        _index: SearchIndex.DOMAIN,
         _id: MOCK_DOMAIN_ENTITY.id,
         _source: MOCK_DOMAIN_ENTITY,
       },

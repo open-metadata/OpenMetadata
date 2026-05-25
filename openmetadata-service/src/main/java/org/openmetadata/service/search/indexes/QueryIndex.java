@@ -3,12 +3,13 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class QueryIndex implements SearchIndex {
+public class QueryIndex implements TaggableIndex {
   final Query query;
 
   public QueryIndex(Query query) {
@@ -20,15 +21,22 @@ public class QueryIndex implements SearchIndex {
     return query;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
-    Map<String, Object> commonAttributes = getCommonAttributesMap(query, Entity.QUERY);
-    doc.putAll(commonAttributes);
-    doc.put("tags", parseTags.getTags());
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
+  @Override
+  public String getEntityTypeName() {
+    return Entity.QUERY;
+  }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    // "queryUsedIn" is stripped from storage JSON in QueryRepository and only populated by
+    // setFieldsInBulk when explicitly requested. Without it, reindex drops the field from
+    // query_search_index and Table → Queries renders the empty state.
+    fields.add("queryUsedIn");
+    return Set.copyOf(fields);
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     return doc;
   }
 

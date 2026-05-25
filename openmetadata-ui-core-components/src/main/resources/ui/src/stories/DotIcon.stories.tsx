@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Dot } from "../components/foundations/dot-icon";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Dot } from '../components/foundations/dot-icon';
 
 const meta = {
-  title: "Foundations/DotIcon",
+  title: 'Foundations/DotIcon',
   component: Dot,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Dot>;
 
 export default meta;
@@ -27,13 +27,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    size: "md",
+    size: 'md',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <Dot size="sm" />
       <Dot size="md" />
     </div>
@@ -42,12 +42,12 @@ export const Sizes: StoryObj = {
 
 export const Colors: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <Dot className="tw:text-fg-success-secondary" />
       <Dot className="tw:text-fg-error-secondary" />
       <Dot className="tw:text-fg-warning-secondary" />
-      <Dot style={{ color: "#6366f1" }} />
-      <Dot style={{ color: "#8b5cf6" }} />
+      <Dot style={{ color: '#6366f1' }} />
+      <Dot style={{ color: '#8b5cf6' }} />
     </div>
   ),
 };

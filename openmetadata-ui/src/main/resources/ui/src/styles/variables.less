@@ -49,6 +49,7 @@
 @green-15: #f7ffe7;
 @green-16: #abefc6;
 @green-17: #067647;
+@green-100: #dcfae6;
 @green-600: #079455;
 
 @yellow-1: #fbf2db;
@@ -360,6 +361,9 @@
 @profile-page-sidebar: calc(100vh - @om-navbar-height - 20px);
 @profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
 @user-profile-page-panel-height: calc(100vh - @om-navbar-height - 88px);
+@asset-details-tab-pane-height: calc(
+  100vh - @om-navbar-height - 280px
+); // 280 for  DataAsset header
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);
@@ -478,3 +482,6 @@
 @focus-outline-color: #e6f4ff;
 @om-rdg-border-color: #e0e0e0;
 @om-rdg-header-color: #4a4a4a;
+
+// Knowledge Center
+@knowledge-center-content-height: calc(100vh - 182px);

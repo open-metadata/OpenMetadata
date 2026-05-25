@@ -56,10 +56,8 @@ mock_teradata_config = {
 
 
 class TeradataUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_teradata_config)
@@ -67,21 +65,15 @@ class TeradataUnitTest(TestCase):
             mock_teradata_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.teradata_source.context.get().__dict__[
-            "database_service"
-        ] = "teradata_service"
+        self.teradata_source.context.get().__dict__["database_service"] = "teradata_service"
 
     def test_get_stored_procedures(self):
         """
         Test fetching stored procedures with filter
         """
         self.teradata_source.source_config.includeStoredProcedures = True
-        self.teradata_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["sp_exclude"]
-        )
-        self.teradata_source.context.get().__dict__[
-            "database_service"
-        ] = "teradata_source"
+        self.teradata_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
+        self.teradata_source.context.get().__dict__["database_service"] = "teradata_source"
         self.teradata_source.context.get().__dict__["database"] = "test_db"
         self.teradata_source.context.get().__dict__["database_schema"] = "test_schema"
 
@@ -142,3 +134,61 @@ class TeradataUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].procedure_name, "sp_include")
+
+
+class TestTeradataColumnComments:
+    def test_get_columns_strips_whitespace_from_comments(self, monkeypatch):
+        from metadata.ingestion.source.database.teradata.utils import get_columns
+
+        mock_upstream_columns = [
+            {
+                "name": "id",
+                "type": MagicMock(),
+                "nullable": False,
+                "CommentString": "  Primary key  ",
+            },
+            {
+                "name": "name",
+                "type": MagicMock(),
+                "nullable": True,
+                "CommentString": "User name",
+            },
+        ]
+        mock_original = MagicMock(return_value=mock_upstream_columns)
+        monkeypatch.setattr(get_columns, "_original", mock_original)
+
+        result = get_columns(MagicMock(), MagicMock(), "test_table", schema="test_schema")
+
+        assert result[0]["comment"] == "Primary key"
+        assert result[1]["comment"] == "User name"
+
+    def test_get_columns_handles_null_and_empty_comments(self, monkeypatch):
+        from metadata.ingestion.source.database.teradata.utils import get_columns
+
+        mock_upstream_columns = [
+            {"name": "col1", "type": MagicMock(), "CommentString": None},
+            {"name": "col2", "type": MagicMock(), "CommentString": "   "},
+            {"name": "col3", "type": MagicMock()},  # No CommentString key
+        ]
+        mock_original = MagicMock(return_value=mock_upstream_columns)
+        monkeypatch.setattr(get_columns, "_original", mock_original)
+
+        result = get_columns(MagicMock(), MagicMock(), "test_table", schema="test_schema")
+
+        assert result[0]["comment"] is None
+        assert result[1]["comment"] is None
+        assert result[2]["comment"] is None
+
+    def test_get_columns_handles_normalized_commentstring(self, monkeypatch):
+        from metadata.ingestion.source.database.teradata.utils import get_columns
+
+        # Test with normalized lowercase key (as upstream might normalize it)
+        mock_upstream_columns = [
+            {"name": "col1", "type": MagicMock(), "commentstring": "Lowercase comment"},
+        ]
+        mock_original = MagicMock(return_value=mock_upstream_columns)
+        monkeypatch.setattr(get_columns, "_original", mock_original)
+
+        result = get_columns(MagicMock(), MagicMock(), "test_table", schema="test_schema")
+
+        assert result[0]["comment"] == "Lowercase comment"

@@ -147,6 +147,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsDomains = true;
   protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
+  protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
   protected boolean supportsFieldsQueryParam = true;
@@ -1082,6 +1083,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         "Patching entity with invalid tag should fail");
   }
 
+  /**
+   * Generic regression: adding tags via PATCH must succeed for any entity regardless of which
+   * optional fields (columns, dataModel, etc.) are populated. Covers both TagSource paths —
+   * CLASSIFICATION and GLOSSARY — in a single PATCH so new EntityRepository subclasses get
+   * this coverage automatically by extending BaseEntityIT.
+   */
+  @Test
+  void patch_addTagAndGlossaryTerm_200_OK(TestNamespace ns) {
+    if (!supportsTags || !supportsPatch) {
+      return;
+    }
+
+    T entity = createEntity(createMinimalRequest(ns));
+    TagLabel classificationTag = personalDataTagLabel();
+    TagLabel glossaryTerm = glossaryTermLabel();
+    entity.setTags(List.of(classificationTag, glossaryTerm));
+
+    T patched = patchEntity(entity.getId().toString(), entity);
+
+    T fetched = getEntityWithFields(patched.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "tags should not be null after PATCH");
+    assertTagsContain(fetched.getTags(), List.of(classificationTag, glossaryTerm));
+  }
+
   @Test
   void test_tagUpdateOptimization_PUT(TestNamespace ns) {
     if (!supportsTags) {
@@ -1337,7 +1362,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Version history tests require patch support
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1359,7 +1384,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_specificVersion_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Specific version tests require patch support
+    if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1398,16 +1423,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     hardDeleteEntity(entityId);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(entityId),
-        "Hard deleted entity should not be retrievable");
+    // Poll the GET — on the Redis-cache profile the by-id / by-name / reference
+    // hash deletes published by cleanup() can land milliseconds after the DELETE
+    // response returns. Polling matches the same pattern FolderResourceIT uses
+    // for its async-delete override and keeps the assertion intent unchanged.
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntity(entityId),
+                    "Hard deleted entity should not be retrievable"));
 
     if (supportsSoftDelete) {
-      assertThrows(
-          Exception.class,
-          () -> getEntityIncludeDeleted(entityId),
-          "Hard deleted entity should not be retrievable even with include=deleted");
+      Awaitility.await("Hard deleted entity should not be retrievable with include=deleted")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofMillis(250))
+          .untilAsserted(
+              () ->
+                  assertThrows(
+                      Exception.class,
+                      () -> getEntityIncludeDeleted(entityId),
+                      "Hard deleted entity should not be retrievable even with include=deleted"));
     }
   }
 
@@ -1841,6 +1880,45 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   // ===================================================================
+  // DATA CONTRACT TESTS
+  // ===================================================================
+
+  @Test
+  void get_entityDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    org.openmetadata.schema.api.data.CreateDataContract contractRequest =
+        new org.openmetadata.schema.api.data.CreateDataContract()
+            .withName(ns.prefix("contract"))
+            .withEntity(entity.getEntityReference())
+            .withDescription("Data contract for test entity");
+    org.openmetadata.schema.entity.data.DataContract contract =
+        SdkClients.adminClient().dataContracts().create(contractRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNotNull(fetched.getDataContract(), "Entity should have a dataContract");
+    assertEquals(
+        contract.getId(),
+        fetched.getDataContract().getId(),
+        "DataContract reference should match created contract");
+  }
+
+  @Test
+  void get_entityWithoutDataContract_200(TestNamespace ns) {
+    if (!supportsDataContract) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
+    assertNull(
+        fetched.getDataContract(), "Entity without a contract should have null dataContract");
+  }
+
+  // ===================================================================
   // ADMIN DELETE TESTS
   // ===================================================================
 
@@ -1968,7 +2046,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_deletedEntityVersion_200(TestNamespace ns) {
-    if (!supportsSoftDelete || !supportsPatch) return;
+    if (!supportsSoftDelete || !supportsPatch || !supportsGetByVersion) return;
 
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
@@ -3033,12 +3111,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Hard delete
     hardDeleteEntity(entity.getId().toString());
 
-    // Should not be retrievable even with include=deleted
+    // Should not be retrievable even with include=deleted. Polling matches
+    // the pattern in delete_entityAsAdmin_hardDelete_200 for the same
+    // cache-invalidation propagation reason.
     String entityId = entity.getId().toString();
-    assertThrows(
-        Exception.class,
-        () -> getEntityIncludeDeleted(entityId),
-        "Hard deleted entity should not be retrievable");
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntityIncludeDeleted(entityId),
+                    "Hard deleted entity should not be retrievable"));
   }
 
   /**
@@ -3238,12 +3323,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(fetched.getId().toString(), fetched);
     }
 
-    // Verify updates
+    // Verify updates. Retry to absorb the cache write-through / pub-sub fan-out under parallel
+    // load — the PATCH is synchronous server-side but concurrent test traffic can briefly stall
+    // the fresh read of a just-updated row. 60s matches other eventual-consistency windows in
+    // this test suite; NotificationTemplate showed the previous 10s budget hit 12s of stall.
     for (T entity : createdEntities) {
-      T fetched = getEntity(entity.getId().toString());
-      assertTrue(
-          fetched.getDescription().startsWith("Bulk updated"),
-          "Description should be bulk updated");
+      String entityId = entity.getId().toString();
+      Awaitility.await("Description should be bulk updated")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofMillis(500))
+          .untilAsserted(
+              () -> {
+                T refetched = getEntity(entityId);
+                assertTrue(
+                    refetched.getDescription() != null
+                        && refetched.getDescription().startsWith("Bulk updated"),
+                    "Description should be bulk updated");
+              });
     }
   }
 
@@ -4027,7 +4123,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -4089,7 +4185,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4751,7 +4847,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4779,7 +4875,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4815,7 +4911,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4843,7 +4939,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4862,7 +4958,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -6199,5 +6295,252 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         assertFalse(hasBeforeOnFirstPage, "First page should not have 'before' cursor");
       }
     }
+  }
+
+  // ===================================================================
+  // CHANGE SUMMARY TESTS
+  // ===================================================================
+
+  /**
+   * Test: Retrieve changeSummary by entity ID after updating the entity.
+   * The changeSummary API returns metadata about who changed each field,
+   * the source of the change, and when it was changed.
+   */
+  @Test
+  void get_changeSummaryById_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/" + getEntityType() + "/" + updated.getId(),
+                null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary by entity FQN after updating the entity.
+   */
+  @Test
+  void get_changeSummaryByFqn_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary FQN test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String fqn = updated.getFullyQualifiedName();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/changeSummary/" + getEntityType() + "/name/" + fqn, null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary with fieldPrefix filter.
+   * Verifies that the filtering parameter works correctly.
+   */
+  @Test
+  void get_changeSummaryWithFieldPrefix_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for fieldPrefix test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + updated.getId()
+                    + "?fieldPrefix=description",
+                null);
+    assertNotNull(response, "ChangeSummary filtered response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+
+    JsonNode changeSummary = result.get("changeSummary");
+    assertTrue(
+        changeSummary.isObject() && changeSummary.size() > 0,
+        "Filtered changeSummary should contain at least one entry matching 'description' prefix");
+    changeSummary
+        .fieldNames()
+        .forEachRemaining(
+            key ->
+                assertTrue(
+                    key.startsWith("description"),
+                    "All keys should start with 'description', but found: " + key));
+  }
+
+  /**
+   * Test: Retrieve changeSummary with pagination parameters.
+   */
+  @Test
+  void get_changeSummaryWithPagination_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for pagination test");
+    patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + created.getId()
+                    + "?limit=1&offset=0",
+                null);
+    assertNotNull(response, "ChangeSummary paginated response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(result.has("offset"), "Paginated response must contain offset field");
+    assertTrue(result.has("limit"), "Paginated response must contain limit field");
+  }
+
+  /**
+   * Test: changeSummary returns 404 for non-existent entity.
+   */
+  @Test
+  void get_changeSummaryNotFound_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID randomId = UUID.randomUUID();
+    Exception thrown =
+        assertThrows(
+            Exception.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/changeSummary/" + getEntityType() + "/" + randomId,
+                        null));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "Should get 404 for non-existent entity, got: " + thrown.getMessage());
+  }
+
+  // ===================================================================
+  // Redis cache write-through correctness — fire on every entity subclass
+  // when the suite is configured with cacheProvider=redis. With Redis
+  // disabled these are no-ops. Each test warms the cache (by-id and
+  // by-name), mutates the entity, and re-reads to confirm the cached
+  // path returns the latest value rather than a pre-mutation snapshot.
+  // ===================================================================
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm by-id and by-name caches.
+    T warmById = getEntity(id);
+    getEntityByName(created.getFullyQualifiedName());
+
+    String newDisplayName = "cache-it-" + System.nanoTime();
+    warmById.setDisplayName(newDisplayName);
+    T patched = patchEntity(id, warmById);
+    assertEquals(
+        newDisplayName, patched.getDisplayName(), "PATCH response itself must show the update");
+
+    T fetchedById = getEntity(id);
+    assertEquals(
+        newDisplayName,
+        fetchedById.getDisplayName(),
+        "GET-by-id after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadByName(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+    String fqn = created.getFullyQualifiedName();
+
+    // Warm both caches up front so PATCH's invalidation has something to invalidate.
+    T warm = getEntity(id);
+    getEntityByName(fqn);
+
+    String newDisplayName = "cache-by-name-" + System.nanoTime();
+    warm.setDisplayName(newDisplayName);
+    patchEntity(id, warm);
+
+    T fetchedByName = getEntityByName(fqn);
+    assertEquals(
+        newDisplayName,
+        fetchedByName.getDisplayName(),
+        "GET-by-name after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_hardDeleteReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm the cache, then hard-delete.
+    getEntity(id);
+    hardDeleteEntity(id);
+
+    // Subsequent reads must 404 — a stale cache entry would let the entity stay
+    // resolvable until TTL.
+    Exception thrown = assertThrows(Exception.class, () -> getEntity(id));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "GET-by-id after hard delete must 404, got: " + thrown.getMessage());
   }
 }

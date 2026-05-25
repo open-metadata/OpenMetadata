@@ -18,8 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
@@ -39,11 +41,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -96,7 +102,7 @@ class SinkTaskDelegateTest {
   }
 
   @Test
-  void testBatchMode_SkipsSubsequentIterations() {
+  void testBatchMode_IgnoresLegacyBatchProcessedFlag() {
     setupCommonExpressions(true);
     Map<String, String> namespaceMap = new HashMap<>();
     namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
@@ -107,22 +113,29 @@ class SinkTaskDelegateTest {
     List<String> entityList = List.of("<#E::table::test.fqn>");
     setupVariableAccess(entityList, true);
 
-    delegate.execute(execution);
+    EntityInterface batchEntity = mock(EntityInterface.class);
+    when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
-    // Verify: Neither write() nor writeBatch() called
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
+          .thenReturn(batchEntity);
+
+      delegate.execute(execution);
+    }
+
+    // Legacy batchSinkProcessed flag is ignored; batch execution is controlled by trigger config.
     assertEquals(0, testProvider.getWriteCallCount());
-    assertEquals(0, testProvider.getBatchWriteCallCount());
+    assertEquals(1, testProvider.getBatchWriteCallCount());
 
-    // Verify: Success variables set (namespace separator is underscore)
     verify(execution).setVariable(eq("process_result"), eq("success"));
-    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_syncedCount"), eq(1));
     verify(execution).setVariable(eq("process_failedCount"), eq(0));
   }
 
   @Test
-  void testBatchMode_NotSkippedOnFirstIteration() {
-    // This test verifies that when batchSinkProcessed=false, the batch is NOT skipped
-    // It should proceed to processing (unlike when batchSinkProcessed=true which skips)
+  void testBatchMode_ProcessesFirstIteration() {
     setupCommonExpressions(true);
     Map<String, String> namespaceMap = new HashMap<>();
     namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
@@ -133,18 +146,24 @@ class SinkTaskDelegateTest {
     List<String> entityList = List.of("<#E::table::test.fqn>");
     setupVariableAccess(entityList, false);
 
-    // Execute - the delegate will try to process but Entity.getEntity will fail
-    // gracefully (errors are recorded, not thrown)
-    delegate.execute(execution);
+    EntityInterface batchEntity = mock(EntityInterface.class);
+    when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
-    // Verify: Neither write() nor writeBatch() called (entity fetch failed first)
-    // because Entity.getEntity is static and can't be mocked - entities list is empty
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
+          .thenReturn(batchEntity);
+
+      delegate.execute(execution);
+    }
+
     assertEquals(0, testProvider.getWriteCallCount());
-    assertEquals(0, testProvider.getBatchWriteCallCount());
+    assertEquals(1, testProvider.getBatchWriteCallCount());
 
-    // Verify: Result variables were set (this proves we completed the delegate execution)
-    // When all entity fetches fail, failedCount should be 1 (one entity failed to fetch)
-    verify(execution).setVariable(eq("process_failedCount"), eq(1));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+    verify(execution).setVariable(eq("process_syncedCount"), eq(1));
+    verify(execution).setVariable(eq("process_failedCount"), eq(0));
   }
 
   @Test

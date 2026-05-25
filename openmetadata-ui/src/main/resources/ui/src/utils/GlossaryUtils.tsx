@@ -38,9 +38,9 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
-import { Thread } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { Task } from '../rest/tasksAPI';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
@@ -236,7 +236,8 @@ export const findItemByFqn = (
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
   level = 0,
-  allowParentSelection = false
+  allowParentSelection = false,
+  parentMutuallyExclusive = false
 ): Omit<DefaultOptionType, 'label'>[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
@@ -258,12 +259,14 @@ export const convertGlossaryTermsToTreeOptions = (
       checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
       selectable: allowParentSelection || isGlossaryTerm,
+      isParentMutuallyExclusive: parentMutuallyExclusive,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
           level + 1,
-          allowParentSelection
+          allowParentSelection,
+          option.mutuallyExclusive === true
         ),
     };
   });
@@ -389,15 +392,13 @@ export const renderReferenceElement = (
         { 'diff-added': versionStatus?.added },
         { 'diff-removed ': versionStatus?.removed }
       )}
-      key={ref.name}
-    >
+      key={ref.name}>
       <Tooltip placement="bottomLeft" title={ref.name}>
         <a
           data-testid={`reference-link-${ref.name}`}
           href={ref?.endpoint}
           rel="noopener noreferrer"
-          target="_blank"
-        >
+          target="_blank">
           <div className="d-flex items-center">
             <Icon
               className="m-r-xss"
@@ -472,24 +473,27 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Thread[]>
+  termTaskThreads: Record<string, Task[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
-  const taskThread = termTaskThreads[entityLink]?.find(
-    (thread) => thread.about === entityLink
-  );
+  const task = termTaskThreads[entityLink]?.[0];
   const currentUserId = currentUser?.id;
 
   const isReviewer = record.reviewers?.some(
     (reviewer) => reviewer.id === currentUserId
   );
-  const isTaskAssignee = taskThread?.task?.assignees?.some(
+  const isTaskAssignee = task?.assignees?.some(
     (assignee) => assignee.id === currentUserId
   );
+  const hasTaskAssignees = Boolean(task?.assignees?.length);
+
+  const permission = hasTaskAssignees
+    ? Boolean(isTaskAssignee)
+    : Boolean(task && (isTaskAssignee || isReviewer));
 
   return {
-    permission: Boolean(taskThread && (isTaskAssignee || isReviewer)),
-    taskId: taskThread?.task?.id ?? '',
+    permission,
+    taskId: task?.id ?? '',
   };
 };
 
@@ -506,29 +510,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     />
   );
 };
-const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
-  termList.forEach((term) => {
-    if (
-      term.childrenCount &&
-      term.childrenCount > 0 &&
-      term.fullyQualifiedName
-    ) {
-      keys.push(term.fullyQualifiedName);
-      if (term.children && term.children.length > 0) {
-        processTerms(term.children as ModifiedGlossary[], keys as string[]);
-      }
-    }
-  });
-};
-
-export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
-  const keys: string[] = [];
-
-  processTerms(terms, keys);
-
-  return keys;
-};
-
 export const validateReferenceURL = (url: string): boolean => {
   if (!url) {
     return true;

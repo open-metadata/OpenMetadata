@@ -261,9 +261,7 @@ public class SecurityServiceRepository
       // Handle security service specific updates
       compareAndUpdate(
           "serviceType",
-          () -> {
-            recordChange("serviceType", original.getServiceType(), updated.getServiceType());
-          });
+          () -> recordChange("serviceType", original.getServiceType(), updated.getServiceType()));
     }
   }
 }

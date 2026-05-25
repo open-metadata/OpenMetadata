@@ -29,11 +29,11 @@ export const updatePersonaDisplayName = async ({
     '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
   );
 
-  await page.waitForSelector('#name', { state: 'visible' });
+  await page.locator('#name').waitFor({ state: 'visible' });
 
   await expect(page.locator('#name')).toBeDisabled();
 
-  await page.waitForSelector('#displayName', { state: 'visible' });
+  await page.locator('#displayName').waitFor({ state: 'visible' });
   await page.fill('#displayName', displayName);
 
   await page.click('[data-testid="save-button"]');
@@ -58,7 +58,7 @@ export const checkPersonaInProfile = async (
   expectedPersonaName?: string
 ) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.waitForSelector('[role="menu"].profile-dropdown', {
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
     state: 'visible',
   });
   await page.getByTestId('user-name').click();

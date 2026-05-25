@@ -10,23 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useState } from "react";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
 import {
   PaginationButtonGroup,
   PaginationCardDefault,
   PaginationCardMinimal,
   PaginationPageDefault,
   PaginationPageMinimalCenter,
-} from "../components/application/pagination/pagination";
+} from '../components/application/pagination/pagination';
 
 const meta = {
-  title: "Components/Pagination",
+  title: 'Components/Pagination',
   component: PaginationPageDefault,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof PaginationPageDefault>;
 
 export default meta;
@@ -35,12 +35,9 @@ type Story = StoryObj<typeof meta>;
 export const PageDefault: Story = {
   render: () => {
     const [page, setPage] = useState(1);
+
     return (
-      <PaginationPageDefault
-        page={page}
-        total={10}
-        onPageChange={setPage}
-      />
+      <PaginationPageDefault page={page} total={10} onPageChange={setPage} />
     );
   },
 };
@@ -48,12 +45,13 @@ export const PageDefault: Story = {
 export const PageDefaultRounded: StoryObj = {
   render: () => {
     const [page, setPage] = useState(5);
+
     return (
       <PaginationPageDefault
+        rounded
         page={page}
         total={10}
         onPageChange={setPage}
-        rounded
       />
     );
   },
@@ -62,6 +60,7 @@ export const PageDefaultRounded: StoryObj = {
 export const PageMinimalCenter: StoryObj = {
   render: () => {
     const [page, setPage] = useState(3);
+
     return (
       <PaginationPageMinimalCenter
         page={page}
@@ -75,13 +74,10 @@ export const PageMinimalCenter: StoryObj = {
 export const CardDefault: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
+
     return (
       <div style={{ width: 600 }}>
-        <PaginationCardDefault
-          page={page}
-          total={10}
-          onPageChange={setPage}
-        />
+        <PaginationCardDefault page={page} total={10} onPageChange={setPage} />
       </div>
     );
   },
@@ -90,13 +86,10 @@ export const CardDefault: StoryObj = {
 export const CardMinimal: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
+
     return (
       <div style={{ width: 600 }}>
-        <PaginationCardMinimal
-          page={page}
-          total={10}
-          onPageChange={setPage}
-        />
+        <PaginationCardMinimal page={page} total={10} onPageChange={setPage} />
       </div>
     );
   },
@@ -105,13 +98,10 @@ export const CardMinimal: StoryObj = {
 export const ButtonGroup: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
+
     return (
       <div style={{ width: 600 }}>
-        <PaginationButtonGroup
-          page={page}
-          total={10}
-          onPageChange={setPage}
-        />
+        <PaginationButtonGroup page={page} total={10} onPageChange={setPage} />
       </div>
     );
   },

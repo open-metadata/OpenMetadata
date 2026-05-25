@@ -64,6 +64,12 @@
       "type": "string",
       "default": "informix"
     },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Informix. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL without certificate verification, or 'verify-ca' to validate the server certificate against the provided CA certificate.",
@@ -127,6 +133,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     },
     "supportsQueryComment": {
       "title": "Supports Query Comment",

@@ -24,6 +24,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   authority: 'authority',
   domain: 'authority', // Auth0 domain maps to authority
   jwtPrincipalClaims: 'principals',
+  jwtPrincipalClaimsMapping: 'jwtPrincipalClaimsMapping',
   principalDomain: 'principalDomain',
   enforcePrincipalDomain: 'enforcePrincipalDomain',
   adminPrincipals: 'adminPrincipals',

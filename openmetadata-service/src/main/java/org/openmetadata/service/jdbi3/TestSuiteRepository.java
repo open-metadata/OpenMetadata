@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -83,6 +84,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
+  public static final String SUMMARY_FIELD = "summary";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
@@ -136,7 +138,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     supportsSearch = true;
     EntityLifecycleEventDispatcher.getInstance()
         .registerHandler(new TestSuitePipelineStatusHandler());
-    fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
+    fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
 
@@ -178,11 +180,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
     entity.setTestCaseResultSummary(
-        fields.contains("summary")
+        fields.contains(SUMMARY_FIELD)
             ? getResultSummary(entity.getId())
             : entity.getTestCaseResultSummary());
     entity.setSummary(
-        fields.contains("summary")
+        fields.contains(SUMMARY_FIELD)
             ? getTestSummary(entity.getTestCaseResultSummary())
             : entity.getSummary());
 
@@ -251,9 +253,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
-    entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
+    entity.setSummary(fields.contains(SUMMARY_FIELD) ? entity.getSummary() : null);
     entity.setTestCaseResultSummary(
-        fields.contains("summary") ? entity.getTestCaseResultSummary() : null);
+        fields.contains(SUMMARY_FIELD) ? entity.getTestCaseResultSummary() : null);
     entity.withTests(fields.contains(UPDATE_FIELDS) ? entity.getTests() : null);
   }
 
@@ -508,17 +510,29 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               .getSearchIndexFactory()
               .buildIndex(entity.getBasicEntityReference().getType(), entityInterface);
       Map<String, Object> doc = index.buildSearchIndexDoc();
-      searchClient.updateEntity(
-          indexMapping.getIndexName(searchRepository.getClusterAlias()),
-          entity.getBasicEntityReference().getId().toString(),
-          doc,
-          "ctx._source.testSuite = params.testSuite;");
+      try {
+        searchClient.updateEntity(
+            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            entity.getBasicEntityReference().getId().toString(),
+            doc,
+            "ctx._source.testSuite = params.testSuite;");
+      } catch (Exception e) {
+        SearchIndexRetryQueue.enqueue(
+            entity.getBasicEntityReference().getId().toString(),
+            entityInterface.getFullyQualifiedName(),
+            entity.getBasicEntityReference().getType(),
+            SearchIndexRetryQueue.failureReason("postCreate.updateTestSuiteIndex", e));
+        LOG.error(
+            "Failed to update search index for entity [{}] in postCreate: {}",
+            entity.getBasicEntityReference().getId(),
+            e.getMessage());
+      }
     }
   }
 
   private void fetchAndSetTestCaseResultSummary(
       List<TestSuite> testSuites, EntityUtil.Fields fields) {
-    if (!fields.contains("summary") || testSuites == null || testSuites.isEmpty()) {
+    if (!fields.contains(SUMMARY_FIELD) || testSuites == null || testSuites.isEmpty()) {
       return;
     }
 
@@ -973,9 +987,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           });
       compareAndUpdate(
           "dataContract",
-          () -> {
-            recordChange("dataContract", original.getDataContract(), updated.getDataContract());
-          });
+          () ->
+              recordChange("dataContract", original.getDataContract(), updated.getDataContract()));
     }
   }
 }

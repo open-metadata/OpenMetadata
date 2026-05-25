@@ -10,9 +10,10 @@
 #  limitations under the License.
 
 """DataFrame validation result models."""
-import logging
+
+import logging  # noqa: I001
 from enum import Enum
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -51,11 +52,11 @@ class ValidationResult(BaseModel):
     total_tests: int
     passed_tests: int
     failed_tests: int
-    test_cases_and_results: List[Tuple[TestCase, TestCaseResult]]
+    test_cases_and_results: List[Tuple[TestCase, TestCaseResult]]  # noqa: UP006
     execution_time_ms: float
 
     @property
-    def failures(self) -> List[TestCaseResult]:
+    def failures(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get only failed test results.
 
         Returns:
@@ -68,24 +69,20 @@ class ValidationResult(BaseModel):
         ]
 
     @property
-    def passes(self) -> List[TestCaseResult]:
+    def passes(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get only passed test results.
 
         Returns:
             List of test results where status is Success
         """
-        return [
-            result
-            for result in self.test_results
-            if result.testCaseStatus == TestCaseStatus.Success
-        ]
+        return [result for result in self.test_results if result.testCaseStatus == TestCaseStatus.Success]
 
     @property
-    def test_results(self) -> List[TestCaseResult]:
+    def test_results(self) -> List[TestCaseResult]:  # noqa: UP006
         """Get all test results."""
         return [result for _, result in self.test_cases_and_results]
 
-    def publish(self, table_fqn: str, client: Optional[OpenMetadata] = None) -> None:
+    def publish(self, table_fqn: str, client: Optional[OpenMetadata] = None) -> None:  # noqa: UP045
         """Publish test results to OpenMetadata.
         Args:
             table_fqn: Fully qualified table name
@@ -98,7 +95,7 @@ class ValidationResult(BaseModel):
 
         for test_case, result in self.test_cases_and_results:
             if isinstance(test_case, MockTestCase):
-                test_case = metadata.get_or_create_test_case(
+                test_case = metadata.get_or_create_test_case(  # noqa: PLW2901
                     test_case_fqn=f"{table_fqn}.{test_case.name.root}",
                     entity_link=get_entity_link(
                         Table,
@@ -112,7 +109,7 @@ class ValidationResult(BaseModel):
 
             res = metadata.add_test_case_results(
                 result,
-                cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,
+                cast(FullyQualifiedEntityName, test_case.fullyQualifiedName).root,  # noqa: TC006
             )
 
             logger.debug(f"Result: {res}")
@@ -137,25 +134,21 @@ class ValidationResult(BaseModel):
         if not results:
             raise ValueError("At least one ValidationResult must be provided to merge")
 
-        from collections import defaultdict
+        from collections import defaultdict  # noqa: PLC0415
 
-        aggregated_results: dict[
-            str, List[Tuple[TestCase, TestCaseResult]]
-        ] = defaultdict(list)
+        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = defaultdict(list)  # noqa: UP006
         total_execution_time = 0.0
 
         for result in results:
             for test_case, test_result in result.test_cases_and_results:
                 fqn = test_case.fullyQualifiedName
                 if fqn is None:
-                    raise ValueError(
-                        "Cannot merge results with test cases that have no fullyQualifiedName"
-                    )
+                    raise ValueError("Cannot merge results with test cases that have no fullyQualifiedName")
                 aggregated_results[str(fqn)].append((test_case, test_result))
             total_execution_time += result.execution_time_ms
 
-        merged_test_cases_and_results: List[Tuple[TestCase, TestCaseResult]] = []
-        for fqn, test_cases_and_results_for_fqn in aggregated_results.items():
+        merged_test_cases_and_results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
+        for fqn, test_cases_and_results_for_fqn in aggregated_results.items():  # noqa: B007
             test_case = test_cases_and_results_for_fqn[0][0]
             results_for_test = [result for _, result in test_cases_and_results_for_fqn]
 
@@ -181,7 +174,7 @@ class ValidationResult(BaseModel):
 
     @staticmethod
     def _aggregate_test_case_results(
-        results: List[TestCaseResult],
+        results: List[TestCaseResult],  # noqa: UP006
     ) -> TestCaseResult:
         """Aggregate multiple TestCaseResult objects for the same test case.
 
@@ -204,12 +197,8 @@ class ValidationResult(BaseModel):
         total_failed_rows = sum(r.failedRows or 0 for r in results)
         total_rows = total_passed_rows + total_failed_rows
 
-        passed_rows_percentage = (
-            (total_passed_rows / total_rows * 100) if total_rows > 0 else None
-        )
-        failed_rows_percentage = (
-            (total_failed_rows / total_rows * 100) if total_rows > 0 else None
-        )
+        passed_rows_percentage = (total_passed_rows / total_rows * 100) if total_rows > 0 else None
+        failed_rows_percentage = (total_failed_rows / total_rows * 100) if total_rows > 0 else None
 
         overall_status = TestCaseStatus.Success
         if any(r.testCaseStatus == TestCaseStatus.Aborted for r in results):
@@ -225,9 +214,7 @@ class ValidationResult(BaseModel):
             testCaseFQN=first_result.testCaseFQN,
             timestamp=first_result.timestamp,
             testCaseStatus=overall_status,
-            result=(
-                "; ".join(merged_result_messages) if merged_result_messages else None
-            ),
+            result=("; ".join(merged_result_messages) if merged_result_messages else None),
             sampleData=None,
             testResultValue=None,
             passedRows=total_passed_rows if total_rows > 0 else None,

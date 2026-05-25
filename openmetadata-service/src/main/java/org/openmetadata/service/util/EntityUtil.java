@@ -532,6 +532,39 @@ public final class EntityUtil {
       }
     }
 
+    public Fields(Set<String> allowedFields, String fieldsParam, boolean ignoreExtra) {
+      if (nullOrEmpty(fieldsParam)) {
+        this.fieldList = new HashSet<>();
+        return;
+      }
+
+      Set<String> parsedFields = parseFields(fieldsParam);
+      this.fieldList = validateFields(parsedFields, allowedFields, ignoreExtra);
+    }
+
+    private Set<String> validateFields(
+        Set<String> inputFields, Set<String> allowedFields, boolean ignoreExtra) {
+
+      Set<String> result = new HashSet<>();
+
+      for (String field : inputFields) {
+        if (allowedFields.contains(field)) {
+          result.add(field);
+        } else if (!ignoreExtra) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+        }
+      }
+
+      return result;
+    }
+
+    private Set<String> parseFields(String fieldsParam) {
+      return Arrays.stream(fieldsParam.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.toSet());
+    }
+
     public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
         fieldList = new HashSet<>();
@@ -1140,6 +1173,31 @@ public final class EntityUtil {
           e.getMessage());
       return null;
     }
+  }
+
+  public static EntityReference validateEntityReference(EntityReference entityReference) {
+    return validateEntityReference(entityReference, null);
+  }
+
+  public static EntityReference validateEntityReference(
+      EntityReference entityReference, String expectedType) {
+    if (entityReference == null) {
+      throw new IllegalArgumentException("Entity reference must not be null");
+    }
+    if (entityReference.getId() == null) {
+      throw new IllegalArgumentException("Entity reference id must not be null");
+    }
+    if (nullOrEmpty(entityReference.getType())) {
+      throw new IllegalArgumentException("Entity reference type must not be null or empty");
+    }
+    if (!nullOrEmpty(expectedType) && !expectedType.equals(entityReference.getType())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid entity type '%s'. Expected '%s'.", entityReference.getType(), expectedType));
+    }
+    EntityReference ref = Entity.getEntityReference(entityReference, NON_DELETED);
+    copy(ref, entityReference);
+    return entityReference;
   }
 
   public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {

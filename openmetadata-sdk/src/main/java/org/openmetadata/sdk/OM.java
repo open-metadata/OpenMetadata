@@ -48,6 +48,13 @@ public class OM {
     org.openmetadata.sdk.fluent.Domains.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Metrics.setDefaultClient(client);
     org.openmetadata.sdk.fluent.TestCases.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.McpServers.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.AIApplications.setDefaultClient(client);
+
+    // Initialize Context Center fluent API classes
+    org.openmetadata.sdk.fluent.Folders.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.ContextFiles.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.Pages.setDefaultClient(client);
 
     // Initialize new fluent API classes
     org.openmetadata.sdk.api.Search.setDefaultClient(client);
@@ -149,5 +156,108 @@ public class OM {
     }
   }
 
-  // Add more wrapper classes as needed for other entities
+  public static class McpServer {
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerFinder find(String id) {
+      return org.openmetadata.sdk.fluent.McpServers.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerFinder findByName(String fqn) {
+      return org.openmetadata.sdk.fluent.McpServers.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerCreator create() {
+      return org.openmetadata.sdk.fluent.McpServers.create();
+    }
+
+    public static org.openmetadata.schema.entity.ai.McpServer create(
+        org.openmetadata.schema.api.ai.CreateMcpServer request) {
+      return org.openmetadata.sdk.fluent.McpServers.create(request);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerLister list() {
+      return org.openmetadata.sdk.fluent.McpServers.list();
+    }
+  }
+
+  public static class AIApplication {
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationFinder find(String id) {
+      return org.openmetadata.sdk.fluent.AIApplications.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationFinder findByName(
+        String fqn) {
+      return org.openmetadata.sdk.fluent.AIApplications.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationCreator create() {
+      return org.openmetadata.sdk.fluent.AIApplications.create();
+    }
+
+    public static org.openmetadata.schema.entity.ai.AIApplication create(
+        org.openmetadata.schema.api.ai.CreateAIApplication request) {
+      return org.openmetadata.sdk.fluent.AIApplications.create(request);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationLister list() {
+      return org.openmetadata.sdk.fluent.AIApplications.list();
+    }
+  }
+
+  public static class Folder {
+    public static org.openmetadata.sdk.fluent.Folders.FolderFinder find(String id) {
+      return org.openmetadata.sdk.fluent.Folders.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.Folders.FolderFinder findByName(String fqn) {
+      return org.openmetadata.sdk.fluent.Folders.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.Folders.FolderCreator create() {
+      return org.openmetadata.sdk.fluent.Folders.create();
+    }
+
+    public static org.openmetadata.schema.entity.data.Folder create(
+        org.openmetadata.schema.api.data.CreateFolder request) {
+      return org.openmetadata.sdk.fluent.Folders.create(request);
+    }
+  }
+
+  public static class ContextFile {
+    public static org.openmetadata.sdk.fluent.ContextFiles.ContextFileFinder find(String id) {
+      return org.openmetadata.sdk.fluent.ContextFiles.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.ContextFiles.ContextFileFinder findByName(
+        String fqn) {
+      return org.openmetadata.sdk.fluent.ContextFiles.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.ContextFiles.ContextFileCreator create() {
+      return org.openmetadata.sdk.fluent.ContextFiles.create();
+    }
+
+    public static org.openmetadata.schema.entity.data.ContextFile create(
+        org.openmetadata.schema.api.data.CreateContextFile request) {
+      return org.openmetadata.sdk.fluent.ContextFiles.create(request);
+    }
+  }
+
+  public static class Page {
+    public static org.openmetadata.sdk.fluent.Pages.PageFinder find(String id) {
+      return org.openmetadata.sdk.fluent.Pages.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.Pages.PageFinder findByName(String fqn) {
+      return org.openmetadata.sdk.fluent.Pages.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.Pages.PageCreator create() {
+      return org.openmetadata.sdk.fluent.Pages.create();
+    }
+
+    public static org.openmetadata.schema.entity.data.Page create(
+        org.openmetadata.schema.api.data.CreatePage request) {
+      return org.openmetadata.sdk.fluent.Pages.create(request);
+    }
+  }
 }

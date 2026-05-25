@@ -61,6 +61,15 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.fullyQualifiedName
       );
 
+      // Refresh responseData so cleanup uses the post-move FQN.
+      // Moving to root rewrites the term's fullyQualifiedName in the DB, and
+      // GlossaryTerm.delete() looks up by name — without this, the finally
+      // block tries to delete by the stale pre-move FQN and 404s.
+      const refreshed = await apiContext.get(
+        `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+      );
+      childTerm.responseData = await refreshed.json();
+
       // Verify term is now at root level (not nested under parent)
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);

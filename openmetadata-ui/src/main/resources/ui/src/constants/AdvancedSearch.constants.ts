@@ -215,7 +215,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   },
   {
     label: 'label.status',
-    key: EntityFields.GLOSSARY_TERM_STATUS,
+    key: EntityFields.ENTITY_STATUS,
   },
 ];
 
@@ -354,6 +354,28 @@ export const LINEAGE_DROPDOWN_ITEMS = [
     key: EntityFields.COLUMN,
   },
 ];
+
+export const KNOWLEDGE_PAGE_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner-plural'),
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: t('label.tag'),
+    key: EntityFields.TAG,
+  },
+];
+
+export const getLineageDropdownItems = (includeGlossaryTerms = false) =>
+  includeGlossaryTerms
+    ? [
+        ...LINEAGE_DROPDOWN_ITEMS,
+        {
+          label: 'label.glossary-term-plural',
+          key: EntityFields.GLOSSARY_TERMS,
+        },
+      ]
+    : [...LINEAGE_DROPDOWN_ITEMS];
 
 export const TEXT_FIELD_OPERATORS = [
   'equal',

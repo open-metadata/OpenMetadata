@@ -91,9 +91,11 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        <Space onClick={(e) => e.stopPropagation()}>
+        <div
+          className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
+          onClick={(e) => e.stopPropagation()}>
           <Input
-            className="w-48"
+            className="flex-1 w-min-0"
             data-testid="team-name-input"
             placeholder={t('message.enter-comma-separated-field', {
               field: t('label.term-lowercase'),
@@ -102,7 +104,7 @@ const TeamsHeadingLabel = ({
             value={heading}
             onChange={(e) => setHeading(e.target.value)}
           />
-          <Space data-testid="buttons" size={4}>
+          <Space className="flex-none" data-testid="buttons" size={4}>
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="cancelAssociatedTag"
@@ -120,13 +122,13 @@ const TeamsHeadingLabel = ({
               <CheckOutlined />
             </Button>
           </Space>
-        </Space>
+        </div>
       ) : (
         <>
           <>
             {heading ? (
               <Typography.Title
-                className="m-b-0 w-max-200"
+                className="m-b-0 flex-1 w-min-0"
                 data-testid="team-heading"
                 ellipsis={{ tooltip: true }}
                 level={5}>
@@ -134,7 +136,7 @@ const TeamsHeadingLabel = ({
               </Typography.Title>
             ) : (
               <Typography.Text
-                className="m-b-0 text-grey-muted text-sm"
+                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
                 data-testid="team-heading">
                 {t('label.no-entity', {
                   entity: t('label.display-name'),
@@ -192,7 +194,11 @@ const TeamsHeadingLabel = ({
     }
   }, [currentTeam]);
 
-  return <Space size={4}>{teamHeadingRender}</Space>;
+  return (
+    <div className="d-flex items-center gap-1 teams-heading-label-container w-min-0">
+      {teamHeadingRender}
+    </div>
+  );
 };
 
 export default TeamsHeadingLabel;

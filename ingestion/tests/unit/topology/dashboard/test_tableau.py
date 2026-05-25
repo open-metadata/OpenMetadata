@@ -34,9 +34,11 @@ from metadata.ingestion.source.dashboard.tableau.metadata import (
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
     DataSource,
+    DatasourceField,
     TableauBaseModel,
     TableauChart,
     TableauOwner,
+    UpstreamColumn,
     UpstreamTable,
 )
 
@@ -92,9 +94,7 @@ MOCK_DASHBOARD = TableauDashboard(
     description="tableau dashboard description",
     user_views=10,
     tags=[],
-    owner=TableauOwner(
-        id="1234", name="Dashboard Owner", email="samplemail@sample.com"
-    ),
+    owner=TableauOwner(id="1234", name="Dashboard Owner", email="samplemail@sample.com"),
     charts=[
         TableauChart(
             id="b05695a2-d1ea-428e-96b2-858809809da4",
@@ -180,11 +180,9 @@ class TableauUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -194,9 +192,7 @@ class TableauUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.tableau.client = SimpleNamespace()
-        self.tableau.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
         assert self.tableau.get_dashboard_name(MOCK_DASHBOARD) == MOCK_DASHBOARD.name
@@ -209,9 +205,9 @@ class TableauUnitTest(TestCase):
         results = self.tableau.yield_dashboard_chart(MOCK_DASHBOARD)
         for result in results:
             if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
+                chart_list.append(result)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+        for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_dashboard_usage(self):
@@ -244,15 +240,11 @@ class TableauUnitTest(TestCase):
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=10), date=self.tableau.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=10), date=self.tableau.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             # Nothing is returned
-            self.assertEqual(
-                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0
-            )
+            self.assertEqual(len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0)
 
         # But if we have usage for today but the count is 0, we'll return the details
         return_value = Dashboard(
@@ -260,9 +252,7 @@ class TableauUnitTest(TestCase):
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=0), date=self.tableau.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=0), date=self.tableau.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
@@ -306,9 +296,7 @@ class TableauUnitTest(TestCase):
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            self.assertEqual(
-                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0
-            )
+            self.assertEqual(len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0)
 
     def test_check_basemodel_returns_id_as_string(self):
         """
@@ -367,23 +355,18 @@ class TableauUnitTest(TestCase):
             "dashboard4": "AnFilteredProject.OtherProject1.ChildProject2.ExcludedProject2",
         }
 
-        self.tableau.source_config.projectFilterPattern = FilterPattern(
-            includes=["^FilteredProject.OtherProject$"]
-        )
+        self.tableau.source_config.projectFilterPattern = FilterPattern(includes=["^FilteredProject.OtherProject$"])
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
         ):
-
             with (
                 patch.object(
                     self.tableau,
                     "get_project_names",
-                    side_effect=lambda dashboard_details: project_names_return_map[
-                        dashboard_details.name
-                    ],
+                    side_effect=lambda dashboard_details: project_names_return_map[dashboard_details.name],
                 ),
                 patch.object(
                     self.tableau,
@@ -408,19 +391,16 @@ class TableauUnitTest(TestCase):
             ]
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
         ):
-
             with (
                 patch.object(
                     self.tableau,
                     "get_project_names",
-                    side_effect=lambda dashboard_details: project_names_return_map[
-                        dashboard_details.name
-                    ],
+                    side_effect=lambda dashboard_details: project_names_return_map[dashboard_details.name],
                 ),
                 patch.object(
                     self.tableau,
@@ -446,19 +426,16 @@ class TableauUnitTest(TestCase):
             excludes=[".*ExcludedProject2.*"],
         )
 
-        with patch.object(
+        with patch.object(  # noqa: SIM117
             self.tableau,
             "get_dashboards_list",
             return_value=mock_dashboard_details_list,
         ):
-
             with (
                 patch.object(
                     self.tableau,
                     "get_project_names",
-                    side_effect=lambda dashboard_details: project_names_return_map[
-                        dashboard_details.name
-                    ],
+                    side_effect=lambda dashboard_details: project_names_return_map[dashboard_details.name],
                 ),
                 patch.object(
                     self.tableau,
@@ -478,9 +455,7 @@ class TableauUnitTest(TestCase):
         """
         Test that the dashboard url is generated correctly with proxyURL
         """
-        self.tableau.config.serviceConnection.root.config.proxyURL = (
-            "http://mockTableauServer.com"
-        )
+        self.tableau.config.serviceConnection.root.config.proxyURL = "http://mockTableauServer.com"
         result = list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
         self.assertEqual(
             result[0].right.sourceUrl.root,
@@ -497,45 +472,33 @@ class TableauUnitTest(TestCase):
 
         # Set up verifySSL
         self.tableau.config.serviceConnection.root.config.verifySSL = SimpleNamespace()
-        self.tableau.config.serviceConnection.root.config.verifySSL.value = (
-            verify_ssl_value
-        )
+        self.tableau.config.serviceConnection.root.config.verifySSL.value = verify_ssl_value
 
         # Set up sslConfig if provided
         if ssl_config:
-            self.tableau.config.serviceConnection.root.config.sslConfig = (
-                SimpleNamespace()
-            )
-            self.tableau.config.serviceConnection.root.config.sslConfig.root = (
-                SimpleNamespace()
-            )
+            self.tableau.config.serviceConnection.root.config.sslConfig = SimpleNamespace()
+            self.tableau.config.serviceConnection.root.config.sslConfig.root = SimpleNamespace()
 
             if "caCertificate" in ssl_config:
                 self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = SecretStr(
                     ssl_config["caCertificate"]
                 )
             else:
-                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = (
-                    None
-                )
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = None
 
             if "sslCertificate" in ssl_config:
                 self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = SecretStr(
                     ssl_config["sslCertificate"]
                 )
             else:
-                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = (
-                    None
-                )
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = None
 
             if "sslKey" in ssl_config:
                 self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = SecretStr(
                     ssl_config["sslKey"]
                 )
             else:
-                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = (
-                    None
-                )
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = None
         else:
             self.tableau.config.serviceConnection.root.config.sslConfig = None
 
@@ -568,9 +531,7 @@ class TableauUnitTest(TestCase):
         )
 
         # Test SSL connection establishment
-        with patch.object(
-            self.tableau, "get_dashboards_list", return_value=[]
-        ) as mock_get_dashboards:
+        with patch.object(self.tableau, "get_dashboards_list", return_value=[]) as mock_get_dashboards:
             list(self.tableau.get_dashboard())
             mock_get_dashboards.assert_called_once()
 
@@ -579,26 +540,18 @@ class TableauUnitTest(TestCase):
         Test that Tableau SSL authentication works without client certificates
         """
         # Set up SSL configuration with only CA certificate
-        self._setup_ssl_config(
-            verify_ssl_value="validate", ssl_config={"caCertificate": "/path/to/ca.pem"}
-        )
+        self._setup_ssl_config(verify_ssl_value="validate", ssl_config={"caCertificate": "/path/to/ca.pem"})
 
         # Verify SSL configuration was set correctly
         self.assertEqual(
             self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate.get_secret_value(),
             "/path/to/ca.pem",
         )
-        self.assertIsNone(
-            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate
-        )
-        self.assertIsNone(
-            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey
-        )
+        self.assertIsNone(self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate)
+        self.assertIsNone(self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey)
 
         # Test SSL connection establishment
-        with patch.object(
-            self.tableau, "get_dashboards_list", return_value=[]
-        ) as mock_get_dashboards:
+        with patch.object(self.tableau, "get_dashboards_list", return_value=[]) as mock_get_dashboards:
             list(self.tableau.get_dashboard())
             mock_get_dashboards.assert_called_once()
 
@@ -610,14 +563,10 @@ class TableauUnitTest(TestCase):
         self._setup_ssl_config(verify_ssl_value="ignore")
 
         # Verify SSL verification is disabled
-        self.assertEqual(
-            self.tableau.config.serviceConnection.root.config.verifySSL.value, "ignore"
-        )
+        self.assertEqual(self.tableau.config.serviceConnection.root.config.verifySSL.value, "ignore")
 
         # Test SSL connection establishment
-        with patch.object(
-            self.tableau, "get_dashboards_list", return_value=[]
-        ) as mock_get_dashboards:
+        with patch.object(self.tableau, "get_dashboards_list", return_value=[]) as mock_get_dashboards:
             list(self.tableau.get_dashboard())
             mock_get_dashboards.assert_called_once()
 
@@ -668,22 +617,14 @@ class TableauUnitTest(TestCase):
         )
 
         # Mock the client to return custom SQL queries
-        self.tableau.client.get_custom_sql_table_queries = MagicMock(
-            return_value=["SELECT * FROM test_table"]
-        )
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table"])
 
         # Mock the _get_datamodel method
-        with patch.object(
-            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
-        ):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return empty results (simulating no table entities found)
-            with patch.object(
-                self.tableau.metadata, "search_in_any_service", return_value=[]
-            ):
+            with patch.object(self.tableau.metadata, "search_in_any_service", return_value=[]):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
-                with patch.object(
-                    self.tableau, "_get_add_lineage_request"
-                ) as mock_lineage_request:
+                with patch.object(self.tableau, "_get_add_lineage_request") as mock_lineage_request:
                     # Call the method under test
                     lineage_results = list(
                         self.tableau._get_datamodel_table_lineage(
@@ -751,22 +692,14 @@ class TableauUnitTest(TestCase):
         )
 
         # Mock the client to return custom SQL queries
-        self.tableau.client.get_custom_sql_table_queries = MagicMock(
-            return_value=["SELECT * FROM test_table_2"]
-        )
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(return_value=["SELECT * FROM test_table_2"])
 
         # Mock the _get_datamodel method
-        with patch.object(
-            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
-        ):
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity):  # noqa: SIM117
             # Mock the metadata search to return None (simulating search failure)
-            with patch.object(
-                self.tableau.metadata, "search_in_any_service", return_value=None
-            ):
+            with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 # Mock the _get_add_lineage_request method to avoid actual lineage creation
-                with patch.object(
-                    self.tableau, "_get_add_lineage_request"
-                ) as mock_lineage_request:
+                with patch.object(self.tableau, "_get_add_lineage_request") as mock_lineage_request:
                     # Call the method under test
                     lineage_results = list(
                         self.tableau._get_datamodel_table_lineage(
@@ -795,18 +728,12 @@ class TableauUnitTest(TestCase):
         self.tableau.source_config.includeOwners = True
 
         # Create a mock dashboard with owner information
-        mock_dashboard_with_owner = MOCK_DASHBOARD
+        mock_dashboard_with_owner = MOCK_DASHBOARD  # noqa: F841
 
         # Mock the metadata.get_reference_by_email method
-        with patch.object(
-            self.tableau.metadata, "get_reference_by_email"
-        ) as mock_get_ref:
+        with patch.object(self.tableau.metadata, "get_reference_by_email") as mock_get_ref:
             mock_get_ref.return_value = EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=uuid.uuid4(), name="Dashboard Owner", type="user"
-                    )
-                ]
+                root=[EntityReference(id=uuid.uuid4(), name="Dashboard Owner", type="user")]
             )
 
             # Test that owner information is included when includeOwners is True
@@ -858,12 +785,8 @@ class TableauUnitTest(TestCase):
             database={"id": "db1", "name": "test_database"},
         )
 
-        with patch.object(
-            self.tableau.metadata, "get_by_name", return_value=None
-        ) as mock_get_by_name:
-            with patch.object(
-                self.tableau.metadata, "search_in_any_service", return_value=None
-            ):
+        with patch.object(self.tableau.metadata, "get_by_name", return_value=None) as mock_get_by_name:  # noqa: SIM117
+            with patch.object(self.tableau.metadata, "search_in_any_service", return_value=None):
                 result = self.tableau._get_table_entities_from_api(
                     db_service_prefix="non_existent_service",
                     table=mock_table,
@@ -871,3 +794,255 @@ class TableauUnitTest(TestCase):
 
                 mock_get_by_name.assert_called_once()
                 assert result is None
+
+    def test_datamodel_uses_own_project_over_dashboard_project(self):
+        """
+        Test that when a published datasource has its own projectName,
+        the datamodel request uses it instead of the dashboard's project.
+        """
+        dashboard_with_project = TableauDashboard(
+            id="wb-001",
+            name="Sales Overview",
+            project=TableauBaseModel(id="p1", name="Marketing"),
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-pub-001",
+                    name="Revenue Metrics",
+                    projectName="Finance",
+                    fields=[],
+                )
+            ],
+            tags=[],
+        )
+
+        results = list(
+            self.tableau._create_datamodel_request(
+                data_model=dashboard_with_project.dataModels[0],
+                dashboard_details=dashboard_with_project,
+            )
+        )
+        assert len(results) == 1
+        assert results[0].right.project == "Finance"
+
+    def test_datamodel_falls_back_to_dashboard_project(self):
+        """
+        Test that when a datasource has no projectName (e.g. embedded),
+        it falls back to the dashboard's project.
+        """
+        dashboard_with_project = TableauDashboard(
+            id="wb-002",
+            name="Ops Dashboard",
+            project=TableauBaseModel(id="p2", name="Operations"),
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-001",
+                    name="Order Volumes",
+                    fields=[],
+                )
+            ],
+            tags=[],
+        )
+
+        results = list(
+            self.tableau._create_datamodel_request(
+                data_model=dashboard_with_project.dataModels[0],
+                dashboard_details=dashboard_with_project,
+            )
+        )
+        assert len(results) == 1
+        assert results[0].right.project == "Operations"
+
+    def test_datamodel_project_none_when_both_missing(self):
+        """
+        Test that project is None when neither the datasource nor the
+        dashboard has a project.
+        """
+        dashboard_no_project = TableauDashboard(
+            id="wb-003",
+            name="Ad Hoc Analysis",
+            charts=[],
+            dataModels=[
+                DataSource(
+                    id="ds-emb-002",
+                    name="Temp Data",
+                    fields=[],
+                )
+            ],
+            tags=[],
+        )
+
+        results = list(
+            self.tableau._create_datamodel_request(
+                data_model=dashboard_no_project.dataModels[0],
+                dashboard_details=dashboard_no_project,
+            )
+        )
+        assert len(results) == 1
+        assert results[0].right.project is None
+
+    def test_column_description_includes_formula(self):
+        """
+        Test that when a field has a formula (CalculatedField), the column
+        description is enriched with the formula text.
+        """
+        data_source = DataSource(
+            id="ds-calc-001",
+            name="Delivery Metrics",
+            fields=[
+                DatasourceField(
+                    id="fld-001",
+                    name="On Time Rate",
+                    description="Percentage of deliveries completed within SLA.",
+                    formula="SUM([On Time Count])/SUM([Total Deliveries])",
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-001",
+                            name="ON_TIME_COUNT",
+                            remoteType="NUMERIC",
+                        ),
+                        UpstreamColumn(
+                            id="col-002",
+                            name="TOTAL_DELIVERIES",
+                            remoteType="NUMERIC",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        desc = columns[0].description.root
+        assert "Percentage of deliveries completed within SLA." in desc
+        assert "**Formula:** `SUM([On Time Count])/SUM([Total Deliveries])`" in desc
+
+    def test_column_description_formula_only_when_no_description(self):
+        """
+        Test that when a calculated field has a formula but no description,
+        the column description is just the formula text.
+        """
+        data_source = DataSource(
+            id="ds-calc-002",
+            name="Territory Analysis",
+            fields=[
+                DatasourceField(
+                    id="fld-002",
+                    name="Region Bucket",
+                    description=None,
+                    formula="[Sales Region]",
+                    upstreamColumns=[],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        desc = columns[0].description.root
+        assert desc == "**Formula:** `[Sales Region]`"
+
+    def test_column_description_without_formula(self):
+        """
+        Test that a regular field (non-calculated) keeps its plain description.
+        """
+        data_source = DataSource(
+            id="ds-reg-001",
+            name="Customer Facts",
+            fields=[
+                DatasourceField(
+                    id="fld-003",
+                    name="Signup Date",
+                    description="Date the customer signed up.",
+                    formula=None,
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-003",
+                            name="SIGNUP_DATE",
+                            remoteType="DATE",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        assert columns[0].description.root == "Date the customer signed up."
+
+    def test_column_no_description_no_formula(self):
+        """
+        Test that a field with no description and no formula gets None description.
+        """
+        data_source = DataSource(
+            id="ds-reg-002",
+            name="Raw Events",
+            fields=[
+                DatasourceField(
+                    id="fld-004",
+                    name="Event Timestamp",
+                    description=None,
+                    formula=None,
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-004",
+                            name="EVENT_TS",
+                            remoteType="DATETIME",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        assert columns[0].description is None
+
+    def test_yield_lineage_emits_both_paths_when_upstream_datasources_and_tables_present(
+        self,
+    ):
+        """
+        When an embedded datasource has both upstreamDatasources and upstreamTables,
+        lineage must be emitted for both paths, not just upstreamDatasources.
+        """
+        upstream_table = UpstreamTable(
+            id="tbl-001",
+            luid="tbl-luid-001",
+            name="direct_table",
+        )
+        mock_datamodel = DataSource(
+            id="ds-embedded",
+            name="Embedded Datasource",
+            upstreamDatasources=[DataSource(id="ds-published", name="Published Datasource")],
+            upstreamTables=[upstream_table],
+        )
+        mock_dashboard = TableauDashboard(
+            id="wb-001",
+            name="Test Workbook",
+            dataModels=[mock_datamodel],
+        )
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded Datasource",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+        with patch.object(self.tableau, "_get_datamodel", return_value=mock_data_model_entity):  # noqa: SIM117
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_datasource_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_table_lineage:
+                    list(self.tableau.yield_dashboard_lineage_details(mock_dashboard))
+                    mock_datasource_lineage.assert_called_once()
+                    mock_table_lineage.assert_called_once()
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.tableau.chart_source_state = set()
+        list(self.tableau.yield_dashboard_chart(MOCK_DASHBOARD))
+        assert len(self.tableau.chart_source_state) == 3
+        for fqn in self.tableau.chart_source_state:
+            assert "tableau_source_test" in fqn

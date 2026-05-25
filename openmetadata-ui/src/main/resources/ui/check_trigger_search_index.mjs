@@ -12,7 +12,9 @@
  */
 import { chromium, request } from '@playwright/test';
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ storageState: 'playwright/.auth/admin.json' });
+const context = await browser.newContext({
+  storageState: 'playwright/.auth/admin.json',
+});
 const page = await context.newPage();
 await page.goto('http://localhost:8585/my-data');
 await page.waitForLoadState('networkidle');
@@ -28,7 +30,11 @@ const token = await page.evaluate(async () => {
       const store = tx.objectStore(STORE_NAME);
       const getReq = store.get(APP_STATE_KEY);
       getReq.onsuccess = () => {
-        try { resolve(JSON.parse(getReq.result || '{}').primary || ''); } catch { resolve(''); }
+        try {
+          resolve(JSON.parse(getReq.result || '{}').primary || '');
+        } catch {
+          resolve('');
+        }
       };
       getReq.onerror = () => resolve('');
     };
@@ -36,13 +42,19 @@ const token = await page.evaluate(async () => {
     req.onupgradeneeded = () => resolve('');
   });
 });
-const api = await request.newContext({ baseURL: 'http://localhost:8585', extraHTTPHeaders: { Authorization: `Bearer ${token}` }, timeout: 90000 });
+const api = await request.newContext({
+  baseURL: 'http://localhost:8585',
+  extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+  timeout: 90000,
+});
 console.log('triggering...');
 let res = await api.post('/api/v1/apps/trigger/SearchIndexingApplication');
 console.log('trigger status', res.status(), await res.text());
 for (let i = 0; i < 10; i++) {
-  await new Promise(r => setTimeout(r, 2000));
-  res = await api.get('/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=3');
+  await new Promise((r) => setTimeout(r, 2000));
+  res = await api.get(
+    '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=3'
+  );
   const text = await res.text();
   console.log('poll', i, res.status(), text.slice(0, 1000));
 }

@@ -1,0 +1,72 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.test-case-status-icon {
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  border: 6px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+
+  color: @grey-900;
+  background-color: @grey-100;
+  border-color: @grey-50;
+
+  svg {
+    height: 20px;
+    width: 20px;
+  }
+  &.failed {
+    color: @red-10;
+    background-color: @alert-error-icon-bg-1;
+    border-color: @red-9;
+  }
+  &.success {
+    color: @green-10;
+    background-color: @green-100;
+    border-color: @green-9;
+  }
+  &.aborted {
+    color: @alert-warning-icon;
+    background-color: @alert-warning-icon-bg-1;
+    border-color: @yellow-10;
+  }
+}
+
+.test-case-area-chart-widget-container {
+  position: relative;
+  background: @grey-26;
+  border-color: @grey-9;
+
+  .test-case-status-widget-footer-divider {
+    border-style: dashed;
+    margin-top: @margin-sm;
+    margin-bottom: @margin-xss;
+  }
+
+  .test-case-status-widget-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+
+    svg {
+      width: 100%;
+      height: auto;
+      max-height: @size-2xl;
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/type/regexMode.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RegexMode",
+  "description": "Controls how regex filters are applied when listing entities. 'include' returns entities matching the pattern, 'exclude' returns entities that do not match.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.type.RegexMode",
+  "enum": ["include", "exclude"],
+  "javaEnums": [
+    {
+      "name": "INCLUDE"
+    },
+    {
+      "name": "EXCLUDE"
+    }
+  ]
+}

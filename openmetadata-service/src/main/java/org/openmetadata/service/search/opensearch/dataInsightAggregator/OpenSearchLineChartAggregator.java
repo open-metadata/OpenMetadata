@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,8 +44,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live)
-      throws IOException {
+      boolean live) {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
     int i = 0;

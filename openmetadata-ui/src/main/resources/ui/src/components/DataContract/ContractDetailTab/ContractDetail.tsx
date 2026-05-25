@@ -635,7 +635,7 @@ const ContractDetail: React.FC<{
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
           }
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
           <Typography.Paragraph className="m-t-md w-80" type="secondary">
             {t('message.no-contract-description')}
           </Typography.Paragraph>
@@ -659,7 +659,7 @@ const ContractDetail: React.FC<{
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
           }
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
           <Typography.Paragraph className="m-t-md w-80" type="secondary">
             {t('message.create-contract-description')}
           </Typography.Paragraph>

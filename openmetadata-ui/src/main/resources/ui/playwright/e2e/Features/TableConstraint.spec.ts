@@ -24,6 +24,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -60,12 +61,10 @@ test.describe('Table Constraints', {}, () => {
 
     await test.step('Add Constraints', async () => {
       await table.visitEntityPage(page);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="table-constraints-add-button"]');
-      await page.waitForSelector('[role="dialog"].ant-modal');
+      await page.locator('[role="dialog"].ant-modal').waitFor();
 
       // Add for Primary Key
 
@@ -85,6 +84,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('primary-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName1, { force: true });
 
       // select 1st value from dropdown
@@ -96,6 +96,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('primary-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName2, { force: true });
 
       const secondPrimaryKeyColumn = page.getByTitle(columnName2);
@@ -177,6 +178,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('unique-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName3, { force: true });
 
       // select 1st value from dropdown
@@ -190,6 +192,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('unique-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName4, { force: true });
 
       const secondUniqueKeyColumn = page.getByTitle(columnName4);
@@ -215,6 +218,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('dist-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName1, { force: true });
 
       // select 1st value from dropdown
@@ -226,6 +230,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('dist-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName2, { force: true });
 
       const secondDistKeyColumn = page.getByTitle(columnName2);
@@ -251,6 +256,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('sort-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName3, { force: true });
 
       // select 1st value from dropdown
@@ -262,6 +268,7 @@ test.describe('Table Constraints', {}, () => {
       await page
         .getByTestId('sort-constraint-type-select')
         .getByRole('combobox')
+        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
         .fill(columnName4, { force: true });
 
       const secondSortKeyColumn = page.getByTitle(columnName4);
@@ -279,7 +286,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.waitForSelector('[role="dialog"].ant-modal', {
+      await page.locator('[role="dialog"].ant-modal').waitFor({
         state: 'detached',
       });
     });
@@ -345,7 +352,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponseOne;
 
-      await page.waitForSelector('[role="dialog"].ant-modal', {
+      await page.locator('[role="dialog"].ant-modal').waitFor({
         state: 'detached',
       });
 
@@ -361,7 +368,7 @@ test.describe('Table Constraints', {}, () => {
       // Remove the pending constraints
 
       await page.getByTestId('edit-table-constraint-button').click();
-      await page.waitForSelector('[role="dialog"].ant-modal');
+      await page.locator('[role="dialog"].ant-modal').waitFor();
 
       // Clear Dist Key
       await clickOnDistKeySelector(page, true);
@@ -379,7 +386,7 @@ test.describe('Table Constraints', {}, () => {
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.waitForSelector('[role="dialog"].ant-modal', {
+      await page.locator('[role="dialog"].ant-modal').waitFor({
         state: 'detached',
       });
 

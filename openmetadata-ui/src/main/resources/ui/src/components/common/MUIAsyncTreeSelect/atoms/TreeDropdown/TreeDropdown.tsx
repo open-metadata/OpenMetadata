@@ -38,7 +38,7 @@ const TreeDropdown: FC<TreeDropdownProps> = ({
   const handleClickAway = (event: MouseEvent | TouchEvent) => {
     // Don't close if clicking within the dropdown itself
     const target = event.target as Node;
-    const dropdownElement = (event as any).currentTarget;
+    const dropdownElement = event.currentTarget;
     if (dropdownElement && dropdownElement.contains(target)) {
       return;
     }

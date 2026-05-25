@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
 import { FileClass } from '../support/entity/FileClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
@@ -23,6 +24,7 @@ export const nestedChildrenTestData: Record<
   {
     CreationClass:
       | typeof ApiEndpointClass
+      | typeof ContainerClass
       | typeof DashboardDataModelClass
       | typeof FileClass
       | typeof SearchIndexClass
@@ -35,6 +37,10 @@ export const nestedChildrenTestData: Record<
 > = {
   'API Endpoint': {
     CreationClass: ApiEndpointClass,
+  },
+  Container: {
+    CreationClass: ContainerClass,
+    tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,

@@ -15,6 +15,7 @@ Dialect-specific SQL syntax masking tests
 Tests for masking queries that use dialect-specific syntax features
 (typed literals, VARIANT paths, STRUCTs, DECLARE, etc.).
 """
+
 from unittest import TestCase
 
 import pytest
@@ -35,8 +36,8 @@ class TestQueryMaskerDialectSpecific(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT * FROM orders WHERE order_date = DATE '2023-10-01' AND customer_id IN (SELECT id FROM customers WHERE signup_date = TIMESTAMP '2022-01-15 10:30:00');",  # noqa: E501
-                "expected": "SELECT * FROM orders WHERE order_date = DATE ? AND customer_id IN (SELECT id FROM customers WHERE signup_date = TIMESTAMP ?);",  # noqa: E501
+                "query": "SELECT * FROM orders WHERE order_date = DATE '2023-10-01' AND customer_id IN (SELECT id FROM customers WHERE signup_date = TIMESTAMP '2022-01-15 10:30:00');",  # noqa: E501, RUF100
+                "expected": "SELECT * FROM orders WHERE order_date = DATE ? AND customer_id IN (SELECT id FROM customers WHERE signup_date = TIMESTAMP ?);",  # noqa: E501, RUF100
                 "dialect": Dialect.POSTGRES.value,
             }
         ]
@@ -67,8 +68,8 @@ class TestQueryMaskerDialectSpecific(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT IF(status = 'active', 1, 0) AS is_active, DATE(created_at) AS created_day FROM accounts WHERE score > 99.5 AND created_at BETWEEN '2024-01-01' AND '2024-12-31' ORDER BY created_at DESC LIMIT 10 OFFSET 5;",  # noqa: E501
-                "expected": "SELECT IF(status = ?, ?, ?) AS is_active, DATE(created_at) AS created_day FROM accounts WHERE score > ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ? OFFSET ?;",  # noqa: E501
+                "query": "SELECT IF(status = 'active', 1, 0) AS is_active, DATE(created_at) AS created_day FROM accounts WHERE score > 99.5 AND created_at BETWEEN '2024-01-01' AND '2024-12-31' ORDER BY created_at DESC LIMIT 10 OFFSET 5;",  # noqa: E501, RUF100
+                "expected": "SELECT IF(status = ?, ?, ?) AS is_active, DATE(created_at) AS created_day FROM accounts WHERE score > ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ? OFFSET ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.MYSQL.value,
             }
         ]
@@ -99,8 +100,8 @@ class TestQueryMaskerDialectSpecific(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT u.name, u.age, a.city FROM UNNEST([STRUCT('alice' AS name, 25 AS age, [STRUCT('NY' AS city)])]) AS u, UNNEST(u.f2) AS a WHERE u.age > 21 AND a.city = 'NY';",  # noqa: E501
-                "expected": "SELECT u.name, u.age, a.city FROM UNNEST([STRUCT(? AS name, ? AS age, [STRUCT(? AS city)])]) AS u, UNNEST(u.f2) AS a WHERE u.age > ? AND a.city = ?;",  # noqa: E501
+                "query": "SELECT u.name, u.age, a.city FROM UNNEST([STRUCT('alice' AS name, 25 AS age, [STRUCT('NY' AS city)])]) AS u, UNNEST(u.f2) AS a WHERE u.age > 21 AND a.city = 'NY';",  # noqa: E501, RUF100
+                "expected": "SELECT u.name, u.age, a.city FROM UNNEST([STRUCT(? AS name, ? AS age, [STRUCT(? AS city)])]) AS u, UNNEST(u.f2) AS a WHERE u.age > ? AND a.city = ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.BIGQUERY.value,
             },
         ]
@@ -133,8 +134,8 @@ class TestQueryMaskerDialectSpecific(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT data:id AS user_id, data:profile.name AS user_name, data:profile.age::INT AS user_age FROM events WHERE data:profile.age > 30 AND data:profile.status = 'active';",  # noqa: E501
-                "expected": "SELECT data:id AS user_id, data:profile.name AS user_name, data:profile.age::INT AS user_age FROM events WHERE data:profile.age > ? AND data:profile.status = ?;",  # noqa: E501
+                "query": "SELECT data:id AS user_id, data:profile.name AS user_name, data:profile.age::INT AS user_age FROM events WHERE data:profile.age > 30 AND data:profile.status = 'active';",  # noqa: E501, RUF100
+                "expected": "SELECT data:id AS user_id, data:profile.name AS user_name, data:profile.age::INT AS user_age FROM events WHERE data:profile.age > ? AND data:profile.status = ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.SNOWFLAKE.value,
             }
         ]
@@ -169,8 +170,8 @@ class TestQueryMaskerDialectSpecific(TestCase):
         """
         query_test_cases = [
             {
-                "query": "DECLARE @startDate DATETIME = '2024-01-01'; DECLARE @endDate DATETIME = '2024-12-31'; SELECT * FROM events WHERE event_date BETWEEN @startDate AND @endDate;",  # noqa: E501
-                "expected": "DECLARE @startDate DATETIME = '2024-01-01'; DECLARE @endDate DATETIME = '2024-12-31'; SELECT * FROM events WHERE event_date BETWEEN ? AND ?;",  # noqa: E501
+                "query": "DECLARE @startDate DATETIME = '2024-01-01'; DECLARE @endDate DATETIME = '2024-12-31'; SELECT * FROM events WHERE event_date BETWEEN @startDate AND @endDate;",  # noqa: E501, RUF100
+                "expected": "DECLARE @startDate DATETIME = '2024-01-01'; DECLARE @endDate DATETIME = '2024-12-31'; SELECT * FROM events WHERE event_date BETWEEN ? AND ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.TSQL.value,
             }
         ]
@@ -195,6 +196,46 @@ class TestQueryMaskerDialectSpecific(TestCase):
             # TODO: since our parser is designed to handle one sql statement at a
             # time, it returns last masked statement only, need to evaluate later
             # if multi-statement handling is required
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
+    def test_vertica_nextval_arguments_preserved(self):
+        """
+        Test that NEXTVAL/CURRVAL/SETVAL/LASTVAL sequence function arguments
+        are NOT masked, since they are schema/sequence identifiers, not data literals.
+
+        Addresses GitHub issue #26696: Vertica NEXTVAL() sequence arguments
+        were incorrectly parameterised as ? in lineage parser.
+        """
+        query_test_cases = [
+            {
+                "query": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = 'active';",  # noqa: E501, RUF100
+                "expected": "INSERT INTO target_table SELECT NEXTVAL('reporting', 'my_sequence'), col1 FROM source_table WHERE status = ?;",  # noqa: E501, RUF100
+                "dialect": Dialect.VERTICA.value,
+            },
+            {
+                "query": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
+                "expected": "SELECT CURRVAL('public', 'id_seq') FROM dual;",
+                "dialect": Dialect.VERTICA.value,
+            },
+            {
+                "query": "SELECT SETVAL('myschema', 'myseq', 100) FROM dual;",
+                "expected": "SELECT SETVAL('myschema', 'myseq', ?) FROM dual;",
+                "dialect": Dialect.VERTICA.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
             assert_masked_query(
                 test_case["query"],
                 test_case["expected"],

@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -26,10 +27,11 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
-import jakarta.json.JsonPatch;
+import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,7 +60,6 @@ import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -82,7 +83,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -94,10 +94,12 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
@@ -107,12 +109,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  private static final String TEST_SUITE_FIELD = "testSuite";
-  private static final String INCIDENTS_FIELD = "incidentId";
+  public static final String TEST_SUITE_FIELD = "testSuite";
+  public static final String TEST_DEFINITION_FIELD = "testDefinition";
+  public static final String INCIDENTS_FIELD = "incidentId";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
@@ -216,7 +218,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         tableRepo.getDao().findEntityByNames(new ArrayList<>(fqnToEntityLink.keySet()), ALL);
     tableRepo.setFieldsInBulk(
         new Fields(
-            Set.of("tags", "columns", FIELD_OWNERS, "domains", FIELD_FOLLOWERS),
+            Set.of("tags", "columns", FIELD_OWNERS, "domains", "dataProducts", FIELD_FOLLOWERS),
             String.join(",", tableFields)),
         tables);
 
@@ -231,6 +233,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     if (fields.contains("domains")) {
       tableFields.add("domains");
+    }
+    if (fields.contains(FIELD_DATA_PRODUCTS)) {
+      tableFields.add(FIELD_DATA_PRODUCTS);
     }
     if (fields.contains(FIELD_FOLLOWERS)) {
       tableFields.add(FIELD_FOLLOWERS);
@@ -452,6 +457,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (table != null) {
       inheritOwners(testCase, fields, table);
       inheritDomains(testCase, fields, table);
+      inheritDataProducts(testCase, fields, table);
       inheritTags(testCase, fields, table);
       inheritFollowers(testCase, fields, table);
     }
@@ -522,6 +528,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (table != null) {
         inheritOwners(testCase, fields, table);
         inheritDomains(testCase, fields, table);
+        inheritDataProducts(testCase, fields, table);
         inheritTags(testCase, fields, table);
         inheritFollowers(testCase, fields, table);
       }
@@ -871,10 +878,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+    if (testCase.getTestSuite() != null) {
+      try {
+        var testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+        var original = TestSuiteRepository.copyTestSuite(testSuite);
+        testSuiteRepository.postUpdate(original, testSuite);
+      } catch (EntityNotFoundException ignored) {
+        // TestSuite already deleted as part of the same cascade — nothing to update.
+      }
+    }
   }
 
   private void updateLogicalTestSuite(UUID testSuiteId) {
@@ -957,17 +971,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    * incident
    */
   private UUID getIncidentId(TestCase test) {
-    UUID ongoingIncident = null;
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
 
-    String json =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecord(test.getFullyQualifiedName());
-    TestCaseResult latestTestCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-
-    if (!nullOrEmpty(latestTestCaseResult)) {
-      ongoingIncident = latestTestCaseResult.getIncidentId();
+    if (latest != null && latest.getStateId() != null) {
+      return latest.getStateId();
     }
 
-    return ongoingIncident;
+    return null;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -992,22 +1005,120 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     bulkAddToRelationship(
         testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    for (UUID testCaseId : testCaseIds) {
-      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-      ChangeDescription change =
-          new ChangeDescription()
-              .withFieldsUpdated(
-                  List.of(
-                      new FieldChange()
-                          .withName("testSuites")
-                          .withNewValue(testCase.getTestSuites())));
-      testCase.setChangeDescription(change);
-      postUpdate(testCase, testCase);
-    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> testCaseReferences =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+
+    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
+    postLogicalSuiteRelationshipUpdate(updatedTestCases);
     updateLogicalTestSuite(testSuite.getId());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
+    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
+    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
+    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
+    return DeadlockRetry.execute(
+        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
+  }
+
+  @Transaction
+  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    String tableName = daoCollection.testCaseDAO().getTableName();
+    if (nullOrEmpty(excludedTestCaseIds)) {
+      executeWithDeadlockRetry(
+          () ->
+              daoCollection
+                  .relationshipDAO()
+                  .bulkInsertAllToRelationship(
+                      testSuite.getId(),
+                      TEST_SUITE,
+                      TEST_CASE,
+                      Relationship.CONTAINS.ordinal(),
+                      tableName));
+    } else {
+      executeWithDeadlockRetry(
+          () ->
+              daoCollection
+                  .relationshipDAO()
+                  .bulkInsertAllToRelationshipWithExclusions(
+                      excludedTestCaseIds.stream().map(UUID::toString).toList(),
+                      testSuite.getId(),
+                      TEST_SUITE,
+                      TEST_CASE,
+                      Relationship.CONTAINS.ordinal(),
+                      tableName));
+    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> newTestCaseReferences =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+
+    int batchSize = 100;
+    for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
+      List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
+      postLogicalSuiteRelationshipUpdate(updatedTestCases);
+    }
+    updateLogicalTestSuite(testSuite.getId());
+
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private void executeWithDeadlockRetry(Runnable operation) {
+    int maxAttempts = 3;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        operation.run();
+        return;
+      } catch (RuntimeException ex) {
+        if (!isTransientDeadlock(ex) || attempt == maxAttempts) {
+          throw ex;
+        }
+        LOG.debug(
+            "Retrying logical test suite bulk insert after transient deadlock (attempt {}/{})",
+            attempt + 1,
+            maxAttempts);
+      }
+    }
+  }
+
+  private boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Transaction
@@ -1030,6 +1141,49 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
+    List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
+    testCases.forEach(
+        tc -> {
+          ChangeDescription change =
+              new ChangeDescription()
+                  .withFieldsUpdated(
+                      List.of(
+                          new FieldChange()
+                              .withName("testSuites")
+                              .withNewValue(tc.getTestSuites())));
+          tc.setChangeDescription(change);
+        });
+    return testCases;
+  }
+
+  /**
+   * Lifecycle hook for the "test case added to a logical test suite" bulk flow. Bypasses
+   * {@code postUpdateMany}'s {@code writeThroughCacheMany} because adding a CONTAINS row to the
+   * {@code test_suite ↔ test_case} relationship table does not modify the {@link TestCase}
+   * entity's stored JSON — {@code testSuites} is stripped from storage JSON (see {@link
+   * #getFieldsStrippedFromStorageJson}) and is rehydrated from {@code entity_relationship} on
+   * read. Writing the pre-read snapshot back to cache here races against any concurrent PATCH
+   * that landed on the same test case during this transaction — exactly the staleness pattern
+   * that previously caused {@code BaseEntityIT.testBulkFluentAPI} to time out for TestCase when
+   * {@code test_bulkAddAllTestCasesWithExcludeIds} executed in parallel. Invalidate the
+   * read-bundle (where {@code testSuites} is fanned out) instead so the next read picks up the
+   * new relationship without clobbering concurrent writers.
+   */
+  private void postLogicalSuiteRelationshipUpdate(List<TestCase> updatedTestCases) {
+    if (updatedTestCases == null || updatedTestCases.isEmpty()) {
+      return;
+    }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      for (TestCase tc : updatedTestCases) {
+        cachedReadBundle.invalidate(entityType, tc.getId());
+      }
+    }
+    EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(updatedTestCases, null, null);
+    updatedTestCases.forEach(RdfUpdater::updateEntity);
   }
 
   @Override
@@ -1281,79 +1435,82 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           });
       compareAndUpdate(
           TEST_SUITE_FIELD,
-          () -> {
-            updateFromRelationship(
-                TEST_SUITE_FIELD,
-                TEST_SUITE,
-                original.getTestSuite(),
-                updated.getTestSuite(),
-                Relationship.HAS,
-                TEST_CASE,
-                updated.getId());
-          });
+          () ->
+              updateFromRelationship(
+                  TEST_SUITE_FIELD,
+                  TEST_SUITE,
+                  original.getTestSuite(),
+                  updated.getTestSuite(),
+                  Relationship.HAS,
+                  TEST_CASE,
+                  updated.getId()));
       compareAndUpdate(
           TEST_DEFINITION,
-          () -> {
-            updateFromRelationship(
-                TEST_DEFINITION,
-                TEST_DEFINITION,
-                original.getTestDefinition(),
-                updated.getTestDefinition(),
-                Relationship.CONTAINS,
-                TEST_CASE,
-                updated.getId());
-          });
+          () ->
+              updateFromRelationship(
+                  TEST_DEFINITION,
+                  TEST_DEFINITION,
+                  original.getTestDefinition(),
+                  updated.getTestDefinition(),
+                  Relationship.CONTAINS,
+                  TEST_CASE,
+                  updated.getId()));
       compareAndUpdate(
           "parameterValues",
-          () -> {
-            recordChange(
-                "parameterValues", original.getParameterValues(), updated.getParameterValues());
-          });
+          () ->
+              recordChange(
+                  "parameterValues", original.getParameterValues(), updated.getParameterValues()));
       compareAndUpdate(
           "inspectionQuery",
-          () -> {
-            recordChange(
-                "inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery());
-          });
+          () ->
+              recordChange(
+                  "inspectionQuery", original.getInspectionQuery(), updated.getInspectionQuery()));
       compareAndUpdate(
           "computePassedFailedRowCount",
-          () -> {
-            recordChange(
-                "computePassedFailedRowCount",
-                original.getComputePassedFailedRowCount(),
-                updated.getComputePassedFailedRowCount());
-          });
+          () ->
+              recordChange(
+                  "computePassedFailedRowCount",
+                  original.getComputePassedFailedRowCount(),
+                  updated.getComputePassedFailedRowCount()));
+      compareAndUpdate(
+          "autoCloseIncident",
+          () ->
+              recordChange(
+                  "autoCloseIncident",
+                  original.getAutoCloseIncident(),
+                  updated.getAutoCloseIncident()));
       compareAndUpdate(
           "useDynamicAssertion",
-          () -> {
-            recordChange(
-                "useDynamicAssertion",
-                original.getUseDynamicAssertion(),
-                updated.getUseDynamicAssertion());
-          });
+          () ->
+              recordChange(
+                  "useDynamicAssertion",
+                  original.getUseDynamicAssertion(),
+                  updated.getUseDynamicAssertion()));
       compareAndUpdate(
           "dimensionColumns",
-          () -> {
-            recordChange(
-                "dimensionColumns", original.getDimensionColumns(), updated.getDimensionColumns());
-          });
+          () ->
+              recordChange(
+                  "dimensionColumns",
+                  original.getDimensionColumns(),
+                  updated.getDimensionColumns()));
       compareAndUpdate(
           "topDimensions",
-          () -> {
-            recordChange("topDimensions", original.getTopDimensions(), updated.getTopDimensions());
-          });
+          () ->
+              recordChange(
+                  "topDimensions", original.getTopDimensions(), updated.getTopDimensions()));
       compareAndUpdate(
           "testCaseStatus",
-          () -> {
-            recordChange(
-                "testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus());
-          });
+          () ->
+              recordChange(
+                  "testCaseStatus", original.getTestCaseStatus(), updated.getTestCaseStatus()));
       compareAndUpdate(
           "testCaseResult",
-          () -> {
-            recordChange(
-                "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
-          });
+          () ->
+              recordChange(
+                  "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
+      compareAndUpdate(
+          INCIDENTS_FIELD,
+          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 
@@ -1470,6 +1627,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void postUpdate(TestCase original, TestCase updated) {
+    hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
@@ -1493,57 +1651,34 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private void closeApprovalTask(TestCase entity, String comment) {
-    MessageParser.EntityLink about =
-        new MessageParser.EntityLink(TEST_CASE, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
+  private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
+    setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
+  }
 
-    // Skip closing tasks if updatedBy is null (e.g., during tests)
+  private void closeApprovalTask(TestCase entity, String comment) {
     if (entity.getUpdatedBy() == null) {
       LOG.debug(
           "Skipping task closure for test case {} - updatedBy is null",
           entity.getFullyQualifiedName());
       return;
     }
-
-    // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for test case {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(TestCase testCase) {
-    try {
-      MessageParser.EntityLink about =
-          new MessageParser.EntityLink(TEST_CASE, testCase.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      testCase =
-          Entity.getEntityByName(
-              Entity.TEST_CASE,
-              testCase.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(testCase.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for test case {}",
-          TaskType.RequestApproval,
-          testCase.getFullyQualifiedName());
-    }
+    testCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCase.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        testCase.getFullyQualifiedName(),
+        new ArrayList<>(testCase.getReviewers()),
+        testCase.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
@@ -1589,7 +1724,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name, String csv, boolean dryRun, String user, boolean recursive) {
     throw new IllegalArgumentException(
         "TestCase CSV import requires 'targetEntityType' parameter. "
             + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
@@ -1649,7 +1784,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     if ("*".equals(name)) {
       // Platform-wide export
-      return listAll(new Fields(allowedFields, "testDefinition,testSuite"), new ListFilter());
+      return listAll(
+          new Fields(allowedFields, "testDefinition,testSuite, dataProducts"), new ListFilter());
     }
 
     // Try to determine if name is a table or test suite
@@ -1676,10 +1812,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
     filter.addQueryParam("includeAllTests", "true");
-    List<TestCase> testCases =
-        new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
-
-    return testCases;
+    return new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
   }
 
   private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {

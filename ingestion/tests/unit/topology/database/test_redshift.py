@@ -59,17 +59,10 @@ mock_redshift_config = {
 }
 
 
-RAW_DIST_STYLE = ["KEY(eventid)", "EVEN", "ALL"]
-
-EXPECTED_PARTITION_COLUMNS = ["eventid", None, None]
-
-
 class RedshiftUnitTest(unittest.TestCase):
     """Test cases for Redshift Provisioned cluster"""
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def setUp(self, mock_test_connection):
         """Set up test fixtures"""
         mock_test_connection.return_value = False
@@ -79,19 +72,8 @@ class RedshiftUnitTest(unittest.TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-    def test_partition_parse_columns(self):
-        """Test parsing of partition key from distribution style"""
-        for i in range(len(RAW_DIST_STYLE)):
-            with self.subTest(i=i):
-                self.assertEqual(
-                    self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
-                    EXPECTED_PARTITION_COLUMNS[i],
-                )
-
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, mock_connection, mock_engine):
         """Test connection closing"""
         mock_connection.return_value = True
@@ -131,9 +113,7 @@ class RedshiftUnitTest(unittest.TestCase):
         self.assertIn("{result_limit}", sql)
         self.assertIn("{filters}", sql)
 
-    @patch(
-        "metadata.ingestion.source.database.redshift.usage.get_redshift_instance_type"
-    )
+    @patch("metadata.ingestion.source.database.redshift.usage.get_redshift_instance_type")
     def test_usage_source_provisioned_initialization(self, mock_get_instance_type):
         """Test RedshiftUsageSource filters and SQL statement for Provisioned"""
         from metadata.ingestion.source.database.redshift.usage import (
@@ -150,15 +130,11 @@ class RedshiftUnitTest(unittest.TestCase):
 
         # Simulate __init__ logic for filter and statement selection
         if usage_source.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-            usage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[
-                RedshiftInstanceType.PROVISIONED
-            ]
+            usage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.PROVISIONED]
             usage_source.filters = RedshiftUsageSource.provisioned_filters
 
         # Verify instance type detected correctly
-        self.assertEqual(
-            usage_source.redshift_instance_type, RedshiftInstanceType.PROVISIONED
-        )
+        self.assertEqual(usage_source.redshift_instance_type, RedshiftInstanceType.PROVISIONED)
 
         # Verify correct SQL statement selected
         self.assertEqual(
@@ -174,9 +150,7 @@ class RedshiftUnitTest(unittest.TestCase):
         self.assertIn("NOT ILIKE 'fetch%%'", usage_source.filters)
         self.assertIn("NOT ILIKE 'padb_fetch_sample:%%'", usage_source.filters)
 
-    @patch(
-        "metadata.ingestion.source.database.redshift.lineage.get_redshift_instance_type"
-    )
+    @patch("metadata.ingestion.source.database.redshift.lineage.get_redshift_instance_type")
     def test_lineage_source_provisioned_initialization(self, mock_get_instance_type):
         """Test RedshiftLineageSource filters and SQL statement for Provisioned"""
         from metadata.ingestion.source.database.redshift.lineage import (
@@ -193,15 +167,11 @@ class RedshiftUnitTest(unittest.TestCase):
 
         # Simulate __init__ logic for filter and statement selection
         if lineage_source.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-            lineage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[
-                RedshiftInstanceType.PROVISIONED
-            ]
+            lineage_source.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.PROVISIONED]
             lineage_source.filters = RedshiftLineageSource.provisioned_filters
 
         # Verify instance type detected correctly
-        self.assertEqual(
-            lineage_source.redshift_instance_type, RedshiftInstanceType.PROVISIONED
-        )
+        self.assertEqual(lineage_source.redshift_instance_type, RedshiftInstanceType.PROVISIONED)
 
         # Verify correct SQL statement selected
         self.assertEqual(
@@ -224,12 +194,8 @@ class RedshiftUnitTest(unittest.TestCase):
         Test fetching stored procedures with filter
         """
         self.redshift_source.source_config.includeStoredProcedures = True
-        self.redshift_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["sp_exclude"]
-        )
-        self.redshift_source.context.get().__dict__[
-            "database_service"
-        ] = "redshift_source"
+        self.redshift_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
+        self.redshift_source.context.get().__dict__["database_service"] = "redshift_source"
         self.redshift_source.context.get().__dict__["database"] = "test_db"
         self.redshift_source.context.get().__dict__["database_schema"] = "test_schema"
 

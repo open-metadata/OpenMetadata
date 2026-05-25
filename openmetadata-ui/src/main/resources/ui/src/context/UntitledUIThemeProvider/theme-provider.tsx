@@ -11,24 +11,12 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
-
-export type Theme = 'light' | 'dark';
-
-interface BrandColors {
-  primaryColor?: string;
-  hoverColor?: string;
-  selectedColor?: string;
-  errorColor?: string;
-  successColor?: string;
-  warningColor?: string;
-  infoColor?: string;
-}
-
-interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  BrandColors,
+  Theme,
+  ThemeContextType,
+} from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -243,7 +231,7 @@ export const ThemeProvider = ({
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof globalThis !== 'undefined') {
       const savedTheme = localStorage.getItem(storageKey) as Theme | null;
 
       if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -257,7 +245,7 @@ export const ThemeProvider = ({
   });
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
     root.classList.toggle(darkModeClass, theme === 'dark');
 
@@ -269,7 +257,7 @@ export const ThemeProvider = ({
   }, [theme, darkModeClass, storageKey]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
     clearBrandCssVars(root);
     if (brandColors && Object.values(brandColors).some(Boolean)) {
@@ -285,9 +273,12 @@ export const ThemeProvider = ({
     brandColors?.infoColor,
   ]);
 
+  const values = useMemo(
+    () => ({ theme, brandColors, setTheme }),
+    [theme, brandColors]
+  );
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={values}>{children}</ThemeContext.Provider>
   );
 };

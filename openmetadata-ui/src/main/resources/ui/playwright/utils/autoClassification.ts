@@ -14,6 +14,7 @@
 import { Page } from '@playwright/test';
 import MysqlIngestionClass from '../support/entity/ingestion/MySqlIngestionClass';
 import { getApiContext, toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { visitServiceDetailsPage } from './service';
 
 export const addAndTriggerAutoClassificationPipeline = async (
@@ -42,16 +43,16 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await page.click('[data-testid="add-new-ingestion-button"]');
 
-  await page.waitForSelector(
-    '.ant-dropdown:visible [data-menu-id*="autoClassification"]'
-  );
+  await page
+    .locator('.ant-dropdown:visible [data-menu-id*="autoClassification"]')
+    .waitFor();
 
-  await page.waitForSelector('[data-menu-id*="autoClassification"]');
+  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
 
   await page.click('[data-menu-id*="autoClassification"]');
 
   // Fill the auto classification form details
-  await page.waitForSelector('#root\\/tableFilterPattern\\/includes');
+  await page.locator('#root\\/tableFilterPattern\\/includes').waitFor();
 
   await mysqlService.fillIngestionDetails(page);
 
@@ -63,7 +64,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
   await page.click('[data-testid="view-service-button"]');
 
   // Header available once page loads
-  await page.getByTestId('loader').waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('agents').click();
   const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
   if (await metadataTab2.isVisible()) {
@@ -82,7 +83,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
     )
     .then((res) => res.json());
 
-  // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
   await page.waitForTimeout(3000);
 
   await page.click(
@@ -92,7 +93,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await toastNotification(page, `Pipeline triggered successfully!`);
 
-  // need manual wait to make sure we are awaiting on latest run results
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
   await page.waitForTimeout(2000);
 
   await mysqlService.handleIngestionRetry('autoClassification', page);

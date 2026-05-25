@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const user = new UserClass();
 
@@ -25,7 +25,7 @@ const waitForTourBadgeWithRetry = async (
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await page.waitForSelector('[data-tour-elem="badge"]', {
+      await page.locator('[data-tour-elem="badge"]').waitFor({
         state: 'visible',
         timeout,
       });
@@ -34,9 +34,7 @@ const waitForTourBadgeWithRetry = async (
     } catch (e) {
       if (attempt < maxAttempts) {
         await page.reload();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       } else {
         throw e;
@@ -45,11 +43,7 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
-const expectTourBadge = async (
-  page: Page,
-  step: string,
-  timeout = 10000
-) => {
+const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
   const badge = page.locator('[data-tour-elem="badge"]');
   await badge.waitFor({ state: 'visible', timeout });
   await expect
@@ -60,7 +54,6 @@ const expectTourBadge = async (
 };
 
 const validateTourSteps = async (page: Page) => {
-  await page.waitForTimeout(1000);
   await waitForTourBadgeWithRetry(page);
 
   await expectTourBadge(page, '1');
@@ -186,30 +179,40 @@ test.describe(
 
       await page.locator('[data-testid="help-icon"]').click();
       await page.getByRole('link', { name: 'Tour', exact: true }).click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await page.waitForURL('**/tour');
 
-      await page.waitForSelector('#feedWidgetData');
+      await page.locator('#feedWidgetData').waitFor();
 
       await validateTourSteps(page);
     });
 
     test('Tour should work from welcome screen', async ({ page }) => {
-      await page
-        .getByTestId('whats-new-alert-card')
-        .locator('.whats-new-alert-close')
-        .click();
-      await page.getByText('Take a product tour to get started!').click();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
+      test.slow();
 
-      await page.waitForSelector('#feedWidgetData');
+      const isAlertVisible = await page
+        .getByTestId('whats-new-alert-card')
+        .isVisible();
+      if (isAlertVisible) {
+        await page
+          .getByTestId('whats-new-alert-card')
+          .locator('.whats-new-alert-close')
+          .click();
+      }
+      await page.getByText('Take a product tour to get started!').click();
+      await page.waitForURL('**/tour');
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+      const isWelcomeScreenVisible = await page
+        .getByTestId('welcome-screen')
+        .isVisible();
+      if (isWelcomeScreenVisible) {
+        await page.getByTestId('welcome-screen-close-btn').click();
+      }
+
+      await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await waitForTourBadgeWithRetry(page);
@@ -217,9 +220,7 @@ test.describe(
 
     test('Tour should work from URL directly', async ({ page }) => {
       await page.goto('/tour');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const isWelcomeScreenVisible = await page
         .getByTestId('welcome-screen')
         .isVisible();
@@ -227,13 +228,11 @@ test.describe(
       if (isWelcomeScreenVisible) {
         await page.getByTestId('welcome-screen-close-btn').click();
       }
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await page.waitForURL('**/tour');
 
-      await page.waitForSelector('#feedWidgetData');
+      await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await waitForTourBadgeWithRetry(page);

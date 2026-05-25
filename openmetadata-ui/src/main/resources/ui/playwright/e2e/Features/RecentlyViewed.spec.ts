@@ -69,7 +69,7 @@ test.describe('Recently viewed data assets', () => {
 
       await entity.visitEntityPage(page);
 
-      await page.waitForSelector('[data-testid="breadcrumb"]');
+      await page.getByTestId('breadcrumb').waitFor();
 
       await redirectToHomePage(page);
 
@@ -84,7 +84,7 @@ test.describe('Recently viewed data assets', () => {
         .getByText(entityName)
         .click();
 
-      await page.waitForSelector('[data-testid="breadcrumb"]');
+      await page.getByTestId('breadcrumb').waitFor();
 
       if ((await page.getByTestId('entity-header-display-name').count()) > 0) {
         await expect(

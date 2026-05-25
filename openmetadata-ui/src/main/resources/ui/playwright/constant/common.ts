@@ -31,6 +31,9 @@ export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 1 and 128';
 
+export const CP_NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 1 and 256';
+
 export const DELETE_TERM = 'DELETE';
 
 export const COMMON_TIER_TAG = [

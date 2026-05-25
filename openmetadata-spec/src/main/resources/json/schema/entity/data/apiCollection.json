@@ -105,6 +105,10 @@
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
+    },
     "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"

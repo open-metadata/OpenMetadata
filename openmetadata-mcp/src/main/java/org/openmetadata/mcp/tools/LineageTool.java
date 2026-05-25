@@ -11,7 +11,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -56,11 +55,7 @@ public class LineageTool implements McpTool {
     AddLineage lineage =
         new AddLineage()
             .withEdge(new EntitiesEdge().withFromEntity(fromEntity).withToEntity(toEntity));
-    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    String updatedBy =
-        impersonatedBy != null
-            ? impersonatedBy
-            : catalogSecurityContext.getUserPrincipal().getName();
+    String updatedBy = catalogSecurityContext.getUserPrincipal().getName();
     Entity.getLineageRepository().addLineage(lineage, updatedBy);
     return Map.of("result", "Lineage Edge created successfully");
   }

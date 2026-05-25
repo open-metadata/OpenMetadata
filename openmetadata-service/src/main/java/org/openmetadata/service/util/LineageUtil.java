@@ -8,10 +8,13 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -20,12 +23,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
+@Slf4j
 public class LineageUtil {
 
   private LineageUtil() {}
@@ -258,5 +264,60 @@ public class LineageUtil {
                 .withEntityDownstreamCount(entityDownstreamCount)
                 .withEntityUpstreamCount(entityUpstreamCount))
         .withNodeDepth(nodeDepth);
+  }
+
+  /**
+   * Batch-fetches entity-level tags from the database for multiple entities and replaces the mixed
+   * ES tags with table-level-only tags. Uses a single DB query for all FQNs. Tier tags are excluded
+   * since they have their own column in the Impact Analysis table.
+   *
+   * @param entityDocs list of entity source maps from ES
+   */
+  public static void replaceWithEntityLevelTagsBatch(List<Map<String, Object>> entityDocs) {
+    if (entityDocs == null || entityDocs.isEmpty()) {
+      return;
+    }
+    try {
+      List<String> fqns = new ArrayList<>();
+      for (Map<String, Object> doc : entityDocs) {
+        String fqn = (String) doc.get("fullyQualifiedName");
+        if (fqn != null) {
+          fqns.add(fqn);
+        }
+      }
+      if (fqns.isEmpty()) {
+        return;
+      }
+
+      // Single DB query for all entity FQNs
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchResults =
+          Entity.getCollectionDAO().tagUsageDAO().getTagsInternalBatch(fqns);
+
+      // Group by FQN hash and convert to TagLabel, filtering out Tier
+      Map<String, List<TagLabel>> tagsByFqnHash = new HashMap<>();
+      List<TagLabel> allTags = new ArrayList<>();
+      for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash result : batchResults) {
+        TagLabel tag = result.toTagLabel();
+        if (tag.getTagFQN() != null && !tag.getTagFQN().startsWith("Tier.")) {
+          allTags.add(tag);
+          tagsByFqnHash.computeIfAbsent(result.getTargetFQNHash(), k -> new ArrayList<>()).add(tag);
+        }
+      }
+
+      // Batch-enrich all tags with name, displayName, description, style
+      TagLabelUtil.applyTagCommonFieldsBatch(allTags);
+
+      // Replace tags in each entity doc
+      for (Map<String, Object> doc : entityDocs) {
+        String fqn = (String) doc.get("fullyQualifiedName");
+        if (fqn != null) {
+          String fqnHash = FullyQualifiedName.buildHash(fqn);
+          List<TagLabel> entityTags = tagsByFqnHash.getOrDefault(fqnHash, new ArrayList<>());
+          doc.put("tags", entityTags);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch entity-level tags for Impact Analysis, falling back to ES tags", e);
+    }
   }
 }

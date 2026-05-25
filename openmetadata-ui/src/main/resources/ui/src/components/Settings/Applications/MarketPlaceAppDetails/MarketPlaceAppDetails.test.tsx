@@ -159,6 +159,30 @@ describe('MarketPlaceAppDetails component', () => {
     expect(screen.getByTestId('appName')).toBeInTheDocument();
   });
 
+  it('should show cache service message for disabled cache warmup app', async () => {
+    mockGetApplicationByName = jest.fn().mockReturnValue([]);
+    mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
+      name: 'CacheWarmupApplication',
+      description: 'marketplace description',
+      fullyQualifiedName: 'CacheWarmupApplication',
+      supportEmail: 'support@email.com',
+      developerUrl: 'https://xyz.com',
+      privacyPolicyUrl: 'https://xyz.com',
+      appScreenshots: ['screenshot1', 'screenshot2'],
+      enabled: false,
+    });
+
+    render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.getByTestId('install-application')).toBeDisabled();
+    expect(
+      screen.getByText('message.cache-service-not-configured-message')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('appName')).not.toBeInTheDocument();
+  });
+
   it('should show toast error, if failed to fetch app details', async () => {
     const MARKETPLACE_APP_DETAILS_ERROR = 'marketplace app data fetch failed.';
     const APP_DETAILS_ERROR = 'app data fetch failed.';

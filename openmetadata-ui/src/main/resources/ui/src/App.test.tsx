@@ -12,30 +12,58 @@
  */
 
 import { render } from '@testing-library/react';
+import React from 'react';
 import App from './App';
-import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
+import AppRouter from './components/AppRouter/AppRouter';
 
-jest.mock('./components/AppRouter/AppRouter', () => {
-  return jest.fn().mockReturnValue(<p>AppRouter</p>);
-});
+const mockAuthProvider = jest.fn();
 
-jest.mock('./components/Auth/AuthProviders/AuthProvider', () => {
-  return {
-    AuthProvider: jest
-      .fn()
-      .mockImplementation(({ children }) => <>{children}</>),
-    AuthContext: {
-      Provider: jest.fn().mockImplementation(({ children }) => <>{children}</>),
-    },
-  };
-});
+jest.mock('./components/AppRouter/AppRouter', () => ({
+  __esModule: true,
+  default: function AppRouter() {
+    return React.createElement(
+      'div',
+      { 'data-testid': 'app-router' },
+      'AppRouter'
+    );
+  },
+}));
 
-it('renders learn react link', () => {
-  const { getAllByTestId } = render(
-    <AuthProvider childComponentType={App}>
-      <App />
-    </AuthProvider>
-  );
-  const linkElement = getAllByTestId(/content-wrapper/i);
-  linkElement.map((elm) => expect(elm).toBeInTheDocument());
+jest.mock('./components/Auth/AuthProviders/AuthProvider', () => ({
+  AuthProvider: function AuthProvider({
+    children,
+    childComponentType,
+  }: {
+    children: React.ReactNode;
+    childComponentType: React.ComponentType;
+  }) {
+    mockAuthProvider({ childComponentType });
+
+    return React.createElement(
+      'div',
+      { 'data-testid': 'auth-provider' },
+      children
+    );
+  },
+}));
+
+describe('App', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render AuthProvider wrapping AppRouter', () => {
+    const { getByTestId } = render(React.createElement(App));
+
+    expect(getByTestId('auth-provider')).toBeInTheDocument();
+    expect(getByTestId('app-router')).toBeInTheDocument();
+  });
+
+  it('should pass AppRouter as childComponentType to AuthProvider', () => {
+    render(React.createElement(App));
+
+    expect(mockAuthProvider).toHaveBeenCalledWith({
+      childComponentType: AppRouter,
+    });
+  });
 });

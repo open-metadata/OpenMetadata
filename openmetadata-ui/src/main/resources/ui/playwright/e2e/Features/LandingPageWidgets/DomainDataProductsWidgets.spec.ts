@@ -20,10 +20,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import {
-  redirectToHomePage,
-  removeLandingBanner,
-} from '../../../utils/common';
+import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -198,6 +195,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
+  test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
     await removeLandingBanner(page);
@@ -246,15 +244,21 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       page,
       'KnowledgePanel.Domains',
       [
-        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-count`,
-        `[data-testid="domain-card-${domain.responseData.id ?? ''}"] .domain-card-full-count`,
+        `[data-testid="domain-card-${
+          domain.responseData.id ?? ''
+        }"] .domain-card-count`,
+        `[data-testid="domain-card-${
+          domain.responseData.id ?? ''
+        }"] .domain-card-full-count`,
       ].join(', '),
       0
     );
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.DataProducts',
-      `[data-testid="data-product-card-${dataProduct.responseData.id ?? ''}"] [data-testid="data-product-asset-count"]`,
+      `[data-testid="data-product-card-${
+        dataProduct.responseData.id ?? ''
+      }"] [data-testid="data-product-asset-count"]`,
       0
     );
   });
@@ -316,8 +320,23 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
       .check();
 
-    const removeRes = page.waitForResponse('**/assets/remove');
+    const dryRunRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        r.request().postDataJSON()?.dryRun === true
+    );
     await page.getByTestId('delete-all-button').click();
+    await dryRunRes;
+
+    const removeRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        !r.request().postDataJSON()?.dryRun
+    );
+    await page
+      .getByTestId('domain-dry-run-modal')
+      .getByTestId('save-button')
+      .click();
     await removeRes;
 
     await page.reload();
@@ -342,7 +361,8 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('assets').click();
 
     await page
-      .waitForSelector('[data-testid="loader"]', {
+      .getByTestId('loader')
+      .waitFor({
         state: 'detached',
         timeout: 10000,
       })
@@ -371,11 +391,22 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         }
       }
 
+      const previousCount = count;
       const removeRes = page.waitForResponse('**/assets/remove');
       await page.getByTestId('delete-all-button').click();
       await removeRes;
 
-      await page.waitForTimeout(500);
+      await expect
+        .poll(
+          async () =>
+            page
+              .locator(
+                '[data-testid^="table-data-card_"] input[type="checkbox"]'
+              )
+              .count(),
+          { timeout: 10_000 }
+        )
+        .toBeLessThan(previousCount);
     }
 
     await page.reload();

@@ -134,7 +134,7 @@ test.describe(
       await test.step('Clean up - delete the metric', async () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
-        await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.locator('[role="dialog"].ant-modal').waitFor();
 
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

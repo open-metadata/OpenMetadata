@@ -169,8 +169,7 @@
     "parentAliases": [
       "driveService",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": [
       "file",
@@ -185,8 +184,7 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -198,8 +196,7 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": [
       "worksheet"
@@ -213,8 +210,7 @@
       "driveService",
       "spreadsheet",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -278,7 +274,8 @@
       "domain",
       "all",
       "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAssetEmbeddings",
+      "marketplace"
     ],
     "childAliases": []
   },
@@ -286,7 +283,7 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -331,8 +328,7 @@
     "parentAliases": [
       "classification",
       "all",
-      "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAsset"
     ],
     "childAliases": []
   },
@@ -533,6 +529,16 @@
     "parentAliases": ["all", "service"],
     "childAliases": ["llmModel"]
   },
+  "mcpService": {
+    "indexName": "mcp_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_service_index_mapping.json",
+    "alias": "mcpService",
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": ["mcpServer"]
+  },
   "aiAgent": {
     "indexName": "ai_agent_search_index",
     "indexMappingFile": "/elasticsearch/%s/ai_agent_index_mapping.json",
@@ -561,6 +567,55 @@
     "parentAliases": [
       "all"
     ],
+    "childAliases": []
+  },
+  "mcpServer": {
+    "indexName": "mcp_server_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_server_index_mapping.json",
+    "alias": "mcpServer",
+    "parentAliases": [
+      "mcpService",
+      "all"
+    ],
+    "childAliases": [
+      "mcpExecution"
+    ]
+  },
+  "mcpExecution": {
+    "indexName": "mcp_execution_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mcp_execution_index_mapping.json",
+    "alias": "mcpExecution",
+    "parentAliases": [
+      "mcpServer"
+    ],
+    "childAliases": []
+  },
+  "page": {
+    "indexName": "knowledge_page_search_index",
+    "indexMappingFile": "/elasticsearch/%s/knowledge_page_search_index.json",
+    "alias": "page",
+    "parentAliases": ["all", "dataAsset", "dataAssetEmbeddings"],
+    "childAliases": []
+  },
+  "folder": {
+    "indexName": "folder_search_index",
+    "indexMappingFile": "/elasticsearch/%s/folder_search_index.json",
+    "alias": "folder",
+    "parentAliases": ["all"],
+    "childAliases": []
+  },
+  "contextFile": {
+    "indexName": "context_file_search_index",
+    "indexMappingFile": "/elasticsearch/%s/context_file_search_index.json",
+    "alias": "contextFile",
+    "parentAliases": ["all"],
+    "childAliases": []
+  },
+  "contextMemory": {
+    "indexName": "context_memory_search_index",
+    "indexMappingFile": "/elasticsearch/%s/context_memory_search_index.json",
+    "alias": "contextMemory",
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   }
 }

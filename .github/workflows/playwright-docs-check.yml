@@ -34,7 +34,7 @@ jobs:
         # although strictly speaking just listing shouldn't require binaries if configured right.
         # Adding just in case.
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx playwright install --with-deps
+        run: npx playwright install chromium --with-deps
 
       - name: Generate Documentation
         working-directory: openmetadata-ui/src/main/resources/ui

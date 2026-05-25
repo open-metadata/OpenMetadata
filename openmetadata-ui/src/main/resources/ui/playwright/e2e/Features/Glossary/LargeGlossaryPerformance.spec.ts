@@ -11,21 +11,14 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
-  selectActiveGlossary,
 } from '../../../utils/glossary';
-import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -79,7 +72,7 @@ test.describe('Large Glossary Performance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary terms with pagination', async ({
@@ -295,7 +288,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await statusDropdown.click();
 
     // Wait for dropdown menu
-    await page.waitForSelector('.status-selection-dropdown');
+    await page.locator('.status-selection-dropdown').waitFor();
 
     // Check if status options are available
     const approvedCheckbox = page.locator('text=Approved').first();
@@ -393,7 +386,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   test.beforeEach(async ({ page }) => {
     await glossary.visitEntityPage(page);
     // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+    await page.getByTestId('glossary-terms-table').waitFor();
   });
 
   test('should handle large number of glossary child term with pagination', async ({

@@ -63,17 +63,36 @@ RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess driver
-RUN if [ $(uname -m) = "x86_64" ]; \
-  then \
-  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
-  && apt update \
-  && apt install ibm-iaccess; \
-  fi
+# Mirrored on cdn.getcollate.io to decouple builds from IBM's CDN availability.
+# Use dpkg --force-depends because the package declares old Debian package names (libodbc1, odbcinst1debian2)
+# that don't exist in Debian 12, but the actual dependencies (unixodbc, odbcinst) are already installed.
+# SHA256 pinned to v1.1.0.29 — matches the version production ingestion-slim images run.
+RUN if [ $(uname -m) = "x86_64" ]; then \
+  wget -q https://cdn.getcollate.io/deps/ingestion/ibm/ibm-iaccess-1.1.0.29-1.0.amd64.deb \
+    -O /tmp/ibm-iaccess.deb && \
+  echo "e60e968d2cee96b2851964456f5b31ab990b1aa47d8f2399607809f7d4514f58  /tmp/ibm-iaccess.deb" | sha256sum -c - && \
+  dpkg -i --force-depends /tmp/ibm-iaccess.deb && \
+  apt-get install -f -y --no-install-recommends && \
+  rm -f /tmp/ibm-iaccess.deb; \
+fi
 
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
+
+# Create a non-root user with a writable home directory.
+# When the container runs with securityContext runAsUser: 1000 but no
+# /etc/passwd entry for that UID, Python disables user site-packages.
+# This causes runtime failures when tools like spacy download models
+# via pip --user, as the installed packages are invisible to the import
+# system. Creating the user ensures Python recognises UID 1000 and
+# enables the standard ~/.local install path.
+RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
+RUN chown -R openmetadata:openmetadata /ingestion
+ENV HOME=/home/openmetadata
+ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+USER openmetadata
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching

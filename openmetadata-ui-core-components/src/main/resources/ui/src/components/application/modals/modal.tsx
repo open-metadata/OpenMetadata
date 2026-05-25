@@ -1,17 +1,17 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 import type {
   DialogProps as AriaDialogProps,
   ModalOverlayProps as AriaModalOverlayProps,
-} from "react-aria-components";
+} from 'react-aria-components';
 import {
   Dialog as AriaDialog,
   DialogTrigger as AriaDialogTrigger,
   Heading,
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
-} from "react-aria-components";
-import { CloseButton } from "@/components/base/buttons/close-button";
-import { cx } from "@/utils/cx";
+} from 'react-aria-components';
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { cx } from '@/utils/cx';
 
 export const DialogTrigger = AriaDialogTrigger;
 
@@ -21,14 +21,14 @@ export const ModalOverlay = (props: AriaModalOverlayProps) => {
       {...props}
       className={(state) =>
         cx(
-          "tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-end tw:justify-center tw:overflow-y-auto tw:bg-overlay/70 tw:px-4 tw:pt-4 tw:pb-[clamp(16px,8vh,64px)] tw:outline-hidden tw:backdrop-blur-[6px] tw:sm:items-center tw:sm:justify-center tw:sm:p-8",
+          'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-end tw:justify-center tw:overflow-y-auto tw:bg-overlay/70 tw:px-4 tw:pt-4 tw:pb-[clamp(16px,8vh,64px)] tw:outline-hidden tw:backdrop-blur-[6px] tw:sm:items-center tw:sm:justify-center tw:sm:p-8',
           state.isEntering &&
-            "tw:duration-300 tw:ease-out tw:animate-in tw:fade-in",
+            'tw:duration-300 tw:ease-out tw:animate-in tw:fade-in',
           state.isExiting &&
-            "tw:duration-200 tw:ease-in tw:animate-out tw:fade-out",
-          typeof props.className === "function"
+            'tw:duration-200 tw:ease-in tw:animate-out tw:fade-out',
+          typeof props.className === 'function'
             ? props.className(state)
-            : props.className,
+            : props.className
         )
       }
     />
@@ -40,14 +40,14 @@ export const Modal = (props: AriaModalOverlayProps) => (
     {...props}
     className={(state) =>
       cx(
-        "tw:max-h-full tw:w-full tw:align-middle tw:outline-hidden tw:max-sm:overflow-y-auto tw:max-sm:rounded-xl",
+        'tw:max-h-full tw:w-full tw:align-middle tw:outline-hidden tw:max-sm:overflow-y-auto tw:max-sm:rounded-xl',
         state.isEntering &&
-          "tw:duration-300 tw:ease-out tw:animate-in tw:zoom-in-95",
+          'tw:duration-300 tw:ease-out tw:animate-in tw:zoom-in-95',
         state.isExiting &&
-          "tw:duration-200 tw:ease-in tw:animate-out tw:zoom-out-95",
-        typeof props.className === "function"
+          'tw:duration-200 tw:ease-in tw:animate-out tw:zoom-out-95',
+        typeof props.className === 'function'
           ? props.className(state)
-          : props.className,
+          : props.className
       )
     }
   />
@@ -62,12 +62,11 @@ interface DialogHeaderProps {
 }
 
 const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
-  <div className={cx("tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6", className)}>
+  <div className={cx('tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6', className)}>
     {title && (
       <Heading
-        slot="title"
         className="tw:text-md tw:font-semibold tw:text-primary"
-      >
+        slot="title">
         {title}
       </Heading>
     )}
@@ -83,10 +82,9 @@ interface DialogContentProps {
 const DialogContent = ({ children, className }: DialogContentProps) => (
   <div
     className={cx(
-      "tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6",
-      className,
-    )}
-  >
+      'tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6',
+      className
+    )}>
     {children}
   </div>
 );
@@ -98,8 +96,7 @@ interface DialogFooterProps {
 
 const DialogFooter = ({ children, className }: DialogFooterProps) => (
   <div
-    className={cx("tw:z-10 tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6", className)}
-  >
+    className={cx('tw:z-10 tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6', className)}>
     <div className="tw:w-full tw:border-t tw:border-secondary" />
     <div className="tw:h-4 tw:w-full tw:sm:h-6" />
     <div className="tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:px-4">
@@ -110,7 +107,7 @@ const DialogFooter = ({ children, className }: DialogFooterProps) => (
 
 // Main Dialog
 
-interface DialogProps extends Omit<AriaDialogProps, "children"> {
+interface DialogProps extends Omit<AriaDialogProps, 'children'> {
   children?: ReactNode;
   title?: string;
   showCloseButton?: boolean;
@@ -135,20 +132,18 @@ const DialogBase = ({
   <AriaDialog
     {...props}
     className={cx(
-      "tw:flex tw:w-full tw:items-center tw:justify-center tw:outline-hidden",
-      props.className as string | undefined,
-    )}
-  >
+      'tw:flex tw:w-full tw:items-center tw:justify-center tw:outline-hidden',
+      props.className as string | undefined
+    )}>
     <div
       className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
-      style={{ maxWidth: width }}
-    >
+      style={{ maxWidth: width }}>
       <div className="tw:overflow-hidden tw:rounded-2xl">
         {title && (
           <>
             <DialogHeader
+              className={showCloseButton ? 'tw:pr-12' : undefined}
               title={title}
-              className={showCloseButton ? "tw:pr-12" : undefined}
             />
             <div className="tw:h-5 tw:w-full" />
             <div className="tw:w-full tw:border-t tw:border-secondary" />
@@ -158,8 +153,8 @@ const DialogBase = ({
       </div>
       {showCloseButton && (
         <CloseButton
-          size="lg"
           className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
+          size="lg"
           onPress={onClose}
         />
       )}

@@ -68,11 +68,14 @@ K8s pipeline service client configured and ready
 
 ### Tests skip with "K8s tests disabled"
 - Set `ENABLE_K8S_TESTS=true` environment variable
-- The tests use `assumeTrue` to skip gracefully when K8s is not enabled
+- The K8s-only integration tests check the explicit `ENABLE_K8S_TESTS` flag before running
+- When enabled, each K8s test class calls `TestSuiteBootstrap.setupK8s()` to initialize its backend
 
 ### NullPointerException for pipelineServiceClient
-- K8s must be enabled BEFORE the test suite starts
-- Use the environment variable approach (not system property during test)
+- This means the OpenMetadata app started before the K8s pipeline client was applied to the live
+  ingestion resource
+- `TestSuiteBootstrap.setupK8s()` now refreshes the registered `IngestionPipelineResource` when
+  K8s is enabled on-demand
 
 ### Tests timeout
 - K3s container startup can take 30-60 seconds

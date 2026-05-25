@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -31,13 +31,44 @@ inactiveUser.data.password = 'Test@1234';
 // Use admin authentication for all tests
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const createOrFetchUser = async (
+  user: UserClass,
+  apiContext: APIRequestContext
+) => {
+  try {
+    await user.create(apiContext);
+  } catch {
+    // User may already exist from a prior retry — fetch by email
+    const email = encodeURIComponent(user.data.email);
+    const res = await apiContext.get(`/api/v1/users?email=${email}&limit=1`);
+
+    if (res.ok()) {
+      const body = await res.json();
+
+      if (body.data?.length > 0) {
+        user.responseData = body.data[0];
+      }
+    }
+  }
+};
+
 test.describe('User Profile Online Status', () => {
   test.beforeAll('Setup pre-requisites', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    // Create test users
-    await activeUser.create(apiContext);
-    await inactiveUser.create(apiContext);
+    await createOrFetchUser(activeUser, apiContext);
+    await createOrFetchUser(inactiveUser, apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await activeUser.delete(apiContext).catch(() => {
+      /* best effort */
+    });
+    await inactiveUser.delete(apiContext).catch(() => {
+      /* best effort */
+    });
     await afterAction();
   });
 
@@ -154,19 +185,30 @@ test.describe('User Profile Online Status', () => {
     await redirectToHomePage(page);
     await visitOwnProfilePage(page);
 
+    // Wait for user profile content to fully render before checking badge
+    await expect(page.getByTestId('user-email-value')).toBeVisible();
+
     // Admin should always show online status since they're logged in
     const onlineStatusBadge = page.getByTestId('user-online-status');
 
-    await expect(onlineStatusBadge).toBeVisible();
+    await expect(onlineStatusBadge).toBeVisible({ timeout: 10000 });
     await expect(onlineStatusBadge).toContainText(/Online now|Active recently/);
 
     // Navigate away and back to verify status persists
     await sidebarClick(page, SidebarItem.EXPLORE);
 
+    await redirectToHomePage(page);
     await visitOwnProfilePage(page);
 
-    // Status should still be visible
-    await expect(onlineStatusBadge).toBeVisible();
-    await expect(onlineStatusBadge).toContainText(/Online now|Active recently/);
+    // Wait for user profile content to fully render after navigating back
+    await expect(page.getByTestId('user-email-value')).toBeVisible();
+
+    // Status should still be visible after navigating back
+    await expect(page.getByTestId('user-online-status')).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByTestId('user-online-status')).toContainText(
+      /Online now|Active recently/
+    );
   });
 });

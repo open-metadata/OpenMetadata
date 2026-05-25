@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -112,6 +113,8 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -130,6 +133,16 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.dbtune.AutoTuner;
+import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
+import org.openmetadata.service.util.dbtune.DbTuneReport;
+import org.openmetadata.service.util.dbtune.DbTuneResult;
+import org.openmetadata.service.util.dbtune.Diagnostic;
+import org.openmetadata.service.util.dbtune.MysqlAutoTuner;
+import org.openmetadata.service.util.dbtune.MysqlDiagnostic;
+import org.openmetadata.service.util.dbtune.PostgresAutoTuner;
+import org.openmetadata.service.util.dbtune.PostgresDiagnostic;
+import org.openmetadata.service.util.dbtune.TableRecommendation;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -172,11 +185,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
+            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
+        "Use 'db-tune' for a per-table autovacuum / InnoDB stats tuning report; add --apply to "
+            + "execute the recommendations, --analyze to refresh planner stats on changed tables, "
+            + "and --diagnose to surface unused indexes, bloat, slow queries, and other DBA findings");
+    LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
+    LOG.info(
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -210,9 +230,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .fields()
               .forEachRemaining(
                   entry -> {
-                    if (!columns.contains(entry.getKey())) {
-                      columns.add(entry.getKey());
-                    }
+                    columns.add(entry.getKey());
                     row.add(entry.getValue().toString());
                   });
         }
@@ -570,7 +588,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       LOG.info("Reading security configuration from file: {}", configFile);
-      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+      String yamlContent = Files.readString(file.toPath());
 
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =
@@ -860,9 +878,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -880,7 +896,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withAppConfiguration(Map.of())
+            .withAllowBotImpersonation(Boolean.TRUE.equals(definition.getAllowBotImpersonation()));
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -951,6 +968,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("create indexes.");
       searchRepository.createIndexes();
       searchRepository.createOrUpdateIndexTemplates();
@@ -994,6 +1012,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         return 1;
       }
 
+      initOrganization();
+
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add(AUTH_MECHANISM_FIELD);
@@ -1030,6 +1050,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Running Flowable schema upgrade.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
@@ -1282,11 +1304,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
-              names = {"--recreate-indexes"},
-              defaultValue = "true",
-              description = "Flag to determine if indexes should be recreated.")
-          boolean recreateIndexes,
-      @Option(
               names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
@@ -1349,11 +1366,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String slackChannel) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1364,6 +1380,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1386,7 +1404,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           entities,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1754,7 +1771,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Set<String> entities,
       int batchSize,
       long payloadSize,
-      boolean recreateIndexes,
       int producerThreads,
       int consumerThreads,
       int queueSize,
@@ -1773,8 +1789,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     IndexMappingVersionTracker versionTracker = null;
     boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
+    boolean shouldReindex = true;
 
-    if (!force && recreateIndexes) {
+    if (!force) {
       try {
         String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
         versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
@@ -1783,7 +1800,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
         if (changedMappings.isEmpty()) {
           LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
-          recreateIndexes = false;
+          shouldReindex = false;
 
           // Send Slack notification if configured
           if (slackBotToken != null
@@ -1812,7 +1829,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             if (requestedAndChanged.isEmpty()) {
               LOG.info(
                   "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
-              recreateIndexes = false;
+              shouldReindex = false;
               shouldUpdateVersions = false;
 
               // Send Slack notification if configured
@@ -1835,7 +1852,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
 
           // Initialize progress monitor for entities that will be reindexed
-          if (recreateIndexes) {
+          if (shouldReindex) {
             progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
             progressMonitor.printInitialSummary();
           }
@@ -1847,7 +1864,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     // Initialize progress monitor for force mode as well to get clean output
-    if (progressMonitor == null && recreateIndexes && force) {
+    if (progressMonitor == null && force) {
       progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
       LOG.info("");
       LOG.info("🔄 Force Reindexing");
@@ -1857,8 +1874,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("");
     }
 
-    // If recreateIndexes is false, we should not proceed with reindexing
-    if (!recreateIndexes) {
+    // If no mapping changes were detected, we should not proceed with reindexing
+    if (!shouldReindex) {
       LOG.info("Reindexing skipped - no changes detected");
       return 0; // Success - no reindexing needed
     }
@@ -1868,7 +1885,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
-            .withRecreateIndex(recreateIndexes)
             .withProducerThreads(producerThreads)
             .withConsumerThreads(consumerThreads)
             .withQueueSize(queueSize)
@@ -1944,6 +1960,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1985,10 +2003,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Trigger Application
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
-
-    return result;
+    return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
   @SneakyThrows
@@ -2169,7 +2184,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           pipelineRepository.listAll(
               new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
-      LOG.debug(String.format("Pipelines %d", pipelines.size()));
+      LOG.debug("Pipelines size {}", pipelines.size());
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
       List<List<String>> pipelineStatuses = new ArrayList<>();
 
@@ -2456,6 +2471,223 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to analyze tables due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "db-tune",
+      description =
+          "Generate a per-table autovacuum / InnoDB stats tuning report and optionally apply it. "
+              + "Default mode is read-only — pass --apply to execute the ALTER TABLE statements, "
+              + "--analyze to refresh planner stats on changed tables, and --diagnose to also "
+              + "surface unused indexes, bloat, slow queries, and other read-only DBA findings.")
+  public Integer dbTune(
+      @Option(
+              names = {"--apply"},
+              defaultValue = "false",
+              description =
+                  "Apply the recommendations. Without this flag the command only prints the report.")
+          boolean apply,
+      @Option(
+              names = {"--yes", "-y"},
+              defaultValue = "false",
+              description = "Skip the interactive confirmation when applying.")
+          boolean skipPrompt,
+      @Option(
+              names = {"--analyze"},
+              defaultValue = "false",
+              description =
+                  "After --apply, run ANALYZE on each changed table so planner stats reflect the new settings.")
+          boolean runAnalyze,
+      @Option(
+              names = {"--diagnose"},
+              defaultValue = "false",
+              description =
+                  "Also run a read-only diagnostic pass (unused indexes, bloat, low cache hit, "
+                      + "stale ANALYZE, seq-scan-heavy tables, slow queries). Pure inspection — "
+                      + "never modifies anything.")
+          boolean runDiagnose) {
+    try {
+      parseConfig();
+      String driverClass = config.getDataSourceFactory().getDriverClass();
+      ConnectionType connType = ConnectionType.from(driverClass);
+      if (connType == null) {
+        LOG.error(
+            "db-tune does not support driver class '{}'. Only the bundled MySQL and PostgreSQL drivers are recognised.",
+            driverClass);
+        return 1;
+      }
+      AutoTuner tuner = autoTunerFor(connType);
+      DbTuneResult result = jdbi.withHandle(tuner::analyze);
+      LOG.info("\n{}", DbTuneReport.render(result));
+      if (runDiagnose) {
+        Diagnostic diagnostic = diagnosticFor(connType);
+        DbTuneDiagnosis diagnosis = jdbi.withHandle(diagnostic::diagnose);
+        LOG.info("\n{}", DbTuneReport.renderDiagnosis(diagnosis));
+      }
+      if (!apply) {
+        return 0;
+      }
+      List<TableRecommendation> actionable = result.actionableRecommendations();
+      if (actionable.isEmpty()) {
+        if (result.tableRecommendations().isEmpty()) {
+          LOG.info("Nothing to apply — no tracked tables exist on this database.");
+        } else {
+          LOG.info(
+              "Nothing to apply — every tracked table already matches its recommended settings.");
+        }
+        return 0;
+      }
+      if (!skipPrompt && !confirmApply(tuner, actionable)) {
+        LOG.info("Operation cancelled.");
+        return 0;
+      }
+      applyRecommendations(tuner, actionable, runAnalyze);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("db-tune failed due to ", e);
+      return 1;
+    }
+  }
+
+  private AutoTuner autoTunerFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresAutoTuner();
+      case MYSQL -> new MysqlAutoTuner();
+    };
+  }
+
+  private Diagnostic diagnosticFor(final ConnectionType connType) {
+    return switch (connType) {
+      case POSTGRES -> new PostgresDiagnostic();
+      case MYSQL -> new MysqlDiagnostic();
+    };
+  }
+
+  private boolean confirmApply(final AutoTuner tuner, final List<TableRecommendation> actionable) {
+    LOG.info("About to apply {} ALTER statements:", actionable.size());
+    LOG.info("\n{}", DbTuneReport.renderAlterStatements(tuner, actionable));
+    @SuppressWarnings("resource")
+    Scanner scanner = new Scanner(System.in);
+    LOG.info("Apply now? [y/N]: ");
+    // nextLine() (not next()) so a bare Enter — which the [y/N] convention implies as "no" —
+    // doesn't block waiting for a non-whitespace token. Treat empty / EOF as "no".
+    String input = scanner.hasNextLine() ? scanner.nextLine().trim().toLowerCase() : "";
+    return input.equals("y") || input.equals("yes");
+  }
+
+  private void applyRecommendations(
+      final AutoTuner tuner, final List<TableRecommendation> actionable, final boolean runAnalyze) {
+    List<List<String>> rows = new ArrayList<>();
+    for (TableRecommendation rec : actionable) {
+      rows.add(applyOne(tuner, rec, runAnalyze));
+    }
+    printToAsciiTable(
+        List.of("Table", "Action", "Status", "Details"), rows, "No recommendations applied");
+  }
+
+  private List<String> applyOne(
+      final AutoTuner tuner, final TableRecommendation rec, final boolean runAnalyze) {
+    try {
+      jdbi.useHandle(handle -> tuner.apply(handle, rec));
+      if (runAnalyze) {
+        jdbi.useHandle(handle -> tuner.analyzeOne(handle, rec.tableName()));
+        return List.of(rec.tableName(), rec.action().name(), "OK", "Applied + analyzed");
+      }
+      return List.of(rec.tableName(), rec.action().name(), "OK", "Applied");
+    } catch (Exception e) {
+      LOG.error("Failed to apply recommendation for {}: {}", rec.tableName(), e.getMessage(), e);
+      String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      return List.of(rec.tableName(), rec.action().name(), "FAILED", detail);
+    }
+  }
+
+  /**
+   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
+   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
+   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
+   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   */
+  @Command(
+      name = "regenerate-bot-tokens",
+      description =
+          "Regenerates JWT tokens for all bot users. "
+              + "Use this after rotating JWT signing keys or changing the cluster name.")
+  public Integer regenerateBotTokens(
+      @Option(
+              names = {"--expiry"},
+              description =
+                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                      + "Defaults to Unlimited.",
+              defaultValue = "Unlimited")
+          JWTTokenExpiry expiry) {
+    try {
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      initOrganization();
+
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      List<Bot> bots =
+          botRepository.listAll(
+              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
+
+      List<List<String>> rows = new ArrayList<>();
+
+      for (Bot listedBot : bots) {
+        String botName = listedBot.getName();
+        try {
+          // Fetch individually so that setFields populates the botUser relationship
+          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+
+          if (bot.getBotUser() == null) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
+            continue;
+          }
+
+          User botUser =
+              userRepository.getByName(
+                  null,
+                  bot.getBotUser().getFullyQualifiedName(),
+                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
+
+          if (botUser.getAuthenticationMechanism() == null
+              || botUser.getAuthenticationMechanism().getAuthType()
+                  != AuthenticationMechanism.AuthType.JWT) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
+            continue;
+          }
+
+          JWTAuthMechanism newJwtAuth =
+              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
+          botUser.setAuthenticationMechanism(
+              new AuthenticationMechanism()
+                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                  .withConfig(newJwtAuth));
+          UserUtil.addOrUpdateUser(botUser);
+
+          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
+        } catch (Exception e) {
+          LOG.error("Failed to regenerate token for bot: {}", botName, e);
+          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
+        }
+      }
+
+      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
+      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
+      return hasFailures ? 1 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to regenerate bot tokens due to ", e);
       return 1;
     }
   }
@@ -2768,7 +3000,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -2841,7 +3077,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS " + tableName);
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {} ", tableName, e);
                   }
                 });
         handle.execute("SET FOREIGN_KEY_CHECKS = 1");
@@ -2856,7 +3092,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {}", tableName, e);
                   }
                 });
       }
@@ -2927,7 +3163,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
           roleRepository.initializeEntity(role);
         }
-        teamRepository.initOrganization();
       } catch (Exception ex) {
         LOG.error("Failed to initialize organization due to ", ex);
         throw new RuntimeException(ex);
@@ -2935,6 +3170,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         rootLogger.setLevel(originalLevel);
       }
     }
+    teamRepository.initOrganization();
   }
 
   public static void printToAsciiTable(

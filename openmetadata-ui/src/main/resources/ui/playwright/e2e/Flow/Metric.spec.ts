@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -28,7 +29,6 @@ import {
   updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const metric1 = new MetricClass();
 const metric2 = new MetricClass();

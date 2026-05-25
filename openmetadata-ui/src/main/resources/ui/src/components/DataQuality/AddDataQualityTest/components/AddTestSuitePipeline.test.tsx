@@ -35,8 +35,12 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => mockUseFqn()),
 }));
 
+const mockAddTestCaseList = jest
+  .fn()
+  .mockImplementation(() => <div>AddTestCaseList.component</div>);
 jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
-  AddTestCaseList: () => <div>AddTestCaseList.component</div>,
+  AddTestCaseList: (props: Record<string, unknown>) =>
+    mockAddTestCaseList(props),
 }));
 
 jest.mock(
@@ -449,6 +453,73 @@ describe('AddTestSuitePipeline', () => {
       );
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+    });
+  });
+
+  describe('table-scoped filters when test suite is executable (basic) with table', () => {
+    beforeEach(() => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+    });
+
+    it('passes hideTableFilter and columnFilters when testSuite is basic with table basicEntityReference', () => {
+      const tableFqn = 'service.db.schema.my_table';
+      const testSuite = {
+        basic: true,
+        basicEntityReference: {
+          fullyQualifiedName: tableFqn,
+          type: 'table',
+        },
+      } as TestSuite;
+
+      render(
+        <Form>
+          <AddTestSuitePipeline
+            {...mockProps}
+            initialData={{ selectAllTestCases: false }}
+            testSuite={testSuite}
+          />
+        </Form>
+      );
+
+      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter?: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(true);
+      expect(props.columnFilters).toBe(`fullyQualifiedName:"${tableFqn}"`);
+    });
+
+    it('does not pass hideTableFilter or columnFilters when testSuite is logical (not basic)', () => {
+      const testSuite = { id: 'logical-suite-id', basic: false } as TestSuite;
+
+      render(
+        <Form>
+          <AddTestSuitePipeline
+            {...mockProps}
+            initialData={{ selectAllTestCases: false }}
+            testSuite={testSuite}
+          />
+        </Form>
+      );
+
+      const lastCall =
+        mockAddTestCaseList.mock.calls[
+          mockAddTestCaseList.mock.calls.length - 1
+        ];
+      const props = lastCall[0] as {
+        hideTableFilter?: boolean;
+        columnFilters?: string;
+      };
+
+      expect(props.hideTableFilter).toBe(false);
+      expect(props.columnFilters).toBeUndefined();
     });
   });
 

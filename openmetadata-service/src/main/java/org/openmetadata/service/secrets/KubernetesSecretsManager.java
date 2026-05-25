@@ -149,12 +149,10 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   protected void storeSecret(String secretName, String secretValue) {
-    String k8sSecretName = secretName;
-
     try {
       V1Secret secret = new V1Secret();
       V1ObjectMeta metadata = new V1ObjectMeta();
-      metadata.setName(k8sSecretName);
+      metadata.setName(secretName);
       metadata.setNamespace(namespace);
 
       Map<String, String> labels = new HashMap<>();
@@ -180,96 +178,88 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
       secret.setData(data);
 
       apiClient.createNamespacedSecret(namespace, secret).execute();
-      LOG.debug("Created Kubernetes secret: {}", k8sSecretName);
+      LOG.debug("Created Kubernetes secret: {}", secretName);
 
     } catch (ApiException e) {
       throw new SecretsManagerException(
-          String.format("Failed to create Kubernetes secret: %s", k8sSecretName), e);
+          String.format("Failed to create Kubernetes secret: %s", secretName), e);
     }
   }
 
   @Override
   protected void updateSecret(String secretName, String secretValue) {
-    String k8sSecretName = secretName;
-
     try {
       // Get existing secret
-      V1Secret existingSecret = apiClient.readNamespacedSecret(k8sSecretName, namespace).execute();
+      V1Secret existingSecret = apiClient.readNamespacedSecret(secretName, namespace).execute();
 
       // Update the secret data
       Map<String, byte[]> data = new HashMap<>();
       data.put(SECRET_KEY, secretValue.getBytes(StandardCharsets.UTF_8));
       existingSecret.setData(data);
 
-      apiClient.replaceNamespacedSecret(k8sSecretName, namespace, existingSecret).execute();
-      LOG.debug("Updated Kubernetes secret: {}", k8sSecretName);
+      apiClient.replaceNamespacedSecret(secretName, namespace, existingSecret).execute();
+      LOG.debug("Updated Kubernetes secret: {}", secretName);
 
     } catch (ApiException e) {
       if (e.getCode() == 404) {
         // Secret doesn't exist, create it
-        LOG.debug("Secret {} not found, creating new secret", k8sSecretName);
+        LOG.debug("Secret {} not found, creating new secret", secretName);
         storeSecret(secretName, secretValue);
       } else {
         throw new SecretsManagerUpdateException(
-            String.format("Failed to update Kubernetes secret: %s", k8sSecretName), e);
+            String.format("Failed to update Kubernetes secret: %s", secretName), e);
       }
     }
   }
 
   @Override
   protected String getSecret(String secretName) {
-    String k8sSecretName = secretName;
-
     try {
-      V1Secret secret = apiClient.readNamespacedSecret(k8sSecretName, namespace).execute();
+      V1Secret secret = apiClient.readNamespacedSecret(secretName, namespace).execute();
 
       if (secret.getData() != null && secret.getData().containsKey(SECRET_KEY)) {
         byte[] secretData = secret.getData().get(SECRET_KEY);
         return new String(secretData, StandardCharsets.UTF_8);
       }
 
-      LOG.warn("Secret {} exists but has no data", k8sSecretName);
+      LOG.warn("Secret {} exists but has no data", secretName);
       return null;
 
     } catch (ApiException e) {
       if (e.getCode() == 404) {
-        LOG.debug("Secret {} not found", k8sSecretName);
+        LOG.debug("Secret {} not found", secretName);
         return null;
       }
       throw new SecretsManagerException(
-          String.format("Failed to retrieve Kubernetes secret: %s", k8sSecretName), e);
+          String.format("Failed to retrieve Kubernetes secret: %s", secretName), e);
     }
   }
 
   @Override
   public boolean existSecret(String secretName) {
-    String k8sSecretName = secretName;
-
     try {
-      apiClient.readNamespacedSecret(k8sSecretName, namespace).execute();
+      apiClient.readNamespacedSecret(secretName, namespace).execute();
       return true;
     } catch (ApiException e) {
       if (e.getCode() == 404) {
         return false;
       }
       throw new SecretsManagerException(
-          String.format("Failed to check existence of Kubernetes secret: %s", k8sSecretName), e);
+          String.format("Failed to check existence of Kubernetes secret: %s", secretName), e);
     }
   }
 
   @Override
   protected void deleteSecretInternal(String secretName) {
-    String k8sSecretName = secretName;
-
     try {
-      apiClient.deleteNamespacedSecret(k8sSecretName, namespace).execute();
-      LOG.debug("Deleted Kubernetes secret: {}", k8sSecretName);
+      apiClient.deleteNamespacedSecret(secretName, namespace).execute();
+      LOG.debug("Deleted Kubernetes secret: {}", secretName);
     } catch (ApiException e) {
       if (e.getCode() != 404) {
         throw new SecretsManagerException(
-            String.format("Failed to delete Kubernetes secret: %s", k8sSecretName), e);
+            String.format("Failed to delete Kubernetes secret: %s", secretName), e);
       }
-      LOG.debug("Secret {} already deleted or does not exist", k8sSecretName);
+      LOG.debug("Secret {} already deleted or does not exist", secretName);
     }
   }
 

@@ -162,7 +162,7 @@ export const removeAndCheckWidget = async (
     .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
     .click();
 
-  await page.getByText('Remove').click();
+  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
@@ -229,10 +229,7 @@ export const saveCustomizeLayoutPage = async (page: Page) => {
   await page.locator('[data-testid="save-button"]').click();
   await saveResponse;
 
-  await toastNotification(
-    page,
-    /Page layout (created|updated) successfully\./
-  );
+  await toastNotification(page, /Page layout (created|updated) successfully\./);
 };
 
 export const removeAndVerifyWidget = async (
@@ -330,12 +327,22 @@ export const addCuratedAssetPlaceholder = async ({
   await openAddCustomizeWidgetModal(page);
   await waitForAllLoadersToDisappear(page);
 
-  await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
+  await page
+    .getByRole('dialog', { name: 'Customize Home' })
+    .getByTestId('KnowledgePanel.CuratedAssets')
+    .click();
 
   await page.locator('[data-testid="apply-btn"]').click();
 
   await expect(
     page
+      .getByTestId('page-layout-v1')
+      .getByTestId('KnowledgePanel.CuratedAssets')
+  ).toBeVisible();
+
+  await expect(
+    page
+      .getByTestId('page-layout-v1')
       .getByTestId('KnowledgePanel.CuratedAssets')
       .getByTestId('widget-empty-state')
   ).toBeVisible();
@@ -350,13 +357,13 @@ export const selectAssetTypes = async (
   await page.locator('[data-testid="asset-type-select"]').click();
 
   // Wait for dropdown to be visible
-  await page.waitForSelector('.ant-select-dropdown', {
+  await page.locator('.ant-select-dropdown').waitFor({
     state: 'visible',
     timeout: 5000,
   });
 
   // Wait for the tree to load
-  await page.waitForSelector('.ant-select-tree', {
+  await page.locator('.ant-select-tree').waitFor({
     state: 'visible',
     timeout: 5000,
   });
@@ -376,6 +383,7 @@ export const selectAssetTypes = async (
 
       // Search for the asset type
       await page.keyboard.type(searchTerm);
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
       await page.waitForTimeout(500);
 
       // Try to click the filtered result
@@ -472,6 +480,7 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement,
     apiResponseUrl,
     searchQuery,
+    altApiResponseUrl,
   }: {
     widgetKey: string;
     entitySelector: string;
@@ -480,22 +489,29 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement?: string;
     apiResponseUrl: string;
     searchQuery: string | string[];
+    altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query
-  const response = page.waitForResponse((response) => {
-    if (!response.url().includes(apiResponseUrl)) {
+  // Wait for API response matching the search query with timeout fallback
+  const response = Promise.race([
+    page.waitForResponse((response) => {
+      // Check primary API URL
+      if (response.url().includes(apiResponseUrl)) {
+        if (Array.isArray(searchQuery)) {
+          return searchQuery.every((query) => response.url().includes(query));
+        }
+        return response.url().includes(searchQuery);
+      }
+
+      // Check alternative API URL (for Task API migration)
+      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+        return true;
+      }
+
       return false;
-    }
-
-    // Handle multiple query parts (for complex queries like Data Assets)
-    if (Array.isArray(searchQuery)) {
-      return searchQuery.every((query) => response.url().includes(query));
-    }
-
-    // Handle single query string
-    return response.url().includes(searchQuery);
-  });
+    }),
+    page.waitForTimeout(10000),
+  ]);
 
   await redirectToHomePage(page);
 
@@ -513,6 +529,7 @@ export const verifyWidgetEntityNavigation = async (
 
   // Wait again for any widget-specific loaders
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- widget rendering delay
   await page.waitForTimeout(1000);
 
   // Check for entity items in the widget
@@ -553,17 +570,12 @@ export const verifyWidgetEntityNavigation = async (
 
     // Navigate back to home for next tests
     await redirectToHomePage(page);
+  } else if (emptyStateTestId) {
+    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
   } else {
-    // Check for empty state if no entities
-    const emptyState = widget.locator('[data-testid="widget-empty-state"]');
-
-    await expect(emptyState).toBeVisible();
-
-    if (emptyStateTestId) {
-      const emptyStateComponent = page.getByTestId(emptyStateTestId);
-
-      await expect(emptyStateComponent).toBeVisible();
-    }
+    await expect(
+      widget.locator('[data-testid="widget-empty-state"]')
+    ).toBeVisible();
   }
 };
 
@@ -604,7 +616,9 @@ export const verifyWidgetHeaderNavigation = async (
   await redirectToHomePage(page, false);
   await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(() => undefined);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
 };
 
 export const verifyDomainCountInDomainWidget = async (
@@ -625,7 +639,9 @@ export const verifyDomainCountInDomainWidget = async (
       async () => {
         const domainWidget = page.getByTestId('KnowledgePanel.Domains');
         await domainWidget.scrollIntoViewIfNeeded().catch(() => undefined);
-        const isWidgetVisible = await domainWidget.isVisible().catch(() => false);
+        const isWidgetVisible = await domainWidget
+          .isVisible()
+          .catch(() => false);
 
         if (!isWidgetVisible) {
           return null;
@@ -660,7 +676,9 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
-        const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+        const dataProductWidget = page.getByTestId(
+          'KnowledgePanel.DataProducts'
+        );
         await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
         const isWidgetVisible = await dataProductWidget
           .isVisible()

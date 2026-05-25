@@ -43,17 +43,11 @@ public class PatchEntityTool implements McpTool {
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
 
-    // Get impersonatedBy from thread-local context set by McpAuthFilter
+    String userName = securityContext.getUserPrincipal().getName();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-
     RestUtil.PatchResponse<? extends EntityInterface> response =
-        repository.patch(
-            null,
-            fqn,
-            securityContext.getUserPrincipal().getName(),
-            jsonPatch,
-            ChangeSource.MANUAL,
-            impersonatedBy);
+        repository.patch(null, fqn, userName, jsonPatch, ChangeSource.MANUAL, null, impersonatedBy);
+    McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
     return JsonUtils.convertValue(response, Map.class);
   }
 

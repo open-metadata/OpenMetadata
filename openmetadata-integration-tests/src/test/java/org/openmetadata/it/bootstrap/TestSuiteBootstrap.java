@@ -27,7 +27,9 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -58,9 +60,12 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
@@ -111,7 +116,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String DEFAULT_FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
+  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
+  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
+  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
+  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
+  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
+  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
+  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -124,11 +136,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static String databaseType;
   private static String searchType;
   private static boolean rdfEnabled;
+  private static String cacheProvider;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
   private static GenericContainer<?> FUSEKI_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
 
@@ -136,9 +151,19 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static int searchPort;
   private static String fusekiEndpoint;
   private static String kubeConfigYaml;
+  private static String redisUrl;
+
+  private static final String DEFAULT_REDIS_IMAGE = "redis:7-alpine";
+  private static final int REDIS_PORT = 6379;
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      LOG.info(
+          "TestSuiteBootstrap: skipping embedded boot (JPW_MODE={} or skip.embedded.bootstrap=true)",
+          resolveJpwMode());
+      return;
+    }
     if (!STARTED.compareAndSet(false, true)) {
       LOG.info("TestSuiteBootstrap already started, skipping initialization");
       return;
@@ -148,11 +173,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
+    cacheProvider = System.getProperty("cacheProvider", "none");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
+    LOG.info("Cache provider: {}", cacheProvider);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -162,6 +189,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       startSearch();
       if (rdfEnabled) {
         startFuseki();
+      }
+      if (isRedisEnabled()) {
+        startRedis();
       }
       if (k8sEnabled) {
         startK3s();
@@ -174,6 +204,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
       if (rdfEnabled) {
         LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
+      if (isRedisEnabled()) {
+        LOG.info("Redis: {}", redisUrl);
       }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
@@ -193,8 +226,25 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   @Override
   public void launcherSessionClosed(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      return;
+    }
     LOG.info("=== TestSuiteBootstrap: Shutting down test infrastructure ===");
     cleanup();
+  }
+
+  private static boolean isEmbeddedBootstrapDisabled() {
+    return "external".equalsIgnoreCase(resolveJpwMode())
+        || Boolean.parseBoolean(System.getProperty("skip.embedded.bootstrap", "false"));
+  }
+
+  private static String resolveJpwMode() {
+    final String fromProp = System.getProperty("JPW_MODE");
+    if (fromProp != null && !fromProp.isBlank()) {
+      return fromProp;
+    }
+    final String fromEnv = System.getenv("JPW_MODE");
+    return fromEnv != null ? fromEnv : "";
   }
 
   private void startDatabase() {
@@ -211,7 +261,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
-      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
+      mysql.withCommand(
+          "mysqld",
+          "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
+          // tag.id; under the parallel-tests fork the tag table grows large and the default
+          // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
+          // for an integration-test workload and well under the 4GB overall limit.
+          "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -259,7 +316,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "synchronous_commit=off",
           "-c",
-          "full_page_writes=off");
+          "full_page_writes=off",
+          // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
+          // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
+          // under load.
+          "-c",
+          "work_mem=32MB");
       postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
@@ -335,15 +397,75 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
+  private void startRedis() {
+    String image = System.getProperty("redisImage", DEFAULT_REDIS_IMAGE);
+    LOG.info("Starting Redis container with image: {}", image);
+    REDIS_CONTAINER =
+        new GenericContainer<>(DockerImageName.parse(image))
+            .withExposedPorts(REDIS_PORT)
+            .withCommand(
+                "redis-server",
+                "--appendonly",
+                "no",
+                "--save",
+                "",
+                "--maxmemory",
+                "512mb",
+                "--maxmemory-policy",
+                "allkeys-lru")
+            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+    REDIS_CONTAINER.start();
+    redisUrl =
+        String.format(
+            "redis://%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(REDIS_PORT));
+    LOG.info("Redis started: {}", redisUrl);
+  }
+
+  public static boolean isRedisEnabled() {
+    return "redis".equalsIgnoreCase(cacheProvider);
+  }
+
+  public static String getRedisUrl() {
+    return redisUrl;
+  }
+
+  private void configureCache(OpenMetadataApplicationConfig config) {
+    if (!isRedisEnabled()) {
+      return;
+    }
+    org.openmetadata.service.cache.CacheConfig cacheConfig = config.getCacheConfig();
+    cacheConfig.provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    cacheConfig.redis.url = redisUrl;
+    cacheConfig.redis.authType = org.openmetadata.service.cache.CacheConfig.AuthType.NONE;
+    cacheConfig.redis.keyspace = "om:it:" + System.currentTimeMillis();
+    cacheConfig.redis.commandTimeoutMs = 1000;
+    cacheConfig.entityTtlSeconds = 3600;
+    cacheConfig.relationshipTtlSeconds = 3600;
+    cacheConfig.tagTtlSeconds = 3600;
+    config.setCacheConfig(cacheConfig);
+    LOG.info(
+        "Configured Redis cache: url={} keyspace={}",
+        cacheConfig.redis.url,
+        cacheConfig.redis.keyspace);
+  }
+
   private void startFuseki() {
     String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
+    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
+    // pre-create a dataset at container start. The maintained image we use
+    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
+    // the dataset via the /$/datasets admin endpoint on first connection
+    // instead, so the test path is fine without it.
     FUSEKI_CONTAINER =
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
+            // tmpfs the TDB2 dataset dir so each container start gets a clean
+            // store and a long IT run doesn't grow the container's writable
+            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
+            // by default — mounting tmpfs there keeps writes off-disk entirely.
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -398,7 +520,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
-  private static boolean isK8sTestsRequested() {
+  public static boolean isK8sTestsRequested() {
     return "true".equalsIgnoreCase(System.getProperty("ENABLE_K8S_TESTS"))
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
@@ -447,6 +569,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     configurePipelineServiceClient(config);
     configureRdf(config);
+    configureCache(config);
 
     IndexMappingLoader.init(getBaseSearchConfig());
 
@@ -472,6 +595,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         false);
 
     createIndices();
+
+    // Start MinIO before app boot if object storage is configured to use S3 so that the
+    // S3AssetService picks up the correct endpoint.
+    if (config.getObjectStorage() != null
+        && config.getObjectStorage().isEnabled()
+        && "s3".equalsIgnoreCase(config.getObjectStorage().getProvider())) {
+      setupMinIO();
+      if (config.getObjectStorage().getS3Configuration() != null) {
+        config.getObjectStorage().getS3Configuration().setEndpoint(getMinIOEndpoint());
+      }
+    }
 
     // Start the application
     APP.before();
@@ -517,7 +651,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
       throws ConfigurationException, IOException {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -711,6 +849,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
+      if (REDIS_CONTAINER != null) {
+        REDIS_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping Redis container", e);
+    }
+
+    try {
       if (K3S_CONTAINER != null) {
         K3S_CONTAINER.stop();
       }
@@ -725,6 +871,79 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping database container", e);
     }
+
+    try {
+      if (MINIO_CONTAINER != null) {
+        MINIO_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping MinIO container", e);
+    }
+  }
+
+  // === On-demand MinIO container for object-storage tests ===
+
+  public static synchronized void setupMinIO() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      LOG.info("MinIO already running at {}", getMinIOEndpoint());
+      return;
+    }
+    LOG.info("Starting MinIO Testcontainer on-demand...");
+    // Pin the MinIO image to a known-good release so a newly-published :latest tag
+    // cannot break integration tests without a code change.
+    MINIO_CONTAINER =
+        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "minio")
+            .withEnv("MINIO_ROOT_PASSWORD", "minio123")
+            .withCommand("server /data")
+            .waitingFor(
+                Wait.forHttp("/minio/health/live")
+                    .forPort(9000)
+                    .forStatusCode(200)
+                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
+    MINIO_CONTAINER.start();
+
+    String endpoint = getMinIOEndpoint();
+
+    // Create the default test bucket so tests can upload immediately.
+    software.amazon.awssdk.services.s3.S3Client s3 =
+        software.amazon.awssdk.services.s3.S3Client.builder()
+            .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+            .credentialsProvider(
+                software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                    software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                        "minio", "minio123")))
+            .endpointOverride(java.net.URI.create(endpoint))
+            .serviceConfiguration(
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build())
+            .build();
+    try {
+      boolean exists =
+          s3.listBuckets().buckets().stream().anyMatch(b -> b.name().equals("test-bucket"));
+      if (!exists) {
+        s3.createBucket(
+            software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
+                .bucket("test-bucket")
+                .build());
+      }
+    } finally {
+      s3.close();
+    }
+
+    // Expose endpoint to tests that read a system property / env var.
+    System.setProperty("IT_MINIO_ENDPOINT", endpoint);
+
+    LOG.info("MinIO started at {}", endpoint);
+  }
+
+  public static String getMinIOEndpoint() {
+    if (MINIO_CONTAINER == null || !MINIO_CONTAINER.isRunning()) {
+      throw new IllegalStateException("MinIO container not running. Call setupMinIO() first.");
+    }
+    return "http://" + MINIO_CONTAINER.getHost() + ":" + MINIO_CONTAINER.getMappedPort(9000);
   }
 
   // === Static accessor methods for tests ===
@@ -799,6 +1018,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory
             .createPipelineServiceClient(pipelineConfig);
 
+    if (APP != null) {
+      APP.getConfiguration().setPipelineServiceClientConfiguration(pipelineConfig);
+    }
+
     // Update the IngestionPipelineRepository with the new client
     // This is necessary because the repository caches the client at startup
     try {
@@ -812,7 +1035,40 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
+    refreshIngestionPipelineResource();
+
     LOG.info("K8s pipeline service client configured and ready");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void refreshIngestionPipelineResource() {
+    if (APP == null) {
+      LOG.info("OpenMetadata application is not initialized yet; skipping resource refresh");
+      return;
+    }
+
+    try {
+      Field collectionMapField = CollectionRegistry.class.getDeclaredField("collectionMap");
+      collectionMapField.setAccessible(true);
+
+      Map<String, CollectionRegistry.CollectionDetails> collectionMap =
+          (Map<String, CollectionRegistry.CollectionDetails>)
+              collectionMapField.get(CollectionRegistry.getInstance());
+
+      for (CollectionRegistry.CollectionDetails details : collectionMap.values()) {
+        Object resource = details.getResource();
+        if (resource instanceof IngestionPipelineResource ingestionPipelineResource) {
+          ingestionPipelineResource.initialize(APP.getConfiguration());
+          LOG.info("Refreshed IngestionPipelineResource with K8s pipeline client");
+          return;
+        }
+      }
+
+      LOG.warn("IngestionPipelineResource is not registered; skipping resource refresh");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to refresh IngestionPipelineResource with K8s pipeline client", e);
+    }
   }
 
   /**
@@ -868,6 +1124,30 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return "http://localhost:" + getApplicationPort();
   }
 
+  /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */
+  public static String getSearchHost() {
+    return searchHost;
+  }
+
+  /** Mapped HTTP port of the running search engine container. */
+  public static int getSearchPort() {
+    return searchPort;
+  }
+
+  /** Scheme of the running search engine container — currently always {@code http} in tests. */
+  public static String getSearchScheme() {
+    return "http";
+  }
+
+  /**
+   * Search engine testcontainer (OpenSearch or Elasticsearch). Exposed for failure-path
+   * tests that need to pause/unpause/disconnect the engine to validate retry semantics.
+   * Returns {@code null} if the bootstrap hasn't started yet.
+   */
+  public static GenericContainer<?> getSearchContainer() {
+    return SEARCH_CONTAINER;
+  }
+
   /**
    * Returns the Jdbi instance for direct database access if needed.
    */
@@ -877,6 +1157,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "JDBI is not initialized. Ensure TestSuiteBootstrap has initialized.");
     }
     return jdbi;
+  }
+
+  /**
+   * Returns true if Fuseki was started for this test session.
+   */
+  public static boolean isFusekiEnabled() {
+    return fusekiEndpoint != null;
   }
 
   /**

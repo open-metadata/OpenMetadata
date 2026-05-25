@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Typography } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -28,7 +26,6 @@ import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
-  announcementDetails,
   className,
   reactions,
   onReactionSelect,
@@ -103,29 +100,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   return (
     <>
       <div className={classNames('feed-message', isEditPost ? '' : className)}>
-        {!isUndefined(announcementDetails) ? (
-          <Space
-            className="w-full"
-            data-testid="announcement-data"
-            direction="vertical"
-            size={4}>
-            <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
-              {t('label.schedule')}{' '}
-              {formatDateTime(announcementDetails.startTime)}{' '}
-              {t('label.to-lowercase')}{' '}
-              {formatDateTime(announcementDetails.endTime)}{' '}
-            </Typography.Text>
-            <Typography.Text className="font-medium">
-              {postMessage}
-            </Typography.Text>
-            <RichTextEditorPreviewerV1
-              className="activity-feed-card-text"
-              markdown={announcementDetails.description || ''}
-            />
-          </Space>
-        ) : (
-          FEED_BODY
-        )}
+        {FEED_BODY}
       </div>
       {Boolean(reactions?.length) && (
         <Reactions

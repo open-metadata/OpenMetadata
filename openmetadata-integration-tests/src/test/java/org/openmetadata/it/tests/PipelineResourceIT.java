@@ -54,6 +54,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

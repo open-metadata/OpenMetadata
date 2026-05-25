@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import {
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-} from '../../constant/config';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -30,6 +27,7 @@ import {
   generateEntityChildren,
   removeTagsFromChildren,
   restoreEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -65,7 +63,7 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Dashboards' }).click();
 
-    await page.waitForSelector('.ant-spin', {
+    await page.locator('.ant-spin').waitFor({
       state: 'detached',
     });
 
@@ -85,7 +83,7 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByText('25 / Page').click();
     await childrenResponse;
 
-    await page.waitForSelector('.ant-spin', {
+    await page.locator('.ant-spin').waitFor({
       state: 'detached',
     });
 
@@ -127,14 +125,12 @@ test.describe(
     }) => {
       await dashboard.visitEntityPage(page);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="delete-button"]');
 
-      await page.waitForSelector('[role="dialog"].ant-modal');
+      await page.locator('[role="dialog"].ant-modal').waitFor();
 
       await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -153,9 +149,7 @@ test.describe(
       );
 
       await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       // Retry mechanism for checking deleted badge
       let deletedBadge = page.locator('[data-testid="deleted-badge"]');
       let attempts = 0;
@@ -170,9 +164,7 @@ test.describe(
         attempts++;
         if (attempts < maxAttempts) {
           await page.reload();
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
           deletedBadge = page.locator('[data-testid="deleted-badge"]');
         }
       }
@@ -190,9 +182,7 @@ test.describe(
 
       await restoreEntity(page);
       await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('charts-table').getByTestId('no-data-placeholder')
@@ -207,7 +197,7 @@ test.describe(
   }
 );
 
-test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Data Model', () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {
@@ -215,9 +205,7 @@ test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
     );
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     await assignTagToChildren({
       page,
@@ -228,7 +216,7 @@ test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     });
 
     // Should not show expand icon for non-nested columns
-    expect(
+    await expect(
       page
         .locator(
           '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031"]'
@@ -331,9 +319,9 @@ test.describe(
         )}/data-model`
       );
 
-      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+      await waitForAllLoadersToDisappear(page);
 
-      await page.waitForSelector('.ant-spin', {
+      await page.locator('.ant-spin').waitFor({
         state: 'detached',
       });
 

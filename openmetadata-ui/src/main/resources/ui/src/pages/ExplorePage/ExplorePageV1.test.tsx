@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import ExplorePageV1 from './ExplorePageV1.component';
 
 jest.mock(
@@ -66,5 +68,45 @@ describe('ExplorePageV1', () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
+  });
+
+  it('calls navigate exactly once with quickFilter when filter changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+
+    let capturedCallback:
+      | ((filter?: Record<string, unknown>) => void)
+      | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeAdvancedSearchQuickFilters,
+      }: {
+        onChangeAdvancedSearchQuickFilters?: (
+          filter?: Record<string, unknown>
+        ) => void;
+      }) => {
+        capturedCallback = onChangeAdvancedSearchQuickFilters;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    const testFilter = {
+      query: {
+        bool: {
+          must: [{ bool: { should: [{ term: { entityType: 'table' } }] } }],
+        },
+      },
+    };
+
+    act(() => {
+      capturedCallback!(testFilter);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0][0].search).toContain('quickFilter');
   });
 });

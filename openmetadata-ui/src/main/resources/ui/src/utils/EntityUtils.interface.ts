@@ -95,6 +95,7 @@ export enum FormattedDatabaseServiceType {
   Iceberg = 'Iceberg',
   Impala = 'Impala',
   MariaDB = 'Maria DB',
+  MicrosoftAccess = 'Microsoft Access',
   MicrosoftFabric = 'Microsoft Fabric',
   MongoDB = 'Mongo DB',
   Mssql = 'MS SQL',

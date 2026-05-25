@@ -27,6 +27,7 @@
     "forceConsistentCasingInFileNames": true,
     "allowUnreachableCode": false,
     "skipLibCheck": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "types": ["node"]
   }
 }

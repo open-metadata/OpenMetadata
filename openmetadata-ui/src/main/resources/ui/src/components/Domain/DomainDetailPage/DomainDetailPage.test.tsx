@@ -26,7 +26,6 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
     t: (key: string) => key,
   },
   t: (key: string) => key,
-  detectBrowserLanguage: () => 'en-US',
 }));
 
 // Mock react-helmet-async
@@ -38,11 +37,6 @@ jest.mock('react-helmet-async', () => ({
 }));
 
 jest.mock('../../../rest/domainAPI');
-jest.mock('../../../hooks/useDomainStore', () => ({
-  useDomainStore: () => ({
-    updateDomains: jest.fn(),
-  }),
-}));
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     currentUser: { id: '1' },

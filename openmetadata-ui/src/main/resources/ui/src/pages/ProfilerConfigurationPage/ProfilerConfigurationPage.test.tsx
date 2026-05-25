@@ -42,13 +42,11 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 jest.mock('../../constants/profiler.constant', () => ({
   DEFAULT_PROFILER_CONFIG_VALUE: {
-    metricConfiguration: [
-      {
-        dataType: undefined,
-        metrics: undefined,
-        disabled: false,
-      },
-    ],
+    metricConfiguration: [],
+    sampleDataConfig: {
+      storeSampleData: true,
+      readSampleData: true,
+    },
   },
   PROFILER_METRICS_TYPE_OPTIONS: [],
 }));
@@ -62,16 +60,13 @@ describe('ProfilerConfigurationPage', () => {
     expect(
       await screen.findByText('TitleBreadcrumb.component')
     ).toBeInTheDocument();
-    expect(await screen.findAllByText('PageHeader.component')).toHaveLength(2);
+    expect(await screen.findAllByText('PageHeader.component')).toHaveLength(3);
     expect(await screen.findByText('label.data-type')).toBeInTheDocument();
     expect(await screen.findByText('label.disable')).toBeInTheDocument();
     expect(await screen.findByText('label.metric-type')).toBeInTheDocument();
     expect(
       await screen.findByTestId('profiler-config-form')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('data-type-select')).toBeInTheDocument();
-    expect(await screen.findByTestId('metric-type-select')).toBeInTheDocument();
-    expect(await screen.findByTestId('disabled-switch')).toBeInTheDocument();
     expect(await screen.findByTestId('add-fields')).toBeInTheDocument();
     expect(await screen.findByTestId('cancel-button')).toBeInTheDocument();
     expect(await screen.findByTestId('save-button')).toBeInTheDocument();

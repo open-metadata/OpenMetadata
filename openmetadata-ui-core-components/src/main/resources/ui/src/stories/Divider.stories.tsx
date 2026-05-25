@@ -10,16 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Divider } from "../components/base/divider/divider";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Divider } from '../components/base/divider/divider';
 
 const meta = {
-  title: "Components/Divider",
+  title: 'Components/Divider',
   component: Divider,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
+  argTypes: {
+    orientation: {
+      control: false,
+      table: { type: { summary: '"horizontal" | "vertical"' } },
+    },
+    labelAlign: {
+      control: false,
+      table: { type: { summary: '"start" | "center" | "end"' } },
+    },
+  },
 } satisfies Meta<typeof Divider>;
 
 export default meta;
@@ -35,7 +45,7 @@ export const Horizontal: Story = {
 
 export const Vertical: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", height: 48, alignItems: "center", gap: 16 }}>
+    <div style={{ display: 'flex', height: 48, alignItems: 'center', gap: 16 }}>
       <span>Left</span>
       <Divider orientation="vertical" />
       <span>Right</span>
@@ -69,7 +79,8 @@ export const WithLabelEnd: StoryObj = {
 
 export const InContext: StoryObj = {
   render: () => (
-    <div style={{ width: 400, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div
+      style={{ width: 400, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <p style={{ margin: 0 }}>Some content above the divider.</p>
       <Divider />
       <p style={{ margin: 0 }}>Some content below the divider.</p>

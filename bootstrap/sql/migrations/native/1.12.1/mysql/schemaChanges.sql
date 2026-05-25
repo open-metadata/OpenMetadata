@@ -7,3 +7,4 @@ ALTER TABLE audit_log_event ADD COLUMN search_text TEXT DEFAULT NULL;
 -- MySQL built-in FULLTEXT index on InnoDB — no extensions required.
 -- Supports MATCH() AGAINST() queries in NATURAL LANGUAGE mode.
 CREATE FULLTEXT INDEX idx_audit_log_search_text ON audit_log_event (search_text);
+

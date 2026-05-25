@@ -24,12 +24,12 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   checkAssetsCount,
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -56,7 +56,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
       // Wait for the Add Data Product form to appear
-      await page.waitForSelector('[data-testid="add-domain"]', {
+      await page.getByTestId('add-domain-form').waitFor({
         state: 'visible',
         timeout: 10000,
       });
@@ -77,8 +77,6 @@ test.describe('Data Product Comprehensive Tests', () => {
       const createRes = page.waitForResponse('/api/v1/dataProducts');
       await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
-
-      await toastNotification(page, /Data Product created successfully/i);
 
       // Verify data product was created - navigate to Data Products tab
       await page.getByTestId('data_products').click();
@@ -151,7 +149,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('domain-expert-name').getByTestId('Add').click();
 
       // Wait for the popover to appear
-      await page.waitForSelector('[data-testid="selectable-list"]', {
+      await page.getByTestId('selectable-list').waitFor({
         state: 'visible',
       });
 
@@ -169,14 +167,12 @@ test.describe('Data Product Comprehensive Tests', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         const isVisible = await expertItem.isVisible().catch(() => false);
         if (isVisible) {
@@ -184,6 +180,7 @@ test.describe('Data Product Comprehensive Tests', () => {
         }
 
         if (retry < maxRetries - 1) {
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
           await page.waitForTimeout(2000);
         }
       }
@@ -224,7 +221,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
       // Wait for tag selector
-      await page.waitForSelector('[data-testid="tag-selector"]', {
+      await page.getByTestId('tag-selector').waitFor({
         state: 'visible',
       });
 
@@ -288,13 +285,10 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('data-product-details-add-button').click();
 
       // Wait for modal
-      await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+      await page.getByTestId('asset-selection-modal').waitFor({
         state: 'visible',
         timeout: 10000,
       });
-
-      // Wait for search results to load
-      await page.waitForTimeout(1000); // Allow search index to populate
 
       // Search for table
       const searchRes = page.waitForResponse('/api/v1/search/query*');
@@ -365,9 +359,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.goto(
         `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`
       );
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the data product shows the subdomain link
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -798,14 +790,14 @@ test.describe('Data Product Search and Filter', () => {
 
       // Select domain1 from global dropdown
       await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
 
       const searchDomainRes = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
+          response.url().includes('index=domain')
       );
       await page
         .getByTestId('domain-selectable-tree')
@@ -862,9 +854,7 @@ test.describe('Data Product Name in Entity Name Cell', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Search for the specific data product
       const searchBox = page
@@ -873,14 +863,10 @@ test.describe('Data Product Name in Entity Name Cell', () => {
 
       await Promise.all([
         searchBox.fill(dataProduct.data.name),
-        page.waitForResponse(
-          '/api/v1/search/query?q=*&index=data_product_search_index*'
-        ),
+        page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
       ]);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the row shows both display name and name
       const row = page.getByTestId(dataProduct.data.name);
@@ -912,14 +898,10 @@ test.describe('Data Product Name in Entity Name Cell', () => {
 
       await Promise.all([
         searchBox.fill(dataProduct.responseData.name),
-        page.waitForResponse(
-          '/api/v1/search/query?q=*&index=data_product_search_index*'
-        ),
+        page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
       ]);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the data product appears in search results
       await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();

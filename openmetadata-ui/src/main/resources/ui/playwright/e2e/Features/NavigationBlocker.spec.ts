@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -135,7 +135,6 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
-
 
     // Should navigate to the settings page
     expect(adminPage.url()).toContain('settings');

@@ -123,6 +123,11 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_mlmodel_entities", new StepStats());
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
     entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
+    entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
+    entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
+    entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
     entityStats.withAdditionalProperty("reverse_ingestion_workflows", new StepStats());
 
@@ -142,6 +147,9 @@ public class DataRetention extends AbstractNativeApplication {
     // Clean up orphaned tag usages
     LOG.info("Starting cleanup for orphaned tag usages.");
     cleanOrphanedTagUsages();
+
+    LOG.info("Starting cleanup for orphaned time-series rows.");
+    cleanOrphanedTimeSeriesRows();
 
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
@@ -284,6 +292,32 @@ public class DataRetention extends AbstractNativeApplication {
     }
   }
 
+  private void cleanOrphanedTimeSeriesRows() {
+    LOG.info("Initiating orphaned time-series rows cleanup.");
+
+    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO resolutionStatusDao =
+        collectionDAO.testCaseResolutionStatusTimeSeriesDao();
+    CollectionDAO.AgentExecutionDAO agentExecutionDao = collectionDAO.agentExecutionDAO();
+    CollectionDAO.McpExecutionDAO mcpExecutionDao = collectionDAO.mcpExecutionDAO();
+    CollectionDAO.ProfilerDataTimeSeriesDAO profilerDao = collectionDAO.profilerDataTimeSeriesDao();
+    CollectionDAO.QueryCostTimeSeriesDAO queryCostDao =
+        collectionDAO.queryCostRecordTimeSeriesDAO();
+
+    executeOrphanCleanup(
+        "orphan_test_case_resolution_status",
+        () -> resolutionStatusDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_agent_execution", () -> agentExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_mcp_execution", () -> mcpExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_profile_data", () -> profilerDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_query_cost_time_series", () -> queryCostDao.deleteOrphanedRecords(BATCH_SIZE));
+
+    LOG.info("Orphaned time-series rows cleanup complete.");
+  }
+
   @Transaction
   private void cleanTestCaseResults(int retentionPeriod) {
     LOG.info("Initiating test case results cleanup: Retention = {} days.", retentionPeriod);
@@ -316,6 +350,32 @@ public class DataRetention extends AbstractNativeApplication {
         "audit_logs", () -> auditLogDAO.deleteInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Audit logs cleanup complete.");
+  }
+
+  private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
+    int totalDeleted = 0;
+    int totalFailed = 0;
+
+    while (true) {
+      try {
+        int deleted = deleteFunction.get();
+        totalDeleted += deleted;
+        if (deleted == 0) break;
+      } catch (Exception ex) {
+        LOG.error("Failed to clean orphan time-series rows for {}", entity, ex);
+        totalFailed += BATCH_SIZE;
+        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+
+        if (failureDetails == null) {
+          failureDetails = new HashMap<>();
+          failureDetails.put("message", ex.getMessage());
+          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        }
+        break;
+      }
+    }
+
+    updateStats(entity, totalDeleted, totalFailed);
   }
 
   @Transaction

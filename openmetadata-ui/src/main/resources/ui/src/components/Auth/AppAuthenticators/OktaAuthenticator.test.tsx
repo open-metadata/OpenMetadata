@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { useOktaAuth } from '@okta/okta-react';
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OktaAuthenticator from './OktaAuthenticator';
@@ -22,6 +23,15 @@ jest.mock('@okta/okta-react', () => ({
 
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
+}));
+
+jest.mock('../../../utils/OktaCustomStorage', () => ({
+  OktaCustomStorage: jest.fn().mockImplementation(() => ({
+    waitForInit: jest.fn().mockResolvedValue(undefined),
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  })),
 }));
 
 const mockHandleSuccessfulLogout = jest.fn();

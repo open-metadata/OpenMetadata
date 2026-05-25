@@ -12,7 +12,7 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,56 +35,50 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof DBSecretsManager);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof DBSecretsManager);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
     config.setSecretsManager(SecretsManagerProvider.DB);
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof DBSecretsManager);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testIsCreatedIfAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof DBSecretsManager);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testIsCreatedIfManagedAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS);
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof AWSSecretsManager);
+    assertInstanceOf(
+        AWSSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testIsCreatedIfAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof DBSecretsManager);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test
   void testIsCreatedIfManagedAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS_SSM);
-    assertTrue(
-        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
-            instanceof AWSSSMSecretsManager);
+    assertInstanceOf(
+        AWSSSMSecretsManager.class,
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
   }
 
   @Test

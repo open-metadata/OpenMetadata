@@ -14,7 +14,7 @@ Validation logic for Custom Pydantic BaseModel
 
 import logging
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional  # noqa: UP035
 
 logger = logging.getLogger("metadata")
 
@@ -22,7 +22,9 @@ RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 RESERVED_QUOTE_KEYWORD = "__reserved__quote__"
-COLUMN_NAME_MAX_LENGTH = 256
+RESERVED_NEWLINE_KEYWORD = "__reserved__newline__"
+RESERVED_CARRIAGE_RETURN_KEYWORD = "__reserved__carriage_return__"
+RESERVED_TAB_KEYWORD = "__reserved__tab__"
 
 
 class TransformDirection(Enum):
@@ -44,35 +46,33 @@ def is_service_level_create_model(model_name: str) -> bool:
     # Extract the middle part (service name) - must not be empty
     # "CreateServiceRequest" -> middle = "" (invalid)
     # "CreateDatabaseServiceRequest" -> middle = "Database" (valid)
-    middle = model_name[
-        6:-14
-    ]  # Remove "Create" (6 chars) and "ServiceRequest" (14 chars)
+    middle = model_name[6:-14]  # Remove "Create" (6 chars) and "ServiceRequest" (14 chars)
     return len(middle) > 0
 
 
 # Explicit configuration for entity name transformations
 # This dictionary will be populated lazily to avoid circular imports
-TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}
+TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}  # noqa: UP006
 
 
 def _initialize_transformable_entities():
     """Initialize the transformable entities dictionary lazily to avoid circular imports"""
     # Import all model classes here to avoid circular dependency at module load time
-    from metadata.generated.schema.api.data.createDashboardDataModel import (
+    from metadata.generated.schema.api.data.createDashboardDataModel import (  # noqa: PLC0415
         CreateDashboardDataModelRequest,
     )
-    from metadata.generated.schema.api.data.createTable import CreateTableRequest
-    from metadata.generated.schema.entity.data.dashboardDataModel import (
+    from metadata.generated.schema.api.data.createTable import CreateTableRequest  # noqa: PLC0415
+    from metadata.generated.schema.entity.data.dashboardDataModel import (  # noqa: PLC0415
         DashboardDataModel,
     )
-    from metadata.generated.schema.entity.data.table import (
+    from metadata.generated.schema.entity.data.table import (  # noqa: PLC0415
         ColumnName,
         ColumnProfile,
         Table,
         TableData,
     )
-    from metadata.profiler.api.models import ProfilerResponse
-    from metadata.utils.entity_link import CustomColumnName
+    from metadata.profiler.api.models import ProfilerResponse  # noqa: PLC0415
+    from metadata.utils.entity_link import CustomColumnName  # noqa: PLC0415
 
     # Now populate the dictionary with the imported classes
     TRANSFORMABLE_ENTITIES.update(
@@ -118,6 +118,9 @@ def revert_separators(value):
         value.replace(RESERVED_COLON_KEYWORD, "::")
         .replace(RESERVED_ARROW_KEYWORD, ">")
         .replace(RESERVED_QUOTE_KEYWORD, '"')
+        .replace(RESERVED_NEWLINE_KEYWORD, "\n")
+        .replace(RESERVED_CARRIAGE_RETURN_KEYWORD, "\r")
+        .replace(RESERVED_TAB_KEYWORD, "\t")
     )
 
 
@@ -126,16 +129,19 @@ def replace_separators(value):
         value.replace("::", RESERVED_COLON_KEYWORD)
         .replace(">", RESERVED_ARROW_KEYWORD)
         .replace('"', RESERVED_QUOTE_KEYWORD)
+        .replace("\n", RESERVED_NEWLINE_KEYWORD)
+        .replace("\r", RESERVED_CARRIAGE_RETURN_KEYWORD)
+        .replace("\t", RESERVED_TAB_KEYWORD)
     )
 
 
-def get_entity_config(model: Optional[Any]) -> Optional[Dict[str, Any]]:
+def get_entity_config(model: Optional[Any]) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
     """Get transformation configuration for entity"""
     _initialize_transformable_entities()  # Ensure entities are loaded
     return TRANSFORMABLE_ENTITIES.get(model)
 
 
-def get_transformer(model: Optional[Any]) -> Optional[Callable]:
+def get_transformer(model: Optional[Any]) -> Optional[Callable]:  # noqa: UP045
     """Get the appropriate transformer function for model"""
     config = get_entity_config(model)
     if not config:
@@ -144,16 +150,9 @@ def get_transformer(model: Optional[Any]) -> Optional[Callable]:
     direction = config.get("direction")
     if direction == TransformDirection.ENCODE:
         return replace_separators
-    elif direction == TransformDirection.DECODE:
+    elif direction == TransformDirection.DECODE:  # noqa: RET505
         return revert_separators
     return None
-
-
-def _truncate_if_encoding(value: str, transformer) -> str:
-    """Truncate encoded value to COLUMN_NAME_MAX_LENGTH if encoding."""
-    if transformer == replace_separators and len(value) > COLUMN_NAME_MAX_LENGTH:
-        return value[:COLUMN_NAME_MAX_LENGTH]
-    return value
 
 
 def transform_all_names(obj, transformer):
@@ -164,9 +163,9 @@ def transform_all_names(obj, transformer):
     # Transform name field if it exists (supports both obj.name.root and obj.root)
     name = getattr(obj, "name", None)
     if name and hasattr(name, "root") and name.root is not None:
-        name.root = _truncate_if_encoding(transformer(name.root), transformer)
+        name.root = transformer(name.root)
     elif hasattr(obj, "root") and obj.root is not None:
-        obj.root = _truncate_if_encoding(transformer(obj.root), transformer)
+        obj.root = transformer(obj.root)
 
     # Transform nested collections in a single loop each
     for attr_name in ["columns", "children"]:
@@ -178,47 +177,34 @@ def transform_all_names(obj, transformer):
 
     # Transform table constraints
     if hasattr(obj, "tableConstraints"):
-        table_constraints = getattr(obj, "tableConstraints")
+        table_constraints = getattr(obj, "tableConstraints")  # noqa: B009
         if table_constraints is not None:
             for constraint in table_constraints:
                 if hasattr(constraint, "columns"):
-                    constraint.columns = [
-                        _truncate_if_encoding(transformer(col), transformer)
-                        for col in constraint.columns
-                    ]
+                    constraint.columns = [transformer(col) for col in constraint.columns]
 
-    if transformer == replace_separators and type(name) == str:
-        obj.name = _truncate_if_encoding(transformer(name), transformer)
+    if transformer == replace_separators and type(name) == str:  # noqa: E721
+        obj.name = transformer(name)
 
 
-def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
+def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:  # noqa: UP045
     """Transform entity names"""
     model_name = model.__name__
-    if not entity or (
-        model_name.startswith("Create") and is_service_level_create_model(model_name)
-    ):
+    if not entity or (model_name.startswith("Create") and is_service_level_create_model(model_name)):
         return entity
 
     # Root attribute handling
     if hasattr(entity, "root") and entity.root is not None:
-        if model_name.startswith("Create"):
-            encoded = replace_separators(entity.root)
-            entity.root = (
-                encoded[:COLUMN_NAME_MAX_LENGTH]
-                if len(encoded) > COLUMN_NAME_MAX_LENGTH
-                else encoded
-            )
-        else:
-            entity.root = revert_separators(entity.root)
+        entity.root = (
+            replace_separators(entity.root) if model_name.startswith("Create") else revert_separators(entity.root)
+        )
         return entity
 
     # Get model-specific transformer
     transformer = get_transformer(model)
     if not transformer:
         # Fallback to original logic for backward compatibility
-        transformer = (
-            replace_separators if model_name.startswith("Create") else revert_separators
-        )
+        transformer = replace_separators if model_name.startswith("Create") else revert_separators
 
     transform_all_names(entity, transformer)
     return entity

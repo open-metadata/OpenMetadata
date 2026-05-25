@@ -31,6 +31,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
   protected final MigrationDAO migrationDAO;
   protected final List<String> schemaChanges;
   protected final List<String> postDDLScripts;
+  private boolean reprocessing;
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
@@ -64,6 +65,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   public void parseSQLFiles() {
+    schemaChanges.clear();
+    postDDLScripts.clear();
     final ParsingContext parsingContext = new ParsingContext();
     Configuration configuration = new ClassicConfiguration();
     Parser parser = new PostgreSQLParser(configuration, parsingContext);
@@ -116,16 +119,12 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return clazzName;
   }
 
-  public String getMigrationProcessExtClassName() {
-    String clazzName =
-        String.format(
-            "io.collate.service.migration.%s.%s.Migration", dbPackageName, getVersionPackageName());
-    try {
-      Class.forName(clazzName);
-    } catch (ClassNotFoundException e) {
-      return null;
+  public String getVersionPackageName() {
+    StringBuilder arrayAsString = new StringBuilder();
+    for (int versionNumber : versionNumbers) {
+      arrayAsString.append(versionNumber);
     }
-    return clazzName;
+    return "v" + arrayAsString;
   }
 
   public String getMigrationsFilePath() {
@@ -186,12 +185,26 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return 0;
   }
 
-  private String getVersionPackageName() {
-    StringBuilder arrayAsString = new StringBuilder();
-    for (int versionNumber : versionNumbers) {
-      arrayAsString.append(versionNumber);
-    }
-    return "v" + arrayAsString;
+  public boolean isReprocessing() {
+    return reprocessing;
+  }
+
+  public void setReprocessing(boolean reprocessing) {
+    this.reprocessing = reprocessing;
+  }
+
+  public MigrationFile copyWithReprocessing(boolean reprocessing) {
+    MigrationFile copy =
+        new MigrationFile(
+            dir, migrationDAO, connectionType, openMetadataApplicationConfig, isExtension);
+    copy.schemaChanges.addAll(schemaChanges);
+    copy.postDDLScripts.addAll(postDDLScripts);
+    copy.setReprocessing(reprocessing);
+    return copy;
+  }
+
+  public boolean hasNewStatements() {
+    return !schemaChanges.isEmpty() || !postDDLScripts.isEmpty();
   }
 
   private boolean checkIfQueryPreviouslyRan(String query) {

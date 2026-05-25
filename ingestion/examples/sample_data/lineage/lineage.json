@@ -284,5 +284,35 @@
     "to": { "fqn": "postgres_sample.jaffle_shop.public.orders", "type": "table" },
     "sql_query": "SELECT order_id, SUM(CASE WHEN payment_method = 'credit_card' THEN amount ELSE 0 END) AS credit_card_amount, SUM(CASE WHEN payment_method = 'coupon' THEN amount ELSE 0 END) AS coupon_amount, SUM(CASE WHEN payment_method = 'bank_transfer' THEN amount ELSE 0 END) AS bank_transfer_amount, SUM(CASE WHEN payment_method = 'gift_card' THEN amount ELSE 0 END) AS gift_card_amount, SUM(amount) AS total_amount FROM stg_payments GROUP BY order_id",
     "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "sample_data.ecommerce_db.shopify.raw_order", "type": "table" },
+    "to": { "fqn": "sample_data.ecommerce_db.shopify.fact_orders", "type": "table" },
+    "edge_meta": { "fqn": "", "type": "" },
+    "temp_lineage_tables": [
+      {"fromEntity": "sample_data.ecommerce_db.shopify.raw_order", "toEntity": "tmp_order_staging"},
+      {"fromEntity": "tmp_order_staging", "toEntity": "tmp_order_enriched"},
+      {"fromEntity": "tmp_order_enriched", "toEntity": "sample_data.ecommerce_db.shopify.fact_orders"}
+    ]
+  },
+  {
+    "from": { "fqn": "sample_data.ecommerce_db.shopify.raw_customer", "type": "table" },
+    "to": { "fqn": "sample_data.ecommerce_db.shopify.dim_customer", "type": "table" },
+    "edge_meta": { "fqn": "", "type": "" },
+    "temp_lineage_tables": [
+      {"fromEntity": "sample_data.ecommerce_db.shopify.raw_customer", "toEntity": "tmp_customer_dedup"},
+      {"fromEntity": "tmp_customer_dedup", "toEntity": "sample_data.ecommerce_db.shopify.dim_customer"}
+    ]
+  },
+  {
+    "from": { "fqn": "sample_data.ecommerce_db.shopify.raw_product_catalog", "type": "table" },
+    "to": { "fqn": "sample_data.ecommerce_db.shopify.dim_product", "type": "table" },
+    "edge_meta": { "fqn": "", "type": "" },
+    "temp_lineage_tables": [
+      {"fromEntity": "sample_data.ecommerce_db.shopify.raw_product_catalog", "toEntity": "tmp_product_cleaned"},
+      {"fromEntity": "tmp_product_cleaned", "toEntity": "sample_data.ecommerce_db.shopify.dim_product"},
+      {"fromEntity": "sample_data.ecommerce_db.shopify.raw_product_catalog", "toEntity": "tmp_product_enriched"},
+      {"fromEntity": "tmp_product_enriched", "toEntity": "sample_data.ecommerce_db.shopify.dim_product"}
+    ]
   }
 ]

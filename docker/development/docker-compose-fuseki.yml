@@ -1,27 +1,96 @@
 version: "3.9"
 
+# Compose override for RDF-enabled local stacks.
+# Use together with docker-compose.yml or docker-compose-postgres.yml.
 services:
+  execute-migrate-all:
+    environment:
+      RDF_ENABLED: ${RDF_ENABLED:-true}
+      RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}
+      RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-admin}
+      RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-admin}
+      RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}
+      RDF_JSONLD_ENABLED: ${RDF_JSONLD_ENABLED:-true}
+      RDF_SPARQL_ENABLED: ${RDF_SPARQL_ENABLED:-true}
+      RDF_DATASET: ${RDF_DATASET:-openmetadata}
+    depends_on:
+      fuseki:
+        condition: service_healthy
+
+  openmetadata-server:
+    environment:
+      RDF_ENABLED: ${RDF_ENABLED:-true}
+      RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}
+      RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-admin}
+      RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-admin}
+      RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}
+      RDF_JSONLD_ENABLED: ${RDF_JSONLD_ENABLED:-true}
+      RDF_SPARQL_ENABLED: ${RDF_SPARQL_ENABLED:-true}
+      RDF_DATASET: ${RDF_DATASET:-openmetadata}
+    depends_on:
+      fuseki:
+        condition: service_healthy
+
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    # Build from the in-repo Dockerfile (Fuseki 5.6.0) instead of the
+    # unmaintained `stain/jena-fuseki` Docker Hub image, which capped at 5.1.0
+    # and never picked up the 2025 admin-side Fuseki CVE fixes (CVE-2025-49656,
+    # CVE-2025-50151 — both fixed in Jena 5.5.0). The `image:` tag below names
+    # the locally-built image so subsequent `docker compose up` runs reuse the
+    # cached build instead of rebuilding from scratch each time.
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
       - "3030:3030"
+    networks:
+      - local_app_net
     environment:
-      - ADMIN_PASSWORD=admin
-      - JVM_ARGS=-Xmx4g -Xms2g
-      - FUSEKI_BASE=/fuseki
+      # Default for local dev only — production deployments MUST override
+      # via the FUSEKI_ADMIN_PASSWORD env var (and FUSEKI_OPENMETADATA_PASSWORD)
+      # before bringing this stack up. The entrypoint envsubsts these into
+      # shiro.ini at container start so the override actually takes effect.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
+      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
     volumes:
-      - fuseki-data:/fuseki
+      # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
+      # Dockerfile stores TDB2 at `/fuseki-data` and the data layout differs
+      # from the old stain/jena-fuseki image — re-using the previous volume
+      # name would mount stale state at a path Fuseki no longer reads from,
+      # silently looking like an empty database. Using a fresh volume name
+      # forces operators to consciously migrate (or accept a re-index). The
+      # orphaned `fuseki-data` volume can be removed manually with
+      # `docker volume rm fuseki-data` after confirming the new stack is
+      # healthy.
+      - fuseki-tdb2-data:/fuseki-data
     deploy:
       resources:
         limits:
-          memory: 4G
-        reservations:
           memory: 2G
-    # Create the database directory before starting Fuseki
-    entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
+        reservations:
+          memory: 256m
+    restart: "on-failure:3"
+    healthcheck:
+      test: "curl -s -f http://localhost:3030/\\$/ping > /dev/null || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+networks:
+  local_app_net:
+    name: ometa_network
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.239.0/24"
 
 volumes:
-  fuseki-data:
+  fuseki-tdb2-data:
     driver: local

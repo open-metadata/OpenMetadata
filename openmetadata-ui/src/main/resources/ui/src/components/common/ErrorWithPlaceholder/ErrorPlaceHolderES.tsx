@@ -34,8 +34,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import { Transi18next } from '../../../utils/CommonUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
