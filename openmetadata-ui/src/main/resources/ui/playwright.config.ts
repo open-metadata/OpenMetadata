@@ -109,12 +109,19 @@ export default defineConfig({
         '**/SSOLogin.spec.ts',
       ],
     },
-    {
-      name: 'chromium-h2',
-      testMatch: '**/Http2/**',
-      use: { ...devices['Desktop Chrome'] },
-      fullyParallel: true,
-    },
+    // Only register the h2 project when explicitly opted in. Always-on registration would force
+    // Playwright to do discovery for it on every default run even though its spec files are
+    // skipped — small cost, but pointless when the h2 server isn't running.
+    ...(isH2Mode
+      ? [
+          {
+            name: 'chromium-h2',
+            testMatch: '**/Http2/**',
+            use: { ...devices['Desktop Chrome'] },
+            fullyParallel: true,
+          },
+        ]
+      : []),
     {
       name: 'sso-auth',
       testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],

@@ -379,7 +379,9 @@ public class OpenMetadataAssetServlet extends AssetServlet {
    *
    * <p>Browsers and shared caches treat {@code Vary} as a comma-separated list (RFC 7231
    * §7.1.4). Calling {@code setHeader} would discard a {@code Vary: Origin} that an upstream
-   * CORS filter may already have set; we instead merge.
+   * CORS filter may already have set; we instead merge. Dedupe is per-token (split on comma,
+   * trim, case-insensitive equals) — a substring check would falsely match {@code Accept} against
+   * {@code Accept-Encoding} and would also miss duplicates separated by inconsistent whitespace.
    */
   private static void appendVaryHeader(HttpServletResponse resp, String value) {
     String existing = resp.getHeader("Vary");
@@ -387,10 +389,11 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       resp.setHeader("Vary", value);
       return;
     }
-    // Case-insensitive containment check — `Vary` values are tokens, not URLs, so a simple
-    // contains is sufficient and avoids the cost of splitting + trimming.
-    if (existing.toLowerCase().contains(value.toLowerCase())) {
-      return;
+    String target = value.trim();
+    for (String token : existing.split(",")) {
+      if (token.trim().equalsIgnoreCase(target)) {
+        return;
+      }
     }
     resp.setHeader("Vary", existing + ", " + value);
   }

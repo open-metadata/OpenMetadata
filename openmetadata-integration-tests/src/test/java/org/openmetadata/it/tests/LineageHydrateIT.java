@@ -53,11 +53,12 @@ import org.openmetadata.sdk.network.RequestOptions;
  * omits them).
  *
  * <p>The full "permitted vs denied principal" silent-drop contract is enforced at the
- * implementation level by {@code LineageResource.filterAuthorizedIds} (which calls
- * {@code authorizer.getPermission} and keeps only ids whose {@code VIEW_BASIC} access is
- * {@code ALLOW} or {@code CONDITIONAL_ALLOW}). End-to-end coverage with a restricted-permission
- * principal is left as a follow-up — it requires bootstrapping a team / domain / policy stack
- * that's heavier than this IT's scope.
+ * implementation level by {@code LineageResource.hydrateAndAuthorize} (which loads each entity
+ * via {@code repo.get(...)} and then runs {@code authorizer.getPermission} against the
+ * already-loaded entity, keeping only those whose {@code VIEW_BASIC} access is {@code ALLOW} or
+ * {@code CONDITIONAL_ALLOW}). End-to-end coverage with a restricted-permission principal is left
+ * as a follow-up — it requires bootstrapping a team / domain / policy stack that's heavier than
+ * this IT's scope.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class LineageHydrateIT {
