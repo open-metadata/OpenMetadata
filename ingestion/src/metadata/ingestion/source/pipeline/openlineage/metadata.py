@@ -188,13 +188,18 @@ class OpenlineageSource(PipelineServiceSource):
         """
         if not name:
             return None
+        parsed = None
         if namespace.startswith("arn:aws:glue:"):
-            return OpenlineageSource._parse_glue_table_name(name)
-        if namespace.startswith("azurekusto://"):
-            return OpenlineageSource._parse_slash_table_name(name)
-        if namespace.startswith("azurecosmos://"):
-            return OpenlineageSource._parse_cosmos_table_name(namespace, name)
-        return OpenlineageSource._parse_dotted_table_name(name)
+            parsed = OpenlineageSource._parse_glue_table_name(name)
+        elif namespace.startswith("azurekusto://"):
+            parsed = OpenlineageSource._parse_slash_table_name(name)
+        elif namespace.startswith("azurecosmos://"):
+            parsed = OpenlineageSource._parse_cosmos_table_name(namespace, name)
+        # Fall back to dotted parsing when the namespace-specific parser does
+        # not match, so a non-conformant name on a known namespace (for
+        # example a dotted schema.table emitted under a Glue namespace) is
+        # still resolved instead of being dropped.
+        return parsed or OpenlineageSource._parse_dotted_table_name(name)
 
     @staticmethod
     def _symlink_identifiers(data: Dict) -> List[Dict]:  # noqa: UP006
@@ -702,11 +707,11 @@ class OpenlineageSource(PipelineServiceSource):
         if not candidates:
             return None
 
-        if any(self._table_already_registered(details) for details, _ in candidates):
+        if any(self._table_already_registered(details, namespace) for details, namespace in candidates):
             return None
 
-        for details, _ in candidates:
-            schema_fqn = self._safe_schema_fqn(details.schema)
+        for details, namespace in candidates:
+            schema_fqn = self._safe_schema_fqn(details.schema, namespace)
             if schema_fqn:
                 request = CreateTableRequest(
                     name=details.name,
@@ -723,21 +728,52 @@ class OpenlineageSource(PipelineServiceSource):
         )
         return None
 
-    def _table_already_registered(self, table_details: TableDetails) -> bool:
+    def _table_already_registered(self, table_details: TableDetails, namespace: str) -> bool:
+        """
+        Whether the table is already present in OpenMetadata.
+
+        Resolution is scoped to the services the candidate's namespace maps
+        to, so it stays consistent with namespace-aware lineage resolution.
+        An ambiguous match means the table exists in several services, which
+        still counts as already registered.
+        """
+        services = self._resolve_db_services_for_namespace(namespace)
         try:
-            return bool(self._get_table_fqn_from_om(table_details))
+            return bool(self._get_table_fqn_from_om(table_details, services=services))
         except FQNNotFoundException:
             return False
+        except AmbiguousServiceException:
+            return True
 
-    def _safe_schema_fqn(self, schema: str) -> Optional[str]:  # noqa: UP045
+    def _safe_schema_fqn(self, schema: str, namespace: str) -> Optional[str]:  # noqa: UP045
+        """
+        Resolve a schema FQN, scoped to the candidate namespace's services.
+
+        Returns None when the schema is not found in any of those services.
+        """
+        services = self._resolve_db_services_for_namespace(namespace)
         try:
-            return self._get_schema_fqn_from_om(schema)
+            return self._get_schema_fqn_from_om(schema, services=services)
         except FQNNotFoundException:
             return None
 
     @classmethod
     def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
-        return "/".join(table.get(f) or "" for f in ["namespace", "name"]).replace("//", "/")
+        """
+        Build a stable per-dataset key from the namespace and name.
+
+        At most one slash is removed at the namespace and name boundary, so
+        a name with or without a leading slash maps to the same key. URI
+        schemes such as ``s3://`` are left intact, so distinct datasets do
+        not collide when this value is used as a resolution-cache key.
+        """
+        namespace = table.get("namespace") or ""
+        name = table.get("name") or ""
+        if namespace.endswith("/"):
+            namespace = namespace[:-1]
+        if name.startswith("/"):
+            name = name[1:]
+        return f"{namespace}/{name}"
 
     def _build_ol_name_to_fqn_map(self, tables: List):  # noqa: UP006
         result = {}

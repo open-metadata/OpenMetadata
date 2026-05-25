@@ -48,6 +48,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     TableDetails,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
+    AmbiguousServiceException,
     FQNNotFoundException,
     message_to_open_lineage_event,
 )
@@ -394,8 +395,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         # Setup
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
-            "s3a:/project-db/src_test1": "database.schema.input_table_1",
-            "s3a:/project-db/src_test2": "database.schema.input_table_2",
+            "s3a://project-db/src_test1": "database.schema.input_table_1",
+            "s3a://project-db/src_test2": "database.schema.input_table_2",
         }
 
         inputs = [
@@ -457,7 +458,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
-            "sqlserver:/host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+            "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
 
         inputs = [
@@ -939,6 +940,61 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source.get_create_table_request(table_data)
 
         assert result is None
+
+    def test_table_already_registered_scopes_to_namespace_services(self):
+        """The existence check is scoped to the services the namespace maps to."""
+
+        def fqn_from_om(table_details, services=None):
+            if services == ["svc-a"]:
+                return "svc-a.schema.tbl"
+            raise FQNNotFoundException("not found")
+
+        with (
+            patch.object(
+                self.open_lineage_source,
+                "_resolve_db_services_for_namespace",
+                return_value=["svc-a"],
+            ),
+            patch.object(self.open_lineage_source, "_get_table_fqn_from_om", side_effect=fqn_from_om),
+        ):
+            registered = self.open_lineage_source._table_already_registered(
+                TableDetails(name="tbl", schema="schema"), "trino://host"
+            )
+        self.assertTrue(registered)
+
+    def test_table_already_registered_treats_ambiguous_match_as_registered(self):
+        """A table found in several services still counts as already registered."""
+        with (
+            patch.object(self.open_lineage_source, "_resolve_db_services_for_namespace", return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn_from_om",
+                side_effect=AmbiguousServiceException("multiple"),
+            ),
+        ):
+            registered = self.open_lineage_source._table_already_registered(
+                TableDetails(name="tbl", schema="schema"), "trino://host"
+            )
+        self.assertTrue(registered)
+
+    def test_safe_schema_fqn_scopes_to_namespace_services(self):
+        """Schema lookup is scoped to the services the namespace maps to."""
+
+        def schema_from_om(schema, services=None):
+            if services == ["svc-a"]:
+                return "svc-a.db.schema"
+            raise FQNNotFoundException("not found")
+
+        with (
+            patch.object(
+                self.open_lineage_source,
+                "_resolve_db_services_for_namespace",
+                return_value=["svc-a"],
+            ),
+            patch.object(self.open_lineage_source, "_get_schema_fqn_from_om", side_effect=schema_from_om),
+        ):
+            result = self.open_lineage_source._safe_schema_fqn("schema", "trino://host")
+        self.assertEqual(result, "svc-a.db.schema")
 
     @patch("confluent_kafka.Consumer")
     def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
@@ -2155,6 +2211,28 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = OpenlineageSource._parse_glue_table_name("table/sales/users")
         self.assertEqual(result.name, "users")
         self.assertEqual(result.schema, "sales")
+
+    def test_parse_table_identity_glue_namespace_uses_glue_parser(self):
+        """A conformant Glue name on a Glue namespace uses the Glue parser."""
+        result = OpenlineageSource._parse_table_identity("arn:aws:glue:us-east-1:123456789012", "table/sales/users")
+        self.assertEqual(result.schema, "sales")
+        self.assertEqual(result.name, "users")
+
+    def test_parse_table_identity_falls_back_to_dotted_for_nonconformant_name(self):
+        """A dotted name on a Glue namespace falls back to dotted parsing
+        instead of being dropped when the Glue parser does not match."""
+        result = OpenlineageSource._parse_table_identity("arn:aws:glue:us-east-1:123456789012", "sales.users")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.schema, "sales")
+        self.assertEqual(result.name, "users")
+
+    def test_get_ol_table_name_preserves_uri_scheme(self):
+        """The namespace/name boundary is normalized without collapsing the
+        URI scheme, so distinct datasets do not collide as cache keys."""
+        leading_slash = OpenlineageSource._get_ol_table_name({"namespace": "s3://bucket", "name": "/path/obj"})
+        no_leading_slash = OpenlineageSource._get_ol_table_name({"namespace": "s3://bucket", "name": "path/obj"})
+        self.assertEqual(leading_slash, "s3://bucket/path/obj")
+        self.assertEqual(leading_slash, no_leading_slash)
 
     def test_parse_glue_table_name_normalizes_to_lowercase(self):
         """Glue table and database names are normalized to lowercase for FQN matching."""
