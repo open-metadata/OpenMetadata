@@ -83,7 +83,7 @@ export default defineConfig({
       grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
       teardown: 'entity-data-teardown',
       testIgnore: [
-        '**/nightly/AutoClassification.spec.ts',
+        '**/nightly/**',
         '**/Search/**',
         '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',

@@ -145,7 +145,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
       await waitForAllLoadersToDisappear(page);
 
-      const sampleConfigTypeSelect = page.getByTestId('sample-config-type-select');
+      const sampleConfigTypeSelect = page.getByTestId(
+        'sample-config-type-select'
+      );
       await expect(sampleConfigTypeSelect).toBeVisible();
       await sampleConfigTypeSelect.click();
       await page.locator('[data-key="STATIC"]').click();
