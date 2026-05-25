@@ -37,6 +37,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 
   const taskTypeLabel = TASK_ENTITY_TYPES[task.type] ?? 'label.task';
   const isOpen = task.status === TaskEntityStatus.Open;
+  const isGranted = task.status === TaskEntityStatus.Granted;
 
   return (
     <div className={classNames('feed-panel-header', className)}>
@@ -56,7 +57,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           <Typography.Text
             className={classNames('task-status-badge', {
               open: isOpen,
-              closed: !isOpen,
+              granted: isGranted,
+              closed: !isOpen && !isGranted,
             })}>
             {task.status}
           </Typography.Text>

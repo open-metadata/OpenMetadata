@@ -722,6 +722,7 @@
     "edit-workflow-agent": "{{workflow}} エージェントを編集",
     "edited": "編集済み",
     "edited-columns": "編集された列",
+    "editor": "エディタ",
     "effect": "効果",
     "elastic-search-re-index": "Elasticsearch再インデックス",
     "elasticsearch": "Elasticsearch",
