@@ -156,21 +156,22 @@ public class ColumnRepository {
       String fieldsParam,
       Include include,
       SecurityContext securityContext) {
-    ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, null, parentFQN, include);
+    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table =
+        tableRepo.getByName(null, parentFQN, tableRepo.getFields("owners"), include, false);
+    ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, table, tableRepo);
     authorizer.authorize(
         securityContext,
         new OperationContext(TABLE, MetadataOperation.VIEW_BASIC),
         resourceContext);
 
-    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table table = tableRepo.findByName(parentFQN, include);
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
     Column column =
         findColumnInHierarchy(table.getColumns(), columnFQN)
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
     return tableRepo.enrichSingleColumnFields(
-        table, column, fieldsParam, resourceContext.getOwners(), authorizer, securityContext);
+        table, column, fieldsParam, table.getOwners(), authorizer, securityContext);
   }
 
   private Column fetchDataModelColumnByFQN(
@@ -179,16 +180,17 @@ public class ColumnRepository {
       String fieldsParam,
       Include include,
       SecurityContext securityContext) {
+    DashboardDataModelRepository dataModelRepo =
+        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
+    DashboardDataModel dataModel =
+        dataModelRepo.getByName(null, parentFQN, dataModelRepo.getFields("owners"), include, false);
     ResourceContext<DashboardDataModel> resourceContext =
-        new ResourceContext<>(DASHBOARD_DATA_MODEL, null, parentFQN, include);
+        new ResourceContext<>(DASHBOARD_DATA_MODEL, dataModel, dataModelRepo);
     authorizer.authorize(
         securityContext,
         new OperationContext(DASHBOARD_DATA_MODEL, MetadataOperation.VIEW_BASIC),
         resourceContext);
 
-    DashboardDataModelRepository dataModelRepo =
-        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-    DashboardDataModel dataModel = dataModelRepo.findByName(parentFQN, include);
     setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
     Column column =
         findColumnInHierarchy(dataModel.getColumns(), columnFQN)
