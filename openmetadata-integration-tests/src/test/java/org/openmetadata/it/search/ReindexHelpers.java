@@ -128,6 +128,20 @@ public final class ReindexHelpers {
     return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
   }
 
+  /**
+   * Rebuilds every index from scratch and blocks until the fresh run reaches a terminal status.
+   * Unlike {@link #triggerSearchIndexAndWait}, this passes {@code recreateIndex=true} so dropped
+   * indices are recreated and read aliases are re-promoted — the only reliable way to restore a
+   * baseline after a test has dropped indices or left an alias unswapped (e.g. a stopped recreate
+   * run). Used by {@code SearchClusterResetExtension}.
+   */
+  public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    final long triggeredAtMillis = System.currentTimeMillis();
+    triggerAppWithConfig(server, SEARCH_INDEX_APP, Map.of("recreateIndex", true));
+    return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+  }
+
   /** Triggers a per-entity reindex via {@code POST /v1/search/reindex?entityType=...}. */
   public static void reindexEntityType(final ServerHandle server, final String entityType) {
     server.sdk().search().reindex(entityType);

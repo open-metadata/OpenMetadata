@@ -108,7 +108,8 @@ class ReindexStatsIT {
   private static void seedCleanCohort(final TestNamespace ns) {
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     for (int i = 0; i < 5; i++) {
-      TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+      TableTestFactory.createSimpleWithName(
+          ns.prefix("table" + i), ns, schema.getFullyQualifiedName());
     }
   }
 }

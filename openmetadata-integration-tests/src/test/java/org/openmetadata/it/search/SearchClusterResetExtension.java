@@ -23,14 +23,13 @@ import org.slf4j.LoggerFactory;
 public final class SearchClusterResetExtension implements BeforeEachCallback {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchClusterResetExtension.class);
-  private static final String PROBE_INDEX = "table_search_index";
   private static final Duration REBUILD_TIMEOUT = Duration.ofMinutes(5);
 
   @Override
   public void beforeEach(final ExtensionContext context) {
     final ServerHandle server = OssTestServer.defaultHandle();
     resumeEngineIfPaused();
-    rebuildIndicesIfMissing(server);
+    rebuildBaseline(server);
   }
 
   private void resumeEngineIfPaused() {
@@ -41,22 +40,14 @@ public final class SearchClusterResetExtension implements BeforeEachCallback {
     }
   }
 
-  private void rebuildIndicesIfMissing(final ServerHandle server) {
-    if (!indexPresent(server)) {
-      LOG.info(
-          "Search baseline missing ('{}' absent) — rebuilding all indices before test",
-          PROBE_INDEX);
-      ReindexHelpers.triggerSearchIndexAndWait(server, REBUILD_TIMEOUT);
-    }
-  }
-
-  private boolean indexPresent(final ServerHandle server) {
-    boolean present;
-    try {
-      present = new SearchAssertions(server).indexExists(PROBE_INDEX);
-    } catch (final RuntimeException e) {
-      present = false;
-    }
-    return present;
+  /**
+   * Always recreate every index up front. A presence probe is unreliable here — a prior test can
+   * leave an alias pointing at a dropped/staged index (still "present" but unqueryable), and a
+   * non-recreate reindex won't rebuild a missing index or re-promote a swapped alias. A full
+   * recreate restores a clean, queryable baseline regardless of the prior test's end state.
+   */
+  private void rebuildBaseline(final ServerHandle server) {
+    LOG.info("Recreating all search indices to restore a clean baseline before test");
+    ReindexHelpers.recreateAllAndWait(server, REBUILD_TIMEOUT);
   }
 }
