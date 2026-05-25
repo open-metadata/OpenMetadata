@@ -23,7 +23,7 @@
  *   yarn storybook   (once configured)
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta } from '@storybook/react';
 import React from 'react';
 import type { TableColumnsType } from './TableV2.interface';
 
@@ -94,9 +94,7 @@ const SAMPLE_COLUMNS: TableColumnsType<Column> = [
  * TableV2 itself requires OM app context (GenericProvider, user store, i18n).
  * Run `yarn start` in the main UI to see the full component.
  */
-import {
-  Table as UntitledTable,
-} from '@openmetadata/ui-core-components';
+import { Table as UntitledTable } from '@openmetadata/ui-core-components';
 
 interface DemoTableProps {
   rows: Column[];
@@ -130,7 +128,7 @@ const DemoTable = ({ rows, scrollY, size = 'md' }: DemoTableProps) => (
       ))}
     </UntitledTable.Header>
     <UntitledTable.Body>
-      {rows.map((row) =>
+      {rows.map((row) => (
         <UntitledTable.Row id={row.id} key={row.id}>
           {SAMPLE_COLUMNS.map((col) => (
             <UntitledTable.Cell key={String(col.key)}>
@@ -147,7 +145,7 @@ const DemoTable = ({ rows, scrollY, size = 'md' }: DemoTableProps) => (
             </UntitledTable.Cell>
           ))}
         </UntitledTable.Row>
-      )}
+      ))}
     </UntitledTable.Body>
   </UntitledTable>
 );
@@ -174,7 +172,8 @@ const meta = {
   argTypes: {
     scrollY: {
       control: { type: 'number', min: 100, max: 800, step: 50 },
-      description: 'Vertical scroll threshold in px. Unset = no vertical limit.',
+      description:
+        'Vertical scroll threshold in px. Unset = no vertical limit.',
     },
     size: {
       control: 'radio',

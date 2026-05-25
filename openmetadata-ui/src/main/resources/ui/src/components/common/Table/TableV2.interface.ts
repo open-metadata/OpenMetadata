@@ -65,7 +65,9 @@ export interface TableColumnType<T> {
     value: unknown,
     record: T,
     index: number
-  ) => React.ReactNode | { children: React.ReactNode; props?: Record<string, unknown> };
+  ) =>
+    | React.ReactNode
+    | { children: React.ReactNode; props?: Record<string, unknown> };
   sorter?: boolean | ((a: T, b: T) => number);
   sortOrder?: TableSortOrder;
   filters?: TableFilterOption[];

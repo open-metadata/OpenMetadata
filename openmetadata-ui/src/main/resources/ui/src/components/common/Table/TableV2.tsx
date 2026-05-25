@@ -85,8 +85,8 @@ import type {
   AriaSelection,
   AriaSortDescriptor,
   FlatRow,
-  TableColumnType,
   TableColumnsType,
+  TableColumnType,
   TableCurrentDataSource,
   TablePaginationConfig,
   TableSorterResult,
@@ -194,8 +194,7 @@ const TableV2 = <T extends object>(
     return sortedDataSource.filter((record) =>
       activeFilters.every(([colKey, selectedKeys]) => {
         const col = propsColumns.find(
-          (c, idx) =>
-            String(c.key ?? c.dataIndex ?? idx) === colKey
+          (c, idx) => String(c.key ?? c.dataIndex ?? idx) === colKey
         ) as TableColumnType<T> | undefined;
 
         return col?.onFilter
@@ -213,7 +212,10 @@ const TableV2 = <T extends object>(
     }
     const start = (internalCurrentPage - 1) * (clientPagination.pageSize ?? 10);
 
-    return filteredDataSource.slice(start, start + (clientPagination.pageSize ?? 10));
+    return filteredDataSource.slice(
+      start,
+      start + (clientPagination.pageSize ?? 10)
+    );
   }, [filteredDataSource, clientPagination, internalCurrentPage]);
 
   const expandedKeys = useMemo<Set<string>>(() => {
@@ -253,7 +255,9 @@ const TableV2 = <T extends object>(
   const handleMoveItem = useCallback(
     (updatedList: TableColumnDropdownList[]) => {
       setDropdownColumnList(updatedList);
-      setPropsColumns(getReorderedColumns(updatedList, propsColumns) as TableColumnsType<T>);
+      setPropsColumns(
+        getReorderedColumns(updatedList, propsColumns) as TableColumnsType<T>
+      );
     },
     [propsColumns]
   );
@@ -465,7 +469,12 @@ const TableV2 = <T extends object>(
           (rest.staticVisibleColumns ?? []).includes(item.key as string)
       );
 
-      setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns) as TableColumnsType<T>);
+      setPropsColumns(
+        getReorderedColumns(
+          dropdownColumnList,
+          filteredColumns
+        ) as TableColumnsType<T>
+      );
     } else {
       setPropsColumns((rest.columns ?? []) as TableColumnsType<T>);
     }
@@ -622,7 +631,8 @@ const TableV2 = <T extends object>(
 
                                     return next;
                                   }),
-                                filters: col.filters as TableColumnType<T>['filters'],
+                                filters:
+                                  col.filters as TableColumnType<T>['filters'],
                                 visible: true,
                                 close: () => setOpenFilterKey(null),
                               })
@@ -649,14 +659,12 @@ const TableV2 = <T extends object>(
         renderEmptyState={() =>
           isLoading ? null : (
             <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
-              {(rest.locale?.emptyText as ReactNode) ??
-                t('label.no-data')}
+              {(rest.locale?.emptyText as ReactNode) ?? t('label.no-data')}
             </div>
           )
         }>
         {flatRows.map((flatRow) => {
-          const { record, actualIndex, depth, hasChildren, rowKey } =
-            flatRow;
+          const { record, actualIndex, depth, hasChildren, rowKey } = flatRow;
           const rowHandlers = rest.onRow?.(record, actualIndex) ?? {};
           const isExpanded = expandedKeys.has(rowKey);
 
@@ -679,24 +687,18 @@ const TableV2 = <T extends object>(
               key={rowKey}
               onClick={rowHandlers.onClick}
               onDoubleClick={rowHandlers.onDoubleClick}
-              onDragEnd={
-                dragAndDropHooks ? undefined : rowHandlers.onDragEnd
-              }
+              onDragEnd={dragAndDropHooks ? undefined : rowHandlers.onDragEnd}
               onDragEnter={
                 dragAndDropHooks ? undefined : rowHandlers.onDragEnter
               }
               onDragLeave={
                 dragAndDropHooks ? undefined : rowHandlers.onDragLeave
               }
-              onDragOver={
-                dragAndDropHooks ? undefined : rowHandlers.onDragOver
-              }
+              onDragOver={dragAndDropHooks ? undefined : rowHandlers.onDragOver}
               onDragStart={
                 dragAndDropHooks ? undefined : rowHandlers.onDragStart
               }
-              onDrop={
-                dragAndDropHooks ? undefined : rowHandlers.onDrop
-              }>
+              onDrop={dragAndDropHooks ? undefined : rowHandlers.onDrop}>
               {propsColumns.map((col, colIdx) => {
                 const cellKey = String(col.key ?? col.dataIndex ?? colIdx);
                 const stickyStyle = getColumnStickyStyle(col.fixed, 1);
@@ -708,8 +710,7 @@ const TableV2 = <T extends object>(
                   (col.onCell?.(
                     record,
                     actualIndex
-                  ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
-                  {};
+                  ) as React.TdHTMLAttributes<HTMLTableCellElement>) ?? {};
 
                 return (
                   <UntitledTable.Cell
@@ -731,10 +732,8 @@ const TableV2 = <T extends object>(
                       col.width !== undefined
                         ? {
                             width:
-                              columnWidths[cellKey] ??
-                              (col.width as number),
-                            minWidth:
-                              (col.width as number) ?? undefined,
+                              columnWidths[cellKey] ?? (col.width as number),
+                            minWidth: (col.width as number) ?? undefined,
                           }
                         : {}),
                       ...stickyStyle,

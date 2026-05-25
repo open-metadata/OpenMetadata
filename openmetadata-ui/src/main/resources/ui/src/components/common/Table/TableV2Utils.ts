@@ -14,8 +14,8 @@ import { isEmpty } from 'lodash';
 import React, { ReactNode } from 'react';
 import type {
   FlatRow,
-  TableColumnType,
   TableColumnsType,
+  TableColumnType,
   TableFilterValue,
   TableSortOrder,
 } from './TableV2.interface';
