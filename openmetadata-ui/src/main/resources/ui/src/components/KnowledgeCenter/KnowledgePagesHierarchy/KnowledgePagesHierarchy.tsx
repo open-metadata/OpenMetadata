@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Typography as AntTypography,
   Button,
   Modal,
   Skeleton,
   Tree,
+  Typography as AntTypography,
 } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
-import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -68,7 +67,10 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  CREATE_PAGE_HASH,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import {
   KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH,
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,

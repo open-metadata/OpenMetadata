@@ -868,7 +868,7 @@ test.describe('Context Center', () => {
       await card.getByTestId('delete-quick-link-btn').click();
 
       const deleteRes = page.waitForResponse(
-        /\/api\/v1\/contextCenter\/pages\/[^?]+\?hardDelete=true&recursive=false/
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=false&hardDelete=true/
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;
@@ -914,7 +914,7 @@ test.describe('Context Center', () => {
       await page.getByTestId('delete-btn').click();
 
       const apiDeleteRes = page.waitForResponse(
-        /\/api\/v1\/contextCenter\/pages\/[^?]+\?hardDelete=false&recursive=true/
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=false/
       );
       await page.getByTestId('confirm-button').click();
       await apiDeleteRes;

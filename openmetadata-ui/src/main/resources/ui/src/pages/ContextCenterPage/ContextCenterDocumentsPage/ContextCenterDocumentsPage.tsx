@@ -176,9 +176,7 @@ const ContextCenterDocumentsPage: FC = () => {
     (file: DocFile, targetFolderId: string) => {
       setAllDocuments((prev) =>
         prev.map((d) =>
-          d.id === file.id
-            ? { ...d, folderId: targetFolderId }
-            : d
+          d.id === file.id ? { ...d, folderId: targetFolderId } : d
         )
       );
     },

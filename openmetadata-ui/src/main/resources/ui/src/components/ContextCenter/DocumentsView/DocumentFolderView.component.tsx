@@ -20,11 +20,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { Folder } from 'generated/entity/data/folder';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
 import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -174,11 +174,14 @@ const DocumentFolderView = ({
                             height={16}
                             width={16}
                           />
-                          <Typography
-                            className="tw:truncate tw:flex-1"
-                            weight="medium">
-                            {folder.displayName ?? folder.name}
-                          </Typography>
+                          <div className="tw:w-full">
+                            <Typography
+                              as="p"
+                              className="tw:truncate tw:flex-1"
+                              weight="medium">
+                              {folder.displayName ?? folder.name}
+                            </Typography>
+                          </div>
                         </button>
 
                         <ButtonUtility

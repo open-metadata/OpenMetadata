@@ -36,6 +36,7 @@ import {
   SubmenuTrigger,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
@@ -130,7 +131,10 @@ const FileActions: FC<FileActionsProps> = ({
                     aria-hidden="true"
                     className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-fg-quaternary"
                   />
-                  <Typography className="tw:text-secondary" size='text-sm' weight='semibold'>
+                  <Typography
+                    className="tw:text-secondary"
+                    size="text-sm"
+                    weight="semibold">
                     {t('label.move-to-folder')}
                   </Typography>
                   <ChevronRight
@@ -159,9 +163,12 @@ const FileActions: FC<FileActionsProps> = ({
                     onAction={() => handleMoveToFolder(folder.id)}>
                     {() => (
                       <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover">
-                        <Typography
-                          className="tw:grow tw:truncate tw:text-sm tw:text-secondary"
-                          weight="semibold">
+                        <FolderIcon
+                          className="tw:text-gray-500 tw:shrink-0"
+                          height={18}
+                          width={18}
+                        />
+                        <Typography ellipsis size="text-sm" weight="medium">
                           {folder.name}
                         </Typography>
                       </div>
