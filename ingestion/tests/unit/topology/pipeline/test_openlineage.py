@@ -2108,6 +2108,22 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result.schema, "sales")
         self.assertEqual(result.name, "users")
 
+    def test_parse_dotted_table_name_captures_database_for_three_part_names(self):
+        """Three-part db.schema.table names populate database so OpenMetadata
+        can disambiguate the same schema.table across multiple databases."""
+        result = OpenlineageSource._parse_dotted_table_name("mydb.myschema.mytable")
+        self.assertEqual(result.database, "mydb")
+        self.assertEqual(result.schema, "myschema")
+        self.assertEqual(result.name, "mytable")
+
+    def test_parse_dotted_table_name_two_part_leaves_database_none(self):
+        """Two-part schema.table names (MySQL, Hive, Teradata, Cassandra)
+        leave database as None for OpenMetadata's partial FQN search."""
+        result = OpenlineageSource._parse_dotted_table_name("myschema.mytable")
+        self.assertIsNone(result.database)
+        self.assertEqual(result.schema, "myschema")
+        self.assertEqual(result.name, "mytable")
+
     def test_get_ol_table_name_preserves_uri_scheme(self):
         """The namespace/name boundary is normalized without collapsing the
         URI scheme, so distinct datasets do not collide as cache keys."""

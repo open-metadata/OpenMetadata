@@ -161,16 +161,29 @@ class OpenlineageSource(PipelineServiceSource):
     @staticmethod
     def _parse_dotted_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
         """
-        Parse a dot-separated ``[db.]schema.table`` name used by SQL engines.
+        Parse a dot-separated name used by SQL engines.
 
-        BigQuery prefixes the GCP project id; only the last two segments
-        (schema, table) map to OpenMetadata. Names are lowercased for
-        case-insensitive FQN matching across connectors.
+        Two-part names (``schema.table``) come from sources that lack a
+        native database layer above the schema (MySQL, Hive, Teradata,
+        Cassandra, Synapse). Three-part names (``db.schema.table``) come
+        from sources with a database layer (Snowflake, BigQuery, Postgres,
+        Redshift, Trino, Athena, Oracle); when present, the database
+        segment is captured so OpenMetadata can disambiguate the same
+        schema.table across multiple databases within the same service.
+
+        Names are lowercased for case-insensitive FQN matching.
+
+        Source: https://openlineage.io/docs/spec/naming/
         """
         parts = name.split(".")
         if len(parts) < 2:
             return None
-        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+        database = parts[-3].lower() if len(parts) >= 3 else None
+        return TableDetails(
+            name=parts[-1].lower(),
+            schema=parts[-2].lower(),
+            database=database,
+        )
 
     @staticmethod
     def _parse_table_identity(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
