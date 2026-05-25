@@ -334,7 +334,7 @@ public class SearchMetadataTool implements McpTool {
           "message",
           String.format(
               "Found %d total results, showing first %d. "
-                  + "There are many matching assets — are you looking for something specific? "
+                  + "There are many matching assets. Are you looking for something specific?"
                   + "Try narrowing with a service name, schema name, or more specific search term.",
               totalResults, cleanedResults.size()));
       result.put("hasMore", true);
@@ -362,11 +362,12 @@ public class SearchMetadataTool implements McpTool {
             cleanedResults.size());
         result.put("results", trimmed);
         result.put("returnedCount", trimmed.size());
+        result.put("hasMore", true);
         result.put(
             "message",
             String.format(
                 "Response exceeded %d characters and was trimmed to %d of %d results. "
-                    + "There are many matching assets — are you looking for something specific? "
+                    + "There are many matching assets. Are you looking for something specific?"
                     + "Try narrowing with a service name, schema, or specific name.",
                 MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
       }
