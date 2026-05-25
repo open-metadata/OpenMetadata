@@ -21,6 +21,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
+import { waitForAllLoadersToDisappear } from './entity';
 
 const botName = `a-bot-pw%test-${uuid()}`;
 
