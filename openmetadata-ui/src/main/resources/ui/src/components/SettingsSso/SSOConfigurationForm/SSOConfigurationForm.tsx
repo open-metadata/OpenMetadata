@@ -19,6 +19,7 @@ import {
   AccordionPanel,
   Button,
   FileTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
@@ -27,10 +28,9 @@ import {
   FormValidation,
   RegistryFieldsType,
   RJSFSchema,
-  WidgetProps,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Check, Copy01, UploadCloud02, X } from '@untitledui/icons';
+import { UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import {
   DragEvent as ReactDragEvent,
@@ -42,7 +42,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
@@ -53,6 +52,7 @@ import {
   hasAnyAdvancedFields,
   MAX_XML_SIZE,
   NON_OIDC_SPECIFIC_FIELDS,
+  OIDC_PROVIDERS_WITH_CALLBACK_DISPLAY,
   OIDC_SPECIFIC_FIELDS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
@@ -119,6 +119,8 @@ import { TestLoginResult } from '../TestLogin/TestLogin.interface';
 import TestLoginButton, {
   TestLoginButtonHandle,
 } from '../TestLogin/TestLoginButton.component';
+import { CallbackUrlWidget, CopyableUrlField } from './CopyableUrlField';
+import { MetadataUploadStatusCard } from './MetadataUploadStatusCard';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -133,113 +135,40 @@ const preventDefaultDrag = (event: ReactDragEvent<HTMLElement>) => {
   event.stopPropagation();
 };
 
-interface MetadataUploadStatusCardProps {
-  status: 'success' | 'error';
-  fileName: string;
-  onChangeFile: () => void;
-}
+const isDiscoveryEligibleProvider = (
+  authConfig: AuthenticationConfiguration | undefined
+): authConfig is AuthenticationConfiguration => {
+  if (!authConfig) {
+    return false;
+  }
+  const provider = authConfig.provider;
 
-const MetadataUploadStatusCard = ({
-  status,
-  fileName,
-  onChangeFile,
-}: MetadataUploadStatusCardProps) => {
-  const { t } = useTranslation();
-  const isSuccess = status === 'success';
-
-  return (
-    <div className="flex items-center justify-between p-xs metadata-upload-status-container">
-      <div className="flex items-center gap-2">
-        <div
-          className={classNames(
-            'flex-shrink flex items-center justify-center rounded-full w-6 h-6',
-            {
-              'metadata-upload-status-icon-success': isSuccess,
-              'metadata-upload-status-icon-error': !isSuccess,
-            }
-          )}>
-          {isSuccess ? (
-            <Check className="text-white" size={16} />
-          ) : (
-            <X className="text-white" size={16} />
-          )}
-        </div>
-        <span className="text-grey-body text-sm font-medium">
-          {t(
-            isSuccess
-              ? 'message.metadata-xml-file-parsed-success'
-              : 'message.metadata-xml-file-parsed-error',
-            { fileName }
-          )}
-        </span>
-      </div>
-      <Button
-        color="link-color"
-        data-testid="change-metadata-xml-btn"
-        size="sm"
-        onPress={onChangeFile}>
-        {t('label.change-entity', { entity: t('label.file') })}
-      </Button>
-    </div>
-  );
+  return provider !== AuthProvider.Saml && provider !== AuthProvider.LDAP;
 };
 
-const OIDC_PROVIDERS_WITH_CALLBACK_DISPLAY: ReadonlySet<AuthProvider> = new Set(
-  [
-    AuthProvider.Google,
-    AuthProvider.Auth0,
-    AuthProvider.Azure,
-    AuthProvider.Okta,
-    AuthProvider.AwsCognito,
-    AuthProvider.CustomOidc,
-  ]
-);
+const applyJwksToFormData = (
+  prev: FormData | undefined,
+  jwksUri: string
+): FormData | undefined => {
+  if (!prev?.authenticationConfiguration) {
+    return prev;
+  }
+  const existing = prev.authenticationConfiguration.publicKeyUrls;
+  if (existing && existing.length > 0) {
+    return prev;
+  }
 
-interface CopyableUrlFieldProps {
-  label: string;
-  value: string;
-  testId: string;
-}
-
-const CopyableUrlField = ({ label, value, testId }: CopyableUrlFieldProps) => {
-  const { t } = useTranslation();
-
-  const handleCopy = async () => {
-    try {
-      await globalThis.navigator.clipboard.writeText(value);
-      showSuccessToast(t('message.copied-to-clipboard'));
-    } catch {
-      showErrorToast(t('message.copy-to-clipboard'));
-    }
+  return {
+    ...prev,
+    authenticationConfiguration: {
+      ...prev.authenticationConfiguration,
+      publicKeyUrls: [jwksUri],
+    },
   };
-
-  return (
-    <div className="copyable-url-field" data-testid={testId}>
-      {label && <span className="copyable-url-label text-xs">{label}</span>}
-      <div className="copyable-url-value-wrapper">
-        <span className="copyable-url-value" data-testid={`${testId}-value`}>
-          {value}
-        </span>
-        <Button
-          color="tertiary"
-          data-testid={`${testId}-copy`}
-          iconLeading={Copy01}
-          size="sm"
-          onPress={handleCopy}>
-          {t('label.copy')}
-        </Button>
-      </div>
-    </div>
-  );
 };
 
-const CallbackUrlWidget = ({ id, value }: WidgetProps) => (
-  <CopyableUrlField
-    label=""
-    testId={id}
-    value={typeof value === 'string' ? value : ''}
-  />
-);
+const extractJwksUri = (doc: Record<string, unknown>): string | null =>
+  typeof doc.jwks_uri === 'string' ? doc.jwks_uri : null;
 
 const widgets = {
   SelectWidget: SelectWidget,
@@ -365,46 +294,29 @@ const SSOConfigurationFormRJSF = ({
 
   useEffect(() => {
     const authConfig = internalData?.authenticationConfiguration;
-    if (!authConfig) {
-      return;
-    }
-    const provider = authConfig.provider;
-    if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
+    if (!isDiscoveryEligibleProvider(authConfig)) {
       return;
     }
     const discoveryUri = resolveDiscoveryUri(authConfig);
     if (!discoveryUri || lastFetchedDiscoveryRef.current === discoveryUri) {
       return;
     }
+
     let cancelled = false;
-    const handle = setTimeout(async () => {
+    const applyDiscoveryDocument = async () => {
       const doc = await fetchOidcDiscoveryDocument(discoveryUri);
       if (cancelled || !doc) {
         return;
       }
       lastFetchedDiscoveryRef.current = discoveryUri;
-      const jwksUri = typeof doc.jwks_uri === 'string' ? doc.jwks_uri : null;
+      const jwksUri = extractJwksUri(doc);
       if (!jwksUri) {
         return;
       }
-      setInternalData((prev) => {
-        if (!prev?.authenticationConfiguration) {
-          return prev;
-        }
-        const existing = prev.authenticationConfiguration.publicKeyUrls;
-        if (existing && existing.length > 0) {
-          return prev;
-        }
+      setInternalData((prev) => applyJwksToFormData(prev, jwksUri));
+    };
 
-        return {
-          ...prev,
-          authenticationConfiguration: {
-            ...prev.authenticationConfiguration,
-            publicKeyUrls: [jwksUri],
-          },
-        };
-      });
-    }, 500);
+    const handle = setTimeout(applyDiscoveryDocument, 500);
 
     return () => {
       cancelled = true;
@@ -1530,7 +1442,6 @@ const SSOConfigurationFormRJSF = ({
                 {isEditMode && (
                   <div className="form-actions-bottom">
                     <Button
-                      className="cancel-sso-configuration"
                       color="link-color"
                       data-testid="cancel-sso-configuration"
                       size="md"
@@ -1548,7 +1459,6 @@ const SSOConfigurationFormRJSF = ({
                       />
                     )}
                     <Button
-                      className="save-sso-configuration"
                       color="primary"
                       data-testid="save-sso-configuration"
                       isDisabled={isLoading}
@@ -1605,9 +1515,13 @@ const SSOConfigurationFormRJSF = ({
                 />
               )}
             </div>
-            <h3 className="sso-provider-form-title m-0 text-md">
+            <Typography
+              as="h3"
+              className="sso-provider-form-title tw:m-0"
+              size="text-md"
+              weight="semibold">
               {getProviderDisplayName(currentProvider)} {t('label.set-up')}
-            </h3>
+            </Typography>
           </div>
           {hasExistingConfig && onChangeProvider && (
             <Button
@@ -1648,7 +1562,6 @@ const SSOConfigurationFormRJSF = ({
               {isEditMode && (
                 <div className="form-actions-bottom">
                   <Button
-                    className="cancel-sso-configuration"
                     color="link-color"
                     data-testid="cancel-sso-configuration"
                     size="md"
@@ -1666,7 +1579,6 @@ const SSOConfigurationFormRJSF = ({
                     />
                   )}
                   <Button
-                    className="save-sso-configuration"
                     color="primary"
                     data-testid="save-sso-configuration"
                     isDisabled={isLoading}

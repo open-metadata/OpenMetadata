@@ -153,6 +153,45 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Footer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     }
   ),
+  Typography: ({
+    children,
+    as: Component = 'span',
+    size: _size,
+    weight: _weight,
+    ...rest
+  }: React.PropsWithChildren<{
+    as?: React.ElementType;
+    size?: string;
+    weight?: string;
+  }> &
+    Record<string, unknown>) => <Component {...rest}>{children}</Component>,
+  RadioGroup: ({
+    children,
+    value,
+    onChange,
+    ...rest
+  }: React.PropsWithChildren<{
+    value?: string;
+    onChange?: (value: string) => void;
+  }> &
+    Record<string, unknown>) => (
+    <div data-radio-value={value} role="radiogroup" {...rest}>
+      {children}
+    </div>
+  ),
+  RadioButton: ({
+    label,
+    value,
+    ...rest
+  }: {
+    label?: React.ReactNode;
+    value?: string;
+  } & Record<string, unknown>) => (
+    <label data-radio-button={value} {...rest}>
+      <input type="radio" value={value} />
+      {label}
+    </label>
+  ),
 }));
 
 // Mock SSOUtils - use actual implementations where needed

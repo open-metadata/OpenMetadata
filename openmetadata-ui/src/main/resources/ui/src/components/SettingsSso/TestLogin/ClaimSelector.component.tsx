@@ -16,6 +16,9 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  RadioButton,
+  RadioGroup,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,53 +94,53 @@ const ClaimSelector = ({
           width={640}
           onClose={onCancel}>
           <Dialog.Content>
-            <p className="tw:text-sm tw:text-tertiary">
+            <Typography as="p" className="tw:text-tertiary" size="text-sm">
               {t('message.claims-received-from-idp')}
-            </p>
-            <div
+            </Typography>
+            <RadioGroup
               className="sso-claim-selector-rows tw:flex tw:flex-col tw:gap-2"
               data-testid="sso-claim-selector-rows"
-              role="radiogroup">
-              {claimRows.map((row) => {
-                const isSelected = row.name === selectedClaim;
-
-                return (
-                  <label
-                    className={`sso-claim-selector-row tw:flex tw:items-start tw:gap-3 tw:rounded-md tw:border tw:p-3 tw:cursor-pointer ${
+              value={selectedClaim}
+              onChange={setSelectedClaim}>
+              {claimRows.map((row) => (
+                <RadioButton
+                  className={({ isSelected }) =>
+                    `sso-claim-selector-row tw:rounded-md tw:border tw:p-3 ${
                       isSelected
                         ? 'tw:border-brand tw:bg-brand-secondary'
                         : 'tw:border-secondary'
-                    }`}
-                    data-testid={`sso-claim-row-${row.name}`}
-                    key={row.name}>
-                    <input
-                      checked={isSelected}
-                      className="tw:mt-1"
-                      name="sso-email-claim"
-                      type="radio"
-                      value={row.name}
-                      onChange={() => setSelectedClaim(row.name)}
-                    />
+                    }`
+                  }
+                  data-testid={`sso-claim-row-${row.name}`}
+                  key={row.name}
+                  label={
                     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1 tw:min-w-0">
                       <code className="tw:text-sm tw:font-medium tw:text-primary">
                         {row.name}
                       </code>
-                      <span
-                        className="tw:text-xs tw:text-tertiary tw:truncate"
+                      <Typography
+                        as="span"
+                        className="tw:text-tertiary tw:truncate"
+                        size="text-xs"
                         title={row.value}>
                         {row.value || '—'}
-                      </span>
+                      </Typography>
                     </div>
-                  </label>
-                );
-              })}
-            </div>
+                  }
+                  value={row.name}
+                />
+              ))}
+            </RadioGroup>
             <div
               className="sso-claim-selector-derived tw:rounded-md tw:bg-secondary tw:p-3"
               data-testid="sso-claim-selector-derived">
-              <p className="tw:text-sm tw:font-semibold tw:text-primary">
+              <Typography
+                as="p"
+                className="tw:text-primary"
+                size="text-sm"
+                weight="semibold">
                 {t('label.auto-derived-from-selection')}
-              </p>
+              </Typography>
               <dl className="tw:mt-2 tw:grid tw:grid-cols-[max-content_1fr] tw:gap-x-3 tw:gap-y-1 tw:text-xs">
                 <dt className="tw:text-tertiary">{t('label.email-claim')}</dt>
                 <dd>

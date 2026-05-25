@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Space } from 'antd';
+import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent, useMemo } from 'react';
@@ -129,7 +129,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   return (
     <Fragment>
       {title && title.trim() !== '' && (
-        <Space className="w-full justify-between header-title-wrapper">
+        <div className="tw:flex tw:w-full tw:items-center tw:justify-between header-title-wrapper">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
@@ -141,24 +141,22 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {hasAdditional && (
             <Button
+              color="primary"
               data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
+              iconLeading={Plus}
               id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onAddClick(schema)();
-              }}
+              size="sm"
               onFocus={() => {
                 if (!isUndefined(formContext?.handleFocus)) {
                   formContext.handleFocus(idSchema.$id);
                 }
               }}
+              onPress={() => {
+                onAddClick(schema)();
+              }}
             />
           )}
-        </Space>
+        </div>
       )}
 
       {AdditionalField &&

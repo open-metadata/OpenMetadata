@@ -733,6 +733,17 @@ export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
   'custom-oidc',
 ];
 
+// OIDC providers whose forms show the callback / redirect URI field
+export const OIDC_PROVIDERS_WITH_CALLBACK_DISPLAY: ReadonlySet<AuthProvider> =
+  new Set([
+    AuthProvider.Google,
+    AuthProvider.Auth0,
+    AuthProvider.Azure,
+    AuthProvider.Okta,
+    AuthProvider.AwsCognito,
+    AuthProvider.CustomOidc,
+  ]);
+
 // Main SSO UI Schema generator
 export const getSSOUISchema = (
   provider: string,
