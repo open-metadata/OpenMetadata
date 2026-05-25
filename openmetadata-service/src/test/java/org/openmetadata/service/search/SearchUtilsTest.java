@@ -563,6 +563,13 @@ class SearchUtilsTest {
   }
 
   @Test
+  void searchAfterBlankEntriesDropped() {
+    assertNull(SearchUtils.searchAfter(List.of("")));
+    assertNull(SearchUtils.searchAfter(List.of("", "")));
+    assertEquals(List.of("v1"), SearchUtils.searchAfter(List.of("", "v1", "")));
+  }
+
+  @Test
   void searchAfterMultiValueListPreserved() {
     assertEquals(List.of("v1", "v2"), SearchUtils.searchAfter(List.of("v1", "v2")));
   }

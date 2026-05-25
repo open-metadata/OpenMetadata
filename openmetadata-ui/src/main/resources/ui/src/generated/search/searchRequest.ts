@@ -87,7 +87,7 @@ export interface SearchRequest {
      * (?search_after=v1&search_after=v2). Each value is its own parameter so values containing
      * ',' (e.g. a glossary term FQN) are safe.
      */
-    searchAfter?: any;
+    searchAfter?: string[];
     /**
      * Size to limit the no.of results returned.
      */

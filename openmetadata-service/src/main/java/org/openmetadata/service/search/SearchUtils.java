@@ -332,7 +332,15 @@ public final class SearchUtils {
 
   /** One {@code ?search_after=v} per sort value — no in-band delimiter. */
   public static List<Object> searchAfter(List<String> values) {
-    return nullOrEmpty(values) ? null : new ArrayList<>(values);
+    List<Object> result = null;
+    if (!nullOrEmpty(values)) {
+      List<Object> filtered =
+          values.stream().filter(v -> !nullOrEmpty(v)).collect(Collectors.toList());
+      if (!filtered.isEmpty()) {
+        result = filtered;
+      }
+    }
+    return result;
   }
 
   public static List<String> sourceFields(String sourceFields) {
