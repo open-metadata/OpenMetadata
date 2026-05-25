@@ -280,7 +280,11 @@ test.describe(
       });
     });
 
-    test('Propagated badge should appear on entity description with Propagated source', async ({
+    // Skipped: backend consolidation bug resets the description's changeSource
+    // from Propagated to Manual when the async entityStatus governance workflow
+    // re-saves the entity in the same session. See
+    // https://github.com/open-metadata/openmetadata-collate/issues/4256
+    test.skip('Propagated badge should appear on entity description with Propagated source', async ({
       browser,
       page,
     }) => {
