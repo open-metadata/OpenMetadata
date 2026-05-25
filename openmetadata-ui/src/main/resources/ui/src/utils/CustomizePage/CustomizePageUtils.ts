@@ -88,11 +88,29 @@ export const getGlossaryTermDefaultTabs = () => {
       editable: false,
     },
     {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
+    },
+    {
       id: EntityTabs.CUSTOM_PROPERTIES,
       name: EntityTabs.CUSTOM_PROPERTIES,
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
+      ),
+      editable: false,
+    },
+    {
+      id: EntityTabs.DATA_OBSERVABILITY,
+      name: EntityTabs.DATA_OBSERVABILITY,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.DATA_OBSERVABILITY]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.DATA_OBSERVABILITY
       ),
       editable: false,
     },
@@ -109,6 +127,15 @@ export const getGlossaryDefaultTabs = () => {
         EntityTabs.TERMS
       ),
       editable: true,
+    },
+    {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
     },
     {
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),

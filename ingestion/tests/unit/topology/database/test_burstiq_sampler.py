@@ -78,14 +78,13 @@ def mock_client():
 @pytest.fixture
 def sampler(mock_client):
     with patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=mock_client,
     ):
         s = _ConcreteBurstIQSampler(
             service_connection_config=BURSTIQ_CONNECTION,
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
         )
     return s  # noqa: RET504
 

@@ -99,6 +99,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
@@ -459,6 +460,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LearningResourceDAO learningResourceDAO();
+
+  @CreateSqlObject
+  ContextMemoryDAO contextMemoryDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -2124,6 +2128,29 @@ public interface CollectionDAO {
         condition = "AND deleted = TRUE";
       }
       return findToBatchAllTypesWithCondition(fromIds, relation, condition);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchAllTypesWithRelationsCondition(
+        @BindList("fromIds") List<String> fromIds,
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatchAllTypes(
+        List<String> fromIds, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchAllTypesWithRelationsCondition(fromIds, relations, condition);
     }
 
     @SqlQuery(
@@ -4166,6 +4193,16 @@ public interface CollectionDAO {
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
+
+    // DISTINCT is defence-in-depth: thread_entity.id is a primary key, and entityId is a
+    // single-valued column per row, so a single matching scan can't physically return the
+    // same id twice. The DISTINCT survives a future schema where a thread row picks up
+    // multiple entity references (or a join is added) — keeping the consumer code in
+    // deleteByAbout from re-issuing redundant relationship / extension / feed deletes for
+    // the same id under chunking.
+    @SqlQuery("select DISTINCT id from <tableName> where entityId IN (<entityIds>)")
+    List<String> findByEntityIds(
+        @Define("tableName") String tableName, @BindList("entityIds") List<String> entityIds);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -9705,6 +9742,33 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
+    // profiler_data_time_series has no id column (unique key is
+    // entityFQNHash + extension + operation + timestamp), so we limit by
+    // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
+    // This bounds the rows deleted per batch, matching the other orphan-cleanup queries.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM profiler_data_time_series "
+                + "WHERE NOT EXISTS ("
+                + "  SELECT 1 FROM table_entity te "
+                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + ") "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM profiler_data_time_series "
+                + "WHERE ctid IN ("
+                + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
+                + "  WHERE NOT EXISTS ("
+                + "    SELECT 1 FROM table_entity te "
+                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "  ) "
+                + "  LIMIT :limit"
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRecords(@Bind("limit") int limit);
+
     record LatestExtensionRecord(String entityFQNHash, String json) {}
 
     class LatestExtensionRecordMapper implements RowMapper<LatestExtensionRecord> {
@@ -9817,6 +9881,30 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM query_cost_time_series WHERE entityFQNHash = :entityFQNHash ")
     void deleteWithEntityFqnHash(@BindFQN("entityFQNHash") String entityFQNHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM query_cost_time_series "
+                + "WHERE id IN ("
+                + "  SELECT id FROM ("
+                + "    SELECT qcts.id FROM query_cost_time_series qcts "
+                + "    LEFT JOIN query_entity qe ON qcts.entityFQNHash = qe.fqnHash "
+                + "    WHERE qe.fqnHash IS NULL "
+                + "    LIMIT :limit"
+                + "  ) sub"
+                + ")",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM query_cost_time_series "
+                + "WHERE id IN ("
+                + "  SELECT qcts.id FROM query_cost_time_series qcts "
+                + "  LEFT JOIN query_entity qe ON qcts.entityFQNHash = qe.fqnHash "
+                + "  WHERE qe.fqnHash IS NULL "
+                + "  LIMIT :limit"
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -9945,6 +10033,39 @@ public interface CollectionDAO {
       condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
       return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
     }
+
+    // relation = 9 corresponds to Relationship.PARENT_OF (the enum ordinal is stable;
+    // see Relationship.java where new values must be appended). The annotation can't
+    // reference the enum at compile time, so we inline the ordinal here.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM test_case_resolution_status_time_series "
+                + "WHERE id IN ("
+                + "  SELECT id FROM ("
+                + "    SELECT ts.id FROM test_case_resolution_status_time_series ts "
+                + "    LEFT JOIN entity_relationship er "
+                + "      ON er.toId = ts.id AND er.relation = 9 " // 9 = Relationship.PARENT_OF
+                + "        AND er.fromEntity = 'testCase' "
+                + "        AND er.toEntity = 'testCaseResolutionStatus' "
+                + "    WHERE er.toId IS NULL "
+                + "    LIMIT :limit"
+                + "  ) sub"
+                + ")",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM test_case_resolution_status_time_series "
+                + "WHERE id IN ("
+                + "  SELECT ts.id FROM test_case_resolution_status_time_series ts "
+                + "  LEFT JOIN entity_relationship er "
+                + "    ON er.toId = ts.id AND er.relation = 9 " // 9 = Relationship.PARENT_OF
+                + "      AND er.fromEntity = 'testCase' "
+                + "      AND er.toEntity = 'testCaseResolutionStatus' "
+                + "  WHERE er.toId IS NULL "
+                + "  LIMIT :limit"
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
   interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -10871,6 +10992,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @Override
+    default String getTableName() {
+      return "context_memory";
+    }
+
+    @Override
+    default Class<ContextMemory> getEntityClass() {
+      return ContextMemory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
   interface SuggestionDAO {
     default String getTableName() {
       return "suggestions";
@@ -11472,6 +11610,30 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM agent_execution_entity <cond>")
     int listCount(@Define("cond") String condition);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM agent_execution_entity "
+                + "WHERE id IN ("
+                + "  SELECT id FROM ("
+                + "    SELECT ae.id FROM agent_execution_entity ae "
+                + "    LEFT JOIN ai_application_entity ai ON ae.agentId = ai.id "
+                + "    WHERE ai.id IS NULL "
+                + "    LIMIT :limit"
+                + "  ) sub"
+                + ")",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM agent_execution_entity "
+                + "WHERE id IN ("
+                + "  SELECT ae.id FROM agent_execution_entity ae "
+                + "  LEFT JOIN ai_application_entity ai ON ae.agentId = ai.id "
+                + "  WHERE ai.id IS NULL "
+                + "  LIMIT :limit"
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
   interface AIGovernancePolicyDAO
@@ -11576,6 +11738,30 @@ public interface CollectionDAO {
         value = "DELETE FROM <table> WHERE serverId = :serverId",
         connectionType = POSTGRES)
     void deleteByServerId(@Define("table") String table, @Bind("serverId") String serverId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM mcp_execution_entity "
+                + "WHERE id IN ("
+                + "  SELECT id FROM ("
+                + "    SELECT me.id FROM mcp_execution_entity me "
+                + "    LEFT JOIN mcp_server_entity ms ON me.serverId = ms.id "
+                + "    WHERE ms.id IS NULL "
+                + "    LIMIT :limit"
+                + "  ) sub"
+                + ")",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM mcp_execution_entity "
+                + "WHERE id IN ("
+                + "  SELECT me.id FROM mcp_execution_entity me "
+                + "  LEFT JOIN mcp_server_entity ms ON me.serverId = ms.id "
+                + "  WHERE ms.id IS NULL "
+                + "  LIMIT :limit"
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
   interface LLMServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.LLMService> {
