@@ -102,13 +102,10 @@ class TableDetails:
 @dataclass
 class ResolvedTable:
     """
-    An OpenLineage dataset resolved to an OpenMetadata table FQN.
+    An OpenLineage dataset resolved to an existing OpenMetadata table.
 
-    The fqn is a best-effort target within a configured service. It is
-    either an existing Table FQN, or, when only the schema could be found,
-    an FQN built under that schema for a table that may not exist yet. The
-    details field holds the identity candidate (top-level or symlink) that
-    produced the match.
+    The fqn is the matched Table FQN; the details field holds the identity
+    candidate (top-level or symlink) that produced the match.
     """
 
     fqn: str
