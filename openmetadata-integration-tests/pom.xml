@@ -963,6 +963,8 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
