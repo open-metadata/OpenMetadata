@@ -373,7 +373,7 @@ class TestOMetaESAPI:
         own param, so a comma in the value cannot truncate pagination.
         """
         test_id = str(uuid.uuid4())[:8]
-        expected_names = {f"comma,{test_id},table,{i}" for i in range(5)}
+        expected_names = [f"comma,{test_id},table,{i}" for i in range(5)]
         created_tables = []
         try:
             for name in expected_names:
@@ -386,12 +386,22 @@ class TestOMetaESAPI:
                 )
                 created_tables.append(table)
 
-            # Wait for ES to index the last-created table (refresh interval is 1s).
-            last_fqn = created_tables[-1].fullyQualifiedName.root
-            for _ in range(10):
-                if metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=last_fqn):
+            # Block until ALL created tables are searchable. Failing here is
+            # explicit (rather than letting paginate_es run on a partially
+            # indexed state and producing a confusing assertion error).
+            indexed = False
+            for _ in range(30):
+                if all(
+                    metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=t.fullyQualifiedName.root)
+                    for t in created_tables
+                ):
+                    indexed = True
                     break
                 time.sleep(1)
+            if not indexed:
+                pytest.fail(
+                    f"ES did not index all {len(created_tables)} tables within 30s; cannot reliably test pagination"
+                )
 
             # Narrow to this test's tables — other tests / module fixtures share es_service.
             query_filter = (
@@ -402,10 +412,11 @@ class TestOMetaESAPI:
             )
             assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
             returned = {a.name.root for a in assets}
-            assert returned == expected_names, (
+            expected_set = set(expected_names)
+            assert returned == expected_set, (
                 f"Pagination did not round-trip comma-FQN tables.\n"
-                f"  missing: {sorted(expected_names - returned)}\n"
-                f"  extra:   {sorted(returned - expected_names)}"
+                f"  missing: {sorted(expected_set - returned)}\n"
+                f"  extra:   {sorted(returned - expected_set)}"
             )
         finally:
             for table in created_tables:
