@@ -59,7 +59,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -239,34 +238,6 @@ const TableV2 = <T extends object>(
 
     return {
       ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
-
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [showLeftShadow, setShowLeftShadow] = useState(false);
-  const [showRightShadow, setShowRightShadow] = useState(false);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el || !scroll?.x) {
-      return;
-    }
-
-    const checkScrollState = () => {
-      setShowLeftShadow(el.scrollLeft > 0);
-      setShowRightShadow(
-        el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-      );
-    };
-
-    checkScrollState();
-    el.addEventListener('scroll', checkScrollState, { passive: true });
-    const ro = new ResizeObserver(checkScrollState);
-    ro.observe(el);
-
-    return () => {
-      el.removeEventListener('scroll', checkScrollState);
-      ro.disconnect();
     };
   }, [scroll?.x]);
 
@@ -643,37 +614,17 @@ const TableV2 = <T extends object>(
         </div>
       </div>
 
-      <div className="tw:relative">
-        {showLeftShadow && (
-          <div
-            className="tw:absolute tw:left-0 tw:top-0 tw:bottom-0 tw:w-12 tw:pointer-events-none tw:z-10"
-            style={{
-              background:
-                'linear-gradient(to right, var(--color-bg-primary, #fff) 0%, transparent 100%)',
-            }}
-          />
+      <div
+        className="tw:flex tw:flex-col tw:w-full"
+        data-testid={dataTestId}
+        style={scrollStyle}>
+        {isLoading && (
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
+            <Loader />
+          </div>
         )}
-        {showRightShadow && (
-          <div
-            className="tw:absolute tw:right-0 tw:top-0 tw:bottom-0 tw:w-12 tw:pointer-events-none tw:z-10"
-            style={{
-              background:
-                'linear-gradient(to left, var(--color-bg-primary, #fff) 0%, transparent 100%)',
-            }}
-          />
-        )}
-        <div
-          className="tw:flex tw:flex-col tw:w-full"
-          data-testid={dataTestId}
-          ref={scrollContainerRef}
-          style={scrollStyle}>
-          {isLoading && (
-            <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
-              <Loader />
-            </div>
-          )}
 
-          {(() => {
+        {(() => {
           const tableContent = (
             <UntitledTable
               stickyHeader
@@ -979,7 +930,6 @@ const TableV2 = <T extends object>(
             tableContent
           );
         })()}
-        </div>
       </div>
 
       {customPaginationProps && customPaginationProps.showPagination ? (
