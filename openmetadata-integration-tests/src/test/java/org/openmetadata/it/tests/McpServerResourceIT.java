@@ -32,6 +32,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
 import org.openmetadata.schema.api.services.CreateMcpService;
 import org.openmetadata.schema.entity.ai.McpDevelopmentStage;
+import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.entity.ai.McpExecutionStatus;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpPrompt;
 import org.openmetadata.schema.entity.ai.McpResource;
@@ -422,6 +424,50 @@ public class McpServerResourceIT {
         Exception.class,
         () -> getMcpServer(created.getId().toString()),
         "Hard deleted server should not be retrievable");
+  }
+
+  @Test
+  void testRecursiveHardDeleteCascadesPastMcpExecutionChildren(TestNamespace ns) throws Exception {
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("mcp-cascade-delete"))
+            .withServerType(McpServerType.DataAccess)
+            .withTransportType(McpTransportType.Stdio)
+            .withDescription("Server for execution cascade delete test");
+
+    McpServer created = createMcpServer(create);
+
+    // Writes an MCP_SERVER --CONTAINS--> mcpExecution row. mcpExecution is a time-series entity
+    // (registered in ENTITY_TS_REPOSITORY_MAP, not ENTITY_REPOSITORY_MAP), so the bulk
+    // hard-delete cascade used to throw EntityRepositoryNotFound the moment it walked CONTAINS
+    // children of an MCP Server.
+    McpExecution execution =
+        new McpExecution()
+            .withServer(created.getEntityReference())
+            .withServerId(created.getId())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(McpExecutionStatus.Success);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, "/v1/mcpExecutions", execution, RequestOptions.builder().build());
+
+    String serverId = created.getId().toString();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/mcpServers/" + serverId,
+            null,
+            RequestOptions.builder()
+                .queryParam("recursive", "true")
+                .queryParam("hardDelete", "true")
+                .build());
+
+    assertThrows(
+        Exception.class,
+        () -> getMcpServer(serverId),
+        "MCP Server should be deleted along with its mcp-execution children");
   }
 
   @Test

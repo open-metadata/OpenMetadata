@@ -722,6 +722,7 @@
     "edit-workflow-agent": "编辑{{workflow}}代理",
     "edited": "编辑",
     "edited-columns": "编辑栏目",
+    "editor": "编辑器",
     "effect": "效果",
     "elastic-search-re-index": "Elasticsearch 重新索引",
     "elasticsearch": "Elasticsearch",

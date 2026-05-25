@@ -722,6 +722,7 @@
     "edit-workflow-agent": "Modifier l'Agent {{workflow}}",
     "edited": "Édité",
     "edited-columns": "Colonnes modifiées",
+    "editor": "Éditeur",
     "effect": "Effet",
     "elastic-search-re-index": "Ré-indexation Elasticsearch",
     "elasticsearch": "Elasticsearch",

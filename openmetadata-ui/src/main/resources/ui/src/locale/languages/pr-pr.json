@@ -722,6 +722,7 @@
     "edit-workflow-agent": "Editar {{workflow}} Agente",
     "edited": "ویرایش شد",
     "edited-columns": "ستون‌های ویرایش‌شده",
+    "editor": "ویرایشگر",
     "effect": "اثر",
     "elastic-search-re-index": "بازیابی مجدد ایندکس Elasticsearch",
     "elasticsearch": "Elasticsearch",

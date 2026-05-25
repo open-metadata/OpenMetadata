@@ -722,6 +722,7 @@
     "edit-workflow-agent": "ערוך סוכן {{workflow}}",
     "edited": "ערוך",
     "edited-columns": "עמודות ערוכות",
+    "editor": "עורך",
     "effect": "אפקט",
     "elastic-search-re-index": "מחדש אינדקס Elasticsearch",
     "elasticsearch": "Elasticsearch",
