@@ -272,13 +272,18 @@ class OpenlineageSource(PipelineServiceSource):
         resolution work, and its warning log, run only once per dataset. The
         cache is reset at the start of every event, which ensures that a
         table registered by an earlier event is never served a stale result.
+
+        The cache key is the full tuple of raw identities (top-level plus
+        symlink), not just the top-level name, so symlink-only datasets do
+        not collide on an empty or near-empty top-level identity.
         """
         ol_name = self._get_ol_table_name(data)
-        if ol_name in self._resolution_cache:
-            return self._resolution_cache[ol_name]
+        cache_key = tuple(self._raw_table_identities(data))
+        if cache_key in self._resolution_cache:
+            return self._resolution_cache[cache_key]
 
         resolved = self._resolve_table_uncached(data, ol_name)
-        self._resolution_cache[ol_name] = resolved
+        self._resolution_cache[cache_key] = resolved
         return resolved
 
     def _resolve_table_uncached(self, data: Dict, ol_name: str) -> Optional[ResolvedTable]:  # noqa: UP006, UP045

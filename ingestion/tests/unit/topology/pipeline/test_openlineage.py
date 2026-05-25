@@ -710,6 +710,35 @@ class OpenLineageUnitTest(unittest.TestCase):
             self.open_lineage_source._resolve_table(data)
         self.assertEqual(mock_uncached.call_count, 1)
 
+    def test_resolve_table_cache_distinguishes_symlink_only_datasets(self):
+        """Two symlink-only datasets without a top-level identity must not
+        collide in the resolution cache (they would share the same ol_name)."""
+        dataset_a = {
+            "facets": {
+                "symlinks": {"identifiers": [{"namespace": "trino://host", "name": "schema.alpha", "type": "TABLE"}]}
+            }
+        }
+        dataset_b = {
+            "facets": {
+                "symlinks": {"identifiers": [{"namespace": "trino://host", "name": "schema.beta", "type": "TABLE"}]}
+            }
+        }
+
+        def fake_resolution(data, ol_name):
+            symlinks = data["facets"]["symlinks"]["identifiers"]
+            name = symlinks[0]["name"].split(".")[-1]
+            return ResolvedTable(fqn=f"svc.schema.{name}", details=TableDetails(name=name, schema="schema"))
+
+        with patch.object(
+            self.open_lineage_source, "_resolve_table_uncached", side_effect=fake_resolution
+        ) as mock_uncached:
+            resolved_a = self.open_lineage_source._resolve_table(dataset_a)
+            resolved_b = self.open_lineage_source._resolve_table(dataset_b)
+
+        self.assertEqual(resolved_a.fqn, "svc.schema.alpha")
+        self.assertEqual(resolved_b.fqn, "svc.schema.beta")
+        self.assertEqual(mock_uncached.call_count, 2)
+
     def test_yield_pipeline_lineage_details_resets_resolution_cache(self):
         """Each event starts with a fresh resolution cache, so a result from an
         earlier event can never be served as a stale hit."""
