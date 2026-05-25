@@ -25,6 +25,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
+@Repository
 public class IntakeFormRepository extends EntityRepository<IntakeForm> {
   private static final String UPDATE_FIELDS = "owners,requiredFields,enabled,entityType";
 
@@ -69,23 +70,19 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
 
   /**
    * Returns the enabled IntakeForm for a given entityType, or null if none is configured or the
-   * configured form is disabled. Safe to call during validation paths — catches and logs rather
-   * than propagating lookup errors.
+   * configured form is disabled. Storage / deserialization errors propagate to the caller —
+   * silently returning null here would let writes bypass intake-form validation during a
+   * transient outage.
    */
   public IntakeForm findEnabledForEntityType(String entityType) {
     if (entityType == null) return null;
-    try {
-      String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
-      if (json == null) return null;
-      IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
-      if (Boolean.FALSE.equals(form.getEnabled())) {
-        return null;
-      }
-      return form;
-    } catch (Exception e) {
-      LOG.warn("Failed to load IntakeForm for entityType {}: {}", entityType, e.getMessage());
+    String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
+    if (json == null) return null;
+    IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
+    if (Boolean.FALSE.equals(form.getEnabled())) {
       return null;
     }
+    return form;
   }
 
   private void ensureUniquePerEntityType(IntakeForm entity, boolean update) {

@@ -57,6 +57,11 @@ interface FieldRow {
   kind: FieldKind;
   selected: boolean;
   errorMessage?: string;
+  // True when this row corresponds to a previously-required custom property
+  // whose definition is no longer in the current metadata-type lookup —
+  // shown so the admin can deselect it deliberately instead of losing the
+  // constraint silently on save.
+  isOrphan?: boolean;
 }
 
 const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
@@ -140,6 +145,9 @@ const IntakeFormDesignerModal = ({
       };
     });
 
+    const customPropertyPaths = new Set(
+      customProperties.map((cp) => `extension.${cp.name}`)
+    );
     const customRows: FieldRow[] = customProperties.map((cp) => {
       const path = `extension.${cp.name}`;
       const existing = existingSelections.get(path);
@@ -153,7 +161,28 @@ const IntakeFormDesignerModal = ({
       };
     });
 
-    setRows([...nativeRows, ...customRows]);
+    // Preserve previously-required custom-property fields whose definition is
+    // missing from the current metadata-type lookup. Without this, rebuilding
+    // rows when the custom-property fetch returns an empty list (real empty,
+    // or after a transient error followed by an empty cache) silently drops
+    // any extension.* required field on save. We surface them as an orphan
+    // row so the admin can deselect them deliberately.
+    const orphanCustomRows: FieldRow[] = Array.from(existingSelections.values())
+      .filter(
+        (rf) =>
+          rf.fieldKind === FieldKind.CustomProperty &&
+          !customPropertyPaths.has(rf.fieldPath)
+      )
+      .map((rf) => ({
+        path: rf.fieldPath,
+        label: rf.fieldLabel,
+        kind: FieldKind.CustomProperty,
+        selected: true,
+        errorMessage: rf.errorMessage,
+        isOrphan: true,
+      }));
+
+    setRows([...nativeRows, ...customRows, ...orphanCustomRows]);
   }, [entityType, customProperties, initialValue, t]);
 
   const updateRow = useCallback((path: string, patch: Partial<FieldRow>) => {

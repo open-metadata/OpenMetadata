@@ -1076,9 +1076,13 @@ const DataProductsDetailsPage = ({
         existingDataProduct={dataProduct}
         open={isOdpsImportOpen}
         onClose={() => setIsOdpsImportOpen(false)}
-        onSuccess={(updated) => {
+        onSuccess={() => {
+          // The ODPS import endpoint already persists the entity; use the
+          // refetch hook rather than feeding the returned object back through
+          // onUpdate, which would compute a JSON patch against stale local
+          // state and resubmit the import's diff as a regular PATCH.
           setIsOdpsImportOpen(false);
-          onUpdate?.(updated);
+          onRefresh?.();
         }}
       />
 

@@ -117,6 +117,26 @@ const ODPSImportModal = ({
     if (!yamlContent.trim()) {
       return;
     }
+    // The ODPS update endpoint identifies the target data product by the
+    // `name` field inside the YAML body. When this modal is opened from a
+    // specific data product page, a YAML whose name doesn't match would
+    // silently overwrite a sibling product. Guard against that here.
+    if (existingDataProduct?.name) {
+      const yamlNameMatch = yamlContent.match(
+        /^\s*name\s*:\s*["']?([^"'\n#]+)/m
+      );
+      const yamlName = yamlNameMatch?.[1]?.trim();
+      if (yamlName && yamlName !== existingDataProduct.name) {
+        showErrorToast(
+          t('message.odps-yaml-name-mismatch', {
+            yamlName,
+            existingName: existingDataProduct.name,
+          })
+        );
+
+        return;
+      }
+    }
     setIsImporting(true);
     try {
       const imported = isNil(existingDataProduct)
