@@ -171,7 +171,7 @@ base_requirements = {
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
+    "setuptools>=78.1.1",
     "shapely",
     "collate-data-diff>=0.11.9",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
@@ -179,7 +179,7 @@ base_requirements = {
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
-    "jaraco.context==6.0.1",
+    "jaraco.context>=6.1.0",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
@@ -328,7 +328,9 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=3.6.0"},
+    # <3.11 keeps the search/registry surface stable; the MySQL integration test
+    # sets log_bin_trust_function_creators=1 so the 3.8.1+ trigger creation passes.
+    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},

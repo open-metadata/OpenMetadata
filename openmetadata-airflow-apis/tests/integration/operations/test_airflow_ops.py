@@ -82,6 +82,8 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
+from flask import Flask
+
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.operations.kill_all import kill_all
@@ -97,6 +99,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 class TestAirflowOps(TestCase):
     dagbag: DagBag
     dag: DAG
+    _app_ctx = None
 
     conn = OpenMetadataConnection(
         hostPort=os.getenv("OPENMETADATA_HOST_PORT", "http://localhost:8585/api"),
@@ -112,6 +115,9 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
+        cls._app_ctx = Flask(__name__).app_context()
+        cls._app_ctx.push()
+
         # Initialize Airflow database if it doesn't exist
         from airflow.utils.db import initdb
 
@@ -178,6 +184,9 @@ class TestAirflowOps(TestCase):
         """
         Clean up
         """
+        if cls._app_ctx is not None:
+            cls._app_ctx.pop()
+
         try:
             service = cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-ops"
