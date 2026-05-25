@@ -323,7 +323,10 @@ class OpenlineageSource(PipelineServiceSource):
             table_fqn = self._get_table_fqn(details, namespace=namespace)
             if table_fqn:
                 return ResolvedTable(fqn=table_fqn, details=details)
-            attempts.append(f"[namespace='{namespace}' schema='{details.schema}' table='{details.name}']")
+            attempts.append(
+                f"[namespace='{namespace}' database='{details.database or ''}' "
+                f"schema='{details.schema}' table='{details.name}']"
+            )
 
         self._log_unmatched_dataset(ol_name, attempts)
         return None
@@ -514,6 +517,12 @@ class OpenlineageSource(PipelineServiceSource):
                     f"not found in services {resolved_services or self.get_db_service_names()}. "
                     "Skipping lineage edge."
                 )
+                return None
+            except AmbiguousServiceException as exc:
+                # User-configuration issue, not a code failure. Log a single
+                # actionable line without a traceback so the warnings status
+                # stays useful.
+                logger.warning(str(exc))
                 return None
         except Exception:
             logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
@@ -948,6 +957,13 @@ class OpenlineageSource(PipelineServiceSource):
             service_name=service_name,
             pipeline_name=self.context.get().pipeline,
         )
+
+        if not pipeline_fqn:
+            logger.warning(
+                f"Could not build pipeline FQN for service '{service_name}' and "
+                f"pipeline '{self.context.get().pipeline}', skipping lineage."
+            )
+            return
 
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 

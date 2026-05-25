@@ -1654,8 +1654,11 @@ class OpenLineageUnitTest(unittest.TestCase):
                 result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
         assert result is None
-        assert any("Failed to get FQN for table" in msg for msg in cm.output)
-        assert any("AmbiguousServiceException" in msg for msg in cm.output)
+        # The handler now logs the AmbiguousServiceException message itself
+        # without a traceback, so the warning carries the actionable hint
+        # rather than a stack trace.
+        assert any("found in multiple services" in msg for msg in cm.output)
+        assert any("namespaceToServiceMapping" in msg for msg in cm.output)
 
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
