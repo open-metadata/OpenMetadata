@@ -385,10 +385,14 @@ class TestOMetaESAPI:
                 )
                 created_tables.append(table)
 
+            # Narrow the filter to the tables created by this test — a module-scoped
+            # es_table fixture also lives in this service and would otherwise inflate
+            # the result count past 5.
             query_filter = (
-                '{"query":{"bool":{"must":[{"term":'
-                f'{{"service.displayName.keyword":"{es_service.name.root}"}}'
-                "}]}}}"
+                '{"query":{"bool":{"must":['
+                f'{{"term":{{"service.displayName.keyword":"{es_service.name.root}"}}}},'
+                '{"wildcard":{"name.keyword":"comma,table,*"}}'
+                "]}}}"
             )
             assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
             assert len(assets) == 5, f"Expected 5 tables, got {len(assets)} — pagination truncated on comma in FQN"
