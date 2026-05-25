@@ -130,7 +130,7 @@
     "notistack": "^3.0.2",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
-    "qs": "6.14.2",
+    "qs": "6.15.2",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
