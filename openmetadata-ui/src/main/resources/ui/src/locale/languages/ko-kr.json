@@ -722,6 +722,7 @@
     "edit-workflow-agent": "{{workflow}} 에이전트 편집",
     "edited": "편집됨",
     "edited-columns": "편집된 열",
+    "editor": "에디터",
     "effect": "효과",
     "elastic-search-re-index": "Elasticsearch 재색인",
     "elasticsearch": "Elasticsearch",
