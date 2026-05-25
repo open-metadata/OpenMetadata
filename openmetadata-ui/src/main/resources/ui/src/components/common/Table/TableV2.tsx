@@ -535,7 +535,7 @@ const TableV2 = <T extends object>(
     <div
       className={classNames(
         'table-container',
-        'tw:[&_tr:hover_td]:bg-secondary',
+        'tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
