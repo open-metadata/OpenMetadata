@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import { RefObject } from 'react';
+import { AuthenticationConfiguration } from '../../../constants/SSO.constant';
+import { FormData } from '../../../utils/SSOUtils';
+
 export type ClaimValue = string | number | boolean | string[];
 
 export interface TestLoginResult {
@@ -32,6 +36,30 @@ export interface ClaimSelectorProps {
   result: TestLoginResult | null;
   onConfirm: (selection: ClaimSelectorConfirm) => void;
   onCancel: () => void;
+}
+
+export interface EmailClaimRecommendationProps {
+  onRunTestLogin: () => void;
+  isDisabled?: boolean;
+}
+
+export interface EmailClaimStatusProps {
+  emailClaim?: string;
+  onChange: () => void;
+  isDisabled?: boolean;
+}
+
+export interface TestLoginButtonHandle {
+  triggerTestLogin: () => void;
+}
+
+export interface TestLoginButtonProps {
+  formData?: AuthenticationConfiguration;
+  securityConfig?: FormData;
+  hasExistingConfig?: boolean;
+  isDisabled?: boolean;
+  onSuccess: (result: TestLoginResult) => void;
+  triggerRef?: RefObject<TestLoginButtonHandle | null>;
 }
 
 export const TEST_LOGIN_MESSAGE_TYPE = 'sso-test-login';

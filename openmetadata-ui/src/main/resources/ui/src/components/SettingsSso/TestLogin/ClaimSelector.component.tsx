@@ -20,6 +20,7 @@ import {
   RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { AlertTriangle, Check } from '@untitledui/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClaimSelectorProps } from './TestLogin.interface';
@@ -159,10 +160,25 @@ const ClaimSelector = ({
                   <code>{principalDomain || '—'}</code>
                 </dd>
                 <dt className="tw:text-tertiary">{t('label.refresh-token')}</dt>
-                <dd>
-                  {result?.hasRefreshToken
-                    ? `✓ ${t('label.received')}`
-                    : `⚠ ${t('message.no-refresh-token')}`}
+                <dd className="tw:inline-flex tw:items-center tw:gap-1">
+                  {result?.hasRefreshToken ? (
+                    <>
+                      <Check className="tw:text-fg-success-primary" size={14} />
+                      <Typography as="span" size="text-xs">
+                        {t('label.received')}
+                      </Typography>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle
+                        className="tw:text-fg-warning-primary"
+                        size={14}
+                      />
+                      <Typography as="span" size="text-xs">
+                        {t('message.no-refresh-token')}
+                      </Typography>
+                    </>
+                  )}
                 </dd>
               </dl>
             </div>

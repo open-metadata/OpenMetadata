@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Copy01 } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
@@ -36,11 +36,18 @@ export const CopyableUrlField = ({
 
   return (
     <div className="copyable-url-field" data-testid={testId}>
-      {label && <span className="copyable-url-label text-xs">{label}</span>}
+      {label && (
+        <Typography as="span" className="copyable-url-label" size="text-xs">
+          {label}
+        </Typography>
+      )}
       <div className="copyable-url-value-wrapper">
-        <span className="copyable-url-value" data-testid={`${testId}-value`}>
+        <Typography
+          as="span"
+          className="copyable-url-value"
+          data-testid={`${testId}-value`}>
           {value}
-        </span>
+        </Typography>
         <Button
           color="tertiary"
           data-testid={`${testId}-copy`}

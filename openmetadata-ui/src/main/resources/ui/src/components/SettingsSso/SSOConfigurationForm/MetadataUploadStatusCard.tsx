@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Check, X } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -42,14 +42,18 @@ export const MetadataUploadStatusCard = ({
             <X className="text-white" size={16} />
           )}
         </div>
-        <span className="text-grey-body text-sm font-medium">
+        <Typography
+          as="span"
+          className="text-grey-body"
+          size="text-sm"
+          weight="medium">
           {t(
             isSuccess
               ? 'message.metadata-xml-file-parsed-success'
               : 'message.metadata-xml-file-parsed-error',
             { fileName }
           )}
-        </span>
+        </Typography>
       </div>
       <Button
         color="link-color"

@@ -17,9 +17,9 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  RefObject,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -27,16 +27,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  AuthenticationConfiguration,
-  OIDC_SSO_DEFAULTS,
-} from '../../../constants/SSO.constant';
+import { OIDC_SSO_DEFAULTS } from '../../../constants/SSO.constant';
 import { AuthProvider } from '../../../generated/settings/settings';
 import {
   SecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
-import { FormData, prepareOidcSubmitPayload } from '../../../utils/SSOUtils';
+import { prepareOidcSubmitPayload } from '../../../utils/SSOUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   buildOidcPopupFields,
@@ -49,22 +46,11 @@ import {
 } from './popupLifecycle';
 import {
   isTestLoginPopupPayload,
+  TestLoginButtonProps,
   TestLoginPopupPayload,
-  TestLoginResult,
 } from './TestLogin.interface';
 
-export interface TestLoginButtonHandle {
-  triggerTestLogin: () => void;
-}
-
-interface TestLoginButtonProps {
-  formData?: AuthenticationConfiguration;
-  securityConfig?: FormData;
-  hasExistingConfig?: boolean;
-  isDisabled?: boolean;
-  onSuccess: (result: TestLoginResult) => void;
-  triggerRef?: RefObject<TestLoginButtonHandle | null>;
-}
+export type { TestLoginButtonHandle } from './TestLogin.interface';
 
 interface LdapModalState {
   open: boolean;
@@ -422,7 +408,6 @@ const TestLoginButton = ({
   return (
     <>
       <Button
-        className="test-login-sso-configuration"
         color="secondary"
         data-testid="test-login-button"
         isDisabled={isDisabled || isLoading}
@@ -446,9 +431,9 @@ const TestLoginButton = ({
             title={t('label.test-login')}
             onClose={closeLdapModal}>
             <Dialog.Content>
-              <p className="tw:text-sm tw:text-tertiary">
+              <Typography as="p" className="tw:text-tertiary" size="text-sm">
                 {t('message.ldap-test-login-description')}
-              </p>
+              </Typography>
               <Input
                 autoFocus
                 isRequired

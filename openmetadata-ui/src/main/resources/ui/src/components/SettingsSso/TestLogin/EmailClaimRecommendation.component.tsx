@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EmailClaimRecommendationProps } from './TestLogin.interface';
 
 const DISMISSED_KEY = 'sso-emailClaim-banner-dismissed';
-
-interface EmailClaimRecommendationProps {
-  onRunTestLogin: () => void;
-  isDisabled?: boolean;
-}
 
 const EmailClaimRecommendation = ({
   onRunTestLogin,
@@ -47,12 +43,16 @@ const EmailClaimRecommendation = ({
       className="email-claim-recommendation tw:flex tw:items-start tw:gap-3 tw:rounded-md tw:border tw:border-warning tw:bg-warning-secondary tw:p-3"
       data-testid="email-claim-recommendation">
       <div className="tw:flex tw:flex-col tw:gap-1 tw:flex-1">
-        <span className="tw:text-sm tw:font-semibold tw:text-primary">
+        <Typography
+          as="span"
+          className="tw:text-primary"
+          size="text-sm"
+          weight="semibold">
           {t('label.set-explicit-email-claim')}
-        </span>
-        <span className="tw:text-xs tw:text-tertiary">
+        </Typography>
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
           {t('message.email-claim-recommendation-body')}
-        </span>
+        </Typography>
       </div>
       <div className="tw:flex tw:items-center tw:gap-2">
         <Button

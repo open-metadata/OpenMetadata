@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Check } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
-
-interface EmailClaimStatusProps {
-  emailClaim?: string;
-  onChange: () => void;
-  isDisabled?: boolean;
-}
+import { EmailClaimStatusProps } from './TestLogin.interface';
 
 const EmailClaimStatus = ({
   emailClaim,
@@ -33,25 +29,33 @@ const EmailClaimStatus = ({
       className="email-claim-status tw:flex tw:items-center tw:gap-3 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2"
       data-testid="email-claim-status">
       <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1 tw:min-w-0">
-        <span className="tw:text-xs tw:text-tertiary">
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
           {t('label.email-claim')}
-        </span>
+        </Typography>
         {isSet ? (
-          <span
-            className="tw:text-sm tw:font-medium tw:text-primary"
-            data-testid="email-claim-status-set">
+          <Typography
+            as="span"
+            className="tw:text-primary tw:inline-flex tw:items-center tw:gap-1"
+            data-testid="email-claim-status-set"
+            size="text-sm"
+            weight="medium">
             <code>{emailClaim}</code>
-            {' ✓ '}
-            <span className="tw:text-xs tw:text-tertiary tw:font-normal">
+            <Check className="tw:text-fg-success-primary" size={14} />
+            <Typography
+              as="span"
+              className="tw:text-tertiary tw:font-normal"
+              size="text-xs">
               {t('message.email-claim-verified')}
-            </span>
-          </span>
+            </Typography>
+          </Typography>
         ) : (
-          <span
-            className="tw:text-sm tw:text-primary"
-            data-testid="email-claim-status-not-set">
+          <Typography
+            as="span"
+            className="tw:text-primary"
+            data-testid="email-claim-status-not-set"
+            size="text-sm">
             {t('message.email-claim-not-set')}
-          </span>
+          </Typography>
         )}
       </div>
       <Button

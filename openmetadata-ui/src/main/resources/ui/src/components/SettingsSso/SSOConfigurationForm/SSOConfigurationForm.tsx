@@ -1255,12 +1255,15 @@ const SSOConfigurationFormRJSF = ({
         <div
           className="saml-idp-info-banner m-b-md"
           data-testid="saml-acs-info-banner">
-          <span className="font-medium">
+          <Typography as="span" weight="medium">
             {t('label.register-with-identity-provider')}
-          </span>
-          <span className="text-grey-muted text-xs d-block m-b-sm">
+          </Typography>
+          <Typography
+            as="span"
+            className="text-grey-muted d-block m-b-sm"
+            size="text-xs">
             {t('message.register-with-idp-info')}
-          </span>
+          </Typography>
           <CopyableUrlField
             label={t('label.acs-url')}
             testId="saml-acs-url"
@@ -1304,17 +1307,23 @@ const SSOConfigurationFormRJSF = ({
                     <UploadCloud02 className="text-grey-600" size={20} />
                   </div>
                   <div className="flex align-center flex-wrap gap-4 justify-center tw:max-w-[220px]">
-                    <span className="font-medium">
+                    <Typography as="span" weight="medium">
                       {t('label.click-to')}{' '}
-                      <span className="font-semibold sso-upload-link">
+                      <Typography
+                        as="span"
+                        className="sso-upload-link"
+                        weight="semibold">
                         {t('label.upload-lowercase')}
-                      </span>{' '}
+                      </Typography>{' '}
                       {t('label.or-drag-and-drop-an-xml-file-here')}
-                    </span>
+                    </Typography>
                   </div>
-                  <span className="text-grey-muted text-xs">
+                  <Typography
+                    as="span"
+                    className="text-grey-muted"
+                    size="text-xs">
                     {t('message.upload-saml-metadata-xml-description')}
-                  </span>
+                  </Typography>
                 </div>
               </div>
             </FileTrigger>
