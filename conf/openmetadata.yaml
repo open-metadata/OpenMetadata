@@ -25,12 +25,26 @@ server:
   applicationContextPath: ${BASE_PATH:-/}
   rootPath: /api/*
   applicationConnectors:
-    # Connector type — default `http` (HTTP/1.1). Operators wanting end-to-end HTTP/2
-    # without a TLS LB in front can set SERVER_PROTOCOL=h2c. The h2c factory extends the
-    # http factory (cleartext HTTP/2 via HTTP/1.1 Upgrade or prior-knowledge), so every
-    # field below is accepted by both — no further YAML changes needed to flip protocols.
-    # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file
-    # — that path requires a keystore and isn't env-var-driven from here.
+    #
+    # Connector protocol. Two supported values:
+    #
+    #   - http   (default): HTTP/1.1 only. Compatible with every load balancer and proxy
+    #            ever shipped. Pick this if you front Jetty with an HTTP/2-terminating LB
+    #            (AWS ALB / CloudFront / nginx / Caddy) — those speak HTTP/2 to the browser
+    #            but downgrade to HTTP/1.1 on the upstream hop anyway, so HTTP/2 on Jetty
+    #            buys nothing.
+    #
+    #   - h2c    HTTP/2 cleartext on the same TCP port. Jetty 12 accepts both h1 clients
+    #            (via h1 protocol) and h2 clients (via h2c-upgrade or h2c-prior-knowledge),
+    #            so this is backwards-compatible. Worth flipping on when browsers hit Jetty
+    #            directly (Docker Compose, on-prem single-node, local dev) — multiplexing
+    #            removes the h1 6-connections-per-origin cap, which materially helps cold
+    #            first-paint on SPAs that load 30+ chunks.
+    #
+    # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file —
+    # that path requires a keystore and isn't env-var-driven from here.
+    #
+    # Requires the dropwizard-http2 module (already pulled in by openmetadata-service).
     - type: ${SERVER_PROTOCOL:-http}
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}

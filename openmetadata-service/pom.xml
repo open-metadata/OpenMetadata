@@ -169,6 +169,18 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-assets</artifactId>
     </dependency>
+    <!--
+      HTTP/2 connector factories. Not used by default (see conf/openmetadata.yaml,
+      applicationConnectors). Operators who run Jetty without an HTTP/2-terminating
+      load balancer in front can flip the connector type to h2c to get multiplexed
+      chunk downloads on first paint. AWS ALB / CloudFront speak HTTP/2 to the
+      browser but use HTTP/1.1 to the origin, so this won't help that path; useful
+      mainly for direct-access deployments (Docker Compose, on-prem, local dev).
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
@@ -400,10 +412,15 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>sts</artifactId>
     </dependency>
-    <!-- GHSA-rwm7-x88c-3g2p / CVE-2026-42577: exclude Linux native epoll binding (the only
-         vulnerable artifact is the .so JAR; bug is in netty 4.2.x, GHSA range overly broad).
-         Netty falls back to Java NIO; netty-transport-classes-epoll stays. Per-direct-dep so
-         future Azure SDK bumps aren't blocked by a pinned azure-core-http-netty version. -->
+    <!-- Exclude two Linux native bindings transitively pulled by reactor-netty-http
+         (via azure-core-http-netty):
+           1. netty-transport-native-epoll — GHSA-rwm7-x88c-3g2p / CVE-2026-42577. The .so JAR
+              is the only vulnerable artifact; bug is in netty 4.2.x, GHSA range overly broad.
+              Netty falls back to Java NIO; netty-transport-classes-epoll stays.
+           2. netty-tcnative-boringssl-static — bundled BoringSSL .so SEGVs on Alpine/musl/aarch64
+              inside init_have_lse_atomics during the CPU LSE atomics probe. Netty falls back
+              to JDK SSLEngine; Azure HTTPS continues to work.
+         Per-direct-dep so future Azure SDK bumps aren't blocked by a pinned azure-core-http-netty version. -->
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-security-keyvault-secrets</artifactId>
@@ -412,6 +429,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -424,6 +445,10 @@
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -434,6 +459,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -1078,7 +1107,8 @@
       <artifactId>owasp-java-html-sanitizer</artifactId>
       <version>${owasp-html-sanitizer.version}</version>
     </dependency>
-    <!-- Context Center: object storage providers -->
+    <!-- Context Center: object storage providers. Exclusions match the azure-identity block
+         above — see that comment for the epoll + tcnative-boringssl-static rationale. -->
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-storage-blob</artifactId>
@@ -1087,6 +1117,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

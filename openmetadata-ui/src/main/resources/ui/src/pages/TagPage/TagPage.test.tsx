@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
+
+const render = renderWithQueryClient;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest

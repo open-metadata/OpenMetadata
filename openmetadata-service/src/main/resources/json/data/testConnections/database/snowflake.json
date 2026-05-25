@@ -48,8 +48,14 @@
       },
       {
         "name": "GetQueries",
-        "description": "Check if we can access the snowflake.account_usage.query_history table to get query logs, These queries are analyzed in the usage & lineage workflow.",
+        "description": "Check if we can access the snowflake.account_usage.query_history table to get query logs. These queries power the usage workflow and the legacy lineage parser path.",
         "errorMessage": "Failed to fetch queries, please validate if user has select privilege for table snowflake.account_usage.query_history to get query logs.",
+        "mandatory": false
+      },
+      {
+        "name": "GetAccessHistory",
+        "description": "Check if we can access the snowflake.account_usage.access_history table, which is the default source for the lineage workflow (table & column lineage computed by Snowflake). Requires Enterprise edition and IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE; if unavailable, lineage automatically falls back to the query_history parser path.",
+        "errorMessage": "Failed to fetch access history, please validate the account is Enterprise+ and the role has IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE (select privilege on snowflake.account_usage.access_history). Lineage will fall back to the query_history parser if this is unavailable.",
         "mandatory": false
       }
     ]
