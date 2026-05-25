@@ -13,16 +13,23 @@
 
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
+import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import {
+  navigateToCustomizeLandingPage,
+  openAddCustomizeWidgetModal,
+  selectAssetTypes,
+} from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
@@ -741,6 +748,144 @@ test.describe.serial('Team persona setting flow', () => {
       // Cleanup
       await businessUnitTeam.delete(apiContext);
       await afterAction();
+    });
+  });
+});
+
+let CURATED_DESCRIPTION_TEXT: string;
+let WORD_TO_SEARCH: string;
+let curatedAdminUser: UserClass;
+let curatedPersona: PersonaClass;
+let curatedTable: TableClass;
+
+test.describe('Curated Assets – Description filter', () => {
+  test.beforeAll('Setup', async ({ browser }) => {
+    curatedAdminUser = new UserClass();
+    curatedPersona = new PersonaClass();
+    curatedTable = new TableClass();
+
+    const UNIQUE_WORD = `unique-word-${uuid()}`;
+    WORD_TO_SEARCH = `table with a unique description ${UNIQUE_WORD}.`;
+    CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${UNIQUE_WORD}. It is bioluminescent and not an oscilloscope.`;
+
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await curatedAdminUser.create(apiContext);
+    await curatedAdminUser.setAdminRole(apiContext);
+    await curatedPersona.create(apiContext, [curatedAdminUser.responseData.id]);
+
+    await curatedTable.create(apiContext);
+    await curatedTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/description',
+          value: CURATED_DESCRIPTION_TEXT,
+        },
+      ],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await curatedTable.delete(apiContext);
+    await curatedPersona.delete(apiContext);
+    await curatedAdminUser.delete(apiContext);
+
+    await afterAction();
+  });
+
+  const addCuratedAssetWidget = async (
+    adminPage: import('@playwright/test').Page
+  ) => {
+    await navigateToCustomizeLandingPage(adminPage, {
+      personaName: curatedPersona.responseData.name,
+    });
+
+    await openAddCustomizeWidgetModal(adminPage);
+    await waitForAllLoadersToDisappear(adminPage);
+
+    await adminPage
+      .getByRole('dialog', { name: 'Customize Home' })
+      .getByTestId('KnowledgePanel.CuratedAssets')
+      .click();
+
+    await adminPage.locator('[data-testid="apply-btn"]').click();
+
+    await expect(
+      adminPage
+        .getByTestId('page-layout-v1')
+        .getByTestId('KnowledgePanel.CuratedAssets')
+    ).toBeVisible();
+  };
+
+  test('Description Contains filter – table with matching description appears in widget', async ({
+    adminPage,
+  }) => {
+    await test.step('Navigate to persona settings and add curated assets widget', async () => {
+      await redirectToHomePage(adminPage);
+      await addCuratedAssetWidget(adminPage);
+    });
+
+    await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
+      await adminPage
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .getByText('Create')
+        .click();
+
+      await adminPage.locator('[data-testid="title-input"]').clear();
+      await adminPage
+        .locator('[data-testid="title-input"]')
+        .fill('Description Contains Filter');
+
+      await selectAssetTypes(adminPage, ['Table']);
+
+      const rule0 = adminPage.locator('.rule').nth(0);
+
+      await selectOption(
+        adminPage,
+        rule0.locator('.rule--field .ant-select'),
+        'Description',
+        true
+      );
+      await selectOption(
+        adminPage,
+        rule0.locator('.rule--operator .ant-select'),
+        'Contains'
+      );
+      await rule0
+        .locator('.rule--widget--TEXT input[type="text"]')
+        .fill(WORD_TO_SEARCH.toLowerCase());
+    });
+
+    await test.step('Save and verify table appears in curated assets widget', async () => {
+      await expect(
+        adminPage.locator('[data-testid="saveButton"]')
+      ).toBeEnabled();
+
+      const queryResponse = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
+
+      await adminPage.locator('[data-testid="saveButton"]').click();
+      await queryResponse;
+      await waitForAllLoadersToDisappear(adminPage, 'entity-list-skeleton');
+
+      const tableName =
+        curatedTable.entityResponseData.displayName ||
+        curatedTable.entityResponseData.name;
+
+      await expect(
+        adminPage
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .locator('.entity-list-item-title')
+          .filter({ hasText: tableName })
+          .first()
+      ).toBeVisible();
     });
   });
 });

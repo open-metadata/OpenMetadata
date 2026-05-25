@@ -64,6 +64,7 @@ class Loggers(Enum):
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
     REVERSE_INGESTION = "ReverseIngestion"
+    DIAGNOSTICS = "Diagnostics"
 
     @DynamicClassAttribute
     def value(self):
@@ -185,6 +186,21 @@ def query_runner_logger():
     """
 
     return logging.getLogger(Loggers.QUERY_RUNNER.value)
+
+
+def diag_logger():
+    """
+    Method to get the DIAGNOSTICS logger.
+
+    The diagnostics subsystem (heartbeats, watchdog warnings,
+    non-signal-context dumps) emits through this logger so output is
+    picked up by whatever handlers the workflow has configured —
+    console, StreamableLogHandler (S3), file, etc. Signal-handler
+    paths still write to raw stderr because Python's logging module is
+    not signal-safe (per-handler RLocks).
+    """
+
+    return logging.getLogger(Loggers.DIAGNOSTICS.value)
 
 
 def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007

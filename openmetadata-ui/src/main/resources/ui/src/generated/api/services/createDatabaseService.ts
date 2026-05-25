@@ -170,6 +170,8 @@ export interface DatabaseConnection {
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
+ *
+ * QuestDB Connection Config
  */
 export interface Connection {
     /**
@@ -266,6 +268,8 @@ export interface Connection {
      * Host and port of the Informix service.
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      */
     hostPort?: string;
     /**
@@ -613,6 +617,8 @@ export interface Connection {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      */
     username?: string;
     /**
@@ -685,6 +691,10 @@ export interface Connection {
     httpPath?: string;
     /**
      * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
      */
     queryHistoryTable?: string;
     /**
@@ -1983,6 +1993,12 @@ export interface HiveMetastoreConnectionDetails {
      */
     databaseSchema?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -2304,6 +2320,7 @@ export enum ConfigType {
     PinotDB = "PinotDB",
     Postgres = "Postgres",
     Presto = "Presto",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",
@@ -2437,6 +2454,7 @@ export enum DatabaseServiceType {
     Postgres = "Postgres",
     Presto = "Presto",
     QueryLog = "QueryLog",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",

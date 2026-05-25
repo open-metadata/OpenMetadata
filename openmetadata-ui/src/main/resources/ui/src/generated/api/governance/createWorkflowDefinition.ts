@@ -244,10 +244,12 @@ export enum TaskStatus {
     Cancelled = "Cancelled",
     Completed = "Completed",
     Failed = "Failed",
+    Granted = "Granted",
     InProgress = "InProgress",
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
+    Revoked = "Revoked",
 }
 
 export interface TransitionMetadatum {
@@ -270,6 +272,7 @@ export enum ResolutionType {
     Cancelled = "Cancelled",
     Completed = "Completed",
     Rejected = "Rejected",
+    Revoked = "Revoked",
     TimedOut = "TimedOut",
 }
 

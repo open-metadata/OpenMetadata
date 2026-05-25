@@ -213,6 +213,11 @@ public final class AIApplications {
     public AIApplicationDeleter delete() {
       return new AIApplicationDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<AIApplication> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.aiApplications(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

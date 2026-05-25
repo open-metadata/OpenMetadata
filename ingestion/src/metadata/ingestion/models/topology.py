@@ -15,7 +15,7 @@ Defines the topology for ingesting sources
 import queue
 import threading
 from functools import cache, singledispatchmethod
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import Annotated, Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -111,14 +111,18 @@ class TopologyNode(BaseModel):
             "Each stage accepts the producer results as an argument"
         ),
     )
-    children: Optional[List[str]] = Field(None, description="Nodes to execute next")  # noqa: UP006, UP045
-    post_process: Optional[List[str]] = Field(  # noqa: UP006, UP045
-        None, description="Method to be run after the node has been fully processed"
-    )
-    threads: bool = Field(
-        False,
-        description="Flag that defines if a node is open to MultiThreading processing.",
-    )
+    children: Annotated[
+        list[str] | None,
+        Field(description="Nodes to execute next"),
+    ] = None
+    post_process: Annotated[
+        list[str] | None,
+        Field(description="Method to be run after the node has been fully processed"),
+    ] = None
+    threads: Annotated[
+        bool,
+        Field(description="Flag that defines if a node is open to MultiThreading processing."),
+    ] = False
 
 
 class ServiceTopology(BaseModel):
@@ -296,10 +300,27 @@ class TopologyContextManager:
 
 
 class Queue:
-    """Small Queue wrapper"""
+    """Small Queue wrapper.
 
-    def __init__(self):
+    Inter-stage buffer used by `TopologyRunnerMixin`. When the diagnostics
+    subsystem is installed, every put/process call is reported to
+    `metadata.ingestion.diagnostics.stage_progress` so heartbeats can
+    render queue depth and source-vs-sink throughput. The hook calls are
+    no-ops with a single attribute load when diagnostics is off.
+    """
+
+    def __init__(self, name: str = "topology"):
         self._queue = queue.Queue()
+        self._name = name
+        # Lazy import — keeps the topology module importable even if the
+        # diagnostics package is not on the path (rare, but defensive).
+        try:
+            from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+
+            stage_progress.register_queue(name, self)
+            self._stage_progress = stage_progress
+        except Exception:
+            self._stage_progress = None
 
     def has_tasks(self) -> bool:
         """Checks that the Queue is not Empty."""
@@ -310,6 +331,8 @@ class Queue:
         while True:
             try:
                 item = self._queue.get_nowait()
+                if self._stage_progress is not None:
+                    self._stage_progress.record_processed(self._name)
                 yield item
                 self._queue.task_done()
             except queue.Empty:
@@ -318,6 +341,8 @@ class Queue:
     def put(self, item: Any):
         """Puts new item in the Queue."""
         self._queue.put(item)
+        if self._stage_progress is not None:
+            self._stage_progress.record_put(self._name)
 
 
 def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:  # noqa: UP006

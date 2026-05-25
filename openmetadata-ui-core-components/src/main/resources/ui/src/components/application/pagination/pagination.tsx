@@ -1,4 +1,3 @@
-import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -6,6 +5,7 @@ import {
 import { Button } from '@/components/base/buttons/button';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { cx } from '@/utils/cx';
+import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import type { PaginationRootProps } from './pagination-base';
 import { Pagination } from './pagination-base';
 
@@ -69,7 +69,7 @@ const MobilePagination = ({
         color="secondary"
         iconLeading={ArrowLeft}
         size="sm"
-        onClick={() => onPageChange?.(Math.max(0, page - 1))}
+        onClick={() => onPageChange?.(Math.max(1, page - 1))}
       />
 
       <span className="tw:text-sm tw:text-fg-secondary">
@@ -315,32 +315,28 @@ export const PaginationCardMinimal = ({
           'tw:hidden tw:items-center tw:gap-3 tw:md:flex',
           align === 'center' && 'tw:justify-between'
         )}>
-        <div
-          className={cx(
-            align === 'center' && 'tw:flex tw:flex-1 tw:justify-start'
-          )}>
-          <Button
-            color="secondary"
-            isDisabled={page === 1}
-            size="sm"
-            onClick={() => onPageChange?.(Math.max(0, page - 1))}>
-            Previous
-          </Button>
-        </div>
-
         <span
           className={cx(
             'tw:text-sm tw:font-medium tw:text-fg-secondary',
-            align === 'right' && 'tw:order-first tw:mr-auto',
-            align === 'left' && 'tw:order-last tw:ml-auto'
+            align === 'left' && 'tw:mr-auto',
+            align === 'right' && 'tw:order-last tw:ml-auto'
           )}>
           Page {page} of {total}
         </span>
 
         <div
           className={cx(
+            'tw:flex tw:items-center tw:gap-3',
             align === 'center' && 'tw:flex tw:flex-1 tw:justify-end'
           )}>
+          <Button
+            color="secondary"
+            isDisabled={page === 1}
+            size="sm"
+            onClick={() => onPageChange?.(Math.max(1, page - 1))}>
+            Previous
+          </Button>
+
           <Button
             color="secondary"
             isDisabled={page === total}

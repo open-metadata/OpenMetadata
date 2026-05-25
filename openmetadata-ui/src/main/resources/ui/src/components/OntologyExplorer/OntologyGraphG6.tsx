@@ -53,6 +53,38 @@ function writeSearchHighlightIds(
   }
 }
 
+function writeEdges(
+  container: HTMLDivElement | null,
+  edges: ReadonlyArray<{
+    from: string;
+    to: string;
+    relationType: string;
+    inverseRelationType?: string;
+  }>
+) {
+  if (container) {
+    container.dataset.edges = JSON.stringify(
+      edges.map((e) => ({
+        from: e.from,
+        to: e.to,
+        relationType: e.relationType,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
+      }))
+    );
+  }
+}
+
+function writeCardinalityMap(
+  container: HTMLDivElement | null,
+  map: Record<string, { startLabelText: string; endLabelText: string }>
+) {
+  if (container) {
+    container.dataset.cardinalityMap = JSON.stringify(map);
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -73,6 +105,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onPaneClick,
       onScrollNearEdge,
       nodePositions,
+      relationTypes,
     },
     ref
   ) => {
@@ -92,6 +125,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       neighborSet,
       computeNodeColor,
       assetToTermMap,
+      cardinalityLabelMap,
     } = useGraphDataBuilder({
       inputNodes,
       inputEdges,
@@ -106,6 +140,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       graphSearchHighlight,
       layoutType,
       nodePositions,
+      relationTypes,
     });
 
     const {
@@ -134,8 +169,14 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       computeNodeColor,
       assetToTermMap,
-      onPositionsReady: (positions) =>
-        writeNodePositions(containerRef.current, positions),
+      onPositionsReady: (positions) => {
+        writeNodePositions(containerRef.current, positions);
+        if (containerRef.current && graphRef.current) {
+          containerRef.current.dataset.graphZoom = String(
+            graphRef.current.getZoom()
+          );
+        }
+      },
     });
 
     useImperativeHandle(
@@ -218,6 +259,14 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           : null
       );
     }, [graphSearchHighlight]);
+
+    useEffect(() => {
+      writeEdges(containerRef.current, mergedEdgesList);
+    }, [mergedEdgesList]);
+
+    useEffect(() => {
+      writeCardinalityMap(containerRef.current, cardinalityLabelMap);
+    }, [cardinalityLabelMap]);
 
     return (
       <div

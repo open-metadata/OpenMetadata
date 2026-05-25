@@ -465,26 +465,27 @@ public final class SearchIndexUtils {
 
   private static void processTagAndTierSources(
       List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags ->
-                tags.forEach(
-                    tag -> {
-                      String tagSource = tag.getLabelType().value();
-                      if (tag.getTagFQN().startsWith("Tier.")) {
-                        tagAndTierSources
-                            .getTierSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                      } else {
-                        tagAndTierSources
-                            .getTagSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                      }
-                    }));
+    if (tagList == null) {
+      return;
+    }
+    for (TagLabel tag : tagList) {
+      // Defensive: tags deserialized from historical entity_extension rows may have null
+      // labelType or null tagFQN. Skip the malformed tag entirely.
+      if (tag == null) {
+        continue;
+      }
+      String tagFQN = tag.getTagFQN();
+      TagLabel.LabelType labelType = tag.getLabelType();
+      if (tagFQN == null || labelType == null) {
+        continue;
+      }
+      String tagSource = labelType.value();
+      Map<String, Integer> bucket =
+          tagFQN.startsWith("Tier.")
+              ? tagAndTierSources.getTierSources()
+              : tagAndTierSources.getTagSources();
+      bucket.merge(tagSource, 1, Integer::sum);
+    }
   }
 
   private static void processEntityTagSources(

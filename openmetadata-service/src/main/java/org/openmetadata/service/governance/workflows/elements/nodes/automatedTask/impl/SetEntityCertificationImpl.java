@@ -40,7 +40,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
           MessageParser.EntityLink.parse(
               WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst());
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
 
       String certification =
           Optional.ofNullable(certificationExpr)

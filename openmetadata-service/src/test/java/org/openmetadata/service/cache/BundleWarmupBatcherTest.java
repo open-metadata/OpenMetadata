@@ -15,11 +15,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.USER;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,32 +34,47 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class BundleWarmupBatcherTest {
 
   private CollectionDAO dao;
   private CollectionDAO.TagUsageDAO tagUsageDAO;
+  private CollectionDAO.EntityRelationshipDAO relationshipDAO;
   private CacheProvider cache;
   private CacheKeys keys;
   private BundleWarmupBatcher batcher;
+  private EntityRelationshipRepository originalEntityRelationshipRepository;
 
   @BeforeEach
   void setUp() {
+    originalEntityRelationshipRepository = Entity.getEntityRelationshipRepository();
     dao = mock(CollectionDAO.class);
     tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+    relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(dao.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
     cache = mock(CacheProvider.class);
     keys = new CacheKeys("om:test");
-    batcher = new BundleWarmupBatcher(dao, cache, keys);
+    batcher = new BundleWarmupBatcher(dao, cache, keys, false);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Entity.setEntityRelationshipRepository(originalEntityRelationshipRepository);
   }
 
   @Test
@@ -117,6 +138,73 @@ class BundleWarmupBatcherTest {
     assertTrue(t2Dto.tags.isEmpty(), "Untagged entity should have empty tags list");
     assertTrue(t2Dto.certificationLoaded);
     assertNull(t2Dto.certification);
+  }
+
+  @Test
+  void optionallyWritesCommonRelationshipsIntoBundleKeys() {
+    BundleWarmupBatcher relationshipBatcher = new BundleWarmupBatcher(dao, cache, keys, true);
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders");
+    UUID ownerId = UUID.randomUUID();
+    UUID domainId = UUID.randomUUID();
+    when(tagUsageDAO.getTagsByTargetFQNHashes(any())).thenReturn(new HashMap<>());
+    when(relationshipDAO.findFromBatchWithRelations(any(), eq("table"), any(), eq(NON_DELETED)))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipObject.builder()
+                    .fromId(ownerId.toString())
+                    .fromEntity(USER)
+                    .toId(table.getId().toString())
+                    .toEntity("table")
+                    .relation(Relationship.OWNS.ordinal())
+                    .build(),
+                CollectionDAO.EntityRelationshipObject.builder()
+                    .fromId(domainId.toString())
+                    .fromEntity(DOMAIN)
+                    .toId(table.getId().toString())
+                    .toEntity("table")
+                    .relation(Relationship.HAS.ordinal())
+                    .build()));
+    when(relationshipDAO.findToBatchWithRelations(any(), eq("table"), any(), eq(NON_DELETED)))
+        .thenReturn(Collections.emptyList());
+    EntityRelationshipRepository relationshipRepository = mock(EntityRelationshipRepository.class);
+    Entity.setEntityRelationshipRepository(relationshipRepository);
+    when(relationshipRepository.getEntityReferences(any(), eq(NON_DELETED)))
+        .thenAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              List<CollectionDAO.EntityRelationshipRecord> records =
+                  (List<CollectionDAO.EntityRelationshipRecord>) invocation.getArgument(0);
+              return records.stream()
+                  .map(
+                      record ->
+                          new EntityReference()
+                              .withId(record.getId())
+                              .withType(record.getType())
+                              .withName(record.getType() + "-" + record.getId()))
+                  .toList();
+            });
+
+    BundleWarmupBatcher.BatchResult result =
+        relationshipBatcher.warmupBatch("table", List.of(table), Duration.ofSeconds(60));
+
+    assertEquals(1, result.success());
+    assertEquals(0, result.failed());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(cache).pipelineSet(captor.capture(), any(Duration.class));
+    CachedReadBundle.Dto dto =
+        JsonUtils.readValue(
+            captor.getValue().get(keys.bundle("table", table.getId())), CachedReadBundle.Dto.class);
+    assertNotNull(dto.relations);
+    assertEquals(1, dto.relations.get(FIELD_OWNERS).size());
+    assertEquals(ownerId, dto.relations.get(FIELD_OWNERS).get(0).getId());
+    assertEquals(1, dto.relations.get(FIELD_DOMAINS).size());
+    assertEquals(domainId, dto.relations.get(FIELD_DOMAINS).get(0).getId());
+    verify(relationshipRepository, times(1)).getEntityReferences(any(), eq(NON_DELETED));
   }
 
   @Test
