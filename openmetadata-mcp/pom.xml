@@ -17,7 +17,7 @@
     
     <properties>
         <assertj-core.version>3.27.7</assertj-core.version>
-        <jetty.version>12.1.7</jetty.version>
+        <jetty.version>12.1.9</jetty.version>
     </properties>
 
     <dependencyManagement>
@@ -129,7 +129,7 @@
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>4.2.2</version>
+            <version>4.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
