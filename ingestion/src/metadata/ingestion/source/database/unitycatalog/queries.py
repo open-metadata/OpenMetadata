@@ -121,7 +121,7 @@ UNITY_CATALOG_GET_DELETED_TABLES = textwrap.dedent(
         AND action_name = 'deleteTable'
         AND event_date >= date(timestamp_millis({start_timestamp}))
         AND event_time >= timestamp_millis({start_timestamp})
-        AND request_params.full_name_arg LIKE '{catalog}.%%'
+        AND substring_index(request_params.full_name_arg, '.', 1) = '{catalog}'
     """
 )
 

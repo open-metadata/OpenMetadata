@@ -139,7 +139,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
         self.incremental = incremental_configuration
         self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = None
-        self.context.get_global().deleted_tables = []
+        self.context.get_global().deleted_tables = []  # pyright: ignore[reportAttributeAccessIssue]
         if self.incremental.enabled:
             logger.info(
                 "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
@@ -178,7 +178,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue, reportOptionalMemberAccess]
         return cls(config, metadata, incremental_config)
 
     def get_database_names(self) -> Iterable[str]:
@@ -238,7 +238,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         if self.incremental.enabled:
             self.incremental_table_processor = UnityCatalogIncrementalTableProcessor.create(self.sql_connection)
             self.incremental_table_processor.set_table_map(
-                catalog=catalog, start_timestamp=self.incremental.start_timestamp
+                catalog=catalog,
+                start_timestamp=self.incremental.start_timestamp,  # pyright: ignore[reportArgumentType]
             )
 
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
@@ -315,7 +316,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:  # noqa: UP006
+    def get_tables_name_and_type(self) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """
         Handle table and views.
 
@@ -338,7 +339,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             ):
                 yield from self._process_table(table, catalog_name, schema_name)
 
-    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, str]]:  # noqa: UP006
+    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """Record deleted tables and yield only the tables changed since the watermark."""
         processor = self.incremental_table_processor
         if processor is None:
@@ -348,7 +349,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         # information_schema only lists existing tables, so a changed table
         # exists now and must not be marked deleted.
         for table_name in processor.get_deleted(schema_name) - changed:
-            self.context.get_global().deleted_tables.append(
+            self.context.get_global().deleted_tables.append(  # pyright: ignore[reportAttributeAccessIssue]
                 fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
@@ -372,42 +373,43 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 continue
             yield from self._process_table(table, catalog_name, schema_name)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, str]]:  # noqa: UP006
+    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=self.context.get().database_service,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                 database_name=catalog_name,
                 schema_name=schema_name,
                 table_name=table_name,
             )
             if filter_by_table(
-                self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
+                self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue, reportArgumentType, reportOptionalMemberAccess]
             ):
                 self.status.filter(
-                    table_fqn,
+                    table_fqn,  # pyright: ignore[reportArgumentType]
                     "Table Filtered Out",
                 )
                 return
             table_type: TableType = TableType.Regular
             if table.table_type:
                 if table.table_type.value.lower() == TableType.View.value.lower():
-                    table_type: TableType = TableType.View
+                    table_type = TableType.View
                 if table.table_type.value.lower() == "materialized_view":
-                    table_type: TableType = TableType.MaterializedView
+                    table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
-                    table_type: TableType = TableType.External
-            self.context.get().table_data = table
+                    table_type = TableType.External
+            self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
             yield table_name, table_type
         except Exception as exc:
+            table_identifier = getattr(table, "name", "<unknown>")
             self.status.failed(
                 StackTraceError(
-                    name=table.name,
-                    error=f"Unexpected exception to get table [{table.name}]: {exc}",
+                    name=table_identifier,
+                    error=f"Unexpected exception to get table [{table_identifier}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -592,11 +594,11 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             if not self.context.get().__dict__.get("database"):
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.get_global().deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,  # pyright: ignore[reportAttributeAccessIssue]
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:

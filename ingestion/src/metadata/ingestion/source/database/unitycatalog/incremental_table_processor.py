@@ -21,6 +21,7 @@ logs a warning so the rest of the ingestion can proceed (e.g. when the
 `system.access` schema is not enabled).
 """
 
+import re
 import traceback
 from typing import Any, Callable, Dict, Optional, Set, Tuple  # noqa: UP035
 
@@ -37,6 +38,8 @@ logger = ingestion_logger()
 
 SchemaToTables = Dict[str, Set[str]]  # noqa: UP006
 
+VALID_CATALOG_NAME = re.compile(r"^[A-Za-z0-9_]+$")
+
 
 class UnityCatalogIncrementalTableProcessor:
     """Prepares the data needed for Unity Catalog incremental metadata extraction."""
@@ -51,7 +54,20 @@ class UnityCatalogIncrementalTableProcessor:
         return cls(connection)
 
     def set_table_map(self, catalog: str, start_timestamp: int) -> None:
-        """Populate the changed and deleted table maps for a single catalog."""
+        """Populate the changed and deleted table maps for a single catalog.
+
+        The catalog name is interpolated into SQL, so it is validated against an
+        allowlist first. An unexpected name skips incremental detection (the maps
+        stay empty) rather than risking an injected query.
+        """
+        self._changed_map = {}
+        self._deleted_map = {}
+        if not VALID_CATALOG_NAME.match(catalog):
+            logger.warning(
+                "Catalog name [%s] is not a simple identifier; skipping incremental change/delete detection for it.",
+                catalog,
+            )
+            return
         self._changed_map = self._run(
             UNITY_CATALOG_GET_CHANGED_TABLES,
             catalog,

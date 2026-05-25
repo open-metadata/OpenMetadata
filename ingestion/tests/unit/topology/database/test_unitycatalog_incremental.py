@@ -92,6 +92,27 @@ class TestUnityCatalogIncrementalTableProcessor:
         assert UnityCatalogIncrementalTableProcessor._split_full_name(None) is None
         assert UnityCatalogIncrementalTableProcessor._split_full_name("") is None
 
+    def test_set_table_map_rejects_unsafe_catalog_name(self):
+        connection = Mock()
+
+        processor = UnityCatalogIncrementalTableProcessor.create(connection)
+        processor.set_table_map(catalog="bad'; DROP TABLE x", start_timestamp=1000)
+
+        connection.execute.assert_not_called()
+        assert processor.get_changed("schema1") == set()
+        assert processor.get_deleted("schema1") == set()
+
+    def test_set_table_map_uses_exact_catalog_match_for_deletes(self):
+        connection = Mock()
+        connection.execute.side_effect = [CHANGED_ROWS, DELETED_ROWS]
+
+        processor = UnityCatalogIncrementalTableProcessor.create(connection)
+        processor.set_table_map(catalog="cat", start_timestamp=1000)
+
+        deleted_sql = str(connection.execute.call_args_list[1].args[0])
+        assert "substring_index(request_params.full_name_arg, '.', 1) = 'cat'" in deleted_sql
+        assert "LIKE" not in deleted_sql
+
 
 class TestUnityCatalogIncrementalSource:
     """Tests for the incremental hooks on the Unity Catalog source."""
@@ -149,6 +170,16 @@ class TestUnityCatalogIncrementalSource:
 
         assert result == []
         source.status.filter.assert_called_once()
+
+    def test_process_table_failure_uses_safe_identifier(self):
+        source = self._make_source()
+        table = SimpleNamespace(table_type=None)
+
+        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+
+        assert result == []
+        source.status.failed.assert_called_once()
+        assert source.status.failed.call_args.args[0].name == "<unknown>"
 
     def test_get_incremental_tables_records_deletes_and_yields_changes(self):
         source = self._make_source()
