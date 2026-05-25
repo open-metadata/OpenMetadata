@@ -188,11 +188,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [
-    knowledgePage,
-    recentlyViewed,
-    fetchKnowledgePageHierarchy,
-  ]);
+  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));

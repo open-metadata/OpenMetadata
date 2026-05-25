@@ -98,8 +98,7 @@ const FileActions: FC<FileActionsProps> = ({
           onAction={(key) => {
             if (key === 'share') {
               onShareFile?.(file);
-            }
-            else if (key === 'delete') {
+            } else if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>

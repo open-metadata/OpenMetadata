@@ -78,7 +78,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   const [isUpdating, setIsUpdating] = useState(false);
 
-    useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       tagClassBase.setFilterClassification([]);
     } else {
