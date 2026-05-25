@@ -17,9 +17,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { User } from '../../../generated/entity/teams/user';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
 const PageHierarchy = [
@@ -228,10 +228,8 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
     .mockImplementation(() => ({ getResourceLimit: jest.fn() })),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="delete-widget">DeleteWidgetModal</div>)
+jest.mock('components/common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
 );
 
 describe('KnowledgePagesHierarchy', () => {

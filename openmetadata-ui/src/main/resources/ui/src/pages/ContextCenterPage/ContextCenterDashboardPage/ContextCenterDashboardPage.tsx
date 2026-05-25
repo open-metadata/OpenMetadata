@@ -13,7 +13,6 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { Asset } from 'generated/attachments/asset';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +27,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Asset } from '../../../generated/attachments/asset';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
@@ -118,7 +118,7 @@ const ContextCenterDashboardPage: FC = () => {
   }, [fetchRecentArticles, fetchDocuments, fetchPermission]);
 
   const handleUploaded = useCallback((newAssets: Asset[]) => {
-    setDocuments((prev) => [...prev, ...newAssets.map(assetToDocumentItem)]);
+    setDocuments((prev) => [...newAssets.map(assetToDocumentItem), ...prev]);
   }, []);
 
   return (

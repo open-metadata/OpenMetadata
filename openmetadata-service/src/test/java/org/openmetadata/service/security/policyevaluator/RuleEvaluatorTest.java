@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -605,6 +606,107 @@ class RuleEvaluatorTest {
     for (String role : listOf("user", "team1")) {
       assertTrue(evaluateExpression(String.format("hasAnyRole('%s')", role)));
     }
+  }
+
+  @Test
+  void test_isTaskFiler() {
+    User filer = new User().withId(UUID.randomUUID()).withName("filer");
+    User other = new User().withId(UUID.randomUUID()).withName("other");
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("test-task")
+            .withFullyQualifiedName("test-task")
+            .withCreatedBy(filer.getEntityReference().withType(Entity.USER).withName("filer"));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    // Filer sees themselves as the task filer
+    SubjectContext filerSubject = new SubjectContext(filer, null);
+    RuleEvaluator evaluator = new RuleEvaluator(null, filerSubject, taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+
+    // Another user does not match the filer
+    SubjectContext otherSubject = new SubjectContext(other, null);
+    evaluator = new RuleEvaluator(null, otherSubject, taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+
+    // Task with no createdBy is not filed by anyone
+    Task unowned = new Task().withId(UUID.randomUUID()).withName("unowned");
+    TaskResourceContext unownedContext = new TaskResourceContext(unowned);
+    evaluator = new RuleEvaluator(null, filerSubject, unownedContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isTaskAssignee_directAndTeam() {
+    Team team = createTeam("approvers", null);
+    User assignee = new User().withId(UUID.randomUUID()).withName("assignee");
+    User teamMember =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("teamMember")
+            .withTeams(List.of(team.getEntityReference()));
+    User outsider = new User().withId(UUID.randomUUID()).withName("outsider");
+
+    EntityReference assigneeRef = assignee.getEntityReference().withType(Entity.USER);
+    EntityReference teamRef = team.getEntityReference().withType(Entity.TEAM);
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("assign-task")
+            .withAssignees(List.of(assigneeRef, teamRef));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    RuleEvaluator evaluator =
+        new RuleEvaluator(null, new SubjectContext(assignee, null), taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(teamMember, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(outsider, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isTaskReviewer() {
+    User reviewer = new User().withId(UUID.randomUUID()).withName("reviewer");
+    User other = new User().withId(UUID.randomUUID()).withName("notReviewer");
+    EntityReference reviewerRef = reviewer.getEntityReference().withType(Entity.USER);
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withName("review-task")
+            .withReviewers(List.of(reviewerRef));
+
+    TaskResourceContext taskContext = new TaskResourceContext(task);
+
+    RuleEvaluator evaluator =
+        new RuleEvaluator(null, new SubjectContext(reviewer, null), taskContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertTrue(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+
+    evaluator = new RuleEvaluator(null, new SubjectContext(other, null), taskContext);
+    ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_taskSpecificConditionsReturnFalseForNonTaskResources() {
+    // Each of the three task conditions must be safely false when the resource is not a task.
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, resourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
   }
 
   private Boolean evaluateExpression(String condition) {

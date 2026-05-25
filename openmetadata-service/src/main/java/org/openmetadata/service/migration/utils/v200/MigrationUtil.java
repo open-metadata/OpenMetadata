@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v200;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,15 +15,20 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
@@ -30,6 +36,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
+
+  private static final String DATA_CONSUMER_ROLE = "DataConsumer";
+  private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -54,6 +63,74 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  /**
+   * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
+   * upgrades. Role→Policy attachments are modelled as {@code Relationship.HAS} edges in {@code
+   * entity_relationship} (the {@code policies} field on Role JSON is derived from those edges, not
+   * stored), so this migration writes the relationship directly via {@code
+   * relationshipDAO().insert(...)} which upserts and is therefore idempotent.
+   *
+   * <p>Migrations run before service startup, so {@code initSeedDataFromResources()} has not yet
+   * created {@code TaskAuthorPolicy}. The helper loads the seed JSON from the classpath and
+   * persists it via {@link PolicyRepository#initializeEntity} (create-if-missing) before adding
+   * the role relationship.
+   */
+  public static void addTaskAuthorPolicyToDataConsumerRole(CollectionDAO collectionDAO) {
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = ensureTaskAuthorPolicySeeded(policyRepository);
+      if (policy == null) {
+        LOG.warn(
+            "{} seed not found on classpath, skipping DataConsumer attachment", TASK_AUTHOR_POLICY);
+        return;
+      }
+      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
+      collectionDAO
+          .relationshipDAO()
+          .insert(
+              role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS.ordinal());
+      LOG.info("Attached {} to {}", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping TaskAuthorPolicy backfill: {} not found ({})",
+          DATA_CONSUMER_ROLE,
+          ex.getMessage());
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to attach {} to {}: {}",
+          TASK_AUTHOR_POLICY,
+          DATA_CONSUMER_ROLE,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
+  private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
+    Policy existing = null;
+    try {
+      existing = repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+    } catch (EntityNotFoundException ignored) {
+      // Not seeded yet — fall through to seed-from-classpath path.
+    }
+    if (existing != null) {
+      return existing;
+    }
+    try {
+      List<Policy> seeds = repository.getEntitiesFromSeedData();
+      for (Policy seed : seeds) {
+        if (TASK_AUTHOR_POLICY.equals(seed.getName())) {
+          repository.initializeEntity(seed);
+          return repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to load TaskAuthorPolicy seed data: {}", e.getMessage());
+    }
+    return null;
+  }
 
   /**
    * Migrate suggestions from the old suggestions table to the new task_entity table. Each
@@ -155,7 +232,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated suggestions correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -206,7 +283,7 @@ public class MigrationUtil {
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
@@ -307,8 +384,8 @@ public class MigrationUtil {
           // inheriting from their parent glossary); now that the lookup walks the
           // entity API, force-migrate must also reconcile domain relationships for
           // tasks that were already promoted before this fix.
-          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, aboutJson);
-          insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
           skipped++;
           continue;
         }
@@ -337,7 +414,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated tasks correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -396,7 +473,7 @@ public class MigrationUtil {
         }
 
         insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle,
             threadId,
@@ -1093,11 +1170,11 @@ public class MigrationUtil {
 
   /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
-   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but using raw SQL,
-   * since migrations run before the EntityRepository layer is fully initialized for new tasks.
+   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
+   * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
+   * its parent glossary) are included.
    */
-  private static List<EntityReference> resolveDomainsForTaskAbout(
-      Handle handle, ObjectNode taskJson) {
+  private static List<EntityReference> resolveDomainsForTaskAbout(ObjectNode taskJson) {
     JsonNode about = taskJson.get("about");
     if (about == null || !about.has("type")) {
       return Collections.emptyList();
@@ -1265,26 +1342,25 @@ public class MigrationUtil {
 
   /**
    * Insert DOMAIN --HAS--> task rows so {@code TaskRepository.getDomains()} returns
-   * the inherited domains when the task is read.
+   * the inherited domains when the task is read. Idempotent via {@link #insertEntityRelationship}
+   * (ON CONFLICT DO NOTHING / ON DUPLICATE KEY UPDATE) — re-runs no longer rely on a catch-all
+   * exception handler to swallow duplicate-key violations, so genuine failures propagate.
    */
   private static void insertTaskDomainRelationships(
-      Handle handle, String taskId, List<EntityReference> domains) {
+      Handle handle, String taskId, List<EntityReference> domains, ConnectionType connectionType) {
     if (domains == null || domains.isEmpty()) {
       return;
     }
     for (EntityReference domain : domains) {
       try {
-        handle
-            .createUpdate(
-                "INSERT INTO entity_relationship "
-                    + "(fromId, toId, fromEntity, toEntity, relation) "
-                    + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
-            .bind("fromId", domain.getId().toString())
-            .bind("toId", taskId)
-            .bind("fromEntity", Entity.DOMAIN)
-            .bind("toEntity", Entity.TASK)
-            .bind("relation", Relationship.HAS.ordinal())
-            .execute();
+        insertEntityRelationship(
+            handle,
+            domain.getId().toString(),
+            Entity.DOMAIN,
+            taskId,
+            Entity.TASK,
+            Relationship.HAS,
+            connectionType);
       } catch (Exception e) {
         LOG.debug(
             "Could not insert domain relationship for task {} -> domain {}: {}",
