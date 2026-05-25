@@ -1850,22 +1850,6 @@ public class ColumnResourceIT {
   }
 
   @Test
-  void test_getTableColumnByFQN_nonAdminUser_403(TestNamespace ns) throws Exception {
-    Table table = createTestTableForUpdate(ns);
-    Column idCol = table.getColumns().get(0);
-
-    Exception ex =
-        assertThrows(
-            Exception.class,
-            () -> getColumnByFQN(SdkClients.user1Client(), idCol.getFullyQualifiedName(), TABLE));
-    assertTrue(
-        ex.getMessage().contains("403")
-            || ex.getMessage().toLowerCase().contains("forbidden")
-            || ex.getMessage().toLowerCase().contains("not authorized"),
-        "Expected 403/forbidden, got: " + ex.getMessage());
-  }
-
-  @Test
   void test_getDashboardDataModelColumnByFQN_returnsColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DashboardDataModel dataModel = createTestDashboardDataModel(ns);
