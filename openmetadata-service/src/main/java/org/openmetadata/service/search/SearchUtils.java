@@ -330,11 +330,9 @@ public final class SearchUtils {
     return requiredFields;
   }
 
-  public static List<Object> searchAfter(String searchAfter) {
-    if (!nullOrEmpty(searchAfter)) {
-      return List.of(searchAfter.split(","));
-    }
-    return null;
+  /** One {@code ?search_after=v} per sort value — no in-band delimiter. */
+  public static List<Object> searchAfter(List<String> values) {
+    return nullOrEmpty(values) ? null : new ArrayList<>(values);
   }
 
   public static List<String> sourceFields(String sourceFields) {

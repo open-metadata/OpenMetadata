@@ -365,6 +365,55 @@ class TestOMetaESAPI:
                 except Exception:
                     pass
 
+    def test_paginate_with_comma_in_name(self, metadata, es_service, es_schema):
+        """Regression for #28076 — pagination must survive sort values containing ','.
+
+        With size=1, every page boundary's cursor is a single FQN with ',' in it.
+        The multi-value search_after wire format carries each sort value as its
+        own param, so a comma in the value cannot truncate pagination.
+        """
+        test_id = str(uuid.uuid4())[:8]
+        expected_names = {f"comma,{test_id},table,{i}" for i in range(5)}
+        created_tables = []
+        try:
+            for name in expected_names:
+                table = metadata.create_or_update(
+                    data=get_create_entity(
+                        entity=Table,
+                        name=EntityName(name),
+                        reference=es_schema.fullyQualifiedName,
+                    )
+                )
+                created_tables.append(table)
+
+            # Wait for ES to index the last-created table (refresh interval is 1s).
+            last_fqn = created_tables[-1].fullyQualifiedName.root
+            for _ in range(10):
+                if metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=last_fqn):
+                    break
+                time.sleep(1)
+
+            # Narrow to this test's tables — other tests / module fixtures share es_service.
+            query_filter = (
+                '{"query":{"bool":{"must":['
+                f'{{"term":{{"service.displayName.keyword":"{es_service.name.root}"}}}},'
+                f'{{"wildcard":{{"name.keyword":"comma,{test_id},table,*"}}}}'
+                "]}}}"
+            )
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
+            returned = {a.name.root for a in assets}
+            assert returned == expected_names, (
+                f"Pagination did not round-trip comma-FQN tables.\n"
+                f"  missing: {sorted(expected_names - returned)}\n"
+                f"  extra:   {sorted(returned - expected_names)}"
+            )
+        finally:
+            for table in created_tables:
+                try:  # noqa: SIM105
+                    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+                except Exception:
+                    pass
+
     def test_paginate_with_filters(self, metadata, es_service, es_schema):
         """We can paginate only tier 1 tables"""
         created_tables = []
