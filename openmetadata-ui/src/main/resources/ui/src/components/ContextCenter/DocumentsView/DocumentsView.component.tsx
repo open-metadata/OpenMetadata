@@ -93,11 +93,14 @@ const FileActions: FC<FileActionsProps> = ({
           <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
         </TooltipTrigger>
       </Tooltip>
-      <Dropdown.Popover className="tw:w-32">
+      <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
             if (key === 'share') {
               onShareFile?.(file);
+            }
+            else if (key === 'delete') {
+              onDeleteFile?.(file);
             }
           }}>
           <Dropdown.Item

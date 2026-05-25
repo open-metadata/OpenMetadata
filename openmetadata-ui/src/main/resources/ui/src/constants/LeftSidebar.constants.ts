@@ -247,7 +247,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_ARCHIVE,
         title: 'label.archive',
         redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
-        icon: Archive,
+        icon: createIconWithStroke(Archive as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-context-center-archive`,
       },
     ],

@@ -139,6 +139,7 @@ export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
 export const contextFileToUploadedDocumentItem = (
   file: ContextFile
 ): UploadedDocumentItem => ({
+  driveFileId: file.id,
   fileType: extensionToFileType(file.displayName ?? file.name),
   id: file.assetId ?? file.id,
   name: file.displayName ?? file.name,

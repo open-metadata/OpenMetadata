@@ -192,7 +192,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     knowledgePage,
     recentlyViewed,
     fetchKnowledgePageHierarchy,
-    onToggleDelete,
   ]);
 
   const handleVersionClick = () => {

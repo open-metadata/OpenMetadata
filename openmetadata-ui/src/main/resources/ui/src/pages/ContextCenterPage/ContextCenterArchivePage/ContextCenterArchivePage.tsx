@@ -213,7 +213,7 @@ const ContextCenterArchivePage: FC = () => {
       />
       <Card>
         <div className="tw:flex tw:items-end tw:gap-2 tw:px-6 tw:py-5">
-          <Typography size="text-lg" weight="semibold">
+          <Typography size="text-md" weight="medium">
             {t('label.archive-file-plural')}
           </Typography>
           <Badge color="brand" type="pill-color">

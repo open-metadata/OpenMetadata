@@ -153,7 +153,7 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
   const response = await APIClient.get<Blob>(
     `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: false, expiry: 300 }, responseType: 'blob' }
+    { params: { redirect: true, expiry: 300 }, responseType: 'blob' }
   );
 
   return response.data;

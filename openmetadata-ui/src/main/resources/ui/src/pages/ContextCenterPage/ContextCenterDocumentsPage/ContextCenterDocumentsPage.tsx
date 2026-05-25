@@ -258,8 +258,8 @@ const ContextCenterDocumentsPage: FC = () => {
         onClose={() => setIsUploadModalOpen(false)}
         onUploaded={(newFiles) =>
           setAllDocuments((prev) => [
-            ...prev,
             ...newFiles.map(contextFileToDocumentItem),
+            ...prev,
           ])
         }
       />
