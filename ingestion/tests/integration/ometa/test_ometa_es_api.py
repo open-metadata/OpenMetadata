@@ -386,16 +386,7 @@ class TestOMetaESAPI:
                 )
                 created_tables.append(table)
 
-            tries = 0
-            indexed = False
-            while not indexed and tries <= 10:
-                indexed = all(
-                    metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=t.fullyQualifiedName.root)
-                    for t in created_tables
-                )
-                if not indexed:
-                    tries += 1
-                    time.sleep(1)
+            time.sleep(2)
 
             expected_ids = [str(t.id.root) for t in created_tables]
             query_filter = json.dumps({"query": {"terms": {"id.keyword": expected_ids}}})
