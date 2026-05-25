@@ -270,7 +270,10 @@ class OpenlineageSource(PipelineServiceSource):
             # namespace is part of the key: it drives namespace-aware
             # service resolution, so same schema.table under different
             # namespaces are distinct resolution paths, not duplicates.
-            key = (namespace, details.schema, details.name)
+            # database is part of the key so two three-part identities under
+            # the same namespace with different db/catalog values stay as
+            # separate candidates and both are tried in order.
+            key = (namespace, details.database, details.schema, details.name)
             if key not in seen:
                 seen.add(key)
                 candidates.append((details, namespace))
@@ -705,16 +708,31 @@ class OpenlineageSource(PipelineServiceSource):
             if not resolved:
                 continue
             output_table_fqn = resolved.fqn
-            for field_name, field_spec in table.get("facets", {}).get("columnLineage", {}).get("fields", {}).items():
-                for input_field in field_spec.get("inputFields", []):
+            # Tolerate a missing or null facets/columnLineage/fields field at
+            # any level, mirroring the symlinks-facet defensiveness so a
+            # single malformed event never aborts the whole run.
+            facets = table.get("facets") or {}
+            column_lineage_facet = facets.get("columnLineage") or {} if isinstance(facets, dict) else {}
+            fields = column_lineage_facet.get("fields") or {} if isinstance(column_lineage_facet, dict) else {}
+            for field_name, field_spec in fields.items():
+                if not isinstance(field_spec, dict):
+                    continue
+                for input_field in field_spec.get("inputFields", []) or []:
+                    if not isinstance(input_field, dict):
+                        continue
                     input_table_ol_name = OpenlineageSource._get_ol_table_name(input_field)
-
+                    input_table_fqn = ol_name_to_fqn_map.get(input_table_ol_name)
+                    # Skip when the input table did not resolve; otherwise the
+                    # row would carry None as the input FQN and produce a
+                    # bogus 'None.column' identifier downstream.
+                    if not input_table_fqn:
+                        continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
-                            ol_name_to_fqn_map.get(input_table_ol_name),
+                            input_table_fqn,
                             f"{output_table_fqn}.{field_name.lower()}",
-                            f"{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get('field', '').lower()}",
+                            f"{input_table_fqn}.{input_field.get('field', '').lower()}",
                         )
                     )
 
