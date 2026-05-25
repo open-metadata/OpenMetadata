@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import * as useGlossaryStoreModule from '../../../components/Glossary/useGlossary.store';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import GlossaryPage from './GlossaryPage.component';
 
 const mockNavigate = jest.fn();
@@ -178,7 +179,7 @@ const mockProps = {
 
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
-    render(<GlossaryPage {...mockProps} />);
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -186,7 +187,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 1', async () => {
-    render(<GlossaryPage {...mockProps} />);
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -198,7 +199,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPage {...mockProps} />);
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -220,7 +221,7 @@ describe('Test GlossaryComponent page', () => {
       (patchGlossaryTerm as jest.Mock).mockImplementation(() =>
         Promise.resolve({ data: '' })
       );
-      render(<GlossaryPage {...mockProps} />);
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
       const handleGlossaryTermUpdate = await screen.findByTestId(
         'handleGlossaryTermUpdate'
       );
@@ -251,7 +252,7 @@ describe('Test GlossaryComponent page', () => {
         updateActiveGlossary: mockUpdateActiveGlossary,
       }));
 
-      render(<GlossaryPage {...mockProps} />);
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
       const handleGlossaryDelete = await screen.findByTestId(
         'handleGlossaryDelete'
@@ -276,7 +277,7 @@ describe('Test GlossaryComponent page', () => {
         updateActiveGlossary: mockUpdateActiveGlossary,
       }));
 
-      render(<GlossaryPage {...mockProps} />);
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
       const handleGlossaryDelete = await screen.findByTestId(
         'handleGlossaryDelete'
@@ -319,7 +320,7 @@ describe('Test GlossaryComponent page', () => {
         updateActiveGlossary: mockUpdateActiveGlossary,
       }));
 
-      render(<GlossaryPage {...mockProps} />);
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
       const handleGlossaryDelete = await screen.findByTestId(
         'handleGlossaryDelete'
@@ -339,7 +340,7 @@ describe('Test GlossaryComponent page', () => {
 
   it('should pass entity name as pageTitle to withPageLayout', async () => {
     await act(async () => {
-      render(<GlossaryPage {...mockProps} />);
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
     });
 
     expect(ResizableLeftPanels).toHaveBeenCalledWith(

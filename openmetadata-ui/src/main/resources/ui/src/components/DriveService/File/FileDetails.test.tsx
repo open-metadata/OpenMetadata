@@ -34,9 +34,15 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
+  fetchEntityActivityCountInto: (...args: any[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: any[]) =>
+    mockFetchEntityTaskCountsInto(...args),
   getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
 }));
@@ -321,12 +327,16 @@ describe('FileDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderFileDetails();
 
     await waitFor(
       () => {
-        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+        expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+          'test-service.test-file.txt',
+          expect.any(Function)
+        );
+        expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.FILE,
           'test-service.test-file.txt',
           expect.any(Function)
