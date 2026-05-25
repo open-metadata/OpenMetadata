@@ -1798,6 +1798,19 @@ public class ColumnResourceIT {
 
     assertNotNull(fetched.getTags());
     assertFalse(fetched.getTags().isEmpty());
+
+    String duplicateFieldsResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(idCol.getFullyQualifiedName())
+                    + "?entityType=table&fields=tags,tags",
+                null);
+    Column fetchedWithDuplicate = OBJECT_MAPPER.readValue(duplicateFieldsResponse, Column.class);
+    assertNotNull(fetchedWithDuplicate.getTags());
+    assertFalse(fetchedWithDuplicate.getTags().isEmpty());
   }
 
   @Test
@@ -1821,6 +1834,31 @@ public class ColumnResourceIT {
 
     assertNotNull(fetched);
     assertEquals(col.getName(), fetched.getName());
+
+    Tag tag = createClassificationAndTag(ns, "GetDataModelTestClass", "GetDataModelTag");
+    updateColumn(
+        client,
+        col.getFullyQualifiedName(),
+        DASHBOARD_DATA_MODEL,
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tag.getFullyQualifiedName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION))));
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(col.getFullyQualifiedName())
+                    + "?entityType=dashboardDataModel&fields=tags",
+                null);
+    Column fetchedWithTags = OBJECT_MAPPER.readValue(response, Column.class);
+    assertNotNull(fetchedWithTags.getTags());
+    assertFalse(fetchedWithTags.getTags().isEmpty());
   }
 
   // ========================================================================
