@@ -1255,15 +1255,12 @@ const SSOConfigurationFormRJSF = ({
         <div
           className="saml-idp-info-banner m-b-md"
           data-testid="saml-acs-info-banner">
-          <Typography as="span" weight="medium">
+          <span className="font-medium">
             {t('label.register-with-identity-provider')}
-          </Typography>
-          <Typography
-            as="span"
-            className="text-grey-muted d-block m-b-sm"
-            size="text-xs">
+          </span>
+          <span className="text-grey-muted text-xs d-block m-b-sm">
             {t('message.register-with-idp-info')}
-          </Typography>
+          </span>
           <CopyableUrlField
             label={t('label.acs-url')}
             testId="saml-acs-url"
@@ -1307,23 +1304,17 @@ const SSOConfigurationFormRJSF = ({
                     <UploadCloud02 className="text-grey-600" size={20} />
                   </div>
                   <div className="flex align-center flex-wrap gap-4 justify-center tw:max-w-[220px]">
-                    <Typography as="span" weight="medium">
+                    <span className="font-medium">
                       {t('label.click-to')}{' '}
-                      <Typography
-                        as="span"
-                        className="sso-upload-link"
-                        weight="semibold">
+                      <span className="font-semibold sso-upload-link">
                         {t('label.upload-lowercase')}
-                      </Typography>{' '}
+                      </span>{' '}
                       {t('label.or-drag-and-drop-an-xml-file-here')}
-                    </Typography>
+                    </span>
                   </div>
-                  <Typography
-                    as="span"
-                    className="text-grey-muted"
-                    size="text-xs">
+                  <span className="text-grey-muted text-xs">
                     {t('message.upload-saml-metadata-xml-description')}
-                  </Typography>
+                  </span>
                 </div>
               </div>
             </FileTrigger>
