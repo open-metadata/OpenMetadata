@@ -11,25 +11,28 @@
  *  limitations under the License.
  */
 
-import { act } from '@testing-library/react';
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';
 import {
-  APP_MODE_CHANGE_EVENT,
   APP_MODE_STORAGE_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
-import { clearAppMode, useAppMode, writeAppMode } from './useAppMode';
+import {
+  clearAppMode,
+  useAppMode,
+  useAppModeStore,
+  writeAppMode,
+} from './useAppMode';
 
-const dispatchStorageEvent = (key: string, newValue: string | null) => {
-  globalThis.window.dispatchEvent(
-    new StorageEvent('storage', { key, newValue })
-  );
+const resetStore = () => {
+  act(() => {
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+  });
+  globalThis.window.localStorage.removeItem(APP_MODE_STORAGE_KEY);
 };
 
 describe('useAppMode hook', () => {
-  beforeEach(() => {
-    globalThis.window.localStorage.clear();
-  });
+  beforeEach(resetStore);
 
   it('returns the DEFAULT_APP_MODE when no value is persisted', () => {
     const { result } = renderHook(() => useAppMode());
@@ -37,15 +40,17 @@ describe('useAppMode hook', () => {
     expect(result.current).toBe(DEFAULT_APP_MODE);
   });
 
-  it('returns the persisted value when one is stored in localStorage', () => {
-    globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'ai');
+  it('returns the persisted value once writeAppMode has set one', () => {
+    act(() => {
+      writeAppMode('ai');
+    });
 
     const { result } = renderHook(() => useAppMode());
 
     expect(result.current).toBe('ai');
   });
 
-  it('re-renders subscribers when writeAppMode dispatches a same-tab change', () => {
+  it('re-renders subscribers when writeAppMode changes the mode', () => {
     const { result } = renderHook(() => useAppMode());
 
     expect(result.current).toBe(DEFAULT_APP_MODE);
@@ -57,113 +62,50 @@ describe('useAppMode hook', () => {
     expect(result.current).toBe('ai');
   });
 
-  it('re-renders subscribers when a cross-tab storage event fires for the mode key', () => {
-    const { result } = renderHook(() => useAppMode());
-
+  it('reverts to default after clearAppMode', () => {
     act(() => {
-      globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'preview');
-      dispatchStorageEvent(APP_MODE_STORAGE_KEY, 'preview');
+      writeAppMode('ai');
     });
 
-    expect(result.current).toBe('preview');
-  });
-
-  it('ignores storage events for unrelated keys', () => {
     const { result } = renderHook(() => useAppMode());
-    const renderCountBefore = result.all.length;
+
+    expect(result.current).toBe('ai');
 
     act(() => {
-      globalThis.window.localStorage.setItem('unrelated-key', 'whatever');
-      dispatchStorageEvent('unrelated-key', 'whatever');
+      clearAppMode();
     });
 
     expect(result.current).toBe(DEFAULT_APP_MODE);
-    expect(result.all.length).toBe(renderCountBefore);
-  });
-
-  it('removes its window listeners on unmount', () => {
-    const removeSpy = jest.spyOn(globalThis.window, 'removeEventListener');
-
-    const { unmount } = renderHook(() => useAppMode());
-    unmount();
-
-    expect(removeSpy).toHaveBeenCalledWith('storage', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith(
-      APP_MODE_CHANGE_EVENT,
-      expect.any(Function)
-    );
-
-    removeSpy.mockRestore();
   });
 });
 
 describe('writeAppMode', () => {
-  beforeEach(() => {
-    globalThis.window.localStorage.clear();
-  });
+  beforeEach(resetStore);
 
-  it('writes the new mode to localStorage', () => {
+  it('updates the store state', () => {
     writeAppMode('ai');
 
-    expect(globalThis.window.localStorage.getItem(APP_MODE_STORAGE_KEY)).toBe(
-      'ai'
-    );
+    expect(useAppModeStore.getState().currentMode).toBe('ai');
   });
 
-  it('dispatches a same-tab custom event so subscribers can react', () => {
-    const handler = jest.fn();
-    globalThis.window.addEventListener(APP_MODE_CHANGE_EVENT, handler);
-
+  it('persists the new mode to localStorage (wrapped by Zustand persist)', () => {
     writeAppMode('ai');
 
-    expect(handler).toHaveBeenCalledTimes(1);
+    const persisted =
+      globalThis.window.localStorage.getItem(APP_MODE_STORAGE_KEY);
 
-    globalThis.window.removeEventListener(APP_MODE_CHANGE_EVENT, handler);
-  });
-
-  it('no-ops (no event, no write) if the value would not change', () => {
-    globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'ai');
-    const handler = jest.fn();
-    globalThis.window.addEventListener(APP_MODE_CHANGE_EVENT, handler);
-    const setItemSpy = jest.spyOn(Storage.prototype, 'setItem');
-
-    writeAppMode('ai');
-
-    expect(handler).not.toHaveBeenCalled();
-    expect(setItemSpy).not.toHaveBeenCalled();
-
-    setItemSpy.mockRestore();
-    globalThis.window.removeEventListener(APP_MODE_CHANGE_EVENT, handler);
+    expect(persisted).not.toBeNull();
+    expect(JSON.parse(persisted ?? '').state.currentMode).toBe('ai');
   });
 });
 
 describe('clearAppMode', () => {
-  beforeEach(() => {
-    globalThis.window.localStorage.clear();
-  });
+  beforeEach(resetStore);
 
-  it('removes the mode key from localStorage', () => {
-    globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'ai');
-
+  it('resets the store back to DEFAULT_APP_MODE', () => {
+    writeAppMode('ai');
     clearAppMode();
 
-    expect(
-      globalThis.window.localStorage.getItem(APP_MODE_STORAGE_KEY)
-    ).toBeNull();
-  });
-
-  it('dispatches a same-tab custom event carrying the default mode', () => {
-    const handler = jest.fn();
-    globalThis.window.addEventListener(APP_MODE_CHANGE_EVENT, handler);
-
-    clearAppMode();
-
-    expect(handler).toHaveBeenCalledTimes(1);
-
-    const event = handler.mock.calls[0][0] as CustomEvent<{ mode: string }>;
-
-    expect(event.detail.mode).toBe(DEFAULT_APP_MODE);
-
-    globalThis.window.removeEventListener(APP_MODE_CHANGE_EVENT, handler);
+    expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
   });
 });

@@ -12,96 +12,54 @@
  */
 
 import { isUndefined } from 'lodash';
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  APP_MODE_CHANGE_EVENT,
   APP_MODE_STORAGE_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 
-/**
- * AppMode is a generic identifier for the active app shell. The default
- * mode reflects standard OM UI; downstream consumers (plugins, themes)
- * can introduce additional modes by registering with
- * `useAppRoutesRegistry`. The value is persisted to `localStorage` and
- * synchronised across same-tab consumers through a `window` custom
- * event; cross-tab is covered by the native `storage` event.
- *
- * Two writers are exposed: `writeAppMode(mode)` sets a mode,
- * `clearAppMode()` removes the key (resetting to default). Both
- * notify subscribers so the React hook re-renders.
- */
+interface AppModeStore {
+  currentMode: string;
+  setMode: (mode: string) => void;
+  reset: () => void;
+}
 
-const readMode = (): string => {
-  if (isUndefined(globalThis.window)) {
-    return DEFAULT_APP_MODE;
-  }
-
-  return (
-    globalThis.window.localStorage.getItem(APP_MODE_STORAGE_KEY) ??
-    DEFAULT_APP_MODE
-  );
-};
-
-const subscribe = (callback: () => void): (() => void) => {
-  if (isUndefined(globalThis.window)) {
-    return () => undefined;
-  }
-
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === APP_MODE_STORAGE_KEY) {
-      callback();
+export const useAppModeStore = create<AppModeStore>()(
+  persist(
+    (set) => ({
+      currentMode: DEFAULT_APP_MODE,
+      setMode: (mode) => set({ currentMode: mode }),
+      reset: () => set({ currentMode: DEFAULT_APP_MODE }),
+    }),
+    {
+      name: APP_MODE_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
     }
-  };
-  const onCustom = () => callback();
-  globalThis.window.addEventListener('storage', onStorage);
-  globalThis.window.addEventListener(APP_MODE_CHANGE_EVENT, onCustom);
+  )
+);
 
-  return () => {
-    globalThis.window.removeEventListener('storage', onStorage);
-    globalThis.window.removeEventListener(APP_MODE_CHANGE_EVENT, onCustom);
-  };
-};
+// Cross-tab sync: persist middleware writes localStorage but doesn't
+// listen for changes from other tabs. Re-hydrate when another tab edits
+// the same key so all tabs converge on the new mode. The listener's
+// natural scope is the page lifetime, so we never remove it; the flag
+// prevents duplicate registrations if the module re-executes (HMR /
+// `jest.resetModules`).
+let storageListenerRegistered = false;
 
-/**
- * React hook returning the current AppMode. Re-renders the calling
- * component whenever the mode changes (same-tab via custom event,
- * cross-tab via storage event).
- */
-export const useAppMode = (): string => {
-  return useSyncExternalStore(subscribe, readMode, () => DEFAULT_APP_MODE);
-};
+if (!isUndefined(globalThis.window) && !storageListenerRegistered) {
+  storageListenerRegistered = true;
+  globalThis.window.addEventListener('storage', (event) => {
+    if (event.key === APP_MODE_STORAGE_KEY) {
+      void useAppModeStore.persist.rehydrate();
+    }
+  });
+}
 
-/**
- * Set the active AppMode. Writes to localStorage and notifies same-tab
- * subscribers via custom event. No-ops if the value would not change.
- */
-export const writeAppMode = (mode: string): void => {
-  if (isUndefined(globalThis.window)) {
-    return;
-  }
-  if (readMode() === mode) {
-    return;
-  }
-  globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, mode);
-  globalThis.window.dispatchEvent(
-    new CustomEvent(APP_MODE_CHANGE_EVENT, { detail: { mode } })
-  );
-};
+export const useAppMode = (): string =>
+  useAppModeStore((state) => state.currentMode);
 
-/**
- * Clear any persisted AppMode override, returning to the default. Use
- * this on logout or when downgrading from a registered mode that's no
- * longer available.
- */
-export const clearAppMode = (): void => {
-  if (isUndefined(globalThis.window)) {
-    return;
-  }
-  globalThis.window.localStorage.removeItem(APP_MODE_STORAGE_KEY);
-  globalThis.window.dispatchEvent(
-    new CustomEvent(APP_MODE_CHANGE_EVENT, {
-      detail: { mode: DEFAULT_APP_MODE },
-    })
-  );
-};
+export const writeAppMode = (mode: string): void =>
+  useAppModeStore.getState().setMode(mode);
+
+export const clearAppMode = (): void => useAppModeStore.getState().reset();

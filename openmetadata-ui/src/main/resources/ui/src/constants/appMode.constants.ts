@@ -18,16 +18,10 @@
  * about the abstraction (a current mode value, a registry to look up
  * mode-specific routes) but never names specific modes. Consumers
  * (plugins, themes) register their modes at runtime through
- * `useAppRoutesRegistry`.
- *
- * Persistence: the mode is stored in `localStorage` under
- * `APP_MODE_STORAGE_KEY`. Same-tab consumers subscribe to changes via
- * the `APP_MODE_CHANGE_EVENT` custom event; cross-tab is covered by the
- * native `storage` event.
+ * `useAppRoutesRegistry`. The mode is persisted to `localStorage` via
+ * Zustand persist middleware (see `useAppModeStore`).
  */
 
 export const APP_MODE_STORAGE_KEY = 'om.appMode';
-
-export const APP_MODE_CHANGE_EVENT = 'om:app-mode-change';
 
 export const DEFAULT_APP_MODE = 'default';

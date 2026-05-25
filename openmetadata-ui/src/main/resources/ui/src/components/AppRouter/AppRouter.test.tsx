@@ -14,9 +14,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { act, ComponentType } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { APP_MODE_STORAGE_KEY } from '../../constants/appMode.constants';
+import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { writeAppMode } from '../../hooks/useAppMode';
+import { useAppModeStore, writeAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import AppRouter from './AppRouter';
 
@@ -102,6 +102,7 @@ describe('AppRouter — App Mode routing integration', () => {
     globalThis.window.localStorage.clear();
     act(() => {
       useAppRoutesRegistry.setState({ routes: {} });
+      useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
     });
   });
 
@@ -126,7 +127,7 @@ describe('AppRouter — App Mode routing integration', () => {
 
   it('renders a registered mode component when the active mode has a registration', async () => {
     setAuthState({ isAuthenticated: true });
-    globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'ai');
+    writeAppMode('ai');
     act(() => {
       useAppRoutesRegistry.getState().registerRoutes('ai', ModeRoutesMock);
     });
@@ -141,7 +142,7 @@ describe('AppRouter — App Mode routing integration', () => {
 
   it('falls back to the default AuthenticatedRoutes when the active mode has no registration', async () => {
     setAuthState({ isAuthenticated: true });
-    globalThis.window.localStorage.setItem(APP_MODE_STORAGE_KEY, 'ai');
+    writeAppMode('ai');
 
     renderRouter();
 
