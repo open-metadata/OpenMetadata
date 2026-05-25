@@ -399,13 +399,10 @@ class TestOMetaESAPI:
                     tries += 1
                     time.sleep(1)
 
-            # Narrow to this test's tables — other tests / module fixtures share es_service.
-            query_filter = (
-                '{"query":{"bool":{"must":['
-                f'{{"term":{{"service.displayName.keyword":"{es_service.name.root}"}}}},'
-                f'{{"wildcard":{{"name.keyword":"comma,{test_id},table,*"}}}}'
-                "]}}}"
-            )
+            # Filter by exact id list so the result set is hermetic — no table
+            # created by any other test, fixture, or future addition can leak in.
+            expected_ids = [str(t.id.root) for t in created_tables]
+            query_filter = json.dumps({"query": {"terms": {"id.keyword": expected_ids}}})
             assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
             returned = {a.name.root for a in assets}
             expected_set = set(expected_names)
