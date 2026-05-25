@@ -8,7 +8,6 @@ from uuid import UUID
 
 from cachetools import LRUCache
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -36,7 +35,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
@@ -48,8 +46,6 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     TableDetails,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
-    AmbiguousServiceException,
-    FQNNotFoundException,
     message_to_open_lineage_event,
 )
 
@@ -869,133 +865,6 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
         self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
-    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
-    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om")
-    def test_get_create_table_request(self, mock_get_schema_fqn, mock_get_table_fqn):
-        """Test successful table creation request with multiple columns when table doesn't exist"""
-        # Setup: Table doesn't exist, schema exists
-        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
-        mock_get_schema_fqn.return_value = "testService.testDatabase.testSchema"
-        table_data = {
-            "name": "testSchema.employees",
-            "namespace": "bigquery",
-            "facets": {
-                "schema": {
-                    "fields": [
-                        {"name": "employee_id", "type": "INT64"},
-                        {"name": "first_name", "type": "STRING"},
-                        {"name": "last_name", "type": "STRING"},
-                        {"name": "email", "type": "STRING"},
-                        {"name": "salary", "type": "FLOAT64"},
-                        {"name": "hire_date", "type": "TIMESTAMP"},
-                        {"name": "department_id", "type": "INT64"},
-                        {"name": "is_active", "type": "BOOLEAN"},
-                    ]
-                }
-            },
-        }
-
-        result = self.open_lineage_source.get_create_table_request(table_data)
-
-        # Assertions
-        self.assertIsInstance(result, Either)
-        self.assertIsNone(result.left)
-        self.assertIsNotNone(result.right)
-
-        create_request = result.right
-        self.assertIsInstance(create_request, CreateTableRequest)
-        self.assertEqual(create_request.name.root, "employees")
-        self.assertEqual(create_request.databaseSchema.root, "testService.testDatabase.testSchema")
-        self.assertEqual(len(create_request.columns), 8)
-
-        # Verify all columns are created with correct types
-        expected_columns = [
-            ("employee_id", "BIGINT", "INT64"),
-            ("first_name", "STRING", "STRING"),
-            ("last_name", "STRING", "STRING"),
-            ("email", "STRING", "STRING"),
-            ("salary", "DOUBLE", "FLOAT64"),
-            ("hire_date", "TIMESTAMP", "TIMESTAMP"),
-            ("department_id", "BIGINT", "INT64"),
-            ("is_active", "BOOLEAN", "BOOLEAN"),
-        ]
-
-        for i, (expected_name, expected_type, expected_type_display) in enumerate(expected_columns):
-            self.assertEqual(create_request.columns[i].name.root, expected_name)
-            self.assertEqual(create_request.columns[i].dataType.value, expected_type)
-            self.assertEqual(create_request.columns[i].dataTypeDisplay, expected_type_display)
-
-    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
-    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om")
-    def test_get_create_table_request_schema_not_found_returns_none(self, mock_get_schema_fqn, mock_get_table_fqn):
-        """Schema not found in any configured service — returns None without raising."""
-        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
-        mock_get_schema_fqn.side_effect = FQNNotFoundException("Schema not found")
-        table_data = {
-            "name": "unknown_schema.employees",
-            "namespace": "bigquery",
-            "facets": {},
-        }
-
-        result = self.open_lineage_source.get_create_table_request(table_data)
-
-        assert result is None
-
-    def test_table_already_registered_scopes_to_namespace_services(self):
-        """The existence check is scoped to the services the namespace maps to."""
-
-        def fqn_from_om(table_details, services=None):
-            if services == ["svc-a"]:
-                return "svc-a.schema.tbl"
-            raise FQNNotFoundException("not found")
-
-        with (
-            patch.object(
-                self.open_lineage_source,
-                "_resolve_db_services_for_namespace",
-                return_value=["svc-a"],
-            ),
-            patch.object(self.open_lineage_source, "_get_table_fqn_from_om", side_effect=fqn_from_om),
-        ):
-            registered = self.open_lineage_source._table_already_registered(
-                TableDetails(name="tbl", schema="schema"), "trino://host"
-            )
-        self.assertTrue(registered)
-
-    def test_table_already_registered_treats_ambiguous_match_as_registered(self):
-        """A table found in several services still counts as already registered."""
-        with (
-            patch.object(self.open_lineage_source, "_resolve_db_services_for_namespace", return_value=None),
-            patch.object(
-                self.open_lineage_source,
-                "_get_table_fqn_from_om",
-                side_effect=AmbiguousServiceException("multiple"),
-            ),
-        ):
-            registered = self.open_lineage_source._table_already_registered(
-                TableDetails(name="tbl", schema="schema"), "trino://host"
-            )
-        self.assertTrue(registered)
-
-    def test_safe_schema_fqn_scopes_to_namespace_services(self):
-        """Schema lookup is scoped to the services the namespace maps to."""
-
-        def schema_from_om(schema, services=None):
-            if services == ["svc-a"]:
-                return "svc-a.db.schema"
-            raise FQNNotFoundException("not found")
-
-        with (
-            patch.object(
-                self.open_lineage_source,
-                "_resolve_db_services_for_namespace",
-                return_value=["svc-a"],
-            ),
-            patch.object(self.open_lineage_source, "_get_schema_fqn_from_om", side_effect=schema_from_om),
-        ):
-            result = self.open_lineage_source._safe_schema_fqn("schema", "trino://host")
-        self.assertEqual(result, "svc-a.db.schema")
-
     @patch("confluent_kafka.Consumer")
     def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns COMPLETE events"""
@@ -1526,7 +1395,6 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_get_table_fqn",
                 return_value="db-service.public.output_table",
             ),
-            patch.object(self.open_lineage_source, "get_create_table_request", return_value=None),
         ]
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
@@ -1809,11 +1677,6 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_get_table_fqn",
                 return_value="db-service.public.some_table",
             ),
-            patch.object(
-                self.open_lineage_source,
-                "get_create_table_request",
-                return_value=None,
-            ),
         ):
             # Empty messaging services list — no broker match for unknown-broker
             mock_metadata.list_all_entities.return_value = iter([])
@@ -2004,11 +1867,6 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_get_table_fqn",
                 return_value="db-service.public.source_table",
             ),
-            patch.object(
-                self.open_lineage_source,
-                "get_create_table_request",
-                return_value=None,
-            ),
         ]
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
@@ -2070,11 +1928,6 @@ class OpenLineageUnitTest(unittest.TestCase):
                 self.open_lineage_source,
                 "_get_table_fqn",
                 return_value="db-service.public.target_table",
-            ),
-            patch.object(
-                self.open_lineage_source,
-                "get_create_table_request",
-                return_value=None,
             ),
         ]
 

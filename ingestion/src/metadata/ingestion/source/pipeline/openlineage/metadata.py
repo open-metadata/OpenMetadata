@@ -25,11 +25,9 @@ from urllib.parse import quote, urlparse
 from cachetools import LRUCache
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     KafkaBrokerConfig,
@@ -57,7 +55,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -488,20 +485,15 @@ class OpenlineageSource(PipelineServiceSource):
 
         try:
             resolved_services = self._resolve_db_services_for_namespace(namespace)
-
             try:
                 return self._get_table_fqn_from_om(table_details, services=resolved_services)
             except FQNNotFoundException:
-                try:
-                    schema_fqn = self._get_schema_fqn_from_om(table_details.schema, services=resolved_services)
-                    return f"{schema_fqn}.{table_details.name}"  # noqa: TRY300
-                except FQNNotFoundException:
-                    logger.debug(
-                        f"Table '{table_details.name}' in schema '{table_details.schema}' "
-                        f"not found in services {resolved_services or self.get_db_service_names()}. "
-                        "Skipping lineage edge."
-                    )
-                    return None
+                logger.debug(
+                    f"Table '{table_details.name}' in schema '{table_details.schema}' "
+                    f"not found in services {resolved_services or self.get_db_service_names()}. "
+                    "Skipping lineage edge."
+                )
+                return None
         except Exception:
             logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
             return None
@@ -605,35 +597,6 @@ class OpenlineageSource(PipelineServiceSource):
             logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
             return None
 
-    def _get_schema_fqn_from_om(self, schema: str, services: Optional[List[str]] = None) -> Optional[str]:  # noqa: UP006, UP045
-        """
-        Based on partial schema name look for any matching DatabaseSchema object in open metadata.
-
-        :param schema: schema name
-        :param services: optional list of service names to search
-        :return: fully qualified name of a DatabaseSchema in Open Metadata
-        """
-        result = None
-        services = services or self.get_db_service_names()
-
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=db_service,
-                database_name=None,
-                schema_name=schema,
-                skip_es_search=False,
-            )
-
-            if result:
-                return result
-
-        if not result:
-            raise FQNNotFoundException(f"Schema '{schema}' not found in services: {services}")
-
-        return result
-
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
@@ -666,96 +629,6 @@ class OpenlineageSource(PipelineServiceSource):
         :return: Open Lineage event if matches one of the event_types, otherwise None
         """
         return event if event.event_type in event_types else {}
-
-    @classmethod
-    def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:  # noqa: UP006, UP045
-        """
-
-        :param table_input:
-        :return:
-        """
-        try:
-            fields = table_input["facets"]["schema"]["fields"]
-
-            columns = [
-                Column(
-                    name=f.get("name"),
-                    dataTypeDisplay=f.get("type").upper(),
-                    dataType=ColumnTypeParser.get_column_type(f.get("type").upper()),
-                )
-                for f in fields
-            ]
-            return columns  # noqa: RET504, TRY300
-        except KeyError:
-            return None
-
-    def get_create_table_request(self, table: Dict) -> Optional[Either]:  # noqa: UP006, UP045
-        """
-        If certain table from Open Lineage events doesn't already exist in Open Metadata, register appropriate entity.
-        This makes sense especially for output facet of OpenLineage event - as database service ingestion is a scheduled
-        process we might fall into situation where we received Open Lineage event about creation of a table that is yet
-        to be ingested by database service ingestion process. To avoid missing on such lineage scenarios, we will create
-        table entity beforehand.
-
-        :param table: single object from inputs/outputs facet
-        :return: request to create the entity (if needed)
-        """
-        if not self.get_db_service_names():
-            return None
-
-        candidates = self._iter_table_candidates(table)
-        if not candidates:
-            return None
-
-        if any(self._table_already_registered(details, namespace) for details, namespace in candidates):
-            return None
-
-        for details, namespace in candidates:
-            schema_fqn = self._safe_schema_fqn(details.schema, namespace)
-            if schema_fqn:
-                request = CreateTableRequest(
-                    name=details.name,
-                    columns=OpenlineageSource._get_om_table_columns(table) or [],
-                    databaseSchema=schema_fqn,
-                )
-                return Either(right=request)
-
-        logger.warning(
-            f"OpenLineage dataset '{self._get_ol_table_name(table)}' could not be "
-            f"registered: no schema for candidate(s) "
-            f"{[d.schema for d, _ in candidates]} found in configured services "
-            f"{self.get_db_service_names()}. Skipping table creation."
-        )
-        return None
-
-    def _table_already_registered(self, table_details: TableDetails, namespace: str) -> bool:
-        """
-        Whether the table is already present in OpenMetadata.
-
-        Resolution is scoped to the services the candidate's namespace maps
-        to, so it stays consistent with namespace-aware lineage resolution.
-        An ambiguous match means the table exists in several services, which
-        still counts as already registered.
-        """
-        services = self._resolve_db_services_for_namespace(namespace)
-        try:
-            return bool(self._get_table_fqn_from_om(table_details, services=services))
-        except FQNNotFoundException:
-            return False
-        except AmbiguousServiceException:
-            return True
-
-    def _safe_schema_fqn(self, schema: str, namespace: str) -> Optional[str]:  # noqa: UP045
-        """
-        Resolve a schema FQN, scoped to the candidate namespace's services.
-
-        Returns None when the schema is not found in any of those services.
-        """
-        services = self._resolve_db_services_for_namespace(namespace)
-        try:
-            return self._get_schema_fqn_from_om(schema, services=services)
-        except FQNNotFoundException:
-            return None
 
     @classmethod
     def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
@@ -994,11 +867,6 @@ class OpenlineageSource(PipelineServiceSource):
             for entity_data in entities:
                 entity_details = self._get_entity_details(entity_data)
                 if entity_details.entity_type == "table":
-                    create_table_request = self.get_create_table_request(entity_data)
-
-                    if create_table_request:
-                        yield create_table_request
-
                     resolved = self._resolve_table(entity_data)
 
                     if resolved:
