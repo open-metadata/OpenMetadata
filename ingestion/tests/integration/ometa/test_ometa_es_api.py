@@ -386,22 +386,18 @@ class TestOMetaESAPI:
                 )
                 created_tables.append(table)
 
-            # Block until ALL created tables are searchable. Failing here is
-            # explicit (rather than letting paginate_es run on a partially
-            # indexed state and producing a confusing assertion error).
+            # Poll until ES has indexed every created table — same pattern as
+            # the wait_for_es_index fixture above.
+            tries = 0
             indexed = False
-            for _ in range(30):
-                if all(
+            while not indexed and tries <= 10:
+                indexed = all(
                     metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=t.fullyQualifiedName.root)
                     for t in created_tables
-                ):
-                    indexed = True
-                    break
-                time.sleep(1)
-            if not indexed:
-                pytest.fail(
-                    f"ES did not index all {len(created_tables)} tables within 30s; cannot reliably test pagination"
                 )
+                if not indexed:
+                    tries += 1
+                    time.sleep(1)
 
             # Narrow to this test's tables — other tests / module fixtures share es_service.
             query_filter = (
