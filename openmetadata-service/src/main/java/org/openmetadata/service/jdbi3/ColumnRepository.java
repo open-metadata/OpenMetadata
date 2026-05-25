@@ -132,21 +132,31 @@ public class ColumnRepository {
   }
 
   public Column getColumnByFQN(
-      SecurityContext securityContext, String columnFQN, String entityType, String fieldsParam) {
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      String fieldsParam,
+      Include include) {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
     validateEntityType(entityType);
     String parentFQN = extractParentFQN(columnFQN, entityType);
     return switch (entityType) {
-      case TABLE -> fetchTableColumnByFQN(columnFQN, parentFQN, fieldsParam, securityContext);
-      case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(columnFQN, parentFQN);
+      case TABLE -> fetchTableColumnByFQN(
+          columnFQN, parentFQN, fieldsParam, include, securityContext);
+      case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(
+          columnFQN, parentFQN, fieldsParam, include);
       default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
     };
   }
 
   private Column fetchTableColumnByFQN(
-      String columnFQN, String parentFQN, String fieldsParam, SecurityContext securityContext) {
+      String columnFQN,
+      String parentFQN,
+      String fieldsParam,
+      Include include,
+      SecurityContext securityContext) {
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table table = tableRepo.findByName(parentFQN, Include.NON_DELETED);
+    Table table = tableRepo.findByName(parentFQN, include);
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
     Column column =
         findColumnInHierarchy(table.getColumns(), columnFQN)
@@ -156,14 +166,17 @@ public class ColumnRepository {
         table, column, fieldsParam, authorizer, securityContext);
   }
 
-  private Column fetchDataModelColumnByFQN(String columnFQN, String parentFQN) {
+  private Column fetchDataModelColumnByFQN(
+      String columnFQN, String parentFQN, String fieldsParam, Include include) {
     DashboardDataModelRepository dataModelRepo =
         (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
-    DashboardDataModel dataModel = dataModelRepo.findByName(parentFQN, Include.NON_DELETED);
+    DashboardDataModel dataModel = dataModelRepo.findByName(parentFQN, include);
     setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
-    return findColumnInHierarchy(dataModel.getColumns(), columnFQN)
-        .orElseThrow(
-            () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    Column column =
+        findColumnInHierarchy(dataModel.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    return dataModelRepo.enrichSingleColumnFields(dataModel, column, fieldsParam);
   }
 
   public Column updateColumnByFQN(

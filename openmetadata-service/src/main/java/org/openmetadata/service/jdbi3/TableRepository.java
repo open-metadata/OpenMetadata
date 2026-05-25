@@ -2967,24 +2967,23 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam == null) {
       return column;
     }
-    Set<String> fields = Set.of(fieldsParam.split(","));
     List<Column> singleton = new ArrayList<>(List.of(column));
-    if (fields.contains("tags")) {
+    if (fieldsParam.contains("tags")) {
       populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
     }
-    if (fields.contains("customMetrics")) {
+    if (fieldsParam.contains("customMetrics")) {
       column.setCustomMetrics(getCustomMetrics(table, column.getName()));
     }
-    if (fields.contains("extension")) {
+    if (fieldsParam.contains("extension")) {
       column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
     }
-    if (fields.contains("profile")) {
+    if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
-      populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
-      singleton =
-          PIIMasker.getTableProfile(
-              table.getFullyQualifiedName(), singleton, authorizer, securityContext);
-      return singleton.isEmpty() ? column : singleton.get(0);
+      if (!fieldsParam.contains("tags")) {
+        populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+      }
+      PIIMasker.getTableProfile(
+          table.getFullyQualifiedName(), singleton, authorizer, securityContext);
     }
     return column;
   }

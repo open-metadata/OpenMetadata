@@ -46,6 +46,7 @@ import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.GroupedColumnsResponse;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -122,8 +123,15 @@ public class ColumnResource {
                   "Fields to include in the response (comma-separated). Supported: tags, customMetrics, extension, profile",
               schema = @Schema(type = "string", example = "tags,customMetrics,extension,profile"))
           @QueryParam("fields")
-          String fieldsParam) {
-    Column column = repository.getColumnByFQN(securityContext, fqn, entityType, fieldsParam);
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    Column column =
+        repository.getColumnByFQN(securityContext, fqn, entityType, fieldsParam, include);
     return Response.ok(column).build();
   }
 
