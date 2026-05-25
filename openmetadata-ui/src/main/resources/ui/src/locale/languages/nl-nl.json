@@ -722,6 +722,7 @@
     "edit-workflow-agent": "{{workflow}} Agent bewerken",
     "edited": "Bewerkt",
     "edited-columns": "Bewerkte kolommen",
+    "editor": "Editor",
     "effect": "Effect",
     "elastic-search-re-index": "Elasticsearch opnieuw indexeren",
     "elasticsearch": "Elasticsearch",

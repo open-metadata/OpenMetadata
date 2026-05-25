@@ -35,6 +35,7 @@ export interface MemoryItem {
 }
 
 export type MemoryFilterTab =
+  | ''
   | 'all'
   | 'created-by-me'
   | 'pinned'
@@ -56,7 +57,6 @@ export interface MemoryActionsProps {
   memory: MemoryItem;
   onDeleteMemory?: (memory: MemoryItem) => void;
   onEditMemory?: (memory: MemoryItem) => void;
-  onViewMemory?: (memory: MemoryItem) => void;
 }
 
 export interface MemoryActionsWithOpenProps extends MemoryActionsProps {

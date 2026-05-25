@@ -82,7 +82,6 @@ test.describe('Isolated nodes + relation filter combo', () => {
     page,
   }) => {
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
     await applyRelationTypeFilter(page, 'Synonym');
 
     await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
@@ -93,10 +92,8 @@ test.describe('Isolated nodes + relation filter combo', () => {
     page,
   }) => {
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
     await applyRelationTypeFilter(page, 'Synonym');
     await applyRelationTypeFilter(page, 'Synonym');
-    await waitForGraphLoaded(page);
 
     await expect(
       page.getByTestId('ontology-graph-no-relations')
@@ -110,11 +107,9 @@ test.describe('Isolated nodes + relation filter combo', () => {
     page,
   }) => {
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
     await applyRelationTypeFilter(page, 'Synonym');
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
 
     await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
   });
