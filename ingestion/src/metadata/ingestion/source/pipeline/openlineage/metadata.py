@@ -881,7 +881,6 @@ class OpenlineageSource(PipelineServiceSource):
                             )
                         else:
                             logger.warning(f"Table entity not found for: {resolved.fqn}")
-                            self.status.warning(resolved.fqn, "Table entity not found in OpenMetadata")
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
@@ -900,10 +899,6 @@ class OpenlineageSource(PipelineServiceSource):
                             f"with broker: {entity_details.topic_details.broker_hostname}. "
                             f"Ensure the topic exists in OpenMetadata and the messaging service "
                             f"has matching bootstrapServers."
-                        )
-                        self.status.warning(
-                            entity_details.topic_details.name,
-                            "Topic entity not found in OpenMetadata",
                         )
 
         column_lineage = self._get_column_lineage(inputs, outputs)
