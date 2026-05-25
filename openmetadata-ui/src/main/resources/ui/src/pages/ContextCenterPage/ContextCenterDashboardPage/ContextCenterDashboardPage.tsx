@@ -53,7 +53,7 @@ import {
   knowledgePageToArticleItem,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const RECENT_ARTICLES_LIMIT = 20;
 const RECENT_DOCUMENTS_LIMIT = 20;
@@ -105,6 +105,11 @@ const ContextCenterDashboardPage: FC = () => {
           tags,
         };
         const response = await postKnowledgePage(data);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.quick-link'),
+          })
+        );
         setArticles((prev) => [
           knowledgePageToArticleItem(response, t('label.untitled')),
           ...prev,

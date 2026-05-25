@@ -54,7 +54,7 @@ import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
@@ -68,6 +68,7 @@ const ContextCenterArticlesPage = () => {
   const USERId = currentUser?.id ?? '';
   const { getResourcePermission } = usePermissionProvider();
   const { getResourceLimit } = useLimitStore();
+  const { alert } = useAlertStore();
   const knowledgeCenterPageRef = useRef<KnowledgeCenterPageRef>(null);
   const knowledgePagesHierarchyRef = useRef<KnowledgePagesHierarchyRef>(null);
 
@@ -144,6 +145,11 @@ const ContextCenterArticlesPage = () => {
       };
       const response = await postKnowledgePage(data);
       knowledgeCenterPageRef.current?.addKnowledgePage(response);
+      showSuccessToast(
+        t('message.entity-saved-successfully', {
+          entity: t('label.quick-link'),
+        })
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
