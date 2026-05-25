@@ -306,3 +306,43 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE (nameHash)
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
+
+-- =====================================================
+-- GOVERNANCE WORKFLOWS — batch entity processing + scheduleRunId
+-- (PR #26715 / ram/workflow-improvements)
+-- =====================================================
+
+-- Add composite index on change_event(entityType, offset) for efficient incremental
+-- change-event-driven workflow processing (filters by entityType + offset range).
+CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (entitytype, "offset");
+
+-- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
+-- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
+ALTER TABLE change_event_consumers ALTER COLUMN id TYPE VARCHAR(500);
+
+-- Add scheduleRunId column and index to workflow_instance_time_series
+ALTER TABLE workflow_instance_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS ((json ->> 'scheduleRunId')) STORED;
+CREATE INDEX idx_workflow_instance_schedule_run_id
+    ON workflow_instance_time_series (scheduleRunId);
+
+-- Add scheduleRunId column and index to workflow_instance_state_time_series
+ALTER TABLE workflow_instance_state_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS ((json ->> 'scheduleRunId')) STORED;
+CREATE INDEX idx_workflow_instance_state_schedule_run_id
+    ON workflow_instance_state_time_series (scheduleRunId);
+
+-- Rewrite entityLink: event-based/no-op instances (no scheduleRunId) store entityList[0];
+-- batch instances (scheduleRunId present) store NULL — query them by scheduleRunId instead.
+ALTER TABLE workflow_instance_time_series DROP COLUMN entityLink;
+ALTER TABLE workflow_instance_time_series
+ADD COLUMN entityLink TEXT GENERATED ALWAYS AS (
+    CASE WHEN json ->> 'scheduleRunId' IS NULL
+    THEN COALESCE(
+        (json -> 'variables' -> 'global_entityList' ->> 0),
+        (json -> 'variables' ->> 'global_relatedEntity')
+    )
+    ELSE NULL END
+) STORED;

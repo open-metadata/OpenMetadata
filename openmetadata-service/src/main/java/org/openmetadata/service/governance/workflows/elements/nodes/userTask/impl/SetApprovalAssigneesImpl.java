@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -53,9 +52,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // Get the entity
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+              WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst());
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityLink.getEntityType());
       boolean entitySupportsReviewers = entityRepository.isSupportsReviewers();
       String relationshipFields =

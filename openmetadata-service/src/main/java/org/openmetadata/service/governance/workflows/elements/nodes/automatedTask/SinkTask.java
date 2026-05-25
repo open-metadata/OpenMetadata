@@ -156,10 +156,10 @@ public class SinkTask implements NodeInterface {
     Map<String, String> inputNamespaceMap = new HashMap<>();
     if (nodeDefinition.getInputNamespaceMap() != null) {
       @SuppressWarnings("unchecked")
-      Map<String, String> converted =
+      Map<String, String> definedNamespaceMap =
           JsonUtils.convertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
-      if (converted != null) {
-        inputNamespaceMap.putAll(converted);
+      if (definedNamespaceMap != null) {
+        inputNamespaceMap.putAll(definedNamespaceMap);
       }
     }
     // Always include entityList mapping for batch sink support

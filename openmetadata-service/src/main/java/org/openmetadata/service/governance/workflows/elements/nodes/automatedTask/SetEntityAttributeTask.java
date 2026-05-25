@@ -1,8 +1,11 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.HashMap;
+import java.util.Map;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -36,15 +39,23 @@ public class SetEntityAttributeTask implements NodeInterface {
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
+    Map<String, String> inputNamespaceMap = new HashMap<>();
+    if (nodeDefinition.getInputNamespaceMap() != null) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> definedNamespaceMap =
+          JsonUtils.convertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+      if (definedNamespaceMap != null) {
+        inputNamespaceMap.putAll(definedNamespaceMap);
+      }
+    }
+    inputNamespaceMap.putIfAbsent(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
+
     ServiceTask setEntityAttribute =
         getSetEntityAttributeServiceTask(
             subProcessId,
             nodeDefinition.getConfig().getFieldName(),
             nodeDefinition.getConfig().getFieldValue(),
-            JsonUtils.pojoToJson(
-                nodeDefinition.getInputNamespaceMap() != null
-                    ? nodeDefinition.getInputNamespaceMap()
-                    : new HashMap<>()));
+            JsonUtils.pojoToJson(inputNamespaceMap));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();

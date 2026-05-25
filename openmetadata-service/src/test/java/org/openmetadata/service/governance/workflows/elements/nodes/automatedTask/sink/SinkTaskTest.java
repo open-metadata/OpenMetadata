@@ -364,7 +364,7 @@ class SinkTaskTest {
             }
           },
           "inputNamespaceMap": {
-            "relatedEntity": "global"
+            "entityList": "global"
           }
         }
         """
@@ -402,7 +402,7 @@ class SinkTaskTest {
             }
           },
           "inputNamespaceMap": {
-            "relatedEntity": "global"
+            "entityList": "global"
           }
         }
         """;

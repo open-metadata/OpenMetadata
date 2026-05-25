@@ -16,7 +16,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -119,9 +118,7 @@ public class CreateTask implements TaskListener {
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+              WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst());
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
@@ -436,6 +433,14 @@ public class CreateTask implements TaskListener {
         requestedTaskId, workflowManagedDraftTask, existingTask)) {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
       return null;
+    }
+    // When no task was found by the workflow-instance ID, check for a pre-existing open task for
+    // the same entity + workflow definition. Re-using it prevents duplicate open tasks when the
+    // same workflow fires again for an entity that already has a pending approval task.
+    if (existingTask == null && resolvedWorkflowDefinitionId != null) {
+      existingTask =
+          taskRepository.findActiveByAboutAndWorkflowDefinition(
+              entity.getFullyQualifiedName(), resolvedWorkflowDefinitionId);
     }
     if (existingTask != null) {
       LOG.info(

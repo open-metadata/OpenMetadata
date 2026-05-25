@@ -15,7 +15,7 @@
       "include": [],
       "filter": {}
     },
-    "output": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"]
+    "output": ["entityList", "updatedBy", "triggeringObjectId", "recognizerFeedback"]
   },
   "nodes": [
     {
@@ -37,9 +37,9 @@
         "approvalThreshold": 1,
         "rejectionThreshold": 1
       },
-      "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
+      "input": ["entityList", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
-        "relatedEntity": "global",
+        "entityList": "global",
         "updatedBy": "global",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
@@ -50,9 +50,9 @@
       "subType": "applyRecognizerFeedbackTask",
       "name": "ApplyApprovedFeedback",
       "displayName": "Apply Feedback (Approved)",
-      "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
+      "input": ["entityList", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
-        "relatedEntity": "global",
+        "entityList": "global",
         "updatedBy": "global",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
@@ -63,9 +63,9 @@
       "subType": "rejectRecognizerFeedbackTask",
       "name": "RejectFeedback",
       "displayName": "Reject Feedback",
-      "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
+      "input": ["entityList", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
-        "relatedEntity": "global",
+        "entityList": "global",
         "updatedBy": "global",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"

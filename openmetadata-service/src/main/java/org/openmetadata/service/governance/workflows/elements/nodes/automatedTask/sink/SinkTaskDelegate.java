@@ -13,14 +13,13 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink;
 
-import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import com.google.common.collect.Lists;
+import io.github.resilience4j.retry.Retry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,23 +33,15 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Flowable delegate that executes sink operations within a workflow.
  *
- * <p>This delegate supports two modes:
- *
- * <ul>
- *   <li><b>Single entity mode:</b> Processes one entity at a time (event-based workflows)
- *   <li><b>Batch mode:</b> Processes all entities in the batch at once (periodic batch workflows
- *       with batchMode=true in sink config)
- * </ul>
- *
- * <p>When batchMode is enabled in the sink config, the trigger automatically configures single
- * execution mode (cardinality=1), ensuring only one workflow instance processes the entire batch.
+ * <p>Always reads from {@code ENTITY_LIST_VARIABLE}. When {@code batchMode=true} and the sink
+ * provider supports batching, all entities are written in a single batch call. Otherwise each
+ * entity is written individually.
  */
 @Slf4j
 public class SinkTaskDelegate implements JavaDelegate {
@@ -95,16 +86,8 @@ public class SinkTaskDelegate implements JavaDelegate {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
-      // Check if we have an entity list for batch processing
-      String entityListNamespace = inputNamespaceMap.get(ENTITY_LIST_VARIABLE);
-      List<String> entityList = null;
-      if (entityListNamespace != null) {
-        Object entityListObj =
-            varHandler.getNamespacedVariable(entityListNamespace, ENTITY_LIST_VARIABLE);
-        if (entityListObj instanceof List) {
-          entityList = (List<String>) entityListObj;
-        }
-      }
+      List<String> entityList =
+          WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler);
 
       // Get the sink provider from registry
       sinkProvider =
@@ -134,16 +117,10 @@ public class SinkTaskDelegate implements JavaDelegate {
 
       SinkResult result;
 
-      // Determine execution mode: batch or single entity
-      if (batchMode
-          && entityList != null
-          && !entityList.isEmpty()
-          && sinkProvider.supportsBatch()) {
-        // Batch mode: process all entities at once (single workflow instance)
+      if (batchMode && !entityList.isEmpty() && sinkProvider.supportsBatch()) {
         result = executeBatchMode(context, sinkProvider, entityList);
       } else {
-        // Single entity mode: process one entity
-        result = executeSingleEntityMode(context, sinkProvider, inputNamespaceMap, varHandler);
+        result = executeListMode(context, sinkProvider, entityList);
       }
 
       // Set output variables
@@ -223,6 +200,8 @@ public class SinkTaskDelegate implements JavaDelegate {
       }
     }
 
+    Retry batchFetchRetry = Retry.of("sink-batch-fetch", Workflow.TASK_RETRY_CONFIG);
+
     // Process entities in sub-batches using Guava's partition
     BatchAccumulator result =
         Lists.partition(entityLinks, MAX_ENTITIES_PER_FETCH_BATCH).stream()
@@ -234,23 +213,32 @@ public class SinkTaskDelegate implements JavaDelegate {
                       context.getWorkflowName(),
                       subBatch.size());
 
-                  // Fetch entities for this sub-batch
+                  // Fetch entities for this sub-batch in a single batch query
                   List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
+                  Map<String, EntityInterface> entityMap;
+                  try {
+                    entityMap =
+                        Retry.decorateSupplier(
+                                batchFetchRetry,
+                                () -> Entity.getEntitiesByLinks(subBatch, "*", Include.ALL))
+                            .get();
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Failed to batch fetch sub-batch of {} entities after retries",
+                        subBatch.size(),
+                        e);
+                    entityMap = Map.of();
+                  }
                   List<EntityInterface> entities = new ArrayList<>();
                   for (String entityLinkStr : subBatch) {
-                    try {
-                      var entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-                      String fields =
-                          String.join(
-                              ",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
-                      entities.add(Entity.getEntity(entityLink, fields, Include.ALL));
-                    } catch (Exception e) {
-                      LOG.error("Failed to fetch entity: {}", entityLinkStr, e);
+                    EntityInterface entity = entityMap.get(entityLinkStr);
+                    if (entity != null) {
+                      entities.add(entity);
+                    } else {
                       fetchErrors.add(
                           SinkResult.SinkError.builder()
                               .entityFqn(entityLinkStr)
-                              .errorMessage("Failed to fetch entity: " + e.getMessage())
-                              .cause(e)
+                              .errorMessage("Failed to fetch entity")
                               .build());
                     }
                   }
@@ -279,29 +267,72 @@ public class SinkTaskDelegate implements JavaDelegate {
         .build();
   }
 
-  /** Execute sink in single entity mode - process one entity at a time. */
-  private SinkResult executeSingleEntityMode(
-      SinkContext context,
-      SinkProvider sinkProvider,
-      Map<String, String> inputNamespaceMap,
-      WorkflowVariableHandler varHandler) {
+  private SinkResult executeListMode(
+      SinkContext context, SinkProvider sinkProvider, List<String> entityList) {
+    int syncedCount = 0;
+    int failedCount = 0;
+    List<String> syncedEntities = new ArrayList<>();
+    List<SinkResult.SinkError> errors = new ArrayList<>();
 
-    // Get entity from workflow context
-    String relatedEntityNamespace = inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
-    String relatedEntityValue =
-        (String) varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
+    Map<String, EntityInterface> entityMap;
+    try {
+      entityMap =
+          Retry.decorateSupplier(
+                  Retry.of("sink-list-fetch", Workflow.TASK_RETRY_CONFIG),
+                  () -> Entity.getEntitiesByLinks(entityList, "*", Include.ALL))
+              .get();
+    } catch (Exception e) {
+      LOG.error(
+          "[{}] Batch fetch failed for {} entities after retries",
+          context.getWorkflowName(),
+          entityList.size(),
+          e);
+      entityMap = Map.of();
+    }
 
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
-    String fields =
-        String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
-    EntityInterface entity = Entity.getEntity(entityLink, fields, Include.ALL);
+    Retry retry = Retry.of("sink-list-write", Workflow.TASK_RETRY_CONFIG);
 
-    LOG.info(
-        "[{}] Executing single entity sink for: {}",
-        context.getWorkflowName(),
-        entity.getFullyQualifiedName());
+    for (String entityLinkStr : entityList) {
+      EntityInterface entity = entityMap.get(entityLinkStr);
+      if (entity == null) {
+        LOG.error("[{}] Failed to fetch entity: {}", context.getWorkflowName(), entityLinkStr);
+        failedCount++;
+        errors.add(
+            SinkResult.SinkError.builder()
+                .entityFqn(entityLinkStr)
+                .errorMessage("Failed to fetch entity")
+                .build());
+        continue;
+      }
+      try {
+        SinkResult entityResult =
+            Retry.decorateSupplier(retry, () -> sinkProvider.write(context, entity)).get();
+        syncedCount += entityResult.getSyncedCount();
+        failedCount += entityResult.getFailedCount();
+        if (entityResult.getSyncedEntities() != null) {
+          syncedEntities.addAll(entityResult.getSyncedEntities());
+        }
+        if (entityResult.getErrors() != null) {
+          errors.addAll(entityResult.getErrors());
+        }
+      } catch (Exception e) {
+        LOG.error("[{}] Failed to process entity: {}", context.getWorkflowName(), entityLinkStr, e);
+        failedCount++;
+        errors.add(
+            SinkResult.SinkError.builder()
+                .entityFqn(entity.getFullyQualifiedName())
+                .errorMessage("Failed to process entity: " + e.getMessage())
+                .cause(e)
+                .build());
+      }
+    }
 
-    // Execute single entity write
-    return sinkProvider.write(context, entity);
+    return SinkResult.builder()
+        .success(failedCount == 0)
+        .syncedCount(syncedCount)
+        .failedCount(failedCount)
+        .syncedEntities(syncedEntities.isEmpty() ? null : syncedEntities)
+        .errors(errors.isEmpty() ? null : errors)
+        .build();
   }
 }

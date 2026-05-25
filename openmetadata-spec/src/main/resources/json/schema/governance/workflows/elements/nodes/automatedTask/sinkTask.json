@@ -143,14 +143,14 @@
     "input": {
       "type": "array",
       "items": { "type": "string" },
-      "default": ["relatedEntity", "updatedBy"],
+      "default": ["entityList", "updatedBy"],
       "additionalItems": false,
       "minItems": 1
     },
     "inputNamespaceMap": {
       "type": "object",
       "properties": {
-        "relatedEntity": {
+        "entityList": {
           "type": "string",
           "default": "global"
         },
@@ -159,8 +159,8 @@
           "default": "global"
         }
       },
-      "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "additionalProperties": true,
+      "required": ["entityList"]
     },
     "output": {
       "title": "Output Variables",

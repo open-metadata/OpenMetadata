@@ -30,6 +30,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl;
 
 class PeriodicBatchEntityTriggerTest {
 
@@ -38,7 +39,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     assertNotNull(trigger);
     assertEquals("MainWorkflowTrigger", trigger.getTriggerWorkflowId());
@@ -49,7 +51,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, false);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, false, "MainWorkflow");
 
     assertNotNull(trigger);
     assertEquals("MainWorkflowTrigger", trigger.getTriggerWorkflowId());
@@ -60,12 +63,12 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
 
-    // Find the CallActivity
     CallActivity callActivity = findCallActivity(model);
     assertNotNull(callActivity, "CallActivity should exist in the process");
 
@@ -73,15 +76,19 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(loopChars, "Loop characteristics should be set");
 
     assertEquals(
-        "1", loopChars.getLoopCardinality(), "In single execution mode, cardinality should be 1");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "In single execution mode, should iterate over batches collection");
+    assertTrue(loopChars.isSequential(), "In single execution mode, cardinality should be 1");
   }
 
   @Test
-  void testMultipleExecutionMode_CardinalityIsVariable() {
+  void testMultipleExecutionMode_IteratesOverBatches() {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, false);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, false, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
@@ -90,11 +97,15 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(callActivity, "CallActivity should exist");
 
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "Loop characteristics should be set");
 
     assertEquals(
-        "${numberOfEntities}",
-        loopChars.getLoopCardinality(),
-        "In multiple execution mode, cardinality should be ${numberOfEntities}");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "In multiple execution mode, multiInstance should iterate over the batches collection");
+    assertFalse(
+        loopChars.isSequential(),
+        "In multiple execution mode, parallel execution should be enabled");
   }
 
   @Test
@@ -102,7 +113,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
@@ -110,7 +122,6 @@ class PeriodicBatchEntityTriggerTest {
     CallActivity callActivity = findCallActivity(model);
     assertNotNull(callActivity);
 
-    // Verify entityList is passed as input parameter
     List<IOParameter> inParams = callActivity.getInParameters();
     boolean hasEntityListParam =
         inParams.stream()
@@ -121,11 +132,12 @@ class PeriodicBatchEntityTriggerTest {
   }
 
   @Test
-  void testRelatedEntityParameterIsPassedToWorkflow() {
+  void testScheduleRunIdParameterIsPassedToWorkflow() {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
@@ -134,15 +146,11 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(callActivity);
 
     List<IOParameter> inParams = callActivity.getInParameters();
-    boolean hasRelatedEntityParam =
-        inParams.stream()
-            .anyMatch(
-                p ->
-                    "relatedEntity".equals(p.getSource())
-                        && p.getTarget().contains("relatedEntity"));
+    boolean hasScheduleRunIdParam =
+        inParams.stream().anyMatch(p -> p.getSource().contains("scheduleRunId"));
 
     assertTrue(
-        hasRelatedEntityParam, "relatedEntity should be passed as input parameter to workflow");
+        hasScheduleRunIdParam, "scheduleRunId should be passed as input parameter to workflow");
   }
 
   @Test
@@ -150,7 +158,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
@@ -159,18 +168,20 @@ class PeriodicBatchEntityTriggerTest {
 
     Process process = model.getProcesses().get(0);
 
-    // Verify start event exists
     boolean hasStartEvent =
         process.getFlowElements().stream().anyMatch(e -> e instanceof StartEvent);
     assertTrue(hasStartEvent, "Process should have a start event");
 
-    // Verify fetch entities service task exists
-    boolean hasFetchEntitiesTask =
+    boolean hasFetchChangeEventsTask =
         process.getFlowElements().stream()
-            .anyMatch(e -> e instanceof ServiceTask && e.getId().contains("fetchEntityTask"));
-    assertTrue(hasFetchEntitiesTask, "Process should have a fetch entities task");
+            .anyMatch(e -> e instanceof ServiceTask && e.getId().contains("fetchChangeEventsTask"));
+    assertTrue(hasFetchChangeEventsTask, "Process should have a fetch change events task");
 
-    // Verify call activity exists
+    boolean hasCommitOffsetTask =
+        process.getFlowElements().stream()
+            .anyMatch(e -> e instanceof ServiceTask && e.getId().contains("commitOffsetTask"));
+    assertTrue(hasCommitOffsetTask, "Process should have a commit offset task");
+
     boolean hasCallActivity =
         process.getFlowElements().stream().anyMatch(e -> e instanceof CallActivity);
     assertTrue(hasCallActivity, "Process should have a call activity");
@@ -181,14 +192,14 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinitionWithMultipleTypes();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
 
     assertEquals(3, model.getProcesses().size(), "Should create one process per entity type");
 
-    // Verify each process has the correct ID pattern
     List<String> processIds = model.getProcesses().stream().map(Process::getId).toList();
     assertTrue(
         processIds.stream().anyMatch(id -> id.contains("glossaryTerm")),
@@ -205,7 +216,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", triggerDef, true, "MainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
@@ -222,7 +234,8 @@ class PeriodicBatchEntityTriggerTest {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
-        new PeriodicBatchEntityTrigger("MyMainWorkflow", "MyMainWorkflowTrigger", triggerDef, true);
+        new PeriodicBatchEntityTrigger(
+            "MyMainWorkflow", "MyMainWorkflowTrigger", triggerDef, true, "MyMainWorkflow");
 
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);

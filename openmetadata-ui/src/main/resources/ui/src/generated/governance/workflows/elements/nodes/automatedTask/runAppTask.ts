@@ -51,5 +51,6 @@ export interface Config {
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
+    entityList: string;
+    [property: string]: any;
 }

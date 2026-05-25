@@ -1,8 +1,13 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -109,6 +114,87 @@ public class WorkflowVariableHandler {
         varValue,
         namespace);
     setNamespacedVariable(namespace, varName, varValue);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<String> getEntityList(
+      Map<String, ?> inputNamespaceMap, WorkflowVariableHandler varHandler) {
+    // Each inputNamespaceMap has exactly one entity list key — either the plain "entityList" or
+    // one conditional variant (e.g. "true_entityList", "false_entityList", "gold_entityList")
+    // produced by a preceding check/completeness node. Multiple *_entityList keys in the same map
+    // are not valid; only the first match found will be used.
+    for (Map.Entry<String, ?> entry : inputNamespaceMap.entrySet()) {
+      String key = entry.getKey();
+      String namespace = (String) entry.getValue();
+      if (key.endsWith("_" + ENTITY_LIST_VARIABLE) && namespace != null) {
+        Object obj = varHandler.getNamespacedVariable(namespace, key);
+        if (obj instanceof List) {
+          return (List<String>) obj;
+        }
+      }
+    }
+    String entityListNamespace = (String) inputNamespaceMap.get(ENTITY_LIST_VARIABLE);
+    if (entityListNamespace != null) {
+      Object obj = varHandler.getNamespacedVariable(entityListNamespace, ENTITY_LIST_VARIABLE);
+      if (obj instanceof List) {
+        return (List<String>) obj;
+      }
+    }
+    // Fallback for pre-migration instances that still carry relatedEntity (a plain String)
+    String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+    if (relatedEntityNamespace != null) {
+      Object obj =
+          varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
+      if (obj instanceof String entityLink) {
+        return List.of(entityLink);
+      }
+    }
+    LOG.debug(
+        "[WorkflowVariable] getEntityList: no entityList found in inputNamespaceMap keys={}",
+        inputNamespaceMap.keySet());
+    return List.of();
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<String> getEntityListFromVariables(
+      Map<String, ?> inputNamespaceMap, Map<String, Object> variables) {
+    for (Map.Entry<String, ?> entry : inputNamespaceMap.entrySet()) {
+      String key = entry.getKey();
+      String namespace = (String) entry.getValue();
+      if (key.endsWith("_" + ENTITY_LIST_VARIABLE) && namespace != null) {
+        Object obj = variables.get(getNamespacedVariableName(namespace, key));
+        if (obj instanceof List) {
+          return (List<String>) obj;
+        }
+      }
+    }
+    String entityListNamespace = (String) inputNamespaceMap.get(ENTITY_LIST_VARIABLE);
+    if (entityListNamespace != null) {
+      Object obj =
+          variables.get(getNamespacedVariableName(entityListNamespace, ENTITY_LIST_VARIABLE));
+      if (obj instanceof List) {
+        return (List<String>) obj;
+      }
+    }
+    String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+    if (relatedEntityNamespace != null) {
+      Object obj =
+          variables.get(getNamespacedVariableName(relatedEntityNamespace, RELATED_ENTITY_VARIABLE));
+      if (obj instanceof String entityLink) {
+        return List.of(entityLink);
+      }
+    }
+    return List.of();
+  }
+
+  public static String getUpdatedByFromVariables(
+      Map<String, ?> inputNamespaceMap, Map<String, Object> variables) {
+    String namespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
+    if (namespace == null) {
+      return null;
+    }
+    Object value = variables.get(getNamespacedVariableName(namespace, UPDATED_BY_VARIABLE));
+    return value instanceof String s ? s : null;
   }
 
   public void setFailure(boolean failure) {

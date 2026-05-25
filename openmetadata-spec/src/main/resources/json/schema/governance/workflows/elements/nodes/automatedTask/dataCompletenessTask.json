@@ -89,21 +89,20 @@
     "input": {
       "type": "array",
       "items": { "type": "string" },
-      "default": ["relatedEntity"],
+      "default": ["entityList"],
       "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
+      "minItems": 1
     },
     "inputNamespaceMap": {
       "type": "object",
       "properties": {
-        "relatedEntity": {
+        "entityList": {
           "type": "string",
           "default": "global"
         }
       },
-      "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "additionalProperties": true,
+      "required": ["entityList"]
     },
     "output": {
       "title": "Output Variables",
@@ -112,6 +111,11 @@
       "items": { "type": "string" },
       "default": ["completenessScore", "qualityBand", "filledFieldsCount", "totalFieldsCount", "missingFields", "filledFields", "result"],
       "additionalItems": false
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
     }
   },
   "required": ["name", "config"],

@@ -1,9 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -215,7 +215,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       EntityReference entityReference;
       try {
         entityReference =
-            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.NON_DELETED);
       } catch (EntityNotFoundException e) {
         // Entity was deleted between event creation and processing - skip workflow trigger
         LOG.debug(
@@ -229,9 +229,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       MessageParser.EntityLink entityLink =
           new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
 
+      String entityLinkString = entityLink.getLinkString();
       variables.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-          entityLink.getLinkString());
+          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE),
+          List.of(entityLinkString));
 
       // Set the updatedBy variable from the change event userName
       if (event.getUserName() != null) {
@@ -257,9 +258,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(Entity.TAG, entityReference.getFullyQualifiedName());
 
+    String entityLinkString = entityLink.getLinkString();
     variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-        entityLink.getLinkString());
+        getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE),
+        List.of(entityLinkString));
 
     variables.put(
         getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_OBJECT_ID_VARIABLE),

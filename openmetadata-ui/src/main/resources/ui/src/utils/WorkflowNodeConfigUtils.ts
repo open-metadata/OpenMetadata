@@ -179,26 +179,31 @@ export const configureNodeInputOutput = (
   }
 
   if (nodeType === NodeType.AutomatedTask) {
-    // Most automated tasks require input: ["relatedEntity", "updatedBy"]
-    // Exception: checkEntityAttributesTask and dataCompletenessTask only need ["relatedEntity"]
+    // Most automated tasks require input: ["entityList", "updatedBy"]
+    // Exception: checkEntityAttributesTask and dataCompletenessTask only need ["entityList"]
     if (
       subType === NodeSubType.CheckEntityAttributesTask ||
       subType === NodeSubType.CheckChangeDescriptionTask ||
       subType === NodeSubType.DataCompletenessTask
     ) {
-      config.input = ['relatedEntity'];
+      config.input = ['entityList'];
     } else {
-      config.input = ['relatedEntity', 'updatedBy'];
+      config.input = ['entityList', 'updatedBy'];
     }
 
     // Configure output based on subType
     if (subType === NodeSubType.CheckEntityAttributesTask) {
-      config.output = ['result'];
+      config.output = ['result', 'true_entityList', 'false_entityList'];
       config.branches = ['true', 'false'];
     } else if (subType === NodeSubType.CheckChangeDescriptionTask) {
-      config.output = ['result'];
+      config.output = ['result', 'true_entityList', 'false_entityList'];
       config.branches = ['true', 'false'];
     } else if (subType === NodeSubType.DataCompletenessTask) {
+      const qualityBands: Array<{ name: string }> =
+        nodeData.config?.qualityBands ?? nodeData.qualityBands ?? [];
+      const bandEntityListVars = qualityBands
+        .filter((b) => b.name)
+        .map((b) => `${b.name}_entityList`);
       config.output = [
         'completenessScore',
         'qualityBand',
@@ -207,6 +212,7 @@ export const configureNodeInputOutput = (
         'missingFields',
         'filledFields',
         'result',
+        ...bandEntityListVars,
       ];
     } else if (subType === NodeSubType.SinkTask) {
       config.output = ['syncResult', 'syncedCount', 'failedCount', 'result'];
@@ -218,7 +224,7 @@ export const configureNodeInputOutput = (
   }
 
   if (nodeType === NodeType.UserTask) {
-    config.input = ['relatedEntity'];
+    config.input = ['entityList'];
     config.output = ['updatedBy'];
     config.branches = ['true', 'false'];
 
@@ -265,8 +271,8 @@ export const configureInputNamespaceMap = (
 
   config.inputNamespaceMap = {};
 
-  if (config.input.includes('relatedEntity')) {
-    config.inputNamespaceMap.relatedEntity = 'global';
+  if (config.input.includes('entityList')) {
+    config.inputNamespaceMap.entityList = 'global';
   }
 
   if (config.input.includes('updatedBy')) {

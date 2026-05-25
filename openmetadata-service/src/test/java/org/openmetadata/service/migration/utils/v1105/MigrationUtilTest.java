@@ -279,7 +279,7 @@ class MigrationUtilTest {
                 "rules": "{\\"and\\":[{\\"!!\\":[{\\"var\\":\\"description\\"}]}]}"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global"
+                "entityList": "global"
               }
             },
             {
@@ -351,7 +351,7 @@ class MigrationUtilTest {
                 "rules": "{\\"and\\":[{\\"!!\\":[{\\"var\\":\\"description\\"}]}]}"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global"
+                "entityList": "global"
               }
             },
             {
@@ -364,7 +364,7 @@ class MigrationUtilTest {
                 "fieldValue": "In Review"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global"
+                "entityList": "global"
               }
             },
             {
@@ -395,7 +395,7 @@ class MigrationUtilTest {
                 "rules": "{\\"and\\":[{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}]}"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global"
+                "entityList": "global"
               }
             },
             {
@@ -408,7 +408,7 @@ class MigrationUtilTest {
                 "fieldValue": "In Review"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               }
             },
@@ -437,7 +437,7 @@ class MigrationUtilTest {
               "displayName": "Rollback Glossary Term Changes",
               "config": {},
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "ApprovalForUpdates"
               }
             },
@@ -451,7 +451,7 @@ class MigrationUtilTest {
                 "fieldValue": "Approved"
               },
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "ApprovalForUpdates"
               }
             },

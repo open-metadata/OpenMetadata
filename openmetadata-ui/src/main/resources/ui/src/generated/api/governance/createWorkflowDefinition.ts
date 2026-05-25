@@ -102,9 +102,9 @@ export interface Definition {
      * Name that identifies this Node.
      */
     name?:    string;
+    output?:  string[];
     subType?: string;
     type?:    string;
-    output?:  string[];
     [property: string]: any;
 }
 
@@ -277,8 +277,9 @@ export enum ResolutionType {
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
-    updatedBy?:    string;
+    entityList: string;
+    updatedBy?: string;
+    [property: string]: any;
 }
 
 /**

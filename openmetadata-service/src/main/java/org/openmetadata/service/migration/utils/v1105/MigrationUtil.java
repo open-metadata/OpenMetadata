@@ -148,7 +148,7 @@ public class MigrationUtil {
                                                                                                 "rules": "{\\"and\\":[{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}]}"
                                                                                               },
                                                                                               "inputNamespaceMap": {
-                                                                                                "relatedEntity": "global"
+                                                                                                "entityList": "global"
                                                                                               }
                                                                                             }
                                                                                             """,
@@ -178,7 +178,7 @@ public class MigrationUtil {
                                                                                                 "fieldValue": "In Review"
                                                                                               },
                                                                                               "inputNamespaceMap": {
-                                                                                                "relatedEntity": "global",
+                                                                                                "entityList": "global",
                                                                                                 "updatedBy": "global"
                                                                                               }
                                                                                             }
@@ -238,7 +238,7 @@ public class MigrationUtil {
                                                                                               "displayName": "Rollback Glossary Term Changes",
                                                                                               "config": {},
                                                                                               "inputNamespaceMap": {
-                                                                                                "relatedEntity": "global",
+                                                                                                "entityList": "global",
                                                                                                 "updatedBy": "ApprovalForUpdates"
                                                                                               }
                                                                                             }
@@ -269,7 +269,7 @@ public class MigrationUtil {
                                                                                                 "fieldValue": "Approved"
                                                                                               },
                                                                                               "inputNamespaceMap": {
-                                                                                                "relatedEntity": "global",
+                                                                                                "entityList": "global",
                                                                                                 "updatedBy": "ApprovalForUpdates"
                                                                                               }
                                                                                             }
@@ -499,6 +499,16 @@ public class MigrationUtil {
             configNode.remove("glossaryTermStatus");
             configNode.put("fieldName", "status");
             configNode.put("fieldValue", statusValue);
+          }
+        }
+
+        // Migrate inputNamespaceMap from relatedEntity to entityList
+        if (nodeObj.has("inputNamespaceMap") && nodeObj.get("inputNamespaceMap").isObject()) {
+          ObjectNode nsMap = (ObjectNode) nodeObj.get("inputNamespaceMap");
+          if (nsMap.has("relatedEntity") && !nsMap.has("entityList")) {
+            String nsValue = nsMap.get("relatedEntity").asText();
+            nsMap.remove("relatedEntity");
+            nsMap.put("entityList", nsValue);
           }
         }
       }

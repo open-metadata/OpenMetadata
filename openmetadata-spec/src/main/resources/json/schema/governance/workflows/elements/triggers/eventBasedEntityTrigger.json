@@ -111,11 +111,11 @@
         "type": "string"
       },
       "default": [
-        "relatedEntity"
+        "entityList",
+        "updatedBy"
       ],
       "additionalItems": false,
       "minItems": 1,
-      "maxItems": 1,
       "uniqueItems": true
     }
   },

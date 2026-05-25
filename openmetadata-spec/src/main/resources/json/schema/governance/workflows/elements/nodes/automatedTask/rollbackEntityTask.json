@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/rollbackEntityTask.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RollbackEntityTaskDefinition",
-  "description": "Rolls back an entity to its previous approved version. Always rolls back to the most recent 'Approved' status.",
+  "description": "Rolls back an entity to its most recent stable version, using an APPROVED → DRAFT → DEPRECATED fallback chain.",
   "javaInterfaces": [
     "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
   ],
@@ -41,15 +41,15 @@
     "input": {
       "type": "array",
       "items": { "type": "string" },
-      "default": ["relatedEntity", "updatedBy"],
+      "default": ["entityList", "updatedBy"],
       "additionalItems": false,
-      "minItems": 2,
+      "minItems": 1,
       "maxItems": 2
     },
     "inputNamespaceMap": {
       "type": "object",
       "properties": {
-        "relatedEntity": {
+        "entityList": {
           "type": "string",
           "default": "global"
         },
@@ -58,8 +58,8 @@
           "default": null
         }
       },
-      "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "additionalProperties": true,
+      "required": ["entityList"]
     },
     "output": {
       "type": "array",

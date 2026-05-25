@@ -1330,6 +1330,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityUpdater(original, updated, operation, changeSource, useOptimisticLocking);
   }
 
+  protected EntityUpdater getUpdater(
+      T original,
+      T updated,
+      Operation operation,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      boolean skipBotGuard) {
+    return new EntityUpdater(
+        original, updated, operation, changeSource, useOptimisticLocking, skipBotGuard);
+  }
+
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
     return get(uriInfo, id, fields, NON_DELETED, false);
   }
@@ -7621,6 +7632,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private final ChangeSource changeSource;
     private final boolean useOptimisticLocking;
+    private final boolean skipBotGuard;
     @Setter private Set<String> patchedFields;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
@@ -7689,6 +7701,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Operation operation,
         ChangeSource changeSource,
         boolean useOptimisticLocking) {
+      this(original, updated, operation, changeSource, useOptimisticLocking, false);
+    }
+
+    public EntityUpdater(
+        T original,
+        T updated,
+        Operation operation,
+        ChangeSource changeSource,
+        boolean useOptimisticLocking,
+        boolean skipBotGuard) {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
@@ -7698,13 +7720,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : findEntityByNameOrNull(USER, updated.getUpdatedBy(), ALL);
       if (updatingUser == null) {
-        // user not found, create a new user with name
-        // This is to handle the case where the user is not found in the system. maybe deleted
         updatingUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
       }
       this.updatingUser = updatingUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
+      this.skipBotGuard = skipBotGuard;
       this.deferredReactExecuted = false;
     }
 
@@ -7868,6 +7889,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
       }
+      // Mirrors the captureIncrementalFromCurrentChange() call in flushUpdate()'s common path.
+      // Without this, incrementalChangeDescription stays null, incrementalFieldsChanged() always
+      // returns false, and bulkUpdateEntities never produces ENTITY_UPDATED change events.
+      captureIncrementalFromCurrentChange();
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
@@ -8097,6 +8122,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // This is to prevent bots from overwriting the description. Description need to be
         // updated with a PATCH request
         updated.setDescription(original.getDescription());
+        return;
+      }
+      if (Objects.equals(original.getDescription(), updated.getDescription())) {
         return;
       }
       String sanitized =
@@ -9326,6 +9354,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final boolean updatedByBot() {
+      if (skipBotGuard) return false;
       return Boolean.TRUE.equals(updatingUser.getIsBot());
     }
 
@@ -11366,11 +11395,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, bulkFields);
   }
 
+  public void bulkUpdateEntitiesForGovernanceWorkflow(
+      List<T> updateEntities,
+      Map<String, T> existingByFqn,
+      String userName,
+      String impersonatedBy) {
+    List<BulkResponse> success = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+    List<Long> latencies = new ArrayList<>();
+    bulkUpdateEntities(
+        null,
+        updateEntities,
+        existingByFqn,
+        userName,
+        impersonatedBy,
+        true,
+        true,
+        success,
+        failed,
+        latencies);
+    if (!failed.isEmpty()) {
+      LOG.warn("Bulk update: {} succeeded, {} failed", success.size(), failed.size());
+    }
+  }
+
   private void bulkUpdateEntities(
       UriInfo uriInfo,
       List<T> updateEntities,
       Map<String, T> existingByFqn,
       String userName,
+      String impersonatedBy,
+      boolean skipBotGuard,
+      boolean skipDeleted,
       List<BulkResponse> successRequests,
       List<BulkResponse> failedRequests,
       List<Long> entityLatenciesNanos) {
@@ -11431,12 +11487,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   : hydratedOriginal;
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
+          // Set impersonatedBy so FormatterUtil.getChangeEvent picks it up via
+          // entityInterface.getImpersonatedBy(). Mirrors what the regular update() path does.
+          entity.setImpersonatedBy(impersonatedBy);
 
           if (Boolean.TRUE.equals(original.getDeleted())) {
+            if (skipDeleted) {
+              LOG.debug(
+                  "[BulkUpdate] Skipping soft-deleted entity '{}' — governance workflows must not restore entities",
+                  fqn);
+              continue;
+            }
             restoreEntity(entity.getUpdatedBy(), original.getId());
           }
 
-          EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
+          EntityUpdater updater =
+              getUpdater(original, entity, Operation.PUT, null, false, skipBotGuard);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (Exception e) {
@@ -11696,6 +11762,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateEntities,
         existingByFqn,
         userName,
+        null,
+        false,
+        false,
         successRequests,
         failedRequests,
         entityLatenciesNanos);

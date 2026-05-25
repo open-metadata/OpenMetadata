@@ -113,7 +113,13 @@ public class WorkflowInstanceResource
           String workflowDefinitionName,
       @Parameter(description = "Entity Link", schema = @Schema(type = "String"))
           @QueryParam("entityLink")
-          String entityLink) {
+          String entityLink,
+      @Parameter(
+              description =
+                  "Filter by scheduleRunId to retrieve all instances from one periodic trigger fire",
+              schema = @Schema(type = "String"))
+          @QueryParam("scheduleRunId")
+          String scheduleRunId) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
@@ -123,6 +129,9 @@ public class WorkflowInstanceResource
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(workflowDefinitionName));
     if (entityLink != null) {
       filter.addQueryParam("entityLink", entityLink);
+    }
+    if (scheduleRunId != null) {
+      filter.addQueryParam("scheduleRunId", scheduleRunId);
     }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }

@@ -1,12 +1,13 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
-import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.CARDINALITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.COLLECTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +21,21 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 
+/**
+ * @deprecated All periodic batch workflows now use {@link FetchChangeEventsImpl} for incremental
+ *     change-event-driven processing. This class is no longer used by {@link
+ *     org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger}.
+ */
+@Deprecated
 @Slf4j
 public class FetchEntitiesImpl implements JavaDelegate {
   // Entity types whose fullyQualifiedName is mapped as "text" (not "keyword")
   // and require the .keyword subfield for reliable sorting in deep pagination.
   private static final Set<String> ENTITIES_NEEDING_KEYWORD_SORT =
       Set.of("testCase", "user", "team");
+
+  // Kept for backward compat: old BPMNs not yet redeployed may reference ${numberOfEntities}
+  private static final String CARDINALITY_VARIABLE = "numberOfEntities";
 
   private Expression entityTypesExpr;
   private Expression searchFilterExpr;
@@ -111,12 +121,17 @@ public class FetchEntitiesImpl implements JavaDelegate {
       execution.setVariable("searchAfter", response.getLastDocumentsInBatch());
     }
 
-    int cardinality = entityList.size();
     boolean hasFinished = entityList.isEmpty();
 
-    execution.setVariable(CARDINALITY_VARIABLE, cardinality);
+    Map<String, List<String>> entityToListMap = new HashMap<>();
+    for (String entity : entityList) {
+      entityToListMap.put(entity, List.of(entity));
+    }
+
+    execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
     execution.setVariable(HAS_FINISHED_VARIABLE, hasFinished);
-    execution.setVariable(COLLECTION_VARIABLE, entityList);
+    execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
+    execution.setVariable("entityToListMap", entityToListMap);
   }
 
   private String extractEntityTypeFromProcessKey(String processKey) {

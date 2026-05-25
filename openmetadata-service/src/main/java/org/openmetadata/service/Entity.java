@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -644,6 +645,37 @@ public final class Entity {
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
+  }
+
+  public static Map<String, EntityInterface> getEntitiesByLinks(
+      List<String> entityLinkStrs, String fields, Include include) {
+    if (entityLinkStrs == null || entityLinkStrs.isEmpty()) {
+      return Map.of();
+    }
+    // All entity links in a workflow's entityList are always the same entity type —
+    // event-based triggers fire for a single entity, and periodic batch triggers are configured
+    // with one entity type. The type is taken from the first link.
+    Map<String, String> linkToFqn = new LinkedHashMap<>();
+    String entityType = null;
+    for (String linkStr : entityLinkStrs) {
+      EntityLink link = EntityLink.parse(linkStr);
+      if (entityType == null) entityType = link.getEntityType();
+      linkToFqn.put(linkStr, link.getEntityFQN());
+    }
+    List<EntityInterface> entities =
+        getEntityByNames(entityType, new ArrayList<>(linkToFqn.values()), fields, include);
+    Map<String, EntityInterface> fqnToEntity = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      fqnToEntity.put(entity.getFullyQualifiedName(), entity);
+    }
+    Map<String, EntityInterface> result = new LinkedHashMap<>();
+    for (Map.Entry<String, String> entry : linkToFqn.entrySet()) {
+      EntityInterface entity = fqnToEntity.get(entry.getValue());
+      if (entity != null) {
+        result.put(entry.getKey(), entity);
+      }
+    }
+    return result;
   }
 
   /** Retrieve the entity using id from given entity reference and fields */

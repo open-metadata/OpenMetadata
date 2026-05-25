@@ -41,7 +41,7 @@ export interface TriggerConfiguration {
      * Search filters for entities. Can be a string (applied to all entity types) or an object
      * mapping entity types to their specific filters.
      */
-    filters: FiltersObject | string;
+    filters?: FiltersObject | string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */

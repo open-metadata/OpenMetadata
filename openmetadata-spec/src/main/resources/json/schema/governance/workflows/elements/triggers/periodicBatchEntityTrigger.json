@@ -61,15 +61,15 @@
           "title": "Batch Size",
           "description": "Number of Entities to process at once.",
           "type": "integer",
-          "default": 500
+          "default": 1000
         }
       },
       "anyOf": [
         {
-          "required": ["schedule", "entityType", "filters"]
+          "required": ["schedule", "entityType"]
         },
         {
-          "required": ["schedule", "entityTypes", "filters"]
+          "required": ["schedule", "entityTypes"]
         }
       ],
       "additionalProperties": false
@@ -89,11 +89,11 @@
         "type": "string"
       },
       "default": [
-        "relatedEntity"
+        "entityList",
+        "updatedBy"
       ],
       "additionalItems": false,
       "minItems": 1,
-      "maxItems": 1,
       "uniqueItems": true
     }
   },

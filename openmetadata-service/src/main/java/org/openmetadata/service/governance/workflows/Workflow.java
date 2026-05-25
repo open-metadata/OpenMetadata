@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import io.github.resilience4j.retry.RetryConfig;
+import java.time.Duration;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -12,6 +14,11 @@ public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
+  public static final String TRUE_ENTITY_LIST_VARIABLE = "true_entityList";
+  public static final String FALSE_ENTITY_LIST_VARIABLE = "false_entityList";
+  public static final String HAS_TRUE_ENTITIES_VARIABLE = "hasTrueEntities";
+  public static final String HAS_FALSE_ENTITIES_VARIABLE = "hasFalseEntities";
+  public static final String PROCESSED_FQNS_VARIABLE = "processedFqnsInRun";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
@@ -20,12 +27,19 @@ public class Workflow {
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";
+  public static final String WORKFLOW_SCHEDULE_RUN_ID_VARIABLE = "scheduleRunId";
   public static final String WORKFLOW_RUNTIME_EXCEPTION = "workflowRuntimeException";
   public static final String EXCEPTION_VARIABLE = "exception";
   public static final String FAILURE_VARIABLE = "failure";
   public static final String GLOBAL_NAMESPACE = "global";
   public static final String SUCCESSFUL_RESULT = "success";
   public static final String FAILURE_RESULT = "failure";
+  public static final RetryConfig TASK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .waitDuration(Duration.ofMillis(500))
+          .retryExceptions(Exception.class)
+          .build();
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;

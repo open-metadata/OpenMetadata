@@ -1,11 +1,14 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.FALSE_ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.HAS_FALSE_ENTITIES_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.HAS_TRUE_ENTITIES_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRUE_ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import io.github.resilience4j.retry.Retry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +24,9 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
@@ -37,13 +40,49 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     try {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-      String entityLinkStr =
-          (String)
-              varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
-      boolean result = checkChangeDescription(execution, entityLinkStr);
-      varHandler.setNodeVariable(RESULT_VARIABLE, result);
+      List<String> entityList =
+          WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler);
+      List<String> trueEntityList = new ArrayList<>();
+      List<String> falseEntityList = new ArrayList<>();
+
+      Map<String, EntityInterface> entityMap =
+          Entity.getEntitiesByLinks(entityList, "*", Include.ALL);
+
+      Retry retry = Retry.of("check-change-description", Workflow.TASK_RETRY_CONFIG);
+
+      for (String entityLinkStr : entityList) {
+        EntityInterface entity = entityMap.get(entityLinkStr);
+        if (entity == null) {
+          falseEntityList.add(entityLinkStr);
+          continue;
+        }
+        try {
+          boolean passes =
+              Retry.decorateSupplier(
+                      retry, () -> checkChangeDescription(execution, entity, entityLinkStr))
+                  .get();
+          if (passes) {
+            trueEntityList.add(entityLinkStr);
+          } else {
+            falseEntityList.add(entityLinkStr);
+          }
+        } catch (Exception e) {
+          falseEntityList.add(entityLinkStr);
+          LOG.error(
+              "[{}] Failed entity '{}' after retries: {}",
+              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
+              entityLinkStr,
+              e.getMessage(),
+              e);
+        }
+      }
+
+      varHandler.setNodeVariable(TRUE_ENTITY_LIST_VARIABLE, trueEntityList);
+      varHandler.setNodeVariable(FALSE_ENTITY_LIST_VARIABLE, falseEntityList);
+      varHandler.setNodeVariable(HAS_TRUE_ENTITIES_VARIABLE, !trueEntityList.isEmpty());
+      varHandler.setNodeVariable(
+          HAS_FALSE_ENTITIES_VARIABLE, !falseEntityList.isEmpty() || entityList.isEmpty());
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -52,11 +91,8 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     }
   }
 
-  private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {
-    // Parse entity
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
-
+  private boolean checkChangeDescription(
+      DelegateExecution execution, EntityInterface entity, String entityLinkStr) {
     // No changeDescription means it's a create event - return true
     ChangeDescription changeDescription = entity.getChangeDescription();
     if (changeDescription == null) {

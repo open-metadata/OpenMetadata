@@ -1,8 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -79,7 +79,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(workflowTrigger);
-    for (FlowableListener listener : getWorkflowInstanceListeners(List.of("end"))) {
+    for (FlowableListener listener :
+        TriggerInterface.getWorkflowInstanceListeners(List.of("end"))) {
       runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
     }
     process.addFlowElement(runtimeExceptionBoundaryEvent);
@@ -171,19 +172,13 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
     List<IOParameter> inputParameters = new ArrayList<>();
 
-    // ALWAYS pass relatedEntity for backward compatibility
-    IOParameter relatedEntityParam = new IOParameter();
-    relatedEntityParam.setSource(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
-    relatedEntityParam.setTarget(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
-    inputParameters.add(relatedEntityParam);
+    IOParameter entityListParam = new IOParameter();
+    entityListParam.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
+    entityListParam.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
+    inputParameters.add(entityListParam);
 
-    // Dynamically add any additional outputs declared in trigger - Eg updatedBy in
-    // GlossaryTermApprovalWorkflow
     for (String triggerOutput : triggerOutputs) {
-      if (!RELATED_ENTITY_VARIABLE.equals(
-          triggerOutput)) { // Skip relatedEntity (already added above)
+      if (!ENTITY_LIST_VARIABLE.equals(triggerOutput)) {
         IOParameter inputParameter = new IOParameter();
         inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
         inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));

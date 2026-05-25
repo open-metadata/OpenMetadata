@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -49,7 +49,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -118,9 +117,8 @@ class SinkTaskDelegateTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
-          .when(
-              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
-          .thenReturn(batchEntity);
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .thenReturn(Map.of("<#E::table::test.fqn>", batchEntity));
 
       delegate.execute(execution);
     }
@@ -151,9 +149,8 @@ class SinkTaskDelegateTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
-          .when(
-              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
-          .thenReturn(batchEntity);
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .thenReturn(Map.of("<#E::table::test.fqn>", batchEntity));
 
       delegate.execute(execution);
     }
@@ -170,15 +167,19 @@ class SinkTaskDelegateTest {
   void testSingleEntityMode_WhenNoEntityList() {
     setupCommonExpressions(false);
     Map<String, String> namespaceMap = new HashMap<>();
-    namespaceMap.put(RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE);
+    // No entityList in namespace map — getEntityList() returns empty list
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn(JsonUtils.pojoToJson(namespaceMap));
 
-    // Setup: No entityList (event-based workflow)
     setupVariableAccess(null, false);
-    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::test.fqn>");
 
-    // This will throw because Entity.getEntity is static
-    assertThrows(Exception.class, () -> delegate.execute(execution));
+    // No entities to process — completes successfully with 0 synced
+    delegate.execute(execution);
+
+    assertEquals(0, testProvider.getWriteCallCount());
+    assertEquals(0, testProvider.getBatchWriteCallCount());
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_failedCount"), eq(0));
   }
 
   @Test
@@ -197,15 +198,59 @@ class SinkTaskDelegateTest {
     setupCommonExpressions(true); // batchMode=true but provider doesn't support it
     Map<String, String> namespaceMap = new HashMap<>();
     namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
-    namespaceMap.put(RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE);
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn(JsonUtils.pojoToJson(namespaceMap));
 
     List<String> entityList = List.of("<#E::table::test.fqn>");
     setupVariableAccess(entityList, false);
-    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::test.fqn>");
 
-    // Will throw due to Entity.getEntity, but verifies the code path selection
-    assertThrows(Exception.class, () -> delegate.execute(execution));
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getFullyQualifiedName()).thenReturn("test.fqn");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .thenReturn(Map.of("<#E::table::test.fqn>", entity));
+
+      delegate.execute(execution);
+    }
+
+    // Falls back to list mode (write per entity, not writeBatch)
+    assertEquals(1, noBatchProvider.getWriteCallCount());
+    assertEquals(0, noBatchProvider.getBatchWriteCallCount());
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  @Test
+  void testListMode_EntityFetchFailure_CapturedAsError() {
+    SinkProviderRegistry.getInstance().unregister(TEST_SINK_TYPE);
+    TestSinkProvider noBatchProvider =
+        new TestSinkProvider() {
+          @Override
+          public boolean supportsBatch() {
+            return false;
+          }
+        };
+    SinkProviderRegistry.getInstance().register(TEST_SINK_TYPE, config -> noBatchProvider);
+
+    setupCommonExpressions(true);
+    Map<String, String> namespaceMap = new HashMap<>();
+    namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
+    when(inputNamespaceMapExpr.getValue(execution)).thenReturn(JsonUtils.pojoToJson(namespaceMap));
+
+    List<String> entityList = List.of("<#E::table::failing.fqn>");
+    setupVariableAccess(entityList, false);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
+          .thenReturn(Map.of());
+
+      delegate.execute(execution);
+    }
+
+    assertEquals(0, noBatchProvider.getWriteCallCount());
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1));
   }
 
   @Test

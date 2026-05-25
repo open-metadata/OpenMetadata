@@ -26,6 +26,10 @@
       "description": "Workflow Definition Id.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "scheduleRunId": {
+      "description": "Identifier shared by all WorkflowInstances spawned from one fire of a periodic trigger. Allows grouping batches into a single scheduled run. Null for event-based triggers.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "startedAt": {
       "description": "Timestamp on which the workflow instance started.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -33,6 +37,17 @@
     "endedAt": {
       "description": "Timestamp on which the workflow instance ended.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "entityList": {
+      "description": "List of entity links processed by this workflow instance.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "updatedBy": {
+      "description": "User who last performed an action in this workflow instance.",
+      "type": "string"
     },
     "variables": {
       "type": "object",

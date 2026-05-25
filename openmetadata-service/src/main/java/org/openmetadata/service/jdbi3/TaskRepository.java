@@ -1102,6 +1102,22 @@ public class TaskRepository extends EntityRepository<Task> {
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
   }
 
+  public Task findActiveByAboutAndWorkflowDefinition(String entityFqn, UUID workflowDefinitionId) {
+    if (workflowDefinitionId == null) {
+      return null;
+    }
+    List<String> activeStatuses = OPEN_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    String json =
+        daoCollection
+            .taskDAO()
+            .findActiveByAboutAndWorkflowDefinition(
+                entityFqn, workflowDefinitionId.toString(), activeStatuses);
+    if (json == null) {
+      return null;
+    }
+    return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
   public Task hydrateStoredTask(Task task) {
     if (task == null || task.getId() == null) {
       return task;

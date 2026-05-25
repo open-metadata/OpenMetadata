@@ -4,6 +4,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -721,11 +722,11 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> checkConfig = new HashMap<>();
     checkConfig.put("rules", "{\"!!\":{\"var\":\"description\"}}");
     checkNode.put("config", checkConfig);
-    checkNode.put("input", List.of("relatedEntity"));
+    checkNode.put("input", List.of("entityList"));
     Map<String, Object> inputNamespace = new HashMap<>();
-    inputNamespace.put("relatedEntity", "global");
+    inputNamespace.put("entityList", "global");
     checkNode.put("inputNamespaceMap", inputNamespace);
-    checkNode.put("output", List.of("result"));
+    checkNode.put("output", List.of("result", "entityList", "false_entityList"));
     checkNode.put("branches", List.of("true", "false"));
 
     Map<String, Object> endNode = new HashMap<>();
@@ -2137,7 +2138,7 @@ public class WorkflowDefinitionResourceIT {
                   "filters": {}
                 },
                 "output": [
-                  "relatedEntity",
+                  "entityList",
                   "updatedBy"
                 ]
               },
@@ -2157,13 +2158,15 @@ public class WorkflowDefinitionResourceIT {
                     "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
                   },
                   "input": [
-                    "relatedEntity"
+                    "entityList"
                   ],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
                   "output": [
-                    "result"
+                    "result",
+                    "entityList",
+                    "false_entityList"
                   ],
                   "branches": [
                     "true",
@@ -2192,11 +2195,11 @@ public class WorkflowDefinitionResourceIT {
                     "fieldValue": "Tier.Tier1"
                   },
                   "input": [
-                    "relatedEntity",
+                    "entityList",
                     "updatedBy"
                   ],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global",
+                    "entityList": "global",
                     "updatedBy": "global"
                   },
                   "output": []
@@ -2350,9 +2353,9 @@ public class WorkflowDefinitionResourceIT {
       setFieldConfig.put("fieldName", "description");
       setFieldConfig.put("fieldValue", "Updated by multi-entity workflow");
       setFieldNode.put("config", setFieldConfig);
-      setFieldNode.put("input", List.of("relatedEntity", "updatedBy"));
+      setFieldNode.put("input", List.of("entityList", "updatedBy"));
       Map<String, Object> inputNamespaceMap = new HashMap<>();
-      inputNamespaceMap.put("relatedEntity", "global");
+      inputNamespaceMap.put("entityList", "global");
       inputNamespaceMap.put("updatedBy", "global");
       setFieldNode.put("inputNamespaceMap", inputNamespaceMap);
       setFieldNode.put("output", List.of());
@@ -2380,7 +2383,7 @@ public class WorkflowDefinitionResourceIT {
       Map<String, Object> trigger = new HashMap<>();
       trigger.put("type", "periodicBatchEntity");
       trigger.put("config", triggerConfig);
-      trigger.put("output", List.of("relatedEntity", "updatedBy"));
+      trigger.put("output", List.of("entityList", "updatedBy"));
 
       Map<String, Object> multiEntityRequest = new HashMap<>();
       multiEntityRequest.put("name", "EntityFilterWF");
@@ -2457,6 +2460,20 @@ public class WorkflowDefinitionResourceIT {
 
       LOG.info("Multi-entity workflow processed all entities successfully");
 
+      // Create new change events for databases so the second incremental run has events to process.
+      // (The first run committed an offset; the second run only sees events > that offset.)
+      JsonNode db1Patch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Pre-second-run update for database 1\"}]");
+      client.databases().patch(database1.getId(), db1Patch);
+
+      JsonNode db2Patch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Pre-second-run update for database 2\"}]");
+      client.databases().patch(database2.getId(), db2Patch);
+
+      LOG.info("Patched databases to create new change events for the second run");
+
       // Now modify workflow to only process database entities
       Map<String, Object> singleEntityTriggerConfig = new HashMap<>();
       singleEntityTriggerConfig.put("entityTypes", List.of("database"));
@@ -2466,7 +2483,7 @@ public class WorkflowDefinitionResourceIT {
       Map<String, Object> singleEntityTrigger = new HashMap<>();
       singleEntityTrigger.put("type", "periodicBatchEntity");
       singleEntityTrigger.put("config", singleEntityTriggerConfig);
-      singleEntityTrigger.put("output", List.of("relatedEntity", "updatedBy"));
+      singleEntityTrigger.put("output", List.of("entityList", "updatedBy"));
 
       Map<String, Object> updateSetFieldConfig = new HashMap<>();
       updateSetFieldConfig.put("fieldName", "description");
@@ -2478,9 +2495,9 @@ public class WorkflowDefinitionResourceIT {
       updateSetFieldNode.put("type", "automatedTask");
       updateSetFieldNode.put("subType", "setEntityAttributeTask");
       updateSetFieldNode.put("config", updateSetFieldConfig);
-      updateSetFieldNode.put("input", List.of("relatedEntity", "updatedBy"));
+      updateSetFieldNode.put("input", List.of("entityList", "updatedBy"));
       Map<String, Object> updateInputNamespaceMap = new HashMap<>();
-      updateInputNamespaceMap.put("relatedEntity", "global");
+      updateInputNamespaceMap.put("entityList", "global");
       updateInputNamespaceMap.put("updatedBy", "global");
       updateSetFieldNode.put("inputNamespaceMap", updateInputNamespaceMap);
       updateSetFieldNode.put("output", List.of());
@@ -2651,7 +2668,7 @@ public class WorkflowDefinitionResourceIT {
                  "batchSize": 100,
                  "filters": {}
                },
-               "output": ["relatedEntity", "updatedBy"]
+               "output": ["entityList", "updatedBy"]
              },
              "nodes": [
                {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
@@ -2664,8 +2681,8 @@ public class WorkflowDefinitionResourceIT {
                    "fieldName": "tags",
                    "fieldValue": "Tier.Tier1"
                  },
-                 "input": ["relatedEntity", "updatedBy"],
-                 "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                 "input": ["entityList", "updatedBy"],
+                 "inputNamespaceMap": {"entityList": "global", "updatedBy": "global"},
                  "output": []
                },
                {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
@@ -2888,7 +2905,7 @@ public class WorkflowDefinitionResourceIT {
               }
             },
             "output": [
-              "relatedEntity",
+              "entityList",
               "updatedBy"
             ]
           },
@@ -2909,11 +2926,11 @@ public class WorkflowDefinitionResourceIT {
                 "fieldValue": "Multi Periodic Entity"
               },
               "input": [
-                "relatedEntity",
+                "entityList",
                 "updatedBy"
               ],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []
@@ -3127,7 +3144,7 @@ public class WorkflowDefinitionResourceIT {
                     "table": "{\\\"in\\\": [\\\"production\\\", {\\\"var\\\": \\\"name\\\"}]}"
                   }
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "updatedBy"]
               },
               "nodes": [
                 {
@@ -3145,9 +3162,9 @@ public class WorkflowDefinitionResourceIT {
                     "fieldName": "displayName",
                     "fieldValue": "[FILTERED] - Entity passed specific filter"
                   },
-                  "input": ["relatedEntity", "updatedBy"],
+                  "input": ["entityList", "updatedBy"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global",
+                    "entityList": "global",
                     "updatedBy": "global"
                   },
                   "output": []
@@ -3656,11 +3673,11 @@ public class WorkflowDefinitionResourceIT {
                   "config": {
                     "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
-                  "output": ["result"],
+                  "output": ["result", "entityList", "false_entityList"],
                   "branches": ["true", "false"]
                 },
                 {
@@ -3906,16 +3923,14 @@ public class WorkflowDefinitionResourceIT {
             """;
       CreateWorkflowDefinition clashingNodeWorkflow =
           MAPPER.readValue(clashingNodeWorkflowJson, CreateWorkflowDefinition.class);
-      clashingNodeWorkflow.withName(clashingNodeWorkflow.getName() + "_" + UUID.randomUUID());
+      // No UUID suffix needed -- validate endpoint does not persist to DB
 
-      try {
-        client.workflowDefinitions().validate(clashingNodeWorkflow);
-        // If we reach here, validation didn't throw. Log warning.
-        LOG.warn("Expected OpenMetadataException for clashing node workflow, but none was thrown.");
-      } catch (OpenMetadataException clashEx) {
-        assertTrue(clashEx.getMessage().contains("clashes with the workflow name"));
-        LOG.debug("Node clashing with workflow name correctly rejected");
-      }
+      OpenMetadataException clashEx =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.workflowDefinitions().validate(clashingNodeWorkflow));
+      assertTrue(clashEx.getMessage().contains("clashes with the workflow name"));
+      LOG.debug("Node clashing with workflow name correctly rejected");
 
       // Test 5: User approval task on any entity type should now be allowed
       String validUserTaskWorkflowJson =
@@ -4002,7 +4017,7 @@ public class WorkflowDefinitionResourceIT {
                   "entityTypes": ["glossaryTerm"],
                   "events": ["Created"]
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "relatedEntity", "updatedBy"]
               },
               "nodes": [
                 {
@@ -4034,9 +4049,9 @@ public class WorkflowDefinitionResourceIT {
                     "fieldName": "description",
                     "fieldValue": "Approved"
                   },
-                  "input": ["relatedEntity", "updatedBy"],
+                  "input": ["entityList", "updatedBy"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global",
+                    "entityList": "global",
                     "updatedBy": "userApproval"
                   }
                 },
@@ -4606,11 +4621,11 @@ public class WorkflowDefinitionResourceIT {
                   "config": {
                     "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
-                  "output": ["result"]
+                  "output": ["result", "entityList", "false_entityList"]
                 },
                 {
                   "name": "end",
@@ -4677,9 +4692,9 @@ public class WorkflowDefinitionResourceIT {
                       "candidates": []
                     }
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
                   "output": ["result"]
                 },
@@ -4744,11 +4759,11 @@ public class WorkflowDefinitionResourceIT {
                   "config": {
                     "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
-                  "output": ["result"]
+                  "output": ["result", "entityList", "false_entityList"]
                 },
                 {
                   "name": "endTrue",
@@ -5049,7 +5064,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new LinkedHashMap<>();
     trigger.put("type", "periodicBatchEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "updatedBy"));
 
     // ---- nodes ----
     Map<String, Object> startNode = new LinkedHashMap<>();
@@ -5068,10 +5083,10 @@ public class WorkflowDefinitionResourceIT {
     setTagsNode.put("name", "SetEntityAttribute_2");
     setTagsNode.put("displayName", "Set Tags");
     setTagsNode.put("config", setTagsConfig);
-    setTagsNode.put("input", List.of("relatedEntity", "updatedBy"));
+    setTagsNode.put("input", List.of("entityList", "updatedBy"));
 
     Map<String, Object> setTagsNamespaceMap = new LinkedHashMap<>();
-    setTagsNamespaceMap.put("relatedEntity", "global");
+    setTagsNamespaceMap.put("entityList", "global");
     setTagsNamespaceMap.put("updatedBy", "global");
     setTagsNode.put("inputNamespaceMap", setTagsNamespaceMap);
     setTagsNode.put("output", List.of());
@@ -5086,10 +5101,10 @@ public class WorkflowDefinitionResourceIT {
     setGlossaryNode.put("name", "SetEntityAttribute_3");
     setGlossaryNode.put("displayName", "Set Glossary Term");
     setGlossaryNode.put("config", setGlossaryConfig);
-    setGlossaryNode.put("input", List.of("relatedEntity", "updatedBy"));
+    setGlossaryNode.put("input", List.of("entityList", "updatedBy"));
 
     Map<String, Object> setGlossaryNamespaceMap = new LinkedHashMap<>();
-    setGlossaryNamespaceMap.put("relatedEntity", "global");
+    setGlossaryNamespaceMap.put("entityList", "global");
     setGlossaryNamespaceMap.put("updatedBy", "global");
     setGlossaryNode.put("inputNamespaceMap", setGlossaryNamespaceMap);
     setGlossaryNode.put("output", List.of());
@@ -5283,7 +5298,7 @@ public class WorkflowDefinitionResourceIT {
                           "exclude": ["reviewers"],
                           "filter": {}
                         },
-                        "output": ["relatedEntity", "updatedBy"]
+                        "output": ["entityList", "relatedEntity", "updatedBy"]
                       },
                       "nodes": [
                         {
@@ -5328,9 +5343,9 @@ public class WorkflowDefinitionResourceIT {
                             "fieldName": "description",
                             "fieldValue": "Updated by Workflow"
                           },
-                          "input": ["relatedEntity", "updatedBy"],
+                          "input": ["entityList", "updatedBy"],
                           "inputNamespaceMap": {
-                            "relatedEntity": "global",
+                            "entityList": "global",
                             "updatedBy": "UserApproval"
                           },
                           "output": []
@@ -5786,7 +5801,7 @@ public class WorkflowDefinitionResourceIT {
                   "exclude": ["reviewers"],
                   "filter": {}
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "relatedEntity", "updatedBy"]
               },
               "nodes": [
                 {
@@ -5831,9 +5846,9 @@ public class WorkflowDefinitionResourceIT {
                     "fieldName": "entityStatus",
                     "fieldValue": "Approved"
                   },
-                  "input": ["relatedEntity", "updatedBy"],
+                  "input": ["entityList", "updatedBy"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global",
+                    "entityList": "global",
                     "updatedBy": "UserApproval"
                   },
                   "output": []
@@ -6315,7 +6330,7 @@ public class WorkflowDefinitionResourceIT {
                   "exclude": ["reviewers"],
                   "filter": {}
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "relatedEntity", "updatedBy"]
               },
               "nodes": [
                 {
@@ -6632,7 +6647,7 @@ public class WorkflowDefinitionResourceIT {
                 "apiEndpoint": "{\\"query\\":{\\"match\\":{\\"description\\":\\"workflow\\"}}}"
               }
             },
-            "output": ["relatedEntity", "updatedBy"]
+            "output": ["entityList", "updatedBy"]
           },
           "nodes": [
             {
@@ -6650,9 +6665,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "description",
                 "fieldValue": "Processed by workflow - API endpoint updated"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []
@@ -7045,7 +7060,7 @@ public class WorkflowDefinitionResourceIT {
               "batchSize": 100,
               "filters": {}
             },
-            "output": ["relatedEntity", "updatedBy"]
+            "output": ["entityList", "updatedBy"]
           },
           "nodes": [
             {
@@ -7063,9 +7078,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "certification",
                 "fieldValue": "Certification.Gold"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []
@@ -7472,7 +7487,7 @@ public class WorkflowDefinitionResourceIT {
                   "exclude": ["reviewers"],
                   "filter": {}
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "relatedEntity", "updatedBy"]
               },
               "nodes": [
                 {
@@ -7798,7 +7813,7 @@ public class WorkflowDefinitionResourceIT {
                   "events": ["Created"],
                   "filter": {}
                 },
-                "output": ["relatedEntity"]
+                "output": ["entityList", "updatedBy"]
               },
               "nodes": [
                 {
@@ -7834,9 +7849,9 @@ public class WorkflowDefinitionResourceIT {
                     "approvalThreshold": 2,
                     "rejectionThreshold": 1
                   },
-                  "input": ["relatedEntity"],
+                  "input": ["entityList"],
                   "inputNamespaceMap": {
-                    "relatedEntity": "global"
+                    "entityList": "global"
                   },
                   "output": ["result"],
                   "branches": ["true", "false"]
@@ -8092,7 +8107,7 @@ public class WorkflowDefinitionResourceIT {
                   "exclude": ["reviewers"],
                   "filter": {}
                 },
-                "output": ["relatedEntity", "updatedBy"]
+                "output": ["entityList", "relatedEntity", "updatedBy"]
               },
               "nodes": [
                 {
@@ -8403,7 +8418,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "eventBasedEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "relatedEntity", "updatedBy"));
 
     Map<String, Object> startNode = new HashMap<>();
     startNode.put("name", "start");
@@ -8630,7 +8645,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "eventBasedEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "relatedEntity", "updatedBy"));
 
     Map<String, Object> startNode = new HashMap<>();
     startNode.put("name", "start");
@@ -8861,7 +8876,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "eventBasedEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "relatedEntity", "updatedBy"));
 
     // Create approval workflow
     Map<String, Object> startNode = new HashMap<>();
@@ -9047,7 +9062,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "eventBasedEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "relatedEntity", "updatedBy"));
 
     // Create approval workflow that should trigger for all table creations
     Map<String, Object> startNode = new HashMap<>();
@@ -9272,7 +9287,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "eventBasedEntity");
     trigger.put("config", triggerConfig);
-    trigger.put("output", List.of("relatedEntity", "updatedBy"));
+    trigger.put("output", List.of("entityList", "relatedEntity", "updatedBy"));
 
     // Create approval workflow
     Map<String, Object> startNode = new HashMap<>();
@@ -9394,6 +9409,18 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.info("✓ Approval task created for tag change");
 
+    // Capture the workflowInstanceId of the tag-change task to verify it is replaced when the
+    // domain-change workflow takes over (design: "last event wins" — the tag-change workflow
+    // instance is terminated and the existing approval task is reassigned).
+    Map<String, String> taskWithInstanceIdQuery = new HashMap<>();
+    taskWithInstanceIdQuery.put("status", TaskEntityStatus.Open.value());
+    taskWithInstanceIdQuery.put("category", TaskCategory.Approval.value());
+    taskWithInstanceIdQuery.put("aboutEntity", tableFqn);
+    taskWithInstanceIdQuery.put("fields", "workflowInstanceId");
+    ListResponse<Task> tagChangeTasks = client.tasks().listWithFilters(taskWithInstanceIdQuery);
+    UUID tagChangeWorkflowInstanceId = tagChangeTasks.getData().get(0).getWorkflowInstanceId();
+    assertNotNull(tagChangeWorkflowInstanceId, "Tag change task should have a workflowInstanceId");
+
     // Test 2: Update table with domain - should also trigger workflow
     String domainPatchJson =
         String.format(
@@ -9407,20 +9434,27 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info("✓ Table updated with domain: {}", domain.getFullyQualifiedName());
 
-    // Wait for workflow to process and check if approval task was created for domain change
+    // Domain change triggers a new workflow that terminates the tag-change workflow and updates
+    // the existing approval task (not creates a duplicate). Verify: count stays at 1 and the
+    // workflowInstanceId on the task changes, proving the domain workflow ran and took over.
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
         .pollDelay(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              assertTrue(
-                  tasks.getData().size() >= 2,
-                  "Approval task should be created for domain field change");
+              ListResponse<Task> tasks = client.tasks().listWithFilters(taskWithInstanceIdQuery);
+              assertEquals(
+                  1,
+                  tasks.getData().size(),
+                  "Domain field change should update the existing task, not create a duplicate");
+              assertNotEquals(
+                  tagChangeWorkflowInstanceId,
+                  tasks.getData().get(0).getWorkflowInstanceId(),
+                  "workflowInstanceId must change when domain-change workflow takes over the task");
             });
     LOG.info(
-        "✓ Approval task created for domain change - OR logic verified for multiple include fields");
+        "✓ Domain change updated existing approval task (workflowInstanceId changed) — OR logic verified for multiple include fields");
 
     // Cleanup workflow
     try {
@@ -9574,7 +9608,7 @@ public class WorkflowDefinitionResourceIT {
               "events": ["Updated"],
               "entityTypes": ["databaseSchema"]
             },
-            "output": ["relatedEntity", "updatedBy"]
+            "output": ["entityList", "relatedEntity", "updatedBy"]
           },
           "nodes": [
             {
@@ -9594,9 +9628,9 @@ public class WorkflowDefinitionResourceIT {
                   "domains": ["Finance"]
                 }
               },
-              "input": ["relatedEntity"],
+              "input": ["entityList"],
               "inputNamespaceMap": {
-                "relatedEntity": "global"
+                "entityList": "global"
               },
               "branches": ["true", "false"]
             },
@@ -9630,9 +9664,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "status",
                 "fieldValue": "Approved"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "userApproval"
               }
             },
@@ -9645,9 +9679,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "status",
                 "fieldValue": "Rejected"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "userApproval"
               }
             },
@@ -9660,9 +9694,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "status",
                 "fieldValue": "Draft"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               }
             },
@@ -10025,7 +10059,7 @@ public class WorkflowDefinitionResourceIT {
               "exclude": [],
               "filter": {}
             },
-            "output": ["relatedEntity", "updatedBy"]
+            "output": ["entityList", "relatedEntity", "updatedBy"]
           },
           "nodes": [
             {
@@ -10043,9 +10077,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "entityStatus",
                 "fieldValue": "In Review"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []
@@ -10078,9 +10112,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "entityStatus",
                 "fieldValue": "Approved"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []
@@ -10094,9 +10128,9 @@ public class WorkflowDefinitionResourceIT {
                 "fieldName": "entityStatus",
                 "fieldValue": "Rejected"
               },
-              "input": ["relatedEntity", "updatedBy"],
+              "input": ["entityList", "updatedBy"],
               "inputNamespaceMap": {
-                "relatedEntity": "global",
+                "entityList": "global",
                 "updatedBy": "global"
               },
               "output": []

@@ -5,6 +5,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.flowable.bpmn.model.Activity;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -21,6 +22,16 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FlowableL
 
 public interface NodeInterface {
   void addToWorkflow(BpmnModel model, Process process);
+
+  /**
+   * Returns the output ports this node can produce. Nodes that split a batch into multiple
+   * entity lists (e.g. CheckEntityAttributes → "true"/"false") declare their ports here.
+   * The MainWorkflow uses this to automatically inject inclusive gateways at split/join points.
+   * The default (empty set) means no inclusive gateway is injected for this node.
+   */
+  default Set<String> getOutputPorts() {
+    return Set.of();
+  }
 
   default BoundaryEvent getRuntimeExceptionBoundaryEvent() {
     return null;

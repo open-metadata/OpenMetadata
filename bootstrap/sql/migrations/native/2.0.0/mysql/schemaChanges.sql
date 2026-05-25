@@ -355,3 +355,44 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE KEY unique_context_memory_name (nameHash),
   INDEX idx_context_memory_updated_at (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- =====================================================
+-- GOVERNANCE WORKFLOWS — batch entity processing + scheduleRunId
+-- (PR #26715 / ram/workflow-improvements)
+-- =====================================================
+
+-- Add composite index on change_event(entityType, offset) for efficient incremental
+-- change-event-driven workflow processing (filters by entityType + offset range).
+CREATE INDEX idx_change_event_entity_type_offset ON change_event (entityType, `offset`);
+
+-- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
+-- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
+-- VARCHAR(500) keeps the composite UNIQUE(id, extension) key within MySQL's 3072-byte limit
+-- (500 * 4 + 256 * 4 = 3024 bytes with utf8mb4).
+ALTER TABLE change_event_consumers MODIFY COLUMN id VARCHAR(500) NOT NULL;
+
+-- Add scheduleRunId column and index to workflow_instance_time_series
+ALTER TABLE workflow_instance_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS (json ->> '$.scheduleRunId');
+ALTER TABLE workflow_instance_time_series
+    ADD INDEX idx_workflow_instance_schedule_run_id (scheduleRunId);
+
+-- Add scheduleRunId column and index to workflow_instance_state_time_series
+ALTER TABLE workflow_instance_state_time_series
+    ADD COLUMN scheduleRunId VARCHAR(36)
+    GENERATED ALWAYS AS (json ->> '$.scheduleRunId');
+ALTER TABLE workflow_instance_state_time_series
+    ADD INDEX idx_workflow_instance_state_schedule_run_id (scheduleRunId);
+
+-- Rewrite entityLink: event-based/no-op instances (no scheduleRunId) store entityList[0];
+-- batch instances (scheduleRunId present) store NULL — query them by scheduleRunId instead.
+ALTER TABLE workflow_instance_time_series
+MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (
+    CASE WHEN json ->> '$.scheduleRunId' IS NULL
+    THEN COALESCE(
+        json ->> '$.variables.global_entityList[0]',
+        json ->> '$.variables.global_relatedEntity'
+    )
+    ELSE NULL END
+);

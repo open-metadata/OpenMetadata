@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,9 +22,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.type.EntityReference;
@@ -41,49 +38,14 @@ class RunIngestionPipelineImplTest {
 
   @Mock private PipelineServiceClientInterface mockPipelineServiceClient;
   @Mock private IngestionPipelineRepository mockRepository;
-  @Mock private ServiceEntityInterface mockService;
 
   private RunIngestionPipelineImpl runIngestionPipelineImpl;
   private IngestionPipeline testPipeline;
-  private MockedStatic<Entity> mockedEntity;
-  private MockedConstruction<OpenMetadataConnectionBuilder> mockedConnectionBuilder;
 
   @BeforeEach
   void setUp() {
-    RunIngestionPipelineImpl.pollingIntervalMillis = 100L;
-    RunIngestionPipelineImpl.runRetryIntervalMillis = 0L;
-
-    // Mock Entity static methods
-    mockedEntity = mockStatic(Entity.class);
-    mockedEntity
-        .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
-        .thenReturn(mockRepository);
-    mockedEntity
-        .when(() -> Entity.getEntity((EntityReference) any(), anyString(), any()))
-        .thenReturn(mockService);
-
-    // Mock OpenMetadataConnectionBuilder constructor
-    mockedConnectionBuilder =
-        mockConstruction(
-            OpenMetadataConnectionBuilder.class,
-            (mock, context) -> {
-              when(mock.build()).thenReturn(null); // Return null for the connection
-            });
-
     runIngestionPipelineImpl = new RunIngestionPipelineImpl(mockPipelineServiceClient);
     testPipeline = createTestPipeline();
-  }
-
-  @AfterEach
-  void tearDown() {
-    RunIngestionPipelineImpl.pollingIntervalMillis = 30 * 1_000L;
-    RunIngestionPipelineImpl.runRetryIntervalMillis = 15 * 1_000L;
-    if (mockedEntity != null) {
-      mockedEntity.close();
-    }
-    if (mockedConnectionBuilder != null) {
-      mockedConnectionBuilder.close();
-    }
   }
 
   private IngestionPipeline createTestPipeline() {
@@ -113,55 +75,105 @@ class RunIngestionPipelineImplTest {
   }
 
   @Test
-  void testExecuteSuccessFirstAttempt() {
-    // Mock repository and entity setup
+  void testExecuteSuccessFirstAttempt() throws Exception {
     when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
     when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
-    when(mockPipelineServiceClient.runPipeline(any(), any()))
-        .thenReturn(new PipelineServiceClientResponse().withCode(200));
 
-    // Should succeed on first attempt without retries - use short timeout for testing
-    boolean result = runIngestionPipelineImpl.execute(testPipeline.getId(), false, 10);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<OpenMetadataConnectionBuilder> ignored =
+            mockConstruction(
+                OpenMetadataConnectionBuilder.class,
+                (mock, ctx) -> when(mock.build()).thenReturn(null))) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+          .thenReturn(mockRepository);
+      entityMock
+          .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+          .thenReturn(null);
 
-    assertTrue(result);
-    // Verify only called once (no retries)
-    verify(mockPipelineServiceClient, times(1)).runPipeline(any(), any());
+      boolean result = runIngestionPipelineImpl.execute(testPipeline.getId(), false, 3600);
+
+      assertTrue(result);
+      verify(mockPipelineServiceClient, times(1)).runPipeline(any(), any());
+    }
+  }
+
+  @Test
+  void testExecuteRetriesOnFailure() throws Exception {
+    long previousInterval = RunIngestionPipelineImpl.runRetryIntervalMillis;
+    RunIngestionPipelineImpl.runRetryIntervalMillis = 10;
+    try {
+      when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
+      when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
+
+      doThrow(new IngestionPipelineDeploymentException("First failure"))
+          .doThrow(new IngestionPipelineDeploymentException("Second failure"))
+          .doReturn(null)
+          .when(mockPipelineServiceClient)
+          .runPipeline(any(), any());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedConstruction<OpenMetadataConnectionBuilder> ignored =
+              mockConstruction(
+                  OpenMetadataConnectionBuilder.class,
+                  (mock, ctx) -> when(mock.build()).thenReturn(null))) {
+        entityMock
+            .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+            .thenReturn(mockRepository);
+        entityMock
+            .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+            .thenReturn(null);
+
+        boolean result = runIngestionPipelineImpl.execute(testPipeline.getId(), false, 3600);
+
+        assertTrue(result);
+        verify(mockPipelineServiceClient, times(3)).runPipeline(any(), any());
+      }
+    } finally {
+      RunIngestionPipelineImpl.runRetryIntervalMillis = previousInterval;
+    }
   }
 
   @Test
   void testExecuteFailsAfterMaxRetries() {
-    // Mock repository and entity setup
     when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
     when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
 
-    // Mock 3 consecutive failures
     doThrow(new IngestionPipelineDeploymentException("Persistent failure"))
         .when(mockPipelineServiceClient)
         .runPipeline(any(), any());
 
-    RuntimeException exception =
-        assertThrows(
-            RuntimeException.class,
-            () -> runIngestionPipelineImpl.execute(testPipeline.getId(), false, 60));
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<OpenMetadataConnectionBuilder> ignored =
+            mockConstruction(
+                OpenMetadataConnectionBuilder.class,
+                (mock, ctx) -> when(mock.build()).thenReturn(null))) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+          .thenReturn(mockRepository);
+      entityMock
+          .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+          .thenReturn(null);
 
-    assertTrue(
-        exception.getMessage().contains("Failed to run pipeline after retries"),
-        "Actual exception message: " + exception.getMessage());
+      RuntimeException exception =
+          assertThrows(
+              RuntimeException.class,
+              () -> runIngestionPipelineImpl.execute(testPipeline.getId(), false, 3600));
 
-    // Verify 3 attempts were made
-    verify(mockPipelineServiceClient, times(3)).runPipeline(any(), any());
+      assertTrue(exception.getMessage().contains("Failed to run pipeline after retries"));
+      verify(mockPipelineServiceClient, times(3)).runPipeline(any(), any());
+    }
   }
 
   @Test
   void testWaitForCompletionSuccess() {
-    // Mock successful pipeline status
     PipelineStatus successStatus = createPipelineStatus(PipelineStatusType.SUCCESS);
     when(mockRepository.listPipelineStatus(anyString(), anyLong(), anyLong()))
         .thenReturn(createStatusResult(successStatus));
 
     boolean result =
         runIngestionPipelineImpl.waitForCompletion(
-            mockRepository, testPipeline, System.currentTimeMillis(), 10000);
+            mockRepository, testPipeline, System.currentTimeMillis(), 60000);
 
     assertTrue(result);
     verify(mockRepository, times(1)).listPipelineStatus(anyString(), anyLong(), anyLong());
@@ -169,14 +181,13 @@ class RunIngestionPipelineImplTest {
 
   @Test
   void testWaitForCompletionFailure() {
-    // Mock failed pipeline status
     PipelineStatus failedStatus = createPipelineStatus(PipelineStatusType.FAILED);
     when(mockRepository.listPipelineStatus(anyString(), anyLong(), anyLong()))
         .thenReturn(createStatusResult(failedStatus));
 
     boolean result =
         runIngestionPipelineImpl.waitForCompletion(
-            mockRepository, testPipeline, System.currentTimeMillis(), 10000);
+            mockRepository, testPipeline, System.currentTimeMillis(), 60000);
 
     assertFalse(result);
     verify(mockRepository, times(1)).listPipelineStatus(anyString(), anyLong(), anyLong());
@@ -185,10 +196,8 @@ class RunIngestionPipelineImplTest {
   @Test
   void testWaitForCompletionTimeout() {
     long startTime = System.currentTimeMillis();
-    // Short timeout to make test fast
     long timeoutMillis = 100;
 
-    // Mock always running status (will cause timeout)
     PipelineStatus runningStatus = createPipelineStatus(PipelineStatusType.RUNNING);
     when(mockRepository.listPipelineStatus(anyString(), anyLong(), anyLong()))
         .thenReturn(createStatusResult(runningStatus));
@@ -202,7 +211,6 @@ class RunIngestionPipelineImplTest {
 
   @Test
   void testWaitForCompletionPollingForRunningState() {
-    // Mock sequence: RUNNING -> RUNNING -> SUCCESS
     PipelineStatus runningStatus = createPipelineStatus(PipelineStatusType.RUNNING);
     PipelineStatus successStatus = createPipelineStatus(PipelineStatusType.SUCCESS);
 
@@ -213,26 +221,25 @@ class RunIngestionPipelineImplTest {
 
     long startTime = System.currentTimeMillis();
     boolean result =
-        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 5000);
+        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 300000);
+    long duration = System.currentTimeMillis() - startTime;
 
     assertTrue(result);
+    assertTrue(duration >= 60000, "Expected at least 60 seconds for 2 polling intervals");
     verify(mockRepository, times(3)).listPipelineStatus(anyString(), anyLong(), anyLong());
   }
 
   @Test
   void testWaitForCompletionEmptyStatusList() {
-    // Mock empty status list initially, then success
     PipelineStatus successStatus = createPipelineStatus(PipelineStatusType.SUCCESS);
-    ResultList<PipelineStatus> emptyList = new ResultList<>();
-    emptyList.setData(List.of()); // Explicitly set empty list
 
     when(mockRepository.listPipelineStatus(anyString(), anyLong(), anyLong()))
-        .thenReturn(emptyList) // Empty list triggers RUNNING state
-        .thenReturn(createStatusResult(successStatus)); // Then success
+        .thenReturn(createStatusResult())
+        .thenReturn(createStatusResult(successStatus));
 
     long startTime = System.currentTimeMillis();
     boolean result =
-        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 5000);
+        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 60000);
 
     assertTrue(result);
     verify(mockRepository, times(2)).listPipelineStatus(anyString(), anyLong(), anyLong());

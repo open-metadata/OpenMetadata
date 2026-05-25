@@ -1,7 +1,5 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -41,9 +39,7 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
         Map<String, String> inputNamespaceMap =
             JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
         String entityInfo =
-            (String)
-                varHandler.getNamespacedVariable(
-                    inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
+            WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst();
 
         if (entityInfo != null) {
           MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityInfo);

@@ -30,6 +30,7 @@ export interface CheckEntityAttributesTask {
      * Name that identifies this Node.
      */
     name?:    string;
+    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -45,5 +46,6 @@ export interface NodeConfiguration {
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
+    entityList: string;
+    [property: string]: any;
 }

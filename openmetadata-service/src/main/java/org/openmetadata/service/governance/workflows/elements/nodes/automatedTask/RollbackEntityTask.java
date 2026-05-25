@@ -1,8 +1,11 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.HashMap;
+import java.util.Map;
 import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -61,15 +64,21 @@ public class RollbackEntityTask implements NodeInterface {
   private ServiceTask getRollbackEntityServiceTask(
       String subProcessId, RollbackEntityTaskDefinition nodeDefinition) {
 
-    // Pass the input namespace map so RollbackEntityImpl can access namespaced variables
+    Map<String, String> inputNamespaceMap = new HashMap<>();
+    if (nodeDefinition.getInputNamespaceMap() != null) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> definedNamespaceMap =
+          JsonUtils.convertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+      if (definedNamespaceMap != null) {
+        inputNamespaceMap.putAll(definedNamespaceMap);
+      }
+    }
+    inputNamespaceMap.putIfAbsent(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
+
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
-            .fieldValue(
-                JsonUtils.pojoToJson(
-                    nodeDefinition.getInputNamespaceMap() != null
-                        ? nodeDefinition.getInputNamespaceMap()
-                        : new HashMap<>()))
+            .fieldValue(JsonUtils.pojoToJson(inputNamespaceMap))
             .build();
 
     return new ServiceTaskBuilder()
