@@ -14,7 +14,7 @@ import {
   Button,
   Dialog,
   Modal,
-  ModalOverlay,
+  ModalOverlay
 } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { AxiosError } from 'axios';
@@ -343,9 +343,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         <Dialog
           showCloseButton
           className="quick-link-form-modal"
-          title={title}
           width={600}
           onClose={onCancel}>
+          <Dialog.Header title={title} />
           <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
             <Form
               className="new-form-style"
