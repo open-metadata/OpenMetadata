@@ -593,6 +593,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       if (converted.getRequest() instanceof TestServiceConnectionRequest testRequest) {
         authorizeTestConnection(securityContext, testRequest);
+      } else {
+        // Fail closed: deny the trigger if a TEST_CONNECTION request cannot be resolved to a
+        // TestServiceConnectionRequest, rather than letting it run unauthorized.
+        throw new AuthorizationException(
+            String.format(
+                "Cannot authorize TEST_CONNECTION trigger for workflow [%s]: request is not a valid TestServiceConnectionRequest",
+                workflow.getId()));
       }
     }
   }
