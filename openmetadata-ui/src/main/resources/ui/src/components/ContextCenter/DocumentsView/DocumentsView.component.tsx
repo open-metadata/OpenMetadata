@@ -39,7 +39,7 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
-import { FileTypeBadge } from '../../../utils/ContextCenterUtils';
+import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
@@ -130,9 +130,9 @@ const FileActions: FC<FileActionsProps> = ({
                     aria-hidden="true"
                     className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-fg-quaternary"
                   />
-                  <span className="tw:grow tw:truncate tw:text-sm tw:font-semibold tw:text-secondary">
+                  <Typography className="tw:text-secondary" size='text-sm' weight='semibold'>
                     {t('label.move-to-folder')}
-                  </span>
+                  </Typography>
                   <ChevronRight
                     aria-hidden="true"
                     className="tw:ml-auto tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
@@ -243,7 +243,7 @@ const FileRow: FC<FileRowProps> = ({
     <div
       className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
       data-testid={`document-row-${file.id}`}>
-      <FileTypeBadge fileType={file.fileType} />
+      <FileTypeLabel fileType={file.fileType} />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
         <Typography className="tw:truncate" size="text-sm" weight="medium">

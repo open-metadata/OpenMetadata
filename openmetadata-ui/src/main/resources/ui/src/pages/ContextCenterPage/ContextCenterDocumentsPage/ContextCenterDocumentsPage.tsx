@@ -268,7 +268,7 @@ const ContextCenterDocumentsPage: FC = () => {
         <DeleteModal
           entityTitle={fileToDelete.name}
           isDeleting={isDeletingFile}
-          message={t('message.delete-entity-message', {
+          message={t('message.soft-delete-message-for-entity', {
             entity: fileToDelete.name,
           })}
           open={Boolean(fileToDelete)}

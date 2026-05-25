@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
-import { FileTypeBadge } from '../../../utils/ContextCenterUtils';
+import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 import { DocFile } from './DocumentsView.interface';
@@ -202,7 +202,7 @@ const DocumentFolderView = ({
                         key={file.id}
                         textValue={file.name}>
                         <Tree.ItemContent showExpandIcon={false}>
-                          <FileTypeBadge fileType={file.fileType} />
+                          <FileTypeLabel fileType={file.fileType} />
                           <Typography
                             ellipsis
                             className="tw:truncate tw:text-gray-700 tw:max-w-[70%]"

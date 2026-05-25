@@ -169,7 +169,7 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       if (itemToDelete.type === 'article') {
-        await deleteKnowledgePage(itemToDelete.id, true);
+        await deleteKnowledgePage(itemToDelete.id, false, true);
       } else {
         await deleteDriveFile(itemToDelete.id, true);
       }
@@ -233,19 +233,19 @@ const ContextCenterArchivePage: FC = () => {
                 {
                   id: 'article',
                   label: (
-                    <span className="tw:flex tw:items-center tw:gap-1.5">
+                    <div className="tw:flex tw:items-center tw:gap-1.5">
                       <File06 size={14} />
                       {t('label.article-plural')}
-                    </span>
+                    </div>
                   ),
                 },
                 {
                   id: 'document',
                   label: (
-                    <span className="tw:flex tw:items-center tw:gap-1.5">
+                    <div className="tw:flex tw:items-center tw:gap-1.5">
                       <FolderIcon height={14} width={14} />
                       {t('label.document-plural')}
-                    </span>
+                    </div>
                   ),
                 },
               ]}

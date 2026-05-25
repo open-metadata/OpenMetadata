@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Typography as AntTypography,
   Button,
   Modal,
   Skeleton,
   Tree,
-  Typography as AntTypography,
 } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';

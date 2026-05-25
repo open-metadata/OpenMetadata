@@ -84,7 +84,7 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
 );
 
 jest.mock('utils/ContextCenterUtils', () => ({
-  FileTypeBadge: jest.fn(({ fileType }: { fileType: string }) => (
+  FileTypeLabel: jest.fn(({ fileType }: { fileType: string }) => (
     <span data-testid={`badge-${fileType}`}>{fileType}</span>
   )),
 }));

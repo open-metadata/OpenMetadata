@@ -482,7 +482,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         onDelete={async () => {
           setIsDeleting(true);
           try {
-            await deleteKnowledgePage(knowledgePage.id, false);
+            await deleteKnowledgePage(knowledgePage.id, false, true);
             afterDeleteAction(false);
           } catch (error) {
             showErrorToast(error as AxiosError);

@@ -71,10 +71,11 @@ export const getKnowledgePageByFqn = async (
 
 export const deleteKnowledgePage = async (
   id: string,
+  recursive = true,
   hardDelete = false
 ): Promise<void> => {
   await APIClient.delete(`/contextCenter/pages/${id}`, {
-    params: { hardDelete },
+    params: { recursive, hardDelete },
   });
 };
 

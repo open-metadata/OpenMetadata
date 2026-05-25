@@ -240,7 +240,7 @@ export const handleAssetDownload = async (file: DocFile) => {
   }
 };
 
-export const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
+export const FileTypeLabel: FC<{ fileType: DocFileType }> = ({ fileType }) => {
   const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
 
   return (
