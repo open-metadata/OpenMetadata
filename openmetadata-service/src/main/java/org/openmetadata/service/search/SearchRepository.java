@@ -2063,12 +2063,13 @@ public class SearchRepository {
             String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
@@ -2122,7 +2123,7 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getOldValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
@@ -2178,7 +2179,8 @@ public class SearchRepository {
         data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case NESTED_FIELD -> {
         data.put(field.getName(), field.getNewValue().toString());
@@ -2188,7 +2190,7 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
