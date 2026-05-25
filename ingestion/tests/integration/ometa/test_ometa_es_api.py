@@ -386,8 +386,6 @@ class TestOMetaESAPI:
                 )
                 created_tables.append(table)
 
-            # Poll until ES has indexed every created table — same pattern as
-            # the wait_for_es_index fixture above.
             tries = 0
             indexed = False
             while not indexed and tries <= 10:
@@ -399,8 +397,6 @@ class TestOMetaESAPI:
                     tries += 1
                     time.sleep(1)
 
-            # Filter by exact id list so the result set is hermetic — no table
-            # created by any other test, fixture, or future addition can leak in.
             expected_ids = [str(t.id.root) for t in created_tables]
             query_filter = json.dumps({"query": {"terms": {"id.keyword": expected_ids}}})
             assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))

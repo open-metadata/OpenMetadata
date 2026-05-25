@@ -397,7 +397,6 @@ class ESMixin(Generic[T]):
                 logger.debug("No more pages to fetch")
                 break
 
-            # One &search_after= per sort value — safe for values containing ','.
             after = "".join(f"&search_after={quote_plus(str(v))}" for v in last_hit.sort)
 
     def paginate_es(

@@ -556,8 +556,6 @@ class SearchUtilsTest {
     assertFalse(SearchUtils.isColumnIndex("garbage"));
   }
 
-  // search_after — regression for #28076.
-
   @Test
   void searchAfterNullOrEmpty() {
     assertNull(SearchUtils.searchAfter((List<String>) null));
@@ -571,7 +569,6 @@ class SearchUtilsTest {
 
   @Test
   void searchAfterSingleValueContainingCommaNotSplit() {
-    // #28076 — a glossary term FQN with ',' must survive verbatim.
     String commaFqn =
         "x alation archive.system glossary.sfmc (salesforce marketing cloud, exacttarget) (it system)";
     assertEquals(List.of(commaFqn), SearchUtils.searchAfter(List.of(commaFqn)));
