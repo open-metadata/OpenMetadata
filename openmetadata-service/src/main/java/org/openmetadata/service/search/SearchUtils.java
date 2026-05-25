@@ -334,10 +334,10 @@ public final class SearchUtils {
   public static List<Object> searchAfter(List<String> values) {
     List<Object> result = null;
     if (!nullOrEmpty(values)) {
-      List<Object> filtered =
+      List<String> filtered =
           values.stream().filter(v -> !nullOrEmpty(v)).collect(Collectors.toList());
       if (!filtered.isEmpty()) {
-        result = filtered;
+        result = new ArrayList<>(filtered);
       }
     }
     return result;
