@@ -40,11 +40,13 @@ export const idlePrefetchRoutes = () => {
     import('../pages/ExplorePage/ExplorePageV1.component').catch(
       () => undefined
     );
-    // Settings is the second most common, mostly admin/data-steward flows.
-    // Lower priority than Explore but still worth warming.
-    import('../components/AppRouter/SettingsRouter').catch(() => undefined);
     // EntityRouter is the parent of every entity detail page. Warming it once
     // covers Table / Dashboard / Pipeline / Topic / etc clicks from search.
     import('../components/AppRouter/EntityRouter').catch(() => undefined);
+    // {@code SettingsRouter} is intentionally NOT prefetched: it transitively
+    // pulls every service-form registry (11), 98 connection-schema JSONs, and
+    // every service-connector icon PNG — ~15 MB of resources that the typical
+    // /my-data visitor never needs. Settings is admin-only and accessed
+    // infrequently enough to be loaded on click without complaint.
   });
 };
