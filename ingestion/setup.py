@@ -19,7 +19,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.7",
+    "airflow": "apache-airflow==3.2.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -28,7 +28,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs~=2023.12.1",
+    "gcsfs": "gcsfs~=2026.3",
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -70,7 +70,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
-    "s3fs": "s3fs~=2023.12.1",
+    "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
@@ -144,14 +144,14 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography>=44.0.1",
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
+    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
@@ -160,7 +160,7 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.23",
+    "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage>=2.1.1",
@@ -168,7 +168,7 @@ base_requirements = {
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
+    "setuptools>=78.1.1",
     "shapely",
     "collate-data-diff>=0.11.9",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
@@ -176,7 +176,7 @@ base_requirements = {
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
-    "jaraco.context==6.0.1",
+    "jaraco.context>=6.1.0",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
     "mysql-connector-python>=9.1",
@@ -241,7 +241,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
+        "pyOpenSSL>=24.3.0",
         "pyasn1~=0.6.0",
     },
     "datalake-azure": {
@@ -320,16 +320,22 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython~=3.1.34",
+        "gitpython>=3.1.50",
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=3.6.0"},
+    # <3.11 keeps the search/registry surface stable; the MySQL integration test
+    # sets log_bin_trust_function_creators=1 so the 3.8.1+ trigger creation passes.
+    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
-        "sqlalchemy-pytds~=0.3",
+        # 1.0+ moved internal `tds.skipall` calls to `tds_base.skipall`, matching
+        # the python-tds 1.x layout. 0.3.x raises AttributeError on every
+        # server-side cursor fetch (TABNAME / COLINFO tokens) when paired with
+        # python-tds 1.x.
+        "sqlalchemy-pytds~=1.0",
         DATA_DIFF["mssql"],
     },
     "mssql-odbc": {
@@ -367,7 +373,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.4"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
@@ -405,6 +411,11 @@ dev = {
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
@@ -475,7 +486,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests>=2.31.0,<3",
+    "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],

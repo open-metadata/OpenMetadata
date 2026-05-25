@@ -107,13 +107,11 @@
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
-            <version>3.1.9</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.connectors</groupId>
             <artifactId>jersey-apache-connector</artifactId>
-            <version>3.1.9</version>
             <optional>true</optional>
         </dependency>
         <dependency>

@@ -73,7 +73,7 @@ test.describe('Verify RTL Layout for landing page', () => {
     await quickFilterResponse;
 
     await expect(
-      page.getByRole('button', { name: `סוג השירות : ${serviceType}` })
+      page.getByRole('button', { name: 'סוג השירות : (1)' })
     ).toBeAttached();
 
     await expect(

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -42,6 +43,8 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -52,6 +55,7 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -78,11 +82,13 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -144,6 +150,7 @@ export const DataAssetsHeader = ({
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser } = useApplicationStore();
+  const { getResourcePermission } = usePermissionProvider();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
@@ -162,10 +169,22 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled, refetch: refetchExistingDar } = useDataAccessRequest({
+  const [canCreateTask, setCanCreateTask] = useState(false);
+  const {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: refetchExistingDar,
+  } = useDataAccessRequest({
     entityFqn: dataAsset.fullyQualifiedName,
     enabled: entityType === EntityType.TABLE,
   });
+
+  useEffect(() => {
+    getResourcePermission(ResourceEntity.TASK)
+      .then((perm) => setCanCreateTask(Boolean(perm.Create)))
+      .catch(() => setCanCreateTask(false));
+  }, [getResourcePermission]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -428,12 +447,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -596,14 +619,18 @@ export const DataAssetsHeader = ({
       SERVICE_TYPES.includes(entityType) ||
       entityType !== EntityType.TABLE ||
       deleted ||
-      isOwner
+      isOwner ||
+      !canCreateTask
     ) {
       return null;
     }
 
-    const tooltipTitle = isDarDisabled
-      ? t('message.data-access-request-already-exists')
-      : undefined;
+    const tooltipTitle = getDarButtonTooltip(
+      isDarDisabled,
+      isDarGranted,
+      isDarAwaitingGrant,
+      t
+    );
 
     return (
       <Tooltip title={tooltipTitle}>
@@ -616,7 +643,16 @@ export const DataAssetsHeader = ({
         </Button>
       </Tooltip>
     );
-  }, [entityType, deleted, isOwner, isDarDisabled, t]);
+  }, [
+    entityType,
+    deleted,
+    isOwner,
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    canCreateTask,
+    t,
+  ]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -630,6 +666,16 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
+        {isDarAwaitingGrant && (
+          <Col span={24}>
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </Col>
+        )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,

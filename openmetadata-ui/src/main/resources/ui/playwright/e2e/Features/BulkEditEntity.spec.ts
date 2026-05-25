@@ -46,41 +46,61 @@ import {
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
+interface GlossaryDetails {
+  name: string;
+  parent: string;
+}
+
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
-const domain1 = new Domain();
-const domain2 = new Domain();
+let user1: UserClass;
+let user2: UserClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
+let domain1: Domain;
+let domain2: Domain;
 
-const glossaryDetails = {
-  name: glossaryTerm.data.name,
-  parent: glossary.data.name,
+let glossaryDetails: GlossaryDetails;
+let databaseSchemaDetails1: ReturnType<
+  typeof createDatabaseSchemaRowDetails
+> & { glossary: GlossaryDetails };
+let tableDetails1: ReturnType<typeof createTableRowDetails> & {
+  glossary: GlossaryDetails;
 };
-
-const databaseSchemaDetails1 = {
-  ...createDatabaseSchemaRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const tableDetails1 = {
-  ...createTableRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const columnDetails1 = {
-  ...createColumnRowDetails(),
-  glossary: glossaryDetails,
+let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
+  glossary: GlossaryDetails;
 };
 
 test.describe('Bulk Edit Entity', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
+    user1 = new UserClass();
+    user2 = new UserClass();
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    domain1 = new Domain();
+    domain2 = new Domain();
+
+    glossaryDetails = {
+      name: glossaryTerm.data.name,
+      parent: glossary.data.name,
+    };
+    databaseSchemaDetails1 = {
+      ...createDatabaseSchemaRowDetails(),
+      glossary: glossaryDetails,
+    };
+    tableDetails1 = {
+      ...createTableRowDetails(),
+      glossary: glossaryDetails,
+    };
+    columnDetails1 = {
+      ...createColumnRowDetails(),
+      glossary: glossaryDetails,
+    };
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user1.create(apiContext);

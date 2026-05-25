@@ -16,10 +16,19 @@
 @border-color: #0000001a;
 
 .knowledge-center-layout {
-  height: @page-height;
+  // 80px navbar + 150px page header + 20px margin = 250px
+  height: calc(100vh - 250px);
 
   &.knowledge-details-page {
-    height: @knowledge-center-content-height;
+   // 80px navbar + 178px page header + 20px margin = 278px
+    height: calc(100vh - 278px);
+    padding-bottom: 20px;
+  }
+
+  &.knowledge-version-page {
+    // 80px navbar + 142px page header + 20px margin = 242px
+    height: calc(100vh - 242px);
+    padding-bottom: 20px;
   }
 }
 
@@ -170,6 +179,12 @@
 
 .knowledge-center-layout.reflex-container .center-panel {
   overflow-y: scroll;
+}
+
+.center-panel {
+  .ant-card-body {
+    padding-left: 30px
+  }
 }
 
 // rtl css

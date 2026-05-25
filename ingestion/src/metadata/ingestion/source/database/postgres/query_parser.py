@@ -51,7 +51,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         super().__init__(config, metadata)
         # Postgres does not allow retrieval of data older than 7 days
         # Update start and end based on this
-        duration = min(self.source_config.queryLogDuration, 6)
+        duration = min(self.source_config.queryLogDuration, 6)  # pyright: ignore[reportAttributeAccessIssue]
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
@@ -68,7 +68,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         We don't use any start or end times as they are not available
         """
         return self.sql_stmt.format(
-            result_limit=self.config.sourceConfig.config.resultLimit,
+            result_limit=self.config.sourceConfig.config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
             filters=self.get_filters(),
             time_column_name=get_postgres_time_column_name(engine=self.engine),
             query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
@@ -77,7 +77,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     # pylint: disable=no-member
     def get_table_query(self) -> Iterable[TableQuery]:
         try:
-            if self.config.sourceConfig.config.queryLogFilePath:
+            if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
                 yield from super().yield_table_queries_from_logs()
             else:
                 database = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
