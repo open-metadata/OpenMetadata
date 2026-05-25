@@ -14,7 +14,7 @@ import {
   Button,
   Dialog,
   Modal,
-  ModalOverlay
+  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { AxiosError } from 'axios';
@@ -246,12 +246,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     if (!isUndefined(quickLink)) {
       handleQuickLinkUpdate(quickLink, updatedValues);
     } else {
-      showSuccessToast(
-        t('message.entity-saved-successfully', {
-          entity: t('label.quick-link'),
-        })
-      );
-      form.resetFields();
       onSave(updatedValues);
     }
   };
