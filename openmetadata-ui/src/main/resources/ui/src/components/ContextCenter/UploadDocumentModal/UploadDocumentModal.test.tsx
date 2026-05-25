@@ -25,6 +25,10 @@ jest.mock('rest/assetAPI', () => ({
   uploadDriveFile: jest.fn(),
 }));
 
+jest.mock('utils/ToastUtils', () => ({
+  showSuccessToast: jest.fn(),
+}));
+
 let mockOnDropFiles: ((files: FileList) => void) | undefined;
 let mockOnSizeLimitExceed: ((files: FileList) => void) | undefined;
 
@@ -55,15 +59,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     jest.fn(
       ({
         children,
-        title,
         onClose,
       }: {
         children: React.ReactNode;
-        title: string;
         onClose: () => void;
       }) => (
         <div data-testid="dialog">
-          <span>{title}</span>
           <button data-testid="dialog-close" onClick={onClose}>
             close
           </button>
@@ -75,6 +76,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Content: jest.fn(({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ title }: { title: string }) => <div>{title}</div>),
     }
   ),
   FileUpload: Object.assign(
@@ -243,7 +248,7 @@ describe('UploadDocumentModal', () => {
 
     expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText(/delete/i));
+    fireEvent.click(screen.getByTestId('delete-remove-me.pdf'));
 
     expect(screen.queryByText('remove-me.pdf')).not.toBeInTheDocument();
   });
@@ -283,7 +288,7 @@ describe('UploadDocumentModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows error toast when a file exceeds the size limit', () => {
+  it('shows the failed state for a file that exceeds the size limit', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
@@ -292,7 +297,10 @@ describe('UploadDocumentModal', () => {
       );
     });
 
-    expect(screen.getByTestId('size-error-message')).toBeInTheDocument();
+    const bar = screen.getByTestId('progress-bar-huge.pdf');
+
+    expect(bar).toBeInTheDocument();
+    expect(bar).toHaveAttribute('data-failed', 'true');
   });
 
   it('shows the failed state in the progress bar on upload error', async () => {
