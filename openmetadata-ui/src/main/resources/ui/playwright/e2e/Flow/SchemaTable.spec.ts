@@ -197,14 +197,24 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/name/') &&
-        response.request().method() === 'GET'
-    ),
-    page.goto(clipboardText),
-  ]);
+  const columnGetResponsePromise = page.waitForResponse((response) => {
+    if (
+      !response.url().includes('/api/v1/columns/name/') ||
+      response.request().method() !== 'GET'
+    ) {
+      return false;
+    }
+    const url = new URL(response.url());
+
+    return (
+      url.searchParams.get('entityType') === 'table' &&
+      url.searchParams.get('fields') === 'tags,customMetrics,extension,profile'
+    );
+  });
+  await page.goto(clipboardText);
+  const columnGetResponse = await columnGetResponsePromise;
+
+  expect(columnGetResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   // Verify side panel is open
