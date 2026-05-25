@@ -14,7 +14,7 @@ import {
   Button,
   Dialog,
   Modal,
-  ModalOverlay
+  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { AxiosError } from 'axios';

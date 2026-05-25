@@ -20,14 +20,19 @@ import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { ProgressBar } from '@/components/base/progress-indicators/progress-indicators';
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
-import { FileIcon as FileTypeIcon, type FileIconProps } from '@untitledui/file-icons';
+import { FileIcon as FileTypeIcon } from '@untitledui/file-icons';
 import {
   CheckCircle,
   Trash01,
   UploadCloud02,
   XCircle,
 } from '@untitledui/icons';
-import type { ChangeEvent, ComponentProps, ComponentPropsWithRef, DragEvent } from 'react';
+import type {
+  ChangeEvent,
+  ComponentProps,
+  ComponentPropsWithRef,
+  DragEvent,
+} from 'react';
 import { useId, useRef, useState } from 'react';
 
 export const getReadableFileSize = (bytes: number): string => {
@@ -261,7 +266,7 @@ export interface FileListItemProps {
   tryAgainLabel?: string;
   deleteLabel?: string;
   type?: ComponentProps<typeof FileTypeIcon>['type'];
-  fileIconVariant?: FileIconProps['variant'];
+  fileIconVariant?: ComponentProps<typeof FileTypeIcon>['variant'];
   onDelete?: () => void;
   onRetry?: () => void;
 }

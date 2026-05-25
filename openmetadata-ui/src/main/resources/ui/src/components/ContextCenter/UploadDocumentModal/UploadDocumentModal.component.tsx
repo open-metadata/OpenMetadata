@@ -44,7 +44,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const cancelledRef = useRef(false);
 
-  const hasPendingFiles = files.some((f) => f.status === 'done' && !f.sizeExceeded);
+  const hasPendingFiles = files.some(
+    (f) => f.status === 'done' && !f.sizeExceeded
+  );
 
   const handleClose = () => {
     cancelledRef.current = true;
@@ -152,10 +154,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
-        <Dialog
-          showCloseButton
-          width={500}
-          onClose={handleClose}>
+        <Dialog showCloseButton width={500} onClose={handleClose}>
           <Dialog.Header title={t('label.upload-document-plural')} />
           <Dialog.Content className="tw:pb-6 tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
             <FileUpload.Root>
@@ -176,9 +175,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                       completeLabel={t('label.complete')}
                       deleteLabel={t('label.delete')}
                       failed={status === 'error'}
-                      failedLabel={
-                        t('label.failed')
-                      }
+                      failedLabel={t('label.failed')}
                       key={id}
                       name={file.name}
                       progress={status === 'done' ? 100 : progress}
@@ -197,25 +194,20 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 </FileUpload.List>
               )}
             </FileUpload.Root>
-
-        
           </Dialog.Content>
-              <Dialog.Footer className="quick-link-modal-footer">
-              <Button
-                color="secondary"
-                size="sm"
-                onClick={handleClose}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={!hasPendingFiles || isUploading}
-                isLoading={isUploading}
-                size="sm"
-                onClick={handleAttach}>
-                {t('label.attach-file-plural')}
-              </Button>
-            </Dialog.Footer>
+          <Dialog.Footer className="quick-link-modal-footer">
+            <Button color="secondary" size="sm" onClick={handleClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!hasPendingFiles || isUploading}
+              isLoading={isUploading}
+              size="sm"
+              onClick={handleAttach}>
+              {t('label.attach-file-plural')}
+            </Button>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>

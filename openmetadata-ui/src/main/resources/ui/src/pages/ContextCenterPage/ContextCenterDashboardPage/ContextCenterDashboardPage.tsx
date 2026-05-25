@@ -181,8 +181,7 @@ const ContextCenterDashboardPage: FC = () => {
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={
-
-          <div className='tw:flex tw:items-center tw:gap-3 tw:shrink-0'>
+          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
             <Button
               color="secondary"
               iconLeading={UploadCloud02}
@@ -218,9 +217,7 @@ const ContextCenterDashboardPage: FC = () => {
                 </Dropdown.Popover>
               </Dropdown.Root>
             </LimitWrapper>
-
           </div>
-
         }
         breadcrumbs={[
           {
@@ -282,8 +279,8 @@ const ContextCenterDashboardPage: FC = () => {
           } as OperationPermission
         }
         onCancel={() => setShowAddLinkModal(false)}
-        onSave={(data) => {
-          handleAddQuickLink(data);
+        onSave={async (data) => {
+          await handleAddQuickLink(data);
           setShowAddLinkModal(false);
         }}
       />
