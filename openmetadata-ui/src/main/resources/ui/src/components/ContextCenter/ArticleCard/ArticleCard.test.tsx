@@ -21,6 +21,10 @@ jest.mock('utils/FeedUtils', () => ({
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getShortRelativeTime: jest.fn(() => '2 days ago'),
+  getEpochMillisForPastDays: jest.fn(() => 0),
+  getStartOfDayInMillis: jest.fn(() => 0),
+  getEndOfDayInMillis: jest.fn(() => 0),
+  getCurrentMillis: jest.fn(() => 0),
 }));
 
 jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () =>

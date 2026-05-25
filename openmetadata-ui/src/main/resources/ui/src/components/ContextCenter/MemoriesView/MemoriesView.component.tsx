@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Edit01, Eye, Trash01 } from '@untitledui/icons';
+import { Clock, Edit01, Trash01 } from '@untitledui/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -37,7 +37,6 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
   memory,
   onDeleteMemory,
   onEditMemory,
-  onViewMemory,
   onOpenChange,
 }) => {
   const { t } = useTranslation();
@@ -49,23 +48,15 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
           <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
         </TooltipTrigger>
       </Tooltip>
-      <Dropdown.Popover>
+      <Dropdown.Popover className="tw:w-30">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'details') {
-              onViewMemory?.(memory);
-            } else if (key === 'edit') {
+            if (key === 'edit') {
               onEditMemory?.(memory);
             } else if (key === 'delete') {
               onDeleteMemory?.(memory);
             }
           }}>
-          <Dropdown.Item
-            data-testid="details-btn"
-            icon={Eye}
-            id="details"
-            label={t('label.details')}
-          />
           {onEditMemory && (
             <Dropdown.Item
               data-testid="edit-btn"
@@ -75,12 +66,21 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
             />
           )}
           {canDelete && (
-            <Dropdown.Item
-              data-testid="delete-btn"
-              icon={Trash01}
-              id="delete"
-              label={t('label.delete')}
-            />
+            <Dropdown.Item data-testid="delete-btn" id="delete">
+              <div className="tw:flex tw:items-center tw:gap-2">
+                <Trash01
+                  aria-hidden="true"
+                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                />
+                <Typography
+                  ellipsis
+                  className="tw:grow tw:text-error-600"
+                  size="text-sm"
+                  weight="medium">
+                  {t('label.delete')}
+                </Typography>
+              </div>
+            </Dropdown.Item>
           )}
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -128,7 +128,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
   return (
     <div
-      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary last:tw:border-b-0 tw:cursor-pointer hover:tw:bg-gray-50 tw:transition-colors"
+      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary last:tw:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
       data-testid={`memory-row-${memory.id}`}
       onClick={() => onViewMemory?.(memory)}>
       {memory.updatedBy && (
@@ -140,7 +140,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
         <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
           {memory.updatedBy && (
-            <Typography size="text-sm" weight="medium">
+            <Typography className="tw:text-gray-700" size="text-sm">
               {memory.updatedBy}
             </Typography>
           )}
@@ -149,7 +149,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
                 &middot;
               </span>
-              <Typography className="tw:text-gray-500" size="text-sm">
+              <Typography className="tw:text-gray-500" size="text-xs">
                 {getShortRelativeTime(memory.updatedAt)}
               </Typography>
             </>
@@ -216,7 +216,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
       {/* 3-dot actions — visible on hover or while menu is open */}
       <div
-        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity ${
+        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity  ${
           isMenuOpen
             ? 'tw:opacity-100'
             : 'tw:opacity-0 tw:group-hover:opacity-100'
@@ -228,7 +228,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
           onDeleteMemory={onDeleteMemory}
           onEditMemory={onEditMemory}
           onOpenChange={setIsMenuOpen}
-          onViewMemory={onViewMemory}
         />
       </div>
     </div>

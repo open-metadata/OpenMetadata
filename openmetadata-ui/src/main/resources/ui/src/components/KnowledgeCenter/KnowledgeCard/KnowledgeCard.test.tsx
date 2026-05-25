@@ -74,12 +74,10 @@ jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
     ),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('components/common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
-    .mockReturnValue(
-      <div data-testid="delete-widget-modal">DeleteWidgetModal</div>
-    )
+    .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
 jest.mock('context/PermissionProvider/PermissionProvider', () => ({
