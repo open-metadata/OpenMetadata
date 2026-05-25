@@ -6,6 +6,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -82,6 +83,11 @@ public class CheckChangeDescriptionTask implements NodeInterface {
     this.runtimeExceptionBoundaryEvent =
         getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
+  }
+
+  @Override
+  public Set<String> getOutputPorts() {
+    return Set.of("true", "false");
   }
 
   @Override

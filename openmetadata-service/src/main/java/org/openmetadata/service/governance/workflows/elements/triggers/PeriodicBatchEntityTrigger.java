@@ -3,8 +3,8 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_SCHEDULE_RUN_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
@@ -18,6 +18,7 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.IOParameter;
 import org.flowable.bpmn.model.MultiInstanceLoopCharacteristics;
 import org.flowable.bpmn.model.Process;
@@ -30,12 +31,14 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.governance.workflows.WorkflowScheduleRunIdSetterListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.CommitChangeEventOffsetImpl;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchChangeEventsImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.FlowableListenerBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.MultiInstanceLoopCharacteristicsBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
@@ -49,7 +52,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final boolean singleExecutionMode;
   private final String resolvedWorkflowFqn;
   public static final String HAS_FINISHED_VARIABLE = "hasFinished";
-  private static final String NUMBER_OF_ENTITIES_VARIABLE = "numberOfEntities";
+
+  // Number of MainWorkflow CallActivities to run concurrently per fetch iteration.
+  // Governance workflows run during live traffic, so this is kept at 2 to avoid saturating
+  // the DB connection pool (each parallel batch uses ~2 connections: getEntitiesByLinks +
+  // bulkUpdate). To increase throughput further, raise this value alongside the DB pool size.
+  // This is intentionally a code-level constant rather than a config field to prevent
+  // accidental over-provisioning by end users.
+  static final int BATCH_PARALLELISM = 2;
 
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
@@ -68,7 +78,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       Process process = new Process();
       process.setId(processId);
       process.setName(processId);
-      attachWorkflowInstanceListeners(process);
+      attachScheduleRunIdListener(process);
 
       Optional<TimerEventDefinition> oTimerDefinition =
           Optional.ofNullable(getTimerEventDefinition(triggerDefinition.getConfig().getSchedule()));
@@ -88,7 +98,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       process.addFlowElement(endEvent);
 
       ServiceTask fetchTask =
-          getFetchChangeEventsTask(processId, entityType, triggerDefinition, resolvedWorkflowFqn);
+          getFetchChangeEventsTask(
+              processId, entityType, triggerDefinition, resolvedWorkflowFqn, singleExecutionMode);
       process.addFlowElement(fetchTask);
 
       ServiceTask commitTask = getCommitOffsetTask(processId, entityType, resolvedWorkflowFqn);
@@ -110,13 +121,20 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     }
   }
 
+  private void attachScheduleRunIdListener(Process process) {
+    FlowableListener listener =
+        new FlowableListenerBuilder()
+            .event("start")
+            .implementation(WorkflowScheduleRunIdSetterListener.class.getName())
+            .build();
+    process.getExecutionListeners().add(listener);
+  }
+
   private TimerEventDefinition getTimerEventDefinition(AppSchedule schedule) {
     if (schedule.getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
       return null;
     }
 
-    // TODO: Using the AppScheduler logic to craft a Flowable compatible Cron Expression. Eventually
-    // we should probably avoid this to be dependent that code.
     CronTrigger cronTrigger = (CronTrigger) AppScheduler.getCronSchedule(schedule).build();
 
     TimerEventDefinition timerDefinition = new TimerEventDefinition();
@@ -126,18 +144,6 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private CallActivity getWorkflowTriggerCallActivity(
       String triggerWorkflowId, String mainWorkflowName, boolean singleExecution) {
-    String cardinality =
-        singleExecution
-            ? "${entityList != null && !entityList.isEmpty() ? 1 : 0}"
-            : String.format("${%s}", NUMBER_OF_ENTITIES_VARIABLE);
-
-    MultiInstanceLoopCharacteristics multiInstance =
-        new MultiInstanceLoopCharacteristicsBuilder()
-            .loopCardinality(cardinality)
-            .inputDataItem(ENTITY_LIST_VARIABLE)
-            .elementVariable(RELATED_ENTITY_VARIABLE)
-            .build();
-
     CallActivity workflowTrigger =
         new CallActivityBuilder()
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
@@ -145,10 +151,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .inheritBusinessKey(true)
             .build();
 
-    IOParameter relatedEntityParameter = new IOParameter();
-    relatedEntityParameter.setSource(RELATED_ENTITY_VARIABLE);
-    relatedEntityParameter.setTarget(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    IOParameter entityListParameter = new IOParameter();
+    entityListParameter.setSource(ENTITY_LIST_VARIABLE);
+    entityListParameter.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
@@ -158,25 +164,33 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     updatedByParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
     updatedByParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
 
-    List<IOParameter> inParameters;
+    IOParameter scheduleRunIdParameter = new IOParameter();
+    scheduleRunIdParameter.setSource(WORKFLOW_SCHEDULE_RUN_ID_VARIABLE);
+    scheduleRunIdParameter.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, WORKFLOW_SCHEDULE_RUN_ID_VARIABLE));
+
+    // FetchChangeEventsImpl always produces BATCHES_VARIABLE: single-entity batches for
+    // sequential workflows, multi-entity batches for parallel ones. Both paths use the
+    // same MultiInstance setup — entityList is the per-iteration variable in all cases.
+    MultiInstanceLoopCharacteristics multiInstance =
+        new MultiInstanceLoopCharacteristicsBuilder()
+            .inputDataItem(FetchChangeEventsImpl.BATCHES_VARIABLE)
+            .elementVariable(ENTITY_LIST_VARIABLE)
+            .build();
+    workflowTrigger.setLoopCharacteristics(multiInstance);
+
     if (singleExecution) {
-      IOParameter entityListParameter = new IOParameter();
-      entityListParameter.setSource(ENTITY_LIST_VARIABLE);
-      entityListParameter.setTarget(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
-      inParameters = List.of(relatedEntityParameter, entityListParameter, updatedByParameter);
+      multiInstance.setSequential(true);
     } else {
-      IOParameter entityListParameter = new IOParameter();
-      entityListParameter.setSourceExpression(
-          String.format("${entityToListMap[%s]}", RELATED_ENTITY_VARIABLE));
-      entityListParameter.setTarget(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
-      inParameters = List.of(relatedEntityParameter, entityListParameter, updatedByParameter);
+      multiInstance.setSequential(false);
+      workflowTrigger.setAsynchronousLeave(true);
     }
+
+    List<IOParameter> inParameters =
+        List.of(entityListParameter, updatedByParameter, scheduleRunIdParameter);
 
     workflowTrigger.setInParameters(inParameters);
     workflowTrigger.setOutParameters(List.of(outputParameter));
-    workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
   }
@@ -185,7 +199,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       String workflowTriggerId,
       String entityType,
       PeriodicBatchEntityTriggerDefinition triggerDefinition,
-      String workflowFqn) {
+      String workflowFqn,
+      boolean singleExecution) {
     FieldExtension entityTypesExpr =
         new FieldExtensionBuilder().fieldName("entityTypesExpr").fieldValue(entityType).build();
 
@@ -215,6 +230,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
           new FieldExtensionBuilder().fieldName("searchFilterExpr").fieldValue(filtersJson).build();
       serviceTask.getFieldExtensions().add(searchFilterExpr);
     }
+
+    int parallelism = singleExecution ? 1 : BATCH_PARALLELISM;
+    FieldExtension parallelismExpr =
+        new FieldExtensionBuilder()
+            .fieldName("parallelismExpr")
+            .fieldValue(String.valueOf(parallelism))
+            .build();
+    serviceTask.getFieldExtensions().add(parallelismExpr);
 
     serviceTask.setAsynchronousLeave(true);
 

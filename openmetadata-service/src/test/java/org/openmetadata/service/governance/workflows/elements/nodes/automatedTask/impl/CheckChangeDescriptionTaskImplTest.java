@@ -6,7 +6,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.Workflow.FALSE_ENTITY_LIST_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.HAS_FALSE_ENTITIES_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.HAS_TRUE_ENTITIES_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRUE_ENTITY_LIST_VARIABLE;
 
 import java.lang.reflect.Field;
@@ -76,7 +77,8 @@ class CheckChangeDescriptionTaskImplTest {
     }
 
     verify(execution).setVariable(eq("process_" + TRUE_ENTITY_LIST_VARIABLE), eq(entityList));
-    verify(execution).setVariable(eq("process_" + RESULT_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_TRUE_ENTITIES_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_FALSE_ENTITIES_VARIABLE), eq(false));
   }
 
   @Test
@@ -112,7 +114,8 @@ class CheckChangeDescriptionTaskImplTest {
     }
 
     verify(execution).setVariable(eq("process_" + TRUE_ENTITY_LIST_VARIABLE), eq(entityList));
-    verify(execution).setVariable(eq("process_" + RESULT_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_TRUE_ENTITIES_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_FALSE_ENTITIES_VARIABLE), eq(false));
   }
 
   @Test
@@ -148,7 +151,8 @@ class CheckChangeDescriptionTaskImplTest {
     }
 
     verify(execution).setVariable(eq("process_" + FALSE_ENTITY_LIST_VARIABLE), eq(entityList));
-    verify(execution).setVariable(eq("process_" + RESULT_VARIABLE), eq(false));
+    verify(execution).setVariable(eq("process_" + HAS_TRUE_ENTITIES_VARIABLE), eq(false));
+    verify(execution).setVariable(eq("process_" + HAS_FALSE_ENTITIES_VARIABLE), eq(true));
   }
 
   @Test
@@ -183,7 +187,8 @@ class CheckChangeDescriptionTaskImplTest {
       impl.execute(execution);
     }
 
-    verify(execution).setVariable(eq("process_" + RESULT_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_TRUE_ENTITIES_VARIABLE), eq(true));
+    verify(execution).setVariable(eq("process_" + HAS_FALSE_ENTITIES_VARIABLE), eq(false));
   }
 
   @Test

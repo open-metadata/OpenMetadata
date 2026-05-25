@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.PROCESSED_FQNS_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TASK_RETRY_CONFIG;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -14,8 +15,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.retry.Retry;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,15 @@ public class FetchChangeEventsImpl implements JavaDelegate {
 
   static final String CURRENT_BATCH_OFFSET_VARIABLE = "currentBatchOffset";
   static final String MAX_PROCESSED_OFFSET_VARIABLE = "maxProcessedOffset";
+  // Cross-batch dedup cache stored as a Flowable execution variable (serialized to DB on every
+  // async boundary). 1,000 entries × ~100 chars/FQN ≈ 100KB per write — within safe BLOB limits.
+  static final int PROCESSED_FQNS_MAX_SIZE = 1_000;
   private static final String CARDINALITY_VARIABLE = "numberOfEntities";
+
+  // Variable name written to the Flowable execution scope when parallelism > 1.
+  // PeriodicBatchEntityTrigger reads this as the inputDataItem for its parallel MultiInstance
+  // CallActivity, giving each instance one sub-batch as its entityList.
+  public static final String BATCHES_VARIABLE = "batches";
 
   private static final Set<String> ENTITIES_NEEDING_KEYWORD_FQN =
       Set.of("testCase", "user", "team");
@@ -51,12 +60,24 @@ public class FetchChangeEventsImpl implements JavaDelegate {
   private Expression batchSizeExpr;
   private Expression workflowFqnExpr;
   private Expression searchFilterExpr;
+  // Injected by PeriodicBatchEntityTrigger via BPMN field extension. When > 1, the fetch
+  // retrieves parallelism * batchSize records and splits them into parallel sub-batches so
+  // the trigger can fire that many CallActivities concurrently. Absent expression means 1.
+  private Expression parallelismExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     String entityType = (String) entityTypesExpr.getValue(execution);
     int batchSize = Integer.parseInt((String) batchSizeExpr.getValue(execution));
     String workflowFqn = (String) workflowFqnExpr.getValue(execution);
+    // When parallelism > 1 we fetch parallelism * batchSize records in one DB call and split
+    // them into sub-batches. All dedup and offset logic runs once (in this single-threaded step)
+    // so there are no cross-batch races on processedFqns or the offset cursor.
+    int parallelism =
+        parallelismExpr != null
+            ? Integer.parseInt((String) parallelismExpr.getValue(execution))
+            : 1;
+    int fetchSize = batchSize * parallelism;
 
     Retry retry = Retry.of("fetch-change-events", TASK_RETRY_CONFIG);
 
@@ -68,7 +89,7 @@ public class FetchChangeEventsImpl implements JavaDelegate {
                 () ->
                     Entity.getCollectionDAO()
                         .changeEventDAO()
-                        .listByEntityTypesWithOffset(List.of(entityType), currentOffset, batchSize))
+                        .listByEntityTypesWithOffset(List.of(entityType), currentOffset, fetchSize))
             .get();
 
     if (records.isEmpty() && currentOffset > 0) {
@@ -95,7 +116,7 @@ public class FetchChangeEventsImpl implements JavaDelegate {
                         Entity.getCollectionDAO()
                             .changeEventDAO()
                             .listByEntityTypesWithOffset(
-                                List.of(entityType), resumeOffset, batchSize))
+                                List.of(entityType), resumeOffset, fetchSize))
                 .get();
       }
     }
@@ -112,6 +133,9 @@ public class FetchChangeEventsImpl implements JavaDelegate {
 
     Map<String, Long> fqnToMaxOffset = deduplicateByFqn(records);
 
+    LinkedHashMap<String, Boolean> processedFqns = loadProcessedFqns(execution);
+    fqnToMaxOffset.keySet().removeAll(processedFqns.keySet());
+
     String searchFilter =
         Optional.ofNullable(searchFilterExpr)
             .map(expr -> (String) expr.getValue(execution))
@@ -124,27 +148,24 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       fqnToMaxOffset.entrySet().removeIf(e -> !matchingFqns.contains(e.getKey()));
     }
 
-    List<String> entityList = new ArrayList<>();
-    Map<String, List<String>> entityToListMap = new HashMap<>();
+    for (String fqn : fqnToMaxOffset.keySet()) {
+      processedFqns.put(fqn, Boolean.TRUE);
+    }
+    evictOverflow(processedFqns);
 
-    for (Map.Entry<String, Long> entry : fqnToMaxOffset.entrySet()) {
-      String fqn = entry.getKey();
+    List<String> entityList = new ArrayList<>();
+    for (String fqn : fqnToMaxOffset.keySet()) {
       String entityLink = new MessageParser.EntityLink(entityType, fqn).getLinkString();
       entityList.add(entityLink);
-      entityToListMap.put(entityLink, List.of(entityLink));
     }
 
-    // hasFinished is true only when no more change events exist (records fetch returned empty).
-    // A batch where all entities were filtered out is NOT finished — the cursor still advances
-    // via batchMaxOffset, and the loop runs the workflow trigger with zero iterations before
-    // fetching the next batch.
-    boolean hasFinished = records.isEmpty();
-
+    execution.setVariable(PROCESSED_FQNS_VARIABLE, processedFqns);
     execution.setVariable(CURRENT_BATCH_OFFSET_VARIABLE, batchMaxOffset);
 
     Long existingMax = (Long) execution.getVariable(MAX_PROCESSED_OFFSET_VARIABLE);
     if (existingMax == null || batchMaxOffset > existingMax) {
       execution.setVariable(MAX_PROCESSED_OFFSET_VARIABLE, batchMaxOffset);
+      ChangeEventOffsetUtils.commitOffset(workflowFqn, entityType, batchMaxOffset);
     }
 
     String updatedByVar = getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
@@ -152,9 +173,25 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       execution.setVariable(updatedByVar, "governance-bot");
     }
     execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
-    execution.setVariable(HAS_FINISHED_VARIABLE, hasFinished);
+    execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty() || entityList.isEmpty());
     execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
-    execution.setVariable("entityToListMap", entityToListMap);
+
+    // Always produce BATCHES_VARIABLE so the MultiInstance CallActivity has a uniform input.
+    // Sequential workflows (parallelism=1) receive single-entity batches; parallel workflows
+    // receive multi-entity batches. The split runs here (single-threaded) so dedup and offset
+    // state never race with parallel workers.
+    int batchGroupSize = parallelism > 1 ? batchSize : 1;
+    execution.setVariable(BATCHES_VARIABLE, splitIntoBatches(entityList, batchGroupSize));
+  }
+
+  // Visible for testing.
+  static List<List<String>> splitIntoBatches(List<String> entityList, int batchSize) {
+    List<List<String>> batches = new ArrayList<>();
+    for (int i = 0; i < entityList.size(); i += batchSize) {
+      batches.add(
+          new ArrayList<>(entityList.subList(i, Math.min(i + batchSize, entityList.size()))));
+    }
+    return batches;
   }
 
   private long resolveStartingOffset(
@@ -315,5 +352,25 @@ public class FetchChangeEventsImpl implements JavaDelegate {
           "workflowFqn must not be null or blank when building consumer ID");
     }
     return workflowFqn + "Trigger-" + entityType;
+  }
+
+  @SuppressWarnings("unchecked")
+  private LinkedHashMap<String, Boolean> loadProcessedFqns(DelegateExecution execution) {
+    Object stored = execution.getVariable(PROCESSED_FQNS_VARIABLE);
+    return stored instanceof LinkedHashMap
+        ? (LinkedHashMap<String, Boolean>) stored
+        : new LinkedHashMap<>();
+  }
+
+  private static void evictOverflow(LinkedHashMap<String, Boolean> cache) {
+    int overflow = cache.size() - PROCESSED_FQNS_MAX_SIZE;
+    if (overflow <= 0) {
+      return;
+    }
+    Iterator<String> it = cache.keySet().iterator();
+    for (int i = 0; i < overflow; i++) {
+      it.next();
+      it.remove();
+    }
   }
 }

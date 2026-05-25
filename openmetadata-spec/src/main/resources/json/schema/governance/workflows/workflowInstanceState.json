@@ -23,6 +23,10 @@
       "description": "Workflow Definition Reference.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "scheduleRunId": {
+      "description": "Identifier shared by all WorkflowInstanceStates spawned from one fire of a periodic trigger. Allows grouping batches into a single scheduled run. Null for event-based triggers.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "stage": {
       "type": "object",
       "properties": {
@@ -47,6 +51,17 @@
             "$ref": "../../type/basic.json#/definitions/uuid"
           },
           "default": []
+        },
+        "entityList": {
+          "description": "List of entity links that were the input to this stage.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "updatedBy": {
+          "description": "User who performed the action in this stage (set by approval or update nodes).",
+          "type": "string"
         },
         "variables": {
           "type": "object",

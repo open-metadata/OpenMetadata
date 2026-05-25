@@ -103,14 +103,22 @@ public class WorkflowInstanceStateResource
               schema = @Schema(type = "Boolean"))
           @DefaultValue("false")
           @QueryParam("latest")
-          Boolean latest) {
+          Boolean latest,
+      @Parameter(
+              description =
+                  "Filter by scheduleRunId to retrieve all states from one periodic trigger fire",
+              schema = @Schema(type = "String"))
+          @QueryParam("scheduleRunId")
+          String scheduleRunId) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ListFilter filter = new ListFilter(null);
-
+    if (scheduleRunId != null) {
+      filter.addQueryParam("scheduleRunId", scheduleRunId);
+    }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 

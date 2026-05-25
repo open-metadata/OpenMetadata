@@ -18,9 +18,15 @@ export interface WorkflowInstanceState {
     /**
      * Unique identifier of this workflow instance state.
      */
-    id?:     string;
-    stage?:  Stage;
-    status?: WorkflowStatus;
+    id?: string;
+    /**
+     * Identifier shared by all WorkflowInstanceStates spawned from one fire of a periodic
+     * trigger. Allows grouping batches into a single scheduled run. Null for event-based
+     * triggers.
+     */
+    scheduleRunId?: string;
+    stage?:         Stage;
+    status?:        WorkflowStatus;
     /**
      * Timestamp on which the workflow instance state was created.
      */
@@ -49,12 +55,20 @@ export interface Stage {
      * Timestamp on which the workflow instance stage ended.
      */
     endedAt?: number;
-    name?:    string;
+    /**
+     * List of entity links that were the input to this stage.
+     */
+    entityList?: string[];
+    name?:       string;
     /**
      * Timestamp on which the workflow instance stage started.
      */
     startedAt?: number;
     tasks?:     string[];
+    /**
+     * User who performed the action in this stage (set by approval or update nodes).
+     */
+    updatedBy?: string;
     variables?: { [key: string]: any };
 }
 

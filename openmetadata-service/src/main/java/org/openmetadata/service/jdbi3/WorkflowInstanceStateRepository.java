@@ -93,52 +93,50 @@ public class WorkflowInstanceStateRepository
     return id;
   }
 
-  public UUID addNewStageToInstance(
-      String workflowInstanceStage,
-      UUID workflowInstanceExecutionId,
-      UUID workflowInstanceId,
-      String workflowDefinitionName,
-      Long startedAt) {
-
+  public UUID addNewStageToInstance(NewStageRequest request) {
     WorkflowDefinitionRepository workflowDefinitionRepository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    // Efficiently get the workflow definition in a single DB call and extract both ID and
-    // displayName
     WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.getByNameForStageProcessing(workflowDefinitionName);
-    String displayName = getStageDisplayName(workflowDefinition, workflowInstanceStage);
+        workflowDefinitionRepository.getByNameForStageProcessing(request.workflowDefinitionName());
+    return addNewStageToInstance(request, workflowDefinition);
+  }
 
-    Stage stage =
-        new Stage()
-            .withName(workflowInstanceStage)
-            .withDisplayName(displayName)
-            .withStartedAt(startedAt);
-
-    WorkflowInstanceState entityRecord =
-        new WorkflowInstanceState()
-            .withStage(stage)
-            .withWorkflowInstanceExecutionId(workflowInstanceExecutionId)
-            .withWorkflowInstanceId(workflowInstanceId)
-            .withTimestamp(System.currentTimeMillis())
-            .withStatus(WorkflowInstance.WorkflowStatus.RUNNING)
-            .withWorkflowDefinitionId(workflowDefinition.getId());
-
-    UUID stateId = getStateId(workflowInstanceId, workflowInstanceStage);
-
+  public UUID addNewStageToInstance(
+      NewStageRequest request, WorkflowDefinition workflowDefinition) {
+    String displayName = getStageDisplayName(workflowDefinition, request.workflowInstanceStage());
+    WorkflowInstanceState entityRecord = buildStateRecord(request, workflowDefinition, displayName);
+    UUID stateId = getStateId(request.workflowInstanceId(), request.workflowInstanceStage());
     if (stateId != null) {
       entityRecord.withId(stateId);
     }
-
     entityRecord =
         createOrUpdateRecord(
             entityRecord,
-            buildWorkflowInstanceFqn(workflowDefinitionName, workflowInstanceId.toString()));
-
+            buildWorkflowInstanceFqn(
+                request.workflowDefinitionName(), request.workflowInstanceId().toString()));
     return entityRecord.getId();
   }
 
+  private WorkflowInstanceState buildStateRecord(
+      NewStageRequest request, WorkflowDefinition workflowDefinition, String displayName) {
+    Stage stage =
+        new Stage()
+            .withName(request.workflowInstanceStage())
+            .withDisplayName(displayName)
+            .withStartedAt(request.startedAt())
+            .withEntityList(request.entityList());
+    return new WorkflowInstanceState()
+        .withStage(stage)
+        .withWorkflowInstanceExecutionId(request.workflowInstanceExecutionId())
+        .withWorkflowInstanceId(request.workflowInstanceId())
+        .withScheduleRunId(request.scheduleRunId())
+        .withTimestamp(System.currentTimeMillis())
+        .withStatus(WorkflowInstance.WorkflowStatus.RUNNING)
+        .withWorkflowDefinitionId(workflowDefinition.getId());
+  }
+
   public void updateStage(
-      UUID workflowInstanceStateId, Long endedAt, Map<String, Object> variables) {
+      UUID workflowInstanceStateId, Long endedAt, String updatedBy, Map<String, Object> variables) {
     WorkflowInstanceState workflowInstanceState =
         JsonUtils.readValue(
             timeSeriesDao.getById(workflowInstanceStateId), WorkflowInstanceState.class);
@@ -146,6 +144,9 @@ public class WorkflowInstanceStateRepository
     Stage stage = workflowInstanceState.getStage();
     stage.setEndedAt(endedAt);
     stage.setVariables(variables);
+    if (updatedBy != null) {
+      stage.setUpdatedBy(updatedBy);
+    }
 
     workflowInstanceState.setStage(stage);
     workflowInstanceState.setStatus(WorkflowInstance.WorkflowStatus.FINISHED);

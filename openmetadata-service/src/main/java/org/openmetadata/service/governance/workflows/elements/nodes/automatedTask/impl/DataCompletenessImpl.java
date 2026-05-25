@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -121,10 +120,12 @@ public class DataCompletenessImpl implements JavaDelegate {
             entityList.size());
       }
 
-      // Per-band entity lists — ALL bands stored, empty or not (inclusive gateway ready)
+      // Per-band entity lists — ALL bands stored, empty or not.
+      // When all flags are false the split gateway falls through to its defaultFlow.
       for (QualityBand band : qualityBands) {
         List<String> bandEntities = entitiesByBand.getOrDefault(band.getName(), List.of());
         varHandler.setNodeVariable(band.getName() + "_" + ENTITY_LIST_VARIABLE, bandEntities);
+        varHandler.setNodeVariable(branchFlagVariable(band.getName()), !bandEntities.isEmpty());
       }
 
       // Priority band = highest minimumScore band that has entities
@@ -142,7 +143,6 @@ public class DataCompletenessImpl implements JavaDelegate {
           priorityBand,
           entitiesByBand.keySet());
 
-      varHandler.setNodeVariable(RESULT_VARIABLE, priorityBand);
       varHandler.setNodeVariable("entityResults", entityResults);
 
       // Scalar outputs for backward compat when processing a single entity
@@ -163,6 +163,10 @@ public class DataCompletenessImpl implements JavaDelegate {
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  public static String branchFlagVariable(String branch) {
+    return "has_" + branch + "_entities";
   }
 
   private void storeFieldList(

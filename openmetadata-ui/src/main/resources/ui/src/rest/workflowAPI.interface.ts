@@ -15,9 +15,11 @@ export interface WorkflowInstanceFromApplicationParams {
   endTs: number;
   workflowDefinitionName: string;
   entityLink: string;
+  scheduleRunId?: string;
 }
 
 export interface WorkflowInstanceStateParams {
   startTs: number;
   endTs: number;
+  scheduleRunId?: string;
 }
