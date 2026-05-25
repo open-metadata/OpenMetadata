@@ -522,6 +522,70 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_skips_when_input_unresolved(self, mock_build_map, mock_get_table_fqn):
+        """When the input table is not in OpenMetadata, the column entry must
+        be skipped instead of being emitted with a literal 'None.column' FQN
+        on the input side."""
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"svc.schema.{table_details.name}"
+        # Only the output resolves; the input is intentionally absent from the map.
+        mock_build_map.return_value = {"hive:///schema.output_table": "svc.schema.output_table"}
+
+        inputs = [{"name": "schema.missing_input", "facets": {}, "namespace": "hive://"}]
+        outputs = [
+            {
+                "name": "schema.output_table",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "col_out": {
+                                "inputFields": [
+                                    {
+                                        "field": "col_in",
+                                        "namespace": "hive://",
+                                        "name": "schema.missing_input",
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+        self.assertEqual(result, {})
+
+    def test_get_column_lineage_tolerates_null_facets_at_any_level(self):
+        """An explicit None at facets, columnLineage, fields, or inputFields
+        must not raise. The event simply yields no column lineage."""
+        outputs_null_facets = [{"name": "schema.t", "facets": None, "namespace": "hive://"}]
+        outputs_null_column_lineage = [
+            {"name": "schema.t", "facets": {"columnLineage": None}, "namespace": "hive://"},
+        ]
+        outputs_null_fields = [
+            {
+                "name": "schema.t",
+                "facets": {"columnLineage": {"fields": None}},
+                "namespace": "hive://",
+            },
+        ]
+        outputs_null_input_fields = [
+            {
+                "name": "schema.t",
+                "facets": {"columnLineage": {"fields": {"col": {"inputFields": None}}}},
+                "namespace": "hive://",
+            },
+        ]
+        with patch.object(self.open_lineage_source, "_resolve_table", return_value=None):
+            for outputs in (
+                outputs_null_facets,
+                outputs_null_column_lineage,
+                outputs_null_fields,
+                outputs_null_input_fields,
+            ):
+                self.assertEqual(self.open_lineage_source._get_column_lineage([], outputs), {})
+
     def test_iter_table_candidates_with_symlinks(self):
         """Symlink identity is a candidate; dotted name parsed to schema.table."""
         data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table", "type": "TABLE"}]}}}
@@ -631,6 +695,26 @@ class OpenLineageUnitTest(unittest.TestCase):
         candidates = OpenlineageSource._iter_table_candidates(data)
         self.assertEqual(len(candidates), 2)
         self.assertEqual({ns for _, ns in candidates}, {"arn:aws:glue:r:a", "trino://host:8080"})
+
+    def test_iter_table_candidates_keeps_distinct_databases_under_same_namespace(self):
+        """Two three-part identities that differ only in the database/catalog
+        segment must both stay as candidates so each is tried. The dedup key
+        includes database, so a Trino dataset that carries 'catA.schema.t' and
+        'catB.schema.t' resolves both catalogs in priority order."""
+        data = {
+            "namespace": "trino://host:8080",
+            "name": "catA.sales.users",
+            "facets": {
+                "symlinks": {
+                    "identifiers": [
+                        {"namespace": "trino://host:8080", "name": "catB.sales.users", "type": "TABLE"},
+                    ]
+                }
+            },
+        }
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual({d.database for d, _ in candidates}, {"cata", "catb"})
 
     def test_symlink_identifiers_tolerates_malformed_facets(self):
         """Missing, null, or wrongly typed facet shapes yield an empty list."""
@@ -1659,6 +1743,55 @@ class OpenLineageUnitTest(unittest.TestCase):
         # rather than a stack trace.
         assert any("found in multiple services" in msg for msg in cm.output)
         assert any("namespaceToServiceMapping" in msg for msg in cm.output)
+
+    def test_yield_pipeline_lineage_skips_when_pipeline_fqn_unbuildable(self):
+        """If fqn.build returns None for the pipeline (e.g. an unexpected
+        service/name combination), the connector logs a clear warning and
+        skips the event without raising or calling get_by_name with None."""
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "j", "namespace": "ns"}}}},
+            job={"name": "j", "namespace": "ns"},
+            event_type="COMPLETE",
+            inputs=[{"name": "schema.in", "namespace": "postgres://h:5432", "facets": {}}],
+            outputs=[{"name": "schema.out", "namespace": "postgres://h:5432", "facets": {}}],
+        )
+
+        mock_table = Mock()
+        mock_table.id.root = "aaaa1111-1111-1111-1111-111111111111"
+
+        import logging
+
+        with (
+            patch.object(self.open_lineage_source, "metadata") as mock_metadata,
+            patch.object(self.open_lineage_source, "_get_table_fqn", return_value="svc.db.schema.in"),
+            patch("metadata.utils.fqn.build", return_value=None),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
+        ):
+            mock_metadata.get_by_name.return_value = mock_table
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
+
+        self.assertEqual([r for r in results if r.right and isinstance(r.right, AddLineageRequest)], [])
+        self.assertTrue(any("Could not build pipeline FQN" in msg for msg in cm.output))
+        # get_by_name must never be called with fqn=None for the Pipeline lookup.
+        for call in mock_metadata.get_by_name.call_args_list:
+            self.assertIsNotNone(call.kwargs.get("fqn", call.args[1] if len(call.args) > 1 else "ok"))
+
+    def test_log_unmatched_dataset_attempts_carry_database_segment(self):
+        """The diagnostic log for an unmatched 3-part identity must include the
+        database segment so operators can tell which catalog was searched."""
+        data = {"namespace": "trino://h:8080", "name": "mycat.myschema.mytable"}
+        import logging
+
+        with (
+            patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
+        ):
+            self.assertIsNone(self.open_lineage_source._resolve_table(data))
+
+        joined = "\n".join(cm.output)
+        self.assertIn("database='mycat'", joined)
+        self.assertIn("schema='myschema'", joined)
+        self.assertIn("table='mytable'", joined)
 
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
