@@ -251,8 +251,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, tracker),
-                            DOC_BUILD_EXECUTOR))
+                            () -> addEntity(entity, indexName, tracker), DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
@@ -304,8 +303,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
-  private void addEntity(
-      EntityInterface entity, String indexName, StageStatsTracker tracker) {
+  private void addEntity(EntityInterface entity, String indexName, StageStatsTracker tracker) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
