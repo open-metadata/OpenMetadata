@@ -182,6 +182,7 @@ export const convertToTreeData = (
       return {
         key: page.fullyQualifiedName,
         title,
+        // mark the node as leaf if it has no children
         isLeaf: page.childrenCount === 0,
       } as DataNode;
     } else {

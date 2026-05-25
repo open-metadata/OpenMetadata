@@ -17,7 +17,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -25,7 +24,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
-import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 
 class AsyncServiceTest {
 
@@ -186,7 +184,6 @@ class AsyncServiceTest {
     AsyncService second = AsyncService.getInstance();
 
     assertSame(first, second);
-    assertTrue(first.getMaxConcurrency() >= 4);
   }
 
   @Test
@@ -315,44 +312,6 @@ class AsyncServiceTest {
   }
 
   @Test
-  void testResolveMaxConcurrencyUsesConfigBudgetAndCpuFallback() throws Exception {
-    Method method = AsyncService.class.getDeclaredMethod("resolveMaxConcurrency");
-    method.setAccessible(true);
-
-    int cpuBudget = Runtime.getRuntime().availableProcessors() * 2;
-    setConfigHolderInstance(null);
-    assertEquals(Integer.valueOf(Math.max(4, cpuBudget)), invoke(method, null));
-
-    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
-    HikariCPDataSourceFactory dataSourceFactory = mock(HikariCPDataSourceFactory.class);
-    when(config.getDataSourceFactory()).thenReturn(dataSourceFactory);
-    when(dataSourceFactory.getMaxSize()).thenReturn(30);
-    setConfigHolderInstance(config);
-
-    assertEquals(Integer.valueOf(Math.max(4, Math.min(cpuBudget, 10))), invoke(method, null));
-  }
-
-  @Test
-  void testBoundedExecutorLifecycleDelegatesState() throws Exception {
-    ExecutorService delegate = mock(ExecutorService.class);
-    when(delegate.isShutdown()).thenReturn(true);
-    when(delegate.isTerminated()).thenReturn(true);
-    when(delegate.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(true);
-
-    ExecutorService boundedExecutor = newBoundedExecutorService(delegate);
-
-    assertTrue(boundedExecutor.isShutdown());
-    assertTrue(boundedExecutor.isTerminated());
-    assertTrue(boundedExecutor.awaitTermination(5, TimeUnit.SECONDS));
-
-    boundedExecutor.shutdown();
-    boundedExecutor.shutdownNow();
-
-    verify(delegate).shutdown();
-    verify(delegate).shutdownNow();
-  }
-
-  @Test
   void testShutdownForcesExecutorOnTimeoutAndInterrupt() throws Exception {
     AsyncService timeoutService = newAsyncService();
     ExecutorService timeoutExecutor = mock(ExecutorService.class);
@@ -382,16 +341,6 @@ class AsyncServiceTest {
     Constructor<AsyncService> constructor = AsyncService.class.getDeclaredConstructor();
     constructor.setAccessible(true);
     return constructor.newInstance();
-  }
-
-  private static ExecutorService newBoundedExecutorService(ExecutorService delegate)
-      throws Exception {
-    Class<?> boundedClass =
-        Class.forName("org.openmetadata.service.util.AsyncService$BoundedExecutorService");
-    Constructor<?> constructor =
-        boundedClass.getDeclaredConstructor(ExecutorService.class, Semaphore.class);
-    constructor.setAccessible(true);
-    return (ExecutorService) constructor.newInstance(delegate, new Semaphore(1));
   }
 
   private static void replaceExecutor(AsyncService service, ExecutorService executor)

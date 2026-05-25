@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_KNOWLEDGE_PAGES } from 'pages/KnowledgePage/KnowledgePage.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { MOCK_KNOWLEDGE_PAGES } from '../../../pages/KnowledgePage/KnowledgePage.mock';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
 
 const mockProps = {

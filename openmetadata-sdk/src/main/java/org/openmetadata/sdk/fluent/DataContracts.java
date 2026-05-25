@@ -261,6 +261,11 @@ public final class DataContracts {
     public DataContractDeleter delete() {
       return new DataContractDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DataContract> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dataContracts(), identifier);
+    }
   }
 
   // ==================== Contract Operations ====================

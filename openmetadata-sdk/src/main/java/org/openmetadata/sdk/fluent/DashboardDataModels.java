@@ -192,6 +192,11 @@ public final class DashboardDataModels {
     public DashboardDataModelDeleter delete() {
       return new DashboardDataModelDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DashboardDataModel> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dashboardDataModels(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

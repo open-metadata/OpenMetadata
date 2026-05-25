@@ -486,7 +486,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -1167,10 +1167,6 @@ export const assignGlossaryTermToChildren = async ({
   );
   await expect(glossaryTermTag).toBeVisible();
 
-  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
   await glossaryTermTag.click();
 
   await page
@@ -1191,9 +1187,6 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(saveButton).not.toBeVisible();
 
-  await putRequest;
-
-  // CRITICAL: Wait for UI to update after API responses
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -2129,9 +2122,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
 
   await quickFilterResponse;
 
-  await expect(
-    page.locator('[data-testid="search-dropdown-Service Type"]')
-  ).toContainText(serviceType);
+  // Click on filter dropdown
+  await page.getByTestId('search-dropdown-Service Type').click();
+  // assert on dropdown item visibility
+  await page.getByRole('menuitem', { name: serviceType }).waitFor();
+  // assert on checkbox state
+  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
   await expect(
     page

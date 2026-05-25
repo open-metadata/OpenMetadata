@@ -1385,8 +1385,16 @@ public class SearchRepository {
 
   public void updateEntity(EntityReference entityReference) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    // Fetch only the fields this entity's search index needs, never "*". For container
+    // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
+    // large catalogs — and can OOM the server on a single live update. The required-field
+    // set is the same one the reindex pipeline uses, so live updates and reindex stay
+    // consistent and bounded.
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -1462,6 +1470,7 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
         bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
       } catch (Exception e) {
@@ -2062,6 +2071,9 @@ public class SearchRepository {
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
       }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+      }
     }
     script.append(" ");
   }
@@ -2112,6 +2124,9 @@ public class SearchRepository {
         data.put(field.getName(), field.getOldValue());
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
     script.append(" ");
@@ -2175,6 +2190,9 @@ public class SearchRepository {
         data.put(field.getName(), field.getNewValue());
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
     script.append(" ");
