@@ -118,12 +118,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class},
           entity,
           "table_index",
-          false,
           tracker);
 
       verify(processor)
@@ -158,12 +155,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class},
           entity,
           "table_index",
-          true,
           tracker);
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);

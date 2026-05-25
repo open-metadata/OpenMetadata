@@ -71,9 +71,6 @@ public class PartitionWorker {
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key for recreate index flag */
-  private static final String RECREATE_INDEX = "recreateIndex";
-
   /** Context key for recreate context */
   private static final String RECREATE_CONTEXT = "recreateContext";
 
@@ -739,7 +736,6 @@ public class PartitionWorker {
   private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
-    contextData.put(RECREATE_INDEX, recreateIndex);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
