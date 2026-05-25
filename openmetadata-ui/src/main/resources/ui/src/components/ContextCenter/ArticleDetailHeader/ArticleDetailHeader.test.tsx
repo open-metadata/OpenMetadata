@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import { ContentChangeState } from 'interface/knowledge-center.interface';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
 const mockNavigate = jest.fn();
@@ -52,6 +52,10 @@ jest.mock('../../../utils/DeleteWidget/DeleteWidgetClassBase', () => ({
   __esModule: true,
   default: { getDeleteMessage: jest.fn(() => 'Delete this article?') },
 }));
+
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
+  jest.fn(() => <div data-testid="delete-modal" />)
+);
 
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn(
@@ -98,6 +102,43 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Dropdown: Object.assign(
+    jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    )),
+    {
+      Root: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Menu: jest.fn(
+        ({
+          children,
+          onAction,
+        }: {
+          children: React.ReactNode;
+          onAction?: (key: string) => void;
+        }) => <div data-onaction={String(onAction)}>{children}</div>
+      ),
+      Item: jest.fn(
+        ({
+          children,
+          id,
+          'data-testid': testId,
+        }: {
+          children: React.ReactNode;
+          id?: string;
+          'data-testid'?: string;
+        }) => (
+          <div data-id={id} data-testid={testId}>
+            {children}
+          </div>
+        )
+      ),
+    }
+  ),
   Button: jest.fn(
     ({
       children,
