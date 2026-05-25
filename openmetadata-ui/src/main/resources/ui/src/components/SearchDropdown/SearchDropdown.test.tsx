@@ -562,4 +562,147 @@ describe('Search DropDown Component', () => {
       );
     });
   });
+
+  describe('Paginated / Infinite Scroll', () => {
+    const mockOnScrollEnd = jest.fn();
+
+    const paginatedProps: SearchDropdownProps = {
+      ...mockProps,
+      isPaginated: true,
+      onScrollEnd: mockOnScrollEnd,
+      isLoadingMore: false,
+    };
+
+    beforeEach(() => {
+      mockOnScrollEnd.mockClear();
+    });
+
+    it('should render scroll container when isPaginated is true', async () => {
+      render(<SearchDropdown {...paginatedProps} />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(
+        await screen.findByTestId('search-dropdown-scroll-container')
+      ).toBeInTheDocument();
+    });
+
+    it('should NOT render scroll container when isPaginated is false', async () => {
+      render(<SearchDropdown {...mockProps} />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(
+        screen.queryByTestId('search-dropdown-scroll-container')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should call onScrollEnd when scrolled to bottom within threshold', async () => {
+      render(<SearchDropdown {...paginatedProps} />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const scrollContainer = await screen.findByTestId(
+        'search-dropdown-scroll-container'
+      );
+
+      Object.defineProperty(scrollContainer, 'scrollHeight', {
+        value: 500,
+        writable: true,
+      });
+      Object.defineProperty(scrollContainer, 'clientHeight', {
+        value: 200,
+        writable: true,
+      });
+
+      await act(async () => {
+        fireEvent.scroll(scrollContainer, {
+          target: { scrollTop: 295 },
+        });
+      });
+
+      expect(mockOnScrollEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT call onScrollEnd when not scrolled to bottom', async () => {
+      render(<SearchDropdown {...paginatedProps} />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const scrollContainer = await screen.findByTestId(
+        'search-dropdown-scroll-container'
+      );
+
+      Object.defineProperty(scrollContainer, 'scrollHeight', {
+        value: 500,
+        writable: true,
+      });
+      Object.defineProperty(scrollContainer, 'clientHeight', {
+        value: 200,
+        writable: true,
+      });
+
+      await act(async () => {
+        fireEvent.scroll(scrollContainer, {
+          target: { scrollTop: 100 },
+        });
+      });
+
+      expect(mockOnScrollEnd).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call onScrollEnd when isLoadingMore is true', async () => {
+      render(<SearchDropdown {...paginatedProps} isLoadingMore />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const scrollContainer = await screen.findByTestId(
+        'search-dropdown-scroll-container'
+      );
+
+      Object.defineProperty(scrollContainer, 'scrollHeight', {
+        value: 500,
+        writable: true,
+      });
+      Object.defineProperty(scrollContainer, 'clientHeight', {
+        value: 200,
+        writable: true,
+      });
+
+      await act(async () => {
+        fireEvent.scroll(scrollContainer, {
+          target: { scrollTop: 295 },
+        });
+      });
+
+      expect(mockOnScrollEnd).not.toHaveBeenCalled();
+    });
+
+    it('should render Loader at bottom when isLoadingMore is true', async () => {
+      render(<SearchDropdown {...paginatedProps} isLoadingMore />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('loader')).toBeInTheDocument();
+    });
+  });
 });
+
