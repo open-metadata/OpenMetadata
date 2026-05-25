@@ -80,6 +80,9 @@ def mlflow_environment():
 
     minio_container = get_minio_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
+    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
+    # default) this needs SUPER unless log_bin_trust_function_creators=1.
+    mysql_container.with_command("mysqld --log-bin-trust-function-creators=1")
     mlflow_container = build_and_get_mlflow_container(config.mlflow_configs)
 
     with docker_network:
@@ -122,7 +125,7 @@ def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow==2.22.1" boto3 pymysql
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql
         """
     )
 

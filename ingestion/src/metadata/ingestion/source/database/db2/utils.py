@@ -169,9 +169,12 @@ def install_clidriver(clidriver_version: str) -> None:
     import platform
     import subprocess
     import sys
+    from importlib.metadata import (
+        PackageNotFoundError,
+        distribution,
+    )
     from urllib.request import URLError, urlopen
 
-    import pkg_resources
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()
@@ -231,12 +234,12 @@ def install_clidriver(clidriver_version: str) -> None:
     logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
     # Uninstall ibm_db if it is already installed
     try:
-        pkg_resources.get_distribution("ibm_db")
+        distribution("ibm_db")
         # If we get here, ibm_db is installed, so uninstall it first
         subprocess.check_call(
             [sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"]
         )
-    except pkg_resources.DistributionNotFound:
+    except PackageNotFoundError:
         # ibm_db is not installed, proceed with installation
         pass
     # Install ibm_db with specific flags
