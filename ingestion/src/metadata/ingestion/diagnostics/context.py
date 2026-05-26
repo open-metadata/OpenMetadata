@@ -52,7 +52,8 @@ class DiagnosticsContext:
         registry = OperationRegistry()
         http_tracker = HttpTracker()
         memory_tracker = MemoryTracker()
-        stage_progress.install(stage_progress.StageProgressCollector())
+        stage_collector = stage_progress.StageProgressCollector()
+        stage_progress.install(stage_collector)
         db_introspector = DbIntrospector(registry)
         db_introspector.install()
         time_sampler = TimeAccountingSampler(registry)
@@ -84,7 +85,7 @@ class DiagnosticsContext:
             db_introspector=db_introspector,
             time_sampler=time_sampler,
             monitors=monitors,
-            reporters=[time_sampler, registry],
+            reporters=[time_sampler, registry, memory_tracker, stage_collector],
             signals_installed=signals_installed,
         )
 

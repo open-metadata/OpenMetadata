@@ -85,6 +85,18 @@ class StageProgressCollector:
                 )
         return out
 
+    def render(self, prefix: str = "diag.stage_budget") -> str | None:
+        """One end-of-run line of per-stage throughput. Satisfies the Reporter contract.
+
+        Returns None when no stage queues were registered, so emit_report skips it.
+        """
+        queues = self.snapshot()
+        result = None
+        if queues:
+            parts = [f"{q['name']}:depth={q['depth']}({q['put']}->{q['processed']})" for q in queues]
+            result = f"{prefix} stages=[{', '.join(parts)}]"
+        return result
+
 
 def _queue_depth(queue_obj: Any) -> int:
     """Best-effort depth read from a topology Queue wrapper or std queue.Queue."""

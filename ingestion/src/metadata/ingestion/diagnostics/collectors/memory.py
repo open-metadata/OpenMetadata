@@ -95,6 +95,29 @@ class MemoryTracker:
         # so `gc.get_objects()` can allocate. CPython 3.11 large-object
         # allocations bypass pymalloc and free directly to the OS.
         self._emergency_reserve: bytearray | None = bytearray(EMERGENCY_RESERVE_BYTES)
+        # End-of-run summary accumulators, fed by `note_sample` on the heartbeat.
+        self._peak_rss = 0
+        self._baseline_rss: int | None = None
+        self._high_water_op = ""
+        self._psi_avg10_max = 0.0
+        self._last_sample: MemorySample | None = None
+
+    def note_sample(self, sample: MemorySample, current_op: str) -> None:
+        """Fold a heartbeat sample into the end-of-run memory summary.
+
+        Kept registry-free: the heartbeat (which already reads both the
+        registry and this tracker) passes the deepest op so we can record
+        what was running when RSS peaked.
+        """
+        with self._lock:
+            self._last_sample = sample
+            if self._baseline_rss is None:
+                self._baseline_rss = sample.rss
+            if sample.rss > self._peak_rss:
+                self._peak_rss = sample.rss
+                self._high_water_op = current_op
+            if sample.psi_some_avg10 is not None and sample.psi_some_avg10 > self._psi_avg10_max:
+                self._psi_avg10_max = sample.psi_some_avg10
 
     def _make_process_handle(self):
         if self._psutil is None:
@@ -130,6 +153,19 @@ class MemoryTracker:
     def latest(self) -> MemorySample | None:
         with self._lock:
             return self._ring[-1] if self._ring else None
+
+    def render(self, prefix: str = "diag.mem_budget") -> str | None:
+        """One end-of-run line summarising memory. Satisfies the Reporter contract.
+
+        Returns None when no sample was ever folded in, so emit_report skips it.
+        """
+        with self._lock:
+            latest, baseline = self._last_sample, self._baseline_rss
+            peak, high_water_op, psi_max = self._peak_rss, self._high_water_op, self._psi_avg10_max
+        result = None
+        if latest is not None and baseline is not None:
+            result = _format_mem_budget(prefix, latest, peak, baseline, high_water_op, psi_max)
+        return result
 
     def rss_delta_bytes_since(self, seconds_ago: float) -> int | None:
         """RSS change between the most recent sample and the oldest within `seconds_ago`."""
@@ -321,6 +357,37 @@ def _read_rss_proc_self_status() -> int:
     except (OSError, ValueError):
         pass
     return 0
+
+
+def _format_mem_budget(
+    prefix: str,
+    latest: MemorySample,
+    peak: int,
+    baseline: int,
+    high_water_op: str,
+    psi_avg10_max: float,
+) -> str:
+    headroom = None
+    if latest.cgroup_max is not None and latest.cgroup_current is not None:
+        headroom = latest.cgroup_max - latest.cgroup_current
+    oom_kills = latest.oom_kill_count if latest.oom_kill_count is not None else "?"
+    return (
+        f"{prefix} "
+        f"peak={format_bytes(peak)} "
+        f"final={format_bytes(latest.rss)} "
+        f"growth={format_signed_bytes(latest.rss - baseline)} "
+        f"high_water_op={high_water_op or '-'} "
+        f"cgroup_headroom={format_bytes(headroom)} "
+        f"psi_avg10_max={psi_avg10_max:.1f} "
+        f"oom_kills={oom_kills} "
+        f"pressure_events={_format_pressure_events(latest)}"
+    )
+
+
+def _format_pressure_events(latest: MemorySample) -> str:
+    high = latest.cgroup_events_high if latest.cgroup_events_high is not None else "?"
+    oom = latest.cgroup_events_oom if latest.cgroup_events_oom is not None else "?"
+    return f"high={high}/oom={oom}"
 
 
 def format_bytes(n: int | None) -> str:

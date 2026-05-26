@@ -56,6 +56,7 @@ class Heartbeat:
     def tick(self) -> None:
         self._ticks += 1
         sample = self._memory_tracker.sample()
+        self._memory_tracker.note_sample(sample, self._main_op_name())
         delta_30s = self._memory_tracker.rss_delta_bytes_since(30.0)
         main_op = self._format_main_op()
         steps_summary = self._format_steps()
@@ -87,6 +88,12 @@ class Heartbeat:
             return "-"
         op_name, _kwargs, age = deepest
         return f"{op_name}({_fmt_age(age)})"
+
+    def _main_op_name(self) -> str:
+        """The main-thread's deepest op name (no age), for the memory high-water mark."""
+        main_ident = threading.main_thread().ident
+        deepest = self._registry.deepest_per_thread().get(main_ident) if main_ident is not None else None
+        return deepest[0] if deepest else ""
 
     def _format_steps(self) -> str:
         if self._workflow is None:

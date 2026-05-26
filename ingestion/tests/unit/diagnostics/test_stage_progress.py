@@ -90,3 +90,22 @@ def test_multiple_queues_aggregated():
     names = {row["name"]: row for row in stage_progress.snapshot()}
     assert names["a"]["put"] == 1
     assert names["b"]["put"] == 2
+
+
+# ---- stage_budget reporter ----
+
+
+def test_stage_budget_render_lists_per_stage_throughput():
+    collector = stage_progress.StageProgressCollector()
+    queue_obj = Queue(name="source->sink")
+    collector.register("source->sink", queue_obj)
+    collector.record_put("source->sink", 10)
+    collector.record_processed("source->sink", 7)
+    line = collector.render()
+    assert "stages=[" in line
+    assert "source->sink:depth=" in line
+    assert "(10->7)" in line
+
+
+def test_stage_budget_render_none_when_empty():
+    assert stage_progress.StageProgressCollector().render() is None
