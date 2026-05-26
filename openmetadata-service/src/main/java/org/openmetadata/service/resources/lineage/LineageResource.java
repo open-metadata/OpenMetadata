@@ -95,6 +95,12 @@ public class LineageResource {
     this.authorizer = authorizer;
   }
 
+  private static void validateTemporalBounds(Long startTime, Long endTime) {
+    if (startTime != null && endTime != null && startTime > endTime) {
+      throw new IllegalArgumentException("startTime must be less than or equal to endTime");
+    }
+  }
+
   @GET
   @Valid
   @Path("/{entity}/{id}")
@@ -251,6 +257,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineage(
             new SearchLineageRequest()
@@ -371,6 +378,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineageWithDirection(
             new SearchLineageRequest()
@@ -499,6 +507,7 @@ public class LineageResource {
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
           Long endTime) {
+    validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -571,6 +580,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
             fqn,
@@ -654,6 +664,7 @@ public class LineageResource {
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
           Long endTime) {
+    validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -776,6 +787,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
     }

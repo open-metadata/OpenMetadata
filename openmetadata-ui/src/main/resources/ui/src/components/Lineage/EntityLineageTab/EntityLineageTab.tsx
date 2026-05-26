@@ -48,9 +48,10 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
         entity={entity}
         entityType={entityType}
         hasEditAccess={hasEditAccess}
+        showControls={viewMode === 'lineage'}
       />
     ),
-    [deleted, entity, entityType, hasEditAccess]
+    [deleted, entity, entityType, hasEditAccess, viewMode]
   );
 
   const lineageTable = useMemo(

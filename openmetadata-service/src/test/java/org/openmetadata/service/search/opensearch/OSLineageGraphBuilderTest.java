@@ -613,12 +613,6 @@ class OSLineageGraphBuilderTest {
       stubOsClientSearch();
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      // getDepthWiseEntityCounts calls searchResponse.hits().total().value()
-      os.org.opensearch.client.opensearch.core.search.TotalHits totalHits =
-          Mockito.mock(os.org.opensearch.client.opensearch.core.search.TotalHits.class);
-      when(totalHits.value()).thenReturn(0L);
-      when(hitsMetadata.total()).thenReturn(totalHits);
-
       OSLineageGraphBuilder builder = new OSLineageGraphBuilder(esClient);
 
       LineagePaginationInfo result =
@@ -771,9 +765,18 @@ class OSLineageGraphBuilderTest {
       stubOsUtilsGetSearchRequest(osUtilsMock);
 
       Map<String, Object> rootDoc = entityDoc(ROOT_FQN, List.of());
-      Map<String, Object> docA = entityDoc("service.database.schema.a_table", List.of());
-      Map<String, Object> docB = entityDoc("service.database.schema.b_table", List.of());
-      Map<String, Object> docC = entityDoc("service.database.schema.c_table", List.of());
+      Map<String, Object> docA =
+          entityDoc(
+              "service.database.schema.a_table",
+              List.of(lineageEdge(ROOT_FQN, "service.database.schema.a_table")));
+      Map<String, Object> docB =
+          entityDoc(
+              "service.database.schema.b_table",
+              List.of(lineageEdge(ROOT_FQN, "service.database.schema.b_table")));
+      Map<String, Object> docC =
+          entityDoc(
+              "service.database.schema.c_table",
+              List.of(lineageEdge(ROOT_FQN, "service.database.schema.c_table")));
 
       osUtilsMock
           .when(
@@ -856,8 +859,14 @@ class OSLineageGraphBuilderTest {
       stubOsUtilsGetSearchRequest(osUtilsMock);
 
       Map<String, Object> rootDoc = entityDoc(ROOT_FQN, List.of());
-      Map<String, Object> docA = entityDoc("service.database.schema.a_table", List.of());
-      Map<String, Object> docB = entityDoc("service.database.schema.b_table", List.of());
+      Map<String, Object> docA =
+          entityDoc(
+              "service.database.schema.a_table",
+              List.of(lineageEdge(ROOT_FQN, "service.database.schema.a_table")));
+      Map<String, Object> docB =
+          entityDoc(
+              "service.database.schema.b_table",
+              List.of(lineageEdge(ROOT_FQN, "service.database.schema.b_table")));
 
       osUtilsMock
           .when(

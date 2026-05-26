@@ -54,6 +54,7 @@ const Lineage = ({
   isPlatformLineage,
   hasEditAccess,
   platformHeader,
+  showControls = true,
 }: LineageProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
@@ -149,7 +150,7 @@ const Lineage = ({
       title={
         isPlatformLineage ? (
           platformHeader
-        ) : (
+        ) : showControls ? (
           <div
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
@@ -159,7 +160,7 @@ const Lineage = ({
               hasEditAccess={hasEditAccess}
             />
           </div>
-        )
+        ) : undefined
       }>
       {
         <div

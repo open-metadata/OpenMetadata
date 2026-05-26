@@ -296,8 +296,8 @@ const CustomControls: FC<{
         nodeDepth: nodeDepth,
         maxDepth: nodeDepth,
         query_filter: quickFilters,
-        startTime: timeFilter.startTime,
-        endTime: timeFilter.endTime,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       }),
     [
       fqn,
@@ -305,8 +305,8 @@ const CustomControls: FC<{
       lineageDirection,
       nodeDepth,
       quickFilters,
-      timeFilter.startTime,
-      timeFilter.endTime,
+      timeFilter?.startTime,
+      timeFilter?.endTime,
     ]
   );
 

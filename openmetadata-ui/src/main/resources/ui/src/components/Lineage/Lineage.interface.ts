@@ -41,6 +41,7 @@ export interface LineageProps {
   entity?: SourceType;
   isPlatformLineage?: boolean;
   platformHeader?: React.ReactNode;
+  showControls?: boolean;
 }
 
 export interface EntityLineageResponse {

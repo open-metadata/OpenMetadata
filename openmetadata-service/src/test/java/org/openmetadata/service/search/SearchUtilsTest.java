@@ -175,6 +175,35 @@ class SearchUtilsTest {
   }
 
   @Test
+  void timeWindowedLineageFilterOnlyBypassesLegacyEdgesWithoutTimestamps() {
+    EsLineageData overlappingManualEdge =
+        new EsLineageData()
+            .withDocId("overlapping-manual")
+            .withSource("manual")
+            .withCreatedAt(500L)
+            .withUpdatedAt(1_500L);
+    EsLineageData futureManualEdge =
+        new EsLineageData()
+            .withDocId("future-manual")
+            .withSource("manual")
+            .withCreatedAt(3_000L)
+            .withUpdatedAt(4_000L);
+    EsLineageData legacyManualEdge =
+        new EsLineageData().withDocId("legacy-manual").withSource("manual");
+    Map<String, Object> lineageDoc =
+        Map.of(
+            SearchClient.UPSTREAM_LINEAGE_FIELD,
+            List.of(overlappingManualEdge, futureManualEdge, legacyManualEdge));
+
+    List<EsLineageData> lineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+
+    assertEquals(
+        List.of("overlapping-manual", "legacy-manual"),
+        lineage.stream().map(EsLineageData::getDocId).toList());
+  }
+
+  @Test
   void rbacAndSslHelpersRespectConfiguration() throws Exception {
     SearchSettings enabledSettings = new SearchSettings();
     GlobalSettings enabledGlobalSettings = new GlobalSettings();

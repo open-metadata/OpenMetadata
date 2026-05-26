@@ -33,7 +33,6 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -71,8 +70,8 @@ public final class SearchUtils {
   /**
    * Time-windowed overload that filters edges by observed time window.
    * An edge is included if its [createdAt, updatedAt] interval overlaps the
-   * requested [startTime, endTime] window. Manual-source edges and legacy
-   * edges with no timestamps bypass the filter — see {@link #edgeMatchesWindow}.
+   * requested [startTime, endTime] window. Legacy edges with no timestamps bypass the filter — see
+   * {@link #edgeMatchesWindow}.
    *
    * @param esDoc     Source map from an ES hit
    * @param startTime Inclusive lower bound of the window in epoch millis, or null for -∞
@@ -95,8 +94,6 @@ public final class SearchUtils {
   private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
     boolean matches;
     if (startTime == null && endTime == null) {
-      matches = true;
-    } else if (edge != null && LineageDetails.Source.MANUAL.value().equals(edge.getSource())) {
       matches = true;
     } else if (edge == null || (edge.getCreatedAt() == null && edge.getUpdatedAt() == null)) {
       matches = true;
