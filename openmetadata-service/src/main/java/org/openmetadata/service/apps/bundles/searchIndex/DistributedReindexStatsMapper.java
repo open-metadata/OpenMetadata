@@ -202,14 +202,21 @@ class DistributedReindexStatsMapper {
       StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
       if (entityStats != null) {
         SearchIndexJob.EntityTypeStats distributedEntityStats = entry.getValue();
-        // totalRecords from the partition plan, not the up-front getEntityTotal() pre-count.
-        // The two counts can drift (different ListFilter, queried moments apart on a churny
-        // time-series table) — the partition plan defines what is actually processed, so the
-        // total must match it or the job shows a phantom "total > success" gap.
-        entityStats.setTotalRecords(saturatedToInt(distributedEntityStats.getTotalRecords()));
-        entityStats.setSuccessRecords(saturatedToInt(distributedEntityStats.getSuccessRecords()));
-        entityStats.setFailedRecords(saturatedToInt(distributedEntityStats.getFailedRecords()));
-        entityStats.setWarningRecords(saturatedToInt(distributedEntityStats.getWarningRecords()));
+        // totalRecords starts from the partition plan (estimatedCount sum), but is bumped up
+        // when the reader actually produced more rows than the plan expected (churny
+        // time-series tables can grow between plan and read). The under-count direction
+        // (reader produced fewer rows than planned) is closed at partition-completion time
+        // in PartitionWorker by recording the missing rows as reader warnings, so by the
+        // time we land here total = success + failed + warnings holds.
+        long success = distributedEntityStats.getSuccessRecords();
+        long failed = distributedEntityStats.getFailedRecords();
+        long warnings = distributedEntityStats.getWarningRecords();
+        long total =
+            Math.max(distributedEntityStats.getTotalRecords(), success + failed + warnings);
+        entityStats.setTotalRecords(saturatedToInt(total));
+        entityStats.setSuccessRecords(saturatedToInt(success));
+        entityStats.setFailedRecords(saturatedToInt(failed));
+        entityStats.setWarningRecords(saturatedToInt(warnings));
         entityStats.setReaderTimeMs(distributedEntityStats.getReaderTimeMs());
         entityStats.setProcessTimeMs(distributedEntityStats.getProcessTimeMs());
         entityStats.setSinkTimeMs(distributedEntityStats.getSinkTimeMs());

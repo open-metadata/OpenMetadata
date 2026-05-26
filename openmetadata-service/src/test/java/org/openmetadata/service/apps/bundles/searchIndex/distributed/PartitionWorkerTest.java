@@ -935,6 +935,7 @@ class PartitionWorkerTest {
     resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
     StageCounter processCounter = new StageCounter();
     processCounter.getCumulativeFailed().set(1);
+    StageCounter sinkCounter = new StageCounter();
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
@@ -952,6 +953,7 @@ class PartitionWorkerTest {
                 (mock, context) -> {
                   when(mock.getPendingSinkOps()).thenReturn(0L);
                   when(mock.getProcess()).thenReturn(processCounter);
+                  when(mock.getSink()).thenReturn(sinkCounter);
                 });
         MockedConstruction<PaginatedEntitiesSource> ignored =
             mockConstruction(
@@ -968,6 +970,104 @@ class PartitionWorkerTest {
     }
 
     verify(coordinator).completePartition(partition.getId(), 1L, 1L);
+  }
+
+  @Test
+  void processPartitionAdjustsSuccessCountsForAsyncSinkFailures() {
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext);
+    SearchIndexPartition partition = buildPartition("table", 0, 2);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
+    StageCounter processCounter = new StageCounter();
+    StageCounter sinkCounter = new StageCounter();
+    // Two docs failed asynchronously in the bulk sink (per-doc mapping conflict etc.).
+    sinkCounter.getCumulativeFailed().set(2);
+
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
+    when(bulkSink.flushAndAwait(30)).thenReturn(true);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock =
+            mockStatic(ServerIdentityResolver.class);
+        MockedConstruction<StageStatsTracker> trackerConstruction =
+            mockConstruction(
+                StageStatsTracker.class,
+                (mock, context) -> {
+                  when(mock.getPendingSinkOps()).thenReturn(0L);
+                  when(mock.getProcess()).thenReturn(processCounter);
+                  when(mock.getSink()).thenReturn(sinkCounter);
+                });
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> doReturn(resultList).when(mock).readNextKeyset(null))) {
+      resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+
+      PartitionWorker.PartitionResult result = partitionWorker.processPartition(partition);
+
+      assertFalse(result.wasStopped());
+      assertEquals(0, result.successCount());
+      assertEquals(2, result.failedCount());
+      assertEquals(1, trackerConstruction.constructed().size());
+    }
+
+    verify(coordinator).completePartition(partition.getId(), 0L, 2L);
+  }
+
+  @Test
+  void processPartitionRecordsMissingPlannedRowsAsWarnings() {
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, 4, stagedIndexContext);
+    // Planner expected 4 rows in this partition, reader only finds 1.
+    SearchIndexPartition partition = buildPartition("table", 0, 4);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class)));
+    StageCounter processCounter = new StageCounter();
+    StageCounter sinkCounter = new StageCounter();
+
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
+    when(bulkSink.flushAndAwait(30)).thenReturn(true);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock =
+            mockStatic(ServerIdentityResolver.class);
+        MockedConstruction<StageStatsTracker> trackerConstruction =
+            mockConstruction(
+                StageStatsTracker.class,
+                (mock, context) -> {
+                  when(mock.getPendingSinkOps()).thenReturn(0L);
+                  when(mock.getProcess()).thenReturn(processCounter);
+                  when(mock.getSink()).thenReturn(sinkCounter);
+                });
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> doReturn(resultList).when(mock).readNextKeyset(null))) {
+      resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+
+      PartitionWorker.PartitionResult result = partitionWorker.processPartition(partition);
+
+      assertFalse(result.wasStopped());
+      assertEquals(1, result.successCount());
+      assertEquals(0, result.failedCount());
+      // 3 rows were planned but missing — they must surface as warnings so the per-entity
+      // math reconciles (total = success + failed + warnings).
+      assertEquals(3, result.readerWarnings());
+      verify(trackerConstruction.constructed().get(0)).recordReaderBatch(0, 0, 3);
+    }
+
+    verify(coordinator).completePartition(partition.getId(), 1L, 0L);
   }
 
   @Test
