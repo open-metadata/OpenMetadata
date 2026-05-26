@@ -266,6 +266,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [
