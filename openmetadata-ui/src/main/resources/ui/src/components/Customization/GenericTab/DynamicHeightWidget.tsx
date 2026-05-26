@@ -31,7 +31,9 @@ export const DynamicHeightWidget = ({
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const newHeight = entry.contentRect.height / 100; // Convert to grid units (100px per unit)
+        // rowHeight=100, verticalMargin=16: gridHeight = h*(rowHeight+margin) - margin
+        // Invert: h = (contentHeight + margin) / (rowHeight + margin)
+        const newHeight = (entry.contentRect.height + 16) / 116;
         if (newHeight !== height) {
           setHeight(newHeight);
           onHeightChange?.(widget.i, newHeight);
