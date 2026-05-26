@@ -450,14 +450,16 @@ public final class SecurityUtil {
       normalizedCandidate = candidate.normalize();
     }
 
-    boolean isTrustedRedirect =
+    URI matchedTrustedUri =
         trustedUris.stream()
             .map(URI::normalize)
-            .anyMatch(trustedUri -> sameRedirect(trustedUri, normalizedCandidate));
-    if (!isTrustedRedirect) {
-      throw new IllegalArgumentException("Redirect URI must exactly match a trusted redirect URI");
-    }
-    return normalizedCandidate.toString();
+            .filter(trustedUri -> sameRedirect(trustedUri, normalizedCandidate))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Redirect URI must exactly match a trusted redirect URI"));
+    return matchedTrustedUri.toString();
   }
 
   private static String canonicalize(URI trustedBase, URI candidate) {

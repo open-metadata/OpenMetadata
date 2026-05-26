@@ -662,6 +662,16 @@ class SecurityUtilTest {
   }
 
   @Test
+  void validateRedirectUri_returnsConfiguredTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "https://app.example.com:443/auth/callback",
+            Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
   void validateRedirectUri_rejectsDifferentPathOnTrustedOrigin() {
     IllegalArgumentException exception =
         assertThrows(
