@@ -64,6 +64,8 @@ import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExper
 import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import AssetHealthWidget from '../AssetHealthWidget/AssetHealthWidget.component';
+import DataAccessWidget from '../DataAccessWidget/DataAccessWidget.component';
 import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
@@ -423,6 +425,10 @@ export const CommonWidgets = ({
       return <TierWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CERTIFICATION)) {
       return <CertificationWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
+      return <AssetHealthWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_ACCESS)) {
+      return <DataAccessWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

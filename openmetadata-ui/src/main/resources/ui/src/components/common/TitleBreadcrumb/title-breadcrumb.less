@@ -28,4 +28,30 @@
       vertical-align: middle;
     }
   }
+
+  .breadcrumb-ellipsis-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 4px;
+    border: 1px solid @grey-15;
+    border-radius: 4px;
+    background-color: @grey-1;
+    color: @navigation-text-color;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease,
+      border-color 0.12s ease;
+  }
+
+  .breadcrumb-ellipsis-chip:hover {
+    background-color: @primary-1;
+    color: @primary-7;
+    border-color: @primary-3;
+  }
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Badge } from 'antd';
+import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
@@ -26,6 +27,7 @@ const TabsLabel = ({
   description,
   isBeta,
   isLoading,
+  alert,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
 
@@ -45,6 +47,15 @@ const TabsLabel = ({
               {getCountBadge(count, '', isActive)}
             </span>
           )
+        )}
+        {alert && (
+          <span
+            className={classNames('tabs-label-alert-dot', {
+              'tabs-label-alert-dot--error': alert === 'error',
+              'tabs-label-alert-dot--warn': alert === 'warn',
+            })}
+            data-testid={`tabs-label-alert-${alert}`}
+          />
         )}
         {isBeta && (
           <Badge className="service-beta-tag" count={t('label.beta')} />

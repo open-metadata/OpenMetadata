@@ -13,22 +13,214 @@
 @import (reference) '../../../styles/variables.less';
 
 .data-assets-header-container {
-  .data-asset-header-metadata {
-    border-radius: 12px;
-    border: 1px solid @grey-15;
-    padding: 16px 20px;
-    gap: 16px;
+  background-color: @white;
+  border: 0;
+  border-radius: 0;
+  padding: 10px 28px 8px;
+  margin: 0;
+  box-shadow: none;
+  row-gap: 2px !important;
+
+  .data-asset-header-identity-row {
     display: flex;
-    background-color: @background-color;
+    align-items: flex-start;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .data-asset-header-source-chip {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 9999px;
+    background-color: @white;
+    border: 1px solid @grey-15;
+    box-shadow: @button-box-shadow-default;
+    flex-shrink: 0;
+  }
+
+  .data-asset-header-source-chip img,
+  .data-asset-header-source-chip .header-icon {
+    width: 25px !important;
+    height: 25px !important;
+    object-fit: contain;
+  }
+
+  .data-asset-header-title-block {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
+    padding-top: 4px;
+  }
+
+  .data-asset-header-name.ant-typography {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.016em;
+    color: @grey-900;
+    word-break: break-word;
+    max-width: 100%;
+  }
+
+  .data-asset-header-copy-btn.ant-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: @text-grey-muted;
+  }
+
+  .data-asset-header-copy-btn.ant-btn:hover {
+    color: @primary-7;
+    background: transparent;
+  }
+
+  .data-asset-header-copy-btn .anticon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  // The copy SVG has a hardcoded stroke; override so it picks up the
+  // currentColor instead of looking dark/filled.
+  .data-asset-header-copy-btn .anticon svg path {
+    stroke: currentColor !important;
+  }
+
+  // Right-side actions hug the right edge instead of floating in middle.
+  // Use position-absolute fallback via auto-margin + align-self to ensure
+  // actions stick to the right even when the title-block content is short.
+  .data-asset-header-actions-wrapper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    margin-left: auto;
+    align-self: flex-start;
+  }
+
+  .data-asset-header-identity-row > .data-asset-header-actions-wrapper {
+    margin-left: auto !important;
+  }
+
+  .data-asset-header-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: 24px;
+    row-gap: 10px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+
+    // Normalize Domain/Owner/Tier/Certification inline labels to the same
+    // uppercase gray styling as the rest of the chips. OwnerLabel uses
+    // tailwind `tw:text-brand-700 tw:font-medium` which renders the label
+    // in blue; force it back to muted gray uppercase here.
+    .domain-link.right-panel-label,
+    .right-panel-label,
+    .entity-no-tier,
+    .extra-info-label-heading,
+    .tw\:text-brand-700,
+    span.ant-typography.tw\:text-brand-700 {
+      color: @text-grey-muted !important;
+      font-size: 10.5px !important;
+      font-weight: 500 !important;
+      letter-spacing: 0.02em !important;
+      text-transform: uppercase !important;
+    }
+
+    .domain-link-text.render-domain-lebel-style {
+      color: @grey-900 !important;
+      font-size: 13px !important;
+      font-weight: 500 !important;
+    }
+  }
+
+  .data-asset-header-actions {
+    width: 100%;
+
+    .ant-space-item {
+      width: 100%;
+    }
+  }
+
+  .data-asset-header-action-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .data-asset-header-quiet-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 18px;
+    justify-content: flex-end;
+    padding-right: 2px;
+  }
+
+  .header-action-btn.ant-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    height: auto;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid @grey-15;
+    border-radius: 8px;
+    background-color: @white;
+    color: @grey-900;
+    box-shadow: @button-box-shadow-default;
+  }
+
+  .header-action-btn.ant-btn:hover {
+    background-color: @grey-1;
+    color: @primary-7;
+    border-color: @primary-3;
+  }
+
+  .header-action-btn--active.ant-btn {
+    background-color: @primary-1;
+    color: @primary-7;
+    border-color: @primary-3;
+  }
+
+  .header-action-btn .anticon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .header-action-btn--external.ant-btn span.anticon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header-action-btn--external.ant-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: transparent;
   }
 
   .ant-space-item {
     .entity-no-tier {
-      color: @primary-heading-color;
+      color: @text-grey-muted;
       font-weight: 500;
-      font-size: 14px;
-      line-height: 20px;
+      font-size: 10.5px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
   }
 
@@ -41,21 +233,6 @@
     svg {
       color: @grey-600;
     }
-  }
-
-  .ant-typography > .extra-info-label-heading {
-    color: @primary-heading-color;
-    font-weight: 500;
-  }
-
-  .ant-typography > .extra-info-value {
-    color: @grey-700;
-  }
-
-  .header-icon {
-    height: 72px;
-    width: 60px;
-    object-fit: contain;
   }
 
   .no-tier-text {
@@ -71,7 +248,6 @@
     max-width: 220px;
   }
   .domain-link-container {
-    //consistent width for data-asset-header
     max-width: 148px;
 
     .domain-link-text.render-domain-lebel-style {
@@ -89,26 +265,6 @@
       text-decoration: none;
     }
   }
-  .ant-btn.ant-btn-default.source-url-button {
-    background-color: @primary-button-background;
-    color: @primary-heading-color;
-    span.anticon {
-      border-radius: 50%;
-      background-color: @alert-info-icon-bg-1;
-      padding: 4px;
-      height: 32px;
-      width: 32px;
-      border: 4px solid @blue-14;
-    }
-
-    svg {
-      fill: transparent;
-    }
-  }
-
-  .ant-divider.ant-divider-vertical.vertical-divider {
-    height: 50px;
-  }
 
   .tier-container,
   .extra-info-container {
@@ -119,44 +275,68 @@
       fill: @de-active-color;
     }
   }
-
-  .ant-btn-group.spaced {
-    .ant-btn.ant-btn-default.data-contract-latest-result-button {
-      font-size: 14px;
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-weight: 600;
-      box-shadow: 0px 2px 2px -1px @grey-35, 0px 4px 6px -2px @grey-35,
-        0px 12px 16px -4px @grey-35;
-
-      svg {
-        font-size: 26px;
-        fill: transparent;
-      }
-
-      &.failed {
-        color: @red-14;
-        border: 1px solid @red-19;
-        background-color: @red-9;
-      }
-
-      &.aborted {
-        color: @orange-7;
-        border: 1px solid @orange-200;
-        background-color: @orange-50;
-      }
-
-      &.running {
-        color: @primary-7;
-        border: 1px solid @blue-39;
-        background-color: @blue-33;
-      }
-    }
-  }
 }
 
 .full-screen-view {
   .data-assets-header-container {
     visibility: hidden;
   }
+}
+
+// Strip the card chrome around the entity-detail tabs so they sit flat
+// beneath the header, matching V5 design. Scoped to entity-details-page-tabs
+// only (not glossary/other tabs).
+.entity-details-page-tabs .ant-tabs.tabs-new .ant-tabs-nav {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 28px !important;
+  height: auto !important;
+}
+
+// Hide the Ant Tabs default underline (::before bottom border) — design
+// shows tabs sitting flush without any separator hairline.
+.entity-details-page-tabs .ant-tabs.tabs-new .ant-tabs-nav::before {
+  display: none !important;
+}
+
+.entity-details-page-tabs .ant-tabs.tabs-new .ant-tabs-tabpane {
+  background-color: transparent !important;
+  margin-top: 0 !important;
+}
+
+// Strip the outer wrapping box around the LeftPanel (description + main
+// schema/table). The default styling has its own card border + shadow that
+// creates a 'box around the box' effect when combined with the inner
+// description card. V5 wants a single clean card per widget.
+.entity-details-page-tabs
+  .grid-container
+  > [id='KnowledgePanel.LeftPanel'] {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+// Force the entity-detail page CONTENT area to white when the V5 header
+// is present, matching the design (single white surface with no gray
+// page bg behind cards). Scoped to the inner content panel so the left
+// sidebar (.left-sidebar-layout) keeps its gray background.
+.ant-layout-content:has(.data-assets-header-container),
+.page-layout-v1-vertical-scroll:has(.data-assets-header-container),
+.page-layout-v1-center:has(.data-assets-header-container) {
+  background-color: @white !important;
+}
+
+// The right-rail widget canvas (react-grid-layout) and Generic tab area
+// often render their own light backdrop too — force those white.
+.ant-layout-content:has(.data-assets-header-container)
+  .react-grid-layout,
+.ant-layout-content:has(.data-assets-header-container)
+  .ant-tabs-content-holder,
+.ant-layout-content:has(.data-assets-header-container) > .ant-row,
+.ant-layout-content:has(.data-assets-header-container)
+  .ant-tabs-tabpane {
+  background-color: @white !important;
 }

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
+  TabAlertTone,
+  TabProps,
+} from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  ASSET_HEALTH_WIDGET,
+  DATA_ACCESS_WIDGET,
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
@@ -58,6 +63,8 @@ export interface TableDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
   columnFqn?: string;
   columnPart?: string;
+  contractAlert?: TabAlertTone;
+  observabilityAlert?: TabAlertTone;
 }
 
 type TableWidgetKeys =
@@ -70,7 +77,9 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
-  | DetailPageWidgetKeys.PARTITIONED_KEYS;
+  | DetailPageWidgetKeys.PARTITIONED_KEYS
+  | DetailPageWidgetKeys.ASSET_HEALTH
+  | DetailPageWidgetKeys.DATA_ACCESS;
 
 class TableClassBase {
   defaultWidgetHeight: Record<TableWidgetKeys, number>;
@@ -87,6 +96,8 @@ class TableClassBase {
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.ASSET_HEALTH]: 2,
+      [DetailPageWidgetKeys.DATA_ACCESS]: 2,
     };
   }
 
@@ -156,13 +167,29 @@ class TableClassBase {
         static: true,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS],
+        i: DetailPageWidgetKeys.DATA_ACCESS,
+        w: 2,
+        x: 6,
+        y: 0,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH],
+        i: DetailPageWidgetKeys.ASSET_HEALTH,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[
           DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES
         ],
         i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
         w: 2,
         x: 6,
-        y: 0,
+        y: 2,
         static: false,
       },
       {
@@ -170,7 +197,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 3,
         static: false,
       },
       {
@@ -178,7 +205,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 2,
+        y: 4,
         static: false,
       },
       {
@@ -186,7 +213,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 3,
+        y: 5,
         static: false,
       },
       {
@@ -194,7 +221,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
         w: 2,
         x: 6,
-        y: 4,
+        y: 6,
         static: false,
       },
       {
@@ -202,7 +229,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 5,
+        y: 7,
         static: false,
       },
       {
@@ -210,7 +237,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.PARTITIONED_KEYS,
         w: 2,
         x: 6,
-        y: 6,
+        y: 8,
         static: false,
       },
       {
@@ -218,7 +245,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         w: 2,
         x: 6,
-        y: 7,
+        y: 9,
         static: false,
       },
     ];
@@ -257,6 +284,8 @@ class TableClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      ASSET_HEALTH_WIDGET,
+      DATA_ACCESS_WIDGET,
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
@@ -310,6 +339,10 @@ class TableClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS];
       case DetailPageWidgetKeys.PARTITIONED_KEYS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS];
+      case DetailPageWidgetKeys.ASSET_HEALTH:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH];
+      case DetailPageWidgetKeys.DATA_ACCESS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS];
       default:
         return 1;
     }

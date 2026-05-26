@@ -121,6 +121,18 @@ export const KNOWLEDGE_ARTICLE_WIDGET = {
   },
 };
 
+export const ASSET_HEALTH_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: DetailPageWidgetKeys.ASSET_HEALTH,
+  name: i18n.t('label.asset-health'),
+  data: { gridSizes: ['small'] },
+};
+
+export const DATA_ACCESS_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: DetailPageWidgetKeys.DATA_ACCESS,
+  name: i18n.t('label.data-access'),
+  data: { gridSizes: ['small'] },
+};
+
 export const DUMMY_TAGS_LIST = [
   {
     tagFQN: 'BusinessGlossary.Purchase',

@@ -12,6 +12,8 @@
  */
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
+  ASSET_HEALTH_WIDGET,
+  DATA_ACCESS_WIDGET,
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
@@ -55,7 +57,9 @@ type DashboardDataModelWidgetKeys =
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
-  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
+  | DetailPageWidgetKeys.ASSET_HEALTH
+  | DetailPageWidgetKeys.DATA_ACCESS;
 
 class DashboardDataModelBase {
   defaultWidgetHeight: Record<DashboardDataModelWidgetKeys, number>;
@@ -69,6 +73,8 @@ class DashboardDataModelBase {
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
+      [DetailPageWidgetKeys.ASSET_HEALTH]: 2,
+      [DetailPageWidgetKeys.DATA_ACCESS]: 2,
     };
   }
 
@@ -130,11 +136,27 @@ class DashboardDataModelBase {
         static: true,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS],
+        i: DetailPageWidgetKeys.DATA_ACCESS,
+        w: 2,
+        x: 6,
+        y: 0,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH],
+        i: DetailPageWidgetKeys.ASSET_HEALTH,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 3,
         static: false,
       },
       {
@@ -142,7 +164,7 @@ class DashboardDataModelBase {
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 2,
+        y: 4,
         static: false,
       },
       {
@@ -150,7 +172,7 @@ class DashboardDataModelBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 3,
+        y: 5,
         static: false,
       },
       {
@@ -158,7 +180,7 @@ class DashboardDataModelBase {
         i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
         w: 2,
         x: 6,
-        y: 5,
+        y: 7,
         static: false,
       },
       {
@@ -166,7 +188,7 @@ class DashboardDataModelBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 6,
+        y: 8,
         static: false,
       },
     ];
@@ -186,6 +208,8 @@ class DashboardDataModelBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      ASSET_HEALTH_WIDGET,
+      DATA_ACCESS_WIDGET,
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
@@ -212,6 +236,10 @@ class DashboardDataModelBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      case DetailPageWidgetKeys.ASSET_HEALTH:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH];
+      case DetailPageWidgetKeys.DATA_ACCESS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS];
       default:
         return 1;
     }
