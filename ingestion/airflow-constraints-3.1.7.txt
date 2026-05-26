@@ -142,7 +142,7 @@ apache-airflow-providers-github==2.10.2
 apache-airflow-providers-google==19.5.0
 apache-airflow-providers-grpc==3.9.2
 apache-airflow-providers-hashicorp==4.4.3
-apache-airflow-providers-http==5.6.4
+apache-airflow-providers-http==6.0.0
 apache-airflow-providers-imap==3.10.3
 apache-airflow-providers-influxdb==2.10.2
 apache-airflow-providers-jdbc==5.3.2
