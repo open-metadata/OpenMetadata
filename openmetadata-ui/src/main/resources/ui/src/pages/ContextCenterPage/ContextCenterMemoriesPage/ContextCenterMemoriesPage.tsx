@@ -619,6 +619,7 @@ const ContextCenterMemoriesPage: FC = () => {
         <div>
           <MemoriesView
             canDelete
+            currentUserName={currentUser?.name}
             data={pagedMemories}
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}

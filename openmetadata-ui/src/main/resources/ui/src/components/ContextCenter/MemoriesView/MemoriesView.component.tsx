@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  ButtonUtility,
   Dot,
   Dropdown,
   Skeleton,
@@ -19,7 +20,8 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Edit01, Trash01 } from '@untitledui/icons';
+import { Clock, Trash01 } from '@untitledui/icons';
+import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -36,52 +38,43 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
   canDelete,
   memory,
   onDeleteMemory,
-  onEditMemory,
   onOpenChange,
 }) => {
   const { t } = useTranslation();
+
+  if (!canDelete) {
+    return null;
+  }
 
   return (
     <Dropdown.Root onOpenChange={onOpenChange}>
       <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
         <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+          <Dropdown.DotsButton className="tw:flex tw:p-1" />
         </TooltipTrigger>
       </Tooltip>
       <Dropdown.Popover className="tw:w-30">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'edit') {
-              onEditMemory?.(memory);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteMemory?.(memory);
             }
           }}>
-          {onEditMemory && (
-            <Dropdown.Item
-              data-testid="edit-btn"
-              icon={Edit01}
-              id="edit"
-              label={t('label.edit')}
-            />
-          )}
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Trash01
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-600"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </div>
-            </Dropdown.Item>
-          )}
+          <Dropdown.Item data-testid="delete-btn" id="delete">
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <Trash01
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+              />
+              <Typography
+                ellipsis
+                className="tw:grow tw:text-error-600"
+                size="text-sm"
+                weight="medium">
+                {t('label.delete')}
+              </Typography>
+            </div>
+          </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -110,6 +103,7 @@ const MemoryRowSkeleton: FC = () => (
 
 interface MemoryRowProps {
   canDelete?: boolean;
+  currentUserName?: string;
   memory: MemoryItem;
   onDeleteMemory?: (memory: MemoryItem) => void;
   onEditMemory?: (memory: MemoryItem) => void;
@@ -118,11 +112,13 @@ interface MemoryRowProps {
 
 const MemoryRow: FC<MemoryRowProps> = ({
   canDelete,
+  currentUserName,
   memory,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
+  const isOwner = memory.updatedBy === currentUserName;
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -213,21 +209,35 @@ const MemoryRow: FC<MemoryRowProps> = ({
         )}
       </div>
 
-      {/* 3-dot actions — visible on hover or while menu is open */}
+      {/* Actions — visible on hover or while menu is open */}
       <div
-        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity  ${
+        className={`tw:absolute tw:top-3 tw:right-3 tw:flex tw:items-center tw:gap-1 tw:transition-opacity ${
           isMenuOpen
             ? 'tw:opacity-100'
             : 'tw:opacity-0 tw:group-hover:opacity-100'
         }`}
         onClick={(e) => e.stopPropagation()}>
-        <MemoryActions
-          canDelete={canDelete}
-          memory={memory}
-          onDeleteMemory={onDeleteMemory}
-          onEditMemory={onEditMemory}
-          onOpenChange={setIsMenuOpen}
-        />
+        {isOwner && onEditMemory && (
+          <Tooltip title={t('label.edit')}>
+            <TooltipTrigger>
+              <ButtonUtility
+                color="tertiary"
+                data-testid="edit-memory-btn"
+                icon={<EditNewIcon height={16} width={16} />}
+                size="sm"
+                onClick={() => onEditMemory(memory)}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+        {isOwner && (
+          <MemoryActions
+            canDelete={canDelete}
+            memory={memory}
+            onDeleteMemory={onDeleteMemory}
+            onOpenChange={setIsMenuOpen}
+          />
+        )}
       </div>
     </div>
   );
@@ -235,6 +245,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
 const MemoriesView: FC<MemoriesViewProps> = ({
   canDelete,
+  currentUserName,
   data,
   isLoading,
   onDeleteMemory,
@@ -264,6 +275,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
       {data.map((memory) => (
         <MemoryRow
           canDelete={canDelete}
+          currentUserName={currentUserName}
           key={memory.id}
           memory={memory}
           onDeleteMemory={onDeleteMemory}

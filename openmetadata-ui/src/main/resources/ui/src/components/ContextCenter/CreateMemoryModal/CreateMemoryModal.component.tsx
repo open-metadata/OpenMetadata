@@ -27,8 +27,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Database01,
   Edit01,
+  FileLock02,
   Lightbulb03,
+  Lock01,
   Plus,
   Share07,
   Trash01,
@@ -402,6 +405,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const visibilityOption = VISIBILITY_OPTIONS.find((o) => o.id === visibility);
 
+  const VISIBILITY_ICON_MAP = {
+    Share07: <Share07 size={12} strokeWidth={2} />,
+    Database01: <Database01 size={12} strokeWidth={2} />,
+    FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+  };
+
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -456,6 +465,30 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                 {/* Scrollable body */}
                 <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
+                  {/* Read-only banner for non-owners */}
+                  {isViewOnly && !isOwner && memoryToEdit && (
+                    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+                      <Lock01
+                        className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+                        size={16}
+                        strokeWidth={2}
+                      />
+                      <div className="tw:flex tw:flex-col">
+                        <Typography
+                          className="tw:text-warning-700"
+                          size="text-xs"
+                          weight="semibold">
+                          {t('label.cant-edit-this-memory')}
+                        </Typography>
+                        <Typography as="p" className="tw:text-warning-700 tw:leading-4" size="text-xs">
+                          {t('message.context-memory-read-only-description', {
+                            creatorName: memoryToEdit.updatedBy,
+                          })}
+                        </Typography>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Inline error alert */}
                   {modalError && (
                     <Alert
@@ -637,10 +670,14 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             <div className="tw:flex tw:items-center tw:gap-2">
                               <Badge
                                 className="tw:flex tw:items-center tw:gap-1 tw:uppercase"
-                                color="brand"
+                                color={visibilityOption?.badgeColor ?? 'brand'}
                                 size="sm"
                                 type="color">
-                                <Share07 size={12} strokeWidth={2} />
+                                {visibilityOption
+                                  ? VISIBILITY_ICON_MAP[
+                                      visibilityOption.iconName
+                                    ]
+                                  : VISIBILITY_ICON_MAP.Share07}
                                 {visibilityOption
                                   ? t(visibilityOption.labelKey)
                                   : t('label.shared')}
@@ -836,7 +873,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       onClick={handleClose}>
                       {t('label.cancel')}
                     </Button>
-                    {isViewOnly ? (
+                    {isViewOnly && isOwner ? (
                       <Button
                         color="primary"
                         iconLeading={Edit01}
@@ -844,7 +881,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSwitchToEdit}>
                         {t('label.edit')}
                       </Button>
-                    ) : (
+                    ) : !isViewOnly ? (
                       <Button
                         color="primary"
                         isDisabled={
@@ -855,7 +892,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSubmit}>
                         {submitLabel}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </ConfigProvider>

@@ -24,21 +24,26 @@ export const MEMORY_TYPE_OPTIONS = [
   { id: MemoryType.UseCase, labelKey: 'label.use-case' },
 ];
 
-
 export const VISIBILITY_OPTIONS = [
   {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
     descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'brand' as const,
+    iconName: 'Share07' as const,
   },
   {
     id: ShareVisibility.Entity,
     labelKey: 'label.entity',
     descriptionKey: 'message.visible-to-linked-entities',
+    badgeColor: 'orange' as const,
+    iconName: 'Database01' as const,
   },
   {
     id: ShareVisibility.Private,
     labelKey: 'label.private',
     descriptionKey: 'message.visible-only-to-you',
+    badgeColor: 'gray' as const,
+    iconName: 'FileLock02' as const,
   },
 ];
