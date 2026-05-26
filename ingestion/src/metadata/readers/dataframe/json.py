@@ -149,7 +149,11 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
+                return False
+            return True  # noqa:TRY300
         except json.JSONDecodeError:
             return False
 
