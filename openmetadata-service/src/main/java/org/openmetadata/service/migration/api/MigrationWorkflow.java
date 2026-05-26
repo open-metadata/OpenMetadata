@@ -249,11 +249,11 @@ public class MigrationWorkflow {
 
     @Override
     public int compareTo(ReleaseTrain another) {
-      int majorComparison = Integer.compare(major, another.major);
-      if (majorComparison != 0) {
-        return majorComparison;
+      int result = Integer.compare(major, another.major);
+      if (result == 0) {
+        result = Integer.compare(minor, another.minor);
       }
-      return Integer.compare(minor, another.minor);
+      return result;
     }
   }
 
@@ -495,10 +495,11 @@ public class MigrationWorkflow {
   }
 
   private boolean shouldRunDataMigration(MigrationProcess process) {
-    if (!process.isReprocessing() || currentMaxMigrationVersion.isEmpty()) {
-      return true;
+    boolean result = true;
+    if (process.isReprocessing() && currentMaxMigrationVersion.isPresent()) {
+      result = compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
     }
-    return compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
+    return result;
   }
 
   private void runSchemaChanges(List<String> row, MigrationProcess process) {
