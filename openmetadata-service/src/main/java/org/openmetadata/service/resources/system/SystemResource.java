@@ -300,13 +300,16 @@ public class SystemResource {
 
   @GET
   @Path("/search/fitness")
+  @Hidden
   @Operation(
       operationId = "getSearchClusterFitness",
+      hidden = true,
       summary = "Diagnose whether the search cluster is sized for current data",
       description =
-          "Returns a structured fitness report covering cluster status, per-index data footprint "
-              + "(size + average doc bytes), disk watermarks, heap/CPU, thread-pool rejections, "
-              + "circuit breaker trips, shard layout, and capacity recommendations. Admin only.",
+          "Internal admin-only diagnostic. Returns a structured fitness report covering cluster "
+              + "status, per-index data footprint (size + average doc bytes), disk watermarks, "
+              + "heap/CPU, thread-pool rejections, circuit breaker trips, shard layout, and "
+              + "capacity recommendations. Not part of the public API surface.",
       responses = {
         @ApiResponse(
             responseCode = "200",
