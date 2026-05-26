@@ -2392,52 +2392,6 @@ export interface DBTPrefixConfig {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * SSL certificate configuration for validating the server certificate when fetching dbt
- * artifacts.
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface DbtSSLConfigClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
->>>>>>> b47c219954 (FEATURE: Add SAP S4/HANA Dashboard Connector (#27242))
  * AWS credentials configs.
  *
  * AWS credentials required to access the S3 file.
@@ -2649,25 +2603,6 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- *
- * Client SSL verification.
- *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
- *
- * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
-}
-
-/**
->>>>>>> b47c219954 (FEATURE: Add SAP S4/HANA Dashboard Connector (#27242))
  * Use incremental Metadata extraction after the first execution. This is commonly done by
  * getting the changes from Audit tables on the supporting databases.
  */
@@ -6026,6 +5961,9 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration details.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * SSL Configuration details for DB2 connection. Provide CA certificate for server
  * validation, and optionally client certificate and key for mutual TLS authentication.
  *
@@ -6739,6 +6677,9 @@ export enum ConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
