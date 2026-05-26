@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { PropertyValue } from './PropertyValue';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -63,6 +62,10 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityLink: jest.fn().mockReturnValue('Entity Link'),
+}));
+
+jest.mock('../../../utils/BlockEditorUtils', () => ({
+  getTextFromHtmlString: jest.fn((html: string) => html),
 }));
 
 jest.mock('../ProfilePicture/ProfilePicture', () =>
@@ -503,8 +506,9 @@ describe('Test PropertyValue Component', () => {
   });
 
   describe('entityReference link generation — quoted identifier regression', () => {
-    const getEntityLinkMock = () =>
-      entityUtilClassBase.getEntityLink as jest.Mock;
+    const entityUtilMock = () =>
+      jest.requireMock('../../../utils/EntityUtilClassBase');
+    const getEntityLinkMock = () => entityUtilMock().getEntityLink as jest.Mock;
 
     beforeEach(() => {
       getEntityLinkMock().mockClear();
@@ -566,6 +570,8 @@ describe('Test PropertyValue Component', () => {
         'user',
         expect.stringContaining('"')
       );
+      expect(screen.getByRole('link')).toHaveTextContent('jsmith');
+      expect(screen.getByRole('link')).not.toHaveTextContent('"jsmith"');
     });
 
     it('should strip surrounding quotes from name when fullyQualifiedName is absent', async () => {
@@ -628,6 +634,7 @@ describe('Test PropertyValue Component', () => {
         { wrapper: MemoryRouter }
       );
 
+      // data-testid on the container div still comes from raw getEntityName
       await screen.findByTestId('"alice"');
 
       expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'alice');
@@ -636,6 +643,11 @@ describe('Test PropertyValue Component', () => {
         'user',
         expect.stringContaining('"')
       );
+
+      // Display labels must be clean — no surrounding quotes in rendered text
+      const links = screen.getAllByRole('link');
+
+      expect(links.some((l) => l.textContent?.includes('"'))).toBe(false);
     });
   });
 });

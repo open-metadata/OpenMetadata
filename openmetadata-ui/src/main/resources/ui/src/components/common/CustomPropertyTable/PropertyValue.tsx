@@ -878,7 +878,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         <Typography.Text
           className="text-left text-primary truncate w-max-full"
           ellipsis={{ tooltip: true }}>
-          {getEntityName(item)}
+          {stripSurroundingQuotes(getEntityName(item))}
         </Typography.Text>
       </Link>
     );
