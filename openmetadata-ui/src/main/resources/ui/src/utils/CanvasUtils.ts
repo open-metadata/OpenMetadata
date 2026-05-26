@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node, Position, Viewport } from 'reactflow';
+import type { Edge, Node, Viewport } from 'reactflow';
+import { Position } from 'reactflow';
 import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import {
   COLUMN_NODE_HEIGHT,
