@@ -64,3 +64,8 @@ class StorageSamplerConfig(SamplerConfig):
     Storage samplers only need the base fields — no SQL partitions,
     no user queries, no column filters.
     """
+
+
+@dataclass
+class MessagingSamplerConfig(SamplerConfig):
+    """Messaging samplers only need base SamplerConfig fields."""

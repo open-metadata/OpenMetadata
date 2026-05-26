@@ -62,6 +62,7 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndexSampleData,
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
+from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -997,6 +998,24 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
             logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            return True
+        return False
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: TopicEntity, sample_data: TableData) -> bool:
+        """Topic-specific sample data ingestion — converts TableData to TopicSampleData."""
+        import json as _json  # noqa: PLC0415
+
+        column_names = sample_data.columns or []
+        messages = [_json.dumps(dict(zip(column_names, row, strict=False))) for row in (sample_data.rows or [])]
+        topic_sample_data = TopicSampleData(messages=messages)
+        result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
+        if result:
+            fqn = entity.fullyQualifiedName
+            logger.debug(
+                "Successfully ingested sample data for %s",
+                fqn.root if fqn else type(entity).__name__,
+            )
             return True
         return False
 

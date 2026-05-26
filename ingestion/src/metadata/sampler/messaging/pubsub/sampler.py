@@ -9,16 +9,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pub/Sub service spec
+PubSub sampler implementation (stub — not yet implemented).
 """
 
-from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
-from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
-from metadata.sampler.messaging.pubsub.sampler import PubSubSampler
-from metadata.utils.service_spec import BaseSpec
+from typing import List  # noqa: UP035
 
-ServiceSpec = BaseSpec(
-    metadata_source_class=PubsubSource,
-    connection_class=PubSubConnection,
-    sampler_class=PubSubSampler,
-)  # pyright: ignore[reportArgumentType]
+from metadata.sampler.messaging.sampler import MessagingSampler
+from metadata.utils.logger import sampler_logger
+
+logger = sampler_logger()
+
+
+class PubSubSampler(MessagingSampler):
+    """Sampler for Google Cloud Pub/Sub messaging service."""
+
+    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+        logger.warning("PubSub sampler not yet implemented for auto-classification")
+        return []
