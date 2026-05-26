@@ -120,6 +120,68 @@ class SessionMultiNodeIT {
   }
 
   @Test
+  void sequentialRefreshSucceedsOnBothNodesWithTokenAndCookie(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String sessionId = cookies.get("OM_SESSION");
+    String tokenFromLogin = loginResponse.get("accessToken").asText();
+
+    HttpResponse<String> refreshOnA =
+        postRawWithBearer(
+            client, cookies, tokenFromLogin, cluster.nodeABaseUrl() + "/api/v1/auth/refresh");
+    assertEquals(200, refreshOnA.statusCode(), refreshOnA.body());
+    String tokenFromA = JsonUtils.readTree(refreshOnA.body()).get("accessToken").asText();
+    assertEquals(sessionId, cookies.get("OM_SESSION"));
+
+    HttpResponse<String> refreshOnB =
+        postRawWithBearer(
+            client, cookies, tokenFromA, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh");
+    assertEquals(200, refreshOnB.statusCode(), refreshOnB.body());
+    assertNotNull(JsonUtils.readTree(refreshOnB.body()).get("accessToken"));
+    assertEquals(sessionId, cookies.get("OM_SESSION"));
+
+    assertEquals(1L, sessionCountForUser(user));
+    UserSession persisted = loadSession(sessionId);
+    assertEquals(SessionStatus.ACTIVE, persisted.getStatus());
+    assertTrue(safeVersion(persisted) >= 2L, "Each cross-node refresh must bump the CAS version");
+  }
+
+  @Test
+  void sessionBoundTokenIssuedOnOneNodeIsHonoredAndRevokedOnOther(TestNamespace ns)
+      throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String accessToken = loginResponse.get("accessToken").asText();
+
+    HttpResponse<String> meOnB =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, meOnB.statusCode(), meOnB.body());
+    assertEquals(user.getId().toString(), JsonUtils.readTree(meOnB.body()).get("id").asText());
+
+    HttpResponse<String> logout =
+        postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/logout", null);
+    assertEquals(200, logout.statusCode());
+
+    HttpResponse<String> meOnBAfterLogout =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, meOnBAfterLogout.statusCode(), meOnBAfterLogout.body());
+  }
+
+  @Test
   void refreshReturnsRetryAfterWhenLeaseIsHeldAcrossNodes(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
@@ -212,6 +274,104 @@ class SessionMultiNodeIT {
     assertEquals(1L, statuses.stream().filter("REVOKED"::equals).count());
   }
 
+  @Test
+  void expiredSessionIsRejectedForRefreshAndApiAcrossNodes(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String accessToken = loginResponse.get("accessToken").asText();
+    String sessionId = cookies.get("OM_SESSION");
+
+    UserSession current = loadSession(sessionId);
+    long past = System.currentTimeMillis() - 60_000L;
+    persistSession(
+        current.toBuilder()
+            .expiresAt(past)
+            .idleExpiresAt(past)
+            .updatedAt(System.currentTimeMillis())
+            .version(safeVersion(current) + 1)
+            .build());
+
+    HttpResponse<String> refreshOnB =
+        postRawWithBearer(
+            client, cookies, accessToken, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh");
+    assertEquals(401, refreshOnB.statusCode(), refreshOnB.body());
+
+    HttpResponse<String> apiOnB =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, apiOnB.statusCode(), apiOnB.body());
+  }
+
+  @Test
+  void sessionLimitEvictsLeastRecentlyUsedAcrossNodes(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+    HttpClient client = HttpClient.newHttpClient();
+
+    SessionCookies firstBrowser = new SessionCookies();
+    JsonNode firstLogin =
+        login(client, firstBrowser, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String firstToken = firstLogin.get("accessToken").asText();
+
+    for (int i = 0; i < 5; i++) {
+      SessionCookies extra = new SessionCookies();
+      String baseUrl = (i % 2 == 0) ? cluster.nodeBBaseUrl() : cluster.nodeABaseUrl();
+      login(client, extra, baseUrl, user.getEmail(), passwordFor(ns));
+    }
+
+    HttpResponse<String> evictedRefresh =
+        postRaw(client, firstBrowser, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
+    assertEquals(401, evictedRefresh.statusCode(), evictedRefresh.body());
+
+    HttpResponse<String> evictedApi =
+        getRawWithBearer(client, firstToken, cluster.nodeABaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, evictedApi.statusCode(), evictedApi.body());
+
+    assertEquals(5L, sessionStatusCount(user, SessionStatus.ACTIVE));
+    assertTrue(sessionStatusCount(user, SessionStatus.REVOKED) >= 1L);
+  }
+
+  @Test
+  void tokenIssuedBeforeRefreshStaysValidUnderSameSession(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String preRefreshToken = loginResponse.get("accessToken").asText();
+
+    JsonNode refreshOnB =
+        post(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
+    assertNotNull(refreshOnB.get("accessToken"));
+
+    HttpResponse<String> apiOnA =
+        getRawWithBearer(
+            client, preRefreshToken, cluster.nodeABaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, apiOnA.statusCode(), apiOnA.body());
+  }
+
+  private long sessionStatusCount(User user, SessionStatus status) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM user_session WHERE userId = :userId AND status = :status")
+                    .bind("userId", user.getId().toString())
+                    .bind("status", status.name())
+                    .mapTo(Long.class)
+                    .one());
+  }
+
   private User createUser(TestNamespace ns) {
     String username = ns.shortPrefix("session-user");
     String password = passwordFor(ns);
@@ -267,6 +427,32 @@ class SessionMultiNodeIT {
         client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
     cookies.capture(response);
     return response;
+  }
+
+  private HttpResponse<String> postRawWithBearer(
+      HttpClient client, SessionCookies cookies, String bearerToken, String url) throws Exception {
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder(URI.create(url))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + bearerToken)
+            .POST(HttpRequest.BodyPublishers.noBody());
+    if (!cookies.isEmpty()) {
+      requestBuilder.header("Cookie", cookies.asHeaderValue());
+    }
+    HttpResponse<String> response =
+        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    cookies.capture(response);
+    return response;
+  }
+
+  private HttpResponse<String> getRawWithBearer(HttpClient client, String bearerToken, String url)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(url))
+            .header("Authorization", "Bearer " + bearerToken)
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private UserSession loadSession(String sessionId) {

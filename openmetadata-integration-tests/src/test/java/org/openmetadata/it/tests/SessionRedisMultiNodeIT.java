@@ -95,6 +95,63 @@ class SessionRedisMultiNodeIT {
   }
 
   @Test
+  void sequentialRefreshSucceedsOnBothNodesWithTokenAndCookie(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String sessionId = cookies.get("OM_SESSION");
+    String tokenFromLogin = loginResponse.get("accessToken").asText();
+
+    HttpResponse<String> refreshOnA =
+        postRawWithBearer(
+            client, cookies, tokenFromLogin, cluster.nodeABaseUrl() + "/api/v1/auth/refresh");
+    assertEquals(200, refreshOnA.statusCode(), refreshOnA.body());
+    String tokenFromA = JsonUtils.readTree(refreshOnA.body()).get("accessToken").asText();
+    assertEquals(sessionId, cookies.get("OM_SESSION"));
+
+    HttpResponse<String> refreshOnB =
+        postRawWithBearer(
+            client, cookies, tokenFromA, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh");
+    assertEquals(200, refreshOnB.statusCode(), refreshOnB.body());
+    assertNotNull(JsonUtils.readTree(refreshOnB.body()).get("accessToken"));
+    assertEquals(sessionId, cookies.get("OM_SESSION"));
+  }
+
+  @Test
+  void sessionBoundTokenIssuedOnOneNodeIsHonoredAndRevokedOnOther(TestNamespace ns)
+      throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String accessToken = loginResponse.get("accessToken").asText();
+
+    HttpResponse<String> meOnB =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, meOnB.statusCode(), meOnB.body());
+    assertEquals(user.getId().toString(), JsonUtils.readTree(meOnB.body()).get("id").asText());
+
+    HttpResponse<String> logout =
+        postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/logout", null);
+    assertEquals(200, logout.statusCode());
+
+    HttpResponse<String> meOnBAfterLogout =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, meOnBAfterLogout.statusCode(), meOnBAfterLogout.body());
+  }
+
+  @Test
   void revocationOnOneNodeIsImmediatelyVisibleOnOther(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
@@ -195,6 +252,59 @@ class SessionRedisMultiNodeIT {
     assertNotNull(activeRefresh.get("accessToken"));
   }
 
+  @Test
+  void sessionLimitEvictsLeastRecentlyUsedAcrossNodes(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+    HttpClient client = HttpClient.newHttpClient();
+
+    SessionCookies firstBrowser = new SessionCookies();
+    JsonNode firstLogin =
+        login(client, firstBrowser, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String firstToken = firstLogin.get("accessToken").asText();
+
+    SessionCookies lastBrowser = new SessionCookies();
+    for (int i = 0; i < 5; i++) {
+      lastBrowser = new SessionCookies();
+      String baseUrl = (i % 2 == 0) ? cluster.nodeBBaseUrl() : cluster.nodeABaseUrl();
+      login(client, lastBrowser, baseUrl, user.getEmail(), passwordFor(ns));
+    }
+
+    HttpResponse<String> evictedRefresh =
+        postRaw(client, firstBrowser, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
+    assertEquals(401, evictedRefresh.statusCode(), evictedRefresh.body());
+
+    HttpResponse<String> evictedApi =
+        getRawWithBearer(client, firstToken, cluster.nodeABaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, evictedApi.statusCode(), evictedApi.body());
+
+    JsonNode survivorRefresh =
+        post(client, lastBrowser, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+    assertNotNull(survivorRefresh.get("accessToken"));
+  }
+
+  @Test
+  void tokenIssuedBeforeRefreshStaysValidUnderSameSession(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String preRefreshToken = loginResponse.get("accessToken").asText();
+
+    JsonNode refreshOnB =
+        post(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
+    assertNotNull(refreshOnB.get("accessToken"));
+
+    HttpResponse<String> apiOnA =
+        getRawWithBearer(
+            client, preRefreshToken, cluster.nodeABaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, apiOnA.statusCode(), apiOnA.body());
+  }
+
   private static boolean isOkOrInProgress(HttpResponse<String> response) {
     return response.statusCode() == 200 || response.statusCode() == 503;
   }
@@ -254,6 +364,32 @@ class SessionRedisMultiNodeIT {
         client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
     cookies.capture(response);
     return response;
+  }
+
+  private HttpResponse<String> postRawWithBearer(
+      HttpClient client, SessionCookies cookies, String bearerToken, String url) throws Exception {
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder(URI.create(url))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + bearerToken)
+            .POST(HttpRequest.BodyPublishers.noBody());
+    if (!cookies.isEmpty()) {
+      requestBuilder.header("Cookie", cookies.asHeaderValue());
+    }
+    HttpResponse<String> response =
+        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    cookies.capture(response);
+    return response;
+  }
+
+  private HttpResponse<String> getRawWithBearer(HttpClient client, String bearerToken, String url)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(url))
+            .header("Authorization", "Bearer " + bearerToken)
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static final class SessionCookies {
