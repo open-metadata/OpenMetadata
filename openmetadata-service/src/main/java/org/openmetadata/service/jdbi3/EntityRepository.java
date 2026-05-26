@@ -4353,6 +4353,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // write + one batched change-event insert per type, regardless of descendant count.
     // For hard delete, bulkHardDeleteSubtree replaces the legacy per-entity cleanup loop
     // that opened an independent JDBI transaction per descendant.
+    //
+    // Time-series children are intentionally skipped — see dispatchToContainedChildren
+    // for the rationale (millions-of-rows lock risk, orphans cleaned offline by
+    // DataRetention).
     Map<String, List<UUID>> idsByType =
         children.stream()
             .collect(
@@ -4360,11 +4364,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     EntityRelationshipRecord::getType,
                     Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
     for (var entry : idsByType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      if (hardDelete) {
-        repo.bulkHardDeleteSubtree(entry.getValue(), updatedBy);
-      } else {
-        repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        if (hardDelete) {
+          repo.bulkHardDeleteSubtree(entry.getValue(), updatedBy);
+        } else {
+          repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
+        }
       }
     }
   }
@@ -5763,6 +5770,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * database that's 12k DB hits collapsed into one per tree level. Shared between bulk restore,
    * bulk soft-delete and bulk hard-delete; the only thing that varies is the terminal call on the
    * child repo.
+   *
+   * <p>Time-series children (e.g., {@code TestCase --PARENT_OF--> testCaseResolutionStatus},
+   * {@code AIApplication --CONTAINS--> agentExecution}, {@code McpServer --CONTAINS-->
+   * mcpExecution}) are intentionally not walked here. Restore and soft-delete have nothing to
+   * do — time-series rows are immutable and carry no {@code deleted} state. Hard-delete also
+   * skips: the tables can hold millions of rows per parent under active ingestion (agent /
+   * MCP executions, profile + queryCost time-series), and a synchronous bulk DELETE would
+   * lock those tables for the duration of the parent cascade and stall the delete request.
+   * Orphan rows whose parent ref no longer resolves degrade safely via
+   * {@code getFromEntityRef} returning {@code null} + the per-repo
+   * {@code shouldSkipSearchResultOnInheritedFieldError} guard. The {@code DataRetention} app
+   * is responsible for sweeping these orphans on its regular cadence (see TODO #28367 for
+   * the orphan time-series cleanup follow-up).
    */
   private void dispatchToContainedChildren(
       List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
@@ -5788,8 +5808,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .add(UUID.fromString(rel.getToId()));
     }
     for (var entry : idsByChildType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      dispatcher.accept(repo, entry.getValue());
+      String childType = entry.getKey();
+      List<UUID> childIds = entry.getValue();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        dispatcher.accept(repo, childIds);
+      }
     }
   }
 
@@ -10200,7 +10224,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       String entityTypeForRef = fromSide ? record.getFromEntity() : record.getToEntity();
       String entityId = fromSide ? record.getFromId() : record.getToId();
-      if (nullOrEmpty(entityTypeForRef) || nullOrEmpty(entityId)) {
+      if (nullOrEmpty(entityTypeForRef)
+          || nullOrEmpty(entityId)
+          || !Entity.hasEntityRepository(entityTypeForRef)) {
         continue;
       }
       idsByType

@@ -31,6 +31,7 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
   private static final int DESCRIPTION_MAX_LENGTH = 500;
   private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
+  private static final int MAX_RESPONSE_CHARS = 100_000;
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -332,9 +333,46 @@ public class SearchMetadataTool implements McpTool {
       result.put(
           "message",
           String.format(
-              "Found %d total results, showing first %d. Use pagination or refine your search for more specific results, you can call these 3 times by yourself with pagination , and then only if the user ask for more paginate.",
+              "Found %d total results, showing first %d. "
+                  + "There are many matching assets. Are you looking for something specific? "
+                  + "Try narrowing with a service name, schema name, or more specific search term.",
               totalResults, cleanedResults.size()));
       result.put("hasMore", true);
+    }
+
+    try {
+      String serialized = JsonUtils.pojoToJson(result);
+      LOG.debug(
+          "[MCP] search_metadata response size: {} chars for query '{}'",
+          serialized.length(),
+          query);
+      if (serialized.length() > MAX_RESPONSE_CHARS) {
+        int targetCount =
+            Math.min(
+                Math.max(
+                    1,
+                    (int)
+                        (cleanedResults.size() * (MAX_RESPONSE_CHARS * 0.8) / serialized.length())),
+                cleanedResults.size());
+        List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
+        LOG.warn(
+            "[MCP] search_metadata response trimmed: {} chars -> {} results (was {})",
+            serialized.length(),
+            trimmed.size(),
+            cleanedResults.size());
+        result.put("results", trimmed);
+        result.put("returnedCount", trimmed.size());
+        result.put("hasMore", true);
+        result.put(
+            "message",
+            String.format(
+                "Response exceeded %d characters and was trimmed to %d of %d results. "
+                    + "There are many matching assets. Are you looking for something specific? "
+                    + "Try narrowing with a service name, schema, or specific name.",
+                MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to check response size for query '{}': {}", query, e.getMessage());
     }
 
     return result;

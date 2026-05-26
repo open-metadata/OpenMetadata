@@ -39,7 +39,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   return (
     <Card
       isClickable
-      className="tw:flex tw:flex-col tw:gap-3 tw:max-w-42"
+      className="tw:flex tw:flex-col"
       data-testid="uploaded-document-card"
       role="button"
       tabIndex={0}
@@ -82,7 +82,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
                       width={16}
                     />
                   }
-                  onClick={(e) => {
+                  onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     onDownload?.(document);
                   }}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { BarProps } from 'recharts';
+import type { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 

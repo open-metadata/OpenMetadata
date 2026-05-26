@@ -20,7 +20,8 @@ import {
   disposeApiContext,
   navigateAndFilterByGlossary,
   readNodePositions,
-  waitForGraphLoaded,
+  waitForNodeAbsent,
+  waitForNodePresent,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -58,6 +59,7 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
   test('isolated term is visible by default (showIsolatedNodes = true)', async ({
     page,
   }) => {
+    test.slow();
     await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
 
     const positions = await readNodePositions(page);
@@ -79,10 +81,11 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
   test('toggling isolated nodes OFF hides the isolated term', async ({
     page,
   }) => {
+    test.slow();
     await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
+    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 
@@ -103,13 +106,14 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
   test('toggling isolated nodes back ON restores the isolated term', async ({
     page,
   }) => {
+    test.slow();
     await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
 
-    // Toggle OFF then back ON.
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
+    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
+
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForGraphLoaded(page);
+    await waitForNodePresent(page, toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 

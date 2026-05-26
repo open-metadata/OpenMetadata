@@ -158,6 +158,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      LOG.info(
+          "TestSuiteBootstrap: skipping embedded boot (JPW_MODE={} or skip.embedded.bootstrap=true)",
+          resolveJpwMode());
+      return;
+    }
     if (!STARTED.compareAndSet(false, true)) {
       LOG.info("TestSuiteBootstrap already started, skipping initialization");
       return;
@@ -220,8 +226,25 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   @Override
   public void launcherSessionClosed(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      return;
+    }
     LOG.info("=== TestSuiteBootstrap: Shutting down test infrastructure ===");
     cleanup();
+  }
+
+  private static boolean isEmbeddedBootstrapDisabled() {
+    return "external".equalsIgnoreCase(resolveJpwMode())
+        || Boolean.parseBoolean(System.getProperty("skip.embedded.bootstrap", "false"));
+  }
+
+  private static String resolveJpwMode() {
+    final String fromProp = System.getProperty("JPW_MODE");
+    if (fromProp != null && !fromProp.isBlank()) {
+      return fromProp;
+    }
+    final String fromEnv = System.getenv("JPW_MODE");
+    return fromEnv != null ? fromEnv : "";
   }
 
   private void startDatabase() {
@@ -1099,6 +1122,30 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static String getBaseUrl() {
     return "http://localhost:" + getApplicationPort();
+  }
+
+  /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */
+  public static String getSearchHost() {
+    return searchHost;
+  }
+
+  /** Mapped HTTP port of the running search engine container. */
+  public static int getSearchPort() {
+    return searchPort;
+  }
+
+  /** Scheme of the running search engine container — currently always {@code http} in tests. */
+  public static String getSearchScheme() {
+    return "http";
+  }
+
+  /**
+   * Search engine testcontainer (OpenSearch or Elasticsearch). Exposed for failure-path
+   * tests that need to pause/unpause/disconnect the engine to validate retry semantics.
+   * Returns {@code null} if the bootstrap hasn't started yet.
+   */
+  public static GenericContainer<?> getSearchContainer() {
+    return SEARCH_CONTAINER;
   }
 
   /**

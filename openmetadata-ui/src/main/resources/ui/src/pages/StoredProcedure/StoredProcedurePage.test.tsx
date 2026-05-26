@@ -11,15 +11,23 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
 import StoredProcedurePage from './StoredProcedurePage';
+
+const renderPage = () =>
+  renderWithQueryClient(
+    <MemoryRouter>
+      <StoredProcedurePage />
+    </MemoryRouter>
+  );
 
 const mockEntityPermissionByFqn = jest
   .fn()
@@ -45,6 +53,9 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
 }));
@@ -163,11 +174,7 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
-    render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'storedProcedure',
@@ -176,11 +183,7 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should not fetch details if permission is there', () => {
-    render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
@@ -193,11 +196,7 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -216,11 +215,7 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -237,11 +232,7 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
@@ -255,11 +246,7 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -286,11 +273,7 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -319,18 +302,16 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: 'test-stored-procedure',
-      }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-stored-procedure',
+        }),
+        expect.anything()
+      );
+    });
   });
 });

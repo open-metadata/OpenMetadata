@@ -34,7 +34,11 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -142,9 +146,26 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const fetchEntityFeedCount = () =>
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedMlModelFqn) {
+      fetchEntityTaskCountsInto(decodedMlModelFqn, setFeedCount);
+    }
+  }, [decodedMlModelFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedMlModelFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.MLMODEL,
+        decodedMlModelFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedMlModelFqn]);
+
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
-      fetchEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [mlModelPermissions, decodedMlModelFqn]);
 
