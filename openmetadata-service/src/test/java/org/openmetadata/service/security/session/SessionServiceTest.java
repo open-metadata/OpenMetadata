@@ -381,6 +381,39 @@ class SessionServiceTest {
   }
 
   @Test
+  void releaseRefreshLease_revertsRefreshingSessionToActive() {
+    long now = System.currentTimeMillis();
+    UserSession leased =
+        UserSession.builder()
+            .id("leased-session")
+            .status(SessionStatus.REFRESHING)
+            .version(2L)
+            .refreshLeaseUntil(now + 5_000)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    when(repository.findById("leased-session")).thenReturn(Optional.of(leased));
+    when(repository.updateIfVersion(any(UserSession.class), eq(2L))).thenReturn(true);
+
+    sessionService.releaseRefreshLease(leased);
+
+    ArgumentCaptor<UserSession> captor = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(captor.capture(), eq(2L));
+    assertEquals(SessionStatus.ACTIVE, captor.getValue().getStatus());
+    assertNull(captor.getValue().getRefreshLeaseUntil());
+  }
+
+  @Test
+  void releaseRefreshLease_noOpWhenLeasedSessionNotRefreshing() {
+    UserSession active =
+        UserSession.builder().id("active-session").status(SessionStatus.ACTIVE).version(1L).build();
+
+    sessionService.releaseRefreshLease(active);
+
+    verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
   void revokeSession_marksSessionRevokedAndClearsCookie() {
     String sessionId = validSessionId('a');
     UserSession activeSession =

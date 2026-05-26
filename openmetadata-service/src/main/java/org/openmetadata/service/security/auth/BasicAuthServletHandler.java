@@ -128,6 +128,7 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
 
   @Override
   public void handleRefresh(HttpServletRequest req, HttpServletResponse resp) {
+    UserSession leasedSession = null;
     try {
       if (authenticator == null) {
         LOG.warn("BasicAuthenticator not initialized yet");
@@ -137,6 +138,7 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
       }
 
       UserSession session = sessionService.acquireRefreshLease(req, resp).orElse(null);
+      leasedSession = session;
       if (session == null) {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No active session");
         return;
@@ -174,6 +176,7 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
       resp.setHeader("Retry-After", Integer.toString(e.getRetryAfterSeconds()));
       sendError(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
     } catch (Exception e) {
+      sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling refresh", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
     }

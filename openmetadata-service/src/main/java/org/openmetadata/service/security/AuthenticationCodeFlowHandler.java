@@ -540,9 +540,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   // Refresh
   public void handleRefresh(
       HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+    UserSession leasedSession = null;
     try {
       UserSession session =
           sessionService.acquireRefreshLease(httpServletRequest, httpServletResponse).orElse(null);
+      leasedSession = session;
       if (session == null) {
         httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         writeJsonResponse(
@@ -590,6 +592,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.error("[Auth Refresh] Failed to write refresh contention response", ioException);
       }
     } catch (Exception e) {
+      sessionService.releaseRefreshLease(leasedSession);
       getErrorMessage(httpServletResponse, new TechnicalException(e));
     }
   }

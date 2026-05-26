@@ -366,6 +366,35 @@ public class SessionService implements Managed {
     return Optional.of(refreshed);
   }
 
+  /**
+   * Best-effort release of a refresh lease back to {@code ACTIVE} when a refresh fails after the
+   * lease was acquired. Without this, a transient provider/token error would leave the session
+   * {@code REFRESHING} until the lease expires, making concurrent refreshes return 503 in the
+   * meantime. A lost compare-and-set is ignored — another node already moved the session on, and
+   * stale-lease recovery covers the rest.
+   */
+  public void releaseRefreshLease(UserSession leasedSession) {
+    if (leasedSession == null || leasedSession.getStatus() != SessionStatus.REFRESHING) {
+      return;
+    }
+    UserSession current = reloadSession(leasedSession.getId()).orElse(null);
+    if (current == null || current.getStatus() != SessionStatus.REFRESHING) {
+      return;
+    }
+    long now = System.currentTimeMillis();
+    long expectedVersion = safeVersion(current);
+    UserSession released =
+        current.toBuilder()
+            .status(SessionStatus.ACTIVE)
+            .refreshLeaseUntil(null)
+            .updatedAt(now)
+            .version(expectedVersion + 1)
+            .build();
+    if (repository.updateIfVersion(released, expectedVersion)) {
+      cache.put(released.getId(), released);
+    }
+  }
+
   public void revokeSession(
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
