@@ -210,12 +210,6 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Maximum number of active authenticated sessions allowed per user. When the limit is
-     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
-     * to the default of 5.
-     */
-    maxActiveSessionsPerUser?: number;
-    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
@@ -235,6 +229,12 @@ export interface PipelineServiceClientConfiguration {
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
+     * to the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Oidc Configuration for Confidential Client Type
      */
@@ -1098,12 +1098,6 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Maximum number of active authenticated sessions allowed per user. When the limit is
-     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
-     * to the default of 5.
-     */
-    maxActiveSessionsPerUser?: number;
-    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];
@@ -1123,6 +1117,12 @@ export interface AuthenticationConfiguration {
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
+     * to the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Oidc Configuration for Confidential Client Type
      */
