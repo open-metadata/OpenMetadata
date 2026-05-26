@@ -15,9 +15,9 @@ import time
 
 import pytest
 
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 from metadata.ingestion.diagnostics.monitors.monitor import Monitor
-from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.time_accounting import (
+from metadata.ingestion.diagnostics.monitors.time_accounting import (
     TimeAccountingSampler,
     _categorize,
 )

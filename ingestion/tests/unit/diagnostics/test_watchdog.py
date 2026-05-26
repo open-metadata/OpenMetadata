@@ -18,10 +18,10 @@ import logging
 import threading
 import time as _time
 
-from metadata.ingestion.diagnostics.http_introspect import HttpTracker
-from metadata.ingestion.diagnostics.memory import MemoryTracker
-from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.watchdog import Watchdog
+from metadata.ingestion.diagnostics.collectors.http import HttpTracker
+from metadata.ingestion.diagnostics.collectors.memory import MemoryTracker
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
+from metadata.ingestion.diagnostics.monitors.watchdog import Watchdog
 
 
 def _make_watchdog():

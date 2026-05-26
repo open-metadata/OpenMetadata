@@ -17,7 +17,7 @@ counters and the heartbeat surfaces queue depths.
 
 import pytest
 
-from metadata.ingestion.diagnostics import stage_progress
+from metadata.ingestion.diagnostics.collectors import stage_progress
 from metadata.ingestion.models.topology import Queue
 
 

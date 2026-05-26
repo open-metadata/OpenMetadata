@@ -21,9 +21,9 @@ import logging
 import sys
 from unittest.mock import patch
 
-from metadata.ingestion.diagnostics.http_introspect import HttpTracker
-from metadata.ingestion.diagnostics.memory import MemoryTracker
-from metadata.ingestion.diagnostics.registry import OperationRegistry
+from metadata.ingestion.diagnostics.collectors.http import HttpTracker
+from metadata.ingestion.diagnostics.collectors.memory import MemoryTracker
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 from metadata.ingestion.diagnostics.signals import (
     emit_full_dump,
     emit_incremental_dump,

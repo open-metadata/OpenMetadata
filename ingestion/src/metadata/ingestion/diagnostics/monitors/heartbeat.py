@@ -28,13 +28,13 @@ import threading
 from typing import Any
 
 from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
-from metadata.ingestion.diagnostics.memory import (
+from metadata.ingestion.diagnostics.collectors.memory import (
     MemoryTracker,
     format_bytes,
     format_signed_bytes,
 )
-from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.stage_progress import format_for_heartbeat
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
+from metadata.ingestion.diagnostics.collectors.stage_progress import format_for_heartbeat
 
 
 class Heartbeat:

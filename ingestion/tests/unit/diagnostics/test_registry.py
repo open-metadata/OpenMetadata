@@ -13,7 +13,7 @@
 import threading
 import time
 
-from metadata.ingestion.diagnostics.registry import (
+from metadata.ingestion.diagnostics.collectors.operation_registry import (
     OperationRegistry,
     _truncate_kwargs,
     format_op_frame,

@@ -28,9 +28,9 @@ import time
 from typing import Any
 
 from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
+from metadata.ingestion.diagnostics.collectors.memory import MemorySample
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry, format_op_frame
 from metadata.ingestion.diagnostics.config import DiagnosticsConfig
-from metadata.ingestion.diagnostics.memory import MemorySample
-from metadata.ingestion.diagnostics.registry import OperationRegistry, format_op_frame
 from metadata.ingestion.diagnostics.signals import emit_full_dump
 
 

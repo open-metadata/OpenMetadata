@@ -59,7 +59,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from metadata.ingestion.diagnostics.registry import OperationRegistry
+    from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 
 
 def _categorize(op_name: str) -> str:

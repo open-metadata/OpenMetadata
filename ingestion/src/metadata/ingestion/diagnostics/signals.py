@@ -44,12 +44,12 @@ import traceback
 from typing import Any
 
 from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
-from metadata.ingestion.diagnostics.memory import (
+from metadata.ingestion.diagnostics.collectors.memory import (
     MemoryTracker,
     format_bytes,
     format_signed_bytes,
 )
-from metadata.ingestion.diagnostics.registry import OperationRegistry, format_op_frame
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry, format_op_frame
 
 
 def install_signal_handlers(
@@ -283,7 +283,7 @@ def _emit_memory_dump(out: Any, memory_tracker: MemoryTracker, deep: bool) -> No
 
 def _emit_queues_dump(out: Any) -> None:
     """Render inter-stage queue depths + put/processed counters."""
-    from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+    from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
 
     queues = stage_progress.snapshot()
     if not queues:

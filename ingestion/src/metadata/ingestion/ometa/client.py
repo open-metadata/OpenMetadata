@@ -23,7 +23,7 @@ from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion import diagnostics
-from metadata.ingestion.diagnostics.http_introspect import get_global_tracker
+from metadata.ingestion.diagnostics.collectors.http import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache

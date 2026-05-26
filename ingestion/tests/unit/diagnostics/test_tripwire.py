@@ -20,11 +20,11 @@ import time
 import pytest
 
 from metadata.ingestion import diagnostics
+from metadata.ingestion.diagnostics.collectors.http import HttpTracker
+from metadata.ingestion.diagnostics.collectors.memory import MemorySample, MemoryTracker
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 from metadata.ingestion.diagnostics.config import DiagnosticsConfig
-from metadata.ingestion.diagnostics.http_introspect import HttpTracker
-from metadata.ingestion.diagnostics.memory import MemorySample, MemoryTracker
-from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.watchdog import Watchdog
+from metadata.ingestion.diagnostics.monitors.watchdog import Watchdog
 
 
 class _FixedSampleTracker(MemoryTracker):

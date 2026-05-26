@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Memory tracker behavior."""
 
-from metadata.ingestion.diagnostics.memory import (
+from metadata.ingestion.diagnostics.collectors.memory import (
     MemoryTracker,
     format_bytes,
     format_signed_bytes,

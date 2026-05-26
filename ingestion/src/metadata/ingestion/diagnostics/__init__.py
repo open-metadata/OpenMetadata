@@ -118,17 +118,17 @@ def install(workflow: Any) -> bool:
     # Imports are deferred to keep `is_active()` / no-op `operation()` callers
     # from paying the import cost on every workflow start.
     try:
-        from metadata.ingestion.diagnostics import stage_progress as _stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.collectors import stage_progress as _stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.collectors.http import HttpTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.collectors.memory import MemoryTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry  # noqa: PLC0415
         from metadata.ingestion.diagnostics.config import DiagnosticsConfig  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.heartbeat import Heartbeat  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.http_introspect import HttpTracker  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.memory import MemoryTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.monitors.heartbeat import Heartbeat  # noqa: PLC0415
         from metadata.ingestion.diagnostics.monitors.monitor import Monitor  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.monitors.time_accounting import TimeAccountingSampler  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.monitors.watchdog import Watchdog  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.seams.db_introspect import DbIntrospector  # noqa: PLC0415
         from metadata.ingestion.diagnostics.signals import install_signal_handlers  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.time_accounting import TimeAccountingSampler  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.watchdog import Watchdog  # noqa: PLC0415
 
         config = DiagnosticsConfig()
         registry = OperationRegistry()
@@ -208,7 +208,7 @@ def shutdown() -> None:
     with suppress(Exception):
         state.db_introspector.uninstall()
     with suppress(Exception):
-        from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
 
         stage_progress.uninstall()
 
