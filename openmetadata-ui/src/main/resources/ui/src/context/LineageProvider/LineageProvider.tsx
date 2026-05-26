@@ -716,9 +716,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       entityFqn,
       entityType ?? '',
       lineageConfig,
-      queryFilter
+      queryFilter,
+      timeFilter.startTime,
+      timeFilter.endTime
     );
-  }, [entityType, entityFqn, lineageConfig, queryFilter]);
+  }, [
+    entityType,
+    entityFqn,
+    lineageConfig,
+    queryFilter,
+    timeFilter.startTime,
+    timeFilter.endTime,
+  ]);
 
   const onExportClick = useCallback(
     (

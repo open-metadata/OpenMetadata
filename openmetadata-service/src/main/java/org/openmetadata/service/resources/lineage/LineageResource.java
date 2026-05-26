@@ -959,7 +959,9 @@ public class LineageResource {
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, UUID.fromString(toId), null));
 
-    boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
+    boolean deleted =
+        dao.deleteLineage(
+            fromEntity, fromId, toEntity, toId, securityContext.getUserPrincipal().getName());
     if (!deleted) {
       return Response.status(NOT_FOUND)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
@@ -1006,7 +1008,9 @@ public class LineageResource {
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
         new LineageResourceContext());
-    boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
+    boolean deleted =
+        dao.deleteLineageByFQN(
+            fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
     if (!deleted) {
       return Response.status(NOT_FOUND)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))

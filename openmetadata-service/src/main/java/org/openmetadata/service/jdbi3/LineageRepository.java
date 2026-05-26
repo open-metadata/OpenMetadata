@@ -1042,7 +1042,7 @@ public class LineageRepository {
 
   @Transaction
   public boolean deleteLineageByFQN(
-      String fromEntity, String fromFQN, String toEntity, String toFQN) {
+      String fromEntity, String fromFQN, String toEntity, String toFQN, String deletedBy) {
     EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.ALL);
     EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
     CollectionDAO.EntityRelationshipObject relationshipObject =
@@ -1083,11 +1083,7 @@ public class LineageRepository {
           cachedLineage.invalidateEdge(from.getId(), to.getId());
         }
         emitLineageChangeEvent(
-            EventType.ENTITY_LINEAGE_DELETED,
-            from,
-            to,
-            lineageDetails,
-            lineageDetails == null ? null : lineageDetails.getUpdatedBy());
+            EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
       }
       return result;
     }
@@ -1117,7 +1113,8 @@ public class LineageRepository {
   }
 
   @Transaction
-  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
+  public boolean deleteLineage(
+      String fromEntity, String fromId, String toEntity, String toId, String deletedBy) {
     // Validate from entity
     EntityReference from =
         Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.ALL);
@@ -1164,11 +1161,7 @@ public class LineageRepository {
           cachedLineage.invalidateEdge(from.getId(), to.getId());
         }
         emitLineageChangeEvent(
-            EventType.ENTITY_LINEAGE_DELETED,
-            from,
-            to,
-            lineageDetails,
-            lineageDetails == null ? null : lineageDetails.getUpdatedBy());
+            EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
       }
       return result;
     }

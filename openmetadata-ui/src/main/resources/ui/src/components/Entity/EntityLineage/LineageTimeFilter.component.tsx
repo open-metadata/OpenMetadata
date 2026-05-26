@@ -124,6 +124,9 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   const handleCustomChange = useCallback(
     (values: [DateTime | null, DateTime | null] | null) => {
       if (!values) {
+        onChange({ startTime: undefined, endTime: undefined });
+        setShowCustomRange(false);
+
         return;
       }
       const start = values[0]?.startOf('day').toMillis();
@@ -137,6 +140,9 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   const handlePointInTimeChange = useCallback(
     (value: DateTime | null) => {
       if (!value) {
+        onChange({ startTime: undefined, endTime: undefined });
+        setShowPointInTime(false);
+
         return;
       }
       onChange({

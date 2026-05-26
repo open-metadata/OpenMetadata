@@ -378,6 +378,13 @@ public interface SearchClient
             edgeData.put('createdAt', carryCreatedAt);
             if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
           }
+          def carryUpdatedAt = old.get('updatedAt');
+          def carryUpdatedBy = old.get('updatedBy');
+          def newUpdatedAt = edgeData.get('updatedAt');
+          if (carryUpdatedAt != null && (newUpdatedAt == null || carryUpdatedAt > newUpdatedAt)) {
+            edgeData.put('updatedAt', carryUpdatedAt);
+            if (carryUpdatedBy != null) edgeData.put('updatedBy', carryUpdatedBy);
+          }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;

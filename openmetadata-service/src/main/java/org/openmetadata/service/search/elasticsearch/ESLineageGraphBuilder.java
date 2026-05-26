@@ -263,21 +263,26 @@ public class ESLineageGraphBuilder
           String fqn = entityMap.get(FQN_FIELD).toString();
 
           RelationshipRef toEntity = getRelationshipRef(entityMap);
+          List<EsLineageData> upstreamEntities =
+              getMatchingUpstreamLineageData(
+                  entityMap,
+                  hasToFqnMap.keySet(),
+                  lineageRequest.getStartTime(),
+                  lineageRequest.getEndTime());
+          if (upstreamEntities.isEmpty()) {
+            continue;
+          }
+
           if (!result.getNodes().containsKey(fqn)) {
             hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fqn), fqn);
             int currentDepth = calculateCurrentDepth(lineageRequest, remainingDepth);
             result.getNodes().put(fqn, getNodeInformation(entityMap, 0, null, currentDepth));
           }
 
-          List<EsLineageData> upstreamEntities =
-              getUpstreamLineageListIfExist(
-                  entityMap, lineageRequest.getStartTime(), lineageRequest.getEndTime());
           for (EsLineageData esLineageData : upstreamEntities) {
-            if (hasToFqnMap.containsKey(esLineageData.getFromEntity().getFqnHash())) {
-              result
-                  .getDownstreamEdges()
-                  .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
-            }
+            result
+                .getDownstreamEdges()
+                .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
           }
         }
       }
@@ -1065,7 +1070,7 @@ public class ESLineageGraphBuilder
       SearchResponse<JsonData> searchResponse = esClient.search(searchRequest, JsonData.class);
 
       Map<String, String> nextLevel = new HashMap<>();
-      int countAtDepth = (int) searchResponse.hits().total().value();
+      Set<String> entitiesAtDepth = new LinkedHashSet<>();
 
       for (Hit<JsonData> hit : searchResponse.hits().hits()) {
         if (hit.source() != null) {
@@ -1073,6 +1078,11 @@ public class ESLineageGraphBuilder
           if (!esDoc.isEmpty()) {
             String entityFqn = esDoc.get(FQN_FIELD).toString();
             if (direction.equals(LineageDirection.DOWNSTREAM)) {
+              if (getMatchingUpstreamLineageData(esDoc, currentLevel.keySet(), startTime, endTime)
+                  .isEmpty()) {
+                continue;
+              }
+              entitiesAtDepth.add(entityFqn);
               if (!visitedFqns.contains(entityFqn)) {
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
               }
@@ -1080,9 +1090,12 @@ public class ESLineageGraphBuilder
               List<EsLineageData> upStreamEntities =
                   getUpstreamLineageListIfExist(esDoc, startTime, endTime);
               for (EsLineageData data : upStreamEntities) {
-                String fromFqn = data.getFromEntity().getFullyQualifiedName();
-                if (!visitedFqns.contains(fromFqn)) {
-                  nextLevel.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
+                if (data.getFromEntity() != null) {
+                  String fromFqn = data.getFromEntity().getFullyQualifiedName();
+                  entitiesAtDepth.add(fromFqn);
+                  if (!visitedFqns.contains(fromFqn)) {
+                    nextLevel.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
+                  }
                 }
               }
             }
@@ -1090,11 +1103,11 @@ public class ESLineageGraphBuilder
         }
       }
 
-      if (countAtDepth == 0 && nextLevel.isEmpty()) {
+      if (entitiesAtDepth.isEmpty() && nextLevel.isEmpty()) {
         // No more downstream entities found, break the loop
         break;
       }
-      depthCounts.put(depth, countAtDepth);
+      depthCounts.put(depth, entitiesAtDepth.size());
       currentLevel = nextLevel;
     }
 
@@ -1147,6 +1160,10 @@ public class ESLineageGraphBuilder
           if (!esDoc.isEmpty()) {
             if (direction.equals(LineageDirection.DOWNSTREAM)) {
               String entityFqn = esDoc.get(FQN_FIELD).toString();
+              if (getMatchingUpstreamLineageData(esDoc, currentLevel.keySet(), startTime, endTime)
+                  .isEmpty()) {
+                continue;
+              }
               entitiesAtDepth.add(entityFqn);
               if (!visitedFqns.contains(entityFqn)) {
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
@@ -1173,6 +1190,14 @@ public class ESLineageGraphBuilder
     }
 
     return entitiesByDepth;
+  }
+
+  private static List<EsLineageData> getMatchingUpstreamLineageData(
+      Map<String, Object> esDoc, Set<String> currentLevelHashes, Long startTime, Long endTime) {
+    return getUpstreamLineageListIfExist(esDoc, startTime, endTime).stream()
+        .filter(data -> data.getFromEntity() != null)
+        .filter(data -> currentLevelHashes.contains(data.getFromEntity().getFqnHash()))
+        .toList();
   }
 
   private void addEntitiesAcrossDepths(
@@ -1313,12 +1338,18 @@ public class ESLineageGraphBuilder
           Map<String, Object> esDoc = EsUtils.jsonDataToMap(hit.source());
           if (!esDoc.isEmpty()) {
             String entityFqn = esDoc.get(FQN_FIELD).toString();
-            allEntitiesUpToDepth.put(entityFqn, new EntityData(entityFqn, depth, esDoc));
             if (request.getDirection().equals(LineageDirection.DOWNSTREAM)) {
+              if (getMatchingUpstreamLineageData(
+                      esDoc, currentLevel.keySet(), request.getStartTime(), request.getEndTime())
+                  .isEmpty()) {
+                continue;
+              }
+              allEntitiesUpToDepth.put(entityFqn, new EntityData(entityFqn, depth, esDoc));
               if (depth < targetDepth && !visitedFqns.contains(entityFqn)) {
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
               }
             } else {
+              allEntitiesUpToDepth.put(entityFqn, new EntityData(entityFqn, depth, esDoc));
               List<EsLineageData> upStreamEntities =
                   getUpstreamLineageListIfExist(
                       esDoc, request.getStartTime(), request.getEndTime());

@@ -296,8 +296,18 @@ const CustomControls: FC<{
         nodeDepth: nodeDepth,
         maxDepth: nodeDepth,
         query_filter: quickFilters,
+        startTime: timeFilter.startTime,
+        endTime: timeFilter.endTime,
       }),
-    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+    [
+      fqn,
+      entityType,
+      lineageDirection,
+      nodeDepth,
+      quickFilters,
+      timeFilter.startTime,
+      timeFilter.endTime,
+    ]
   );
 
   const handleExportClick = useCallback(() => {

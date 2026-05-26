@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Request } from '@playwright/test';
 import { get } from 'lodash';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -293,25 +293,24 @@ test.describe.serial('Lineage Settings Tests', () => {
       'Last 7 days'
     );
 
-    let lineageFetchesAfterViewSwitch = 0;
-    page.on('request', (request) => {
+    const isLineageFetchRequest = (request: Request) => {
       const url = new URL(request.url());
-      if (url.pathname.endsWith('/api/v1/lineage/getLineage')) {
-        lineageFetchesAfterViewSwitch += 1;
-      }
-    });
+
+      return url.pathname.endsWith('/api/v1/lineage/getLineage');
+    };
 
     await page.getByRole('tab', { name: 'Impact Analysis' }).click();
     await expect(page).toHaveURL(/mode=impact_analysis/);
     await waitForAllLoadersToDisappear(page);
 
+    const lineageFetchAfterViewSwitch = page
+      .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+
     await page.getByRole('tab', { name: 'Lineage' }).click();
     await expect(page).not.toHaveURL(/mode=impact_analysis/);
-    await expect
-      .poll(() => lineageFetchesAfterViewSwitch, {
-        message: 'Lineage graph should not be fetched again on view toggle',
-      })
-      .toBe(0);
+    expect(await lineageFetchAfterViewSwitch).toBe(false);
   });
 
   test('Verify lineage settings for PipelineViewMode as Edge', async ({

@@ -2672,11 +2672,6 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-darwin-arm64/-/rollup-darwin-arm64-4.59.0.tgz#674852cf14cf11b8056e0b1a2f4e872b523576cf"
   integrity sha512-W2Psnbh1J8ZJw0xKAd8zdNgF9HRLkdWwwdWqubSVk0pUuQkoHnv7rx4GiF9rT4t5DIZGAsConRE3AxCdJ4m8rg==
 
-"@rollup/rollup-darwin-arm64@^4.60.4":
-  version "4.60.4"
-  resolved "https://registry.yarnpkg.com/@rollup/rollup-darwin-arm64/-/rollup-darwin-arm64-4.60.4.tgz#2a5aa70432e39816d666d79287a7324cfc3b4e72"
-  integrity sha512-tua0TaJxMOB1R0V0RS1jFZ/RpURFDJIOR2A6jWwQeawuFyS4gBW+rntLRaQd0EQ4bd6Vp44Z2rXW+YYDBsj6IA==
-
 "@rollup/rollup-darwin-x64@4.59.0":
   version "4.59.0"
   resolved "https://registry.yarnpkg.com/@rollup/rollup-darwin-x64/-/rollup-darwin-x64-4.59.0.tgz#36dfd7ed0aaf4d9d89d9ef983af72632455b0246"
