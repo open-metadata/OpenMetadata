@@ -55,6 +55,7 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -81,6 +82,7 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
@@ -445,12 +447,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -614,6 +620,7 @@ export const DataAssetsHeader = ({
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
+      currentUser?.isAdmin ||
       !canCreateTask
     ) {
       return null;

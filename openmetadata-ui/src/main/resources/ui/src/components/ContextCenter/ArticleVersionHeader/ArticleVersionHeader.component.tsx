@@ -95,6 +95,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
             <File06
               className="tw:text-gray-500"
               height={40}
+              strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}
               width={40}
             />

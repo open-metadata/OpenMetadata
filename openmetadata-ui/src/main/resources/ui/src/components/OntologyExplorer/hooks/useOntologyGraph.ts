@@ -73,6 +73,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  CARDINALITY_AWARE_LINE_EDGE_TYPE,
   getCanvasColor,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
@@ -1066,7 +1067,7 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: 'line',
+        type: () => CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
           enter: false,
         },

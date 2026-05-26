@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01, File06 } from '@untitledui/icons';
+import { Cube01, File06, Lightbulb03 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -56,6 +56,7 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
 };
@@ -225,7 +226,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
-        icon: File06,
+        icon: createIconWithStroke(File06 as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
       },
       {
@@ -234,6 +235,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
         icon: FolderIcon,
         dataTestId: `app-bar-item-${SidebarItem.DOCUMENTS}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_MEMORIES,
+        title: 'label.memory-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
+        icon: createIconWithStroke(Lightbulb03 as UntitledIconType, 1.2),
+        dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
       },
       // TODO: In progress
       // {

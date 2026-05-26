@@ -25,7 +25,7 @@ from urllib.parse import quote
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import SerializedDAG
+from airflow.serialization.definitions.dag import SerializedDAG
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, join, literal
 from sqlalchemy.orm import Session
@@ -429,7 +429,7 @@ class AirflowSource(PipelineServiceSource):
                     task_statuses = [
                         TaskStatus(
                             name=task.task_id,
-                            executionStatus=STATUS_MAP.get(task.state, StatusType.Pending.value),
+                            executionStatus=STATUS_MAP.get(task.state or "", StatusType.Pending.value),
                             startTime=datetime_to_ts(task.start_date),
                             endTime=datetime_to_ts(task.end_date),  # Might be None for running tasks
                         )  # Log link might not be present in all Airflow versions
