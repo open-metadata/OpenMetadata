@@ -642,7 +642,7 @@ sqlalchemy_drill==1.1.9
 sqlparse==0.5.5
 sshtunnel==0.4.0
 stack-data==0.6.3
-starlette==0.48.0
+starlette==0.49.1
 statsd==4.0.1
 std-uritemplate==2.0.8
 stringcase==1.2.0
