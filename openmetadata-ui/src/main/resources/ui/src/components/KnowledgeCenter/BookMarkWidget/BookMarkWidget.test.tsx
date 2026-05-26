@@ -15,10 +15,10 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
-import { useApplicationStore } from 'hooks/useApplicationStore';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getUserById } from '../../../rest/userAPI';
 import BookMarkWidget from './BookMarkWidget';
 
 const mockUserData: User = {
@@ -87,7 +87,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('test-page-name');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
 
     expect(screen.getByText('label.bookmark-plural')).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('label.untitled');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
   });
 });

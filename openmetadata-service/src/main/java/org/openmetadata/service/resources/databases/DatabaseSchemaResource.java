@@ -812,7 +812,10 @@ public class DatabaseSchemaResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted database schema.",
-      description = "Restore a soft deleted database schema.",
+      description =
+          "Restore a soft deleted database schema. Pass async=true to run the restore in the"
+              + " background and receive a 202 Accepted response with a job id; useful when the"
+              + " schema contains thousands of tables.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -820,13 +823,27 @@ public class DatabaseSchemaResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseSchema.class)))
+                    schema = @Schema(implementation = DatabaseSchema.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDatabaseSchema(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @PUT

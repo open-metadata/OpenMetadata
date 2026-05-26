@@ -13,7 +13,7 @@ Client to interact with Nifi apis
 """
 
 import traceback
-from typing import Dict, Iterable, List  # noqa: UP035
+from typing import TYPE_CHECKING, Dict, Iterable, List, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
     NifiBasicAuth,
@@ -29,6 +29,10 @@ from metadata.ingestion.ometa.client import ClientConfig, HTTPError
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from requests import Response
+
 
 logger = ingestion_logger()
 
@@ -109,7 +113,7 @@ class NifiClient:
                 self._token = res.text
 
                 if res.status_code not in (200, 201):
-                    raise HTTPError(res.text)  # noqa: TRY301
+                    raise HTTPError(res.text, response=cast("Response", res))  # noqa: TRY301
 
             except HTTPError as err:
                 logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")

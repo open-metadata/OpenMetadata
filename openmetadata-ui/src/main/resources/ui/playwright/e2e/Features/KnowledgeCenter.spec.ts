@@ -111,16 +111,13 @@ test.describe('Knowledge Center', () => {
 
     await test.step('Article: Create, Read, Update and Delete', async () => {
       const createKnowledgePage = page.waitForResponse(
-        '/api/v1/knowledgeCenter'
+        '/api/v1/contextCenter/pages'
       );
 
       // visit knowledge center
-      await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
-      await page
-        .locator('[data-testid="left-panel"]')
-        .getByTestId('add-knowledge-page-btn')
-        .click();
-      await page.getByRole('menuitem', { name: 'Article' }).click();
+      await sidebarClick(page, SidebarItem.ARTICLE);
+      await page.getByTestId('create-knowledge-page-btn').click();
+      await page.getByTestId('create-article-btn').click();
       await createKnowledgePage;
 
       // add title
@@ -142,14 +139,14 @@ test.describe('Knowledge Center', () => {
         page,
         ownerNames: [user.responseData.displayName],
         activatorBtnDataTestId: 'edit-owner',
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
 
       // remove owner
       await removeOwner({
         page,
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         ownerName: user.responseData.displayName,
         type: 'Users',
         dataTestId: 'add-owner',
@@ -160,7 +157,7 @@ test.describe('Knowledge Center', () => {
         page,
         ownerNames: [user.responseData.displayName],
         activatorBtnDataTestId: 'add-owner',
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
 
@@ -212,7 +209,7 @@ test.describe('Knowledge Center', () => {
     });
 
     await test.step('Quick Links: Create, Read, Update and Delete', async () => {
-      await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+      await sidebarClick(page, SidebarItem.ARTICLE);
 
       // Create Quick Link
       await createQuickLink(page, knowledgePageQuickLink, dataAsset);
@@ -226,7 +223,7 @@ test.describe('Knowledge Center', () => {
       // verify the tag category
       await expect(
         page.locator(
-          `[data-testid="tag-category-${knowledgePageQuickLink.tagFqn}-${knowledgePageQuickLink.updatedDisplayName}"]`
+          `[data-testid="${knowledgePageQuickLink.updatedDisplayName}"]`
         )
       ).toBeVisible();
 
@@ -248,7 +245,7 @@ test.describe('Knowledge Center', () => {
       await afterAction();
 
       const waitForRelatedArticles = page.waitForResponse(
-        `/api/v1/knowledgeCenter?*`
+        `/api/v1/contextCenter/pages?*`
       );
 
       await tableAsset.visitEntityPage(page);
@@ -260,7 +257,7 @@ test.describe('Knowledge Center', () => {
       ).toBeVisible();
 
       const knowledgeCenterFilterPagePromise = page.waitForResponse(
-        `/api/v1/knowledgeCenter?fields=*&limit=15&entityId=${
+        `/api/v1/contextCenter/pages?fields=*&limit=15&entityId=${
           (tableAsset.entityResponseData as { id: string }).id
         }&entityType=table`
       );
@@ -291,7 +288,7 @@ test.describe('Knowledge Center', () => {
 
       await page
         .getByTestId('breadcrumb')
-        .getByRole('link', { name: 'Knowledge Center' })
+        .getByRole('link', { name: 'Articles' })
         .click();
     });
     // TODO: Commented out due to performance issue with infinite scroll
@@ -311,7 +308,7 @@ test.describe('Knowledge Center', () => {
 
     //     for await (const knowledgePage of knowledgePages) {
     //       const articleResponse = page.waitForResponse(
-    //         `/api/v1/knowledgeCenter/name/${knowledgePage?.['fullyQualifiedName']}?**`
+    //         `/api/v1/contextCenter/pages/name/${knowledgePage?.['fullyQualifiedName']}?**`
     //       );
 
     //     await readArticleInHierarchy(
@@ -340,10 +337,10 @@ test.describe('Knowledge Center', () => {
 
     //     for await (const knowledgePage of knowledgePages1) {
     //       const createKnowledgePage = page.waitForResponse(
-    //         '/api/v1/knowledgeCenter'
+    //         '/api/v1/contextCenter/pages'
     //       );
     //       const articleResponse = page.waitForResponse(
-    //         `/api/v1/knowledgeCenter/name/${knowledgePage?.['fullyQualifiedName']}?**`
+    //         `/api/v1/contextCenter/pages/name/${knowledgePage?.['fullyQualifiedName']}?**`
     //       );
 
     //       // TODO: Commented out due to performance issue with infinite scroll
@@ -418,7 +415,7 @@ test.describe('Knowledge Center', () => {
     //       ).toBeVisible();
 
     //       const loadHierarchy1 = page.waitForResponse(
-    //         `/api/v1/knowledgeCenter/search/hierarchy?parent=${knowledgePage?.['fullyQualifiedName']}&pageType=Article&offset=0&limit=100`
+    //         `/api/v1/contextCenter/pages/search/hierarchy?parent=${knowledgePage?.['fullyQualifiedName']}&pageType=Article&offset=0&limit=100`
     //       );
 
     //       // TODO: Commented out due to performance issue with infinite scroll
@@ -480,7 +477,7 @@ test.describe('Knowledge Center', () => {
     //       await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     //       const deleteResponse = page.waitForResponse(
-    //         '/api/v1/knowledgeCenter/*?hardDelete=true&recursive=true'
+    //         '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=true'
     //       );
 
     //       await page.click('[data-testid="confirm-button"]');
@@ -502,8 +499,7 @@ test.describe('Knowledge Center', () => {
     try {
       const { apiContext } = await createNewPage(browser);
       await knowledgeCenter2.create(apiContext, 10);
-
-      await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+      await sidebarClick(page, SidebarItem.ARTICLE);
 
       // Get the first element content before scrolling
       const firstElementBeforeScroll = page
@@ -511,7 +507,9 @@ test.describe('Knowledge Center', () => {
         .first();
       const paginationResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/knowledgeCenter/search/hierarchy') &&
+          response
+            .url()
+            .includes('/api/v1/contextCenter/pages/search/hierarchy') &&
           response.url().includes(`offset=100`) &&
           response.url().includes('limit=100') &&
           response.status() === 200
@@ -551,14 +549,13 @@ test.describe('Knowledge Center', () => {
   test('Activity feed functionality in Knowledge Center page', async ({
     page,
   }) => {
-    const createKnowledgePage = page.waitForResponse('/api/v1/knowledgeCenter');
+    const createKnowledgePage = page.waitForResponse(
+      '/api/v1/contextCenter/pages'
+    );
 
-    await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
-    await page
-      .locator('[data-testid="left-panel"]')
-      .getByTestId('add-knowledge-page-btn')
-      .click();
-    await page.getByRole('menuitem', { name: 'Article' }).click();
+    await sidebarClick(page, SidebarItem.ARTICLE);
+    await page.getByTestId('create-knowledge-page-btn').click();
+    await page.getByTestId('create-article-btn').click();
     await createKnowledgePage;
 
     await addTitle(page, knowledgePageArticle.title);
@@ -650,14 +647,12 @@ test.describe('Knowledge Center', () => {
   test('User Mentions in article and redirect should work of Knowledge Center page', async ({
     page,
   }) => {
-    const createKnowledgePage = page.waitForResponse('/api/v1/knowledgeCenter');
-
-    await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
-    await page
-      .locator('[data-testid="left-panel"]')
-      .getByTestId('add-knowledge-page-btn')
-      .click();
-    await page.getByRole('menuitem', { name: 'Article' }).click();
+    const createKnowledgePage = page.waitForResponse(
+      '/api/v1/contextCenter/pages'
+    );
+    await sidebarClick(page, SidebarItem.ARTICLE);
+    await page.getByTestId('create-knowledge-page-btn').click();
+    await page.getByTestId('create-article-btn').click();
     await createKnowledgePage;
 
     await addTitle(page, knowledgePageArticle.title);
@@ -696,7 +691,7 @@ test.describe('Knowledge Center', () => {
     await afterAction();
 
     const waitForRelatedArticles = page.waitForResponse(
-      `/api/v1/knowledgeCenter?*`
+      `/api/v1/contextCenter/pages?*`
     );
 
     await dataAsset.visitEntityPage(page);
@@ -768,7 +763,7 @@ test.describe('Knowledge Center', () => {
     expect(responseData.hits.total.value).toBeGreaterThan(0);
 
     await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
-      'Data Assets: page'
+      'Data Assets: (1)'
     );
 
     await expect(
@@ -788,7 +783,7 @@ test.describe('Knowledge Center', () => {
   //   const { apiContext } = await createNewPage(browser);
 
   //   // Create a parent article to which we'll add a child
-  //   const parentArticle = await apiContext.post('/api/v1/knowledgeCenter', {
+  //   const parentArticle = await apiContext.post('/api/v1/contextCenter/pages', {
   //     data: {
   //       name: `Article_${cryptoRandomString({
   //         length: 8,
@@ -841,7 +836,7 @@ test.describe('Knowledge Center', () => {
   //       async () => {
   //         // Wait for the create knowledge page API call
   //         const createKnowledgePagePromise = page.waitForResponse(
-  //           '/api/v1/knowledgeCenter'
+  //           '/api/v1/contextCenter/pages'
   //         );
 
   //         // Hover over the parent article to reveal the add button
@@ -946,7 +941,7 @@ test.describe('Knowledge Center', () => {
   //       browser
   //     );
   //     await cleanupContext.delete(
-  //       `/api/v1/knowledgeCenter/${parentArticleData.id}?hardDelete=true&recursive=true`
+  //       `/api/v1/contextCenter/pages/${parentArticleData.id}?hardDelete=true&recursive=true`
   //     );
   //     await afterAction();
   //   }
@@ -966,7 +961,7 @@ test.describe('Knowledge Center', () => {
   //   const { apiContext } = await createNewPage(browser);
 
   //   // Create a parent article
-  //   const parentArticle = await apiContext.post('/api/v1/knowledgeCenter', {
+  //   const parentArticle = await apiContext.post('/api/v1/contextCenter/pages', {
   //     data: {
   //       name: `Article_${cryptoRandomString({
   //         length: 8,
@@ -994,7 +989,7 @@ test.describe('Knowledge Center', () => {
   //   const parentArticleData = await parentArticle.json();
 
   //   // Create a child article under parent
-  //   const childArticle = await apiContext.post('/api/v1/knowledgeCenter', {
+  //   const childArticle = await apiContext.post('/api/v1/contextCenter/pages', {
   //     data: {
   //       name: `Article_${cryptoRandomString({
   //         length: 8,
@@ -1026,7 +1021,7 @@ test.describe('Knowledge Center', () => {
   //   const childArticleData = await childArticle.json();
 
   //   // Create a grandchild article under child
-  //   const grandChildArticle = await apiContext.post('/api/v1/knowledgeCenter', {
+  //   const grandChildArticle = await apiContext.post('/api/v1/contextCenter/pages', {
   //     data: {
   //       name: `Article_${cryptoRandomString({
   //         length: 8,
@@ -1069,7 +1064,7 @@ test.describe('Knowledge Center', () => {
   //         (response) =>
   //           response
   //             .url()
-  //             .includes('/api/v1/knowledgeCenter/search/hierarchy') &&
+  //             .includes('/api/v1/contextCenter/pages/search/hierarchy') &&
   //           response.url().includes(`activeFqn=${grandChildArticleFqn}`)
   //       );
 

@@ -95,6 +95,8 @@ logger = ingestion_logger()
 
 UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
+UNITY_CATALOG_VALUELESS_CLASSIFICATION = "UNITY_CATALOG_TAGS"
+UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION = "Unity Catalog tags ingested as key-only (no associated value)."
 
 
 # pylint: disable=protected-access
@@ -187,8 +189,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         database_name=catalog_name,
                     )
                     if filter_by_database(
-                        self.config.sourceConfig.config.databaseFilterPattern,
-                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),
+                        self.config.sourceConfig.config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self._catalog_cache.pop(catalog_name, None)
                         self.status.filter(
@@ -241,8 +243,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.name),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -306,8 +308,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
+                    self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(
                         table_fqn,
@@ -558,6 +560,25 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
             yield parsed_column
 
+    @staticmethod
+    def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
+        """Map a Unity Catalog (tag_name, tag_value) pair onto OM's
+        classification/tag pair, falling back to UNITY_CATALOG_VALUELESS_CLASSIFICATION
+        when tag_value is empty or whitespace-only."""
+        if tag_value and str(tag_value).strip():
+            return {
+                "tags": [tag_value],
+                "classification_name": tag_name,
+                "tag_description": UNITY_CATALOG_TAG,
+                "classification_description": UNITY_CATALOG_TAG_CLASSIFICATION,
+            }
+        return {
+            "tags": [tag_name],
+            "classification_name": UNITY_CATALOG_VALUELESS_CLASSIFICATION,
+            "tag_description": UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
+            "classification_description": UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
+        }
+
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog database/catalog tags using SQL query"""
         query_tag_fqn_builder_mapping = (
@@ -577,16 +598,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                 for tag in self.sql_connection.execute(text(query)):
-                    if tag.tag_value:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
+                    if not tag.tag_name:
+                        continue
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
+                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
+                        metadata=self.metadata,
+                        system_tags=True,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error getting tags for catalog/schema {database_name}: {exc}")
@@ -618,16 +637,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
                 for tag in self.sql_connection.execute(text(query)):
-                    if tag.tag_value:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
+                    if not tag.tag_name:
+                        continue
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
+                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
+                        metadata=self.metadata,
+                        system_tags=True,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error getting tags for schema {schema_name}: {exc}")

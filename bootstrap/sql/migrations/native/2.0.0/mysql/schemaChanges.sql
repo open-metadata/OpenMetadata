@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     deleted tinyint(1) GENERATED ALWAYS AS (json_extract(`json`,_utf8mb4'$.deleted')) STORED,
     aboutFqnHash varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.aboutFqnHash'))) STORED,
     createdById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.createdById'))) STORED,
+    approvedById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.approvedById'))) STORED,
     PRIMARY KEY (id),
     UNIQUE KEY uk_fqn_hash (fqnHash),
     KEY idx_task_id (taskId),
@@ -30,8 +31,49 @@ CREATE TABLE IF NOT EXISTS task_entity (
     KEY idx_about_fqn_hash (aboutFqnHash),
     KEY idx_status_about (status, aboutFqnHash),
     KEY idx_created_by_id (createdById),
-    KEY idx_created_by_category (createdById, category)
+    KEY idx_created_by_category (createdById, category),
+    KEY idx_approved_by_id (approvedById)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- approvedById generated column was added inline, attach it now. CREATE TABLE
+-- IF NOT EXISTS is a no-op on those environments so the column would never
+-- appear otherwise. MySQL doesn't reliably support `ADD COLUMN IF NOT EXISTS`
+-- across 8.0 versions and has no `ADD KEY IF NOT EXISTS`, so guard both via
+-- information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND column_name = 'approvedById'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD COLUMN approvedById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4''$.approvedById''))) STORED'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND index_name = 'idx_approved_by_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD KEY idx_approved_by_id (approvedById)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
@@ -297,4 +339,19 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ContextMemory entity - reusable Context Center memory.
+CREATE TABLE IF NOT EXISTS context_memory (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+  json JSON NOT NULL,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted') STORED,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_context_memory_name (nameHash),
+  INDEX idx_context_memory_updated_at (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

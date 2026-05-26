@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import cronstrue from 'cronstrue';
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
@@ -23,6 +22,31 @@ import {
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
+
+// cronstrue (~54 KB raw / ~15 KB brotli) is only needed by scheduler views.
+// Defer the import so it doesn't ship in the entry / shared chunk.
+type CronstrueModule = typeof import('cronstrue');
+let cronstrueModule: CronstrueModule | null = null;
+let cronstruePromise: Promise<CronstrueModule> | null = null;
+
+const loadCronstrue = (): Promise<CronstrueModule> => {
+  if (cronstrueModule) {
+    return Promise.resolve(cronstrueModule);
+  }
+  if (!cronstruePromise) {
+    cronstruePromise = import('cronstrue').then((m) => {
+      cronstrueModule = m;
+
+      return m;
+    });
+  }
+
+  return cronstruePromise;
+};
+
+export const getLoadedCronstrue = (): CronstrueModule | null => cronstrueModule;
+
+export const ensureCronstrueLoaded = loadCronstrue;
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
@@ -473,6 +497,15 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatIsoDuration = (iso: string): string => {
+  const d = Duration.fromISO(iso);
+  if (!d.isValid) {
+    return iso;
+  }
+
+  return d.toHuman() || iso;
+};
+
 export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
     return `${Math.floor(ms)} ms`;
@@ -506,12 +539,21 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
 };
 
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+  if (!cronstrueModule) {
+    // Kick off the lazy load so subsequent calls (and the hook) succeed.
+    loadCronstrue();
+
+    return { descriptionFirstPart: '', descriptionSecondPart: '' };
+  }
   try {
-    const scheduleDescription = cronstrue.toString(scheduleInterval, {
-      use24HourTimeFormat: false,
-      verbose: true,
-      locale: getCurrentLocaleForConstrue(), // To get localized string
-    });
+    const scheduleDescription = cronstrueModule.default.toString(
+      scheduleInterval,
+      {
+        use24HourTimeFormat: false,
+        verbose: true,
+        locale: getCurrentLocaleForConstrue(), // To get localized string
+      }
+    );
 
     const firstSentenceEndIndex = scheduleDescription.indexOf(',');
 

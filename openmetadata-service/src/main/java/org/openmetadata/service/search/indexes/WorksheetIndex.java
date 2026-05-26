@@ -26,15 +26,6 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
   }
 
   @Override
-  public Set<String> getRequiredReindexFields() {
-    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
-    // WorksheetRepository.clearFields actively nulls columns when not requested;
-    // also column-level tag hydration in setFields is gated on fields.contains("columns").
-    fields.add("columns");
-    return java.util.Collections.unmodifiableSet(fields);
-  }
-
-  @Override
   public String getEntityTypeName() {
     return Entity.WORKSHEET;
   }
@@ -47,6 +38,17 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
   @Override
   public Object getIndexServiceType() {
     return worksheet.getServiceType();
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // WorksheetRepository.clearFields nulls columns when "columns" is absent from the field set,
+    // so reindex must request it explicitly. Without it, columnNames / columnNamesFuzzy /
+    // columnDescriptionStatus / child column tags are dropped from worksheet_search_index and
+    // column-name search in Explore → Worksheets returns no results.
+    fields.add("columns");
+    return Set.copyOf(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

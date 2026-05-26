@@ -83,6 +83,11 @@ export const NODE_TYPE_MAPPINGS = {
     label: 'Revert Changes',
     displayLabel: 'Revert Changes',
   },
+  [NodeSubType.PolicyAgentTask]: {
+    type: NodeType.AutomatedTask,
+    label: 'Policy Enforcement',
+    displayLabel: 'Policy Enforcement',
+  },
   [NodeSubType.SinkTask]: {
     type: NodeType.AutomatedTask,
     category: 'sink',
