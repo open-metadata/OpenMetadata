@@ -26,7 +26,7 @@
           },
           "size": {
             "type": "integer",
-            "description": "Number of results to return. Default is 10, we can iteratively page through results by increasing 'from'. Maximum allowed is 50.",
+            "description": "Number of results to return. Default is 10. For broad or generic queries (e.g. 'show all tables'), keep size small (5-10), as results are summaries; use get_entity_details for full entity info. Only increase size when the query is specific enough that results will be narrow and focused. Maximum allowed is 50.",
             "default": 10
           },
           "includeDeleted": {
@@ -73,7 +73,7 @@
           {
             "description": "Simple search with pagination",
             "query": "tables",
-            "size": 20,
+            "size": 10,
             "from": 0
           },
           {
