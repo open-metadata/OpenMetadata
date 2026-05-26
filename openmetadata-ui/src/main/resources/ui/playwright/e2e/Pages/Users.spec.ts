@@ -1268,23 +1268,6 @@ test.describe('User Profile Persona Interactions', () => {
   });
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await persona2.delete(apiContext);
-  await persona1.delete(apiContext);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await tableEntity2.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await user3.delete(apiContext);
-  await user2.delete(apiContext);
-  await user.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await adminUser.delete(apiContext);
-  await afterAction();
-});
-
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
@@ -1353,23 +1336,6 @@ base.describe(
         team5.create(apiContext),
       ]);
 
-      await afterAction();
-    });
-
-    base.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await Promise.all([
-        policy.delete(apiContext),
-        role.delete(apiContext),
-        policy2.delete(apiContext),
-        role2.delete(apiContext),
-        policy3.delete(apiContext),
-        role3.delete(apiContext),
-        policy4.delete(apiContext),
-        role4.delete(apiContext),
-        policy5.delete(apiContext),
-        role5.delete(apiContext),
-      ]);
       await afterAction();
     });
 

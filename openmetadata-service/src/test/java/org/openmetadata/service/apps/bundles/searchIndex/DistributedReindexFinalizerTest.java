@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -12,11 +13,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 
 class DistributedReindexFinalizerTest {
+
+  private static final RatioPromotionPolicy DEFAULT_POLICY =
+      RatioPromotionPolicy.withDefaultThreshold();
 
   @Test
   void finalizeRemainingEntitiesPromotesColumnOnceWhenTableAndColumnRemain() {
@@ -24,7 +29,7 @@ class DistributedReindexFinalizerTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE, Entity.TABLE_COLUMN);
 
     DistributedReindexFinalizer finalizer =
-        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext);
+        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, successfulStats()), true);
 
     ArgumentCaptor<EntityReindexContext> contextCaptor =
@@ -45,7 +50,7 @@ class DistributedReindexFinalizerTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE, Entity.TABLE_COLUMN);
 
     DistributedReindexFinalizer finalizer =
-        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext);
+        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
     finalizer.finalizeRemainingEntities(
         Set.of(Entity.TABLE_COLUMN), Map.of(Entity.TABLE, successfulStats()), true);
 
@@ -57,6 +62,86 @@ class DistributedReindexFinalizerTest {
 
     assertEquals(Entity.TABLE, contextCaptor.getValue().getEntityType());
     assertEquals(Boolean.TRUE, successCaptor.getValue());
+  }
+
+  @Test
+  void finalizeRemainingEntitiesPromotesPartialSuccessAboveThreshold() {
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
+
+    SearchIndexJob.EntityTypeStats partial =
+        SearchIndexJob.EntityTypeStats.builder()
+            .entityType(Entity.TABLE)
+            .totalRecords(100)
+            .successRecords(99)
+            .failedRecords(1)
+            .build();
+
+    DistributedReindexFinalizer finalizer =
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+    finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, partial), false);
+
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler, times(1)).finalizeReindex(any(), successCaptor.capture());
+    assertEquals(
+        Boolean.TRUE,
+        successCaptor.getValue(),
+        "99/100 records succeeded — above 0.95 threshold — must still promote");
+  }
+
+  @Test
+  void finalizeRemainingEntitiesFlagsBelowThresholdAsNotFullySuccessful() {
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
+
+    SearchIndexJob.EntityTypeStats lowSuccess =
+        SearchIndexJob.EntityTypeStats.builder()
+            .entityType(Entity.TABLE)
+            .totalRecords(100)
+            .successRecords(40)
+            .failedRecords(60)
+            .build();
+
+    DistributedReindexFinalizer finalizer =
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+    finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, lowSuccess), false);
+
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler, times(1)).finalizeReindex(any(), successCaptor.capture());
+    assertEquals(
+        Boolean.FALSE,
+        successCaptor.getValue(),
+        "40/100 records succeeded — below 0.95 threshold — finalizer reports NOT fully"
+            + " successful; DefaultRecreateHandler will rescue via doc-count when this is false.");
+  }
+
+  @Test
+  void finalizeRemainingEntitiesFlagsZeroSuccessAsNotFullySuccessful() {
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
+
+    SearchIndexJob.EntityTypeStats zeroSuccess =
+        SearchIndexJob.EntityTypeStats.builder()
+            .entityType(Entity.TABLE)
+            .totalRecords(100)
+            .successRecords(0)
+            .failedRecords(100)
+            .build();
+
+    DistributedReindexFinalizer finalizer =
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+    finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, zeroSuccess), false);
+
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler, times(1)).finalizeReindex(any(), successCaptor.capture());
+    assertEquals(
+        Boolean.FALSE,
+        successCaptor.getValue(),
+        "zero successful records — handler's docCount rescue will then drop the empty staged"
+            + " index.");
   }
 
   private Map<String, Boolean> finalizations(

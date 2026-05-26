@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -42,13 +44,15 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 
-@Tag(name = "Drive Folders", description = "APIs for managing folders in the Context Center Drive.")
-@Path("/v1/drive/folders")
+@Tag(
+    name = "Context Center Drive Folders",
+    description = "APIs for managing folders in the Context Center Drive.")
+@Path("/v1/contextCenter/drive/folders")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "driveFolders")
+@Collection(name = "contextCenterDriveFolders")
 public class FolderResource extends EntityResource<Folder, FolderRepository> {
-  public static final String COLLECTION_PATH = "v1/drive/folders/";
+  public static final String COLLECTION_PATH = "v1/contextCenter/drive/folders/";
   public static final String FIELDS = "owners,tags,parent,children,domains,followers";
   private final FolderMapper mapper = new FolderMapper();
 
@@ -97,7 +101,12 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("fields") String fieldsParam,
-      @QueryParam("limit") @DefaultValue("10") int limit,
+      @Parameter(description = "Limit the number of folders returned. (0 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          int limit,
       @QueryParam("before") String before,
       @QueryParam("after") String after,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {

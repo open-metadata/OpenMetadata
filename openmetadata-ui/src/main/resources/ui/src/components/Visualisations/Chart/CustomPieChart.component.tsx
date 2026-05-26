@@ -105,7 +105,10 @@ const CustomPieChart = ({
               />
               <Typography.Paragraph className="text-grey-muted m-b-0">
                 {item.name}{' '}
-                <Typography.Text strong className="text-grey-muted">
+                <Typography.Text
+                  strong
+                  className="text-grey-muted"
+                  data-testid={`legend-count-${item.name.toLowerCase()}`}>
                   {formatNumberWithComma(item.value)}
                 </Typography.Text>
               </Typography.Paragraph>

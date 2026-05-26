@@ -32,7 +32,11 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -250,6 +254,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedTopicFQN) {
+      fetchEntityTaskCountsInto(decodedTopicFQN, setFeedCount);
+    }
+  }, [decodedTopicFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedTopicFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.TOPIC,
+        decodedTopicFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedTopicFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -303,7 +323,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [topicPermissions, decodedTopicFQN]);
 
   const tabs = useMemo(() => {

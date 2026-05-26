@@ -177,6 +177,10 @@ public final class Charts {
     public ChartDeleter delete() {
       return new ChartDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Chart> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.charts(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

@@ -148,7 +148,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: Remove updatedBy user from assignees list
+      // Prevent self-approval: Remove updatedBy user from assignees list, but only when
+      // other assignees are present to avoid creating an unassigned task that nobody can act on.
       try {
         String updatedBy =
             (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
@@ -158,10 +159,23 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
                   .getLinkString();
           boolean removed = assigneeList.remove(updatedByEntityLink);
           if (removed) {
-            LOG.debug(
-                "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
-                execution.getProcessInstanceId(),
-                updatedBy);
+            if (assigneeList.isEmpty() && !workflowManagedTask) {
+              assigneeList.add(updatedByEntityLink);
+              LOG.debug(
+                  "[Process: {}] Self-approval prevention skipped for updatedBy user '{}': no other assignees available",
+                  execution.getProcessInstanceId(),
+                  updatedBy);
+            } else if (!assigneeList.isEmpty()) {
+              LOG.debug(
+                  "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
+                  execution.getProcessInstanceId(),
+                  updatedBy);
+            } else {
+              LOG.debug(
+                  "[Process: {}] Prevented self-approval for workflow-managed task: updatedBy user '{}' removed, task left unassigned",
+                  execution.getProcessInstanceId(),
+                  updatedBy);
+            }
           }
         }
       } catch (Exception e) {

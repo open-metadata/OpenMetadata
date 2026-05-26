@@ -93,6 +93,8 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
 }));
 
