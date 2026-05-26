@@ -76,8 +76,7 @@ def test_shutdown_resets_state_and_stops_threads():
 
     diagnostics.shutdown()
     assert diagnostics.is_active() is False
-    assert state.watchdog.is_alive() is False or state.watchdog._stop_event.is_set()
-    assert state.heartbeat.is_alive() is False or state.heartbeat._stop_event.is_set()
+    assert all(monitor.is_alive() is False or monitor._stop_event.is_set() for monitor in state.monitors)
 
 
 def test_operation_records_in_registry_after_install():

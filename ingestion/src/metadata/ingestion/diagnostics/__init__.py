@@ -42,40 +42,13 @@ import logging
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from typing import Any, Optional
+from typing import Any
 
 from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
+from metadata.ingestion.diagnostics.context import DiagnosticsContext
 from metadata.utils.logger import diag_logger
 
-_state: Optional["_DiagnosticsState"] = None
-
-
-class _DiagnosticsState:
-    """Holds references to the singletons installed by `install()`."""
-
-    def __init__(
-        self,
-        registry: Any,
-        http_tracker: Any,
-        memory_tracker: Any,
-        watchdog: Any,
-        heartbeat: Any,
-        signals_installed: bool,
-        db_introspector: Any,
-        time_sampler: Any,
-        time_sampler_monitor: Any,
-        reporters: list[Any],
-    ) -> None:
-        self.registry = registry
-        self.http_tracker = http_tracker
-        self.memory_tracker = memory_tracker
-        self.watchdog = watchdog
-        self.heartbeat = heartbeat
-        self.signals_installed = signals_installed
-        self.db_introspector = db_introspector
-        self.time_sampler = time_sampler
-        self.time_sampler_monitor = time_sampler_monitor
-        self.reporters = reporters
+_state: DiagnosticsContext | None = None
 
 
 def is_active() -> bool:
@@ -117,68 +90,10 @@ def install(workflow: Any) -> bool:
     if not _logger_level_is_debug(workflow):
         return False
 
-    # Imports are deferred to keep `is_active()` / no-op `operation()` callers
-    # from paying the import cost on every workflow start.
     try:
-        from metadata.ingestion.diagnostics.collectors import stage_progress as _stage_progress  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.collectors.http import HttpTracker  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.collectors.memory import MemoryTracker  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.config import DiagnosticsConfig  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.monitors.heartbeat import Heartbeat  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.monitors.monitor import Monitor  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.monitors.time_accounting import TimeAccountingSampler  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.monitors.watchdog import Watchdog  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.seams.db_introspect import DbIntrospector  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.signals import install_signal_handlers  # noqa: PLC0415
-
-        config = DiagnosticsConfig()
-        registry = OperationRegistry()
-        http_tracker = HttpTracker()
-        memory_tracker = MemoryTracker()
-        _stage_progress.install(_stage_progress.StageProgressCollector())
-        db_introspector = DbIntrospector(registry)
-        db_introspector.install()
-
-        time_sampler = TimeAccountingSampler(registry)
-        time_sampler_monitor = Monitor(
-            "diag-time-accounting", config.time_accounting_interval_seconds, time_sampler.tick
-        )
-        time_sampler_monitor.start()
-
-        signals_installed = install_signal_handlers(
-            registry=registry,
-            http_tracker=http_tracker,
-            memory_tracker=memory_tracker,
-            workflow=workflow,
-        )
-
-        watchdog = Monitor(
-            "diag-watchdog",
-            config.watchdog_tick_seconds,
-            Watchdog(registry, http_tracker, memory_tracker, workflow, config).tick,
-        )
-        watchdog.start()
-
-        heartbeat = Monitor(
-            "diag-heartbeat",
-            config.heartbeat_interval_seconds,
-            Heartbeat(registry, http_tracker, memory_tracker, workflow).tick,
-        )
-        heartbeat.start()
-
-        _state = _DiagnosticsState(
-            registry=registry,
-            http_tracker=http_tracker,
-            memory_tracker=memory_tracker,
-            watchdog=watchdog,
-            heartbeat=heartbeat,
-            signals_installed=signals_installed,
-            db_introspector=db_introspector,
-            time_sampler=time_sampler,
-            time_sampler_monitor=time_sampler_monitor,
-            reporters=[time_sampler],
-        )
+        context = DiagnosticsContext.build(workflow)
+        context.start()
+        _state = context
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
         _log_install_failure(exc)
@@ -200,22 +115,7 @@ def shutdown() -> None:
     if state is None:
         return
     _state = None
-    # Emit the end-of-run summaries BEFORE stopping the sampler — gives
-    # the operator the lines in `kubectl logs` / S3 explaining where the
-    # workflow actually spent its wall clock.
-    with suppress(Exception):
-        from metadata.ingestion.diagnostics.reporting.summary import emit_report  # noqa: PLC0415
-
-        emit_report(state.reporters)
-    for monitor in (state.watchdog, state.heartbeat, state.time_sampler_monitor):
-        with suppress(Exception):
-            monitor.stop()
-    with suppress(Exception):
-        state.db_introspector.uninstall()
-    with suppress(Exception):
-        from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
-
-        stage_progress.uninstall()
+    state.stop()
 
 
 def dump(reason: str = "manual") -> None:
@@ -312,6 +212,6 @@ def _log_install_failure(exc: BaseException) -> None:
     emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.install failed err={exc!r}")
 
 
-def _get_state() -> Optional["_DiagnosticsState"]:
+def _get_state() -> DiagnosticsContext | None:
     """Test-only accessor."""
     return _state
