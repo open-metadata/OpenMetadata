@@ -29,6 +29,11 @@ export interface SearchLineageRequest {
      */
     downstreamDepth?: number;
     /**
+     * Filter lineage edges by observed time window (epoch millis). Inclusive upper bound;
+     * matched via range overlap on edge createdAt/updatedAt.
+     */
+    endTime?: number;
+    /**
      * Entity Fqn to search lineage
      */
     fqn: string;
@@ -61,6 +66,11 @@ export interface SearchLineageRequest {
      * Query Filter
      */
     queryFilter?: string;
+    /**
+     * Filter lineage edges by observed time window (epoch millis). Inclusive lower bound;
+     * matched via range overlap on edge createdAt/updatedAt.
+     */
+    startTime?: number;
     /**
      * The upstream depth of the lineage
      */

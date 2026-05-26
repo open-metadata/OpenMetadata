@@ -28,6 +28,11 @@ export interface EntityCountLineageRequest {
      */
     downstreamDepth?: number;
     /**
+     * Filter lineage edges by observed time window (epoch millis). Inclusive upper bound;
+     * matched via range overlap on edge createdAt/updatedAt.
+     */
+    endTime?: number;
+    /**
      * Entity Fqn to search lineage
      */
     fqn: string;
@@ -73,6 +78,11 @@ export interface EntityCountLineageRequest {
      * Number of entities to return in this page
      */
     size?: number;
+    /**
+     * Filter lineage edges by observed time window (epoch millis). Inclusive lower bound;
+     * matched via range overlap on edge createdAt/updatedAt.
+     */
+    startTime?: number;
     /**
      * Maximum upstream depth to compute pagination info for when requested
      */
