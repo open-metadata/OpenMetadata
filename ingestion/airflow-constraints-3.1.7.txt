@@ -553,7 +553,7 @@ py4j==0.10.9.9
 pyOpenSSL==25.1.0
 pyarrow-hotfix==0.7
 pyarrow==18.1.0
-pyasn1==0.6.2
+pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pybreaker==1.4.1
 pycountry==24.6.1
