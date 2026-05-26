@@ -129,7 +129,7 @@ export const updateExpression = async (
   await patchPromise;
 
   await expect(
-    page.getByLabel('Expression').locator('.CodeMirror-scroll')
+    page.getByLabel('Expression').locator('.cm-editor')
   ).toContainText(code);
 
   await page.getByRole('tab', { name: 'Overview', exact: true }).click();

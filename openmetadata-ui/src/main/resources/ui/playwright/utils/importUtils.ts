@@ -325,7 +325,7 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
 
     await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+      page.getByTestId(propertyName).locator('.cm-content')
     ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 

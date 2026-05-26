@@ -903,7 +903,7 @@ test.describe(
         ).toBeVisible();
 
         await page.click('#testCaseFormV1_params_strategy');
-        await page.locator('.CodeMirror-scroll').click();
+        await page.locator('.cm-content').click();
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
@@ -951,7 +951,7 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await page.locator('.cm-content').click();
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')

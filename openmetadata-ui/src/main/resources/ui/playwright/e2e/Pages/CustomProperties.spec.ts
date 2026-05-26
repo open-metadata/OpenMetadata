@@ -538,11 +538,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify .CodeMirror-scroll is height-constrained and scrollable', async () => {
+        await test.step('Verify .cm-scroller is height-constrained and scrollable', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const codeMirrorScroll = container.locator('.CodeMirror-scroll');
+          const codeMirrorScroll = container.locator('.cm-scroller');
           await expect(codeMirrorScroll).toBeVisible();
           const isScrollable = await codeMirrorScroll.evaluate(
             (el) => el.scrollHeight > el.clientHeight

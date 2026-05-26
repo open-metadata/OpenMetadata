@@ -285,7 +285,7 @@ test.describe(
         await page.locator('[data-testid="exclude-column-select"]').click();
         await page.keyboard.type(`${profilerSetting.excludeColumns}`);
         await page.keyboard.press('Enter');
-        await page.locator('.CodeMirror-scroll').click();
+        await page.locator('.cm-content').click();
         await page.keyboard.type(profilerSetting.profileQuery);
 
         await page.locator('[data-testid="include-column-select"]').click();
