@@ -41,7 +41,7 @@ export const deletePage = async (
   await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires

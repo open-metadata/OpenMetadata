@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Asset } from '../../../generated/attachments/asset';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
-  entityLink: string;
+  folderFqn?: string;
   onClose: () => void;
-  onUploaded?: (assets: Asset[]) => void;
+  onUploaded?: (files: ContextFile[]) => void;
 }
 
 export type UploadStatus = 'uploading' | 'done' | 'error';
