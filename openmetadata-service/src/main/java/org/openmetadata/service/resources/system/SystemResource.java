@@ -299,6 +299,38 @@ public class SystemResource {
   }
 
   @GET
+  @Path("/search/fitness")
+  @Operation(
+      operationId = "getSearchClusterFitness",
+      summary = "Diagnose whether the search cluster is sized for current data",
+      description =
+          "Returns a structured fitness report covering cluster status, per-index data footprint "
+              + "(size + average doc bytes), disk watermarks, heap/CPU, thread-pool rejections, "
+              + "circuit breaker trips, shard layout, and capacity recommendations. Admin only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search cluster fitness report",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.search.fitness.SearchClusterFitnessReport
+                                    .class)))
+      })
+  public Response getSearchClusterFitness(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer =
+        new org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer(
+            Entity.getSearchRepository());
+    org.openmetadata.service.search.fitness.SearchClusterFitnessReport report = analyzer.analyze();
+    return Response.ok().entity(report).build();
+  }
+
+  @GET
   @Path("/settings/profilerConfiguration")
   @Operation(
       operationId = "getProfilerConfigurationSetting",
