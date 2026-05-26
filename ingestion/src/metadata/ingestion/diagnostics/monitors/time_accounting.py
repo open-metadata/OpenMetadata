@@ -146,12 +146,15 @@ class TimeAccountingSampler:
                 "top_ops": sorted(self._op_times.items(), key=lambda kv: -kv[1])[:10],
             }
 
-    def summary_log_line(self, prefix: str = "diag.time_budget") -> str:
-        """Render the end-of-workflow summary as one structured line."""
+    def render(self, prefix: str = "diag.time_budget") -> str | None:
+        """Render the end-of-workflow time budget as one structured line.
+
+        Returns None when no samples were taken so `emit_report` skips it.
+        """
         snap = self.snapshot()
         elapsed = snap["elapsed_seconds"]
         if elapsed <= 0 or snap["samples"] == 0:
-            return f"{prefix} elapsed={elapsed:.1f}s samples={snap['samples']} (no data)"
+            return None
 
         active = snap["active_walltime"]
         idle = snap["idle_walltime"]

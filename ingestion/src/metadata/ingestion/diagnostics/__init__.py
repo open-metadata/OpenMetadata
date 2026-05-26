@@ -64,6 +64,7 @@ class _DiagnosticsState:
         db_introspector: Any,
         time_sampler: Any,
         time_sampler_monitor: Any,
+        reporters: list[Any],
     ) -> None:
         self.registry = registry
         self.http_tracker = http_tracker
@@ -74,6 +75,7 @@ class _DiagnosticsState:
         self.db_introspector = db_introspector
         self.time_sampler = time_sampler
         self.time_sampler_monitor = time_sampler_monitor
+        self.reporters = reporters
 
 
 def is_active() -> bool:
@@ -175,6 +177,7 @@ def install(workflow: Any) -> bool:
             db_introspector=db_introspector,
             time_sampler=time_sampler,
             time_sampler_monitor=time_sampler_monitor,
+            reporters=[time_sampler],
         )
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
@@ -197,11 +200,13 @@ def shutdown() -> None:
     if state is None:
         return
     _state = None
-    # Emit the time-budget summary BEFORE stopping the sampler — gives
-    # the operator one line in `kubectl logs` / S3 explaining where the
+    # Emit the end-of-run summaries BEFORE stopping the sampler — gives
+    # the operator the lines in `kubectl logs` / S3 explaining where the
     # workflow actually spent its wall clock.
     with suppress(Exception):
-        emit_log(logging.INFO, state.time_sampler.summary_log_line())
+        from metadata.ingestion.diagnostics.reporting.summary import emit_report  # noqa: PLC0415
+
+        emit_report(state.reporters)
     for monitor in (state.watchdog, state.heartbeat, state.time_sampler_monitor):
         with suppress(Exception):
             monitor.stop()

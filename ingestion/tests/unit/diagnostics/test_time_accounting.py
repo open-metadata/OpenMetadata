@@ -199,19 +199,18 @@ def test_summary_line_includes_required_fields():
     registry.push("snowflake.query", {})
     sampler.sample(0.2)
     sampler.sample(0.2)
-    line = sampler.summary_log_line()
+    line = sampler.render()
     for key in ("elapsed=", "samples=", "active=", "idle=", "by_category=", "top_ops="):
         assert key in line
     assert "db=" in line
     assert "snowflake.query=" in line
 
 
-def test_summary_line_handles_zero_samples():
-    """Before any sample is taken, the summary must not divide by zero."""
+def test_render_returns_none_for_zero_samples():
+    """Before any sample is taken, render() returns None so emit_report skips it."""
     registry = OperationRegistry()
     sampler = TimeAccountingSampler(registry)
-    line = sampler.summary_log_line()
-    assert "no data" in line
+    assert sampler.render() is None
 
 
 # ---- thread lifecycle smoke test ----
