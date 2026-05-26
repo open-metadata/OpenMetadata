@@ -103,16 +103,15 @@ export interface ListTasksParams {
 
 export interface ListDataAccessRequestsParams {
   fields?: string;
-  status?: string;
+  status?: TaskStatus;
   statusGroup?: TaskStatusGroup;
-  assignee?: string;
   dataset?: string;
   service?: string;
   requestedBy?: string;
   requestedById?: string;
   approver?: string;
   approverId?: string;
-  accessType?: string;
+  accessType?: DataAccessType;
   domain?: string;
   sortOrder?: 'asc' | 'desc';
   limit?: number;
