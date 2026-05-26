@@ -189,23 +189,18 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // Get or create user
       User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
 
-      // Generate JWT tokens
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  getRoleListFromUser(user),
-                  !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-                  user.getEmail(),
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
-
       // Generate refresh token
       RefreshToken refreshToken = TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
-      sessionService.activatePendingSession(
-          req, resp, pendingSession, user, refreshToken.getToken().toString(), null);
+      UserSession activeSession =
+          sessionService
+              .activatePendingSession(
+                  req, resp, pendingSession, user, refreshToken.getToken().toString(), null)
+              .orElseGet(
+                  () -> {
+                    Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
+                    throw new AuthenticationException("Failed to activate SAML session");
+                  });
 
       // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -216,6 +211,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       String redirectUri = pendingSession.getRedirectUri();
       LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
 
       String callbackUrl =
           org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
@@ -263,21 +259,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
               Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
 
       RefreshToken rotatedRefreshToken = rotateRefreshToken(session, user.getId(), refreshToken);
-      if (!completeRefresh(
-          req, resp, session, refreshToken, rotatedRefreshToken.getToken().toString())) {
+      Optional<UserSession> completedSession =
+          completeRefresh(
+              req, resp, session, refreshToken, rotatedRefreshToken.getToken().toString());
+      if (completedSession.isEmpty()) {
         return;
       }
 
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  getRoleListFromUser(user),
-                  !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-                  user.getEmail(),
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, completedSession.get());
 
       JwtResponse responseToClient = new JwtResponse();
       responseToClient.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -523,7 +512,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     return newRefreshToken;
   }
 
-  private boolean completeRefresh(
+  private Optional<UserSession> completeRefresh(
       HttpServletRequest req,
       HttpServletResponse resp,
       UserSession session,
@@ -535,10 +524,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);
       sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Session revoked during refresh");
-      return false;
+      return Optional.empty();
     }
     cleanupUnusedRefreshToken(previousRefreshToken, updatedRefreshToken, completedSession.get());
-    return true;
+    return completedSession;
   }
 
   private void cleanupUnusedRefreshToken(
@@ -562,5 +551,17 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     if (refreshToken != null) {
       Entity.getTokenRepository().deleteToken(refreshToken);
     }
+  }
+
+  private JWTAuthMechanism generateJwtToken(User user, UserSession session) {
+    return JWTTokenGenerator.getInstance()
+        .generateJWTTokenForSession(
+            user.getName(),
+            getRoleListFromUser(user),
+            Boolean.TRUE.equals(user.getIsAdmin()),
+            user.getEmail(),
+            SamlSettingsHolder.getInstance().getTokenValidity(),
+            ServiceTokenType.OM_USER,
+            session.getId());
   }
 }

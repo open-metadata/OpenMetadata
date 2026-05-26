@@ -3,6 +3,7 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,10 +11,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -24,12 +27,13 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BasicAuthServletHandler implements AuthServeletHandler {
@@ -83,14 +87,22 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "User not found");
         return;
       }
-      sessionService.createActiveSession(
-          req, resp, authConfig.getProvider().value(), user, jwtResponse.getRefreshToken());
+      if (user == null) {
+        deleteRefreshTokenIfPresent(jwtResponse.getRefreshToken());
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "User not found");
+        return;
+      }
+      UserSession session;
+      try {
+        session =
+            sessionService.createActiveSession(
+                req, resp, authConfig.getProvider().value(), user, jwtResponse.getRefreshToken());
+      } catch (Exception e) {
+        deleteRefreshTokenIfPresent(jwtResponse.getRefreshToken());
+        throw e;
+      }
 
-      JwtResponse responseToClient = new JwtResponse();
-      responseToClient.setAccessToken(jwtResponse.getAccessToken());
-      responseToClient.setTokenType(jwtResponse.getTokenType());
-      responseToClient.setExpiryDuration(jwtResponse.getExpiryDuration());
-      responseToClient.setRefreshToken(null);
+      JwtResponse responseToClient = buildSessionBoundJwtResponse(user, session);
 
       resp.setStatus(HttpServletResponse.SC_OK);
       resp.setContentType("application/json");
@@ -136,20 +148,24 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No refresh token in session");
         return;
       }
-
       TokenRefreshRequest tokenRequest = new TokenRefreshRequest();
       tokenRequest.setRefreshToken(refreshToken);
       JwtResponse newTokens = authenticator.getNewAccessToken(tokenRequest);
       String updatedRefreshToken =
           newTokens.getRefreshToken() != null ? newTokens.getRefreshToken() : refreshToken;
-      if (!completeRefresh(req, resp, session, refreshToken, updatedRefreshToken)) {
+      Optional<UserSession> completedSession =
+          completeRefresh(req, resp, session, refreshToken, updatedRefreshToken);
+      if (completedSession.isEmpty()) {
+        return;
+      }
+      User user = getSessionUser(completedSession.get());
+      if (user == null) {
+        sessionService.revokeSession(req, resp);
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Session user not found");
         return;
       }
 
-      JwtResponse responseToClient = new JwtResponse();
-      responseToClient.setAccessToken(newTokens.getAccessToken());
-      responseToClient.setTokenType(newTokens.getTokenType());
-      responseToClient.setExpiryDuration(newTokens.getExpiryDuration());
+      JwtResponse responseToClient = buildSessionBoundJwtResponse(user, completedSession.get());
       resp.setStatus(HttpServletResponse.SC_OK);
       resp.setContentType("application/json");
       writeJsonResponse(resp, JsonUtils.pojoToJson(responseToClient));
@@ -237,10 +253,11 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
 
   private User getUserByEmail(String email) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    return userRepository.getByEmail(null, email, Fields.EMPTY_FIELDS);
+    return userRepository.getByEmail(
+        null, email, userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
   }
 
-  private boolean completeRefresh(
+  private Optional<UserSession> completeRefresh(
       HttpServletRequest req,
       HttpServletResponse resp,
       UserSession session,
@@ -252,10 +269,10 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);
       sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Session revoked during refresh");
-      return false;
+      return Optional.empty();
     }
     cleanupUnusedRefreshToken(previousRefreshToken, updatedRefreshToken, completedSession.get());
-    return true;
+    return completedSession;
   }
 
   private void cleanupUnusedRefreshToken(
@@ -279,5 +296,41 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
     if (refreshToken != null) {
       Entity.getTokenRepository().deleteToken(refreshToken);
     }
+  }
+
+  private User getSessionUser(UserSession session) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    if (session.getUserId() != null) {
+      return userRepository.get(
+          null,
+          UUID.fromString(session.getUserId()),
+          userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+    }
+    if (session.getUsername() != null) {
+      return userRepository.getByName(
+          null,
+          session.getUsername(),
+          userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+    }
+    return null;
+  }
+
+  private JwtResponse buildSessionBoundJwtResponse(User user, UserSession session) {
+    org.openmetadata.schema.auth.JWTAuthMechanism jwtAuthMechanism =
+        JWTTokenGenerator.getInstance()
+            .generateJWTTokenForSession(
+                user.getName(),
+                getRoleListFromUser(user),
+                Boolean.TRUE.equals(user.getIsAdmin()),
+                user.getEmail(),
+                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
+                ServiceTokenType.OM_USER,
+                session.getId());
+    JwtResponse response = new JwtResponse();
+    response.setAccessToken(jwtAuthMechanism.getJWTToken());
+    response.setTokenType("Bearer");
+    response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+    response.setRefreshToken(null);
+    return response;
   }
 }

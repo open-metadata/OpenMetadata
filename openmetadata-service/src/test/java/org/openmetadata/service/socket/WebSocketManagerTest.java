@@ -14,6 +14,7 @@ package org.openmetadata.service.socket;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -56,6 +57,33 @@ class WebSocketManagerTest {
     verify(socketA, times(1)).disconnect(true);
     verify(socketB, times(1)).disconnect(true);
     assertFalse(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
+  @Test
+  void disconnectForSession_closesOnlySocketsForThatSession() throws Exception {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket sessionSocket = mock(SocketIoSocket.class);
+    SocketIoSocket otherSessionSocket = mock(SocketIoSocket.class);
+    when(sessionSocket.getId()).thenReturn("session-socket");
+    when(otherSessionSocket.getId()).thenReturn("other-session-socket");
+    Map<String, SocketIoSocket> userSockets = new ConcurrentHashMap<>();
+    userSockets.put("session-socket", sessionSocket);
+    userSockets.put("other-session-socket", otherSessionSocket);
+    manager.getActivityFeedEndpoints().put(userId, userSockets);
+    java.lang.reflect.Field socketSessionIds =
+        WebSocketManager.class.getDeclaredField("socketSessionIds");
+    socketSessionIds.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<String, String> sessionIds = (Map<String, String>) socketSessionIds.get(manager);
+    sessionIds.put("session-socket", "session-a");
+    sessionIds.put("other-session-socket", "session-b");
+
+    manager.disconnectForSession(userId, "session-a");
+
+    verify(sessionSocket, times(1)).disconnect(true);
+    verify(otherSessionSocket, never()).disconnect(anyBoolean());
+    assertFalse(manager.getActivityFeedEndpoints().get(userId).containsKey("session-socket"));
+    assertTrue(manager.getActivityFeedEndpoints().get(userId).containsKey("other-session-socket"));
   }
 
   @Test

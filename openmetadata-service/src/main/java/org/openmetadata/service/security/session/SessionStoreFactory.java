@@ -38,20 +38,20 @@ public final class SessionStoreFactory {
   public static SessionStore create() {
     CacheProvider provider = CacheBundle.getCacheProvider();
     CacheConfig config = CacheBundle.getCacheConfig();
-    if (provider instanceof RedisCacheProvider redisProvider
-        && provider.available()
-        && config != null
-        && config.redis != null) {
-      RedisCommands<String, String> commands = redisProvider.getSyncCommands();
-      if (commands != null) {
-        LOG.info(
-            "SessionStore backend: Redis (keyspace={})",
-            config.redis.keyspace == null ? "om" : config.redis.keyspace);
-        return new RedisSessionStore(commands, config.redis.keyspace);
+    if (config != null && config.provider == CacheConfig.Provider.redis && config.redis != null) {
+      if (provider instanceof RedisCacheProvider redisProvider && provider.available()) {
+        RedisCommands<String, String> commands = redisProvider.getSyncCommands();
+        if (commands != null) {
+          LOG.info(
+              "SessionStore backend: Redis (keyspace={})",
+              config.redis.keyspace == null ? "om" : config.redis.keyspace);
+          return new RedisSessionStore(commands, config.redis.keyspace);
+        }
       }
-      LOG.warn(
-          "RedisCacheProvider is available but the sync Lettuce connection is null; "
-              + "falling back to JDBC session store");
+      throw new IllegalStateException(
+          "Redis cache is configured for this node, but Redis is not available. Refusing to "
+              + "fall back to JDBC session storage because that would split sessions across "
+              + "different backends in a multi-node deployment.");
     }
     LOG.info("SessionStore backend: JDBC (user_session table)");
     return new JdbcSessionStore();

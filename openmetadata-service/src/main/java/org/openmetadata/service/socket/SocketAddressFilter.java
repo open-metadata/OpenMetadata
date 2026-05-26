@@ -24,11 +24,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -77,17 +82,29 @@ public class SocketAddressFilter implements Filter {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
       Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
+      String requestedUserId = query.get("userId");
 
       HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
       requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
-      requestWrapper.addHeader("UserId", query.get("userId"));
+      String socketUserId = requestedUserId;
+      ValidatedTokenPrincipal tokenPrincipal = null;
 
       if (enableSecureSocketConnection) {
         String tokenWithType = httpServletRequest.getHeader("Authorization");
-        requestWrapper.addHeader("Authorization", tokenWithType);
-        validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        tokenPrincipal = validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
+        if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
+          ((HttpServletResponse) response)
+              .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match token");
+          return;
+        }
+        socketUserId = resolvedUserId.toString();
       }
-      if (!isSessionStillActive(httpServletRequest, (HttpServletResponse) response)) {
+      requestWrapper.addHeader("UserId", socketUserId);
+      if (tokenPrincipal != null && tokenPrincipal.sessionId() != null) {
+        requestWrapper.addHeader("SessionId", tokenPrincipal.sessionId());
+      }
+      if (!isSessionStillActive(requestWrapper, (HttpServletResponse) response, tokenPrincipal)) {
         return;
       }
       // Goes to default servlet.
@@ -102,26 +119,56 @@ public class SocketAddressFilter implements Filter {
 
   private boolean isSessionStillActive(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    return isSessionStillActive(request, response, null);
+  }
+
+  private boolean isSessionStillActive(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      ValidatedTokenPrincipal tokenPrincipal)
+      throws IOException {
     if (sessionService == null) {
       return true;
     }
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
-      // No OM_SESSION cookie — JWT-only flows (bots, SDK clients) are unaffected.
-      return true;
+      if (tokenPrincipal == null || tokenPrincipal.sessionId() != null) {
+        return true;
+      }
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
+      return false;
     }
-    Optional<UserSession> session = sessionService.getSessionById(sessionId.get());
-    if (session.isEmpty() || session.get().getStatus() != SessionStatus.ACTIVE) {
+    Optional<UserSession> session = sessionService.getFreshSessionById(sessionId.get());
+    if (session.isEmpty()
+        || session.get().getStatus() != SessionStatus.ACTIVE
+        || session.get().isExpired(System.currentTimeMillis())) {
       LOG.info(
           "Rejecting WebSocket handshake: session {} is not active",
           SessionService.truncateId(sessionId.get()));
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
       return false;
     }
+    if (tokenPrincipal != null
+        && session.get().getUsername() != null
+        && !session.get().getUsername().equalsIgnoreCase(tokenPrincipal.userName())) {
+      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
+      return false;
+    }
+    if (tokenPrincipal != null
+        && tokenPrincipal.sessionId() != null
+        && !tokenPrincipal.sessionId().equals(session.get().getId())) {
+      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
+      return false;
+    }
+    HeaderRequestWrapper requestWrapper = request instanceof HeaderRequestWrapper h ? h : null;
+    if (requestWrapper != null) {
+      requestWrapper.addHeader("SessionId", session.get().getId());
+    }
     return true;
   }
 
-  public static void validatePrefixedTokenRequest(JwtFilter jwtFilter, String prefixedToken) {
+  public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
+      JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
     String userName =
@@ -132,6 +179,11 @@ public class SocketAddressFilter implements Filter {
             ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
             : null;
     jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
+    String sessionId =
+        claims.containsKey(JWTTokenGenerator.SESSION_ID_CLAIM)
+            ? claims.get(JWTTokenGenerator.SESSION_ID_CLAIM).asString()
+            : null;
+    return new ValidatedTokenPrincipal(userName, sessionId);
   }
 
   public static void checkForUsernameAndImpersonationValidation(
@@ -145,4 +197,12 @@ public class SocketAddressFilter implements Filter {
             : null;
     jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
   }
+
+  private UUID getUserIdForPrincipal(String userName) {
+    EntityReference userRef =
+        Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
+    return userRef.getId();
+  }
+
+  public record ValidatedTokenPrincipal(String userName, String sessionId) {}
 }

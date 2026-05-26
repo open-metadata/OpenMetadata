@@ -54,6 +54,9 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -477,6 +480,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       socketAddressFilter.setSessionService(sessionService);
     }
     environment.lifecycle().manage(sessionService);
+    environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
     setAuthServletAttributes(
         contextHandler,
         AuthServeletHandlerFactory.getHandler(config, sessionService),
@@ -840,6 +844,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         wireSessionRevocationToWebSockets(sessionService);
         environment.lifecycle().manage(sessionService);
         sessionService.start();
+        WebSocketSessionValidator validator = new WebSocketSessionValidator(sessionService);
+        environment.lifecycle().manage(validator);
+        validator.start();
       } else {
         sessionService.updateConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
       }
@@ -884,23 +891,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    */
   private void wireSessionRevocationToWebSockets(SessionService sessionService) {
     sessionService.registerRevocationListener(
-        userId -> {
+        session -> {
           try {
-            java.util.UUID id = java.util.UUID.fromString(userId);
+            if (session.getUserId() == null) {
+              return;
+            }
+            java.util.UUID id = java.util.UUID.fromString(session.getUserId());
             org.openmetadata.service.socket.WebSocketManager wsManager =
                 org.openmetadata.service.socket.WebSocketManager.getInstance();
             if (wsManager != null) {
-              wsManager.disconnectAllForUser(id);
+              wsManager.disconnectForSession(id, session.getId());
             }
             org.openmetadata.service.cache.CacheInvalidationPubSub pubSub =
                 org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub();
             if (pubSub != null) {
-              pubSub.publish("session", id, null, "revoke");
+              pubSub.publish("session", id, session.getId(), "revoke");
             }
           } catch (IllegalArgumentException e) {
-            LOG.debug("Skipping revocation broadcast for non-UUID userId {}", userId);
+            LOG.debug("Skipping revocation broadcast for non-UUID userId {}", session.getUserId());
           } catch (Exception e) {
-            LOG.warn("Failed to propagate session revocation for {}", userId, e);
+            LOG.warn("Failed to propagate session revocation for {}", session.getUserId(), e);
           }
         });
   }
@@ -1228,6 +1238,50 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
       LOG.info("Stopping the application");
+    }
+  }
+
+  public static class WebSocketSessionValidator implements Managed {
+    private static final long VALIDATION_INTERVAL_SECONDS = 15L;
+    private final SessionService sessionService;
+    private ScheduledExecutorService scheduler;
+
+    public WebSocketSessionValidator(SessionService sessionService) {
+      this.sessionService = sessionService;
+    }
+
+    @Override
+    public void start() {
+      scheduler =
+          Executors.newSingleThreadScheduledExecutor(
+              runnable ->
+                  Thread.ofPlatform()
+                      .name("om-websocket-session-validator")
+                      .daemon(true)
+                      .unstarted(runnable));
+      scheduler.scheduleWithFixedDelay(
+          this::validateSessions,
+          VALIDATION_INTERVAL_SECONDS,
+          VALIDATION_INTERVAL_SECONDS,
+          TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void stop() {
+      if (scheduler != null) {
+        scheduler.shutdownNow();
+      }
+    }
+
+    private void validateSessions() {
+      try {
+        WebSocketManager wsManager = WebSocketManager.getInstance();
+        if (wsManager != null) {
+          wsManager.disconnectInactiveSessions(sessionService);
+        }
+      } catch (Exception e) {
+        LOG.debug("WebSocket session validation failed", e);
+      }
     }
   }
 }

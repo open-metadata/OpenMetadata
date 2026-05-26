@@ -126,7 +126,7 @@ class LdapAuthServletHandlerTest {
     jwtResponse.setTokenType("Bearer");
     jwtResponse.setExpiryDuration(100L);
     when(authenticator.loginUser(any())).thenReturn(jwtResponse);
-    when(userRepository.getByEmail(isNull(), eq("ldap-user@example.com"), eq(Fields.EMPTY_FIELDS)))
+    when(userRepository.getByEmail(isNull(), eq("ldap-user@example.com"), any(Fields.class)))
         .thenThrow(EntityNotFoundException.byMessage("missing"));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {

@@ -365,7 +365,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (activeSession.isPresent()) {
         User user = getSessionUser(activeSession.get());
         if (user != null) {
-          JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user);
+          JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession.get());
           sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
           return;
         }
@@ -470,19 +470,24 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       org.openmetadata.schema.auth.RefreshToken refreshToken =
           TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
-      sessionService
-          .activatePendingSession(
-              req,
-              resp,
-              pendingSession,
-              user,
-              refreshToken.getToken().toString(),
-              credentials.getRefreshToken() != null
-                  ? credentials.getRefreshToken().getValue()
-                  : null)
-          .orElseThrow(() -> new TechnicalException("Failed to activate OIDC session"));
+      UserSession activeSession =
+          sessionService
+              .activatePendingSession(
+                  req,
+                  resp,
+                  pendingSession,
+                  user,
+                  refreshToken.getToken().toString(),
+                  credentials.getRefreshToken() != null
+                      ? credentials.getRefreshToken().getValue()
+                      : null)
+              .orElseGet(
+                  () -> {
+                    Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
+                    throw new TechnicalException("Failed to activate OIDC session");
+                  });
 
-      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user);
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
       sendRedirectWithToken(
           resp, pendingSession.getRedirectUri(), user, jwtAuthMechanism.getJWTToken());
     } catch (IllegalArgumentException e) {
@@ -558,15 +563,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       org.openmetadata.schema.auth.RefreshToken rotatedRefreshToken =
           validateAndReturnNewRefresh(user.getId(), session);
-      if (!completeRefresh(
-          httpServletRequest,
-          httpServletResponse,
-          session,
-          currentRefreshToken,
-          rotatedRefreshToken.getToken().toString())) {
+      Optional<UserSession> completedSession =
+          completeRefresh(
+              httpServletRequest,
+              httpServletResponse,
+              session,
+              currentRefreshToken,
+              rotatedRefreshToken.getToken().toString());
+      if (completedSession.isEmpty()) {
         return;
       }
-      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user);
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, completedSession.get());
 
       JwtResponse jwtResponse = new JwtResponse();
       jwtResponse.setTokenType("Bearer");
@@ -1051,16 +1058,16 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return null;
   }
 
-  private JWTAuthMechanism generateJwtToken(User user) {
+  private JWTAuthMechanism generateJwtToken(User user, UserSession session) {
     return JWTTokenGenerator.getInstance()
-        .generateJWTToken(
+        .generateJWTTokenForSession(
             user.getName(),
             getRoleListFromUser(user),
             !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
             user.getEmail(),
             tokenValidity,
-            false,
-            ServiceTokenType.OM_USER);
+            ServiceTokenType.OM_USER,
+            session.getId());
   }
 
   private org.openmetadata.schema.auth.RefreshToken validateAndReturnNewRefresh(
@@ -1079,7 +1086,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return newRefreshToken;
   }
 
-  private boolean completeRefresh(
+  private Optional<UserSession> completeRefresh(
       HttpServletRequest request,
       HttpServletResponse response,
       UserSession session,
@@ -1093,10 +1100,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       sessionService.revokeSession(request, response);
       org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
           response, HttpServletResponse.SC_UNAUTHORIZED, "Session revoked during refresh");
-      return false;
+      return Optional.empty();
     }
     cleanupUnusedRefreshToken(previousRefreshToken, updatedRefreshToken, completedSession.get());
-    return true;
+    return completedSession;
   }
 
   private void cleanupUnusedRefreshToken(

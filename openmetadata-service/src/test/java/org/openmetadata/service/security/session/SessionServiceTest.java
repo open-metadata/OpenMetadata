@@ -424,7 +424,7 @@ class SessionServiceTest {
 
     java.util.concurrent.atomic.AtomicReference<String> capturedUserId =
         new java.util.concurrent.atomic.AtomicReference<>();
-    sessionService.registerRevocationListener(capturedUserId::set);
+    sessionService.registerRevocationListener(session -> capturedUserId.set(session.getUserId()));
 
     sessionService.revokeSession(sessionId).orElseThrow();
 

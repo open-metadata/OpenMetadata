@@ -101,7 +101,11 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                 org.openmetadata.service.socket.WebSocketManager wsManager =
                     org.openmetadata.service.socket.WebSocketManager.getInstance();
                 if (wsManager != null) {
-                  wsManager.disconnectAllForUser(msg.id());
+                  if (msg.fqn() != null) {
+                    wsManager.disconnectForSession(msg.id(), msg.fqn());
+                  } else {
+                    wsManager.disconnectAllForUser(msg.id());
+                  }
                 }
                 return;
               }

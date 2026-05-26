@@ -38,11 +38,11 @@ public class SessionService implements Managed {
   private final ScheduledExecutorService scheduler;
   private final AtomicBoolean started = new AtomicBoolean(false);
   private final AtomicBoolean lowIdleTimeoutLogged = new AtomicBoolean(false);
-  // Notified once per local revocation with the revoked session's userId. Listeners include
+  // Notified once per local revocation with the revoked session. Listeners include
   // WebSocketManager (closes active sockets for the user) and SessionRevocationBroadcaster
   // (republishes to Redis so other pods do the same). Failures in a listener are logged and
   // do not block the revocation result.
-  private final List<Consumer<String>> revocationListeners = new CopyOnWriteArrayList<>();
+  private final List<Consumer<UserSession>> revocationListeners = new CopyOnWriteArrayList<>();
 
   public SessionService(AuthenticationConfiguration authConfig) {
     this(authConfig, SessionStoreFactory.create());
@@ -75,25 +75,25 @@ public class SessionService implements Managed {
   }
 
   /**
-   * Register a callback fired on each successful local revocation. The argument is the revoked
-   * session's userId (may be {@code null} for pending sessions that never bound a user).
-   * Idempotent — registering the same listener twice is allowed but harmless.
+   * Register a callback fired on each successful local revocation. Idempotent — registering the same
+   * listener twice is allowed but harmless.
    */
-  public void registerRevocationListener(Consumer<String> listener) {
+  public void registerRevocationListener(Consumer<UserSession> listener) {
     if (listener != null && !revocationListeners.contains(listener)) {
       revocationListeners.add(listener);
     }
   }
 
-  private void notifyRevocation(String userId) {
-    if (userId == null) {
+  private void notifyRevocation(UserSession session) {
+    if (session == null || session.getUserId() == null) {
       return;
     }
-    for (Consumer<String> listener : revocationListeners) {
+    for (Consumer<UserSession> listener : revocationListeners) {
       try {
-        listener.accept(userId);
+        listener.accept(session);
       } catch (Exception e) {
-        LOG.warn("Session revocation listener failed for userId {}", userId, e);
+        LOG.warn(
+            "Session revocation listener failed for session {}", truncateId(session.getId()), e);
       }
     }
   }
@@ -406,7 +406,7 @@ public class SessionService implements Managed {
               .build();
       if (repository.updateIfVersion(revoked, expectedVersion)) {
         cache.put(revoked.getId(), revoked);
-        notifyRevocation(revoked.getUserId());
+        notifyRevocation(revoked);
         return Optional.of(revoked);
       }
 
@@ -431,6 +431,10 @@ public class SessionService implements Managed {
       return Optional.of(cachedSession);
     }
 
+    return reloadSession(sessionId);
+  }
+
+  public Optional<UserSession> getFreshSessionById(String sessionId) {
     return reloadSession(sessionId);
   }
 

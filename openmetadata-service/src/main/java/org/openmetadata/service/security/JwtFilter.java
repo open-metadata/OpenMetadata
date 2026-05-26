@@ -68,7 +68,11 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
 
 @Slf4j
 @Provider
@@ -246,6 +250,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // validate personal access token
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
+
+    validateSessionBoundToken(claims, userName);
   }
 
   private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
@@ -347,6 +353,31 @@ public class JwtFilter implements ContainerRequestFilter {
       if (previouslyLoggedOutEvent != null) {
         throw AuthenticationException.invalidTokenMessage();
       }
+    }
+  }
+
+  private void validateSessionBoundToken(Map<String, Claim> claims, String userName) {
+    Claim sessionClaim = claims.get(JWTTokenGenerator.SESSION_ID_CLAIM);
+    String sessionId = sessionClaim == null ? null : sessionClaim.asString();
+    if (nullOrEmpty(sessionId)) {
+      return;
+    }
+
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null) {
+      throw AuthenticationException.getInvalidTokenException("Session service is not available.");
+    }
+
+    UserSession session =
+        sessionService
+            .getFreshSessionById(sessionId)
+            .orElseThrow(
+                () -> AuthenticationException.getInvalidTokenException("Invalid session."));
+    if (session.getStatus() != SessionStatus.ACTIVE
+        || session.isExpired(System.currentTimeMillis())
+        || nullOrEmpty(session.getUsername())
+        || !session.getUsername().equalsIgnoreCase(userName)) {
+      throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
   }
 
