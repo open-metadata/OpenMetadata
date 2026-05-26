@@ -80,11 +80,7 @@ import {
 } from '../../rest/queries/databaseSchemaQuery';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

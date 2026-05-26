@@ -108,7 +108,7 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div data-testid="next-previous" />)
 );
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
 }));
 

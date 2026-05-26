@@ -33,11 +33,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

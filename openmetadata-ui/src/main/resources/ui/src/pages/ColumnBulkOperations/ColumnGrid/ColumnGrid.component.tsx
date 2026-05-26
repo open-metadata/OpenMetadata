@@ -90,7 +90,7 @@ import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
-import { stringToDOMElement } from '../../../utils/StringsUtils';
+import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';

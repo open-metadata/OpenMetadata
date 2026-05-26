@@ -46,7 +46,7 @@ jest.mock('../rest/searchAPI', () => ({
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => encodeURIComponent(fqn)),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));

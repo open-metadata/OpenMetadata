@@ -30,11 +30,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

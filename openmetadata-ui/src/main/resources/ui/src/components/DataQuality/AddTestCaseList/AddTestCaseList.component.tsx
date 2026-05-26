@@ -62,7 +62,7 @@ import {
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { replacePlus } from '../../../utils/StringsUtils';
+import { replacePlus } from '../../../utils/StringUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';

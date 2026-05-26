@@ -72,11 +72,7 @@ import {
   updateTablesVotes,
 } from '../../rest/tableAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

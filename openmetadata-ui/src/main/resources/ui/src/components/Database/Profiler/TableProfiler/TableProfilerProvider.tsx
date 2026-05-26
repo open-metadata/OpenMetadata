@@ -51,7 +51,7 @@ import {
   TestCaseCountByStatus,
 } from '../../../../utils/DataQuality/DataQualityUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
+import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';

@@ -63,7 +63,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getErrorText } from '../../utils/StringUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';

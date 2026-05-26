@@ -52,7 +52,7 @@ import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interf
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(

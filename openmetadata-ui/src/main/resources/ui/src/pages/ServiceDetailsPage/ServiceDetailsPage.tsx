@@ -163,7 +163,7 @@ import {
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../utils/StringsUtils';
+} from '../../utils/StringUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

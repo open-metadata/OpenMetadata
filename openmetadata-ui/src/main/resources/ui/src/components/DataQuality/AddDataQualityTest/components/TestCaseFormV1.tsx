@@ -113,8 +113,8 @@ import { getIngestionName } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
   generateUUID,
-} from '../../../../utils/StringsUtils';
-import { replaceAllSpacialCharWith_ } from '../../../../utils/StringUtils';
+  replaceAllSpacialCharWith_,
+} from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';

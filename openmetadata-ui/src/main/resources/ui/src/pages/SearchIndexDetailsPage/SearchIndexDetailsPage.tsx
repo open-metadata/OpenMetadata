@@ -58,11 +58,7 @@ import {
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

@@ -78,11 +78,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {

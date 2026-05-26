@@ -55,7 +55,7 @@ import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { bytesToSize, stringToHTML } from './StringsUtils';
+import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags, getUsagePercentile } from './TableUtils';
 
 interface ColumnSearchResult {

@@ -99,15 +99,15 @@ import {
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
-import {
   getEntityDeleteMessage,
   getEntityMissingError,
 } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {

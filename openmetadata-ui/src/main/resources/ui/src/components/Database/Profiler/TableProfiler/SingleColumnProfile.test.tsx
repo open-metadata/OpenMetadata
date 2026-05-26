@@ -95,7 +95,8 @@ jest.mock('recharts', () => ({
   Tooltip: () => <div data-testid="tooltip" />,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),

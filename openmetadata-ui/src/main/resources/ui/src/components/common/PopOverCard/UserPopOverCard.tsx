@@ -34,7 +34,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
-import { getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getTeamAndUserDetailsPath,

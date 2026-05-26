@@ -69,7 +69,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import { hasEditAccess } from '../../../utils/CommonUtils';
+import { hasEditAccess } from '../../../utils/EntityUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,

@@ -67,11 +67,7 @@ import {
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -107,7 +103,7 @@ import {
   escapeESReservedCharacters,
   getDecodedFqn,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';

@@ -27,11 +27,7 @@ import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

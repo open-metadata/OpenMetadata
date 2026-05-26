@@ -37,9 +37,9 @@ import {
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-} from './StringsUtils';
+} from './StringUtils';
 
-describe('StringsUtils', () => {
+describe('StringUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {
     const fqn = 'sample_data.db_sample.schema_sample.dim/client.';
     const encodedFqn = 'sample_data.db_sample.schema_sample.dim%2Fclient.';

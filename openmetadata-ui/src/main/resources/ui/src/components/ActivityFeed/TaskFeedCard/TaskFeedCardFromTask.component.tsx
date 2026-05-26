@@ -45,7 +45,7 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   getNormalizedTaskPayload,
   getTaskDetailPathFromTask,

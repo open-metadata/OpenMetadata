@@ -62,10 +62,7 @@ import {
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import {
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';

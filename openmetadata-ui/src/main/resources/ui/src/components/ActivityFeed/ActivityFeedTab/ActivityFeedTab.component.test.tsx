@@ -87,10 +87,15 @@ jest.mock('../../../rest/feedsAPI', () => ({
     .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getCountBadge: (count: number) => (
     <span data-testid="filter-count">{count}</span>
   ),
+  getEntityUserLink: jest.fn().mockReturnValue(''),
+}));
+
+jest.mock('../../../utils/FeedUtils', () => ({
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: 0,
@@ -109,10 +114,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   default: { getActivityFeedTabs: jest.fn().mockReturnValue([]) },
-}));
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityUserLink: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>

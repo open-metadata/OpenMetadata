@@ -66,11 +66,7 @@ import {
   API_COLLECTION_DEFAULT_FIELDS,
 } from '../../rest/queries/apiCollectionQuery';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

@@ -48,7 +48,7 @@ import {
   getPopupContainer,
 } from '../../../utils/formUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { isValidJSONString } from '../../../utils/StringsUtils';
+import { isValidJSONString } from '../../../utils/StringUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

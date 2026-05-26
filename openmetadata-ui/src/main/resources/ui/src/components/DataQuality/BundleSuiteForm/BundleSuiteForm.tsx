@@ -62,8 +62,10 @@ import {
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
-import { replaceAllSpacialCharWith_ } from '../../../utils/StringUtils';
+import {
+  generateUUID,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';

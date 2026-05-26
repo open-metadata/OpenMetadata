@@ -45,8 +45,10 @@ import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
-import { replaceAllSpacialCharWith_ } from '../../../utils/StringUtils';
+import {
+  generateUUID,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';

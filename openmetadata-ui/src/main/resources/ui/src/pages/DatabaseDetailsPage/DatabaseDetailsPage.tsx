@@ -76,11 +76,7 @@ import {
   databaseQueryKey,
   DATABASE_DEFAULT_FIELDS,
 } from '../../rest/queries/databaseQuery';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,

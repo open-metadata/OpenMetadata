@@ -31,7 +31,7 @@ import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
-import { normalizeToArray } from '../../../../utils/CommonUtils';
+import { normalizeToArray } from '../../../../utils/ObjectUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,

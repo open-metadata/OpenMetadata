@@ -196,7 +196,7 @@ import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
+import { ordinalize } from './StringUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
