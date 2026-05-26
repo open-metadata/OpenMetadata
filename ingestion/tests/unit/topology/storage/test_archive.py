@@ -137,6 +137,11 @@ def _make_empty_parquet() -> bytes:
     return buf.getvalue()
 
 
+def _make_entry(name: str, content: bytes) -> ArchiveEntry:
+    """Create an ArchiveEntry with fixed in-memory content for testing."""
+    return ArchiveEntry(name=name, size=len(content), loader=lambda: BytesIO(content))
+
+
 # ---------------------------------------------------------------------------
 # TestIsSafeArchivePath
 # ---------------------------------------------------------------------------
@@ -163,6 +168,25 @@ class TestIsSafeArchivePath:
 
     def test_root_slash(self):
         assert _is_safe_archive_path("/") is False
+
+    def test_double_slash_prefix(self):
+        assert _is_safe_archive_path("//etc/passwd") is False
+
+    def test_deeply_nested_safe_path(self):
+        assert _is_safe_archive_path("a/b/c/d/e/f/data.csv") is True
+
+    def test_hidden_file_is_safe(self):
+        assert _is_safe_archive_path(".hidden_file.csv") is True
+
+    def test_double_dot_in_filename_is_safe(self):
+        # "file..csv" has ".." as part of the name, not as a path component
+        assert _is_safe_archive_path("file..csv") is True
+
+    def test_dotdot_as_standalone_segment(self):
+        assert _is_safe_archive_path("good/../evil") is False
+
+    def test_windows_backslash_traversal(self):
+        assert _is_safe_archive_path("folder\\..\\evil.csv") is False
 
 
 # ---------------------------------------------------------------------------
@@ -376,6 +400,77 @@ class TestDetectInnerFormat:
     def test_nested_path(self):
         assert detect_inner_format("folder/sub/data.csv") == SupportedTypes.CSV
 
+    def test_no_extension_returns_none(self):
+        assert detect_inner_format("Makefile") is None
+
+    def test_archive_extension_returns_none(self):
+        assert detect_inner_format("data.zip") is None
+
+
+# ---------------------------------------------------------------------------
+# TestArchiveEntryLazyLoading
+# ---------------------------------------------------------------------------
+
+
+class TestArchiveEntryLazyLoading:
+    """Verify that ArchiveEntry uses cached_property for lazy data loading."""
+
+    def test_loader_not_called_on_construction(self):
+        called = []
+
+        def loader():
+            called.append(1)
+            return BytesIO(b"data")
+
+        ArchiveEntry(name="f.csv", size=4, loader=loader)
+        assert called == []
+
+    def test_loader_called_on_first_data_access(self):
+        loader = MagicMock(return_value=BytesIO(b"hello"))
+        entry = ArchiveEntry(name="f.csv", size=5, loader=loader)
+        _ = entry.data
+        loader.assert_called_once()
+
+    def test_loader_called_only_once_for_repeated_accesses(self):
+        loader = MagicMock(return_value=BytesIO(b"hello"))
+        entry = ArchiveEntry(name="f.csv", size=5, loader=loader)
+        _ = entry.data
+        _ = entry.data
+        _ = entry.data
+        assert loader.call_count == 1
+
+    def test_data_returns_same_instance_on_repeated_access(self):
+        entry = ArchiveEntry(name="f.csv", size=5, loader=lambda: BytesIO(b"hello"))
+        first = entry.data
+        second = entry.data
+        assert first is second
+
+    def test_failing_loader_raises_on_data_access(self):
+        def bad_loader():
+            raise OSError("disk failure")
+
+        entry = ArchiveEntry(name="f.csv", size=5, loader=bad_loader)
+        with pytest.raises(OSError, match="disk failure"):
+            _ = entry.data
+
+    def test_name_and_size_accessible_without_triggering_loader(self):
+        called = []
+
+        def loader():
+            called.append(1)
+            return BytesIO(b"data")
+
+        entry = ArchiveEntry(name="my_file.csv", size=99, loader=loader)
+        assert entry.name == "my_file.csv"
+        assert entry.size == 99
+        assert called == []
+
+    def test_data_seek_after_read_works_via_cached_bytesio(self):
+        entry = _make_entry("f.csv", _CSV_CONTENT)
+        entry.data.read()  # exhaust buffer
+        entry.data.seek(0)
+        assert entry.data.read() == _CSV_CONTENT
+
 
 # ---------------------------------------------------------------------------
 # TestZipArchiveReader
@@ -396,15 +491,23 @@ class TestZipArchiveReader:
             ZipArchiveReader(b"not a zip file")
 
     def test_entry_data_is_seekable(self):
+        # Data must be accessed inside the context — loader calls zf.open which needs the file open
         zip_bytes = _make_zip({"file.csv": _CSV_CONTENT})
         with ZipArchiveReader(zip_bytes) as reader:
             entries = list(reader.entries())
-        assert entries[0].data.seekable()
+            assert entries[0].data.seekable()
+
+    def test_data_accessible_inside_context(self):
+        zip_bytes = _make_zip({"file.csv": _CSV_CONTENT})
+        with ZipArchiveReader(zip_bytes) as reader:
+            entries = list(reader.entries())
+            assert entries[0].data.read() == _CSV_CONTENT
 
     def test_entry_name_and_size(self):
         zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
         with ZipArchiveReader(zip_bytes) as reader:
             entries = list(reader.entries())
+        # name and size are plain attributes — no loader needed
         assert entries[0].name == "data.csv"
         assert entries[0].size == len(_CSV_CONTENT)
 
@@ -427,13 +530,17 @@ class TestZipArchiveReader:
             arch_mod._MAX_INNER_FILE_BYTES = original
         assert entries == []
 
-    def test_exception_opening_entry_is_skipped(self):
+    def test_exception_opening_entry_raises_on_data_access(self):
+        # With lazy loading, entries() yields the ArchiveEntry without calling open().
+        # The OSError surfaces only when entry.data is accessed.
         zip_bytes = _make_zip({"file.csv": _CSV_CONTENT})
         reader = ZipArchiveReader(zip_bytes)
         with patch.object(reader._zip_file, "open", side_effect=OSError("disk error")):
             entries = list(reader.entries())
+            assert len(entries) == 1
+            with pytest.raises(ValueError):
+                _ = entries[0].data
         reader.close()
-        assert entries == []
 
     def test_skips_suspicious_path(self):
         zip_bytes = _make_zip({"safe.csv": _CSV_CONTENT})
@@ -442,6 +549,19 @@ class TestZipArchiveReader:
             entries = list(reader.entries())
         reader.close()
         assert entries == []
+
+    def test_empty_archive_yields_nothing(self):
+        zip_bytes = _make_zip({})
+        with ZipArchiveReader(zip_bytes) as reader:
+            entries = list(reader.entries())
+        assert entries == []
+
+    def test_zip_with_nested_dir_structure(self):
+        zip_bytes = _make_zip({"a/b/c/data.csv": _CSV_CONTENT})
+        with ZipArchiveReader(zip_bytes) as reader:
+            entries = list(reader.entries())
+        assert len(entries) == 1
+        assert entries[0].name == "a/b/c/data.csv"
 
 
 # ---------------------------------------------------------------------------
@@ -533,21 +653,67 @@ class TestTarArchiveReader:
             arch_mod._MAX_INNER_FILE_BYTES = original
         assert entries == []
 
-    def test_none_extractfile_is_skipped(self):
+    def test_none_extractfile_entry_raises_on_data_access(self):
+        # entries() yields the ArchiveEntry; the None-extractfile error is lazy
         tar_bytes = _make_tar({"file.csv": _CSV_CONTENT}, mode="w:")
         reader = TarArchiveReader(tar_bytes)
         with patch.object(reader._tar_file, "extractfile", return_value=None):
             entries = list(reader.entries())
+            assert len(entries) == 1
+            with pytest.raises(ValueError):
+                _ = entries[0].data
         reader.close()
-        assert entries == []
 
-    def test_exception_in_extractfile_is_skipped(self):
+    def test_exception_in_extractfile_raises_on_data_access(self):
         tar_bytes = _make_tar({"file.csv": _CSV_CONTENT}, mode="w:")
         reader = TarArchiveReader(tar_bytes)
         with patch.object(reader._tar_file, "extractfile", side_effect=OSError("bad read")):
             entries = list(reader.entries())
+            assert len(entries) == 1
+            with pytest.raises(ValueError):
+                _ = entries[0].data
         reader.close()
-        assert entries == []
+
+    def test_data_accessible_inside_context(self):
+        tar_bytes = _make_tar({"data.csv": _CSV_CONTENT}, mode="w:")
+        with TarArchiveReader(tar_bytes) as reader:
+            entries = list(reader.entries())
+            assert entries[0].data.read() == _CSV_CONTENT
+
+    def test_symlink_member_is_skipped(self):
+        buf = BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:") as tf:
+            sym = tarfile.TarInfo(name="link.csv")
+            sym.type = tarfile.SYMTYPE
+            sym.linkname = "data.csv"
+            tf.addfile(sym)
+            real = tarfile.TarInfo(name="data.csv")
+            real.size = len(_CSV_CONTENT)
+            tf.addfile(real, BytesIO(_CSV_CONTENT))
+        tar_bytes = buf.getvalue()
+        with TarArchiveReader(tar_bytes) as reader:
+            entries = list(reader.entries())
+        names = [e.name for e in entries]
+        assert "link.csv" not in names
+        assert "data.csv" in names
+
+    def test_hardlink_member_is_skipped(self):
+        buf = BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:") as tf:
+            real = tarfile.TarInfo(name="data.csv")
+            real.size = len(_CSV_CONTENT)
+            tf.addfile(real, BytesIO(_CSV_CONTENT))
+            hard = tarfile.TarInfo(name="hardlink.csv")
+            hard.type = tarfile.LNKTYPE
+            hard.linkname = "data.csv"
+            hard.size = 0
+            tf.addfile(hard)
+        tar_bytes = buf.getvalue()
+        with TarArchiveReader(tar_bytes) as reader:
+            entries = list(reader.entries())
+        names = [e.name for e in entries]
+        assert "hardlink.csv" not in names
+        assert "data.csv" in names
 
 
 # ---------------------------------------------------------------------------
@@ -639,8 +805,8 @@ class TestZipRangeReader:
             entries = list(reader.entries())
         assert entries[0].data.read() == _CSV_CONTENT
 
-    def test_unsupported_method_skips_entry(self):
-        """An entry with an unsupported compression method (e.g. 99) is silently skipped."""
+    def test_unsupported_method_raises_on_data_access(self):
+        """Unsupported compression method (e.g. 99) silently yields the entry but raises on .data."""
         zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
         blob = _MockBlob(zip_bytes)
         reader = ZipRangeReader(blob)
@@ -648,10 +814,12 @@ class TestZipRangeReader:
             entry.compress_method = 99
         entries = list(reader.entries())
         reader.close()
-        assert entries == []
+        assert len(entries) == 1
+        with pytest.raises(ValueError, match="Unsupported ZIP compression method"):
+            _ = entries[0].data
 
-    def test_invalid_local_header_skips(self):
-        """If local file header signature is wrong, entry is skipped."""
+    def test_invalid_local_header_raises_on_data_access(self):
+        """If local file header signature is wrong, accessing .data raises ValueError."""
         zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
 
         class _CorruptBlob(_MockBlob):
@@ -665,10 +833,12 @@ class TestZipRangeReader:
         reader = ZipRangeReader(blob)
         entries = list(reader.entries())
         reader.close()
-        assert entries == []
+        assert len(entries) == 1
+        with pytest.raises(ValueError, match="Invalid local file header"):
+            _ = entries[0].data
 
-    def test_exception_during_download_skips(self):
-        """If read_range raises after CD is parsed, the entry is skipped."""
+    def test_exception_during_download_raises_on_data_access(self):
+        """If read_range raises after CD is parsed, accessing .data raises."""
         zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
 
         class _FailingBlob(_MockBlob):
@@ -686,7 +856,9 @@ class TestZipRangeReader:
         reader = ZipRangeReader(blob)
         entries = list(reader.entries())
         reader.close()
-        assert entries == []
+        assert len(entries) == 1
+        with pytest.raises(OSError, match="network failure"):
+            _ = entries[0].data
 
     def test_post_decompress_size_exceeds_limit_skips(self):
         """After deflate decompression, if uncompressed data exceeds limit, entry is skipped."""
@@ -702,6 +874,28 @@ class TestZipRangeReader:
             reader.close()
         finally:
             arch_mod._MAX_INNER_FILE_BYTES = original
+        assert entries == []
+
+    def test_eocd_with_zip_comment(self):
+        """ZIP with a file comment is still parseable via range reader."""
+        buf = BytesIO()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.comment = b"This is a test ZIP comment " * 4
+            zf.writestr("data.csv", _CSV_CONTENT)
+        zip_bytes = buf.getvalue()
+        blob = _MockBlob(zip_bytes)
+        with ZipRangeReader(blob) as reader:
+            entries = list(reader.entries())
+        assert len(entries) == 1
+        assert entries[0].data.read() == _CSV_CONTENT
+
+    def test_path_traversal_skipped(self):
+        zip_bytes = _make_zip({"safe.csv": _CSV_CONTENT})
+        blob = _MockBlob(zip_bytes)
+        reader = ZipRangeReader(blob)
+        with patch("metadata.readers.archive._is_safe_archive_path", return_value=False):
+            entries = list(reader.entries())
+        reader.close()
         assert entries == []
 
 
@@ -763,11 +957,12 @@ class TestSevenZipArchiveReader:
         from metadata.readers.archive import SevenZipArchiveReader
 
         seven_z_bytes = _make_seven_z({"data.csv": _CSV_CONTENT})
+        # Data must be accessed inside the context — temp dir is cleaned up on close
         with SevenZipArchiveReader(seven_z_bytes) as reader:
             entries = list(reader.entries())
-        assert len(entries) == 1
-        assert entries[0].name == "data.csv"
-        assert entries[0].data.read() == _CSV_CONTENT
+            assert len(entries) == 1
+            assert entries[0].name == "data.csv"
+            assert entries[0].data.read() == _CSV_CONTENT
 
     def test_multiple_files(self):
         if importlib.util.find_spec("py7zr") is None:
@@ -807,7 +1002,8 @@ class TestSevenZipArchiveReader:
         with patch("py7zr.SevenZipFile", return_value=mock_szf), pytest.raises(ValueError, match="Suspicious path"):
             SevenZipArchiveReader(seven_z_bytes)
 
-    def test_large_file_in_7z_is_skipped(self):
+    def test_large_file_in_7z_raises_on_construction(self):
+        """SevenZipArchiveReader raises ValueError during __init__ when an entry exceeds the size limit."""
         if importlib.util.find_spec("py7zr") is None:
             pytest.skip("py7zr not installed")
         import metadata.readers.archive as arch_mod
@@ -817,11 +1013,10 @@ class TestSevenZipArchiveReader:
         original = arch_mod._MAX_INNER_FILE_BYTES
         try:
             arch_mod._MAX_INNER_FILE_BYTES = 5
-            with SevenZipArchiveReader(seven_z_bytes) as reader:
-                entries = list(reader.entries())
+            with pytest.raises(ValueError):
+                SevenZipArchiveReader(seven_z_bytes)
         finally:
             arch_mod._MAX_INNER_FILE_BYTES = original
-        assert entries == []
 
 
 # ---------------------------------------------------------------------------
@@ -931,7 +1126,8 @@ class TestRarArchiveReader:
 
         assert entries == []
 
-    def test_entries_exception_is_skipped(self):
+    def test_entries_exception_raises_on_data_access(self):
+        """With lazy loading, rar open failure surfaces on .data access, not during entries()."""
         if importlib.util.find_spec("rarfile") is None:
             pytest.skip("rarfile not installed")
         from metadata.readers.archive import RarArchiveReader
@@ -949,7 +1145,9 @@ class TestRarArchiveReader:
             reader = RarArchiveReader(b"fake_rar")
             entries = list(reader.entries())
 
-        assert entries == []
+        assert len(entries) == 1
+        with pytest.raises(ValueError):
+            _ = entries[0].data
 
 
 # ---------------------------------------------------------------------------
@@ -1040,13 +1238,106 @@ class TestOpenArchiveReader:
 
 
 # ---------------------------------------------------------------------------
+# TestZipBombProtection
+# ---------------------------------------------------------------------------
+
+
+class TestZipBombProtection:
+    """Security-focused tests verifying size guards across all readers."""
+
+    def test_zip_archive_reader_skips_entry_exceeding_size_limit(self):
+        import metadata.readers.archive as arch_mod
+
+        zip_bytes = _make_zip({"big.csv": b"x" * 10}, compression=zipfile.ZIP_STORED)
+        original = arch_mod._MAX_INNER_FILE_BYTES
+        try:
+            arch_mod._MAX_INNER_FILE_BYTES = 5
+            with ZipArchiveReader(zip_bytes) as reader:
+                entries = list(reader.entries())
+        finally:
+            arch_mod._MAX_INNER_FILE_BYTES = original
+        assert entries == []
+
+    def test_zip_range_reader_skips_entry_exceeding_size_limit(self):
+        import metadata.readers.archive as arch_mod
+
+        zip_bytes = _make_zip({"big.csv": b"x" * 10}, compression=zipfile.ZIP_STORED)
+        original = arch_mod._MAX_INNER_FILE_BYTES
+        try:
+            arch_mod._MAX_INNER_FILE_BYTES = 5
+            blob = _MockBlob(zip_bytes)
+            with ZipRangeReader(blob) as reader:
+                entries = list(reader.entries())
+        finally:
+            arch_mod._MAX_INNER_FILE_BYTES = original
+        assert entries == []
+
+    def test_tar_reader_skips_entry_exceeding_size_limit(self):
+        import metadata.readers.archive as arch_mod
+
+        tar_bytes = _make_tar({"big.csv": b"x" * 10}, mode="w:")
+        original = arch_mod._MAX_INNER_FILE_BYTES
+        try:
+            arch_mod._MAX_INNER_FILE_BYTES = 5
+            with TarArchiveReader(tar_bytes) as reader:
+                entries = list(reader.entries())
+        finally:
+            arch_mod._MAX_INNER_FILE_BYTES = original
+        assert entries == []
+
+    def test_zip_bomb_lying_uncomp_size_raises_on_data_access(self):
+        """Entry with lying uncomp_size=0 in CD passes eager check but fails on decompression."""
+        import metadata.readers.archive as arch_mod
+
+        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED)
+        original = arch_mod._MAX_INNER_FILE_BYTES
+        try:
+            arch_mod._MAX_INNER_FILE_BYTES = 5
+            blob = _MockBlob(zip_bytes)
+            reader = ZipRangeReader(blob)
+            # Simulate a zip bomb: lie that uncompressed size is 0
+            for cd_entry in reader._cd_entries:
+                cd_entry.uncomp_size = 0
+            entries = list(reader.entries())  # passes eager check (0 <= 5)
+            assert len(entries) == 1
+            with pytest.raises(ValueError):
+                _ = entries[0].data  # comp_size or decompression limit triggers
+            reader.close()
+        finally:
+            arch_mod._MAX_INNER_FILE_BYTES = original
+
+    def test_max_archive_size_enforced_for_zip_range_reader(self):
+        blob = _MockBlob(b"", size_override=MAX_ARCHIVE_SIZE_BYTES + 1)
+        with pytest.raises(ValueError, match="exceeds limit"):
+            ZipRangeReader(blob)
+
+    def test_max_archive_size_enforced_for_zip_reader(self):
+        blob = _MockBlob(b"", size_override=MAX_ARCHIVE_SIZE_BYTES + 1)
+        with pytest.raises(ValueError, match="exceeds limit"):
+            ZipReader(blob)
+
+    def test_max_archive_size_enforced_for_non_zip_via_open_archive_reader(self):
+        blob = _MockBlob(b"", size_override=MAX_ARCHIVE_SIZE_BYTES + 1)
+        with pytest.raises(ValueError, match="exceeds limit"):
+            open_archive_reader(blob, "tar.gz")
+
+    def test_multiple_small_entries_all_yielded_no_count_limit(self):
+        """Many small entries are all yielded — the guard is per-entry size, not count."""
+        files = {f"file_{i}.csv": _CSV_CONTENT for i in range(20)}
+        zip_bytes = _make_zip(files)
+        with ZipArchiveReader(zip_bytes) as reader:
+            entries = list(reader.entries())
+        assert len(entries) == 20
+
+
+# ---------------------------------------------------------------------------
 # TestInferColumnsFromArchiveEntry
 # ---------------------------------------------------------------------------
 
 
 class TestInferColumnsFromArchiveEntry:
     def test_csv_returns_columns(self):
-        entry = ArchiveEntry(name="data.csv", data=BytesIO(_CSV_CONTENT), size=len(_CSV_CONTENT))
+        entry = _make_entry("data.csv", _CSV_CONTENT)
         columns = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
         assert len(columns) > 0
         col_names = [c.name.root for c in columns]
@@ -1055,19 +1346,19 @@ class TestInferColumnsFromArchiveEntry:
         assert "value" in col_names
 
     def test_json_returns_columns(self):
-        entry = ArchiveEntry(name="data.json", data=BytesIO(_JSON_CONTENT), size=len(_JSON_CONTENT))
+        entry = _make_entry("data.json", _JSON_CONTENT)
         columns = infer_columns_from_archive_entry(entry, SupportedTypes.JSON)
         assert len(columns) > 0
         col_names = [c.name.root for c in columns]
         assert "id" in col_names
 
     def test_jsonl_returns_columns(self):
-        entry = ArchiveEntry(name="data.jsonl", data=BytesIO(_JSONL_CONTENT), size=len(_JSONL_CONTENT))
+        entry = _make_entry("data.jsonl", _JSONL_CONTENT)
         columns = infer_columns_from_archive_entry(entry, SupportedTypes.JSONL)
         assert len(columns) > 0
 
     def test_avro_delegates_to_avro_reader(self):
-        entry = ArchiveEntry(name="data.avro", data=BytesIO(b"fake_avro"), size=9)
+        entry = _make_entry("data.avro", b"fake_avro")
         mock_cols = [MagicMock()]
         with patch(
             "metadata.readers.archive.AvroDataFrameReader._get_avro_columns",
@@ -1077,7 +1368,7 @@ class TestInferColumnsFromArchiveEntry:
         assert cols == mock_cols
 
     def test_avro_none_result_returns_empty_list(self):
-        entry = ArchiveEntry(name="data.avro", data=BytesIO(b"fake"), size=4)
+        entry = _make_entry("data.avro", b"fake")
         with patch(
             "metadata.readers.archive.AvroDataFrameReader._get_avro_columns",
             return_value=None,
@@ -1086,18 +1377,18 @@ class TestInferColumnsFromArchiveEntry:
         assert cols == []
 
     def test_no_reader_for_mf4_returns_empty(self):
-        entry = ArchiveEntry(name="data.MF4", data=BytesIO(b"\x00" * 10), size=10)
+        entry = _make_entry("data.MF4", b"\x00" * 10)
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.MF4)
         assert cols == []
 
     def test_corrupted_data_returns_empty(self):
-        entry = ArchiveEntry(name="bad.csv", data=BytesIO(b"\x00\xff\xfe"), size=3)
+        entry = _make_entry("bad.csv", b"\x00\xff\xfe")
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
         assert cols == []
 
     def test_data_seek_called_before_read(self):
-        entry = ArchiveEntry(name="data.csv", data=BytesIO(_CSV_CONTENT), size=len(_CSV_CONTENT))
-        entry.data.read()  # exhaust the buffer
+        entry = _make_entry("data.csv", _CSV_CONTENT)
+        entry.data.read()  # exhaust the cached buffer
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
         assert len(cols) > 0
 
@@ -1106,8 +1397,8 @@ class TestInferColumnsFromArchiveEntry:
 
         buf = BytesIO()
         pd.DataFrame({"a": [1, 2], "b": ["x", "y"]}).to_parquet(buf, index=False)
-        buf.seek(0)
-        entry = ArchiveEntry(name="data.parquet", data=buf, size=buf.getbuffer().nbytes)
+        parquet_data = buf.getvalue()
+        entry = _make_entry("data.parquet", parquet_data)
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.PARQUET)
         assert len(cols) > 0
         col_names = [c.name.root for c in cols]
@@ -1115,7 +1406,7 @@ class TestInferColumnsFromArchiveEntry:
         assert "b" in col_names
 
     def test_tsv_returns_columns(self):
-        entry = ArchiveEntry(name="data.tsv", data=BytesIO(_TSV_CONTENT), size=len(_TSV_CONTENT))
+        entry = _make_entry("data.tsv", _TSV_CONTENT)
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.TSV)
         assert len(cols) > 0
         col_names = [c.name.root for c in cols]
@@ -1126,7 +1417,7 @@ class TestInferColumnsFromArchiveEntry:
         from metadata.generated.schema.entity.data.table import DataType
 
         parquet_bytes = _make_complex_parquet()
-        entry = ArchiveEntry(name="data.parquet", data=BytesIO(parquet_bytes), size=len(parquet_bytes))
+        entry = _make_entry("data.parquet", parquet_bytes)
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.PARQUET)
         col_map = {c.name.root: c.dataType for c in cols}
         assert col_map["id"] == DataType.INT
@@ -1135,11 +1426,23 @@ class TestInferColumnsFromArchiveEntry:
 
     def test_parquet_empty_file_returns_columns_from_schema(self):
         parquet_bytes = _make_empty_parquet()
-        entry = ArchiveEntry(name="data.parquet", data=BytesIO(parquet_bytes), size=len(parquet_bytes))
+        entry = _make_entry("data.parquet", parquet_bytes)
         cols = infer_columns_from_archive_entry(entry, SupportedTypes.PARQUET)
         col_names = [c.name.root for c in cols]
         assert "id" in col_names
         assert "name" in col_names
+
+    def test_csv_header_only_returns_columns(self):
+        header_only = b"id,name,value\n"
+        entry = _make_entry("data.csv", header_only)
+        cols = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
+        assert len(cols) > 0
+
+    def test_infer_called_twice_uses_same_cached_data(self):
+        entry = _make_entry("data.csv", _CSV_CONTENT)
+        cols1 = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
+        cols2 = infer_columns_from_archive_entry(entry, SupportedTypes.CSV)
+        assert len(cols1) == len(cols2)
 
 
 # ---------------------------------------------------------------------------
@@ -1203,6 +1506,13 @@ class TestGetFirstSchemaEntry:
         entry, fmt = result
         assert fmt == SupportedTypes.PARQUET
         assert entry.name == "data.parquet"
+
+    def test_all_nested_archives_returns_none(self):
+        inner = _make_zip({"data.csv": _CSV_CONTENT})
+        outer = _make_zip({"a.zip": inner})
+        with ZipArchiveReader(outer) as reader:
+            result = get_first_schema_entry(reader)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -1310,17 +1620,83 @@ class TestIterArchiveEntriesWithSchema:
         assert "a" in col_names
         assert "b" in col_names
 
+    def test_all_archive_files_yield_nothing(self):
+        """If all entries are nested archives, nothing is yielded."""
+        inner = _make_zip({"data.csv": _CSV_CONTENT})
+        outer = _make_zip({"a.zip": inner, "b.zip": inner})
+        with ZipArchiveReader(outer) as reader:
+            results = list(iter_archive_entries_with_schema(reader))
+        assert results == []
+
+    def test_mixed_archive_and_data_files(self):
+        inner_zip = _make_zip({"inner.csv": _CSV_CONTENT})
+        zip_bytes = _make_zip({"nested.zip": inner_zip, "real.csv": _CSV_CONTENT, "image.png": b"\x89PNG"})
+        with ZipArchiveReader(zip_bytes) as reader:
+            results = list(iter_archive_entries_with_schema(reader))
+        names = [r[0].name for r in results]
+        assert "nested.zip" not in names
+        assert "real.csv" in names
+        assert "image.png" in names
+
+    def test_data_loader_called_only_for_first_schema_entry(self):
+        """For a multi-file archive, the data loader is triggered exactly once — for the first
+        entry used to infer schema. Subsequent entries with the same schema are yielded without
+        ever accessing their data.
+
+        cached_property stores its result in instance.__dict__["data"] on first access.
+        Entries whose loader was never called will have no "data" key in __dict__.
+        """
+        zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT, "c.csv": _CSV_CONTENT})
+        with ZipArchiveReader(zip_bytes) as reader:
+            results = list(iter_archive_entries_with_schema(reader))
+
+        assert len(results) == 3
+        entries = [r[0] for r in results]
+
+        # Only the first entry should have had its data loader triggered
+        loaders_triggered = [e.name for e in entries if "data" in e.__dict__]
+        loaders_not_triggered = [e.name for e in entries if "data" not in e.__dict__]
+
+        assert loaders_triggered == ["a.csv"]
+        assert set(loaders_not_triggered) == {"b.csv", "c.csv"}
+
+    def test_data_loader_not_called_when_schema_already_known(self):
+        """Verify via mock loader that entries beyond the first never have their loader invoked."""
+        loaded = []
+
+        def _tracked_loader(name, content):
+            def loader():
+                loaded.append(name)
+                return BytesIO(content)
+
+            return loader
+
+        entries_in = [
+            ArchiveEntry("first.csv", len(_CSV_CONTENT), _tracked_loader("first.csv", _CSV_CONTENT)),
+            ArchiveEntry("second.csv", len(_CSV2_CONTENT), _tracked_loader("second.csv", _CSV2_CONTENT)),
+            ArchiveEntry("third.csv", len(_CSV_CONTENT), _tracked_loader("third.csv", _CSV_CONTENT)),
+        ]
+
+        mock_reader = MagicMock()
+        mock_reader.entries.return_value = iter(entries_in)
+
+        list(iter_archive_entries_with_schema(mock_reader))
+
+        # Only first.csv's loader should have been called (to infer schema)
+        assert loaded == ["first.csv"]
+
 
 class TestParquetInArchiveFormats:
     def test_parquet_inside_tar(self):
         parquet_bytes = _make_parquet({"x": [1, 2], "y": ["a", "b"]})
         tar_bytes = _make_tar({"data.parquet": parquet_bytes})
+        # infer_columns must run inside the context — tar file must be open
         with TarArchiveReader(tar_bytes) as reader:
             result = get_first_schema_entry(reader)
-        assert result is not None
-        entry, fmt = result
-        assert fmt == SupportedTypes.PARQUET
-        cols = infer_columns_from_archive_entry(entry, fmt)
+            assert result is not None
+            entry, fmt = result
+            assert fmt == SupportedTypes.PARQUET
+            cols = infer_columns_from_archive_entry(entry, fmt)
         col_names = [c.name.root for c in cols]
         assert "x" in col_names
         assert "y" in col_names
@@ -1332,12 +1708,13 @@ class TestParquetInArchiveFormats:
 
         parquet_bytes = _make_parquet({"x": [1, 2], "y": ["a", "b"]})
         seven_z_bytes = _make_seven_z({"data.parquet": parquet_bytes})
+        # infer_columns must run inside the context — temp dir is deleted on close
         with SevenZipArchiveReader(seven_z_bytes) as reader:
             result = get_first_schema_entry(reader)
-        assert result is not None
-        entry, fmt = result
-        assert fmt == SupportedTypes.PARQUET
-        cols = infer_columns_from_archive_entry(entry, fmt)
+            assert result is not None
+            entry, fmt = result
+            assert fmt == SupportedTypes.PARQUET
+            cols = infer_columns_from_archive_entry(entry, fmt)
         col_names = [c.name.root for c in cols]
         assert "x" in col_names
         assert "y" in col_names
