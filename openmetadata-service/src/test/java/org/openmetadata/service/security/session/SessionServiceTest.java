@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -400,6 +401,62 @@ class SessionServiceTest {
         .addHeader(eq("Set-Cookie"), org.mockito.ArgumentMatchers.contains("Max-Age=0"));
 
     assertEquals(SessionStatus.REVOKED, sessionCaptor.getValue().getStatus());
+  }
+
+  @Test
+  void revokeSession_firesRegisteredRevocationListenerWithUserId() {
+    String sessionId = validSessionId('w');
+    String userId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+    UserSession active =
+        UserSession.builder()
+            .id(sessionId)
+            .userId(userId)
+            .status(SessionStatus.ACTIVE)
+            .version(0L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .updatedAt(now)
+            .lastAccessedAt(now)
+            .build();
+    when(repository.findById(sessionId)).thenReturn(Optional.of(active));
+    when(repository.updateIfVersion(any(UserSession.class), eq(0L))).thenReturn(true);
+
+    java.util.concurrent.atomic.AtomicReference<String> capturedUserId =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    sessionService.registerRevocationListener(capturedUserId::set);
+
+    sessionService.revokeSession(sessionId).orElseThrow();
+
+    assertEquals(userId, capturedUserId.get());
+  }
+
+  @Test
+  void revokeSession_listenerNotFiredOnVersionConflictExhaustion() {
+    String sessionId = validSessionId('x');
+    String userId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+    UserSession active =
+        UserSession.builder()
+            .id(sessionId)
+            .userId(userId)
+            .status(SessionStatus.ACTIVE)
+            .version(0L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .updatedAt(now)
+            .lastAccessedAt(now)
+            .build();
+    when(repository.findById(sessionId)).thenReturn(Optional.of(active));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(false);
+
+    java.util.concurrent.atomic.AtomicBoolean fired =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    sessionService.registerRevocationListener(u -> fired.set(true));
+
+    sessionService.revokeSession(sessionId);
+
+    assertFalse(fired.get(), "Listener must not fire when revocation never succeeded");
   }
 
   @Test

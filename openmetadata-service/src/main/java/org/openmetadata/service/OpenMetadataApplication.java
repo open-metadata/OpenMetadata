@@ -221,6 +221,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Jdbi jdbi;
   private Environment environment;
   private AuditLogRepository auditLogRepository;
+  private org.openmetadata.service.socket.SocketAddressFilter socketAddressFilter;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -471,6 +472,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     SessionService sessionService =
         new SessionService(SecurityConfigurationManager.getCurrentAuthConfig());
+    wireSessionRevocationToWebSockets(sessionService);
+    if (socketAddressFilter != null) {
+      socketAddressFilter.setSessionService(sessionService);
+    }
     environment.lifecycle().manage(sessionService);
     setAuthServletAttributes(
         contextHandler,
@@ -832,6 +837,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
       if (sessionService == null) {
         sessionService = new SessionService(SecurityConfigurationManager.getCurrentAuthConfig());
+        wireSessionRevocationToWebSockets(sessionService);
         environment.lifecycle().manage(sessionService);
         sessionService.start();
       } else {
@@ -868,6 +874,35 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
     }
+  }
+
+  /**
+   * Hook session revocation up to WebSocket termination. On every successful local revocation we
+   * (1) close any Socket.IO connections this pod is holding for the user and (2) publish a
+   * cross-pod signal on the cache-invalidation channel so peer pods do the same. The second hop
+   * is a no-op when no Redis pub/sub is wired up (single-pod deployments).
+   */
+  private void wireSessionRevocationToWebSockets(SessionService sessionService) {
+    sessionService.registerRevocationListener(
+        userId -> {
+          try {
+            java.util.UUID id = java.util.UUID.fromString(userId);
+            org.openmetadata.service.socket.WebSocketManager wsManager =
+                org.openmetadata.service.socket.WebSocketManager.getInstance();
+            if (wsManager != null) {
+              wsManager.disconnectAllForUser(id);
+            }
+            org.openmetadata.service.cache.CacheInvalidationPubSub pubSub =
+                org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub();
+            if (pubSub != null) {
+              pubSub.publish("session", id, null, "revoke");
+            }
+          } catch (IllegalArgumentException e) {
+            LOG.debug("Skipping revocation broadcast for non-UUID userId {}", userId);
+          } catch (Exception e) {
+            LOG.warn("Failed to propagate session revocation for {}", userId, e);
+          }
+        });
   }
 
   private void setAuthServletAttributes(
@@ -1096,7 +1131,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void initializeWebsockets(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
 
     LOG.info("Initializing WebSockets");

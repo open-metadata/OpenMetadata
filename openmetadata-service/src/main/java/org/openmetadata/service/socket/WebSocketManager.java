@@ -148,6 +148,33 @@ public class WebSocketManager {
     receivers.forEach(e -> sendToOne(e, event, message));
   }
 
+  /**
+   * Force-close every Socket.IO connection this pod is holding for the given user. Called locally
+   * by {@code SessionService} when a session is revoked and via the cache-invalidation pub/sub
+   * when revocation happens on another pod. Idempotent — a no-op if the user has no open sockets
+   * on this pod.
+   */
+  public void disconnectAllForUser(UUID userId) {
+    if (userId == null) {
+      return;
+    }
+    Map<String, SocketIoSocket> sockets = activityFeedEndpoints.remove(userId);
+    if (sockets == null || sockets.isEmpty()) {
+      return;
+    }
+    LOG.info(
+        "Force-disconnecting {} socket(s) for user {} on session revocation",
+        sockets.size(),
+        userId);
+    for (SocketIoSocket socket : sockets.values()) {
+      try {
+        socket.disconnect(true);
+      } catch (Exception e) {
+        LOG.warn("Failed to disconnect socket {} for user {}", socket.getId(), userId, e);
+      }
+    }
+  }
+
   public void sendToManyWithString(
       List<EntityRelationshipRecord> receivers, String event, String message) {
     receivers.forEach(e -> sendToOne(e.getId(), event, message));
