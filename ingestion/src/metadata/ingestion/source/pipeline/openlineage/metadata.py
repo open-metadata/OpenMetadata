@@ -151,7 +151,7 @@ class OpenlineageSource(PipelineServiceSource):
         :param data: single input/output entry from an OpenLineage event
         :return: EntityDetails carrying the entity type (and topic details)
         """
-        if data.get("namespace", "").startswith("kafka://"):
+        if (data.get("namespace") or "").startswith("kafka://"):
             return EntityDetails(
                 entity_type="topic",
                 topic_details=OpenlineageSource._get_topic_details(data),
@@ -721,12 +721,14 @@ class OpenlineageSource(PipelineServiceSource):
             if not resolved:
                 continue
             output_table_fqn = resolved.fqn
-            # Tolerate a missing or null facets/columnLineage/fields field at
-            # any level, mirroring the symlinks-facet defensiveness so a
-            # single malformed event never aborts the whole run.
-            facets = table.get("facets") or {}
-            column_lineage_facet = facets.get("columnLineage") or {} if isinstance(facets, dict) else {}
-            fields = column_lineage_facet.get("fields") or {} if isinstance(column_lineage_facet, dict) else {}
+            # Tolerate a missing, null, or wrongly typed facets/columnLineage/
+            # fields field at any level, mirroring the symlinks-facet
+            # defensiveness so a single malformed event never aborts the run.
+            facets = table.get("facets") if isinstance(table.get("facets"), dict) else None
+            column_lineage_facet = facets.get("columnLineage") if isinstance(facets, dict) else None
+            fields = column_lineage_facet.get("fields") if isinstance(column_lineage_facet, dict) else None
+            if not isinstance(fields, dict):
+                fields = {}
             for field_name, field_spec in fields.items():
                 if not isinstance(field_spec, dict):
                     continue

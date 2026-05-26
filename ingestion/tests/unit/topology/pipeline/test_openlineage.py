@@ -586,6 +586,44 @@ class OpenLineageUnitTest(unittest.TestCase):
             ):
                 self.assertEqual(self.open_lineage_source._get_column_lineage([], outputs), {})
 
+    def test_get_column_lineage_tolerates_non_dict_facets_at_any_level(self):
+        """A malformed event where facets/columnLineage/fields is the wrong
+        shape (list, string, etc.) must not raise. Without the isinstance
+        guards, ``fields.items()`` would AttributeError on a list."""
+        outputs_facets_list = [{"name": "schema.t", "facets": [], "namespace": "hive://"}]
+        outputs_column_lineage_list = [
+            {"name": "schema.t", "facets": {"columnLineage": []}, "namespace": "hive://"},
+        ]
+        outputs_fields_list = [
+            {
+                "name": "schema.t",
+                "facets": {"columnLineage": {"fields": ["not a dict"]}},
+                "namespace": "hive://",
+            },
+        ]
+        outputs_fields_string = [
+            {
+                "name": "schema.t",
+                "facets": {"columnLineage": {"fields": "broken"}},
+                "namespace": "hive://",
+            },
+        ]
+        with patch.object(self.open_lineage_source, "_resolve_table", return_value=None):
+            for outputs in (
+                outputs_facets_list,
+                outputs_column_lineage_list,
+                outputs_fields_list,
+                outputs_fields_string,
+            ):
+                self.assertEqual(self.open_lineage_source._get_column_lineage([], outputs), {})
+
+    def test_get_entity_details_tolerates_null_namespace(self):
+        """Explicit ``"namespace": null`` on a dataset must not crash the
+        Kafka prefix check. The dataset is treated as a table candidate that
+        downstream candidate parsing will then evaluate or skip."""
+        result = OpenlineageSource._get_entity_details({"namespace": None, "name": "schema.t"})
+        self.assertEqual(result.entity_type, "table")
+
     def test_iter_table_candidates_with_symlinks(self):
         """Symlink identity is a candidate; dotted name parsed to schema.table."""
         data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table", "type": "TABLE"}]}}}
