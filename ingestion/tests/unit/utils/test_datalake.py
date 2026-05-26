@@ -837,6 +837,32 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         # This test ensures we don't break existing JSON Schema parsing
         self.assertIsNotNone(columns)
 
+    def test_read_json_object_propagates_raw_data_for_iceberg(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps(
+            {
+                "format-version": 1,
+                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+            }
+        )
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
+    def test_read_json_object_returns_none_for_plain_object(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"a": 1, "b": 2})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertIsNone(raw)
+
+    def test_read_json_object_propagates_raw_data_for_json_schema(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
 
 class TestFetchColTypesWithParsedObjects:
     """fetch_col_types must correctly type object-dtype columns whose values are already
