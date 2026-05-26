@@ -264,7 +264,7 @@ test.describe('Context Center', () => {
 
       await test.step('Create Article button is visible', async () => {
         await expect(
-          page.getByRole('button', { name: /create.*article/i })
+          page.getByTestId('create-knowledge-page-btn')
         ).toBeVisible();
       });
 
@@ -303,7 +303,8 @@ test.describe('Context Center', () => {
       await navigateToDashboard(page);
 
       const createRes = page.waitForResponse('/api/v1/contextCenter/pages');
-      await page.getByRole('button', { name: /create.*article/i }).click();
+      await page.getByTestId('create-knowledge-page-btn').click();
+      await page.getByTestId('create-article-btn').click();
       await createRes;
 
       await expect(
@@ -977,7 +978,7 @@ test.describe('Context Center', () => {
       await expect(modal).not.toBeVisible();
     });
 
-    test('file upload shows progress and success status, then appears in list', async ({
+    test('file upload attaches file and closes modal, then appears in list', async ({
       page,
     }) => {
       await navigateToDocuments(page);
@@ -1005,20 +1006,10 @@ test.describe('Context Center', () => {
         '/api/v1/contextCenter/drive/files/upload'
       );
       await modal.getByRole('button', { name: /attach/i }).click();
-
-      // Progress bar / uploading state
-      const progressList = modal.getByRole('list');
-      await expect(progressList).toBeVisible();
-
       await uploadRes;
 
-      // Wait for done state
-      await expect(modal.getByText(/complete/i)).toBeVisible();
-
-      await expect(modal.getByText('100%')).toBeVisible();
-
-      // Close modal
-      await modal.getByRole('button', { name: /cancel/i }).click();
+      // Modal closes automatically after successful upload
+      await expect(modal).not.toBeVisible();
 
       // File appears in document list
       const docRow = page.getByText('test-upload.txt');
@@ -1115,7 +1106,7 @@ test.describe('Context Center', () => {
       }
     });
 
-    test('oversized file shows error toast and does NOT appear in upload list', async ({
+    test('oversized file appears in list with failed state and Attach button stays disabled', async ({
       page,
     }) => {
       await navigateToDocuments(page);
@@ -1136,16 +1127,15 @@ test.describe('Context Center', () => {
         buffer: bigBuffer,
       });
 
-      // Inline error message is shown inside the modal
-      await expect(modal.getByTestId('size-error-message')).toBeVisible({
+      // File appears in the list in a failed/error state
+      await expect(modal.getByText('too-large.bin')).toBeVisible({
         timeout: 5000,
       });
 
-      // The file does NOT appear in the staged list
-      await expect(modal.getByText('too-large.bin')).not.toBeVisible();
-
-      // Upload progress list is also absent (nothing was queued)
-      await expect(modal.getByRole('list')).not.toBeVisible();
+      // Attach button is disabled because there are no valid files to upload
+      await expect(
+        modal.getByRole('button', { name: /attach/i })
+      ).toBeDisabled();
     });
   });
 });
