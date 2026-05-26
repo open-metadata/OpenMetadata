@@ -68,7 +68,6 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
-import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
@@ -77,6 +76,11 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
 import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,

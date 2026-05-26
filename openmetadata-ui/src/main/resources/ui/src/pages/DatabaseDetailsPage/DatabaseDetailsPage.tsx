@@ -76,7 +76,6 @@ import {
   databaseQueryKey,
   DATABASE_DEFAULT_FIELDS,
 } from '../../rest/queries/databaseQuery';
-import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -87,6 +86,11 @@ import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,

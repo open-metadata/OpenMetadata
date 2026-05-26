@@ -38,7 +38,7 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
   };
 };
 
-export const normalizeToArray = <T,>(value: T | T[]): T[] => {
+export const normalizeToArray = <T>(value: T | T[]): T[] => {
   if (Array.isArray(value)) {
     return value;
   }

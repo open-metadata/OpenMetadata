@@ -71,8 +71,6 @@ import {
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { hasEditAccess } from '../../../utils/EntityUtils';
-import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -87,8 +85,14 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
+  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
