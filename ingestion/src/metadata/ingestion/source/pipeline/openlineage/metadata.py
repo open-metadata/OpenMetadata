@@ -245,12 +245,16 @@ class OpenlineageSource(PipelineServiceSource):
 
         Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
         """
+        # ``or ""`` instead of a dict default so an explicit ``null`` value
+        # (versus a missing key) is also normalized to an empty string. Without
+        # this, a malformed symlink with ``"namespace": null`` would propagate
+        # ``None`` into ``_parse_table_identity`` and crash on ``startswith``.
         identities: List[Tuple[str, str]] = [  # noqa: UP006
-            (identifier.get("namespace", ""), identifier.get("name", ""))
+            (identifier.get("namespace") or "", identifier.get("name") or "")
             for identifier in OpenlineageSource._symlink_identifiers(data)
             if identifier.get("type") != SymlinkType.LOCATION.value
         ]
-        identities.append((data.get("namespace", ""), data.get("name", "")))
+        identities.append((data.get("namespace") or "", data.get("name") or ""))
         return identities
 
     @classmethod

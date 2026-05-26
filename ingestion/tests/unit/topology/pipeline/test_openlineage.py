@@ -742,6 +742,31 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0][0].name, "tbl")
 
+    def test_iter_table_candidates_tolerates_null_namespace_and_name(self):
+        """Explicit ``null`` (not just missing) in namespace/name must be
+        treated as empty so namespace-based dispatch in ``_parse_table_identity``
+        does not crash on ``None.startswith``. A null name short-circuits to
+        no candidate; a null namespace falls through to the dotted parser."""
+        # Symlink with null namespace but a dotted name -> parsed via dotted
+        # fallback (namespace fallthrough), candidate retained.
+        symlink_null_ns = {
+            "facets": {"symlinks": {"identifiers": [{"namespace": None, "name": "schema.tbl", "type": "TABLE"}]}}
+        }
+        candidates = OpenlineageSource._iter_table_candidates(symlink_null_ns)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "tbl")
+        self.assertEqual(candidates[0][1], "")
+
+        # Symlink with explicit-null name -> no parseable identity, no crash.
+        symlink_null_name = {
+            "facets": {"symlinks": {"identifiers": [{"namespace": "arn:aws:glue:r:a", "name": None, "type": "TABLE"}]}}
+        }
+        self.assertEqual(OpenlineageSource._iter_table_candidates(symlink_null_name), [])
+
+        # Top-level explicit-null name -> no parseable identity, no crash.
+        top_null_name = {"namespace": "trino://host", "name": None}
+        self.assertEqual(OpenlineageSource._iter_table_candidates(top_null_name), [])
+
     def test_resolve_table_falls_back_to_toplevel_when_symlink_unresolved(self):
         """Resolution-aware: a symlink that parses but does not resolve to a
         configured service falls through to the next candidate."""
