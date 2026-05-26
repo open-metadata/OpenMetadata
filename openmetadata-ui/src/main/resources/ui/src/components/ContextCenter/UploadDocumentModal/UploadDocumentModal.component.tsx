@@ -25,8 +25,8 @@ import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
-import { Asset } from '../../../generated/attachments/asset';
-import { uploadAsset } from '../../../rest/assetAPI';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { uploadDriveFile } from '../../../rest/assetAPI';
 import {
   QueuedFile,
   StagedFile,
@@ -35,7 +35,7 @@ import {
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
-  entityLink,
+  folderFqn,
   onClose,
   onUploaded,
 }) => {
@@ -44,14 +44,14 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [sizeError, setSizeError] = useState('');
-  const uploadedAssetsRef = useRef<Asset[]>([]);
+  const uploadedFilesRef = useRef<ContextFile[]>([]);
   const cancelledRef = useRef(false);
 
   const hasStartedUploading = queuedFiles.length > 0;
 
   const handleClose = () => {
     cancelledRef.current = true;
-    uploadedAssetsRef.current = [];
+    uploadedFilesRef.current = [];
     setStagedFiles([]);
     setQueuedFiles([]);
     setIsUploading(false);
@@ -59,7 +59,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     onClose();
   };
 
-  const uploadSingleFile = async (entry: QueuedFile): Promise<Asset | null> => {
+  const uploadSingleFile = async (
+    entry: QueuedFile
+  ): Promise<ContextFile | null> => {
     setQueuedFiles((prev) =>
       prev.map((f) =>
         f.id === entry.id ? { ...f, progress: 0, status: 'uploading' } : f
@@ -67,14 +69,14 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     );
 
     try {
-      const asset = await uploadAsset(entry.file, entityLink);
+      const contextFile = await uploadDriveFile(entry.file, folderFqn);
       setQueuedFiles((prev) =>
         prev.map((f) =>
           f.id === entry.id ? { ...f, progress: 100, status: 'done' } : f
         )
       );
 
-      return asset;
+      return contextFile;
     } catch {
       setQueuedFiles((prev) =>
         prev.map((f) =>
@@ -115,12 +117,12 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     }
 
     setIsUploading(true);
-    const asset = await uploadSingleFile(entry);
+    const contextFile = await uploadSingleFile(entry);
     setIsUploading(false);
 
-    if (asset) {
-      uploadedAssetsRef.current = [...uploadedAssetsRef.current, asset];
-      onUploaded?.([asset]);
+    if (contextFile) {
+      uploadedFilesRef.current = [...uploadedFilesRef.current, contextFile];
+      onUploaded?.([contextFile]);
     }
   };
 
@@ -142,23 +144,23 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     setQueuedFiles((prev) => [...prev, ...newQueued]);
     setIsUploading(true);
 
-    const batchAssets: Asset[] = [];
+    const batchFiles: ContextFile[] = [];
     for (const entry of newQueued) {
       if (cancelledRef.current) {
         break;
       }
 
-      const asset = await uploadSingleFile(entry);
-      if (asset) {
-        batchAssets.push(asset);
+      const contextFile = await uploadSingleFile(entry);
+      if (contextFile) {
+        batchFiles.push(contextFile);
       }
     }
 
     if (!cancelledRef.current) {
       setIsUploading(false);
 
-      if (batchAssets.length > 0) {
-        onUploaded?.(batchAssets);
+      if (batchFiles.length > 0) {
+        onUploaded?.(batchFiles);
       }
     }
   };

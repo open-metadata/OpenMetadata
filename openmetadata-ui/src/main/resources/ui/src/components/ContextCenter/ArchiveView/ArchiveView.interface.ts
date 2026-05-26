@@ -11,25 +11,19 @@
  *  limitations under the License.
  */
 
-import { ContextFile } from '../../../generated/entity/data/contextFile';
+export type ArchiveItemType = 'article' | 'document';
 
-export interface UploadDocumentModalProps {
-  isOpen: boolean;
-  folderFqn?: string;
-  onClose: () => void;
-  onUploaded?: (files: ContextFile[]) => void;
+export interface ArchiveItem {
+  id: string;
+  name: string;
+  type: ArchiveItemType;
+  updatedBy?: string;
+  updatedAt?: number;
 }
 
-export type UploadStatus = 'uploading' | 'done' | 'error';
-
-export interface StagedFile {
-  id: string;
-  file: File;
-}
-
-export interface QueuedFile {
-  id: string;
-  file: File;
-  progress: number;
-  status: UploadStatus;
+export interface ArchiveViewProps {
+  data: ArchiveItem[];
+  isLoading: boolean;
+  onRestore: (item: ArchiveItem) => void;
+  onDelete: (item: ArchiveItem) => void;
 }
