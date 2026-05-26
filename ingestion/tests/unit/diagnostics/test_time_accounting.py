@@ -70,7 +70,6 @@ def test_sampler_credits_idle_when_only_workflow_execute_on_stack():
     assert snap["active_walltime"] == 0.0
     # workflow.execute does get op_time credit (for the top_ops breakdown)
     # but does NOT get category credit.
-    assert "workflow.execute" in dict(snap["top_ops"])
     assert "idle" not in snap["categories"]
 
 
@@ -170,24 +169,84 @@ def test_idle_and_active_can_both_accumulate_in_one_run():
     assert snap["categories"]["db"] == pytest.approx(0.4, rel=1e-6)
 
 
-# ---- top_ops ----
+# ---- method sampling ----
 
 
-def test_top_ops_sorted_by_time():
+class _FakeCode:
+    def __init__(self, filename: str, qualname: str) -> None:
+        self.co_filename = filename
+        self.co_qualname = qualname
+        self.co_name = qualname.rsplit(".", 1)[-1]
+
+
+class _FakeFrame:
+    def __init__(self, filename: str, qualname: str, back: "_FakeFrame | None" = None) -> None:
+        self.f_code = _FakeCode(filename, qualname)
+        self.f_back = back
+
+
+_GET_COLUMNS_FRAME = _FakeFrame(
+    "/env/src/metadata/ingestion/source/database/snowflake/metadata.py",
+    "SnowflakeSource.get_columns",
+)
+_GET_COLUMNS_KEY = "metadata/ingestion/source/database/snowflake/metadata.py:SnowflakeSource.get_columns"
+
+
+def test_method_sampling_credits_active_thread_frame():
     registry = OperationRegistry()
     sampler = TimeAccountingSampler(registry)
-    t1 = registry.push("snowflake.query", {"sql": "a"})
-    sampler.sample(0.5)
-    registry.pop(t1)
-    t2 = registry.push("ometa.http", {"method": "GET"})
-    sampler.sample(0.1)
-    registry.pop(t2)
-    snap = sampler.snapshot()
-    top = snap["top_ops"]
-    # Both ops appear, snowflake.query first because it accumulated more time
-    names = [name for name, _ in top]
-    assert names[0] == "snowflake.query"
-    assert "ometa.http" in names
+    tid = threading.get_ident()
+    registry.push("snowflake.query", {"sql": "SELECT 1"})
+    sampler.sample(0.2, {tid: _GET_COLUMNS_FRAME})
+    sampler.sample(0.2, {tid: _GET_COLUMNS_FRAME})
+    methods = dict(sampler.snapshot()["top_methods"])
+    assert methods[_GET_COLUMNS_KEY] == pytest.approx(0.4)
+
+
+def test_method_sampling_skips_idle_threads():
+    registry = OperationRegistry()
+    sampler = TimeAccountingSampler(registry)
+    tid = threading.get_ident()
+    registry.push("workflow.execute", {})
+    sampler.sample(0.2, {tid: _GET_COLUMNS_FRAME})
+    assert sampler.snapshot()["top_methods"] == []
+
+
+def test_method_sampling_skips_diagnostics_frames():
+    registry = OperationRegistry()
+    sampler = TimeAccountingSampler(registry)
+    tid = threading.get_ident()
+    registry.push("snowflake.query", {})
+    diagnostics_frame = _FakeFrame(
+        "/env/src/metadata/ingestion/diagnostics/monitors/time_accounting.py",
+        "TimeAccountingSampler.tick",
+        back=_GET_COLUMNS_FRAME,
+    )
+    sampler.sample(0.3, {tid: diagnostics_frame})
+    assert _GET_COLUMNS_KEY in dict(sampler.snapshot()["top_methods"])
+
+
+def test_method_sampling_without_frames_is_noop():
+    registry = OperationRegistry()
+    sampler = TimeAccountingSampler(registry)
+    registry.push("snowflake.query", {})
+    sampler.sample(0.2)
+    assert sampler.snapshot()["top_methods"] == []
+
+
+def test_method_sampling_caps_distinct_keys(monkeypatch):
+    from metadata.ingestion.diagnostics.monitors import time_accounting
+
+    monkeypatch.setattr(time_accounting, "_METHOD_LIMIT", 2)
+    registry = OperationRegistry()
+    sampler = TimeAccountingSampler(registry)
+    tid = threading.get_ident()
+    registry.push("snowflake.query", {})
+    for index in range(5):
+        sampler.sample(0.1, {tid: _FakeFrame(f"/env/src/metadata/m{index}.py", f"fn{index}")})
+    methods = dict(sampler.snapshot()["top_methods"])
+    assert "(other)" in methods
+    assert len([key for key in methods if key != "(other)"]) <= 2
 
 
 # ---- summary line ----
@@ -196,14 +255,15 @@ def test_top_ops_sorted_by_time():
 def test_summary_line_includes_required_fields():
     registry = OperationRegistry()
     sampler = TimeAccountingSampler(registry)
+    tid = threading.get_ident()
     registry.push("snowflake.query", {})
-    sampler.sample(0.2)
-    sampler.sample(0.2)
+    sampler.sample(0.2, {tid: _GET_COLUMNS_FRAME})
+    sampler.sample(0.2, {tid: _GET_COLUMNS_FRAME})
     line = sampler.render()
-    for key in ("elapsed=", "samples=", "active=", "idle=", "by_category=", "top_ops="):
+    for key in ("elapsed=", "samples=", "active=", "idle=", "by_category=", "top_methods="):
         assert key in line
     assert "db=" in line
-    assert "snowflake.query=" in line
+    assert "get_columns" in line
 
 
 def test_render_returns_none_for_zero_samples():
