@@ -58,14 +58,14 @@ function VersionTable<T extends Column | SearchIndexField>({
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const data = useMemo(() => {
-    if (searchText) {
+    if (searchText && !handelSearchCallback) {
       const searchCols = searchInColumns<T>(columns, searchText);
 
       return makeData<T>(searchCols);
-    } else {
-      return makeData<T>(columns);
     }
-  }, [searchText, columns]);
+
+    return makeData<T>(columns);
+  }, [searchText, columns, handelSearchCallback]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
