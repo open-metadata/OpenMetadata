@@ -78,7 +78,11 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
@@ -527,6 +531,22 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(knowledgePage.fullyQualifiedName, setFeedCount);
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.KNOWLEDGE_PAGE,
+        knowledgePage.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(contextCenterClassBase.getArticlePath(fqn, activeKey));
@@ -659,7 +679,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     if (knowledgePage?.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [knowledgePage?.fullyQualifiedName]);
 

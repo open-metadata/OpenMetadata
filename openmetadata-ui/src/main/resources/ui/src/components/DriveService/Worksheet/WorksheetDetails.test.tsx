@@ -34,9 +34,15 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
+  fetchEntityActivityCountInto: (...args: any[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: any[]) =>
+    mockFetchEntityTaskCountsInto(...args),
   getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
 }));
@@ -333,12 +339,16 @@ describe('WorksheetDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderWorksheetDetails();
 
     await waitFor(
       () => {
-        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+        expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+          'test-service.test-spreadsheet.test-worksheet',
+          expect.any(Function)
+        );
+        expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.WORKSHEET,
           'test-service.test-spreadsheet.test-worksheet',
           expect.any(Function)

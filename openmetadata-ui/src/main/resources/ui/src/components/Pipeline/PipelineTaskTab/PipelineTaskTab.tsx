@@ -15,7 +15,14 @@ import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -57,7 +64,16 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
+
+// TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
+// with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
+// into the entry chunk because PipelineTaskTab is reachable from
+// PipelineDetailsUtils + GenericWidgetUtils (both eager). Lazy-loading here
+// breaks that chain — Vite drops reactflow + the lineage helpers out of the
+// entry preload list; the DAG view chunk loads when the user actually opens
+// the Tasks tab. Suspense fallback is `null` because the surrounding Card
+// already has its own title/skeleton; a spinner here would flash once.
+const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
 
 export const PipelineTaskTab = () => {
   const {
@@ -169,10 +185,12 @@ export const PipelineTaskTab = () => {
       !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
         <Card className="task-dag-view-card" title={t('label.dag-view')}>
           <div className="h-100">
-            <TasksDAGView
-              selectedExec={selectedExecution}
-              tasks={pipelineDetails.tasks}
-            />
+            <Suspense fallback={null}>
+              <TasksDAGView
+                selectedExec={selectedExecution}
+                tasks={pipelineDetails.tasks}
+              />
+            </Suspense>
           </div>
         </Card>
       ) : (

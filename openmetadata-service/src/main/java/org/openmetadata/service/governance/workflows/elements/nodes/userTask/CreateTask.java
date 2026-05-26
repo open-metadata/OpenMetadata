@@ -23,6 +23,11 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.time.Duration;
+import java.time.Period;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -501,8 +506,10 @@ public class CreateTask implements TaskListener {
       if (requestedPriority != null) {
         updatedTask.setPriority(requestedPriority);
       }
-      if (requestedDueDate != null) {
-        updatedTask.setDueDate(requestedDueDate);
+      Long effectiveDueDate =
+          resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+      if (effectiveDueDate != null) {
+        updatedTask.setDueDate(effectiveDueDate);
       }
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
@@ -560,8 +567,10 @@ public class CreateTask implements TaskListener {
     if (taskFormSchemaVersion != null) {
       task.setTaskFormSchemaVersion(taskFormSchemaVersion);
     }
-    if (requestedDueDate != null) {
-      task.setDueDate(requestedDueDate);
+    Long effectiveDueDate =
+        resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+    if (effectiveDueDate != null) {
+      task.setDueDate(effectiveDueDate);
     }
     if (requestedExternalReference != null) {
       task.setExternalReference(
@@ -710,6 +719,38 @@ public class CreateTask implements TaskListener {
       return TaskEntityStatus.Open;
     }
     return TaskEntityStatus.fromValue(stageStatus);
+  }
+
+  static Long resolveEffectiveDueDate(
+      TaskEntityStatus stageStatus, Object payload, Long requestedDueDate) {
+    if (stageStatus != TaskEntityStatus.Granted || payload == null) {
+      return requestedDueDate;
+    }
+    if (!(payload instanceof Map<?, ?> rawMap)) {
+      return requestedDueDate;
+    }
+    Object durationValue = rawMap.get("duration");
+    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+      return requestedDueDate;
+    }
+    return parseMillisFromIso8601Duration(duration, requestedDueDate);
+  }
+
+  static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
+    try {
+      return System.currentTimeMillis() + Duration.parse(duration).toMillis();
+    } catch (DateTimeParseException ignored) {
+      // Duration.parse does not support month/year designators; try Period
+    }
+    try {
+      return ZonedDateTime.now(ZoneOffset.UTC)
+          .plus(Period.parse(duration))
+          .toInstant()
+          .toEpochMilli();
+    } catch (DateTimeParseException e) {
+      LOG.warn("[CreateTask] Could not parse duration '{}'; using taskDueDate", duration);
+      return fallback;
+    }
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
