@@ -12,6 +12,7 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
@@ -40,6 +41,7 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
@@ -556,6 +558,14 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {
