@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { ROUTES } from '../constants/constants';
 import { Asset } from '../generated/attachments/asset';
 import { PageType } from '../interface/knowledge-center.interface';
-import { downloadAsset } from '../rest/assetAPI';
+import { downloadDriveFile } from '../rest/assetAPI';
 import {
   assetToDocumentItem,
   extensionToFileType,
@@ -31,7 +31,7 @@ jest.mock('./ToastUtils', () => ({
 }));
 
 jest.mock('../rest/assetAPI', () => ({
-  downloadAsset: jest.fn(),
+  downloadDriveFile: jest.fn(),
 }));
 
 jest.mock('./KnowledgePageUtils', () => ({
@@ -183,7 +183,7 @@ describe('handleAssetDownload', () => {
   });
 
   it('should download asset successfully', async () => {
-    (downloadAsset as jest.Mock).mockResolvedValue(mockBlob);
+    (downloadDriveFile as jest.Mock).mockResolvedValue(mockBlob);
 
     const clickMock = jest.fn();
     const removeMock = jest.fn();
@@ -199,7 +199,7 @@ describe('handleAssetDownload', () => {
 
     await handleAssetDownload(mockFile as any);
 
-    expect(downloadAsset).toHaveBeenCalledWith('123');
+    expect(downloadDriveFile).toHaveBeenCalledWith('123');
 
     expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
 
@@ -215,7 +215,7 @@ describe('handleAssetDownload', () => {
   it('should show error toast when download fails', async () => {
     const error = new Error('Download failed');
 
-    (downloadAsset as jest.Mock).mockRejectedValue(error);
+    (downloadDriveFile as jest.Mock).mockRejectedValue(error);
 
     await handleAssetDownload(mockFile as any);
 
