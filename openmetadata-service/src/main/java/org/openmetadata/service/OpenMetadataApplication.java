@@ -1254,11 +1254,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void start() {
       scheduler =
           Executors.newSingleThreadScheduledExecutor(
-              runnable ->
-                  Thread.ofPlatform()
-                      .name("om-websocket-session-validator")
-                      .daemon(true)
-                      .unstarted(runnable));
+              runnable -> {
+                Thread thread = new Thread(runnable, "om-websocket-session-validator");
+                thread.setDaemon(true);
+                return thread;
+              });
       scheduler.scheduleWithFixedDelay(
           this::validateSessions,
           VALIDATION_INTERVAL_SECONDS,

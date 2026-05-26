@@ -579,6 +579,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       jwtResponse.setTokenType("Bearer");
       jwtResponse.setAccessToken(jwtAuthMechanism.getJWTToken());
       jwtResponse.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
+      httpServletResponse.setStatus(HttpServletResponse.SC_OK);
       writeJsonResponse(httpServletResponse, JsonUtils.pojoToJson(jwtResponse));
     } catch (SessionRefreshInProgressException e) {
       try {
@@ -1033,7 +1034,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private String requireRedirectUri(String redirectUri) {
     return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-        redirectUri, trustedRedirects(authenticationConfiguration.getCallbackUrl(), serverUrl));
+        redirectUri,
+        trustedRedirects(
+            authenticationConfiguration.getCallbackUrl(), serverUrl + "/auth/callback"));
   }
 
   private User getSessionUser(UserSession session) {

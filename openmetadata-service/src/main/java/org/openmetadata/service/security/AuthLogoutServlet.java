@@ -13,8 +13,8 @@ public class AuthLogoutServlet extends HttpServlet {
   @Override
   protected void doGet(
       final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse) {
-    httpServletResponse.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-    httpServletResponse.setHeader("Allow", "POST");
+    LOG.warn("GET /api/v1/auth/logout is deprecated; use POST instead");
+    doPost(httpServletRequest, httpServletResponse);
   }
 
   @Override

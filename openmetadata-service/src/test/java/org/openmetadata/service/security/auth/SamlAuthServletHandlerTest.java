@@ -37,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -58,6 +59,7 @@ class SamlAuthServletHandlerTest {
   @Mock private AuthenticationConfiguration authConfig;
   @Mock private AuthorizerConfiguration authorizerConfig;
   @Mock private SamlSSOClientConfig samlConfig;
+  @Mock private ServiceProviderConfig serviceProviderConfig;
   @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
@@ -72,6 +74,8 @@ class SamlAuthServletHandlerTest {
     when(authConfig.getCallbackUrl()).thenReturn("https://example.com/callback");
     when(authConfig.getSamlConfiguration()).thenReturn(samlConfig);
     when(samlConfig.getSamlDisplayNameAttributes()).thenReturn(null);
+    when(samlConfig.getSp()).thenReturn(serviceProviderConfig);
+    when(serviceProviderConfig.getCallback()).thenReturn("https://saml.example.com/callback");
     when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
     when(response.getOutputStream()).thenReturn(servletOutputStream);
     handler = new SamlAuthServletHandler(authConfig, authorizerConfig, sessionService);
@@ -112,12 +116,12 @@ class SamlAuthServletHandlerTest {
   @Test
   void handleLogin_fallsBackToRedirectUriParameter() {
     when(request.getParameter("callback")).thenReturn(null);
-    when(request.getParameter("redirectUri")).thenReturn("https://example.com/redirect");
+    when(request.getParameter("redirectUri")).thenReturn("https://example.com/callback");
     when(sessionService.createPendingSession(
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://example.com/redirect"),
+            eq("https://example.com/callback"),
             any(),
             any(),
             any()))
@@ -132,7 +136,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "https://example.com/redirect", null, null, null);
+            request, response, "saml", "https://example.com/callback", null, null, null);
   }
 
   @Test
@@ -142,6 +146,33 @@ class SamlAuthServletHandlerTest {
     handler.handleLogin(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+  }
+
+  @Test
+  void handleLogin_trustsSamlSpCallbackWhenTopLevelCallbackUrlUnset() {
+    when(authConfig.getCallbackUrl()).thenReturn("");
+    when(request.getParameter("callback")).thenReturn("https://saml.example.com/callback");
+    when(request.getParameter("redirectUri")).thenReturn(null);
+    when(sessionService.createPendingSession(
+            eq(request),
+            eq(response),
+            eq("saml"),
+            eq("https://saml.example.com/callback"),
+            any(),
+            any(),
+            any()))
+        .thenReturn(new UserSession());
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+        mockStatic(SamlSettingsHolder.class)) {
+      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+
+      handler.handleLogin(request, response);
+    }
+
+    verify(sessionService)
+        .createPendingSession(
+            request, response, "saml", "https://saml.example.com/callback", null, null, null);
   }
 
   @Test

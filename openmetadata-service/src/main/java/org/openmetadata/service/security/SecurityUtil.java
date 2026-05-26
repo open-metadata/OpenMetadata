@@ -436,25 +436,28 @@ public final class SecurityUtil {
     }
 
     URI candidate = parseTrustedRedirectUri(normalizedRedirect);
+    URI normalizedCandidate;
     if (!candidate.isAbsolute()) {
       String rawPath = candidate.getRawPath();
       if (nullOrEmpty(rawPath) || !rawPath.startsWith("/")) {
         throw new IllegalArgumentException("Redirect URI must be absolute or root-relative");
       }
-      return canonicalize(trustedUris.get(0), candidate);
+      normalizedCandidate = parseTrustedRedirectUri(canonicalize(trustedUris.get(0), candidate));
+    } else {
+      if (!nullOrEmpty(candidate.getRawUserInfo())) {
+        throw new IllegalArgumentException("Redirect URI must not contain user-info");
+      }
+      normalizedCandidate = candidate.normalize();
     }
 
-    if (!nullOrEmpty(candidate.getRawUserInfo())) {
-      throw new IllegalArgumentException("Redirect URI must not contain user-info");
-    }
-
-    URI matchedTrustedUri =
+    boolean isTrustedRedirect =
         trustedUris.stream()
-            .filter(trustedUri -> sameOrigin(trustedUri, candidate))
-            .findFirst()
-            .orElseThrow(
-                () -> new IllegalArgumentException("Redirect URI must match a trusted origin"));
-    return canonicalize(matchedTrustedUri, candidate);
+            .map(URI::normalize)
+            .anyMatch(trustedUri -> sameRedirect(trustedUri, normalizedCandidate));
+    if (!isTrustedRedirect) {
+      throw new IllegalArgumentException("Redirect URI must exactly match a trusted redirect URI");
+    }
+    return normalizedCandidate.toString();
   }
 
   private static String canonicalize(URI trustedBase, URI candidate) {
@@ -507,13 +510,21 @@ public final class SecurityUtil {
     }
   }
 
-  private static boolean sameOrigin(URI trustedUri, URI candidate) {
+  private static boolean sameRedirect(URI trustedUri, URI candidate) {
     if (StringUtils.isBlank(trustedUri.getHost()) || StringUtils.isBlank(candidate.getHost())) {
       return false;
     }
     return StringUtils.equalsIgnoreCase(trustedUri.getScheme(), candidate.getScheme())
         && StringUtils.equalsIgnoreCase(trustedUri.getHost(), candidate.getHost())
-        && normalizedPort(trustedUri) == normalizedPort(candidate);
+        && normalizedPort(trustedUri) == normalizedPort(candidate)
+        && StringUtils.equals(normalizedPath(trustedUri), normalizedPath(candidate))
+        && StringUtils.equals(trustedUri.getRawQuery(), candidate.getRawQuery())
+        && StringUtils.equals(trustedUri.getRawFragment(), candidate.getRawFragment());
+  }
+
+  private static String normalizedPath(URI uri) {
+    String path = uri.normalize().getPath();
+    return nullOrEmpty(path) ? "/" : path;
   }
 
   private static int normalizedPort(URI uri) {

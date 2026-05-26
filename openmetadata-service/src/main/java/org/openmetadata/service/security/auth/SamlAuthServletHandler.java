@@ -98,11 +98,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
+      if (callbackUrl == null) {
+        callbackUrl = defaultSamlRedirectUri();
+      }
       callbackUrl =
           org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              callbackUrl,
-              org.openmetadata.service.security.SecurityUtil.trustedRedirects(
-                  authConfig.getCallbackUrl()));
+              callbackUrl, trustedSamlRedirects());
       sessionService.createPendingSession(
           req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
 
@@ -215,14 +216,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       String callbackUrl =
           org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              redirectUri == null ? authConfig.getCallbackUrl() : redirectUri,
-              org.openmetadata.service.security.SecurityUtil.trustedRedirects(
-                  authConfig.getCallbackUrl()));
+              redirectUri == null ? defaultSamlRedirectUri() : redirectUri, trustedSamlRedirects());
       callbackUrl =
-          jakarta.ws.rs.core.UriBuilder.fromUri(callbackUrl)
-              .queryParam("id_token", jwtAuthMechanism.getJWTToken())
-              .build()
-              .toString();
+          org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
+              callbackUrl,
+              jwtAuthMechanism.getJWTToken(),
+              email,
+              displayName == null ? "" : displayName);
       resp.sendRedirect(callbackUrl);
 
     } catch (IllegalArgumentException e) {
@@ -489,6 +489,26 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   private Set<String> getAdminPrincipals() {
     AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
     return new HashSet<>(authorizerConfig.getAdminPrincipals());
+  }
+
+  private Set<String> trustedSamlRedirects() {
+    return org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+        authConfig.getCallbackUrl(), samlSpCallback());
+  }
+
+  private String defaultSamlRedirectUri() {
+    if (!nullOrEmpty(authConfig.getCallbackUrl())) {
+      return authConfig.getCallbackUrl();
+    }
+    return samlSpCallback();
+  }
+
+  private String samlSpCallback() {
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    if (samlConfig == null || samlConfig.getSp() == null) {
+      return null;
+    }
+    return samlConfig.getSp().getCallback();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {

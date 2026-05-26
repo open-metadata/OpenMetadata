@@ -26,9 +26,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Shared semantic contract for every {@link SessionStore} backend. Concrete subclasses provide
- * a fresh store from {@link #newStore()} for each test method — both
- * {@code JdbcSessionStoreTest} and {@code RedisSessionStoreTest} pass this suite, which proves
- * the two backends are interchangeable from {@link SessionService}'s point of view.
+ * a fresh store from {@link #newStore()} for each test method. Backends that extend this class
+ * prove they satisfy the common contract expected by {@link SessionService}.
  *
  * <p>Tests cover: round-trip persistence, optimistic CAS hit/miss, per-user enumeration ordering,
  * idle vs absolute timeout, delete semantics. The expire/prune cleanup is intentionally

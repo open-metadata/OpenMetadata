@@ -643,6 +643,38 @@ class SecurityUtilTest {
   }
 
   @Test
+  void validateRedirectUri_allowsExactTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "https://app.example.com/auth/callback",
+            Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_allowsRootRelativeTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "/auth/callback", Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_rejectsDifferentPathOnTrustedOrigin() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/evil",
+                    Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", exception.getMessage());
+  }
+
+  @Test
   void buildRedirectWithToken_usesFragmentNotQueryString() {
     String redirectUrl =
         SecurityUtil.buildRedirectWithToken(
