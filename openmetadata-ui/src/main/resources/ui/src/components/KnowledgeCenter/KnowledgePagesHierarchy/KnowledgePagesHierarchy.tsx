@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
+import {
+  Button,
+  Modal,
+  Skeleton,
+  Tree,
+  Typography as AntTypography,
+} from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
@@ -41,12 +47,15 @@ import {
 } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  deleteKnowledgePage,
   getPageHierarchyFromES,
   patchKnowledgePage,
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { Typography } from '@openmetadata/ui-core-components';
+import { File06 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare } from 'fast-json-patch';
@@ -56,7 +65,7 @@ import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -70,7 +79,6 @@ import {
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -142,6 +150,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -467,11 +476,11 @@ const KnowledgePagesHierarchy = forwardRef<
                 <span className="node-page-icon">
                   <KnowledgeCenterIcon data-testid="page-icon" />
                 </span>
-                <Typography.Text
+                <AntTypography.Text
                   ellipsis
                   className="text-base-color knowledge-hierarchy-page-title">
                   {node.title as ReactNode}
-                </Typography.Text>
+                </AntTypography.Text>
               </div>
             </Link>
             <div
@@ -736,6 +745,28 @@ const KnowledgePagesHierarchy = forwardRef<
 
     return (
       <div className="knowledge-pages-hierarchy-wrapper">
+        <div className="tw:flex tw:items-center tw:gap-3 tw:p-4 pt-2 tw:mb-2">
+          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <File06
+              className="tw:text-gray-600"
+              height={20}
+              strokeWidth={1.2}
+              width={20}
+            />
+          </div>
+          <div>
+            <Typography size="text-md" weight="semibold">
+              {t('label.article-plural')}
+            </Typography>
+            <Typography
+              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
+              size="text-xs">
+              <span>
+                {paginationState.paging.total} {t('label.article-plural')}
+              </span>
+            </Typography>
+          </div>
+        </div>
         <DirectoryTree
           data-testid="knowledge-pages-hierarchy"
           defaultExpandAll={false}
@@ -766,22 +797,30 @@ const KnowledgePagesHierarchy = forwardRef<
 
         {paginationState.paginationLoading && <Loader size="x-small" />}
 
-        {deletePage && (
-          <DeleteWidgetModal
-            isRecursiveDelete
-            afterDeleteAction={() => handleAfterDeletePage(deletePage)}
-            allowSoftDelete={false}
-            entityId={deletePage.id}
-            entityName={deletePage.displayName || t('label.untitled')}
-            entityType={EntityType.KNOWLEDGE_CENTER}
-            prepareType={false}
-            successMessage={t('server.entity-deleted-successfully', {
-              entity: t('label.article'),
-            })}
-            visible={!isUndefined(deletePage)}
-            onCancel={() => setDeletePage(undefined)}
-          />
-        )}
+        <DeleteModal
+          entityTitle={deletePage?.displayName || t('label.untitled')}
+          isDeleting={isDeleting}
+          message={t('message.soft-delete-message-for-entity', {
+            entity: deletePage?.displayName || t('label.untitled'),
+          })}
+          open={!isUndefined(deletePage)}
+          onCancel={() => setDeletePage(undefined)}
+          onDelete={async () => {
+            if (!deletePage?.id) {
+              return;
+            }
+            setIsDeleting(true);
+            try {
+              await deleteKnowledgePage(deletePage.id);
+              await handleAfterDeletePage(deletePage);
+              setDeletePage(undefined);
+            } catch (error) {
+              showErrorToast(error as AxiosError);
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+        />
 
         {movedPage && (
           <Modal

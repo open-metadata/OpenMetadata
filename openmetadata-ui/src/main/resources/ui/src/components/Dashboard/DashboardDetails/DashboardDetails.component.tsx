@@ -31,7 +31,11 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -139,8 +143,25 @@ const DashboardDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityTaskCountsInto(decodedDashboardFQN, setFeedCount);
+    }
+  }, [decodedDashboardFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD,
+        decodedDashboardFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDashboardFQN]);
+
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedDashboardFQN]);
 
   const handleTabChange = (activeKey: string) => {

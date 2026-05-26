@@ -14,7 +14,7 @@ import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse, unparse } from 'papaparse';
-import { Column, RenderCellProps } from 'react-data-grid';
+import type { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';

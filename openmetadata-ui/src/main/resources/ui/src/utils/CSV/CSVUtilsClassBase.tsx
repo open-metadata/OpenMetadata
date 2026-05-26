@@ -14,9 +14,10 @@
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, toString } from 'lodash';
 import { ReactNode, useRef } from 'react';
-import { RenderEditCellProps, textEditor } from 'react-data-grid';
+import type { RenderEditCellProps } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
@@ -522,7 +523,7 @@ class CSVUtilsClassBase {
           );
         };
       default:
-        return textEditor;
+        return lazyTextEditor;
     }
   }
 }

@@ -32,18 +32,15 @@ import {
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
+import type { Connection, Edge, Node, ReactFlowInstance } from 'reactflow';
 import {
-  Connection,
-  Edge,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
   isNode,
   MarkerType,
-  Node,
   Position,
-  ReactFlowInstance,
 } from 'reactflow';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';

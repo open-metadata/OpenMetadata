@@ -41,8 +41,8 @@ import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsB
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { entityChartColor } from '../../utils/ColorUtils';
+import { CustomTooltip } from '../../utils/DataInsightChartUtils';
 import {
-  CustomTooltip,
   getGraphDataByEntityType,
   sortEntityByValue,
 } from '../../utils/DataInsightUtils';

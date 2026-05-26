@@ -71,7 +71,13 @@ import {
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts, hasEditAccess } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getEntityDeleteMessage,
+  getFeedCounts,
+  hasEditAccess,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -194,6 +200,20 @@ const DataProductsDetailsPage = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
 
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
@@ -663,7 +683,8 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
