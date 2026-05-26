@@ -348,7 +348,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
             ? { shareConfig: { visibility } }
             : {}),
         };
-      const patch = compare(original, updated);
+        const patch = compare(original, updated);
         await updateContextMemory(memoryToEdit.id, patch);
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.memory') })
