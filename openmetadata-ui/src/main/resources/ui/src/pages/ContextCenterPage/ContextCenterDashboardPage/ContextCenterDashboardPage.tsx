@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -27,27 +28,32 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Asset } from '../../../generated/attachments/asset';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import {
+  KnowledgePage,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
+import { listContextFiles } from '../../../rest/assetAPI';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
-  assetToDocumentItem,
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  contextFileToUploadedDocumentItem,
   createArticleKnowledgePage,
-  fetchContextCenterDocuments,
   handleAssetDownload,
   knowledgePageToArticleItem,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const RECENT_ARTICLES_LIMIT = 25;
+const RECENT_ARTICLES_LIMIT = 20;
+const RECENT_DOCUMENTS_LIMIT = 20;
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { alert } = useAlertStore();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
 
@@ -75,6 +81,9 @@ const ContextCenterDashboardPage: FC = () => {
       const response = await getListKnowledgePages({
         fields: 'tags,page',
         limit: RECENT_ARTICLES_LIMIT,
+        pageType: PageType.ARTICLE,
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
       });
       setArticles(
         response.data.map((page: KnowledgePage) =>
@@ -91,8 +100,8 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const assets = await fetchContextCenterDocuments();
-      setDocuments(assets.map(assetToDocumentItem));
+      const files = await listContextFiles(RECENT_DOCUMENTS_LIMIT);
+      setDocuments(files.map(contextFileToUploadedDocumentItem));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -117,14 +126,18 @@ const ContextCenterDashboardPage: FC = () => {
     fetchPermission();
   }, [fetchRecentArticles, fetchDocuments, fetchPermission]);
 
-  const handleUploaded = useCallback((newAssets: Asset[]) => {
-    setDocuments((prev) => [...newAssets.map(assetToDocumentItem), ...prev]);
+  const handleUploaded = useCallback((newFiles: ContextFile[]) => {
+    setDocuments((prev) => [
+      ...newFiles.map(contextFileToUploadedDocumentItem),
+      ...prev,
+    ]);
   }, []);
 
   return (
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
           {
@@ -172,7 +185,6 @@ const ContextCenterDashboardPage: FC = () => {
       </div>
 
       <UploadDocumentModal
-        entityLink={CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK}
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUploaded={handleUploaded}

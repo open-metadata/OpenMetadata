@@ -20,6 +20,7 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import {
@@ -243,6 +244,8 @@ export interface KnowledgePageSearchSource
   extends SearchSourceBase,
     KnowledgePage {}
 
+export interface DriveFileSearchSource extends SearchSourceBase, ContextFile {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -323,6 +326,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
   [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.DRIVE_FILE]: DriveFileSearchSource;
   [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 
