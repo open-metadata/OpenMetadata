@@ -127,8 +127,6 @@ class SearchUtilsTest {
     assertFalse(
         SearchUtils.getRequiredEntityRelationshipFields("description, embedding")
             .contains("embedding"));
-    assertEquals(List.of("cursorA", "cursorB"), SearchUtils.searchAfter("cursorA,cursorB"));
-    assertNull(SearchUtils.searchAfter(null));
     assertEquals(List.of("name", "owners"), SearchUtils.sourceFields(" name, , owners "));
     assertTrue(SearchUtils.sourceFields(null).isEmpty());
     assertTrue(
@@ -548,6 +546,36 @@ class SearchUtilsTest {
   @ValueSource(strings = {"table_search_index", "test_case_result_search_index", "garbage"})
   void isDataQualityIndexRejectsNonDataQualityIndices(String index) {
     assertFalse(SearchUtils.isDataQualityIndex(index));
+  }
+
+  @Test
+  void searchAfterNullOrEmpty() {
+    assertNull(SearchUtils.searchAfter((List<String>) null));
+    assertNull(SearchUtils.searchAfter(List.of()));
+  }
+
+  @Test
+  void searchAfterBlankEntriesDropped() {
+    assertNull(SearchUtils.searchAfter(List.of("")));
+    assertNull(SearchUtils.searchAfter(List.of("", "")));
+    assertEquals(List.of("v1"), SearchUtils.searchAfter(List.of("", "v1", "")));
+  }
+
+  @Test
+  void searchAfterMultiValueListPreserved() {
+    assertEquals(List.of("v1", "v2"), SearchUtils.searchAfter(List.of("v1", "v2")));
+  }
+
+  @Test
+  void searchAfterSingleValueContainingCommaNotSplit() {
+    String commaFqn = "service.database.schema.glossary term (with comma, inside name)";
+    assertEquals(List.of(commaFqn), SearchUtils.searchAfter(List.of(commaFqn)));
+  }
+
+  @Test
+  void searchAfterMultipleCommaBearingValuesPreserved() {
+    List<String> values = List.of("first,with,commas", "second,also,with,commas");
+    assertEquals(values, SearchUtils.searchAfter(values));
   }
 
   @ParameterizedTest(name = "mapEntityTypesToIndexNames(\"{0}\") == \"{1}\"")
