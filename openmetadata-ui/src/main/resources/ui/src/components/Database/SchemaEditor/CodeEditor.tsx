@@ -23,15 +23,14 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCodeMirror } from '../../../hooks/useCodeMirror';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import './schema-editor.less';
-import { SchemaEditorProps } from './SchemaEditor.interface';
+import { Mode, SchemaEditorProps } from './SchemaEditor.interface';
+
+const DEFAULT_MODE: Mode = { name: CSMode.JAVASCRIPT, json: true };
 
 const CodeEditor = ({
   value = '',
   className = '',
-  mode = {
-    name: CSMode.JAVASCRIPT,
-    json: true,
-  },
+  mode = DEFAULT_MODE,
   options,
   editorClass,
   showCopyButton = true,

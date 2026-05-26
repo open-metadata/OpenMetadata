@@ -46,7 +46,7 @@ jest.mock('../../../hooks/useCodeMirror', () => ({
     capturedOpts = { ...opts };
 
     return {
-      editorRef: { current: null },
+      editorRef: jest.fn(),
       viewRef: {
         current: {
           scrollDOM: { scrollTo: jest.fn() },

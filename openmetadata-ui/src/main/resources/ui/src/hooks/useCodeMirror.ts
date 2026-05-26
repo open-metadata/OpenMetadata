@@ -85,7 +85,7 @@ export interface UseCodeMirrorOptions {
 }
 
 export interface UseCodeMirrorReturn {
-  editorRef: RefObject<HTMLDivElement | null>;
+  editorRef: (node: HTMLDivElement | null) => void;
   viewRef: RefObject<EditorView | null>;
   requestRefresh: () => void;
 }
@@ -133,29 +133,41 @@ function buildDynamicExtensions(opts: UseCodeMirrorOptions): Extension[] {
 }
 
 export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
-  const editorRef = useRef<HTMLDivElement | null>(null);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const dynamicCompartment = useRef(new Compartment());
   const onChangeRef = useRef(opts.onChange);
   const onFocusRef = useRef(opts.onFocus);
+  const optsRef = useRef(opts);
 
   onChangeRef.current = opts.onChange;
   onFocusRef.current = opts.onFocus;
+  optsRef.current = opts;
 
-  // Assumption: the host <div ref={editorRef} /> is rendered unconditionally by the
-  // caller. If the div is conditionally rendered (null at mount) the EditorView is
-  // never created. If the div element is replaced later (e.g. key change) the old
-  // view stays attached to the detached node until component unmount. Both are
-  // acceptable for current callers (SchemaEditor / CodeEditor always render the div).
-  useEffect(() => {
-    if (!editorRef.current) {
+  // Callback ref: React calls this whenever the DOM node mounts, unmounts, or is
+  // replaced. Destroying the view here (when node becomes null or changes) ensures
+  // the EditorView is always cleaned up — even if the host element is conditionally
+  // rendered or swapped without the parent component unmounting.
+  const editorRef = useCallback((node: HTMLDivElement | null) => {
+    if (nodeRef.current === node) {
       return;
     }
 
-    const view = new EditorView({
-      parent: editorRef.current,
+    if (viewRef.current) {
+      viewRef.current.destroy();
+      viewRef.current = null;
+    }
+
+    nodeRef.current = node;
+
+    if (!node) {
+      return;
+    }
+
+    viewRef.current = new EditorView({
+      parent: node,
       state: EditorState.create({
-        doc: opts.value ?? '',
+        doc: optsRef.current.value ?? '',
         extensions: [
           history(),
           drawSelection(),
@@ -183,18 +195,10 @@ export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
               onFocusRef.current?.();
             },
           }),
-          dynamicCompartment.current.of(buildDynamicExtensions(opts)),
+          dynamicCompartment.current.of(buildDynamicExtensions(optsRef.current)),
         ],
       }),
     });
-
-    viewRef.current = view;
-
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
