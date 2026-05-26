@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import functools
 import json
 import traceback
@@ -379,7 +380,7 @@ class ESMixin(Generic[T]):
         if sort_order not in ("asc", "desc"):
             raise ValueError(f"sort_order must be 'asc' or 'desc', got '{sort_order}'")
 
-        after: Optional[str] = None
+        after: str = ""
         error_pages = 0
         query = functools.partial(
             self.paginate_query.format,
@@ -392,9 +393,7 @@ class ESMixin(Generic[T]):
             sort_order=sort_order,
         )
         while True:
-            query_string = query(
-                after="&search_after=" + quote_plus(after) if after else ""
-            )
+            query_string = query(after=after)
             response = self._get_es_response(query_string)
 
             # Allow 3 errors getting pages before getting out of the loop
@@ -412,7 +411,9 @@ class ESMixin(Generic[T]):
                 logger.debug("No more pages to fetch")
                 break
 
-            after = ",".join(last_hit.sort)
+            after = "".join(
+                f"&search_after={quote_plus(str(v))}" for v in last_hit.sort
+            )
 
     def paginate_es(
         self,
