@@ -20,9 +20,7 @@ import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import {
-  DocFile
-} from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
@@ -90,7 +88,9 @@ export const formatBytes = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const assetToDocumentItem = (asset: ContextFile): UploadedDocumentItem => ({
+export const assetToDocumentItem = (
+  asset: ContextFile
+): UploadedDocumentItem => ({
   fileExtension: asset.fileExtension ?? '',
   id: asset.id,
   name: getEntityName(asset) ?? '',
