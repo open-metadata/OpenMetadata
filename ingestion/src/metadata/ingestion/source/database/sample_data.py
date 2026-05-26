@@ -246,11 +246,11 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:  # noqa: UP006,
 
 
 def get_lineage_timestamp(
-    edge: Dict[str, Any],
+    edge: dict[str, Any],
     timestamp_key: str,
     days_ago_key: str,
     reference_time: datetime,
-) -> Optional[int]:
+) -> int | None:
     if edge.get(timestamp_key) is not None:
         return int(edge[timestamp_key])
 
@@ -262,20 +262,16 @@ def get_lineage_timestamp(
 
 
 def get_lineage_details(
-    edge: Dict[str, Any],
-    edge_entity_ref: Optional[EntityReference],
+    edge: dict[str, Any],
+    edge_entity_ref: EntityReference | None,
     reference_time: datetime,
-) -> Optional[LineageDetails]:
+) -> LineageDetails | None:
     temp_tables = None
     if edge.get("temp_lineage_tables"):
         temp_tables = [TempLineageTable(**table) for table in edge["temp_lineage_tables"]]
 
-    created_at = get_lineage_timestamp(
-        edge, "createdAt", "created_at_days_ago", reference_time
-    )
-    updated_at = get_lineage_timestamp(
-        edge, "updatedAt", "updated_at_days_ago", reference_time
-    )
+    created_at = get_lineage_timestamp(edge, "createdAt", "created_at_days_ago", reference_time)
+    updated_at = get_lineage_timestamp(edge, "updatedAt", "updated_at_days_ago", reference_time)
 
     if not any(
         [
