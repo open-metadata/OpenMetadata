@@ -13,6 +13,7 @@
 import {
   MemoryStatus,
   MemoryType,
+  ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -32,6 +33,8 @@ export interface MemoryItem {
   usageCount?: number;
   lastUsedAt?: number;
   relatedEntities?: EntityReference[];
+  visibility?: ShareVisibility;
+  owners?: EntityReference[];
 }
 
 export type MemoryFilterTab =

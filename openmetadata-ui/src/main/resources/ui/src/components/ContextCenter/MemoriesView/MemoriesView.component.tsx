@@ -128,7 +128,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
   return (
     <div
-      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary last:tw:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
+      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
       data-testid={`memory-row-${memory.id}`}
       onClick={() => onViewMemory?.(memory)}>
       {memory.updatedBy && (
@@ -136,80 +136,79 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
-
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-          {memory.updatedBy && (
-            <Typography className="tw:text-gray-700" size="text-sm">
-              {memory.updatedBy}
-            </Typography>
-          )}
-          {memory.updatedAt !== undefined && (
-            <>
-              <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
-                &middot;
-              </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
-                {getShortRelativeTime(memory.updatedAt)}
+      <div className="tw:flex tw:items-end tw:justify-between tw:w-full">
+        <div className="tw:flex tw:min-w-0 tw:basis-[75%] tw:flex-col tw:gap-1">
+          <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
+            {memory.updatedBy && (
+              <Typography className="tw:text-gray-700" size="text-sm">
+                {memory.updatedBy}
               </Typography>
-            </>
-          )}
-        </div>
+            )}
+            {memory.updatedAt !== undefined && (
+              <>
+                <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
+                  &middot;
+                </span>
+                <Typography className="tw:text-gray-500" size="text-xs">
+                  {getShortRelativeTime(memory.updatedAt)}
+                </Typography>
+              </>
+            )}
+          </div>
 
-        <Typography className="tw:truncate" weight="medium">
-          {memory.title || memory.name}
-        </Typography>
+          <Typography className="tw:truncate" weight="medium">
+            {memory.title || memory.name}
+          </Typography>
 
-        <div className="tw:flex tw:items-end tw:justify-between tw:gap-4">
           <Typography
             className="tw:text-gray-600 tw:line-clamp-2"
             size="text-xs">
             {memory.summary ?? memory.answer}
           </Typography>
-          {(memory.usageCount !== undefined ||
-            memory.lastUsedAt !== undefined) && (
-            <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
-              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
-              <Typography
-                className="tw:text-gray-500 tw:whitespace-nowrap"
-                size="text-xs">
-                {memory.usageCount === undefined
-                  ? ''
-                  : t('label.used-n-times', { count: memory.usageCount })}
-                {memory.lastUsedAt
-                  ? ` · ${t('label.last')} ${getShortRelativeTime(
-                      memory.lastUsedAt
-                    )}`
-                  : ''}
-              </Typography>
+
+          {memory.tags && memory.tags.length > 0 && (
+            <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
+              {memory.tags.map((tag) => (
+                <Badge
+                  className="tw:max-w-90 tw:min-w-0"
+                  key={String(tag.tagFQN ?? '')}
+                  size="md"
+                  type="color">
+                  {tag.style?.color && (
+                    <div className="tw:shrink-0">
+                      <Dot
+                        size="sm"
+                        style={{ color: tag.style?.color, marginRight: '6px' }}
+                      />
+                    </div>
+                  )}
+                  <Typography
+                    ellipsis
+                    className="tw:text-gray-700"
+                    size="text-xs">
+                    {tag.tagFQN}
+                  </Typography>
+                </Badge>
+              ))}
             </div>
           )}
         </div>
-
-        {memory.tags && memory.tags.length > 0 && (
-          <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
-            {memory.tags.map((tag) => (
-              <Badge
-                className="tw:max-w-90 tw:min-w-0"
-                key={String(tag.tagFQN ?? '')}
-                size="md"
-                type="color">
-                {tag.style?.color && (
-                  <div className="tw:shrink-0">
-                    <Dot
-                      size="sm"
-                      style={{ color: tag.style?.color, marginRight: '6px' }}
-                    />
-                  </div>
-                )}
-                <Typography
-                  ellipsis
-                  className="tw:text-gray-700"
-                  size="text-xs">
-                  {tag.tagFQN}
-                </Typography>
-              </Badge>
-            ))}
+        {(memory.usageCount !== undefined ||
+          memory.lastUsedAt !== undefined) && (
+          <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
+            <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+            <Typography
+              className="tw:text-gray-500 tw:whitespace-nowrap"
+              size="text-xs">
+              {memory.usageCount === undefined
+                ? ''
+                : t('label.used-n-times', { count: memory.usageCount })}
+              {memory.lastUsedAt
+                ? ` · ${t('label.last')} ${getShortRelativeTime(
+                    memory.lastUsedAt
+                  )}`
+                : ''}
+            </Typography>
           </div>
         )}
       </div>

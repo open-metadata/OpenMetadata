@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Badge,
   BadgeWithButton,
   Button,
@@ -25,22 +26,33 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lightbulb03, Plus, Share07, Trash01, X } from '@untitledui/icons';
+import {
+  Edit01,
+  Lightbulb03,
+  Plus,
+  Share07,
+  Trash01,
+  X,
+} from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
 import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
-import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
+import {
+  MEMORY_TYPE_OPTIONS,
+  VISIBILITY_OPTIONS,
+} from '../../../constants/ContextCenter.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   LabelType,
   MemoryType,
+  ShareVisibility,
   State,
   TagLabel,
   TagSource,
@@ -50,10 +62,14 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import {
+  formatDate,
+  getShortRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getErrorText } from '../../../utils/StringsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showSuccessToast } from '../../../utils/ToastUtils';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 const LinkedAssetCard: FC<{
@@ -144,15 +160,18 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   onUpdated,
   onDeleted,
   viewOnly = false,
+  canDelete = false,
+  currentUserName,
 }) => {
   const { t } = useTranslation();
   const modalContainerRef = useRef<HTMLDivElement>(null);
-  const isEditMode = Boolean(memoryToEdit) && !viewOnly;
+  const [isViewOnly, setIsViewOnly] = useState(viewOnly);
+  const isEditMode = Boolean(memoryToEdit) && !isViewOnly;
 
   let modalTitle = t('label.add-entity', { entity: t('label.memory') });
   if (isEditMode) {
     modalTitle = t('label.edit-entity', { entity: t('label.memory') });
-  } else if (viewOnly) {
+  } else if (isViewOnly) {
     modalTitle =
       memoryToEdit?.title ||
       t('label.edit-entity', { entity: t('label.memory') });
@@ -165,19 +184,32 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [title, setTitle] = useState('');
   const [memory, setMemory] = useState('');
   const [memoryType, setMemoryType] = useState<MemoryType | ''>('');
+  const [visibility, setVisibility] = useState<ShareVisibility>(
+    ShareVisibility.Shared
+  );
+  const [isEditingVisibility, setIsEditingVisibility] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [modalError, setModalError] = useState<string>('');
 
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
-
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
+
+  const { isOwner } = useMemo(() => {
+    return { isOwner: memoryToEdit?.updatedBy === currentUserName };
+  }, [memoryToEdit, currentUserName]);
+
+  useEffect(() => {
+    setIsViewOnly(viewOnly);
+  }, [viewOnly]);
 
   useEffect(() => {
     if (memoryToEdit) {
       setTitle(memoryToEdit.title ?? '');
       setMemory(memoryToEdit.answer || memoryToEdit.question);
       setMemoryType(memoryToEdit.memoryType ?? '');
+      setVisibility(memoryToEdit.visibility ?? ShareVisibility.Shared);
       setSelectedTags(memoryToEdit.tags ?? []);
       const assetOptions: DataAssetOption[] = (
         memoryToEdit.relatedEntities ?? []
@@ -192,19 +224,26 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       setTitle('');
       setMemory('');
       setMemoryType('');
+      setVisibility(ShareVisibility.Shared);
       setSelectedTags([]);
       setLinkedAssets([]);
     }
     setShowTagForm(false);
+    setModalError('');
+    setIsEditingVisibility(false);
   }, [memoryToEdit]);
 
   const handleClose = () => {
     setTitle('');
     setMemory('');
     setMemoryType('');
+    setVisibility(ShareVisibility.Shared);
     setLinkedAssets([]);
     setSelectedTags([]);
     setShowTagForm(false);
+    setModalError('');
+    setIsEditingVisibility(false);
+    setIsViewOnly(viewOnly);
     onClose();
   };
 
@@ -250,6 +289,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
 
     setIsSubmitting(true);
+    setModalError('');
     try {
       const relatedEntities = linkedAssets
         .filter((a) => a.reference?.id && a.reference?.type)
@@ -271,6 +311,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           displayName: r.displayName,
           fullyQualifiedName: r.fullyQualifiedName,
         }));
+        const hasExistingShareConfig = memoryToEdit.visibility !== undefined;
         const original = {
           title: memoryToEdit.title ?? '',
           summary: memoryToEdit.summary ?? '',
@@ -279,6 +320,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           memoryType: memoryToEdit.memoryType,
           tags: memoryToEdit.tags ?? [],
           relatedEntities: originalRelatedEntities,
+          ...(hasExistingShareConfig
+            ? { shareConfig: { visibility: memoryToEdit.visibility } }
+            : {}),
         };
         const updated = {
           title: title.trim(),
@@ -288,6 +332,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           memoryType: memoryType || undefined,
           tags: selectedTags,
           relatedEntities,
+          ...(hasExistingShareConfig || visibility !== ShareVisibility.Shared
+            ? { shareConfig: { visibility } }
+            : {}),
         };
         const patch = compare(original, updated);
         await updateContextMemory(memoryToEdit.id, patch);
@@ -309,6 +356,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           ...(memoryType ? { memoryType } : {}),
           ...(selectedTags.length > 0 ? { tags: selectedTags } : {}),
           ...(relatedEntities.length > 0 ? { relatedEntities } : {}),
+          shareConfig: { visibility },
         });
 
         showSuccessToast(
@@ -318,7 +366,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       }
       handleClose();
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      setModalError(
+        getErrorText(err as AxiosError, t('server.unexpected-error'))
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -329,6 +379,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       return;
     }
     setIsDeleting(true);
+    setModalError('');
     try {
       await deleteContextMemory(memoryToEdit.id);
       showSuccessToast(
@@ -337,11 +388,19 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       onDeleted?.();
       handleClose();
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      setModalError(
+        getErrorText(err as AxiosError, t('server.unexpected-error'))
+      );
     } finally {
       setIsDeleting(false);
     }
   };
+
+  const handleSwitchToEdit = () => {
+    setIsViewOnly(false);
+  };
+
+  const visibilityOption = VISIBILITY_OPTIONS.find((o) => o.id === visibility);
 
   return (
     <ModalOverlay
@@ -397,11 +456,21 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                 {/* Scrollable body */}
                 <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
+                  {/* Inline error alert */}
+                  {modalError && (
+                    <Alert
+                      closable
+                      title={modalError}
+                      variant="error"
+                      onClose={() => setModalError('')}
+                    />
+                  )}
+
                   {/* Section 1: Title */}
                   <div className="tw:flex tw:flex-col tw:gap-1">
                     <Input
                       data-testid="memory-title-input"
-                      isDisabled={viewOnly}
+                      isDisabled={isViewOnly}
                       label={t('label.title')}
                       placeholder={t('label.enter-entity', {
                         entity: t('label.title'),
@@ -419,13 +488,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         size="text-sm"
                         weight="medium">
                         {t('label.memory')}
-                        {!viewOnly && (
+                        {!isViewOnly && (
                           <span className="tw:text-error-primary tw:ml-0.5">
                             *
                           </span>
                         )}
                       </Typography>
-                      {!viewOnly && (
+                      {!isViewOnly && (
                         <Typography className="tw:text-gray-400" size="text-xs">
                           {t('message.what-should-ask-collate-remember')}
                         </Typography>
@@ -433,7 +502,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     </div>
                     <TextArea
                       data-testid="memory-content-input"
-                      isDisabled={viewOnly}
+                      isDisabled={isViewOnly}
                       placeholder={t(
                         'message.what-should-ask-collate-remember'
                       )}
@@ -447,7 +516,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   <div className="tw:flex tw:flex-col tw:gap-1">
                     <Select
                       data-testid="memory-type-select"
-                      isDisabled={viewOnly}
+                      isDisabled={isViewOnly}
                       label={t('label.type')}
                       placeholder={t('label.select-field', {
                         field: t('label.type'),
@@ -477,7 +546,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       })`}
                     </Typography>
 
-                    {viewOnly ? (
+                    {isViewOnly ? (
                       <LinkedAssetsReadOnly assets={linkedAssets} />
                     ) : (
                       <>
@@ -526,28 +595,72 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       {t('label.metadata')}
                     </Typography>
                     <Card className="tw:flex tw:flex-col tw:divide-y tw:divide-gray-100 tw:mt-2">
-                      <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                        <div className="tw:basis-[30%]">
+                      {/* Visibility row */}
+                      <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
+                        <div className="tw:basis-[30%] tw:shrink-0">
                           <Typography
                             className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                             size="text-sm">
                             {t('label.visibility')}
                           </Typography>
                         </div>
-                        <div className="tw:flex tw:items-center tw:gap-1.5">
-                          <Badge
-                            className="tw:flex tw:items-center tw:gap-1 tw:uppercase"
-                            color="brand"
-                            size="sm"
-                            type="color">
-                            <Share07 size={12} strokeWidth={2} />
-                            {t('label.shared')}
-                          </Badge>
-                          <Typography
-                            className="tw:text-gray-500"
-                            size="text-xs">
-                            {t('message.visible-to-everyone-in-workspace')}
-                          </Typography>
+                        <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-2">
+                          {isEditingVisibility || !memoryToEdit ? (
+                            <div className="tw:flex tw:items-center tw:gap-2">
+                              <Select
+                                className="tw:flex-1"
+                                data-testid="memory-visibility-select"
+                                fontSize="sm"
+                                size="sm"
+                                value={visibility}
+                                onChange={(key) =>
+                                  setVisibility(key as ShareVisibility)
+                                }>
+                                {VISIBILITY_OPTIONS.map((opt) => (
+                                  <Select.Item
+                                    id={opt.id}
+                                    key={opt.id}
+                                    label={t(opt.labelKey)}
+                                  />
+                                ))}
+                              </Select>
+                              {memoryToEdit && (
+                                <Button
+                                  color="secondary"
+                                  size="sm"
+                                  onClick={() => setIsEditingVisibility(false)}>
+                                  {t('label.cancel')}
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="tw:flex tw:items-center tw:gap-2">
+                              <Badge
+                                className="tw:flex tw:items-center tw:gap-1 tw:uppercase"
+                                color="brand"
+                                size="sm"
+                                type="color">
+                                <Share07 size={12} strokeWidth={2} />
+                                {visibilityOption
+                                  ? t(visibilityOption.labelKey)
+                                  : t('label.shared')}
+                              </Badge>
+                              {visibilityOption && (
+                                <Typography
+                                  className="tw:text-gray-500"
+                                  size="text-xs">
+                                  {t(visibilityOption.descriptionKey)}
+                                </Typography>
+                              )}
+                              {!isViewOnly && isOwner && (
+                                <ButtonUtility
+                                  color="tertiary"
+                                  icon={<Edit01 size={14} strokeWidth={2} />}
+                                  onClick={() => setIsEditingVisibility(true)}
+                                />
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -563,7 +676,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                           <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
                             {selectedTags.map((tag) =>
-                              viewOnly ? (
+                              isViewOnly ? (
                                 <Badge
                                   className="tw:max-w-40 tw:min-w-0"
                                   key={String(tag.tagFQN ?? '')}
@@ -617,7 +730,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                 </BadgeWithButton>
                               )
                             )}
-                            {!viewOnly && (
+                            {!isViewOnly && (
                               <Button
                                 color="link-color"
                                 iconLeading={Plus}
@@ -631,7 +744,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                         </div>
 
-                        {showTagForm && !viewOnly && (
+                        {showTagForm && !isViewOnly && (
                           <TagSelectForm
                             defaultValue={selectedTags.map((tag) => tag.tagFQN)}
                             fetchApi={fetchTagOptions}
@@ -670,13 +783,30 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               {t('label.used-by-ask-collate')}
                             </Typography>
                           </div>
-                          <Typography
-                            className="tw:text-gray-600"
-                            size="text-sm">
-                            {t('label.used-n-times', {
-                              count: memoryToEdit.usageCount,
-                            })}
-                          </Typography>
+                          <div className="tw:flex tw:items-center tw:gap-1">
+                            <Typography
+                              className="tw:text-gray-600"
+                              size="text-sm"
+                              weight="semibold">
+                              {t('label.n-times', {
+                                count: memoryToEdit.usageCount,
+                              })}
+                            </Typography>
+                            {memoryToEdit.lastUsedAt !== undefined && (
+                              <>
+                                <span className="tw:text-gray-400 tw:select-none tw:mx-1">
+                                  &middot;
+                                </span>
+                                <Typography
+                                  className="tw:text-gray-500"
+                                  size="text-sm">
+                                  {`${t('label.last')} ${getShortRelativeTime(
+                                    memoryToEdit.lastUsedAt
+                                  )}`}
+                                </Typography>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )}
                     </Card>
@@ -684,29 +814,37 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 </div>
 
                 {/* Sticky footer */}
-                {!viewOnly && (
-                  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
-                    <div>
-                      {isEditMode && (
-                        <Button
-                          color="tertiary-destructive"
-                          iconLeading={Trash01}
-                          isDisabled={isDeleting || isSubmitting}
-                          isLoading={isDeleting}
-                          size="sm"
-                          onClick={handleDelete}>
-                          {t('label.delete')}
-                        </Button>
-                      )}
-                    </div>
-                    <div className="tw:flex tw:items-center tw:gap-3">
+                <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
+                  <div>
+                    {(isEditMode || (isViewOnly && canDelete)) && (
                       <Button
-                        color="secondary"
-                        isDisabled={isSubmitting || isDeleting}
+                        color="tertiary-destructive"
+                        iconLeading={Trash01}
+                        isDisabled={isDeleting || isSubmitting}
+                        isLoading={isDeleting}
                         size="sm"
-                        onClick={handleClose}>
-                        {t('label.cancel')}
+                        onClick={handleDelete}>
+                        {t('label.delete')}
                       </Button>
+                    )}
+                  </div>
+                  <div className="tw:flex tw:items-center tw:gap-3">
+                    <Button
+                      color="secondary"
+                      isDisabled={isSubmitting || isDeleting}
+                      size="sm"
+                      onClick={handleClose}>
+                      {t('label.cancel')}
+                    </Button>
+                    {isViewOnly ? (
+                      <Button
+                        color="primary"
+                        iconLeading={Edit01}
+                        size="sm"
+                        onClick={handleSwitchToEdit}>
+                        {t('label.edit')}
+                      </Button>
+                    ) : (
                       <Button
                         color="primary"
                         isDisabled={
@@ -717,9 +855,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSubmit}>
                         {submitLabel}
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </ConfigProvider>
             </div>
           </Dialog.Content>
