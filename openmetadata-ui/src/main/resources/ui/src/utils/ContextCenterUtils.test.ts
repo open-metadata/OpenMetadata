@@ -20,7 +20,7 @@ import {
   formatBytes,
   getFileTypeIcon,
   handleAssetDownload,
-  knowledgePageToArticleItem,
+  knowledgePageToArticleItem
 } from './ContextCenterUtils';
 import { showErrorToast } from './ToastUtils';
 
