@@ -132,7 +132,7 @@ apache-airflow-providers-dingding==3.9.2
 apache-airflow-providers-discord==3.12.0
 apache-airflow-providers-docker==4.5.2
 # apache-airflow-providers-edge3 removed: edge executor opt-in, not used by OpenMetadata.
-apache-airflow-providers-elasticsearch==6.4.4
+apache-airflow-providers-elasticsearch==6.5.3
 apache-airflow-providers-exasol==4.9.2
 apache-airflow-providers-fab==3.2.0
 apache-airflow-providers-facebook==3.9.2
