@@ -24,11 +24,11 @@ import {
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
 } from '../../../../../rest/ingestionPipelineAPI';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import AddIngestionButton from '../AddIngestionButton.component';
