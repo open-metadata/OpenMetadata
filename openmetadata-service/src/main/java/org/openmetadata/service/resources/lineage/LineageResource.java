@@ -51,31 +51,25 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
+import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.Permission.Access;
-import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -84,7 +78,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/lineage")
@@ -100,10 +93,12 @@ public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
   private final LineageRepository dao;
   private final Authorizer authorizer;
+  private final LineageHydrator hydrator;
 
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
+    this.hydrator = new LineageHydrator(authorizer);
   }
 
   @GET
@@ -781,105 +776,11 @@ public class LineageResource {
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "400", description = "Request body is missing or empty")
       })
-  public Map<String, List<? extends EntityInterface>> hydrateLineageEntities(
+  public HydrateLineageResponse hydrateLineageEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid HydrateLineageRequest request) {
-    if (request == null || nullOrEmpty(request.getEntities())) {
-      throw new IllegalArgumentException("entities is required and non-empty");
-    }
-    Map<String, List<UUID>> idsByType = groupIdsByType(request.getEntities());
-    Include include = request.getInclude() == null ? Include.NON_DELETED : request.getInclude();
-    Map<String, List<? extends EntityInterface>> result = new LinkedHashMap<>(idsByType.size());
-    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
-      List<? extends EntityInterface> hydrated =
-          hydrateForType(
-              uriInfo,
-              securityContext,
-              entry.getKey(),
-              entry.getValue(),
-              request.getFields(),
-              include);
-      if (!hydrated.isEmpty()) {
-        result.put(entry.getKey(), hydrated);
-      }
-    }
-    return result;
-  }
-
-  private static Map<String, List<UUID>> groupIdsByType(List<EntityReference> refs) {
-    Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
-    for (EntityReference ref : refs) {
-      if (ref.getType() == null || ref.getId() == null) {
-        throw new IllegalArgumentException("each entity must have non-null type and id");
-      }
-      idsByType.computeIfAbsent(ref.getType(), k -> new ArrayList<>()).add(ref.getId());
-    }
-    return idsByType;
-  }
-
-  private List<? extends EntityInterface> hydrateForType(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String entityType,
-      List<UUID> ids,
-      String fieldsParam,
-      Include include) {
-    return hydrateAndAuthorize(
-        uriInfo,
-        securityContext,
-        entityType,
-        ids,
-        fieldsParam,
-        include,
-        Entity.getEntityRepository(entityType));
-  }
-
-  /**
-   * Load entities first, then authorize each against the loaded reference. Using the
-   * {@link ResourceContext#ResourceContext(String, EntityInterface, EntityRepository) entity-aware
-   * constructor} means {@code authorizer.getPermission} sees an already-resolved entity, so the
-   * lazy {@code resolveEntity} call inside {@link ResourceContext#getOwners} is a no-op — no
-   * second per-id repository fetch (and, for glossary terms / tags / data products, no parent
-   * lookup) just to evaluate VIEW_BASIC. With {@link Authorizer#getPermission} (non-throwing) the
-   * denied entities are dropped from the in-memory list before return, no exception walk per
-   * deny.
-   */
-  private <T extends EntityInterface> List<T> hydrateAndAuthorize(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String entityType,
-      List<UUID> ids,
-      String fieldsParam,
-      Include include,
-      EntityRepository<T> repo) {
-    Fields fields = repo.getFields(fieldsParam);
-    List<T> entities = repo.get(uriInfo, ids, fields, include);
-    String userName = securityContext.getUserPrincipal().getName();
-    List<T> authorized = new ArrayList<>(entities.size());
-    for (T entity : entities) {
-      ResourceContext<T> resourceContext = new ResourceContext<>(entityType, entity, repo);
-      ResourcePermission permission =
-          authorizer.getPermission(securityContext, userName, resourceContext);
-      if (isViewBasicAllowed(permission)) {
-        authorized.add(entity);
-      }
-    }
-    return authorized;
-  }
-
-  /**
-   * Return {@code true} when the resolved permission set explicitly allows VIEW_BASIC on the
-   * resource (either unconditionally or conditionally — both let the caller read the entity).
-   */
-  private static boolean isViewBasicAllowed(ResourcePermission permission) {
-    for (Permission p : permission.getPermissions()) {
-      if (p.getOperation() == MetadataOperation.VIEW_BASIC) {
-        Access access = p.getAccess();
-        return access == Access.ALLOW || access == Access.CONDITIONAL_ALLOW;
-      }
-    }
-    return false;
+    return hydrator.hydrate(uriInfo, securityContext, request);
   }
 
   @GET

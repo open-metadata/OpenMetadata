@@ -24,6 +24,7 @@ import {
 } from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
 
@@ -211,26 +212,27 @@ export const exportLineageByEntityCountAsync = async (params: {
 
 /**
  * Batch-hydrate a set of lineage nodes (entityType + id pairs) into full entity objects in a
- * single round-trip. Server replies with a map of entityType to a list of hydrated entities.
+ * single round-trip. Server replies with {@link HydrateLineageResponse} — an
+ * `entitiesByType` map keyed by entityType plus a `droppedCount` of entries the caller could
+ * not see.
  *
  * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
  * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
- * are silently dropped from the response.
+ * are silently dropped from `entitiesByType` and counted in `droppedCount` so the UI can
+ * surface "N items hidden by permissions" if it wants.
  *
- * The response value type is intentionally `unknown[]` rather than a specific entity union
- * because the server returns heterogeneous full entity objects (Table, Dashboard, Container,
- * Pipeline, …) keyed by `entityType`. Callers should narrow per-type at the call-site — e.g.
- * `result.table as Table[]` — once they know which key they're consuming. Typing the response
- * as `EntityReference[]` would mislead consumers into thinking the payload is the lightweight
- * reference DTO when it's actually the full hydrated entity with `columns`, `tableType`,
- * relationship fields, etc.
+ * The inner value type is `any` (per the generated schema) because the server returns
+ * heterogeneous full entity objects (Table, Dashboard, Container, Pipeline, …) keyed by
+ * `entityType` and OpenMetadata does not have a discriminated-union JSON schema for
+ * `EntityInterface`. Callers should narrow per-type at the call-site — e.g.
+ * `entitiesByType.table as Table[]` — once they know which key they're consuming.
  */
 export const hydrateLineageEntities = async (params: {
   entities: { type: string; id: string }[];
   fields?: string;
   include?: 'all' | 'deleted' | 'non-deleted';
-}): Promise<Record<string, unknown[]>> => {
-  const response = await APIClient.post<Record<string, unknown[]>>(
+}): Promise<HydrateLineageResponse> => {
+  const response = await APIClient.post<HydrateLineageResponse>(
     `/lineage/hydrate`,
     params
   );

@@ -47,15 +47,17 @@ import org.openmetadata.sdk.network.RequestOptions;
 /**
  * Integration tests for {@code POST /v1/lineage/hydrate} — the batch entity hydration endpoint.
  *
- * <p>Replaces N per-node entity GETs with one round-trip. Tests cover the happy paths (single
- * type, mixed types, fields propagation), request validation, and the request-shape contract
- * of the silent-drop authorization mode (non-existent ids do not fail the batch — the response
- * omits them).
+ * <p>Replaces N per-node entity GETs with one round-trip. The response is a
+ * {@code HydrateLineageResponse} with an {@code entitiesByType} map (keyed by entityType) and a
+ * {@code droppedCount} of entries the caller could not see. Tests cover the happy paths (single
+ * type, mixed types, fields propagation), request validation, and the silent-drop contract for
+ * non-existent ids (they don't fail the batch — they're omitted from {@code entitiesByType} and
+ * counted in {@code droppedCount}).
  *
  * <p>The full "permitted vs denied principal" silent-drop contract is enforced at the
- * implementation level by {@code LineageResource.hydrateAndAuthorize} (which loads each entity
- * via {@code repo.get(...)} and then runs {@code authorizer.getPermission} against the
- * already-loaded entity, keeping only those whose {@code VIEW_BASIC} access is {@code ALLOW} or
+ * implementation level by {@code LineageHydrator.hydrate} (which loads each entity via
+ * {@code repo.get(...)} and then runs {@code authorizer.getPermission} against the already-loaded
+ * entity, keeping only those whose {@code VIEW_BASIC} access is {@code ALLOW} or
  * {@code CONDITIONAL_ALLOW}). End-to-end coverage with a restricted-permission principal is left
  * as a follow-up — it requires bootstrapping a team / domain / policy stack that's heavier than
  * this IT's scope.
@@ -83,11 +85,14 @@ public class LineageHydrateIT {
 
     JsonNode response = postHydrate(client, request);
 
-    assertTrue(response.has("table"), "response must group by entityType");
-    JsonNode tables = response.get("table");
+    JsonNode entitiesByType = response.get("entitiesByType");
+    assertNotNull(entitiesByType, "response must contain entitiesByType");
+    assertTrue(entitiesByType.has("table"), "entitiesByType must group by entityType");
+    JsonNode tables = entitiesByType.get("table");
     assertEquals(2, tables.size(), "both requested tables must be returned");
     assertNotNull(tables.get(0).get("fullyQualifiedName"));
     assertNotNull(tables.get(0).get("version"), "hydrated entities should include version");
+    assertEquals(0, response.get("droppedCount").asInt(), "no entries should be dropped");
   }
 
   @Test
@@ -106,11 +111,14 @@ public class LineageHydrateIT {
                     new EntityReference().withType("dashboard").withId(dashboard.getId())));
 
     JsonNode response = postHydrate(client, request);
+    JsonNode entitiesByType = response.get("entitiesByType");
 
-    assertEquals(1, response.get("table").size());
-    assertEquals(1, response.get("dashboard").size());
-    assertEquals(table.getId().toString(), response.get("table").get(0).get("id").asText());
-    assertEquals(dashboard.getId().toString(), response.get("dashboard").get(0).get("id").asText());
+    assertEquals(1, entitiesByType.get("table").size());
+    assertEquals(1, entitiesByType.get("dashboard").size());
+    assertEquals(table.getId().toString(), entitiesByType.get("table").get(0).get("id").asText());
+    assertEquals(
+        dashboard.getId().toString(), entitiesByType.get("dashboard").get(0).get("id").asText());
+    assertEquals(0, response.get("droppedCount").asInt());
   }
 
   @Test
@@ -131,8 +139,8 @@ public class LineageHydrateIT {
     JsonNode bare = postHydrate(client, withoutFields);
     JsonNode rich = postHydrate(client, withFields);
 
-    JsonNode bareTable = bare.get("table").get(0);
-    JsonNode richTable = rich.get("table").get(0);
+    JsonNode bareTable = bare.get("entitiesByType").get("table").get(0);
+    JsonNode richTable = rich.get("entitiesByType").get("table").get(0);
 
     // tags / owners are not populated on a bare GET unless explicitly requested.
     assertFalse(
@@ -167,10 +175,15 @@ public class LineageHydrateIT {
 
     // The batch returns 200 with the resolvable id, omitting the missing one — not 404 or
     // empty.
-    assertTrue(response.has("table"), "response must include the resolvable table");
-    JsonNode tables = response.get("table");
+    JsonNode entitiesByType = response.get("entitiesByType");
+    assertTrue(entitiesByType.has("table"), "response must include the resolvable table");
+    JsonNode tables = entitiesByType.get("table");
     assertEquals(1, tables.size(), "only the existing table should be returned");
     assertEquals(table.getId().toString(), tables.get(0).get("id").asText());
+    assertEquals(
+        1,
+        response.get("droppedCount").asInt(),
+        "the unresolvable id should be counted as dropped");
   }
 
   @Test
