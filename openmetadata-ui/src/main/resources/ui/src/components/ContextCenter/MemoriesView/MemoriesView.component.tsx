@@ -21,9 +21,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock, Trash01 } from '@untitledui/icons';
-import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -104,6 +104,7 @@ const MemoryRowSkeleton: FC = () => (
 interface MemoryRowProps {
   canDelete?: boolean;
   currentUserName?: string;
+  isAdminUser?: boolean;
   memory: MemoryItem;
   onDeleteMemory?: (memory: MemoryItem) => void;
   onEditMemory?: (memory: MemoryItem) => void;
@@ -113,12 +114,15 @@ interface MemoryRowProps {
 const MemoryRow: FC<MemoryRowProps> = ({
   canDelete,
   currentUserName,
+  isAdminUser,
   memory,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
-  const isOwner = memory.updatedBy === currentUserName;
+  const isOwner =
+    memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
+  const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -217,7 +221,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             : 'tw:opacity-0 tw:group-hover:opacity-100'
         }`}
         onClick={(e) => e.stopPropagation()}>
-        {isOwner && onEditMemory && (
+        {canActOnMemory && onEditMemory && (
           <Tooltip title={t('label.edit')}>
             <TooltipTrigger>
               <ButtonUtility
@@ -230,7 +234,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             </TooltipTrigger>
           </Tooltip>
         )}
-        {isOwner && (
+        {canActOnMemory && (
           <MemoryActions
             canDelete={canDelete}
             memory={memory}
@@ -247,6 +251,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   canDelete,
   currentUserName,
   data,
+  isAdminUser,
   isLoading,
   onDeleteMemory,
   onEditMemory,
@@ -276,6 +281,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
         <MemoryRow
           canDelete={canDelete}
           currentUserName={currentUserName}
+          isAdminUser={isAdminUser}
           key={memory.id}
           memory={memory}
           onDeleteMemory={onDeleteMemory}

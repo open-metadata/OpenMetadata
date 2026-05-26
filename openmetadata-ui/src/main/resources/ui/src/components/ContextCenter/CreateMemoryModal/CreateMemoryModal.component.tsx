@@ -155,6 +155,12 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   );
 };
 
+const VISIBILITY_ICON_MAP = {
+  Share07: <Share07 size={12} strokeWidth={2} />,
+  Database01: <Database01 size={12} strokeWidth={2} />,
+  FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+};
+
 const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   memoryToEdit,
   isOpen,
@@ -199,9 +205,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
 
-  const { isOwner } = useMemo(() => {
-    return { isOwner: memoryToEdit?.updatedBy === currentUserName };
-  }, [memoryToEdit, currentUserName]);
+  const isOwner = useMemo(
+    () =>
+      memoryToEdit?.owners?.some((owner) => owner.name === currentUserName) ??
+      false,
+    [memoryToEdit, currentUserName]
+  );
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -339,10 +348,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
             ? { shareConfig: { visibility } }
             : {}),
         };
-        const patch = compare(original, updated);
+      const patch = compare(original, updated);
         await updateContextMemory(memoryToEdit.id, patch);
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.memory') })
+          t('server.entity-updated-success', { entity: t('label.memory') })
         );
         onUpdated?.();
       } else {
@@ -405,12 +414,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const visibilityOption = VISIBILITY_OPTIONS.find((o) => o.id === visibility);
 
-  const VISIBILITY_ICON_MAP = {
-    Share07: <Share07 size={12} strokeWidth={2} />,
-    Database01: <Database01 size={12} strokeWidth={2} />,
-    FileLock02: <FileLock02 size={12} strokeWidth={2} />,
-  };
-
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -466,7 +469,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 {/* Scrollable body */}
                 <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
                   {/* Read-only banner for non-owners */}
-                  {isViewOnly && !isOwner && memoryToEdit && (
+                  {isViewOnly && !isOwner && !canDelete && memoryToEdit && (
                     <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
                       <Lock01
                         className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
@@ -480,9 +483,14 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           weight="semibold">
                           {t('label.cant-edit-this-memory')}
                         </Typography>
-                        <Typography as="p" className="tw:text-warning-700 tw:leading-4" size="text-xs">
+                        <Typography
+                          as="p"
+                          className="tw:text-warning-700 tw:leading-4"
+                          size="text-xs">
                           {t('message.context-memory-read-only-description', {
-                            creatorName: memoryToEdit.updatedBy,
+                            creatorName:
+                              memoryToEdit.owners?.[0]?.name ??
+                              memoryToEdit.updatedBy,
                           })}
                         </Typography>
                       </div>
@@ -873,7 +881,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       onClick={handleClose}>
                       {t('label.cancel')}
                     </Button>
-                    {isViewOnly && isOwner ? (
+                    {isViewOnly && (isOwner || canDelete) ? (
                       <Button
                         color="primary"
                         iconLeading={Edit01}

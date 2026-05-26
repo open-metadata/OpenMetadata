@@ -292,7 +292,7 @@ const ContextCenterMemoriesPage: FC = () => {
     try {
       await deleteContextMemory(memoryToDelete.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
       fetchMemories();
@@ -621,6 +621,7 @@ const ContextCenterMemoriesPage: FC = () => {
             canDelete
             currentUserName={currentUser?.name}
             data={pagedMemories}
+            isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
@@ -637,7 +638,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
-        canDelete={memoryToEdit?.updatedBy === currentUser?.name}
+        canDelete={
+          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
+            false) ||
+          Boolean(currentUser?.isAdmin)
+        }
         currentUserName={currentUser?.name}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
@@ -651,7 +656,11 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={memoryToView.updatedBy === currentUser?.name}
+          canDelete={
+            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
+              false) ||
+            Boolean(currentUser?.isAdmin)
+          }
           currentUserName={currentUser?.name}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}

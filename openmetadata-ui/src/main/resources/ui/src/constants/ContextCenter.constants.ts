@@ -12,7 +12,10 @@
  */
 // ─── File type badge ──────────────────────────────────────────────────────────
 
-import { MemoryType, ShareVisibility } from '../generated/entity/context/contextMemory';
+import {
+  MemoryType,
+  ShareVisibility,
+} from '../generated/entity/context/contextMemory';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
