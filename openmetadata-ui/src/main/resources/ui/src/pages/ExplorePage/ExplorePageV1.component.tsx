@@ -504,7 +504,9 @@ const ExplorePageV1: FC<unknown> = () => {
       });
       commitCacheIfFresh();
     } finally {
-      setIsLoading(false);
+      if (!isStale()) {
+        setIsLoading(false);
+      }
     }
   };
 
