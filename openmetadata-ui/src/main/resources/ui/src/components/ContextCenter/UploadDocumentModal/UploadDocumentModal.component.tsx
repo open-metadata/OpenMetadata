@@ -82,7 +82,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const uploadSingleFile = async (entry: QueuedFile): Promise<ContextFile | null> => {
+  const uploadSingleFile = async (
+    entry: QueuedFile
+  ): Promise<ContextFile | null> => {
     try {
       return await uploadDriveFile(entry.file, folderFqn);
     } catch {
@@ -139,9 +141,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
 
       if (batchFiles.length > 0) {
         onUploaded?.(batchFiles);
-        showSuccessToast(
-          t('message.documents-uploaded-successfully')
-        );
+        showSuccessToast(t('message.documents-uploaded-successfully'));
         handleClose();
       }
     }

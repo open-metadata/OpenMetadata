@@ -14,6 +14,7 @@
 import {
   ButtonUtility,
   Card,
+  FileIcon,
   Skeleton,
   Tree,
   Typography,
@@ -26,7 +27,6 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
-import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 import { DocFile } from './DocumentsView.interface';
@@ -205,7 +205,12 @@ const DocumentFolderView = ({
                         key={file.id}
                         textValue={file.name}>
                         <Tree.ItemContent showExpandIcon={false}>
-                          <FileTypeLabel fileType={file.fileType} />
+                          <FileIcon
+                            className="tw:size-6"
+                            theme="light"
+                            type={file.fileExtension ?? ''}
+                            variant="default"
+                          />
                           <Typography
                             ellipsis
                             className="tw:truncate tw:text-gray-700 tw:max-w-[70%]"

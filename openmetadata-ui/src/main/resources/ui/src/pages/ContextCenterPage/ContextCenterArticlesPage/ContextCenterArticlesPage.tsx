@@ -68,7 +68,6 @@ const ContextCenterArticlesPage = () => {
   const USERId = currentUser?.id ?? '';
   const { getResourcePermission } = usePermissionProvider();
   const { getResourceLimit } = useLimitStore();
-  const { alert } = useAlertStore();
   const knowledgeCenterPageRef = useRef<KnowledgeCenterPageRef>(null);
   const knowledgePagesHierarchyRef = useRef<KnowledgePagesHierarchyRef>(null);
 

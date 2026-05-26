@@ -160,7 +160,7 @@ const ContextCenterDocumentsPage: FC = () => {
         prev.filter((document) => document.id !== fileToDelete.id)
       );
       showSuccessToast(
-        t('server.entity-deleted-successfully', {
+        t('server.entity-deleted-success', {
           entity: t('label.document'),
         })
       );

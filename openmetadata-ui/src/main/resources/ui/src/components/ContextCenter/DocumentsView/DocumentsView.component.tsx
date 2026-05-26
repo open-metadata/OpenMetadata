@@ -15,6 +15,7 @@ import {
   ButtonUtility,
   Card,
   Dropdown,
+  FileIcon,
   Skeleton,
   Tooltip,
   TooltipTrigger,
@@ -40,7 +41,6 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
-import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
@@ -250,7 +250,12 @@ const FileRow: FC<FileRowProps> = ({
     <div
       className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
       data-testid={`document-row-${file.id}`}>
-      <FileTypeLabel fileType={file.fileType} />
+      <FileIcon
+        className="tw:size-8"
+        theme="light"
+        type={file.fileExtension ?? ''}
+        variant="default"
+      />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
         <Typography className="tw:truncate" size="text-sm" weight="medium">

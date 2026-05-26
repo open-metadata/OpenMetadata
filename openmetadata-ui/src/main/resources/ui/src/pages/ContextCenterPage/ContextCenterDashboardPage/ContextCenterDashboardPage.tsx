@@ -44,7 +44,10 @@ import {
   PageType,
 } from '../../../interface/knowledge-center.interface';
 import { listContextFiles } from '../../../rest/assetAPI';
-import { getListKnowledgePages, postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import {
+  getListKnowledgePages,
+  postKnowledgePage,
+} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   contextFileToUploadedDocumentItem,
