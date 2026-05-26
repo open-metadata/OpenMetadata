@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  GRID_ROW_HEIGHT,
+  GRID_VERTICAL_MARGIN,
+} from '../../../constants/CustomizeWidgets.constants';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import './generic-tab.less';
 
@@ -31,9 +35,9 @@ export const DynamicHeightWidget = ({
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // rowHeight=100, verticalMargin=16: gridHeight = h*(rowHeight+margin) - margin
-        // Invert: h = (contentHeight + margin) / (rowHeight + margin)
-        const newHeight = (entry.contentRect.height + 16) / 116;
+        const newHeight =
+          (entry.contentRect.height + GRID_VERTICAL_MARGIN) /
+          (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN);
         if (newHeight !== height) {
           setHeight(newHeight);
           onHeightChange?.(widget.i, newHeight);
