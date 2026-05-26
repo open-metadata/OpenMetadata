@@ -18,11 +18,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { uploadAsset } from '../../../rest/assetAPI';
+import { uploadDriveFile } from '../../../rest/assetAPI';
 import UploadDocumentModal from './UploadDocumentModal.component';
 
 jest.mock('rest/assetAPI', () => ({
-  uploadAsset: jest.fn(),
+  uploadDriveFile: jest.fn(),
 }));
 
 let mockOnDropFiles: ((files: FileList) => void) | undefined;
@@ -143,7 +143,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 const defaultProps = {
   isOpen: true,
-  entityLink: 'entity::link',
+  folderFqn: undefined,
   onClose: jest.fn(),
   onUploaded: jest.fn(),
 };
@@ -264,9 +264,9 @@ describe('UploadDocumentModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('calls uploadAsset and onUploaded when attach is clicked', async () => {
+  it('calls uploadDriveFile and onUploaded when attach is clicked', async () => {
     const mockAsset = { id: 'asset-1', name: 'test.pdf' };
-    (uploadAsset as jest.Mock).mockResolvedValue(mockAsset);
+    (uploadDriveFile as jest.Mock).mockResolvedValue(mockAsset);
 
     render(<UploadDocumentModal {...defaultProps} />);
 
@@ -276,7 +276,7 @@ describe('UploadDocumentModal', () => {
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
 
-    await waitFor(() => expect(uploadAsset).toHaveBeenCalled());
+    await waitFor(() => expect(uploadDriveFile).toHaveBeenCalled());
 
     expect(
       await screen.findByTestId('progress-bar-test.pdf')
@@ -296,7 +296,9 @@ describe('UploadDocumentModal', () => {
   });
 
   it('shows the failed state in the progress bar on upload error', async () => {
-    (uploadAsset as jest.Mock).mockRejectedValue(new Error('upload failed'));
+    (uploadDriveFile as jest.Mock).mockRejectedValue(
+      new Error('upload failed')
+    );
 
     render(<UploadDocumentModal {...defaultProps} />);
 
@@ -312,7 +314,9 @@ describe('UploadDocumentModal', () => {
   });
 
   it('shows retry button for failed uploads', async () => {
-    (uploadAsset as jest.Mock).mockRejectedValue(new Error('upload failed'));
+    (uploadDriveFile as jest.Mock).mockRejectedValue(
+      new Error('upload failed')
+    );
 
     render(<UploadDocumentModal {...defaultProps} />);
 
@@ -327,7 +331,7 @@ describe('UploadDocumentModal', () => {
 
   it('retries a failed upload when the retry button is clicked', async () => {
     const mockAsset = { id: 'asset-retry', name: 'fail.pdf' };
-    (uploadAsset as jest.Mock)
+    (uploadDriveFile as jest.Mock)
       .mockRejectedValueOnce(new Error('first attempt failed'))
       .mockResolvedValueOnce(mockAsset);
 
@@ -342,7 +346,7 @@ describe('UploadDocumentModal', () => {
     const retryBtn = await screen.findByTestId('retry-fail.pdf');
     fireEvent.click(retryBtn);
 
-    await waitFor(() => expect(uploadAsset).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(uploadDriveFile).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(defaultProps.onUploaded).toHaveBeenCalledWith([mockAsset])
     );
