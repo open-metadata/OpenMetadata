@@ -263,6 +263,57 @@ test.describe.serial('Lineage Settings Tests', () => {
     });
   });
 
+  test('Verify lineage time filter and tab switch reuse loaded graph', async ({
+    page,
+  }) => {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+    await verifyNodePresent(page, table);
+
+    const lineageTimeFilteredResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/lineage/getLineage') &&
+        url.searchParams.has('startTime') &&
+        url.searchParams.has('endTime')
+      );
+    });
+
+    await page.getByTestId('lineage-time-filter').click();
+    await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+
+    const response = await lineageTimeFilteredResponse;
+    const responseUrl = new URL(response.url());
+    const startTime = responseUrl.searchParams.get('startTime');
+    const endTime = responseUrl.searchParams.get('endTime');
+
+    expect(Number(startTime)).toBeLessThan(Number(endTime));
+    await expect(page.getByTestId('lineage-time-filter')).toContainText(
+      'Last 7 days'
+    );
+
+    let lineageFetchesAfterViewSwitch = 0;
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('/api/v1/lineage/getLineage')) {
+        lineageFetchesAfterViewSwitch += 1;
+      }
+    });
+
+    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+    await expect(page).toHaveURL(/mode=impact_analysis/);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByRole('tab', { name: 'Lineage' }).click();
+    await expect(page).not.toHaveURL(/mode=impact_analysis/);
+    await expect
+      .poll(() => lineageFetchesAfterViewSwitch, {
+        message: 'Lineage graph should not be fetched again on view toggle',
+      })
+      .toBe(0);
+  });
+
   test('Verify lineage settings for PipelineViewMode as Edge', async ({
     page,
     dataStewardPage,
