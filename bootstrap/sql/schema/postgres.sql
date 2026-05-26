@@ -1068,28 +1068,6 @@ CREATE TABLE public.user_tokens (
 ALTER TABLE public.user_tokens OWNER TO openmetadata_user;
 
 --
--- Name: user_session; Type: TABLE; Schema: public; Owner: openmetadata_user
---
-
-CREATE TABLE public.user_session (
-    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
-    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
-    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
-    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
-    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
-    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
-    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED,
-    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
-    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED,
-    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
-    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
-    json jsonb NOT NULL
-);
-
-
-ALTER TABLE public.user_session OWNER TO openmetadata_user;
-
---
 -- Name: web_analytic_event; Type: TABLE; Schema: public; Owner: openmetadata_user
 --
 
@@ -1880,14 +1858,6 @@ ALTER TABLE ONLY public.user_tokens
 
 
 --
--- Name: user_session user_session_pkey; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user
---
-
-ALTER TABLE ONLY public.user_session
-    ADD CONSTRAINT user_session_pkey PRIMARY KEY (id);
-
-
---
 -- Name: web_analytic_event web_analytic_event_fqnhash_key; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user
 --
 
@@ -1964,34 +1934,6 @@ CREATE INDEX field_relationship_from_index ON public.field_relationship USING bt
 --
 
 CREATE INDEX field_relationship_to_index ON public.field_relationship USING btree (tofqnhash, relation);
-
-
---
--- Name: user_session_expiry_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
---
-
-CREATE INDEX user_session_expiry_idx ON public.user_session USING btree (status, expiresat);
-
-
---
--- Name: user_session_idle_expiry_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
---
-
-CREATE INDEX user_session_idle_expiry_idx ON public.user_session USING btree (status, idleexpiresat);
-
-
---
--- Name: user_session_prune_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
---
-
-CREATE INDEX user_session_prune_idx ON public.user_session USING btree (status, updatedat);
-
-
---
--- Name: user_session_user_status_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
---
-
-CREATE INDEX user_session_user_status_idx ON public.user_session USING btree (userid, status);
 
 
 --
