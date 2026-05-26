@@ -181,10 +181,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         if self._steps_closed:
             return
+        self._steps_closed = True
         for step in self.workflow_steps():
             try:
                 step.close()
-                self._steps_closed = True
             except Exception as exc:
                 logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
