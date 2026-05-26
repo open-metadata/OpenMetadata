@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -76,6 +76,21 @@ test.describe
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+
+    const schemaRes = await apiContext.get(
+      `/api/v1/metadata/types/${entitySchemaId}`
+    );
+    const entitySchema = await schemaRes.json();
+    const propIndex = (
+      entitySchema.customProperties as Array<{ name: string }>
+    ).findIndex((p) => p.name === customPropertyName);
+
+    if (propIndex !== -1) {
+      await apiContext.patch(`/api/v1/metadata/types/${entitySchemaId}`, {
+        data: [{ op: 'remove', path: `/customProperties/${propIndex}` }],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+    }
 
     await table.delete(apiContext);
     await user.delete(apiContext);
