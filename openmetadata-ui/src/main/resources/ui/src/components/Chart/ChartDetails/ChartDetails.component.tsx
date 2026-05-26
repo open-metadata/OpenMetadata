@@ -31,7 +31,11 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -127,8 +131,25 @@ const ChartDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CHART, decodedChartFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedChartFQN) {
+      fetchEntityTaskCountsInto(decodedChartFQN, setFeedCount);
+    }
+  }, [decodedChartFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedChartFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.CHART,
+        decodedChartFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedChartFQN]);
+
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedChartFQN]);
 
   const handleTabChange = (activeKey: string) => {

@@ -181,6 +181,13 @@ jest.mock('../../hooks/useDownloadProgressStore', () => ({
   })),
 }));
 
+jest.mock('../../hooks/useScheduleDescriptionTexts', () => ({
+  useScheduleDescriptionTexts: jest.fn().mockReturnValue({
+    descriptionFirstPart: 'Every day',
+    descriptionSecondPart: 'at 12:00 AM',
+  }),
+}));
+
 let mockScrollPosition = {
   scrollTop: 80,
   scrollHeight: 100,

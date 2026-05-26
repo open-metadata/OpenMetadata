@@ -44,21 +44,31 @@ export interface Policy {
  * Policy config for database service connectors (snowflake, postgres, etc.).
  */
 export interface DatabasePolicyConfig {
+    accessType: AccessType;
     /**
      * Column on which the grant is applied. Requires tableName. Supported only by connectors
      * that allow column-level grants; ignored otherwise.
      */
     columnName?: string;
     /**
+     * List of column names requested when accessType is ColumnLevel.
+     */
+    columns?: string[];
+    /**
      * Database on which the grant is applied.
      */
     databaseName: string;
     /**
+     * ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support
+     * time-limited grants may use this; others ignore it.
+     */
+    duration?: string;
+    /**
      * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
      */
-    principal:      string;
-    principalType?: PrincipalType;
-    privilege:      Privilege;
+    principal:       string;
+    principalType?:  PrincipalType;
+    requestedAccess: RequestedAccess;
     /**
      * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
      */
@@ -70,6 +80,15 @@ export interface DatabasePolicyConfig {
 }
 
 /**
+ * Pattern of access being requested.
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+}
+
+/**
  * Type of principal the grant is issued to.
  */
 export enum PrincipalType {
@@ -78,15 +97,12 @@ export enum PrincipalType {
 }
 
 /**
- * Privilege to grant.
+ * Permission level being requested.
  */
-export enum Privilege {
-    All = "ALL",
-    Delete = "DELETE",
-    Insert = "INSERT",
-    Select = "SELECT",
-    Update = "UPDATE",
-    Usage = "USAGE",
+export enum RequestedAccess {
+    Admin = "Admin",
+    Read = "Read",
+    Write = "Write",
 }
 
 /**

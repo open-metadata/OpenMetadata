@@ -65,13 +65,13 @@ public interface SearchClient
       }
       """;
 
-  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
+  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', params.%s);";
 
-  String PROPAGATE_NESTED_FIELD_SCRIPT = "ctx._source.%s = params.%s";
+  String PROPAGATE_NESTED_FIELD_SCRIPT = "ctx._source.%s = params.%s;";
 
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if ((ctx._source.%s != null) && (ctx._source.%s.inherited == true)){ ctx._source.remove('%s');}";
-  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
+  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s');";
 
   // Updates field if inherited is true and the parent is the same (matched by previous ID), setting
   // inherited=true on the new object.
