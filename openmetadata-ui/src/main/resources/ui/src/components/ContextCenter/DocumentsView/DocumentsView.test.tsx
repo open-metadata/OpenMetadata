@@ -20,6 +20,37 @@ jest.mock(
   () => jest.fn(() => <div data-testid="error-placeholder" />)
 );
 
+jest.mock('react-aria-components', () => ({
+  Menu: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  MenuItem: jest.fn(
+    ({
+      children,
+      onAction,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode | (() => React.ReactNode);
+      onAction?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div
+        data-testid={testId}
+        role="menuitem"
+        onClick={onAction}
+        onKeyDown={undefined}>
+        {typeof children === 'function' ? children() : children}
+      </div>
+    )
+  ),
+  Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  SubmenuTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(
     ({
