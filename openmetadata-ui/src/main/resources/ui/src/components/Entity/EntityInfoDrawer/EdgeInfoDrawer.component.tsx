@@ -26,6 +26,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   getColumnFunctionValue,
   getLineageDetailsObject,
@@ -285,6 +286,26 @@ const EdgeInfoDrawer = ({
           pipeline.fullyQualifiedName
         ),
         isLink: true,
+      });
+    }
+
+    const edgeInfo = data?.edge;
+    if (edgeInfo?.createdBy || edgeInfo?.createdAt) {
+      overviewData.push({
+        name: t('label.created-by'),
+        value: t('label.created-by-user-time-ago', {
+          time: getRelativeTime(edgeInfo?.createdAt),
+          user: edgeInfo?.createdBy ?? NO_DATA_PLACEHOLDER,
+        }),
+      });
+    }
+    if (edgeInfo?.updatedBy || edgeInfo?.updatedAt) {
+      overviewData.push({
+        name: t('label.updated-by'),
+        value: t('label.updated-by-user-time-ago', {
+          time: getRelativeTime(edgeInfo?.updatedAt),
+          user: edgeInfo?.updatedBy ?? NO_DATA_PLACEHOLDER,
+        }),
       });
     }
 

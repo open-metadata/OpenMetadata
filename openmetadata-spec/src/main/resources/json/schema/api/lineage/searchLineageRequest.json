@@ -70,6 +70,14 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "startTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     }
   },
   "required": ["fqn", "direction"],

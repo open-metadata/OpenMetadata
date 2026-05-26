@@ -37,7 +37,9 @@ export const exportLineageAsync = async (
   fqn: string,
   entityType?: string,
   config?: LineageConfig,
-  queryFilter?: string
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
 ) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<CSVExportResponse>(
@@ -50,6 +52,8 @@ export const exportLineageAsync = async (
         downstreamDepth,
         query_filter: queryFilter,
         includeDeleted: false,
+        startTime,
+        endTime,
       },
     }
   );
@@ -65,6 +69,8 @@ export const getLineageDataByFQN = async ({
   columnFilter,
   from,
   direction,
+  startTime,
+  endTime,
 }: {
   fqn: string;
   entityType: string;
@@ -73,6 +79,8 @@ export const getLineageDataByFQN = async ({
   columnFilter?: string;
   from?: number;
   direction?: LineageDirection;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const API_PATH = direction
@@ -91,6 +99,8 @@ export const getLineageDataByFQN = async ({
       includeDeleted: false,
       size: config?.nodesPerLayer,
       from,
+      startTime,
+      endTime,
     },
   });
 
@@ -126,7 +136,9 @@ export const getPlatformLineage = async ({
 export const getDataQualityLineage = async (
   fqn: string,
   config?: Partial<LineageConfig>,
-  queryFilter?: string
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
 ) => {
   const { upstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<EntityLineageResponse>(
@@ -137,6 +149,8 @@ export const getDataQualityLineage = async (
         upstreamDepth,
         includeDeleted: false,
         query_filter: queryFilter,
+        startTime,
+        endTime,
       },
     }
   );
@@ -158,6 +172,8 @@ export const getLineageByEntityCount = async (params: {
   query_filter?: string;
   column_filter?: string;
   include_pagination_info?: boolean;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<{
     nodes: Record<string, LineageNodeData>;
@@ -193,6 +209,8 @@ export const exportLineageByEntityCountAsync = async (params: {
   from?: number;
   size?: number;
   query_filter?: string;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
@@ -216,6 +234,8 @@ export const getLineagePagingData = async (params: {
   type?: EntityType;
   entityType?: EntityType;
   query_filter?: string;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,
