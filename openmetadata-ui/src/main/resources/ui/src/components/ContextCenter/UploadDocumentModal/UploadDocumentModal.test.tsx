@@ -282,10 +282,9 @@ describe('UploadDocumentModal', () => {
     fireEvent.click(screen.getByText(/attach-file-plural/i));
 
     await waitFor(() => expect(uploadDriveFile).toHaveBeenCalled());
-
-    expect(
-      await screen.findByTestId('progress-bar-test.pdf')
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(defaultProps.onUploaded).toHaveBeenCalledWith([mockAsset])
+    );
   });
 
   it('shows the failed state for a file that exceeds the size limit', () => {
