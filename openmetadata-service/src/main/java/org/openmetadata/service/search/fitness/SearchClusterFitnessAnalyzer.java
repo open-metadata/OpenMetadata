@@ -50,68 +50,118 @@ public class SearchClusterFitnessAnalyzer {
   }
 
   public SearchClusterFitnessReport analyze() {
+    ClusterSnapshot snapshot = collectClusterSnapshot();
+    SearchClusterFitnessReport report = initReport(snapshot);
+    runChecks(report, snapshot);
+    finalizeReport(report, snapshot);
+    return report;
+  }
+
+  /**
+   * Issues the always-needed REST GETs in a single eager batch. Endpoints whose payloads can be
+   * large or that return 4xx on healthy clusters (e.g. {@code /_cluster/allocation/explain}) are
+   * fetched lazily inside the individual check methods.
+   */
+  private ClusterSnapshot collectClusterSnapshot() {
+    ClusterSnapshot s = new ClusterSnapshot();
+    s.rootInfo = probe.get("/");
+    s.clusterHealth = probe.get("/_cluster/health");
+    s.clusterStats = probe.get("/_cluster/stats");
+    s.nodesStats = probe.get("/_nodes/stats");
+    s.catIndices = probe.get("/_cat/indices?format=json&bytes=b");
+    s.catAliases = probe.get("/_cat/aliases?format=json");
+    s.clusterSettings = probe.get("/_cluster/settings?include_defaults=true&flat_settings=false");
+    return s;
+  }
+
+  private SearchClusterFitnessReport initReport(ClusterSnapshot s) {
     List<FitnessSignal> signals = new ArrayList<>();
     List<String> inaccessible = new ArrayList<>();
-
-    JsonNode rootInfo = probe.get("/");
-    JsonNode clusterHealth = probe.get("/_cluster/health");
-    JsonNode clusterStats = probe.get("/_cluster/stats");
-    JsonNode nodesStats = probe.get("/_nodes/stats");
-    JsonNode catIndices = probe.get("/_cat/indices?format=json&bytes=b");
-    JsonNode catAliases = probe.get("/_cat/aliases?format=json");
-    JsonNode catShards = probe.get("/_cat/shards?format=json&h=index,shard,prirep,state");
-    JsonNode allocationExplain = probe.get("/_cluster/allocation/explain");
-    JsonNode clusterSettings =
-        probe.get("/_cluster/settings?include_defaults=true&flat_settings=false");
-
     SearchClusterFitnessReport report =
         SearchClusterFitnessReport.builder()
             .generatedAtMillis(System.currentTimeMillis())
             .signals(signals)
             .inaccessibleMetrics(inaccessible)
             .build();
-
-    populateClusterIdentity(report, rootInfo, clusterHealth, clusterStats);
-    List<IndexFootprint> indexFootprints =
-        collectIndexFootprints(catIndices, catAliases, clusterAlias(), inaccessible);
-    report.setIndices(indexFootprints);
-    long totalPrimaryBytes = sumPrimaryBytes(indexFootprints);
-    long totalDocs = sumDocs(indexFootprints);
-    report.setTotalPrimarySizeBytes(totalPrimaryBytes);
-    report.setTotalDocsCount(totalDocs);
-    report.setTotalIndices(indexFootprints.size());
-
-    boolean omIndicesMissing = indexFootprints.isEmpty();
-    if (omIndicesMissing) {
-      List<IndexFootprint> observed = collectAllIndexFootprints(catIndices);
+    populateClusterIdentity(report, s.rootInfo, s.clusterHealth, s.clusterStats);
+    s.indexFootprints =
+        collectIndexFootprints(s.catIndices, s.catAliases, clusterAlias(), inaccessible);
+    report.setIndices(s.indexFootprints);
+    report.setTotalPrimarySizeBytes(sumPrimaryBytes(s.indexFootprints));
+    report.setTotalDocsCount(sumDocs(s.indexFootprints));
+    report.setTotalIndices(s.indexFootprints.size());
+    s.omIndicesMissing = s.indexFootprints.isEmpty();
+    if (s.omIndicesMissing) {
+      List<IndexFootprint> observed = collectAllIndexFootprints(s.catIndices);
       report.setOtherIndicesOnCluster(observed);
       emitNoOpenMetadataIndicesSignal(signals, observed, report.getClusterIndicesCount());
     }
-
-    List<NodeFootprint> nodeFootprints = collectNodeFootprints(nodesStats, inaccessible);
-    report.setNodes(nodeFootprints);
-
-    checkClusterStatus(signals, clusterHealth, inaccessible);
-    checkPendingTasks(signals, clusterHealth, inaccessible);
-    checkUnassignedShards(
-        signals, clusterHealth, catShards, allocationExplain, nodeFootprints.size(), inaccessible);
-    checkShardBudget(signals, clusterStats, clusterSettings, nodeFootprints.size(), inaccessible);
-    checkShardsPerHeapGb(signals, report.getTotalShards(), nodeFootprints);
-    checkDedicatedMaster(signals, clusterHealth, nodeFootprints);
-    checkDocSizeAndShards(signals, indexFootprints);
-    checkDiskWatermarks(signals, nodeFootprints, clusterSettings, inaccessible);
-    checkHeapAndCpu(signals, nodeFootprints, inaccessible);
-    checkThreadPoolPressure(signals, nodeFootprints, inaccessible);
-    checkCircuitBreakers(signals, nodeFootprints, inaccessible);
-
-    SizingGuidance sizing =
-        buildSizingGuidance(report, nodeFootprints, totalPrimaryBytes, totalDocs, omIndicesMissing);
-    report.setSizingGuidance(sizing);
-
-    FitnessVerdict verdict = rollup(signals, omIndicesMissing);
-    report.setOverallVerdict(verdict);
-    report.setSummary(buildSummary(report, verdict, sizing, omIndicesMissing));
+    s.nodeFootprints = collectNodeFootprints(s.nodesStats, inaccessible);
+    report.setNodes(s.nodeFootprints);
     return report;
+  }
+
+  private void runChecks(SearchClusterFitnessReport report, ClusterSnapshot s) {
+    List<FitnessSignal> signals = report.getSignals();
+    List<String> inaccessible = report.getInaccessibleMetrics();
+    int dataNodes = countDataNodes(s.nodeFootprints, report);
+    checkClusterStatus(signals, s.clusterHealth, inaccessible);
+    checkPendingTasks(signals, s.clusterHealth, inaccessible);
+    checkUnassignedShards(signals, s.clusterHealth, dataNodes, inaccessible);
+    checkShardBudget(
+        signals, s.clusterStats, s.clusterSettings, s.nodeFootprints.size(), inaccessible);
+    checkShardsPerHeapGb(signals, report.getTotalShards(), s.nodeFootprints);
+    checkDedicatedMaster(signals, s.clusterHealth, s.nodeFootprints);
+    checkDocSizeAndShards(signals, s.indexFootprints);
+    checkDiskWatermarks(signals, s.nodeFootprints, s.clusterSettings, inaccessible);
+    checkHeapAndCpu(signals, s.nodeFootprints, inaccessible);
+    checkThreadPoolPressure(signals, s.nodeFootprints, inaccessible);
+    checkCircuitBreakers(signals, s.nodeFootprints, inaccessible);
+  }
+
+  private void finalizeReport(SearchClusterFitnessReport report, ClusterSnapshot s) {
+    long totalPrimaryBytes =
+        report.getTotalPrimarySizeBytes() == null ? 0L : report.getTotalPrimarySizeBytes();
+    long totalDocs = report.getTotalDocsCount() == null ? 0L : report.getTotalDocsCount();
+    SizingGuidance sizing =
+        buildSizingGuidance(
+            report, s.nodeFootprints, totalPrimaryBytes, totalDocs, s.omIndicesMissing);
+    report.setSizingGuidance(sizing);
+    FitnessVerdict verdict = rollup(report.getSignals(), s.omIndicesMissing);
+    report.setOverallVerdict(verdict);
+    report.setSummary(buildSummary(report, verdict, sizing, s.omIndicesMissing));
+  }
+
+  /** Mutable container for endpoints + derived state passed between analyze() phases. */
+  private static final class ClusterSnapshot {
+    JsonNode rootInfo;
+    JsonNode clusterHealth;
+    JsonNode clusterStats;
+    JsonNode nodesStats;
+    JsonNode catIndices;
+    JsonNode catAliases;
+    JsonNode clusterSettings;
+    List<IndexFootprint> indexFootprints;
+    List<NodeFootprint> nodeFootprints;
+    boolean omIndicesMissing;
+  }
+
+  private int countDataNodes(List<NodeFootprint> nodes, SearchClusterFitnessReport report) {
+    long withDataRole =
+        nodes.stream()
+            .filter(n -> n.getRoles() != null)
+            .filter(
+                n -> n.getRoles().stream().anyMatch(r -> r.equals("data") || r.startsWith("data_")))
+            .count();
+    int result;
+    if (withDataRole > 0) {
+      result = (int) withDataRole;
+    } else if (report.getDataNodes() != null && report.getDataNodes() > 0) {
+      result = report.getDataNodes();
+    } else {
+      result = Math.max(1, nodes.size());
+    }
+    return result;
   }
 
   private String clusterAlias() {
@@ -405,8 +455,10 @@ public class SearchClusterFitnessAnalyzer {
 
   private void checkClusterStatus(
       List<FitnessSignal> signals, JsonNode health, List<String> inaccessible) {
-    if (health == null) {
-      inaccessible.add("/_cluster/health");
+    if (!isUsable(health)) {
+      if (!inaccessible.contains("/_cluster/health")) {
+        inaccessible.add("/_cluster/health");
+      }
       return;
     }
     String status = text(health, "status");
@@ -469,13 +521,8 @@ public class SearchClusterFitnessAnalyzer {
   }
 
   private void checkUnassignedShards(
-      List<FitnessSignal> signals,
-      JsonNode health,
-      JsonNode catShards,
-      JsonNode allocationExplain,
-      int dataNodes,
-      List<String> inaccessible) {
-    if (health == null || !health.has("unassigned_shards")) {
+      List<FitnessSignal> signals, JsonNode health, int dataNodes, List<String> inaccessible) {
+    if (!isUsable(health) || !health.has("unassigned_shards")) {
       return;
     }
     int unassigned = intValOrZero(health, "unassigned_shards");
@@ -491,6 +538,10 @@ public class SearchClusterFitnessAnalyzer {
               .build());
       return;
     }
+    // Lazy-fetch only when we actually have unassigned shards. _cat/shards can be megabytes
+    // on large clusters; /_cluster/allocation/explain returns 400 when the queue is empty.
+    JsonNode catShards = probe.get("/_cat/shards?format=json&h=index,shard,prirep,state");
+    JsonNode allocationExplain = probe.get("/_cluster/allocation/explain");
     int unassignedPrimaries = 0;
     int unassignedReplicas = 0;
     if (catShards != null && catShards.isArray()) {
@@ -553,18 +604,14 @@ public class SearchClusterFitnessAnalyzer {
   private String extractAllocationExplainReason(JsonNode explain) {
     String result = null;
     if (explain != null && !explain.isMissingNode() && !explain.isNull()) {
-      String reason = text(explain, "unassigned_info");
-      if (reason == null) {
-        JsonNode info = explain.get("unassigned_info");
-        if (info != null) {
-          String r = text(info, "reason");
-          String details = text(info, "details");
-          if (r != null) {
-            result = details == null ? r : r + " (" + details + ")";
-          }
+      // unassigned_info is an object node — walk into it rather than calling asText().
+      JsonNode info = explain.get("unassigned_info");
+      if (info != null && info.isObject()) {
+        String r = text(info, "reason");
+        String details = text(info, "details");
+        if (r != null) {
+          result = details == null ? r : r + " (" + details + ")";
         }
-      } else {
-        result = reason;
       }
       if (result == null) {
         String decision = text(explain, "can_allocate");
@@ -634,8 +681,13 @@ public class SearchClusterFitnessAnalyzer {
     if (totalShards == null || totalShards <= 0 || nodes.isEmpty()) {
       return;
     }
+    // Shards are only allocated on data nodes — including master/coord heap in the denominator
+    // would understate true shard density. Fall back to all nodes only if no node has roles
+    // (older ES/OS responses) so we still produce a signal in that case.
+    List<NodeFootprint> dataNodes = filterDataNodes(nodes);
+    List<NodeFootprint> heapNodes = dataNodes.isEmpty() ? nodes : dataNodes;
     long totalHeapBytes =
-        nodes.stream()
+        heapNodes.stream()
             .map(NodeFootprint::getHeapMaxBytes)
             .filter(java.util.Objects::nonNull)
             .mapToLong(Long::longValue)
@@ -681,7 +733,7 @@ public class SearchClusterFitnessAnalyzer {
 
   private void checkDedicatedMaster(
       List<FitnessSignal> signals, JsonNode health, List<NodeFootprint> nodes) {
-    if (health == null) {
+    if (!isUsable(health)) {
       return;
     }
     int dataNodes = intValOrZero(health, "number_of_data_nodes");
@@ -1159,12 +1211,21 @@ public class SearchClusterFitnessAnalyzer {
       long totalPrimaryBytes,
       long totalDocs,
       boolean omIndicesMissing) {
-    int dataNodes =
-        nodes.isEmpty()
-            ? Math.max(1, report.getDataNodes() == null ? 1 : report.getDataNodes())
-            : nodes.size();
+    // Sizing math must use *data* nodes — masters and coord-only nodes don't host shards or store
+    // data. Fall back to node count or cluster-health number_of_data_nodes when role info is
+    // absent.
+    List<NodeFootprint> dataNodeFootprints = filterDataNodes(nodes);
+    int dataNodes;
+    if (!dataNodeFootprints.isEmpty()) {
+      dataNodes = dataNodeFootprints.size();
+    } else if (report.getDataNodes() != null && report.getDataNodes() > 0) {
+      dataNodes = report.getDataNodes();
+    } else {
+      dataNodes = Math.max(1, nodes.size());
+    }
+    List<NodeFootprint> heapNodes = dataNodeFootprints.isEmpty() ? nodes : dataNodeFootprints;
     long observedHeapPerNode =
-        nodes.stream()
+        heapNodes.stream()
             .map(NodeFootprint::getHeapMaxBytes)
             .filter(java.util.Objects::nonNull)
             .mapToLong(Long::longValue)
@@ -1326,6 +1387,23 @@ public class SearchClusterFitnessAnalyzer {
       }
     }
     return sum;
+  }
+
+  /**
+   * Returns {@code true} when the probe response is a real JSON payload — not {@code null}, not a
+   * Jackson {@code NullNode} / {@code MissingNode}. {@link SearchRestProbe#get} returns
+   * {@code NullNode} on any failure, so this guard prevents downstream checks from emitting
+   * misleading signals when an endpoint was actually inaccessible.
+   */
+  private boolean isUsable(JsonNode node) {
+    return node != null && !node.isNull() && !node.isMissingNode();
+  }
+
+  private List<NodeFootprint> filterDataNodes(List<NodeFootprint> nodes) {
+    return nodes.stream()
+        .filter(n -> n.getRoles() != null)
+        .filter(n -> n.getRoles().stream().anyMatch(r -> r.equals("data") || r.startsWith("data_")))
+        .toList();
   }
 
   private String text(JsonNode node, String field) {

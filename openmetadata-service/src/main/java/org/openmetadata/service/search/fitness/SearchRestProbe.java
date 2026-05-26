@@ -64,9 +64,15 @@ public class SearchRestProbe {
   }
 
   private String elasticGet(String endpoint) throws Exception {
-    es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client lowLevel =
-        (es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client)
-            searchClient.getLowLevelClient();
+    Object raw = searchClient.getLowLevelClient();
+    if (!(raw
+        instanceof es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client lowLevel)) {
+      LOG.debug(
+          "Elasticsearch low-level client is not Rest5Client (got {}); cannot probe {}",
+          raw == null ? "null" : raw.getClass().getName(),
+          endpoint);
+      return null;
+    }
     es.co.elastic.clients.transport.rest5_client.low_level.Request request =
         new es.co.elastic.clients.transport.rest5_client.low_level.Request("GET", endpoint);
     var response = lowLevel.performRequest(request);
