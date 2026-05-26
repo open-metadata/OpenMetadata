@@ -160,7 +160,8 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
     ElasticSearchConnection conn =
         new ElasticSearchConnection()
             .withHostPort(URI.create("http://localhost:9200"))
-            .withAuthType(auth);
+            .withAuthType(auth)
+            .withVerifySSL(VerifySSL.IGNORE);
 
     CreateSearchService request =
         new CreateSearchService()
@@ -292,5 +293,8 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
     ListResponse<SearchService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
+  }
+}
+>= 3);
   }
 }
