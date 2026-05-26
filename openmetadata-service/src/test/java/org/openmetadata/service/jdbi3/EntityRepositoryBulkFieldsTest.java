@@ -42,10 +42,11 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Regression for the Context Center 404 bug. When a Knowledge Page / Memory linked a column as a
- * related entity, the {@code entity_relationship} table held a row with {@code fromEntity="tableColumn"}
- * and {@code relation=HAS}. The bulk relationship loader's HAS query (run when the LIST endpoint
- * asks for domains/dataProducts) returned that row and called {@code Entity.getEntityReferencesByIds("tableColumn", …)},
- * which has no registered {@link EntityRepository} — surfacing as a 404 to the client.
+ * related entity, the {@code entity_relationship} table held a row with
+ * {@code fromEntity="tableColumn"} and {@code relation=HAS}. The bulk relationship loader's HAS
+ * query (run when the LIST endpoint asks for domains/dataProducts) returned that row and called
+ * {@code Entity.getEntityReferencesByIds("tableColumn", …)}, which has no registered
+ * {@link EntityRepository} — surfacing as a 404 to the client.
  */
 class EntityRepositoryBulkFieldsTest {
 
@@ -53,9 +54,9 @@ class EntityRepositoryBulkFieldsTest {
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
   private CollectionDAO.PipelineDAO pipelineDAO;
 
-  private static class OwnerAwarePipelineRepo extends EntityRepository<Pipeline> {
-    OwnerAwarePipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "owners", "owners");
+  private static class DomainAwarePipelineRepo extends EntityRepository<Pipeline> {
+    DomainAwarePipelineRepo(CollectionDAO.PipelineDAO dao) {
+      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "domains", "domains");
     }
 
     @Override
@@ -90,53 +91,54 @@ class EntityRepositoryBulkFieldsTest {
 
   @Test
   void resolveRelationshipEntityReferencesByType_skipsUnregisteredEntityType() {
-    OwnerAwarePipelineRepo repo = new OwnerAwarePipelineRepo(pipelineDAO);
+    DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
 
     UUID pipelineId = UUID.randomUUID();
     Pipeline entity =
         new Pipeline().withId(pipelineId).withName("p").withFullyQualifiedName("svc.p");
 
-    UUID ownerId = UUID.randomUUID();
-    EntityRelationshipObject ownerRecord =
+    UUID domainId = UUID.randomUUID();
+    EntityRelationshipObject domainRecord =
         EntityRelationshipObject.builder()
-            .fromId(ownerId.toString())
+            .fromId(domainId.toString())
             .toId(pipelineId.toString())
-            .fromEntity(Entity.USER)
+            .fromEntity(Entity.DOMAIN)
             .toEntity(Entity.PIPELINE)
-            .relation(Relationship.OWNS.ordinal())
+            .relation(Relationship.HAS.ordinal())
             .build();
     EntityRelationshipObject columnRecord =
         EntityRelationshipObject.builder()
             .fromId(UUID.randomUUID().toString())
             .toId(pipelineId.toString())
-            .fromEntity("tableColumn")
+            .fromEntity(Entity.TABLE_COLUMN)
             .toEntity(Entity.PIPELINE)
-            .relation(Relationship.OWNS.ordinal())
+            .relation(Relationship.HAS.ordinal())
             .build();
 
     when(relationshipDAO.findFromBatchWithRelations(
             anyList(), eq(Entity.PIPELINE), anyList(), eq(Include.ALL)))
-        .thenReturn(List.of(ownerRecord, columnRecord));
+        .thenReturn(List.of(domainRecord, columnRecord));
 
-    EntityReference ownerRef =
-        new EntityReference().withId(ownerId).withType(Entity.USER).withName("alice");
+    EntityReference domainRef =
+        new EntityReference().withId(domainId).withType(Entity.DOMAIN).withName("sales");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(() -> Entity.hasEntityRepository(Entity.USER)).thenReturn(true);
-      entityMock.when(() -> Entity.hasEntityRepository("tableColumn")).thenReturn(false);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.DOMAIN)).thenReturn(true);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE_COLUMN)).thenReturn(false);
       entityMock
-          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.USER), anyList(), any()))
-          .thenReturn(List.of(ownerRef));
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.DOMAIN), anyList(), any()))
+          .thenReturn(List.of(domainRef));
 
       assertDoesNotThrow(
-          () -> repo.setFieldsInBulk(new Fields(Set.of(Entity.FIELD_OWNERS)), List.of(entity)));
+          () -> repo.setFieldsInBulk(new Fields(Set.of(Entity.FIELD_DOMAINS)), List.of(entity)));
 
       entityMock.verify(
-          () -> Entity.getEntityReferencesByIds(eq("tableColumn"), anyList(), any()), never());
+          () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE_COLUMN), anyList(), any()),
+          never());
     }
 
-    assertNotNull(entity.getOwners());
-    assertEquals(1, entity.getOwners().size());
-    assertEquals(ownerId, entity.getOwners().get(0).getId());
+    assertNotNull(entity.getDomains());
+    assertEquals(1, entity.getDomains().size());
+    assertEquals(domainId, entity.getDomains().get(0).getId());
   }
 }
