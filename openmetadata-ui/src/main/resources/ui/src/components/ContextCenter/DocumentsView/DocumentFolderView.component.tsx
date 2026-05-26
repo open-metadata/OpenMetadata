@@ -117,11 +117,12 @@ const DocumentFolderView = ({
                 {t('label.folder')}
               </Typography>
               <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
+                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 <span>
                   {folders.length} {t('label.folder-plural')}
                 </span>
+                <span className="tw:select-none tw:text-lg">&middot;</span>
                 <span>
                   {files.length} {t('label.file-plural')}
                 </span>
@@ -191,7 +192,7 @@ const DocumentFolderView = ({
                           icon={Trash01}
                           size="xs"
                           tooltip={t('label.delete')}
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setFolderToDelete(folder);
                           }}
