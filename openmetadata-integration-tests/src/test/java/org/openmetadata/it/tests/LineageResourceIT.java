@@ -1923,7 +1923,7 @@ public class LineageResourceIT {
   }
 
   @Test
-  void timeWindowFilter_includesManualSourceEdges() throws Exception {
+  void timeWindowFilter_excludesTimestampedManualSourceEdgesOutsideRange() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     TestNamespace namespace = new TestNamespace("LineageResourceIT");
 
@@ -1954,9 +1954,9 @@ public class LineageResourceIT {
             client, source.getFullyQualifiedName(), 0, 1, windowStart, windowEnd);
     JsonNode nodes = filtered.get("nodes");
     assertNotNull(nodes);
-    assertTrue(
+    assertFalse(
         nodes.has(target.getFullyQualifiedName()),
-        "Manual-source edge should bypass the time-window filter");
+        "Timestamped manual-source edge should be filtered by the time window");
 
     deleteLineage(client, source.getEntityReference(), target.getEntityReference());
     cleanupTable(client, source);
