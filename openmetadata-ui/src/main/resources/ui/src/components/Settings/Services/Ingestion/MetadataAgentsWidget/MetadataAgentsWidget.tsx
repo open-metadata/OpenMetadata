@@ -28,6 +28,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import AddIngestionButton from '../AddIngestionButton.component';
@@ -70,6 +71,14 @@ function MetadataAgentsWidget({
   const showAddIngestionButton = useMemo(
     () => ingestionPermissions.Create && platform !== DISABLED,
     [ingestionPermissions, platform]
+  );
+
+  const extraMenuItems = useMemo(
+    () =>
+      serviceUtilClassBase.getExtraIngestionMenuItems(
+        serviceCategory as ServiceCategory
+      ),
+    [serviceCategory]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
@@ -151,9 +160,10 @@ function MetadataAgentsWidget({
       return <ButtonSkeleton size="default" />;
     }
 
-    if (showAddIngestionButton) {
+    if (showAddIngestionButton || !isEmpty(extraMenuItems)) {
       return (
         <AddIngestionButton
+          extraMenuItems={extraMenuItems}
           ingestionList={ingestionPipelineList}
           pipelineType={pipelineType}
           serviceCategory={serviceCategory}
@@ -167,6 +177,7 @@ function MetadataAgentsWidget({
   }, [
     isFetchingStatus,
     showAddIngestionButton,
+    extraMenuItems,
     ingestionPipelineList,
     pipelineType,
     serviceCategory,
