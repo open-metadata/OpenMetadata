@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+
 import json
 import logging
 import time

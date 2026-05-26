@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+
 import functools
 import json
 import traceback
@@ -410,7 +411,9 @@ class ESMixin(Generic[T]):
                 logger.debug("No more pages to fetch")
                 break
 
-            after = "".join(f"&search_after={quote_plus(str(v))}" for v in last_hit.sort)
+            after = "".join(
+                f"&search_after={quote_plus(str(v))}" for v in last_hit.sort
+            )
 
     def paginate_es(
         self,
