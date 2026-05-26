@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/messagingServiceAutoClassificationPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessagingServiceAutoClassificationPipeline",
+  "description": "MessagingService AutoClassification Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "autoClassificationConfigType": {
+      "description": "Messaging Service Auto Classification Pipeline type",
+      "type": "string",
+      "enum": ["AutoClassification"],
+      "default": "AutoClassification"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/autoClassificationConfigType",
+      "default": "AutoClassification"
+    },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for entities that match the pattern",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of on the short name (e.g. table_name). Short name is used as default.",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "storeSampleData": {
+      "description": "Option to turn on/off storing sample data. If enabled, we will ingest sample data for each topic.",
+      "type": "boolean",
+      "default": false,
+      "title": "Store Sample Data"
+    },
+    "enableAutoClassification": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information.",
+      "type": "boolean",
+      "default": true,
+      "title": "Enable Auto Classification"
+    },
+    "confidence": {
+      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will tag less columns as PII, whereas a lower number will tag more columns as PII.",
+      "type": "number",
+      "default": 80
+    },
+    "sampleDataCount": {
+      "description": "No. of messages to fetch during sample data ingestion.",
+      "type": "integer",
+      "default": 50,
+      "title": "Sample Data Count"
+    },
+    "classificationLanguage": {
+      "description": "Language used for classification. Supported languages include: en (English).",
+      "$ref": "../type/classificationLanguages.json",
+      "default": "en"
+    }
+  },
+  "additionalProperties": false
+}
