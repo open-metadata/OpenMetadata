@@ -558,7 +558,14 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_get_column_lineage_tolerates_null_facets_at_any_level(self):
         """An explicit None at facets, columnLineage, fields, or inputFields
-        must not raise. The event simply yields no column lineage."""
+        must not raise. ``_resolve_table`` returns a real ``ResolvedTable``
+        so execution actually enters the facets-parsing block where the
+        isinstance/null guards live (mocking it to None would short-circuit
+        on ``if not resolved: continue`` and the test would pass vacuously)."""
+        resolved = ResolvedTable(
+            fqn="svc.db.schema.t",
+            details=TableDetails(name="t", schema="schema"),
+        )
         outputs_null_facets = [{"name": "schema.t", "facets": None, "namespace": "hive://"}]
         outputs_null_column_lineage = [
             {"name": "schema.t", "facets": {"columnLineage": None}, "namespace": "hive://"},
@@ -577,7 +584,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=None):
+        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
             for outputs in (
                 outputs_null_facets,
                 outputs_null_column_lineage,
@@ -589,7 +596,12 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_get_column_lineage_tolerates_non_dict_facets_at_any_level(self):
         """A malformed event where facets/columnLineage/fields is the wrong
         shape (list, string, etc.) must not raise. Without the isinstance
-        guards, ``fields.items()`` would AttributeError on a list."""
+        guards, ``fields.items()`` would AttributeError on a list. The
+        output table must resolve so we actually enter the parsing block."""
+        resolved = ResolvedTable(
+            fqn="svc.db.schema.t",
+            details=TableDetails(name="t", schema="schema"),
+        )
         outputs_facets_list = [{"name": "schema.t", "facets": [], "namespace": "hive://"}]
         outputs_column_lineage_list = [
             {"name": "schema.t", "facets": {"columnLineage": []}, "namespace": "hive://"},
@@ -608,7 +620,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=None):
+        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
             for outputs in (
                 outputs_facets_list,
                 outputs_column_lineage_list,
