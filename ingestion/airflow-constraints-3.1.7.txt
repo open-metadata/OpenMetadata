@@ -550,7 +550,7 @@ pure-sasl==0.6.2
 pure_eval==0.2.3
 py-spy==0.4.1
 py4j==0.10.9.9
-pyOpenSSL==25.1.0
+pyOpenSSL==26.0.0
 pyarrow-hotfix==0.7
 pyarrow==18.1.0
 pyasn1==0.6.2
