@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
@@ -67,7 +68,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "/v1/containers/";
   static final String FIELDS =
-      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash,sampleData";
+      "parent,dataModel,owners,tags,followers,extension,domains,sourceHash,sampleData";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -83,7 +84,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
+    addViewOperation("parent,dataModel", MetadataOperation.VIEW_BASIC);
     addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
   }
@@ -474,24 +475,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Container Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -636,7 +621,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Container.",
-      description = "Restore a soft deleted Container.",
+      description =
+          "Restore a soft deleted Container. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id; useful for deep container"
+              + " hierarchies.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -644,13 +632,27 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Container.class)))
+                    schema = @Schema(implementation = Container.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreContainer(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @PUT
@@ -772,7 +774,50 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          Integer offset) {
-    return repository.listChildren(fqn, limit, offset);
+          Integer offset,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted children.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Optional case-insensitive substring filter on the child container name.")
+          @QueryParam("q")
+          String q) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listChildren(fqn, limit, offset, include, q);
+  }
+
+  @GET
+  @Path("/name/{fqn}/ancestors")
+  @Operation(
+      operationId = "listContainerAncestors",
+      summary = "List ancestor containers (parent chain)",
+      description =
+          "Return the ordered chain of ancestor containers from root (immediate child of the storage service) down to the immediate parent of the given container. Resolved via a single batched fetch — useful for rendering breadcrumbs without N sequential parent lookups.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ordered list of ancestor container references",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = EntityReference.class)))
+      })
+  public List<EntityReference> listAncestors(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    ResourceContext<Container> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getAncestors(fqn);
   }
 }

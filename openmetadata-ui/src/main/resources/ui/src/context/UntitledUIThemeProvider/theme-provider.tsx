@@ -12,24 +12,11 @@
  */
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
-export type Theme = 'light' | 'dark';
-
-interface BrandColors {
-  primaryColor?: string;
-  hoverColor?: string;
-  selectedColor?: string;
-  errorColor?: string;
-  successColor?: string;
-  warningColor?: string;
-  infoColor?: string;
-}
-
-interface ThemeContextType {
-  theme: Theme;
-  brandColors?: BrandColors;
-  setTheme: (theme: Theme) => void;
-}
+import {
+  BrandColors,
+  Theme,
+  ThemeContextType,
+} from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 

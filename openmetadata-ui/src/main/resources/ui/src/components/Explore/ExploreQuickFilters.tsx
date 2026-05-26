@@ -51,7 +51,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const { queryFilter } = useAdvanceSearch();
-  const { isNLPEnabled } = useSearchStore();
+  const { isNLPActive } = useSearchStore();
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -116,7 +116,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         independent,
         showDeleted,
         optionPageSize,
-        isNLPEnabled,
+        isNLPActive,
         searchText
       );
 
@@ -187,7 +187,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         independent,
         showDeleted,
         undefined,
-        isNLPEnabled,
+        isNLPActive,
         searchText
       );
 

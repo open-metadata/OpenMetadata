@@ -222,9 +222,12 @@ describe('Test Glossary-term component', () => {
     spy.mockRestore();
   });
 
-  it('should call getFeedCounts on mount when not in version view', async () => {
-    const getFeedCountsSpy = jest
-      .spyOn(CommonUtils, 'getFeedCounts')
+  it('should fetch feed counts on mount when not in version view', async () => {
+    const fetchTaskCountsSpy = jest
+      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .mockImplementation(jest.fn());
+    const fetchActivityCountSpy = jest
+      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
@@ -236,14 +239,19 @@ describe('Test Glossary-term component', () => {
 
     await screen.findByTestId('glossary-term');
 
-    expect(getFeedCountsSpy).toHaveBeenCalled();
+    expect(fetchTaskCountsSpy).toHaveBeenCalled();
+    expect(fetchActivityCountSpy).toHaveBeenCalled();
 
-    getFeedCountsSpy.mockRestore();
+    fetchTaskCountsSpy.mockRestore();
+    fetchActivityCountSpy.mockRestore();
   });
 
-  it('should not call getFeedCounts when in version view', async () => {
-    const getFeedCountsSpy = jest
-      .spyOn(CommonUtils, 'getFeedCounts')
+  it('should not fetch feed counts when in version view', async () => {
+    const fetchTaskCountsSpy = jest
+      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .mockImplementation(jest.fn());
+    const fetchActivityCountSpy = jest
+      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
@@ -255,8 +263,10 @@ describe('Test Glossary-term component', () => {
 
     await screen.findByTestId('glossary-term');
 
-    expect(getFeedCountsSpy).not.toHaveBeenCalled();
+    expect(fetchTaskCountsSpy).not.toHaveBeenCalled();
+    expect(fetchActivityCountSpy).not.toHaveBeenCalled();
 
-    getFeedCountsSpy.mockRestore();
+    fetchTaskCountsSpy.mockRestore();
+    fetchActivityCountSpy.mockRestore();
   });
 });

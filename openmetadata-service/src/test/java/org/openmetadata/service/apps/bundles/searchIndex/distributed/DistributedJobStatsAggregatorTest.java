@@ -380,7 +380,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            9, 1, 2, 8, 1, 10, 2, 4, 1, 1, 0);
+            9, 1, 2, 8, 1, 10, 2, 4, 1, 0, 0, 0, 0, 1, 0);
     when(serverStatsDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(aggregatedStats, aggregatedStats, aggregatedStats);
 
@@ -447,7 +447,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            5, 1, 0, 4, 1, 4, 1, 2, 1, 1, 0);
+            5, 1, 0, 4, 1, 4, 1, 2, 1, 0, 0, 0, 0, 1, 0);
     when(serverStatsDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
 
     SearchIndexJob job =
@@ -521,7 +521,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            150, 5, 6, 300, 8, 200, 7, 11, 12, 1, 0);
+            150, 5, 6, 300, 8, 200, 7, 11, 12, 0, 0, 0, 0, 1, 0);
 
     Stats stats =
         (Stats)
@@ -553,6 +553,73 @@ class DistributedJobStatsAggregatorTest {
     assertEquals(
         Integer.MIN_VALUE,
         invokeStaticPrivate("safeToInt", new Class<?>[] {long.class}, Long.MIN_VALUE));
+  }
+
+  @Test
+  void testConvertToStatsPopulatesStageTiming() throws Exception {
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getStatsByEntityType(jobId.toString())).thenReturn(List.of());
+
+    SearchIndexJob job =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .totalRecords(100)
+            .processedRecords(80)
+            .successRecords(80)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "container",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("container")
+                        .totalRecords(100L)
+                        .successRecords(80L)
+                        .failedRecords(0L)
+                        // Per-entity timings — the aggregator surfaces all four stage
+                        // timings on the entity StepStats so the UI table can show Reader
+                        // / Process / Sink / Vector avg latencies side-by-side.
+                        .readerTimeMs(2500L)
+                        .processTimeMs(80L)
+                        .sinkTimeMs(7200L)
+                        .vectorTimeMs(0L)
+                        .build()))
+            .build();
+
+    // Job-wide timing: reader 4s, process 200ms, sink 12s, vector 0 — typical "DB-bound" run.
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
+        new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+            80, 0, 0, 80, 0, 80, 0, 0, 0, 4000, 200, 12000, 0, 1, 0);
+
+    Stats stats =
+        (Stats)
+            invokePrivate(
+                "convertToStats",
+                new Class<?>[] {
+                  SearchIndexJob.class,
+                  CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats.class
+                },
+                job,
+                aggregatedStats);
+
+    // Job-level totals
+    assertEquals(4000L, stats.getReaderStats().getTotalTimeMs());
+    assertEquals(200L, stats.getProcessStats().getTotalTimeMs());
+    assertEquals(12000L, stats.getSinkStats().getTotalTimeMs());
+    assertEquals(0L, stats.getVectorStats().getTotalTimeMs());
+
+    // Per-entity StepStats now exposes all four stage timings as separate fields so the
+    // UI can render Reader / Process / Sink / Vector columns side-by-side.
+    StepStats containerStats = stats.getEntityStats().getAdditionalProperties().get("container");
+    assertNotNull(containerStats);
+    assertEquals(2500L, containerStats.getReaderTimeMs());
+    assertEquals(80L, containerStats.getProcessTimeMs());
+    assertEquals(7200L, containerStats.getSinkTimeMs());
+    assertEquals(0L, containerStats.getVectorTimeMs());
   }
 
   @Test
@@ -736,7 +803,7 @@ class DistributedJobStatsAggregatorTest {
 
     CollectionDAO.SearchIndexServerStatsDAO.EntityStats tableVectorStats =
         new CollectionDAO.SearchIndexServerStatsDAO.EntityStats(
-            "table", 50, 2, 1, 45, 3, 40, 5, 30, 7);
+            "table", 50, 2, 1, 45, 3, 40, 5, 30, 7, 0, 0, 0, 0);
     when(serverStatsDAO.getStatsByEntityType(jobId.toString()))
         .thenReturn(List.of(tableVectorStats));
 
@@ -772,6 +839,107 @@ class DistributedJobStatsAggregatorTest {
     assertNotNull(tableStats);
     assertEquals(30, tableStats.getVectorSuccessRecords());
     assertEquals(7, tableStats.getVectorFailedRecords());
+  }
+
+  /**
+   * Regression: clicking Stop in the UI used to leave the dashboard frozen on "Running" because
+   * the aggregator kept broadcasting an AppRunRecord built from the still-STOPPING
+   * search_index_job row, overwriting the AppRunRecord.status=STOPPED that AppScheduler.
+   * updateAndBroadcastStoppedStatus pushed first. The aggregator must not WebSocket-broadcast
+   * during STOPPING.
+   */
+  @Test
+  void testSkipsBroadcastDuringStopping() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    WebSocketManager webSocketManager = mock(WebSocketManager.class);
+
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats =
+        new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+            9, 1, 2, 8, 1, 10, 2, 4, 1, 0, 0, 0, 0, 1, 0);
+    when(serverStatsDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
+
+    SearchIndexJob stoppingJob =
+        newJob(IndexJobStatus.STOPPING).toBuilder().updatedAt(200L).build();
+    SearchIndexJob stoppingJobMore =
+        stoppingJob.toBuilder().processedRecords(9).successRecords(8).updatedAt(220L).build();
+    when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(stoppingJob, stoppingJobMore);
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    setStaticField(WebSocketManager.class, "instance", webSocketManager);
+
+    invokePrivate("aggregateAndBroadcast");
+    invokePrivate("aggregateAndBroadcast");
+
+    verify(webSocketManager, never())
+        .broadCastMessageToAll(eq(WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL), any());
+  }
+
+  /**
+   * Regression: the executor's {@code finally} block is responsible for stopping the aggregator,
+   * but if a worker thread is wedged that block never runs. After the user clicked Stop the
+   * aggregator could poll forever, burning CPU and overwriting the UI status. After
+   * {@link DistributedJobStatsAggregator#SHUTDOWN_GRACE_MS} in STOPPING/terminal the aggregator
+   * must self-stop.
+   */
+  @Test
+  void testSelfStopsAfterShutdownGrace() throws Exception {
+    SearchIndexJob stoppingJob =
+        newJob(IndexJobStatus.STOPPING).toBuilder().updatedAt(200L).build();
+    when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(stoppingJob);
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    setRunning(true);
+
+    invokePrivate("aggregateAndBroadcast");
+    long observed = (long) getField("shutdownObservedAtMs");
+    assertTrue(observed > 0L, "shutdownObservedAtMs must be set on first STOPPING observation");
+
+    // Backdate the observed timestamp past the grace window so the next cycle decides to
+    // self-stop without sleeping for the full grace period in test.
+    setField(
+        "shutdownObservedAtMs", observed - DistributedJobStatsAggregator.SHUTDOWN_GRACE_MS - 1L);
+
+    invokePrivate("aggregateAndBroadcast");
+
+    assertFalse(aggregator.isRunning(), "aggregator should self-stop after grace period");
+  }
+
+  /**
+   * Regression: STOPPING is a transient state. If somehow the job flips back to RUNNING before
+   * the grace period, the aggregator must reset its shutdown observation so it doesn't spuriously
+   * self-stop later.
+   */
+  @Test
+  void testResetsShutdownObservationOnReturnToRunning() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(
+            new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+                9, 1, 2, 8, 1, 10, 2, 4, 1, 0, 0, 0, 0, 1, 0));
+
+    SearchIndexJob stoppingJob =
+        newJob(IndexJobStatus.STOPPING).toBuilder().updatedAt(200L).build();
+    SearchIndexJob runningJob = newJob(IndexJobStatus.RUNNING).toBuilder().updatedAt(220L).build();
+    when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(stoppingJob, runningJob);
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    setRunning(true);
+
+    invokePrivate("aggregateAndBroadcast");
+    assertTrue((long) getField("shutdownObservedAtMs") > 0L);
+
+    invokePrivate("aggregateAndBroadcast");
+    assertEquals(0L, (long) getField("shutdownObservedAtMs"));
+    assertTrue(aggregator.isRunning());
   }
 
   private SearchIndexJob newJob(IndexJobStatus status) {

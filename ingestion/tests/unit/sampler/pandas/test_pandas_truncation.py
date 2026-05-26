@@ -11,13 +11,14 @@
 """
 Test that DatalakeSampler truncates oversized cell values during fetch_sample_data.
 """
+
 import sys
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -32,8 +33,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
@@ -97,7 +98,7 @@ def _fetch_truncated_sample():
             service_connection_config=DatalakeConnection(configSource={}),
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
+            config=DatabaseSamplerConfig(),
         )
         return sampler.fetch_sample_data()
 
@@ -106,7 +107,7 @@ class TestDatalakeSamplerTruncation:
     """Verify that DatalakeSampler truncates values exceeding SAMPLE_DATA_MAX_CELL_LENGTH."""
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_fetch_sample_data_truncates_oversized_cells(self, _):
@@ -118,40 +119,34 @@ class TestDatalakeSamplerTruncation:
                     assert len(cell) <= SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_oversized_body_is_truncated_to_limit(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         oversized_row = next(row for row in sample_data.rows if row[0] == "oversized")
         assert len(oversized_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_value_at_limit_is_not_truncated(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         at_limit_row = next(row for row in sample_data.rows if row[0] == "at_limit")
         assert len(at_limit_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_small_value_is_unchanged(self, _):
         sample_data = _fetch_truncated_sample()
 
-        body_idx = next(
-            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
-        )
+        body_idx = next(i for i, col in enumerate(sample_data.columns) if str(col.root) == "body")
         small_row = next(row for row in sample_data.rows if row[0] == "small")
         assert small_row[body_idx] == SMALL_TEXT

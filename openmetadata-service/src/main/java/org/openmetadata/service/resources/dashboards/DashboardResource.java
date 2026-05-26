@@ -180,24 +180,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -628,7 +612,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard",
-      description = "Restore a soft deleted dashboard.",
+      description =
+          "Restore a soft deleted dashboard. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -636,12 +622,26 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Dashboard.class)))
+                    schema = @Schema(implementation = Dashboard.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDashboard(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 }

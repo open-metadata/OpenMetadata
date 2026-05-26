@@ -27,7 +27,11 @@ import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -99,8 +103,27 @@ const DataModelDetails = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityTaskCountsInto(decodedDataModelFQN, setFeedCount);
+    }
+  }, [decodedDataModelFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD_DATA_MODEL,
+        decodedDataModelFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDataModelFQN]);
+
   useEffect(() => {
-    decodedDataModelFQN && getEntityFeedCount();
+    if (decodedDataModelFQN) {
+      fetchTaskCounts();
+      fetchActivityCount();
+    }
   }, [decodedDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {

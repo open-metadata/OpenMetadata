@@ -37,8 +37,7 @@ const createTaskViaAPI = async (
       category: 'MetadataUpdate',
       type: 'DescriptionUpdate',
       priority: 'Medium',
-      about: entityFQN,
-      aboutType: entityType,
+      about: `<#E::${entityType}::${entityFQN}>`,
       assignees: [assigneeFQN],
       payload: {
         suggestedValue: 'Test description',

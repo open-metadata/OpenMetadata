@@ -33,7 +33,7 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import { getTestSuitePath } from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
@@ -128,7 +128,11 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
         (opt) => opt.value === selectedSuiteId
       );
       if (selectedSuite?.suite.fullyQualifiedName) {
-        navigate(getTestSuitePath(selectedSuite.suite.fullyQualifiedName));
+        navigate(
+          observabilityRouterClassBase.getTestSuitePath(
+            selectedSuite.suite.fullyQualifiedName
+          )
+        );
       }
 
       onAddedToExisting();

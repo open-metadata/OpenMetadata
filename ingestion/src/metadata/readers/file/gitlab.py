@@ -11,10 +11,11 @@
 """
 Gitlab client to read files with token auth
 """
+
 import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 import requests
@@ -52,15 +53,13 @@ class GitlabReader(ApiReader):
         self._encoded_project_path = None
 
     @property
-    def auth_headers(self) -> Dict[str, str]:
+    def auth_headers(self) -> Dict[str, str]:  # noqa: UP006
         """
         Build the headers to authenticate
         to the API
         """
         if self._auth_headers is None and self.credentials.token:
-            self._auth_headers = {
-                "PRIVATE-TOKEN": self.credentials.token.root.get_secret_value()
-            }
+            self._auth_headers = {"PRIVATE-TOKEN": self.credentials.token.root.get_secret_value()}
 
         return self._auth_headers
 
@@ -86,7 +85,7 @@ class GitlabReader(ApiReader):
         return self._encoded_project_path
 
     @staticmethod
-    def _decode_content(json_response: Dict[str, Any]) -> str:
+    def _decode_content(json_response: Dict[str, Any]) -> str:  # noqa: UP006
         """
         Return the content of the response
 
@@ -123,7 +122,7 @@ class GitlabReader(ApiReader):
 
         except Exception as err:
             logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from repo: {err}")
+            raise ReadException(f"Error fetching file [{path}] from repo: {err}")  # noqa: B904
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
 
@@ -143,7 +142,7 @@ class GitlabReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the default branch")
 
-    def _get_tree(self, url: str = None) -> Optional[List[str]]:
+    def _get_tree(self, url: str = None) -> Optional[List[str]]:  # noqa: RUF013, UP006, UP045
         """
         Use the Gitlab Repository Tree API to iterate over tree pages recursively
         """

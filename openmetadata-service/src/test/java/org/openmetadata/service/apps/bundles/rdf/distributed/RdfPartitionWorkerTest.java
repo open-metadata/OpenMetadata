@@ -41,6 +41,8 @@ class RdfPartitionWorkerTest {
   void initializeKeysetCursorHandlesRepositoryBackedEntities() throws Exception {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    RdfIndexPartition partition =
+        RdfIndexPartition.builder().jobId(java.util.UUID.randomUUID()).entityType("table").build();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
@@ -50,7 +52,8 @@ class RdfPartitionWorkerTest {
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
+              new Class<?>[] {RdfIndexPartition.class, String.class, long.class},
+              partition,
               "table",
               0L));
       assertEquals(
@@ -58,7 +61,8 @@ class RdfPartitionWorkerTest {
           invokePrivate(
               worker,
               "initializeKeysetCursor",
-              new Class<?>[] {String.class, long.class},
+              new Class<?>[] {RdfIndexPartition.class, String.class, long.class},
+              partition,
               "table",
               5L));
     }
@@ -66,6 +70,8 @@ class RdfPartitionWorkerTest {
 
   @Test
   void initializeKeysetCursorRejectsOffsetsBeyondSupportedRange() {
+    RdfIndexPartition partition =
+        RdfIndexPartition.builder().jobId(java.util.UUID.randomUUID()).entityType("table").build();
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
@@ -73,7 +79,8 @@ class RdfPartitionWorkerTest {
                 invokePrivate(
                     worker,
                     "initializeKeysetCursor",
-                    new Class<?>[] {String.class, long.class},
+                    new Class<?>[] {RdfIndexPartition.class, String.class, long.class},
+                    partition,
                     "table",
                     (long) Integer.MAX_VALUE + 2L));
 

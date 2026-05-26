@@ -231,6 +231,33 @@ class DescriptionSanitizerTest {
   }
 
   @Test
+  void fileAttachmentDivAttributesArePreserved() {
+    String input =
+        "<p></p><div data-type=\"file-attachment\""
+            + " data-url=\"https://example.com/image.png\""
+            + " data-filename=\"image.png\""
+            + " data-mimetype=\"image\""
+            + " data-uploading=\"false\""
+            + " data-upload-progress=\"0\""
+            + " data-is-image=\"true\""
+            + " data-filesize=\"1024\""
+            + " data-alt=\"test image\""
+            + " data-callouttype=\"info\"></div><p></p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"file-attachment\""));
+    assertTrue(result.contains("data-url=\"https://example.com/image.png\""));
+    assertTrue(result.contains("data-filename=\"image.png\""));
+    assertTrue(result.contains("data-mimetype=\"image\""));
+    assertTrue(result.contains("data-uploading=\"false\""));
+    assertTrue(result.contains("data-upload-progress=\"0\""));
+    assertTrue(result.contains("data-is-image=\"true\""));
+    assertTrue(result.contains("data-filesize=\"1024\""));
+    assertTrue(result.contains("data-alt=\"test image\""));
+    assertTrue(result.contains("data-callouttype=\"info\""));
+  }
+
+  @Test
   void entityMentionAttributesOnAnchorArePreservedForMention() {
     String input =
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 
@@ -52,24 +53,22 @@ def get_connection(connection: AmundsenConnection) -> Neo4jHelper:
         return Neo4jHelper(neo4j_config)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def test_connection(
     metadata: OpenMetadata,
     client: Neo4jHelper,
     service_connection: AmundsenConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {
-        "CheckAccess": partial(client.execute_query, query=NEO4J_AMUNDSEN_USER_QUERY)
-    }
+    test_fn = {"CheckAccess": partial(client.execute_query, query=NEO4J_AMUNDSEN_USER_QUERY)}
 
     return test_connection_steps(
         metadata=metadata,

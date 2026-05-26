@@ -180,6 +180,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DatabaseServiceType.Epic,
   DashboardServiceType.Hex,
+  DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
@@ -192,6 +193,7 @@ export const BETA_SERVICES = [
   DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
 ];
 
@@ -212,6 +214,8 @@ export const TEST_CONNECTION_WARNING_MESSAGE =
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
+  'useAccessHistory',
+  'accessHistoryChunkSize',
   'scheme',
   'sampleDataStorageConfig',
   'computeTableMetrics',

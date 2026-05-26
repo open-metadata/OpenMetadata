@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import ssl
 from pathlib import Path
 from typing import Optional
@@ -43,6 +44,7 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearchC
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -59,7 +61,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -76,9 +78,7 @@ def _handle_ssl_context_by_value(ssl_config: SslConfig):
     init_staging_dir(ssl_config.certificates.stagingDir)
     if ssl_config.certificates.caCertValue:
         ca_cert = Path(ssl_config.certificates.stagingDir, CA_CERT_FILE_NAME)
-        write_data_to_file(
-            ca_cert, ssl_config.certificates.caCertValue.get_secret_value()
-        )
+        write_data_to_file(ca_cert, ssl_config.certificates.caCertValue.get_secret_value())
     if ssl_config.certificates.clientCertValue:
         client_cert = Path(ssl_config.certificates.stagingDir, CLIENT_CERT_FILE_NAME)
         write_data_to_file(
@@ -103,26 +103,28 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+def get_ssl_context(
+    ssl_config: Optional[SslConfig], verify_ssl: Optional[VerifySSL] = VerifySSL.validate
+) -> Optional[ssl.SSLContext]:
     """
     Method to get SSL Context
     """
+    if verify_ssl == VerifySSL.no_ssl:
+        return None
+
+    if verify_ssl == VerifySSL.ignore:
+        return ssl._create_unverified_context()
+
     ca_cert = False
     client_cert = None
     private_key = None
     cert_chain = None
 
-    if not ssl_config.certificates:
-        return None
-
-    if isinstance(ssl_config.certificates, SslCertificatesByValues):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-            ssl_config=ssl_config
-        )
-    elif isinstance(ssl_config.certificates, SslCertificatesByPath):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-            ssl_config=ssl_config
-        )
+    if ssl_config and ssl_config.certificates:
+        if isinstance(ssl_config.certificates, SslCertificatesByValues):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=ssl_config)
+        elif isinstance(ssl_config.certificates, SslCertificatesByPath):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=ssl_config)
 
     if client_cert and private_key:
         cert_chain = (client_cert, private_key)
@@ -132,11 +134,10 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         cert_chain = None
 
     if ca_cert or cert_chain:
-        ssl_context = create_ssl_context(
+        return create_ssl_context(
             cert=cert_chain,
             verify=ca_cert,
         )
-        return ssl_context
 
     return ssl.create_default_context()
 
@@ -148,15 +149,10 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
     basic_auth = None
     api_key = None
     ssl_context = None
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
+    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            connection.authType.password.get_secret_value() if connection.authType.password else None,
         )
 
     if isinstance(connection.authType, ApiKeyAuthentication):
@@ -171,8 +167,7 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
 
-    if connection.sslConfig:
-        ssl_context = get_ssl_context(connection.sslConfig)
+    ssl_context = get_ssl_context(connection.sslConfig, connection.verifySSL)
 
     return Elasticsearch(
         str(connection.hostPort),
@@ -187,8 +182,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: Elasticsearch,
     service_connection: ElasticsearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -199,10 +194,8 @@ def test_connection(
         try:
             result = client.indices.get_alias(expand_wildcards="open")
             if result is None:
-                raise ConnectionError(
-                    "Failed to retrieve search indexes from Elasticsearch"
-                )
-            return result
+                raise ConnectionError("Failed to retrieve search indexes from Elasticsearch")  # noqa: TRY301
+            return result  # noqa: TRY300
         except Exception as exc:
             raise ConnectionError(
                 f"Unable to connect to Elasticsearch or retrieve indexes: {exc}. "

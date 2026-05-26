@@ -51,7 +51,9 @@ public class SdkClients {
   private static final long INTEGRATION_TEST_TOKEN_TTL_SECONDS = 86400;
   private static final long CACHED_CLIENT_MAX_AGE_MILLIS = 15 * 60 * 1000;
 
-  private static final String BASE_URL =
+  // Mutable so UI test harnesses (containerized server, ephemeral port) can override at
+  // runtime via overrideBaseUrl(...) — that path also flushes the cached per-role clients.
+  private static volatile String BASE_URL =
       System.getProperty(
           "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
 
@@ -237,6 +239,67 @@ public class SdkClients {
       initializeFluentAPIs(client);
     }
     return client;
+  }
+
+  /**
+   * Wire the supplied client as the default for all fluent API classes (Tables.create()...,
+   * Glossaries.create()..., etc.). Use this from external-mode tests where the client comes
+   * from a JWT obtained out-of-band, not from the embedded JwtAuthProvider.
+   */
+  public static void useFluentApis(OpenMetadataClient client) {
+    initializeFluentAPIs(client);
+  }
+
+  /**
+   * Point all subsequent {@link #adminClient()} (and other per-role) calls at the given URL,
+   * flushing the cached clients so existing references rebuild against the new endpoint.
+   *
+   * <p>Used by UI test harnesses where the server runs on an ephemeral testcontainers port
+   * not knowable at JVM start. Safe to call repeatedly.
+   */
+  public static synchronized void overrideBaseUrl(String url) {
+    BASE_URL = url;
+    flushCachedClients();
+  }
+
+  /**
+   * Replace the cached admin client with one that uses the given access token. Subsequent
+   * {@link #adminClient()} calls return a freshly built client carrying the new token.
+   *
+   * <p>Used by the UI suite's {@code TokenRefresher} so factories never see an expired
+   * admin token after a long-running run. Other per-role caches are also flushed so the
+   * next refresh of those rebuilds against current state.
+   */
+  public static synchronized void overrideAdminToken(String accessToken) {
+    OpenMetadataConfig cfg =
+        OpenMetadataConfig.builder()
+            .serverUrl(BASE_URL)
+            .accessToken(accessToken)
+            .header("X-Auth-Params-Email", "admin@open-metadata.org")
+            .readTimeout(300000)
+            .writeTimeout(300000)
+            .build();
+    OpenMetadataClient client = new OpenMetadataClient(cfg);
+    initializeFluentAPIs(client);
+    ADMIN_CLIENT = new CachedClient(client, System.currentTimeMillis());
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
+  }
+
+  private static void flushCachedClients() {
+    ADMIN_CLIENT = null;
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
   }
 
   /**

@@ -59,9 +59,7 @@ class TestBurstIQClient(TestCase):
         call_args = mock_post.call_args
 
         # Check URL
-        expected_url = (
-            "https://auth.burstiq.com/realms/test_realm/protocol/openid-connect/token"
-        )
+        expected_url = "https://auth.burstiq.com/realms/test_realm/protocol/openid-connect/token"
         self.assertEqual(call_args[0][0], expected_url)
 
         # Check payload
@@ -153,7 +151,7 @@ class TestBurstIQClient(TestCase):
         mock_request.return_value = mock_dict_response
 
         client = BurstIQClient(self.config)
-        dictionaries = client.get_dictionaries(limit=1)
+        dictionaries = client.get_dictionaries(limit=1)  # noqa: F841
 
         # Verify limit was passed
         call_args = mock_request.call_args
@@ -220,7 +218,7 @@ class TestBurstIQClient(TestCase):
         mock_request.return_value = mock_edges_response
 
         client = BurstIQClient(self.config)
-        edges = client.get_edges(
+        edges = client.get_edges(  # noqa: F841
             from_dictionary="patient", to_dictionary="visit", limit=10
         )
 

@@ -36,11 +36,8 @@ from metadata.ingestion.source.dashboard.domodashboard.metadata import (
     DomodashboardSource,
 )
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent
-    / "resources/datasets/domodashboard_dataset.json"
-)
-with open(mock_file_path, encoding="UTF-8") as file:
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domodashboard_dataset.json"
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -65,9 +62,7 @@ mock_domopipeline_config = {
                 "instanceDomain": "https://domain.domo.com",
             }
         },
-        "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -142,39 +137,30 @@ class DomoDashboardUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:
+    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_domopipeline_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
         self.domodashboard = DomodashboardSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.domodashboard.context.get().__dict__["dashboard"] = MOCK_DASHBOARD.name
-        self.domodashboard.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.domodashboard.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard(self):
         dashboard_list = []
         results = self.domodashboard.yield_dashboard(MOCK_DASHBOARD)
         for result in results:
             if isinstance(result, Either) and result.right:
-                dashboard_list.append(result.right)
+                dashboard_list.append(result.right)  # noqa: PERF401
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     def test_dashboard_name(self):
-        assert (
-            self.domodashboard.get_dashboard_name(MOCK_DASHBOARD)
-            == mock_data[0][0]["title"]
-        )
+        assert self.domodashboard.get_dashboard_name(MOCK_DASHBOARD) == mock_data[0][0]["title"]
 
     def test_chart(self):
         """
@@ -185,26 +171,16 @@ class DomoDashboardUnitTest(TestCase):
             chart_list = []
             for result in results:
                 if isinstance(result, Either) and result.right:
-                    chart_list.append(result.right)
-            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+                    chart_list.append(result.right)  # noqa: PERF401
+            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
                 self.assertEqual(expected, original)
 
         # Cover error responses
         with patch.object(REST, "_request", return_value=mock_data[1]):
-            assert (
-                self.domodashboard.client.custom.get_chart_details(
-                    MOCK_DASHBOARD.cardIds[0]
-                )
-                is None
-            )
+            assert self.domodashboard.client.custom.get_chart_details(MOCK_DASHBOARD.cardIds[0]) is None
 
         with patch.object(REST, "_request", return_value=mock_data[2]):
-            assert (
-                self.domodashboard.client.custom.get_chart_details(
-                    MOCK_DASHBOARD.cardIds[0]
-                )
-                is None
-            )
+            assert self.domodashboard.client.custom.get_chart_details(MOCK_DASHBOARD.cardIds[0]) is None
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""

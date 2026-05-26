@@ -82,9 +82,7 @@ def test_get_connection_parses_host_and_port(mock_engine, iomete_connection):
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
-def test_get_connection_defaults_to_port_443_when_no_port(
-    mock_engine, iomete_connection_no_port
-):
+def test_get_connection_defaults_to_port_443_when_no_port(mock_engine, iomete_connection_no_port):
     get_connection(iomete_connection_no_port)
     url = mock_engine.call_args[0][0]
     assert url.host == "dev.iomete.cloud"
@@ -122,9 +120,7 @@ def test_get_connection_passes_catalog_as_database(mock_engine, minimal_connecti
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
-def test_get_connection_omits_database_when_catalog_not_set(
-    mock_engine, minimal_connection
-):
+def test_get_connection_omits_database_when_catalog_not_set(mock_engine, minimal_connection):
     get_connection(minimal_connection)
     url = mock_engine.call_args[0][0]
     assert url.database is None
@@ -174,9 +170,7 @@ MOCK_WORKFLOW_CONFIG = {
 }
 
 
-@patch(
-    "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-)
+@patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
 def test_create_raises_for_wrong_connection_type(mock_test_conn):
     mock_metadata = MagicMock()
     bad_config = dict(MOCK_WORKFLOW_CONFIG)
@@ -191,12 +185,10 @@ def test_create_raises_for_wrong_connection_type(mock_test_conn):
 # ── get_schema_definition ─────────────────────────────────────────────────────
 
 
-@patch(
-    "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-)
+@patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
 def test_get_schema_definition_returns_none_on_not_implemented(mock_test_conn):
     """Inspector raises NotImplementedError — must return None, not propagate."""
-    mock_metadata = MagicMock()
+    mock_metadata = MagicMock()  # noqa: F841
     with patch(
         "metadata.ingestion.source.database.iomete.metadata.IometeSource.__init__",
         return_value=None,
@@ -211,12 +203,10 @@ def test_get_schema_definition_returns_none_on_not_implemented(mock_test_conn):
     assert result is None
 
 
-@patch(
-    "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-)
+@patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
 def test_get_schema_definition_returns_none_on_generic_exception(mock_test_conn):
     """Any unexpected exception must be swallowed and return None."""
-    mock_metadata = MagicMock()
+    mock_metadata = MagicMock()  # noqa: F841
     with patch(
         "metadata.ingestion.source.database.iomete.metadata.IometeSource.__init__",
         return_value=None,
@@ -231,9 +221,7 @@ def test_get_schema_definition_returns_none_on_generic_exception(mock_test_conn)
     assert result is None
 
 
-@patch(
-    "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-)
+@patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
 def test_get_schema_definition_returns_definition_for_view(mock_test_conn):
     """View type must fetch and return the DDL."""
     with patch(
@@ -250,9 +238,7 @@ def test_get_schema_definition_returns_definition_for_view(mock_test_conn):
     assert result == "CREATE VIEW v AS SELECT 1"
 
 
-@patch(
-    "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-)
+@patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
 def test_get_schema_definition_strips_whitespace(mock_test_conn):
     with patch(
         "metadata.ingestion.source.database.iomete.metadata.IometeSource.__init__",
@@ -262,9 +248,7 @@ def test_get_schema_definition_strips_whitespace(mock_test_conn):
         source.source_config = MagicMock(includeDDL=True)
 
     inspector = types.SimpleNamespace()
-    inspector.get_view_definition = MagicMock(
-        return_value="  CREATE TABLE t (id INT)  "
-    )
+    inspector.get_view_definition = MagicMock(return_value="  CREATE TABLE t (id INT)  ")
 
     result = source.get_schema_definition("Regular", "t", "my_schema", inspector)
     assert result == "CREATE TABLE t (id INT)"

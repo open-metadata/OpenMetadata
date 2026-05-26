@@ -15,6 +15,7 @@ and Airflow 2.x/3.x databases.
 The Airflow SDK is always v3.x (which has DagRun.logical_date), but we may
 connect to Airflow 2.x databases (which have execution_date column).
 """
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
@@ -193,9 +194,7 @@ class TestGetPipelineStatus:
         "metadata.ingestion.source.pipeline.airflow.metadata.AirflowSource.__init__",
         return_value=None,
     )
-    def test_returns_empty_list_for_no_results(
-        self, mock_init, mock_exec_col, mock_session
-    ):
+    def test_returns_empty_list_for_no_results(self, mock_init, mock_exec_col, mock_session):
         """When no dag runs found, should return empty list."""
         from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
 
@@ -226,9 +225,7 @@ class TestDagRunLogicalDateUsage:
 
     def test_dagrun_has_logical_date_attribute(self):
         """Verify DagRun model has logical_date attribute (Airflow SDK 3.x)."""
-        assert hasattr(
-            DagRun, "logical_date"
-        ), "DagRun should have logical_date attribute in Airflow SDK 3.x"
+        assert hasattr(DagRun, "logical_date"), "DagRun should have logical_date attribute in Airflow SDK 3.x"
 
     def test_dagrun_does_not_have_execution_date_attribute(self):
         """Verify DagRun model does NOT have execution_date attribute (Airflow SDK 3.x).
@@ -286,23 +283,22 @@ class TestTaskDetailAccess:
         mock_session.query.return_value.first.return_value = first_return_value
         return mock_session
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", True)
-    def test_airflow3_queries_dag_id_only(self):
-        """Airflow 3.x: data column is NULL; must fall back to dag_id query without error."""
+    def test_compressed_dag_falls_back_to_dag_id_query(self):
+        """Data column is NULL (COMPRESS_SERIALIZED_DAGS enabled); must fall back to dag_id query."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )
 
         dag_id_row = ("my_dag",)
-        session = self._make_session(first_return_value=dag_id_row)
+        mock_session = MagicMock()
+        mock_session.query.return_value.first.side_effect = [(None,), dag_id_row]
 
-        result = _test_task_detail_access(session)
+        result = _test_task_detail_access(mock_session)
 
         assert result == dag_id_row
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", False)
     def test_airflow2_returns_tasks_when_data_is_valid(self):
-        """Airflow 2.x: extracts and returns the task list from serialized DAG data."""
+        """Uncompressed DAG: extracts and returns the task list from serialized DAG data."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )
@@ -315,9 +311,8 @@ class TestTaskDetailAccess:
 
         assert result == tasks_payload
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", False)
     def test_airflow2_returns_none_when_table_empty(self):
-        """Airflow 2.x: empty serialized_dag table returns None without raising."""
+        """Empty serialized_dag table returns None without raising."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )
@@ -416,9 +411,7 @@ class TestColumnFunctionUsage:
         """Verify column is imported from sqlalchemy in the metadata module."""
         from metadata.ingestion.source.pipeline.airflow import metadata
 
-        assert hasattr(
-            metadata, "column"
-        ), "The metadata module should import column from sqlalchemy"
+        assert hasattr(metadata, "column"), "The metadata module should import column from sqlalchemy"
 
     def test_get_pipeline_status_uses_column_function(self):
         """Verify get_pipeline_status method exists and can handle both column names."""

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { INVALID_NAMES } from '../constant/common';
 import {
+  CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
+  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
@@ -530,7 +531,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `cp-${item.name}-${uuid()}`;
+    const customPropertyName = `cp-${item.name}-${uuid()}${NAME_SUFFIX}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -657,10 +658,10 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — only '::' is blocked
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await page.fill(
     '[data-testid="name"] input',
-    INVALID_NAMES.WITH_SPECIAL_CHARS
+    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
   );
 
   await expect(page.locator('#name_help')).toContainText(
@@ -772,12 +773,7 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
   await expect(
-    page.getByRole('row', {
-      name: new RegExp(
-        propertyName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        'i'
-      ),
-    })
+    page.locator('tr').filter({ hasText: propertyName })
   ).toBeVisible();
 };
 
@@ -890,7 +886,19 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
+  const patchResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH' &&
+      res.status() === 200
+  );
+
   await page.locator('[data-testid="save-button"]').click();
+  await patchResponse;
+
+  // ConfirmationModal is destroyOnClose: assert the body text unmounts so
+  // the modal mask is gone before the next sidebar click in callers' loops.
+  await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
 };
 
 export const verifyCustomPropertyInAdvancedSearch = async (
@@ -1050,6 +1058,9 @@ export const editColumnCustomProperty = async (
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
     await expect(page.getByTestId('asset-select-list')).toContainText(value);
+    if (propertyType === 'entityReferenceList') {
+      await page.keyboard.press('Escape');
+    }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
     // Ant Design Pickers
     const picker = page.getByTestId(
@@ -1145,7 +1156,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
           .includes(
             `/api/v1/tables/name/${encodeURIComponent(tableFqn)}/columns`
           ) &&
-        response.url().includes('profile') &&
+        response.url().includes('fields') &&
         response.request().method() === 'GET',
       // TODO: Reduce timeout once the latency issue is fixed
       { timeout: 150_000 }

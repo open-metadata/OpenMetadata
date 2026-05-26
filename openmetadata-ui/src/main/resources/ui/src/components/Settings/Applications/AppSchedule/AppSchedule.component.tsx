@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
-import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +35,8 @@ const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
   jsonSchema,
+  disabled = false,
+  disabledReason,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -47,6 +48,7 @@ const AppSchedule = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { config } = useLimitStore();
+  const isAppDisabled = disabled || Boolean(appData.deleted);
 
   const showRunNowButton = useMemo(() => {
     return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
@@ -81,16 +83,30 @@ const AppSchedule = ({
     }
   }, [appData]);
 
-  const cronString = useMemo(() => {
+  const [cronString, setCronString] = useState<string>('');
+
+  useEffect(() => {
     const cronExpression = (appData.appSchedule as AppScheduleClass)
       ?.cronExpression;
-    if (cronExpression) {
-      return cronstrue.toString(cronExpression, {
-        throwExceptionOnParseError: false,
-      });
-    }
+    if (!cronExpression) {
+      setCronString('');
 
-    return '';
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue').then((m) => {
+      if (!cancelled) {
+        setCronString(
+          m.default.toString(cronExpression, {
+            throwExceptionOnParseError: false,
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [appData]);
 
   const onDialogCancel = () => {
@@ -115,7 +131,7 @@ const AppSchedule = ({
 
   const appRunHistory = useMemo(() => {
     if (
-      !appData.deleted &&
+      !isAppDisabled &&
       (appData.appType === AppType.Internal || isPipelineDeployed)
     ) {
       return (
@@ -129,10 +145,10 @@ const AppSchedule = ({
       );
     }
 
-    if (appData.deleted) {
+    if (isAppDisabled) {
       return (
         <Typography.Text>
-          {t('message.application-disabled-message')}
+          {disabledReason ?? t('message.application-disabled-message')}
         </Typography.Text>
       );
     }
@@ -142,7 +158,15 @@ const AppSchedule = ({
         {t('message.no-ingestion-pipeline-found')}
       </Typography.Text>
     );
-  }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+  }, [
+    appData,
+    disabledReason,
+    isAppDisabled,
+    isPipelineDeployed,
+    appRunsHistoryRef,
+    jsonSchema,
+    t,
+  ]);
 
   const { initialOptions, initialData, defaultCron } = useMemo(() => {
     return {
@@ -209,13 +233,13 @@ const AppSchedule = ({
             </>
           )}
         </Col>
-        {!appData.deleted && (
+        {!isAppDisabled && (
           <Col className="d-flex items-center justify-end" flex="200px">
             <Space>
               {appData.appType === AppType.External && (
                 <Button
                   data-testid="deploy-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   loading={isDeployLoading}
                   type="primary"
                   onClick={onDeployTrigger}>
@@ -226,7 +250,7 @@ const AppSchedule = ({
               {!appData.system && (
                 <Button
                   data-testid="edit-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   type="primary"
                   onClick={() => setShowModal(true)}>
                   {t('label.edit')}
@@ -236,7 +260,7 @@ const AppSchedule = ({
               {showRunNowButton && (
                 <Button
                   data-testid="run-now-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   loading={isRunLoading}
                   type="primary"
                   onClick={onAppTrigger}>

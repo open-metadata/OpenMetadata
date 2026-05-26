@@ -91,6 +91,7 @@ import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
@@ -500,6 +501,9 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [EntityType.SPREADSHEET]: SpreadsheetIcon,
   [EntityType.WORKSHEET]: WorksheetIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
+  [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
+  [EntityType.knowledgePanels]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
@@ -517,7 +521,7 @@ export const getEntityIcon = (
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
       Icon = SearchOutlined;
-      className = 'text-sm text-inherit';
+      className = classNames('text-sm text-inherit', iconClass);
 
       break;
 
@@ -1721,27 +1725,6 @@ export const mergeTagsWithGlossary = (
   const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
 
   return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**

@@ -20,7 +20,6 @@ import {
   CreateUser,
 } from '../generated/api/teams/createUser';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
-import { Bot } from '../generated/entity/bot';
 import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
@@ -144,24 +143,6 @@ export const generateUserToken = async (request: GenerateTokenRequest) => {
 export const getAuthMechanismForBotUser = async (botId: string) => {
   const response = await APIClient.get<AuthenticationMechanism>(
     `/users/auth-mechanism/${botId}`
-  );
-
-  return response.data;
-};
-
-export const getBotByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Bot>(
-    `/bots/name/${getEncodedFqn(name)}`,
-    { params }
-  );
-
-  return response.data;
-};
-
-export const updateBotDetail = async (id: string, data: Operation[]) => {
-  const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
-    `/bots/${id}`,
-    data
   );
 
   return response.data;

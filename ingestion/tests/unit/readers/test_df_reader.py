@@ -12,6 +12,7 @@
 """
 Validate factory and logic to read dataframes from local.
 """
+
 from pathlib import Path
 from unittest import TestCase
 
@@ -37,9 +38,7 @@ class TestDataFrameReader(TestCase):
         df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
-            file_fqn=DatalakeTableSchemaWrapper(
-                key=str(key), bucket_name="unused", file_extension=SupportedTypes.CSV
-            ),
+            file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused", file_extension=SupportedTypes.CSV),
         )
 
         self.assertIsNotNone(df_iter)
@@ -47,9 +46,7 @@ class TestDataFrameReader(TestCase):
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
-        self.assertEqual(
-            list(df_list[0].columns), ["transaction_id", "transaction_value"]
-        )
+        self.assertEqual(list(df_list[0].columns), ["transaction_id", "transaction_value"])
 
     def test_dsv_reader(self):
         key = ROOT_PATH / "transactions_1.csv"
@@ -65,9 +62,7 @@ class TestDataFrameReader(TestCase):
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
-        self.assertEqual(
-            list(df_list[0].columns), ["transaction_id", "transaction_value"]
-        )
+        self.assertEqual(list(df_list[0].columns), ["transaction_id", "transaction_value"])
 
     def test_dsv_reader_with_separator(self):
         key = ROOT_PATH / "transactions_separator.csv"
@@ -75,9 +70,7 @@ class TestDataFrameReader(TestCase):
         df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
-            file_fqn=DatalakeTableSchemaWrapper(
-                key=str(key), bucket_name="unused", separator=";"
-            ),
+            file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused", separator=";"),
         )
 
         self.assertIsNotNone(df_iter)
@@ -85,9 +78,7 @@ class TestDataFrameReader(TestCase):
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
-        self.assertEqual(
-            list(df_list[0].columns), ["transaction_id", "transaction_value"]
-        )
+        self.assertEqual(list(df_list[0].columns), ["transaction_id", "transaction_value"])
 
     def test_json_reader(self):
         key = ROOT_PATH / "employees.json"

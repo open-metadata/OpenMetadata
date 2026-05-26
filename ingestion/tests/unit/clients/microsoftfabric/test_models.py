@@ -337,9 +337,7 @@ class FabricActivityModelTest(TestCase):
             "name": "Web Activity",
             "type": "WebActivity",
             "description": "Call external API",
-            "dependsOn": [
-                {"activity": "Previous", "dependencyConditions": ["Succeeded"]}
-            ],
+            "dependsOn": [{"activity": "Previous", "dependencyConditions": ["Succeeded"]}],
             "typeProperties": {"url": "https://api.example.com"},
         }
 

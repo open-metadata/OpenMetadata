@@ -11,6 +11,7 @@
 """
 Fivetran integration test fixtures — mock HTTP server
 """
+
 import json
 import re
 import threading
@@ -261,9 +262,7 @@ class FivetranMockHandler(BaseHTTPRequestHandler):
         elif m := RE_CONNECTOR_SCHEMAS.match(path):
             self._handle_schemas(m.group("connector_id"))
         elif m := RE_COLUMN_LINEAGE.match(path):
-            self._handle_columns(
-                m.group("connector_id"), m.group("schema"), m.group("table")
-            )
+            self._handle_columns(m.group("connector_id"), m.group("schema"), m.group("table"))
         else:
             self._respond_json(
                 {"code": "NotFound", "message": f"Unknown resource: {path}"},
@@ -291,9 +290,7 @@ class FivetranMockHandler(BaseHTTPRequestHandler):
     def _handle_detail(self, registry, key):
         data = registry.get(key)
         if data is None:
-            self._respond_json(
-                {"code": "NotFound", "message": f"Not found: {key}"}, status=404
-            )
+            self._respond_json({"code": "NotFound", "message": f"Not found: {key}"}, status=404)
             return
         self._respond_json({"data": data})
 
@@ -311,9 +308,7 @@ class FivetranMockHandler(BaseHTTPRequestHandler):
         key = (connector_id, schema, table)
         data = COLUMN_DETAILS.get(key)
         if data is None:
-            self._respond_json(
-                {"code": "NotFound", "message": f"No columns for {key}"}, status=404
-            )
+            self._respond_json({"code": "NotFound", "message": f"No columns for {key}"}, status=404)
             return
         self._respond_json({"data": data})
 

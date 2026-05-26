@@ -183,6 +183,11 @@ public final class Dashboards {
     public DashboardDeleter delete() {
       return new DashboardDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Dashboard> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dashboards(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

@@ -17,12 +17,16 @@ import requests
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SASConnection,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
+
+SAS_CLI_AUTH_HEADER = "Basic c2FzLmNsaTo="
 
 
 class SASClient:
@@ -32,16 +36,21 @@ class SASClient:
 
     def __init__(self, config: SASConnection):
         self.config: SASConnection = config
+        verify = self._get_verify()
         self.auth_token = self.get_token(
-            config.serverHost, config.username, config.password.get_secret_value()
+            config.serverHost,
+            config.username,
+            config.password.get_secret_value(),
+            verify=verify,
         )
+
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(config.serverHost),
             auth_header="Authorization",
             auth_token=self.get_auth_token,
             api_version="",
             allow_redirects=True,
-            verify=False,
+            verify=verify,
         )
         self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
@@ -51,6 +60,22 @@ class SASClient:
         self.custom_filter_reports = config.reportsCustomFilter
         self.enable_dataflows = config.dataflows
         self.custom_filter_dataflows = config.dataflowsCustomFilter
+
+    def _get_verify(self):
+        """
+        Helper to determine the SSL verification strategy
+        """
+        verify = True
+        if self.config.verifySSL == VerifySSL.ignore:
+            verify = False
+        elif self.config.verifySSL == VerifySSL.no_ssl:
+            verify = False
+        elif self.config.verifySSL == VerifySSL.validate and self.config.sslConfig:
+            try:
+                verify = get_verify_ssl_fn(self.config.verifySSL)(self.config.sslConfig)
+            except Exception:  # pylint: disable=broad-except
+                verify = True
+        return verify
 
     def check_connection(self):
         """
@@ -73,8 +98,8 @@ class SASClient:
             "Accept": "application/vnd.sas.metadata.instance.entity.detail+json",
         }
         response = self.client.get(path=endpoint, headers=headers)
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         return response
 
     def get_information_catalog_link(self, instance_id):
@@ -95,17 +120,14 @@ class SASClient:
             asset_filter = self.custom_filter_dataflows
 
         logger.debug(
-            f"Configuration for {assets}: enable {assets} - {enable_asset}, "
-            f"custom {assets} filter - {asset_filter}"
+            "Configuration for %s: enable %s - %s, custom %s filter - %s",
+            assets, assets, enable_asset, assets, asset_filter
         )
-        endpoint = (
-            f"catalog/search?indices={assets}&q="
-            f"{asset_filter if str(asset_filter) != 'None' else '*'}"
-        )
+        endpoint = f"catalog/search?indices={assets}&q={asset_filter if str(asset_filter) != 'None' else '*'}"
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client.get(path=endpoint, headers=headers)
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         return response["items"]
 
     def get_views(self, query):
@@ -114,10 +136,10 @@ class SASClient:
             "Content-type": "application/vnd.sas.metadata.instance.query+json",
             "Accept": "application/json",
         }
-        logger.info(f"{query}")
+        logger.info("%s", query)
         response = self.client.post(path=endpoint, data=query, headers=headers)
-        if "error" in response.keys():
-            raise APIError(f"{response}")
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": "Error fetching views from SAS", "code": 0})
         return response
 
     def get_data_source(self, endpoint):
@@ -125,9 +147,9 @@ class SASClient:
             "Accept-Item": "application/vnd.sas.data.source+json",
         }
         response = self.client.get(path=endpoint, headers=headers)
-        logger.info(f"{response}")
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        logger.info("%s", response)
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         return response
 
     def get_report_link(self, resource, uri):
@@ -141,43 +163,60 @@ class SASClient:
     def get_report_relationship(self, report_id):
         endpoint = f"reports/commons/relationships/reports/{report_id}"
         response = self.client.get(endpoint)
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         dependencies = []
         for item in response["items"]:
             if item["type"] == "Dependent":
-                dependencies.append(item)
+                dependencies.append(item)  # noqa: PERF401
         return dependencies
 
     def get_resource(self, endpoint):
         response = self.client.get(endpoint)
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         return response
 
     def get_instances_with_param(self, data):
         endpoint = f"catalog/instances?{data}"
         response = self.client.get(endpoint)
-        if "error" in response.keys():
-            raise APIError(response["error"])
+        if response and isinstance(response, dict) and "error" in response:
+            raise APIError({"message": response["error"], "code": 0})
         return response["items"]
 
     def get_auth_token(self):
         return self.auth_token, 0
 
-    def get_token(self, base_url, user, password):
+    def get_token(self, base_url, user, password, verify=True):
         endpoint = "/SASLogon/oauth/token"
         payload = {"grant_type": "password", "username": user, "password": password}
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
-            "Authorization": "Basic c2FzLmNsaTo=",
+            "Authorization": SAS_CLI_AUTH_HEADER,
         }
         url = base_url + endpoint
+
         response = requests.request(
-            "POST", url, headers=headers, data=payload, verify=False, timeout=10
+            "POST",
+            url,
+            headers=headers,
+            data=payload,
+            verify=verify,
+            timeout=10,
         )
-        text_response = response.json()
-        logger.info(
-            f"this is user: {user}, password: {password}, text: {text_response}"
+        logger.debug(
+            "Token request for user: %s completed with status: %s",
+            user,
+            response.status_code,
         )
-        return response.json()["access_token"]
+        try:
+            body = response.json()
+        except ValueError as exc:
+            response.raise_for_status()
+            raise RuntimeError(f"SAS token endpoint returned non-JSON response (HTTP {response.status_code})") from exc
+
+        response.raise_for_status()
+        token = body.get("access_token")
+        if not token:
+            raise RuntimeError(f"Failed to retrieve access_token from SAS (HTTP {response.status_code})")
+        return token

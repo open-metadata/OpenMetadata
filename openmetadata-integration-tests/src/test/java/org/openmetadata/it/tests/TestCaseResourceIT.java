@@ -7,13 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.awaitility.Awaitility;
@@ -21,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -63,6 +71,7 @@ import org.slf4j.LoggerFactory;
 @Execution(ExecutionMode.CONCURRENT)
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -318,17 +327,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Override
   protected EntityHistory getVersionHistory(java.util.UUID id) {
     return SdkClients.adminClient().testCases().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(java.util.UUID id, int limit, int offset) {
-    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      java.util.UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -1365,6 +1363,59 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_putPreservesLogicalSuiteSearchMembership(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("put_logical_suite"))
+            .description("initial description")
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    TestCase testCase = client.testCases().create(createRequest);
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_put_suite"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+    addTestCasesToLogicalTestSuite(client, logicalSuite.getId(), List.of(testCase.getId()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("logical suite membership indexed before PUT")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertSearchDocContainsTestSuite(
+                      queryTestCaseSearchSource(searchClient, testCase.getId()),
+                      logicalSuite.getId()));
+
+      String updatedDescription = "updated via PUT " + System.currentTimeMillis();
+      createRequest.setDescription(updatedDescription);
+      client.testCases().upsert(createRequest);
+
+      TestCase fetched = client.testCases().get(testCase.getId().toString(), "testSuites");
+      assertTrue(
+          fetched.getTestSuites().stream()
+              .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())),
+          "PUT should preserve the logical suite graph relationship");
+
+      Awaitility.await("PUT preserves logical suite membership in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode source = queryTestCaseSearchSource(searchClient, testCase.getId());
+                assertNotNull(source);
+                assertEquals(updatedDescription, source.path("description").asText());
+                assertSearchDocContainsTestSuite(source, logicalSuite.getId());
+              });
+    }
+  }
+
+  @Test
   void test_bulkAddMissingModeReturnsError(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1607,6 +1658,43 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntity(testCaseId),
         "Test case should be deleted when table is deleted");
+  }
+
+  @Test
+  void test_recursiveHardDeleteCascadesPastResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_cascade_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
+    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
+    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
+    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus newStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    client.testCaseResolutionStatuses().create(newStatus);
+
+    String testCaseId = testCase.getId().toString();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(testCaseId),
+        "Test case should be deleted along with its resolution-status children");
   }
 
   @Test
@@ -4469,5 +4557,73 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Verify the displayName was actually set
     TestCase updated = getEntity(created.getId().toString());
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  private void addTestCasesToLogicalTestSuite(
+      OpenMetadataClient client, UUID testSuiteId, List<UUID> testCaseIds) {
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", testSuiteId.toString());
+    request.put("testCaseIds", testCaseIds.stream().map(UUID::toString).toList());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/logicalTestCases",
+            request,
+            RequestOptions.builder().build());
+  }
+
+  private JsonNode queryTestCaseSearchSource(Rest5Client searchClient, UUID testCaseId)
+      throws Exception {
+    refreshTestCaseSearchIndex(searchClient);
+
+    String query =
+        """
+        {
+          "size": 1,
+          "query": {
+            "bool": {
+              "must": [
+                { "term": { "_id": "%s" } }
+              ]
+            }
+          }
+        }
+        """
+            .formatted(testCaseId);
+
+    Request request = new Request("POST", "/" + getTestCaseSearchIndexName() + "/_search");
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+
+    assertEquals(200, response.getStatusCode());
+    String body =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+    JsonNode hits = MAPPER.readTree(body).path("hits").path("hits");
+    return hits.size() == 0 ? null : hits.get(0).path("_source");
+  }
+
+  private void assertSearchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
+    assertNotNull(source);
+    JsonNode testSuites = source.path("testSuites");
+    assertTrue(testSuites.isArray(), "testSuites should be indexed in the search document");
+    boolean found = false;
+    for (JsonNode suite : testSuites) {
+      if (testSuiteId.toString().equals(suite.path("id").asText())) {
+        found = true;
+        break;
+      }
+    }
+    assertTrue(found, "search document testSuites should contain " + testSuiteId);
+  }
+
+  private String getTestCaseSearchIndexName() {
+    return "openmetadata_test_case_search_index";
+  }
+
+  private void refreshTestCaseSearchIndex(Rest5Client searchClient) throws Exception {
+    Request request = new Request("POST", "/" + getTestCaseSearchIndexName() + "/_refresh");
+    searchClient.performRequest(request);
   }
 }
