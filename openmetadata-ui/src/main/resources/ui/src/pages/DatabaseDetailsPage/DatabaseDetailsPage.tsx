@@ -79,7 +79,6 @@ import {
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import {

@@ -59,7 +59,6 @@ import {
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
 import {
-  addToRecentViewed,
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,

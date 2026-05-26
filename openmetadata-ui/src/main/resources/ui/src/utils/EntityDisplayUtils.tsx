@@ -15,8 +15,10 @@ import classNames from 'classnames';
 import { capitalize, isNull, isUndefined } from 'lodash';
 import { CurrentState } from 'Models';
 import { lazy, ReactNode, Suspense } from 'react';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import brandClassBase from './BrandData/BrandClassBase';
+import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t, Transi18next } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
@@ -149,4 +151,26 @@ export const getLoadingStatus = (
   }
 
   return children;
+};
+
+/**
+ * prepare label for given entity type and fqn
+ * @param type - entity type
+ * @param fqn - entity fqn
+ * @param withQuotes - boolean value
+ * @returns - label for entity
+ */
+export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  if (withQuotes) {
+    return label;
+  } else {
+    return label.replace(/(^"|"$)/g, '');
+  }
 };

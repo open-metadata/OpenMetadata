@@ -61,7 +61,6 @@ import {
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
 import {
-  addToRecentViewed,
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,

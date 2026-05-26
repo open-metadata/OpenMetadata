@@ -40,14 +40,11 @@ import {
   removeFollower,
   updatePipelinesVotes,
 } from '../../rest/pipelineAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import {
   pipelineQueryFn,
   pipelineQueryKey,
 } from '../../rest/queries/pipelineQuery';
-import {
-  addToRecentViewed,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

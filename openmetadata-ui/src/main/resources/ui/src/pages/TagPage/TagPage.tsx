@@ -97,14 +97,16 @@ import {
   TAG_DEFAULT_FIELDS,
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
-import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
-import { getEntityDeleteMessage } from '../../utils/EntityDisplayUtils';
+import { deleteTag, patchTag } from '../../rest/tagAPI';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
+import {
+  getEntityDeleteMessage,
+  getEntityMissingError,
+} from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';

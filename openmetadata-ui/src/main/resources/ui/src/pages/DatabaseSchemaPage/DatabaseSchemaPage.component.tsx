@@ -83,7 +83,6 @@ import { getTableList } from '../../rest/tableAPI';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import {

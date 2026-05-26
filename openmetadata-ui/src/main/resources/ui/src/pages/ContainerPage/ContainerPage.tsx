@@ -69,10 +69,8 @@ import {
   updateContainerVotes,
 } from '../../rest/storageAPI';
 import {
-  addToRecentViewed,
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';

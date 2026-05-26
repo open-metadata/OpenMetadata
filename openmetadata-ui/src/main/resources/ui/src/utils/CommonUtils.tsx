@@ -12,31 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import {
-  capitalize,
-  get,
-  isEmpty,
-  isNil,
-  isNull,
-  isString,
-  isUndefined,
-  round,
-  toLower,
-  toNumber,
-} from 'lodash';
-import {
-  CurrentState,
-  ExtraInfo,
-  RecentlySearched,
-  RecentlySearchedData,
-  RecentlyViewedData,
-} from 'Models';
-import { Dispatch, ReactNode, SetStateAction } from 'react';
-import Loader from '../components/common/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { isEmpty, isNil, isUndefined } from 'lodash';
+import { ExtraInfo } from 'Models';
+import { Dispatch, SetStateAction } from 'react';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn } from '../rest/feedsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
@@ -66,50 +45,6 @@ export const getNonDeletedTeams = (teams: EntityReference[]) => {
 };
 
 /**
- * prepare label for given entity type and fqn
- * @param type - entity type
- * @param fqn - entity fqn
- * @param withQuotes - boolean value
- * @returns - label for entity
- */
-export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
-  let label = '';
-  if (type === EntityType.TABLE) {
-    label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
-  } else {
-    label = getPartialNameFromFQN(fqn, ['database']);
-  }
-
-  if (withQuotes) {
-    return label;
-  } else {
-    return label.replace(/(^"|"$)/g, '');
-  }
-};
-
-/**
- * Check if entity is deleted and return with "(Deactivated) text"
- * @param value - entity name
- * @param isDeleted - boolean
- * @returns - entity placeholder
- */
-export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
-  if (isDeleted) {
-    return `${value} (${t('label.deactivated')})`;
-  } else {
-    return value;
-  }
-};
-
-export const replaceSpaceWith_ = (text: string) => {
-  return text.replace(/\s/g, '_');
-};
-
-export const replaceAllSpacialCharWith_ = (text: string) => {
-  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
-};
-
-/**
  * Get feed counts for given entity type and fqn
  * @param entityType - entity type
  * @param entityFQN - entity fqn
@@ -134,8 +69,6 @@ export const getFeedCounts = async (
       return;
     }
 
-    // Fetch activity events, task counts in parallel
-    // Activity events from new activity API replaces conversation count
     const [activityRes, taskCounts] = await Promise.all([
       getEntityActivityByFqn(entityType, entityFQN, {
         days: 30,
@@ -145,10 +78,8 @@ export const getFeedCounts = async (
       getTaskCounts({ aboutEntity: entityFQN, domain }),
     ]);
 
-    // Use activity events count
     const activityCount = activityRes?.data?.length ?? 0;
 
-    // Use task counts from new tasks API
     const openTaskCount = taskCounts.open ?? 0;
     const closedTaskCount = taskCounts.completed ?? 0;
     const totalTasksCount = taskCounts.total ?? 0;
@@ -237,35 +168,6 @@ export const fetchEntityActivityCountInto = async (
   }
 };
 
-export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat(i18n.language).format(number);
-};
-
-/**
- * If the number is a time format, return the number, otherwise format the number with commas
- * @param {number} number - The number to be formatted.
- * @returns A function that takes a number and returns a string.
- */
-export const getStatisticsDisplayValue = (
-  number: string | number | undefined
-) => {
-  const displayValue = toNumber(number);
-
-  if (isNaN(displayValue)) {
-    return number;
-  }
-
-  return formatNumberWithComma(displayValue);
-};
-
-export const digitFormatter = (value: number) => {
-  // convert 1000 to 1k
-  return Intl.NumberFormat('en', {
-    notation: 'compact',
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
 export const getTeamsUser = (
   data: ExtraInfo,
   currentUser: User
@@ -286,21 +188,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-  if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-      ? tag.split(FQN_SEPARATOR_CHAR)[1]
-      : tag;
-  } else {
-    return {
-      ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : tag.tagFQN,
-    };
-  }
 };
 
 /**
@@ -339,61 +226,4 @@ export const normalizeToArray = <T,>(value: T | T[]): T[] => {
   }
 
   return [value];
-};
-
-/**
- * Get feed counts for given entity type and fqn
- * @param entityType - entity type
- * @param entityFQN - entity fqn
- * @param onDataFetched - callback function which return FeedCounts object
- */
-
-export const getFeedCounts = async (
-  entityType: string,
-  entityFQN: string,
-  domainOrCallback: string | undefined | ((countValue: FeedCounts) => void),
-  callback?: (countValue: FeedCounts) => void
-) => {
-  try {
-    const domain =
-      typeof domainOrCallback === 'string' || domainOrCallback === undefined
-        ? domainOrCallback
-        : undefined;
-    const feedCountCallback =
-      typeof domainOrCallback === 'function' ? domainOrCallback : callback;
-
-    if (!feedCountCallback) {
-      return;
-    }
-
-    // Fetch activity events, task counts in parallel
-    // Activity events from new activity API replaces conversation count
-    const [activityRes, taskCounts] = await Promise.all([
-      getEntityActivityByFqn(entityType, entityFQN, {
-        days: 30,
-        limit: 100,
-        domain,
-      }),
-      getTaskCounts({ aboutEntity: entityFQN, domain }),
-    ]);
-
-    // Use activity events count
-    const activityCount = activityRes?.data?.length ?? 0;
-
-    // Use task counts from new tasks API
-    const openTaskCount = taskCounts.open ?? 0;
-    const closedTaskCount = taskCounts.completed ?? 0;
-    const totalTasksCount = taskCounts.total ?? 0;
-
-    feedCountCallback({
-      conversationCount: activityCount,
-      totalTasksCount,
-      openTaskCount,
-      closedTaskCount,
-      totalCount: activityCount + totalTasksCount,
-      mentionCount: 0,
-    });
-  } catch (err) {
-    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
-  }
 };

@@ -44,10 +44,6 @@ import {
   dashboardQueryFn,
   dashboardQueryKey,
 } from '../../rest/queries/dashboardQuery';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';

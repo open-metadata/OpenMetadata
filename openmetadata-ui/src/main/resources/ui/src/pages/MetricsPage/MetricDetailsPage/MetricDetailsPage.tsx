@@ -43,15 +43,12 @@ import {
   removeMetricFollower,
   updateMetricVote,
 } from '../../../rest/metricsAPI';
-import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
 import {
   metricQueryFn,
   metricQueryKey,
   METRIC_DEFAULT_FIELDS,
 } from '../../../rest/queries/metricQuery';
-import {
-  addToRecentViewed,
-} from '../../../utils/CommonUtils';
+import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

@@ -73,7 +73,6 @@ import {
 } from '../../rest/tableAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
-  addToRecentViewed,
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,

@@ -39,15 +39,11 @@ import {
   removeFollower,
   updateMlModelVotes,
 } from '../../rest/mlModelAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import {
   mlModelQueryFn,
   mlModelQueryKey,
 } from '../../rest/queries/mlModelQuery';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import {

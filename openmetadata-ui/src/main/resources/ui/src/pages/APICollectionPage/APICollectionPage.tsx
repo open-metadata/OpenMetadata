@@ -69,7 +69,6 @@ import apiCollectionClassBase from '../../utils/APICollection/APICollectionClass
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import {

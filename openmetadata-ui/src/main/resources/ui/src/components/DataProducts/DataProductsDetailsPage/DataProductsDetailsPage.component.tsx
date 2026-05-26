@@ -74,7 +74,6 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
-  getEntityDeleteMessage,
   getFeedCounts,
   hasEditAccess,
 } from '../../../utils/CommonUtils';
