@@ -104,3 +104,19 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.policyAgentConfig')
 WHERE serviceType = 'Postgres'
   AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_INSERT(
+    json,
+    '$.rules[2]',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND JSON_EXTRACT(json, '$.rules[2].name') != 'AutoClassificationBotRule-Allow-Topic';
