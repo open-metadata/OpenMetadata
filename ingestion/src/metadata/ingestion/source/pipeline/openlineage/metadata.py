@@ -955,7 +955,7 @@ class OpenlineageSource(PipelineServiceSource):
         edges = [LineageEdge(from_node=n[0], to_node=n[1]) for n in product(input_edges, output_edges)]
 
         service_name = self._current_pipeline_service or self.context.get().pipeline_service
-        pipeline_name = self.context.get().pipeline
+        pipeline_name = getattr(self.context.get(), "pipeline", None)
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
