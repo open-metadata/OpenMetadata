@@ -760,6 +760,7 @@ export interface ConfigObject {
      * Supports Lineage Extraction.
      */
     supportsLineageExtraction?: boolean;
+    supportsPolicyAgent?:       SupportsPolicyAgent;
     supportsProfiler?:          boolean;
     supportsQueryComment?:      boolean;
     supportsSystemProfile?:     boolean;
@@ -3779,6 +3780,7 @@ export interface ConfigConnection {
     supportsDataDiff?:             boolean;
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
+    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
     /**
@@ -4106,6 +4108,28 @@ export enum SSLMode {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * Service Type
  *
  * S3 service type
@@ -4256,6 +4280,7 @@ export interface DatabaseConnectionClass {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
+    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -4466,6 +4491,7 @@ export interface HiveMetastoreConnectionDetails {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
+    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;

@@ -801,6 +801,7 @@ export interface ConnectionClass {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
+    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -1241,6 +1242,28 @@ export enum SSLMode {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * Service Type
  *
  * Service type.
@@ -1317,6 +1340,7 @@ export interface DatabaseConnectionClass {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
+    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;

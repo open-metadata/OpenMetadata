@@ -49,6 +49,7 @@ export interface PinotDBConnection {
     scheme?:                        PinotDBScheme;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
+    supportsPolicyAgent?:           SupportsPolicyAgent;
     supportsProfiler?:              boolean;
     supportsQueryComment?:          boolean;
     supportsViewLineageExtraction?: boolean;
@@ -178,6 +179,28 @@ export enum PinotDBScheme {
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
     PinotHTTPS = "pinot+https",
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**

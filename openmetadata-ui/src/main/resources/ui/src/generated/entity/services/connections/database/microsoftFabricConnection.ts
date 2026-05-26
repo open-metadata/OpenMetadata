@@ -60,6 +60,7 @@ export interface MicrosoftFabricConnection {
     supportsDBTExtraction?:      boolean;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
+    supportsPolicyAgent?:        SupportsPolicyAgent;
     supportsProfiler?:           boolean;
     supportsUsageExtraction?:    boolean;
     /**
@@ -185,6 +186,28 @@ export interface AwsCredentials {
  */
 export enum MicrosoftFabricScheme {
     MssqlPyodbc = "mssql+pyodbc",
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**

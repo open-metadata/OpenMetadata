@@ -24,6 +24,7 @@ export interface SsasConnection {
     password:                    string;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
+    supportsPolicyAgent?:        SupportsPolicyAgent;
     /**
      * Service Type
      */
@@ -32,6 +33,28 @@ export interface SsasConnection {
      * Username
      */
     username: string;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**

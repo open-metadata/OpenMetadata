@@ -32,6 +32,7 @@ export interface GlueConnection {
     schemaFilterPattern?:        FilterPattern;
     supportsDBTExtraction?:      boolean;
     supportsMetadataExtraction?: boolean;
+    supportsPolicyAgent?:        SupportsPolicyAgent;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -112,6 +113,28 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface SupportsPolicyAgent {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
