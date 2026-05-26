@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -182,11 +183,24 @@ jest.mock('@mui/material', () => ({
     )),
 }));
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter>
-    <ThemeProvider theme={theme}>{children}</ThemeProvider>
-  </MemoryRouter>
-);
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return (
+    <MemoryRouter>
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </ThemeProvider>
+    </MemoryRouter>
+  );
+};
 
 describe('IncidentManagerDetailPage', () => {
   it('should render component', async () => {

@@ -63,5 +63,5 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
             start_time=start_time.strftime(self.dt_format),
             end_time=end_time.strftime(self.dt_format),
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )

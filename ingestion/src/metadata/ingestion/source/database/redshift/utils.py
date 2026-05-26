@@ -234,9 +234,11 @@ def _get_kwargs_for_time_type(kwargs, charlen, attype):
 def _get_args_and_kwargs(charlen, attype, format_type):
     kwargs = {}
     args = _init_args(format_type)
-    if attype == "numeric" and charlen:
-        prec, scale = charlen.split(",")
-        args = (int(prec), int(scale))
+    if attype == "numeric":
+        if charlen:
+            args = tuple(int(p) for p in charlen.split(","))
+        else:
+            args = tuple(int(p) for p in args)
 
     elif attype == "double precision":
         args = (53,)
@@ -257,6 +259,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
             args = (int(charlen),)
 
     elif attype.startswith("interval"):
+        args = ()
         field_match = re.match(r"interval (.+)", attype, re.I)
         if charlen:
             kwargs["precision"] = int(charlen)

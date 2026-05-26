@@ -67,7 +67,11 @@ import {
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -355,6 +359,20 @@ const DomainDetails = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = domain.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [domain.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = domain.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DOMAIN, fqn, setFeedCount);
+    }
+  }, [domain.fullyQualifiedName]);
 
   const handleDataProductSubmit = useCallback(
     async (data: DomainFormValues) => {
@@ -915,7 +933,8 @@ const DomainDetails = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
   }, [domain.fullyQualifiedName]);
 

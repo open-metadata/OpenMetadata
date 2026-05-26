@@ -21,7 +21,7 @@ export const MOCK_KNOWLEDGE_PAGE_DATA = {
   version: 1.2,
   updatedAt: 1695189199255,
   updatedBy: 'admin',
-  href: 'http://localhost:8585/api/v1/knowledgeCenter/8e6427d6-98cc-4334-b2f2-15fb62bde887',
+  href: 'http://localhost:8585/api/v1/contextCenter/pages/8e6427d6-98cc-4334-b2f2-15fb62bde887',
   changeDescription: {
     fieldsAdded: [],
     fieldsUpdated: [
@@ -90,7 +90,7 @@ export const MOCK_KNOWLEDGE_PAGES = [
     version: 0.6,
     updatedAt: 1705640284779,
     updatedBy: 'shilpa',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/knowledgeCenter/2c0e3122-5699-472a-9634-241595a9a400',
+    href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/2c0e3122-5699-472a-9634-241595a9a400',
     changeDescription: {
       fieldsAdded: [],
       fieldsUpdated: [
@@ -119,7 +119,7 @@ export const MOCK_KNOWLEDGE_PAGES = [
     version: 0.2,
     updatedAt: 1705656839361,
     updatedBy: 'sachin',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/knowledgeCenter/8d383887-7b41-4ba4-b7e4-5f775df842d0',
+    href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/8d383887-7b41-4ba4-b7e4-5f775df842d0',
     changeDescription: {
       fieldsAdded: [
         {

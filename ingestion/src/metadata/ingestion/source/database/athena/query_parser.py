@@ -99,7 +99,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         Method to fetch queries from all work groups
         """
         for work_group in self.get_work_groups():
-            query_limit = ceil(self.source_config.resultLimit / ATHENA_QUERY_PAGINATOR_LIMIT)
+            query_limit = ceil(self.source_config.resultLimit / ATHENA_QUERY_PAGINATOR_LIMIT)  # pyright: ignore[reportAttributeAccessIssue]
             paginator = self.client.get_paginator("list_query_executions")
             if work_group:
                 paginator_response = paginator.paginate(WorkGroup=work_group)

@@ -13,10 +13,11 @@
 
 import Icon from '@ant-design/icons';
 import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash';
-import { DOMAttributes } from 'react';
+import { DOMAttributes, Suspense } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
+import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -423,15 +424,17 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <Widget
-      currentLayout={currentLayout}
-      handleLayoutUpdate={handleLayoutUpdate}
-      handleRemoveWidget={handleRemoveWidget}
-      handleSaveLayout={handleSaveLayout}
-      isEditView={isEditView}
-      selectedGridSize={widgetConfig.w}
-      widgetKey={widgetConfig.i}
-    />
+    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
+      <Widget
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        handleSaveLayout={handleSaveLayout}
+        isEditView={isEditView}
+        selectedGridSize={widgetConfig.w}
+        widgetKey={widgetConfig.i}
+      />
+    </Suspense>
   );
 };
 

@@ -33,7 +33,7 @@ import {
   RecentlySearchedData,
   RecentlyViewedData,
 } from 'Models';
-import { ReactNode } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
@@ -521,6 +521,77 @@ export const getFeedCounts = async (
       closedTaskCount,
       totalCount: activityCount + totalTasksCount,
       mentionCount: 0,
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+/**
+ * Eager task-count fetch for entity-detail pages. Pair on mount with
+ * {@link fetchEntityActivityCountInto} — both are cheap (task counts are aggregate; activity
+ * count uses {@code limit=0} which short-circuits to a server-side {@code COUNT(*)}) so they
+ * can run side-by-side on the same render. Total count is derived from
+ * {@code (conversationCount ?? 0) + totalTasksCount} so the merge stays correct whichever
+ * fetch arrives first.
+ */
+export const fetchEntityTaskCountsInto = async (
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const taskCounts = await getTaskCounts({ aboutEntity: entityFqn, domain });
+    setFeedCount((prev) => {
+      const openTaskCount = taskCounts.open ?? 0;
+      const closedTaskCount = taskCounts.completed ?? 0;
+      const totalTasksCount = taskCounts.total ?? 0;
+
+      return {
+        ...prev,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+/**
+ * Eager activity-count fetch. Pulls only the count (no events) for an entity and updates the
+ * {@code conversationCount} and {@code totalCount} fields of the page's {@link FeedCounts}
+ * state. Backed by {@code limit=0} on {@code GET /v1/activity/entity/{type}/name/{fqn}} —
+ * the server short-circuits to a {@code COUNT(*)} and returns an empty {@code data} array
+ * plus an accurate {@code paging.total}. Total payload is a few dozen bytes, so this can stay
+ * eager on mount and the Activity Feed tab badge populates on first paint.
+ *
+ * <p>Historically the badge ran with {@code limit=100} and read {@code data.length}, which
+ * (a) shipped 100 row JSONs just to count them and (b) silently capped the displayed value at
+ * 100. The cheap path is both faster and more accurate.
+ */
+export const fetchEntityActivityCountInto = async (
+  entityType: string,
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
+      days: 30,
+      limit: 0,
+      domain,
+    });
+    setFeedCount((prev) => {
+      const conversationCount = activityRes?.paging?.total ?? 0;
+
+      return {
+        ...prev,
+        conversationCount,
+        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+      };
     });
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));

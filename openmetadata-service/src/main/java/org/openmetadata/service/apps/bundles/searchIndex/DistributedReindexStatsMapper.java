@@ -202,8 +202,14 @@ class DistributedReindexStatsMapper {
       StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
       if (entityStats != null) {
         SearchIndexJob.EntityTypeStats distributedEntityStats = entry.getValue();
+        // totalRecords from the partition plan, not the up-front getEntityTotal() pre-count.
+        // The two counts can drift (different ListFilter, queried moments apart on a churny
+        // time-series table) — the partition plan defines what is actually processed, so the
+        // total must match it or the job shows a phantom "total > success" gap.
+        entityStats.setTotalRecords(saturatedToInt(distributedEntityStats.getTotalRecords()));
         entityStats.setSuccessRecords(saturatedToInt(distributedEntityStats.getSuccessRecords()));
         entityStats.setFailedRecords(saturatedToInt(distributedEntityStats.getFailedRecords()));
+        entityStats.setWarningRecords(saturatedToInt(distributedEntityStats.getWarningRecords()));
         entityStats.setReaderTimeMs(distributedEntityStats.getReaderTimeMs());
         entityStats.setProcessTimeMs(distributedEntityStats.getProcessTimeMs());
         entityStats.setSinkTimeMs(distributedEntityStats.getSinkTimeMs());
