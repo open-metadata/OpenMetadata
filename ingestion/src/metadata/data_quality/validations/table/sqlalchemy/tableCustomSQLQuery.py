@@ -370,7 +370,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return [], []
         return [str(col) for col in rows[0]._fields], [list(row) for row in rows]
 
-    def get_inspection_query(self):
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",
@@ -378,18 +378,23 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         )
 
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
-        """Override: tableCustomSQLQuery uses ROWS strategy check instead of
-        computePassedFailedRowCount, and sets validateColumns=False."""
-        if result.testCaseResult.testCaseStatus == TestCaseStatus.Failed and self._get_strategy() == Strategy.ROWS:
-            result.validateColumns = False
-            try:
-                result.failedRowsSample = self.fetch_failed_rows_sample()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to fetch failed rows sample")
+        """Collect failed-row samples when consent is given and strategy is ROWS."""
+        if not (
+            getattr(result.testCase, "computePassedFailedRowCount", False)
+            and result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+            and self._get_strategy() == Strategy.ROWS
+        ):
+            return
 
-            try:
-                result.inspectionQuery = self.get_inspection_query()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to get inspection query")
+        result.validateColumns = False
+        try:
+            result.failedRowsSample = self.fetch_failed_rows_sample()
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch failed rows sample")
+
+        try:
+            result.inspectionQuery = self.get_inspection_query()
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to get inspection query")
