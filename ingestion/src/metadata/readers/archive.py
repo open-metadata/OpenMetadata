@@ -57,8 +57,6 @@ _EOCD_MAX_SCAN = 65558
 # 'replace' error strategy substitutes ? for undecodable bytes rather than raising.
 _UTF8 = "utf-8"
 
-print("****"*200)
-
 
 class RangeReadableBlob(Protocol):
     """Structural interface for cloud blob objects that support partial reads.
