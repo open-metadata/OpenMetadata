@@ -124,6 +124,13 @@
       "description": "Validity for the authenticated session across all auth providers. Values below 3600 seconds fall back to the default 604800-second expiry. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when present.",
       "type": "integer"
     },
+    "maxActiveSessionsPerUser": {
+      "title": "Max Active Sessions Per User",
+      "description": "Maximum number of active authenticated sessions allowed per user. When the limit is exceeded, the least recently used active sessions are revoked. Values below 1 fall back to the default of 5.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "enableAutoRedirect": {
       "title": "Enable Auto Redirect",
       "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",

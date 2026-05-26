@@ -210,6 +210,12 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
+     * to the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
@@ -1091,6 +1097,12 @@ export interface AuthenticationConfiguration {
      * running behind a proxy/load balancer that handles SSL termination.
      */
     forceSecureSessionCookie?: boolean;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
+     * to the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Jwt Principal Claim
      */

@@ -44,6 +44,12 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
+     * to the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];

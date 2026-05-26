@@ -28,8 +28,7 @@ public class SessionService implements Managed {
   private static final long CLEANUP_INTERVAL_MINUTES = 15L;
   private static final long CLEANUP_RETENTION_MILLIS = TimeUnit.DAYS.toMillis(7);
   private static final int CLEANUP_BATCH_SIZE = 1_000;
-  // TODO: Make configurable via AuthenticationConfiguration.maxSessionsPerUser
-  private static final int DEFAULT_MAX_SESSIONS_PER_USER = 5;
+  private static final int DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER = 5;
   private static final int SESSION_LIMIT_RETRIES = 3;
 
   private volatile AuthenticationConfiguration authConfig;
@@ -467,10 +466,11 @@ public class SessionService implements Managed {
   }
 
   private void applySessionLimit(String userId, String currentSessionId) {
+    int maxActiveSessionsPerUser = getMaxActiveSessionsPerUser();
     for (int attempt = 0; attempt < SESSION_LIMIT_RETRIES; attempt++) {
       List<UserSession> sessions =
           new ArrayList<>(repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE));
-      if (sessions.size() <= DEFAULT_MAX_SESSIONS_PER_USER) {
+      if (sessions.size() <= maxActiveSessionsPerUser) {
         return;
       }
 
@@ -481,7 +481,7 @@ public class SessionService implements Managed {
                   Comparator.comparing(
                       session ->
                           session.getLastAccessedAt() == null ? 0L : session.getLastAccessedAt()))
-              .limit(Math.max(0, sessions.size() - DEFAULT_MAX_SESSIONS_PER_USER))
+              .limit(Math.max(0, sessions.size() - maxActiveSessionsPerUser))
               .toList();
       if (sessionsToRevoke.isEmpty()) {
         return;
@@ -494,6 +494,13 @@ public class SessionService implements Managed {
           });
     }
     LOG.warn("Unable to enforce active session limit for user {}", userId);
+  }
+
+  private int getMaxActiveSessionsPerUser() {
+    Integer configuredLimit = authConfig == null ? null : authConfig.getMaxActiveSessionsPerUser();
+    return configuredLimit != null && configuredLimit >= 1
+        ? configuredLimit
+        : DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
   }
 
   private void expireSessionsInBatches(long now) {

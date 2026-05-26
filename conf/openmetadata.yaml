@@ -383,6 +383,7 @@ authenticationConfiguration:
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
   sessionExpiry: ${AUTHENTICATION_SESSION_EXPIRY:-"604800"} # 7 days; applies to all auth providers
+  maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
   oidcConfiguration:
     # REQUIRED for SSO: OAuth client ID from your identity provider
     id: ${OIDC_CLIENT_ID:-""}

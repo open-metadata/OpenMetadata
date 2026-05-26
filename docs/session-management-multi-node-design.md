@@ -213,8 +213,11 @@ Logout calls `SessionService.revokeSession(request, response)`:
 5. Clear the `OM_SESSION` cookie.
 6. Notify local revocation listeners.
 
-Session limit enforcement also uses `revokeSession` for least-recently-used active sessions. The
-current default active-session limit is `5` sessions per user.
+Session limit enforcement also uses `revokeSession` for least-recently-used active sessions.
+
+The limit is configured by `authenticationConfiguration.maxActiveSessionsPerUser`, exposed through
+`AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER` in `openmetadata.yaml`. The default is `5`; values
+below `1` fall back to the default.
 
 ### 6.9 Expiration and Cleanup
 
@@ -486,15 +489,22 @@ Important scenarios covered or expected from this suite:
 - per-session websocket disconnect
 - session-bound JWT rejection for revoked sessions
 
-## 14. Current Tradeoffs and Follow-Ups
+## 14. Tradeoff Resolutions
 
-1. Session-bound browser API requests now load session state on every JWT validation. This favors
-   revocation correctness over pure statelessness for browser sessions.
-2. Tokens issued before `sessionId` support, or tokens issued by non-session flows, remain valid
-   according to existing JWT behavior until their normal expiry.
-3. Non-secure websocket mode remains query-param based for backward compatibility.
-4. The active-session limit is currently a service constant. It should become a configuration value.
-5. The websocket validator only checks sockets that have a recorded `sessionId`; legacy sockets
-   without session IDs rely on the older disconnect behavior.
-6. Redis pub/sub gives faster cross-pod websocket revocation. JDBC-only deployments rely on the
-   `15s` websocket validator interval for remote sockets.
+1. Session-bound browser API requests intentionally reload session state on JWT validation. This is
+   the chosen correctness boundary: logout and revocation are observed on the next browser API
+   request instead of waiting for access-token expiry.
+2. Tokens without `sessionId` remain on existing JWT semantics. This preserves PAT, bot, public OIDC,
+   and rolling-upgrade compatibility. New server-managed auth responses include `sessionId`.
+3. Non-secure websocket mode remains query-param based only for backward compatibility. Production
+   deployments should keep secure websocket connections enabled so `SocketAddressFilter` derives the
+   socket user from the JWT principal and records the session ID.
+4. The active-session cap is now configurable with
+   `authenticationConfiguration.maxActiveSessionsPerUser` and
+   `AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER`; the default remains `5`.
+5. Secure, session-managed websocket handshakes now record a session ID from the JWT claim or
+   `OM_SESSION` cookie. The validator checks those sockets every `15s`; sockets without session IDs
+   are legacy/non-secure compatibility cases.
+6. Cross-pod websocket revocation has two paths: cache invalidation pub/sub for immediate targeted
+   disconnects when available, and the `15s` websocket validator as the bounded-staleness fallback
+   for JDBC-only deployments.

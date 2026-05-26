@@ -54,6 +54,7 @@ class SessionServiceTest {
     Fernet.getInstance().setFernetKey(FERNET_KEY);
     lenient().when(authConfig.getForceSecureSessionCookie()).thenReturn(false);
     lenient().when(authConfig.getSessionExpiry()).thenReturn(null);
+    lenient().when(authConfig.getMaxActiveSessionsPerUser()).thenReturn(null);
     lenient().when(request.isSecure()).thenReturn(false);
     sessionService =
         new SessionService(authConfig, repository, Caffeine.newBuilder().build(), scheduler);
@@ -527,6 +528,34 @@ class SessionServiceTest {
     assertEquals(user.getId().toString(), session.getUserId());
     assertEquals("refresh-token", sessionService.decryptOmRefreshToken(session));
     verify(repository).findById(oldestSessionId);
+  }
+
+  @Test
+  void createActiveSession_usesConfiguredSessionLimit() {
+    when(authConfig.getMaxActiveSessionsPerUser()).thenReturn(2);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    UserSession oldestSession = activeSession(validSessionId('a'), user, 1L, 1L);
+    UserSession nextOldestSession = activeSession(validSessionId('b'), user, 2L, 2L);
+    UserSession thirdSession = activeSession(validSessionId('c'), user, 3L, 3L);
+    UserSession newestSession = activeSession(validSessionId('d'), user, 4L, 4L);
+    List<UserSession> activeSessions =
+        List.of(oldestSession, nextOldestSession, thirdSession, newestSession);
+    when(repository.findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE)))
+        .thenReturn(activeSessions, List.of(thirdSession, newestSession));
+    when(repository.findById(oldestSession.getId())).thenReturn(Optional.of(oldestSession));
+    when(repository.findById(nextOldestSession.getId())).thenReturn(Optional.of(nextOldestSession));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    sessionService.createActiveSession(request, response, "basic", user, "refresh-token");
+
+    verify(repository).findById(oldestSession.getId());
+    verify(repository).findById(nextOldestSession.getId());
+    verify(repository, never()).findById(thirdSession.getId());
+    verify(repository, never()).findById(newestSession.getId());
   }
 
   @Test
