@@ -16,6 +16,7 @@ deepest entry is "what this thread is doing right now". The watchdog and
 heartbeat threads call `snapshot()` to see the live state of every thread.
 """
 
+import heapq
 import threading
 import time
 from typing import Any
@@ -26,6 +27,11 @@ from typing import Any
 KWARGS_TRUNCATION_CHARS = 2000
 OP_STACK_DEPTH_CAP = 20
 
+# How many of the slowest completed operations to retain for the end-of-run
+# `diag.slow_ops` report, and how much of their SQL/URL detail to show.
+SLOWEST_OPS_LIMIT = 5
+SLOW_OP_DETAIL_CHARS = 80
+
 
 class OperationRegistry:
     """Thread-safe per-thread operation stack."""
@@ -35,6 +41,10 @@ class OperationRegistry:
         # thread_id -> list of (name, kwargs, started_monotonic, token)
         self._stacks: dict[int, list[tuple[str, dict[str, Any], float, int]]] = {}
         self._token_counter = 0
+        # Min-heap of the slowest completed ops: (duration, token, name, kwargs).
+        # Bounded to SLOWEST_OPS_LIMIT; token (unique) breaks duration ties so
+        # the kwargs dict is never compared.
+        self._slowest: list[tuple[float, int, str, dict[str, Any]]] = []
 
     def push(self, name: str, kwargs: dict[str, Any]) -> int:
         """Push a new operation for the calling thread. Returns a token used by pop()."""
@@ -62,16 +72,26 @@ class OperationRegistry:
         if token < 0:
             return
         tid = threading.get_ident()
+        now = time.monotonic()
         with self._lock:
             stack = self._stacks.get(tid)
             if not stack:
                 return
             for i in range(len(stack) - 1, -1, -1):
                 if stack[i][3] == token:
+                    self._record_slow(stack[i], now)
                     del stack[i:]
                     break
             if not stack:
                 del self._stacks[tid]
+
+    def _record_slow(self, frame: tuple[str, dict[str, Any], float, int], now: float) -> None:
+        name, kwargs, started, frame_token = frame
+        entry = (now - started, frame_token, name, kwargs)
+        if len(self._slowest) < SLOWEST_OPS_LIMIT:
+            heapq.heappush(self._slowest, entry)
+        else:
+            heapq.heappushpop(self._slowest, entry)
 
     def snapshot(self) -> dict[int, list[tuple[str, dict[str, Any], float]]]:
         """Return a copy of every thread's current op stack with `(name, kwargs, age_seconds)`."""
@@ -94,6 +114,20 @@ class OperationRegistry:
             for tid in dead:
                 del self._stacks[tid]
 
+    def render(self, prefix: str = "diag.slow_ops") -> str | None:
+        """One end-of-run line listing the slowest completed operations.
+
+        Satisfies the diagnostics `Reporter` contract. Returns None when no
+        operations completed, so `emit_report` skips it.
+        """
+        with self._lock:
+            ranked = sorted(self._slowest, reverse=True)
+        result = None
+        if ranked:
+            parts = [_format_slow_op(duration, name, kwargs) for duration, _token, name, kwargs in ranked]
+            result = f"{prefix} slowest=[{', '.join(parts)}]"
+        return result
+
 
 def _truncate_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
     """Keep references small: long strings get truncated, non-str values stringified."""
@@ -113,6 +147,12 @@ def _truncate_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
                 s = s[:KWARGS_TRUNCATION_CHARS] + f"...(+{len(s) - KWARGS_TRUNCATION_CHARS} chars)"
             out[key] = s
     return out
+
+
+def _format_slow_op(duration: float, name: str, kwargs: dict[str, Any]) -> str:
+    detail = str(kwargs.get("sql") or kwargs.get("url") or "").replace("\n", " ").strip()[:SLOW_OP_DETAIL_CHARS]
+    base = f"{name}={duration:.1f}s"
+    return f"{base} ({detail})" if detail else base
 
 
 def format_op_frame(name: str, kwargs: dict[str, Any], age: float) -> str:

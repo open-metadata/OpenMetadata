@@ -123,3 +123,52 @@ def test_gc_dead_threads_clears_entries():
     assert t.ident in registry.snapshot()
     registry.gc_dead_threads({threading.get_ident()})
     assert t.ident not in registry.snapshot()
+
+
+# ---- slowest ops (diag.slow_ops reporter) ----
+
+
+def test_slowest_ops_records_completed_op_durations(monkeypatch):
+    from metadata.ingestion.diagnostics.collectors import operation_registry as registry_module
+
+    clock = {"now": 0.0}
+    monkeypatch.setattr(registry_module.time, "monotonic", lambda: clock["now"])
+    registry = OperationRegistry()
+
+    clock["now"] = 0.0
+    token = registry.push("snowflake.query", {"sql": "SELECT slow"})
+    clock["now"] = 5.0
+    registry.pop(token)
+
+    clock["now"] = 10.0
+    token = registry.push("ometa.http", {"url": "/v1/tables"})
+    clock["now"] = 11.0
+    registry.pop(token)
+
+    line = registry.render()
+    assert "snowflake.query=5.0s" in line
+    assert "SELECT slow" in line
+    assert "ometa.http=1.0s" in line
+
+
+def test_slowest_ops_keeps_only_top_n(monkeypatch):
+    from metadata.ingestion.diagnostics.collectors import operation_registry as registry_module
+
+    clock = {"now": 0.0}
+    monkeypatch.setattr(registry_module.time, "monotonic", lambda: clock["now"])
+    registry = OperationRegistry()
+
+    for seconds in (1, 2, 3, 4, 5, 6, 7):
+        clock["now"] = 0.0
+        token = registry.push("op", {})
+        clock["now"] = float(seconds)
+        registry.pop(token)
+
+    line = registry.render()
+    assert "op=7.0s" in line and "op=3.0s" in line
+    assert "op=1.0s" not in line and "op=2.0s" not in line
+
+
+def test_render_returns_none_when_no_ops_completed():
+    registry = OperationRegistry()
+    assert registry.render() is None

@@ -84,7 +84,7 @@ class DiagnosticsContext:
             db_introspector=db_introspector,
             time_sampler=time_sampler,
             monitors=monitors,
-            reporters=[time_sampler],
+            reporters=[time_sampler, registry],
             signals_installed=signals_installed,
         )
 
