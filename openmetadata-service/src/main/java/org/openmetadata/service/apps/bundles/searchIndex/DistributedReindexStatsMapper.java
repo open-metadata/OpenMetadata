@@ -202,17 +202,18 @@ class DistributedReindexStatsMapper {
       StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
       if (entityStats != null) {
         SearchIndexJob.EntityTypeStats distributedEntityStats = entry.getValue();
-        // totalRecords starts from the partition plan (estimatedCount sum), but is bumped up
-        // when the reader actually produced more rows than the plan expected (churny
-        // time-series tables can grow between plan and read). The under-count direction
-        // (reader produced fewer rows than planned) is closed at partition-completion time
-        // in PartitionWorker by recording the missing rows as reader warnings, so by the
-        // time we land here total = success + failed + warnings holds.
         long success = distributedEntityStats.getSuccessRecords();
         long failed = distributedEntityStats.getFailedRecords();
         long warnings = distributedEntityStats.getWarningRecords();
-        long total =
-            Math.max(distributedEntityStats.getTotalRecords(), success + failed + warnings);
+        long total = distributedEntityStats.getTotalRecords();
+        // Rows the planner counted but the reader never produced (deletes between plan and
+        // read, ListFilter snapshot drift) — absorb into warnings so total balances against
+        // success + failed + warnings. Without this, totalRecords stays at the planner count
+        // while the stage counters reflect only what the reader saw, leaving a phantom gap.
+        long gap = total - (success + failed + warnings);
+        if (gap > 0) {
+          warnings += gap;
+        }
         entityStats.setTotalRecords(saturatedToInt(total));
         entityStats.setSuccessRecords(saturatedToInt(success));
         entityStats.setFailedRecords(saturatedToInt(failed));

@@ -151,11 +151,6 @@ public class PartitionWorker {
     AtomicLong readerFailedCount = new AtomicLong(0);
     AtomicLong warningsCount = new AtomicLong(0);
     AtomicLong processedCount = new AtomicLong(0);
-    // Sink-stage failures attributed by the per-batch catch block below (sync writeToSink
-    // errors). Tracked separately so the post-loop sink-fail adjustment can subtract them
-    // from `sink.cumulativeFailed` and avoid double-counting the same failures into
-    // `failedCount` (the catch block already adds them there).
-    AtomicLong catchBlockSinkFailedCount = new AtomicLong(0);
     long currentOffset = rangeStart;
 
     // Create stats tracker for this partition
@@ -267,7 +262,6 @@ public class PartitionWorker {
                   e.getMessage(),
                   ExceptionUtils.getStackTrace(e));
             }
-            catchBlockSinkFailedCount.addAndGet(batchFailedCount);
           }
 
           failedCount.addAndGet(batchFailedCount);
@@ -323,68 +317,32 @@ public class PartitionWorker {
         }
       }
 
-      // Adjust partition counts to include async sink-stage failures. Per-doc bulk callback
-      // failures (e.g. ES mapping conflicts) increment sink.cumulativeFailed via
-      // tracker.recordSink(FAILED) but were never decremented from successCount. Subtract the
-      // sync catch-block sink fails (already counted in failedCount above) so we only attribute
-      // the truly-uncounted async failures here.
-      long sinkFailed = 0;
-      if (statsTracker != null) {
-        long cumulativeSinkFailed = statsTracker.getSink().getCumulativeFailed().get();
-        sinkFailed = Math.max(0, cumulativeSinkFailed - catchBlockSinkFailedCount.get());
-        if (sinkFailed > 0) {
-          long adjustment = Math.min(sinkFailed, successCount.get());
-          if (adjustment > 0) {
-            successCount.addAndGet(-adjustment);
-            failedCount.addAndGet(adjustment);
-          }
-        }
-      }
-
-      // Close the gap between what the partition planner counted (estimatedCount, set at plan
-      // time) and what the reader actually produced (success + failed + warnings). Rows that
-      // existed at plan time but vanished before the reader could fetch them — deletes between
-      // plan and read, ListFilter snapshot drift, etc. — are recorded as reader warnings so the
-      // per-entity math reconciles (total = success + failed + warnings) and the lost rows are
-      // visible to operators rather than silently dropped from the totals.
-      long expectedRecords = rangeEnd - rangeStart;
-      long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
-      long missing = expectedRecords - actualProcessed;
-      if (missing > 0) {
-        warningsCount.addAndGet(missing);
-        if (statsTracker != null) {
-          statsTracker.recordReaderBatch(0, 0, (int) missing);
-          // Force-flush so the gap-fill warnings reach search_index_server_stats before the
-          // coordinator's recomputeJobStats reads them on partition completion.
-          statsTracker.flush();
-        }
-        LOG.info(
-            "{} partition {}: {} planned rows missing at read time "
-                + "(expected={}, success={}, failed={}, warnings before fill={}); "
-                + "counted as reader warnings so totals reconcile",
-            entityType,
-            partition.getId(),
-            missing,
-            expectedRecords,
-            successCount.get(),
-            failedCount.get(),
-            warningsCount.get() - missing);
-      }
-
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
+      long expectedRecords = rangeEnd - rangeStart;
+      long actualProcessed = successCount.get() + failedCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, "
-              + "processFailed: {}, asyncSinkFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
           processFailed,
-          sinkFailed,
           warningsCount.get());
+      if (actualProcessed < expectedRecords) {
+        LOG.debug(
+            "{} partition {} processed fewer records than expected: "
+                + "actual={}, expected={}, gap={}, range=[{},{})",
+            entityType,
+            partition.getId(),
+            actualProcessed,
+            expectedRecords,
+            expectedRecords - actualProcessed,
+            rangeStart,
+            rangeEnd);
+      }
 
       return new PartitionResult(
           successCount.get(),
