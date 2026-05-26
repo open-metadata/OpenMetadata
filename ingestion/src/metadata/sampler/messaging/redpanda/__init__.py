@@ -8,15 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Pub/Sub service spec
-"""
-
-from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
-from metadata.sampler.messaging.pubsub.sampler import PubSubSampler
-from metadata.utils.service_spec import BaseSpec
-
-ServiceSpec = BaseSpec(
-    metadata_source_class=PubsubSource,
-    sampler_class=PubSubSampler,
-)

@@ -9,14 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pub/Sub service spec
+Redpanda sampler implementation.
+Redpanda is Kafka-protocol compatible, so this delegates to KafkaSampler.
 """
 
-from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
-from metadata.sampler.messaging.pubsub.sampler import PubSubSampler
-from metadata.utils.service_spec import BaseSpec
+from metadata.sampler.messaging.kafka.sampler import KafkaSampler
+from metadata.utils.logger import sampler_logger
 
-ServiceSpec = BaseSpec(
-    metadata_source_class=PubsubSource,
-    sampler_class=PubSubSampler,
-)
+logger = sampler_logger()
+
+
+class RedpandaSampler(KafkaSampler):
+    """Sampler for Redpanda messaging service (uses Kafka protocol)."""

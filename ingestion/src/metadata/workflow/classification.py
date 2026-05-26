@@ -15,6 +15,9 @@ Workflow definition for the profiler
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
     StorageServiceAutoClassificationPipeline,
 )
@@ -44,12 +47,13 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
         # Only instantiate the PII Processor on demand
         source_config = self.config.source.sourceConfig.config
 
-        # Support both Database and Storage service auto-classification pipelines
+        # Support Database, Storage, and Messaging service auto-classification pipelines
         if isinstance(
             source_config,
             (
                 DatabaseServiceAutoClassificationPipeline,
                 StorageServiceAutoClassificationPipeline,
+                MessagingServiceAutoClassificationPipeline,
             ),
         ):
             if source_config.enableAutoClassification:
@@ -60,8 +64,8 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
         else:
             logger.warning(
                 f"Unsupported source config type {type(source_config).__name__}. "
-                "Auto-classification workflow requires DatabaseServiceAutoClassificationPipeline "
-                "or StorageServiceAutoClassificationPipeline"
+                "Auto-classification workflow requires DatabaseServiceAutoClassificationPipeline, "
+                "StorageServiceAutoClassificationPipeline, or MessagingServiceAutoClassificationPipeline"
             )
             self.steps = (sampler_processor, sink)
 

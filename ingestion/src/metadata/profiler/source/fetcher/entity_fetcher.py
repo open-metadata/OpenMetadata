@@ -15,6 +15,7 @@ Entity Fetcher
 from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -26,6 +27,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.fetcher.fetcher_strategy import (
     DatabaseFetcherStrategy,
     FetcherStrategy,
+    MessagingFetcherStrategy,
     StorageFetcherStrategy,
 )
 from metadata.profiler.source.model import ProfilerSourceAndEntity
@@ -57,6 +59,9 @@ class EntityFetcher:
 
         if service_type is StorageService:
             return StorageFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
+
+        if service_type is MessagingService:
+            return MessagingFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
 
         raise NotImplementedError(f"Fetcher strategy not implemented for service type {service_type}")
 
