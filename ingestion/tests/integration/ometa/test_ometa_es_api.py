@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+
 import json
 import logging
 import time
@@ -398,8 +399,12 @@ class TestOMetaESAPI:
             time.sleep(2)
 
             expected_ids = [str(t.id.root) for t in created_tables]
-            query_filter = json.dumps({"query": {"terms": {"id.keyword": expected_ids}}})
-            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
+            query_filter = json.dumps(
+                {"query": {"terms": {"id.keyword": expected_ids}}}
+            )
+            assets = list(
+                metadata.paginate_es(entity=Table, query_filter=query_filter, size=1)
+            )
             returned = {a.name.root for a in assets}
             expected_set = set(expected_names)
             assert returned == expected_set, (
