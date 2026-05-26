@@ -12,9 +12,17 @@
  */
 
 import { isEmpty } from 'lodash';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import {
+  matchPath,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
+import { useAppMode } from '../../hooks/useAppMode';
+import { useAppModeRegistry } from '../../hooks/useAppModeRegistry';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
 import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
@@ -33,6 +41,9 @@ export const AuthenticatedRoutes = () => {
   );
 
   const { plugins = [] } = useApplicationsProvider() ?? {};
+  const { pathname } = useLocation();
+  const appMode = useAppMode();
+  const registeredModes = useAppModeRegistry((state) => state.modes);
 
   return (
     <Routes>
@@ -57,15 +68,50 @@ export const AuthenticatedRoutes = () => {
         path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
       />
 
-      {/* Render APP position plugin routes (they handle their own layouts) */}
+      {/* Render APP position plugin routes (they handle their own layouts).
+       *
+       * Plugins whose name is bound to a registered AppMode are gated:
+       *   - UNIQUE paths (config.uniquePathPatterns) — always mount,
+       *     visiting them auto-engages the mode.
+       *   - LEGACY prefix (config.legacyPathPrefix) — always mount so
+       *     old bookmarks keep resolving through the plugin's redirect.
+       *   - SHADOW paths (everything else) — mount only when the user is
+       *     currently in this plugin's mode, otherwise OM/Collate's own
+       *     route wins at the shadowed URL.
+       *
+       * Plugins without a registered mode are mounted unchanged. */}
       {plugins?.flatMap((plugin) => {
         const routes = plugin.getRoutes?.() || [];
-        // Filter routes with APP position
         const appRoutes = routes.filter(
           (route) => route.position === RoutePosition.APP
         );
 
-        return appRoutes.map((route, idx) => (
+        const modeEntry = Object.entries(registeredModes).find(
+          ([, config]) => config.pluginName === plugin.name
+        );
+
+        if (!modeEntry) {
+          return appRoutes.map((route, idx) => (
+            <Route key={`${plugin.name}-app-${idx}`} {...route} />
+          ));
+        }
+
+        const [modeName, config] = modeEntry;
+        const isOnUniquePath = config.uniquePathPatterns.some(
+          (pattern) => matchPath({ path: pattern, end: true }, pathname) !== null
+        );
+        const includeShadowRoutes = appMode === modeName || isOnUniquePath;
+
+        const filtered = includeShadowRoutes
+          ? appRoutes
+          : appRoutes.filter(
+              (route) =>
+                config.legacyPathPrefix !== undefined &&
+                typeof route.path === 'string' &&
+                route.path.startsWith(config.legacyPathPrefix)
+            );
+
+        return filtered.map((route, idx) => (
           <Route key={`${plugin.name}-app-${idx}`} {...route} />
         ));
       })}

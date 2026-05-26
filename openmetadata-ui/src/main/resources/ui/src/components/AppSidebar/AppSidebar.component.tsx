@@ -12,12 +12,25 @@
  */
 
 import { useLocation } from 'react-router-dom';
+import { useAppMode } from '../../hooks/useAppMode';
+import { useAppModeRegistry } from '../../hooks/useAppModeRegistry';
 import { isNewLayoutRoute } from '../../utils/LayoutUtils';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import Sidebar from '../Sidebar/Sidebar.component';
 
 const AppSidebar = () => {
   const { pathname } = useLocation();
+  const appMode = useAppMode();
+  // If a non-default mode is registered with a sidebar, that wins over
+  // path-based selection so the active mode's chrome persists across
+  // unrelated routes too.
+  const ModeSidebar = useAppModeRegistry(
+    (state) => state.modes[appMode]?.sidebar
+  );
+
+  if (ModeSidebar) {
+    return <ModeSidebar />;
+  }
 
   if (isNewLayoutRoute(pathname)) {
     return <Sidebar />;

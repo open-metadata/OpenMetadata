@@ -76,4 +76,15 @@ export class ExtensionPointRegistry {
 
     return contributions.map((contribution) => contribution.data);
   }
+
+  /**
+   * Remove all previously registered contributions.
+   *
+   * Callers replay plugin contributions whenever the installed-plugin set
+   * changes; `clear()` lets them start from a known-empty state so the
+   * registry stays in sync instead of accumulating stale duplicates.
+   */
+  public clear(): void {
+    this.contributions.clear();
+  }
 }

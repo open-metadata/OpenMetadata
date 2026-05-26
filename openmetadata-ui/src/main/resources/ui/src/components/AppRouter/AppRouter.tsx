@@ -19,6 +19,7 @@ import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
+import { LocationModeSync } from './LocationModeSync';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedApp = withSuspenseFallback(
@@ -91,6 +92,7 @@ const AppRouter = () => {
   if (isAuthenticated) {
     return (
       <AuthenticatedApp>
+        <LocationModeSync />
         <AuthenticatedRoutes />
       </AuthenticatedApp>
     );
