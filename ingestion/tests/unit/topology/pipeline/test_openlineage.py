@@ -385,6 +385,41 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_get_table_fqn.assert_not_called()
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    def test_build_ol_name_to_fqn_map_aliases_symlink_identities(self, mock_get_table_fqn):
+        """Every raw identity (top-level plus each TABLE symlink) must alias
+        to the same resolved FQN, so a columnLineage.inputFields entry that
+        references the table by its symlink identity still resolves."""
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"svc.db.schema.{table_details.name}"
+
+        tables = [
+            {
+                "namespace": "s3://bucket",
+                "name": "warehouse/db/users_raw",
+                "facets": {
+                    "symlinks": {
+                        "identifiers": [
+                            {
+                                "namespace": "arn:aws:glue:us-east-1:1",
+                                "name": "table/db/users_raw",
+                                "type": "TABLE",
+                            }
+                        ]
+                    }
+                },
+            }
+        ]
+
+        result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
+
+        # Both the top-level and the symlink identity must key into the same FQN.
+        self.assertIn("s3://bucket/warehouse/db/users_raw", result)
+        self.assertIn("arn:aws:glue:us-east-1:1/table/db/users_raw", result)
+        self.assertEqual(
+            result["s3://bucket/warehouse/db/users_raw"],
+            result["arn:aws:glue:us-east-1:1/table/db/users_raw"],
+        )
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
     def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn):
         """Test with valid input and output lists."""

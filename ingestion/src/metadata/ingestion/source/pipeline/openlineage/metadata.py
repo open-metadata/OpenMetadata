@@ -683,14 +683,25 @@ class OpenlineageSource(PipelineServiceSource):
         return f"{namespace}/{name}"
 
     def _build_ol_name_to_fqn_map(self, tables: List):  # noqa: UP006
+        # Register every raw identity (top-level plus each non-LOCATION symlink)
+        # under the same resolved FQN. Different OL emitters reference the
+        # same dataset in columnLineage.inputFields by either the top-level
+        # identity or the symlink identity; without aliasing both, a symlink-
+        # keyed inputFields row would silently miss the lookup and drop the
+        # column edge.
         result = {}
 
         for table in tables:
             if self._get_entity_details(table).entity_type != "table":
                 continue
             resolved = self._resolve_table(table)
-            if resolved:
-                result[OpenlineageSource._get_ol_table_name(table)] = resolved.fqn
+            if not resolved:
+                continue
+            for namespace, name in self._raw_table_identities(table):
+                if not name:
+                    continue
+                ol_name = self._get_ol_table_name({"namespace": namespace, "name": name})
+                result[ol_name] = resolved.fqn
 
         return result
 
