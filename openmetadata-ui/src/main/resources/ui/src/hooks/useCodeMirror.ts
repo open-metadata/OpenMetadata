@@ -142,6 +142,11 @@ export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
   onChangeRef.current = opts.onChange;
   onFocusRef.current = opts.onFocus;
 
+  // Assumption: the host <div ref={editorRef} /> is rendered unconditionally by the
+  // caller. If the div is conditionally rendered (null at mount) the EditorView is
+  // never created. If the div element is replaced later (e.g. key change) the old
+  // view stays attached to the detached node until component unmount. Both are
+  // acceptable for current callers (SchemaEditor / CodeEditor always render the div).
   useEffect(() => {
     if (!editorRef.current) {
       return;
