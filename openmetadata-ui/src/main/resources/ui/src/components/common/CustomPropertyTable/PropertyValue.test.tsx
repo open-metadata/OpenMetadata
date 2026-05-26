@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { PropertyValue } from './PropertyValue';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -63,6 +64,10 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityLink: jest.fn().mockReturnValue('Entity Link'),
 }));
+
+jest.mock('../ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<div data-testid="profile-picture" />)
+);
 
 jest.mock('../../../utils/CustomProperty.utils', () => ({
   getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
@@ -495,5 +500,142 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entity-reference-select')
     ).toBeInTheDocument();
+  });
+
+  describe('entityReference link generation — quoted identifier regression', () => {
+    const getEntityLinkMock = () =>
+      entityUtilClassBase.getEntityLink as jest.Mock;
+
+    beforeEach(() => {
+      getEntityLinkMock().mockClear();
+    });
+
+    it('should call getEntityLink with the plain FQN for a normal user entityReference', async () => {
+      const extension = {
+        yNumber: {
+          id: 'user-id',
+          name: 'jsmith',
+          fullyQualifiedName: 'jsmith',
+          type: 'user',
+        },
+      };
+      const propertyType = {
+        ...mockData.property.propertyType,
+        name: 'entityReference',
+      };
+      render(
+        <PropertyValue
+          {...mockData}
+          extension={extension}
+          property={{ ...mockData.property, propertyType }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      await screen.findByTestId('entityReference-value');
+
+      expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'jsmith');
+    });
+
+    it('should strip surrounding quotes from fullyQualifiedName before building the link', async () => {
+      const extension = {
+        yNumber: {
+          id: 'user-id',
+          name: '"jsmith"',
+          fullyQualifiedName: '"jsmith"',
+          type: 'user',
+        },
+      };
+      const propertyType = {
+        ...mockData.property.propertyType,
+        name: 'entityReference',
+      };
+      render(
+        <PropertyValue
+          {...mockData}
+          extension={extension}
+          property={{ ...mockData.property, propertyType }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      await screen.findByTestId('entityReference-value');
+
+      expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'jsmith');
+      expect(getEntityLinkMock()).not.toHaveBeenCalledWith(
+        'user',
+        expect.stringContaining('"')
+      );
+    });
+
+    it('should strip surrounding quotes from name when fullyQualifiedName is absent', async () => {
+      const extension = {
+        yNumber: {
+          id: 'user-id',
+          name: '"jsmith"',
+          type: 'user',
+        },
+      };
+      const propertyType = {
+        ...mockData.property.propertyType,
+        name: 'entityReference',
+      };
+      render(
+        <PropertyValue
+          {...mockData}
+          extension={extension}
+          property={{ ...mockData.property, propertyType }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      await screen.findByTestId('entityReference-value');
+
+      expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'jsmith');
+      expect(getEntityLinkMock()).not.toHaveBeenCalledWith(
+        'user',
+        expect.stringContaining('"')
+      );
+    });
+
+    it('should strip surrounding quotes from all items in a quoted entityReferenceList', async () => {
+      const extension = {
+        yNumber: [
+          {
+            id: 'user-id-1',
+            name: '"alice"',
+            fullyQualifiedName: '"alice"',
+            type: 'user',
+          },
+          {
+            id: 'user-id-2',
+            name: '"bob"',
+            fullyQualifiedName: '"bob"',
+            type: 'user',
+          },
+        ],
+      };
+      const propertyType = {
+        ...mockData.property.propertyType,
+        name: 'entityReferenceList',
+      };
+      render(
+        <PropertyValue
+          {...mockData}
+          extension={extension}
+          property={{ ...mockData.property, propertyType }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      await screen.findByTestId('"alice"');
+
+      expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'alice');
+      expect(getEntityLinkMock()).toHaveBeenCalledWith('user', 'bob');
+      expect(getEntityLinkMock()).not.toHaveBeenCalledWith(
+        'user',
+        expect.stringContaining('"')
+      );
+    });
   });
 });
