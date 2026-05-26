@@ -116,7 +116,6 @@ export interface ListDataAccessRequestsParams {
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
-  q?: string;
   include?: Include;
 }
 
