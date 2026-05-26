@@ -122,3 +122,19 @@ UPDATE dbservice_entity
 SET json = (json::jsonb #- '{connection,config,policyAgentConfig}')
 WHERE serviceType = 'Postgres'
   AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = jsonb_insert(
+    json::jsonb,
+    '{rules,2}',
+    jsonb_build_object(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', jsonb_build_array('Topic'),
+        'operations', jsonb_build_array('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'AutoClassificationBotPolicy'
+  AND (json->'rules'->2->>'name' IS NULL OR json->'rules'->2->>'name' != 'AutoClassificationBotRule-Allow-Topic');
