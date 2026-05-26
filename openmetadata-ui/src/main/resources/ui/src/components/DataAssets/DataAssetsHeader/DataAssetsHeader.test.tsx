@@ -1016,7 +1016,7 @@ describe('DataAssetsHeader component', () => {
       }));
     });
 
-    it('should render when user is admin with canCreateTask permission and is not owner', async () => {
+    it('should not render when user is admin even with canCreateTask permission', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -1028,8 +1028,8 @@ describe('DataAssetsHeader component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('request-data-access-button')
-        ).toBeInTheDocument();
+          screen.queryByTestId('request-data-access-button')
+        ).not.toBeInTheDocument();
       });
 
       (useApplicationStore as jest.Mock).mockReturnValue({
@@ -1037,7 +1037,7 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should not render when user is admin with canCreateTask permission but is the owner', async () => {
+    it('should not render when user is admin and is also the owner', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -1061,6 +1061,16 @@ describe('DataAssetsHeader component', () => {
 
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user' },
+      });
+    });
+
+    it('should render for non-admin user with canCreateTask permission who is not owner', async () => {
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
       });
     });
   });
