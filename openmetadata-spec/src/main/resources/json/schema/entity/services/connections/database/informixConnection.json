@@ -149,6 +149,10 @@
     "supportsUsageExtraction": {
       "title": "Supports Usage Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

@@ -105,6 +105,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

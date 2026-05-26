@@ -195,6 +195,10 @@
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
+    },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"

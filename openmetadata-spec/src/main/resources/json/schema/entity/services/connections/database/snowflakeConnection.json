@@ -211,6 +211,16 @@
       "description": "Snowflake source host for the Snowflake account.",
       "type": "string",
       "default": "app.snowflake.com"
+    },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": false,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": true
+      }
     }
   },
   "additionalProperties": false,

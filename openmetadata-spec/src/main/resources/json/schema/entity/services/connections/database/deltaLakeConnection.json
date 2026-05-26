@@ -63,6 +63,10 @@
     },
     "supportsDBTExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

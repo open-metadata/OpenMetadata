@@ -141,6 +141,10 @@
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
+    },
     "queryHistoryTable": {
       "title": "Query History Table",
       "description": "Table name to fetch the query history.",

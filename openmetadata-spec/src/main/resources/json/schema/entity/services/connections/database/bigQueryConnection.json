@@ -149,6 +149,10 @@
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
+    "supportsPolicyAgent": {
+      "title": "Supports Policy Agent",
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
+    },
     "costPerTB": {
       "title": "Cost Per TiB",
       "description": "Cost per TiB for BigQuery usage",
