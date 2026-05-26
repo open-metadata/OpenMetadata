@@ -131,7 +131,7 @@ public class LineageUtil {
         .getSearchClient()
         .updateChildren(
             GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
+            new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
             new ImmutablePair<>(
                 REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }

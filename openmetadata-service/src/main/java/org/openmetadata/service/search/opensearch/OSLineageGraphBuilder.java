@@ -151,7 +151,9 @@ public class OSLineageGraphBuilder
         if (!esDoc.isEmpty()) {
           String fqn = esDoc.get(FQN_FIELD).toString();
           RelationshipRef toEntity = getRelationshipRef(esDoc);
-          List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(esDoc);
+          List<EsLineageData> upStreamEntities =
+              getUpstreamLineageListIfExist(
+                  esDoc, lineageRequest.getStartTime(), lineageRequest.getEndTime());
           int currentDepth = calculateCurrentDepth(lineageRequest, remainingDepth);
           result
               .getNodes()
@@ -267,7 +269,9 @@ public class OSLineageGraphBuilder
             result.getNodes().put(fqn, getNodeInformation(entityMap, 0, null, currentDepth));
           }
 
-          List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityMap);
+          List<EsLineageData> upstreamEntities =
+              getUpstreamLineageListIfExist(
+                  entityMap, lineageRequest.getStartTime(), lineageRequest.getEndTime());
           for (EsLineageData esLineageData : upstreamEntities) {
             if (hasToFqnMap.containsKey(esLineageData.getFromEntity().getFqnHash())) {
               result
@@ -537,7 +541,9 @@ public class OSLineageGraphBuilder
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
-      List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(rootEntityMap);
+      List<EsLineageData> upstreamEntities =
+          getUpstreamLineageListIfExist(
+              rootEntityMap, lineageRequest.getStartTime(), lineageRequest.getEndTime());
 
       Integer upstreamCount = null;
       if (isDirectionBased && lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
@@ -623,7 +629,9 @@ public class OSLineageGraphBuilder
                 upstreamDepth,
                 queryFilter,
                 countFilter,
-                includeDeleted));
+                includeDeleted,
+                null,
+                null));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
@@ -633,7 +641,9 @@ public class OSLineageGraphBuilder
                 downstreamDepth,
                 queryFilter,
                 countFilter,
-                includeDeleted));
+                includeDeleted,
+                null,
+                null));
       }
     } else {
       if (upstreamDepth > 0) {
@@ -644,7 +654,9 @@ public class OSLineageGraphBuilder
                 upstreamDepth,
                 countFilter,
                 includeDeleted,
-                entityType));
+                entityType,
+                null,
+                null));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
@@ -654,7 +666,9 @@ public class OSLineageGraphBuilder
                 downstreamDepth,
                 countFilter,
                 includeDeleted,
-                entityType));
+                entityType,
+                null,
+                null));
       }
     }
 
@@ -667,10 +681,20 @@ public class OSLineageGraphBuilder
       int maxDepth,
       String queryFilter,
       String structuralFilter,
-      boolean includeDeleted)
+      boolean includeDeleted,
+      Long startTime,
+      Long endTime)
       throws IOException {
     Map<Integer, List<String>> entitiesByDepth =
-        getAllEntitiesByDepth(fqn, direction, maxDepth, structuralFilter, includeDeleted, Set.of());
+        getAllEntitiesByDepth(
+            fqn,
+            direction,
+            maxDepth,
+            structuralFilter,
+            includeDeleted,
+            Set.of(),
+            startTime,
+            endTime);
 
     Set<String> allFqnHashes = new HashSet<>();
     for (List<String> fqns : entitiesByDepth.values()) {
@@ -779,7 +803,9 @@ public class OSLineageGraphBuilder
                   traversalDepth,
                   hasNodeLevelQueryFilter ? structuralQueryFilter : request.getQueryFilter(),
                   request.getIncludeDeleted(),
-                  request.getIncludeSourceFields()));
+                  request.getIncludeSourceFields(),
+                  request.getStartTime(),
+                  request.getEndTime()));
 
       List<String> allEntities = new ArrayList<>();
       for (int depth = 1; depth <= traversalDepth; depth++) {
@@ -954,7 +980,9 @@ public class OSLineageGraphBuilder
             ? request.getIncludePaginationInfo()
             : Boolean.FALSE,
         request.getUpstreamDepth() != null ? request.getUpstreamDepth() : 0,
-        request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0);
+        request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0,
+        request.getStartTime(),
+        request.getEndTime());
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -963,10 +991,19 @@ public class OSLineageGraphBuilder
       int maxDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
     return getDepthWiseEntityCounts(
-        fqn, direction, maxDepth, queryFilter, includeDeleted, isConnectedVia(entityType));
+        fqn,
+        direction,
+        maxDepth,
+        queryFilter,
+        includeDeleted,
+        isConnectedVia(entityType),
+        startTime,
+        endTime);
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -975,7 +1012,9 @@ public class OSLineageGraphBuilder
       int maxDepth,
       String queryFilter,
       boolean includeDeleted,
-      boolean connectedVia)
+      boolean connectedVia,
+      Long startTime,
+      Long endTime)
       throws IOException {
 
     int startingOffset = direction.equals(LineageDirection.UPSTREAM) ? 0 : 1;
@@ -1021,7 +1060,8 @@ public class OSLineageGraphBuilder
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
               }
             } else {
-              List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(esDoc);
+              List<EsLineageData> upStreamEntities =
+                  getUpstreamLineageListIfExist(esDoc, startTime, endTime);
               for (EsLineageData data : upStreamEntities) {
                 String fromFqn = data.getFromEntity().getFullyQualifiedName();
                 if (!visitedFqns.contains(fromFqn)) {
@@ -1050,7 +1090,9 @@ public class OSLineageGraphBuilder
       int maxDepth,
       String queryFilter,
       boolean includeDeleted,
-      Set<String> includeSourceFields)
+      Set<String> includeSourceFields,
+      Long startTime,
+      Long endTime)
       throws IOException {
     Set<String> visitedFqns = new HashSet<>();
     visitedFqns.add(fqn);
@@ -1093,7 +1135,8 @@ public class OSLineageGraphBuilder
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
               }
             } else {
-              List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(esDoc);
+              List<EsLineageData> upstreamEntities =
+                  getUpstreamLineageListIfExist(esDoc, startTime, endTime);
               for (EsLineageData data : upstreamEntities) {
                 if (data.getFromEntity() != null) {
                   String fromFqn = data.getFromEntity().getFullyQualifiedName();
@@ -1166,7 +1209,8 @@ public class OSLineageGraphBuilder
       EntityCountLineageRequest request,
       Set<String> allCollectedFqns) {
     RelationshipRef currentEntity = getRelationshipRef(entityDoc);
-    List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityDoc);
+    List<EsLineageData> upstreamEntities =
+        getUpstreamLineageListIfExist(entityDoc, request.getStartTime(), request.getEndTime());
 
     if (request.getDirection() == LineageDirection.UPSTREAM) {
       // Add upstream edges - current entity depends on these upstream entities
@@ -1258,7 +1302,9 @@ public class OSLineageGraphBuilder
                 nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
               }
             } else {
-              List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(esDoc);
+              List<EsLineageData> upStreamEntities =
+                  getUpstreamLineageListIfExist(
+                      esDoc, request.getStartTime(), request.getEndTime());
               for (EsLineageData data : upStreamEntities) {
                 String fromFqn = data.getFromEntity().getFullyQualifiedName();
                 if (depth < targetDepth && !visitedFqns.contains(fromFqn)) {
@@ -1369,7 +1415,9 @@ public class OSLineageGraphBuilder
           depth,
           request.getQueryFilter(),
           structuralQueryFilter,
-          request.getIncludeDeleted());
+          request.getIncludeDeleted(),
+          request.getStartTime(),
+          request.getEndTime());
     }
 
     return getDepthWiseEntityCounts(
@@ -1378,7 +1426,9 @@ public class OSLineageGraphBuilder
         depth,
         structuralQueryFilter,
         request.getIncludeDeleted(),
-        Boolean.TRUE.equals(request.getIsConnectedVia()));
+        Boolean.TRUE.equals(request.getIsConnectedVia()),
+        request.getStartTime(),
+        request.getEndTime());
   }
 
   /**

@@ -370,6 +370,11 @@ public interface SearchClient
           if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
             oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
           }
+          def old = ctx._source.upstreamLineage[i];
+          def carryCreatedAt = old.get('createdAt');
+          def carryCreatedBy = old.get('createdBy');
+          if (carryCreatedAt != null) edgeData.put('createdAt', carryCreatedAt);
+          if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;

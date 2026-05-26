@@ -60,7 +60,12 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
 
   return (
     <LineageProvider>
-      {viewMode === 'lineage' ? lineageTab : lineageTable}
+      <div
+        aria-hidden={viewMode !== 'lineage'}
+        style={{ display: viewMode === 'lineage' ? undefined : 'none' }}>
+        {lineageTab}
+      </div>
+      {viewMode === 'impact_analysis' ? lineageTable : null}
     </LineageProvider>
   );
 };

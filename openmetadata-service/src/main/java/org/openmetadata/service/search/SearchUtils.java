@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -65,6 +66,48 @@ public final class SearchUtils {
       return JsonUtils.readOrConvertValues(esDoc.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
     }
     return Collections.emptyList();
+  }
+
+  /**
+   * Time-windowed overload that filters edges by observed time window.
+   * An edge is included if its [createdAt, updatedAt] interval overlaps the
+   * requested [startTime, endTime] window. Manual-source edges and legacy
+   * edges with no timestamps bypass the filter — see {@link #edgeMatchesWindow}.
+   *
+   * @param esDoc     Source map from an ES hit
+   * @param startTime Inclusive lower bound of the window in epoch millis, or null for -∞
+   * @param endTime   Inclusive upper bound of the window in epoch millis, or null for +∞
+   * @return Edges in the window (or all edges if both bounds are null)
+   */
+  public static List<EsLineageData> getUpstreamLineageListIfExist(
+      Map<String, Object> esDoc, Long startTime, Long endTime) {
+    List<EsLineageData> all = getUpstreamLineageListIfExist(esDoc);
+    List<EsLineageData> result = all;
+    if (startTime != null || endTime != null) {
+      result =
+          all.stream()
+              .filter(e -> edgeMatchesWindow(e, startTime, endTime))
+              .collect(Collectors.toList());
+    }
+    return result;
+  }
+
+  private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
+    boolean matches;
+    if (startTime == null && endTime == null) {
+      matches = true;
+    } else if (edge != null && LineageDetails.Source.MANUAL.value().equals(edge.getSource())) {
+      matches = true;
+    } else if (edge == null || (edge.getCreatedAt() == null && edge.getUpdatedAt() == null)) {
+      matches = true;
+    } else {
+      Long createdAt = edge.getCreatedAt();
+      Long updatedAt = edge.getUpdatedAt();
+      boolean startOk = endTime == null || createdAt == null || createdAt <= endTime;
+      boolean endOk = startTime == null || updatedAt == null || updatedAt >= startTime;
+      matches = startOk && endOk;
+    }
+    return matches;
   }
 
   public static EsLineageData copyEsLineageData(EsLineageData data) {
