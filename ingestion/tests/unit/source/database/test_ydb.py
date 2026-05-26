@@ -408,7 +408,7 @@ class TestYdbSamplerBuildTableOrm:
         sampler = self._make_sampler()
         tbl = self._make_om_table("orders", ["id"])
         orm = sampler.build_table_orm(
-            tbl, MagicMock(), self._ometa_for_schema("default")
+            tbl, MagicMock(), self._ometa_for_schema("(root)")
         )
         # ROOT_SCHEMA collapses path back to bare table name.
         assert orm.__tablename__ == "orders"
@@ -540,6 +540,80 @@ class TestYdbSamplerGetSampleQuery:
 # ---------------------------------------------------------------------------
 # RandomNumFn YDB compile — emits "0", not bare RANDOM()
 # ---------------------------------------------------------------------------
+
+
+class TestGetCredentials:
+    def setup_method(self):
+        from metadata.ingestion.source.database.ydb.connection import _get_credentials
+
+        self._get_credentials = _get_credentials
+
+    def test_none_returns_none(self):
+        assert self._get_credentials(None) is None
+
+    def test_no_credentials_returns_none(self):
+        from metadata.generated.schema.entity.services.connections.database.ydb.noCredentials import (
+            NoCredentials,
+        )
+
+        assert self._get_credentials(NoCredentials()) is None
+
+    def test_static_credentials_returns_dict(self):
+        from metadata.generated.schema.entity.services.connections.database.ydb.staticCredentials import (
+            StaticCredentials,
+        )
+        from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+
+        creds = StaticCredentials(username="alice", password=CustomSecretStr("secret"))
+
+        result = self._get_credentials(creds)
+
+        assert result == {"username": "alice", "password": "secret"}
+
+    def test_token_credentials_returns_dict(self):
+        from metadata.generated.schema.entity.services.connections.database.ydb.tokenCredentials import (
+            TokenCredentials,
+        )
+        from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+
+        creds = TokenCredentials(token=CustomSecretStr("t.my-token"))
+
+        result = self._get_credentials(creds)
+
+        assert result == {"token": "t.my-token"}
+
+    def test_service_account_credentials_parses_json(self):
+        import json
+
+        from metadata.generated.schema.entity.services.connections.database.ydb.serviceAccountCredentials import (
+            ServiceAccountCredentials,
+        )
+        from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+
+        sa_data = {"id": "key-id", "service_account_id": "sa-id", "private_key": "pk"}
+        creds = ServiceAccountCredentials(
+            serviceAccountJson=CustomSecretStr(json.dumps(sa_data))
+        )
+
+        result = self._get_credentials(creds)
+
+        assert result == {"service_account_json": sa_data}
+
+    def test_metadata_credentials_returns_ydb_iam_object(self):
+        from unittest.mock import MagicMock, patch
+
+        from metadata.generated.schema.entity.services.connections.database.ydb.metadataCredentials import (
+            MetadataCredentials,
+        )
+
+        mock_instance = MagicMock()
+        mock_ydb = MagicMock()
+        mock_ydb.iam.MetadataUrlCredentials.return_value = mock_instance
+
+        with patch.dict("sys.modules", {"ydb": mock_ydb, "ydb.iam": mock_ydb.iam}):
+            result = self._get_credentials(MetadataCredentials())
+
+        assert result is mock_instance
 
 
 class TestRandomNumFnYdb:

@@ -114,7 +114,7 @@ def ydb_container():
                     conn.commit()
                 engine.dispose()
                 return
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 last_err = exc
                 time.sleep(2)
         raise TimeoutError(

@@ -389,7 +389,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
     "questdb": {"psycopg2-binary"},
-    "ydb": {"ydb-sqlalchemy", "ydb-sqlglot-plugin==0.2.5"},
+    "ydb": {"ydb-sqlalchemy~=0.1.19", "ydb-sqlglot-plugin~=0.2.5"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},

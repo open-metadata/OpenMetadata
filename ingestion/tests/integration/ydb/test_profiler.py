@@ -25,7 +25,6 @@ If any of those misfires the profiler errors out on numeric columns.
 
 from copy import deepcopy
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -55,20 +54,44 @@ def test_profiler(
     assert events.profile.rowCount == 3.0
     assert events.profile.columnCount == 3.0
 
-    # orders.amount: full numeric profile (exercises avg/stddev/median path).
+    # orders: table-level counts.
     orders = metadata.get_latest_table_profile(
-        fqn=f"{service}./local.default.orders"
+        fqn=f"{service}./local.(root).orders"
     )
-    assert orders is not None and orders.columns
+    assert orders is not None and orders.profile is not None
+    assert orders.profile.rowCount == 3.0
+    assert orders.profile.columnCount == 2.0
+
+    # orders.amount: full numeric profile (exercises avg/stddev/median path).
+    assert orders.columns
     amount_col = next(c for c in orders.columns if c.name.root == "amount")
     assert amount_col.profile is not None
     assert amount_col.profile.valuesCount == 3.0
     assert amount_col.profile.min == 100.0
     assert amount_col.profile.max == 300.0
     assert amount_col.profile.mean == 200.0
-    # Median, firstQuartile and thirdQuartile go through MedianFn → PERCENTILE.
+    # Median, firstQuartile, thirdQuartile go through MedianFn → PERCENTILE.
     assert amount_col.profile.median is not None
     assert amount_col.profile.firstQuartile is not None
     assert amount_col.profile.thirdQuartile is not None
     # stddev goes through StdDevFn → STDDEV_POP.
     assert amount_col.profile.stddev is not None
+
+    # orders.order_id: integer PK — distinct count must equal row count.
+    order_id_col = next(c for c in orders.columns if c.name.root == "order_id")
+    assert order_id_col.profile is not None
+    assert order_id_col.profile.valuesCount == 3.0
+    assert order_id_col.profile.distinctCount == 3.0
+    assert order_id_col.profile.min == 1.0
+    assert order_id_col.profile.max == 3.0
+
+    # raw.events.event_id: text column — distinct count and nulls.
+    events = metadata.get_latest_table_profile(
+        fqn=f"{service}./local.raw.events"
+    )
+    assert events is not None and events.columns
+    event_id_col = next(c for c in events.columns if c.name.root == "event_id")
+    assert event_id_col.profile is not None
+    assert event_id_col.profile.valuesCount == 3.0
+    assert event_id_col.profile.distinctCount == 3.0
+    assert (event_id_col.profile.nullCount or 0) == 0

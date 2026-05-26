@@ -19,6 +19,7 @@ import customDatabaseConnection from '../jsons/connectionSchemas/connections/dat
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
+import ydbConnection from '../jsons/connectionSchemas/connections/database/ydbConnection.json';
 import {
   ExtraDatabaseServiceDropdownOptions,
   getDatabaseConfig,
@@ -181,6 +182,15 @@ describe('getDatabaseConfig', () => {
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
     expect(result.schema).toStrictEqual(customDatabaseConnection);
+    expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should return correct schema and UI schema for YDB', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Ydb);
+
+    expect(result).toHaveProperty('schema');
+    expect(result).toHaveProperty('uiSchema');
+    expect(result.schema).toStrictEqual(ydbConnection);
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 

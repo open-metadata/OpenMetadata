@@ -23,7 +23,13 @@ used by both metadata reflection (`metadata.py`) and view-lineage rewriting
 import re
 
 # Schema name assigned to objects that live at the database root (no '/').
-ROOT_SCHEMA = "default"
+# Uses parentheses which are forbidden in YDB directory names (only
+# [a-zA-Z0-9_.-] is allowed), so this label can never collide with a real
+# directory. It is only used for display in OM — it never appears in queries
+# sent to YDB (full_name() strips it). Angle-bracket variants like "<root>"
+# were rejected because OM's FQN builder encodes ">" as "__reserved__arrow__",
+# making FQN-based lookups fail.
+ROOT_SCHEMA = "(root)"
 
 # Backtick-quoted identifier in YQL. YDB paths cannot contain a backtick,
 # so a non-greedy match between two backticks is unambiguous.

@@ -14,7 +14,6 @@ YDB connection handler
 """
 
 import json
-import tempfile
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -88,10 +87,9 @@ def get_connection(connection: YDBConnection) -> Engine:
         connect_args["credentials"] = credentials
 
     if connection.caCertificate:
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
-        tmp.write(connection.caCertificate.get_secret_value().encode())
-        tmp.flush()
-        connect_args["root_certificates_path"] = tmp.name
+        connect_args["root_certificates"] = (
+            connection.caCertificate.get_secret_value()
+        )
 
     return create_engine(
         get_connection_url(connection),

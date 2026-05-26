@@ -57,36 +57,50 @@ class YdbSource(CommonDbSourceService):
             )
         return cls(config, metadata)
 
+    @property
+    def _all_table_names(self) -> list[str]:
+        if not hasattr(self, "_table_names_cache"):
+            self._table_names_cache = self.inspector.get_table_names(schema=None) or []
+        return self._table_names_cache
+
+    @property
+    def _all_view_names(self) -> list[str]:
+        if not hasattr(self, "_view_names_cache"):
+            self._view_names_cache = self.inspector.get_view_names(schema=None) or []
+        return self._view_names_cache
+
     def get_raw_database_schema_names(self) -> Iterable[str]:
-        all_names = (self.inspector.get_table_names(schema=None) or []) + (
-            self.inspector.get_view_names(schema=None) or []
-        )
         seen = set()
-        for name in all_names:
+        for name in self._all_table_names + self._all_view_names:
             schema = schema_of(name)
             if schema not in seen:
                 seen.add(schema)
                 yield schema
 
-    def query_table_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         return [
             TableNameAndType(name=table_of(full))
-            for full in self.inspector.get_table_names(schema=None) or []
+            for full in self._all_table_names
             if schema_of(full) == schema_name
         ]
 
-    def query_view_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         return [
             TableNameAndType(name=table_of(full), type_=TableType.View)
-            for full in self.inspector.get_view_names(schema=None) or []
+            for full in self._all_view_names
             if schema_of(full) == schema_name
         ]
 
     @staticmethod
-    def _get_columns_with_constraints(
+    def get_table_description(
         schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:
+        return None
+
+    def _get_columns_with_constraints(
+        self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        return CommonDbSourceService._get_columns_with_constraints(
+        return super()._get_columns_with_constraints(
             None, full_name(schema_name, table_name), inspector
         )
 
@@ -111,7 +125,7 @@ class YdbSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:
+    ) -> str | None:
         view_types = (
             TableType.View,
             TableType.MaterializedView,
