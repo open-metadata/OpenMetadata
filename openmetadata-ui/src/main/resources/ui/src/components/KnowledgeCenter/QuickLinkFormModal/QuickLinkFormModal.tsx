@@ -20,10 +20,11 @@ import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { KNOWLEDGE_CENTER_CLASSIFICATION } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../generated/entity/type';
@@ -46,6 +47,7 @@ import {
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData
@@ -75,6 +77,18 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const { t } = useTranslation('translation', { i18n });
 
   const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      tagClassBase.setFilterClassification([]);
+    } else {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    }
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, [isOpen]);
 
   const { initialValues, initialDataAssetsOptions, restRelatedDataAssets } =
     useMemo(() => {
