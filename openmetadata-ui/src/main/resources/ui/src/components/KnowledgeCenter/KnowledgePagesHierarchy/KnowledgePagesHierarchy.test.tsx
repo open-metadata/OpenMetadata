@@ -17,9 +17,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { User } from '../../../generated/entity/teams/user';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
 const PageHierarchy = [
@@ -228,10 +228,8 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
     .mockImplementation(() => ({ getResourceLimit: jest.fn() })),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="delete-widget">DeleteWidgetModal</div>)
+jest.mock('components/common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
 );
 
 describe('KnowledgePagesHierarchy', () => {
@@ -338,32 +336,6 @@ describe('KnowledgePagesHierarchy', () => {
     fireEvent.click(deleteButton);
 
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
-  });
-
-  it('add page flow should work', async () => {
-    await act(async () => {
-      render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const addButton = screen.getByTestId(
-      `How to Discover Assets of Interest-add-page-btn`
-    );
-
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/knowledge-center/newPage',
-      });
-    });
   });
 
   describe('Scroll Pagination', () => {

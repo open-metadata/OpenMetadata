@@ -23,7 +23,6 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -35,7 +34,7 @@ import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTabl
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -50,7 +49,6 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import {
@@ -58,21 +56,6 @@ import {
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
-
-export const getOwner = (
-  hasPermission: boolean,
-  owners: EntityReference[],
-  ownerDisplayNames: Map<string, ReactNode>
-) => {
-  if (!isEmpty(owners)) {
-    return <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />;
-  }
-  if (!hasPermission) {
-    return <div>{NO_DATA_PLACEHOLDER}</div>;
-  }
-
-  return null;
-};
 
 export const getQueryFilterToIncludeDomain = (
   domainFqn: string,
@@ -631,33 +614,6 @@ export const getDomainIcon = (iconURL?: string) => {
 
   // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
-};
-
-export const DomainListItemRenderer = (props: EntityReference) => {
-  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
-  const fqn = `(${props.fullyQualifiedName ?? ''})`;
-
-  return (
-    <div className="d-flex items-center gap-2">
-      <DomainIcon
-        color={DE_ACTIVE_COLOR}
-        height={20}
-        name="folder"
-        width={20}
-      />
-      <div className="d-flex items-center w-max-400">
-        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
-        {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
-          </Typography.Text>
-        )}
-      </div>
-    </div>
-  );
 };
 
 export const domainBuildESQuery = (

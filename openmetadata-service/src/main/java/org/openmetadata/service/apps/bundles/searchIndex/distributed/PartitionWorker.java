@@ -55,9 +55,6 @@ public class PartitionWorker {
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key used by search sinks to write into staged indexes. */
-  private static final String STAGED_WRITE_KEY = "recreateIndex";
-
   /** Context key for staged index context. */
   private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
@@ -497,6 +494,7 @@ public class PartitionWorker {
     }
 
     recordReaderFailures(entityType, resultList, readErrorCount);
+    recordRelationshipWarnings(entityType, resultList);
 
     if (readSuccessCount == 0) {
       LOG.debug(
@@ -568,6 +566,30 @@ public class PartitionWorker {
       }
       failureRecorder.recordReaderEntityFailure(
           entityType, entityId, null, entityError.getMessage());
+    }
+  }
+
+  /**
+   * Persist stale-relationship warnings (records read but not indexable because their parent is
+   * gone) to the failures table, tagged {@code READER_RELATIONSHIP_WARNING}. These are not
+   * failures and never count against the job's failure total — they are recorded only so an
+   * operator can find and clean up the orphaned rows from the failures dashboard.
+   */
+  private void recordRelationshipWarnings(String entityType, ResultList<?> resultList) {
+    if (failureRecorder == null || resultList == null) {
+      return;
+    }
+    for (EntityError warning : listOrEmpty(resultList.getWarnings())) {
+      Object rawEntity = warning.getEntity();
+      String entityId = null;
+      String entityFqn = null;
+      if (rawEntity instanceof EntityInterface entity) {
+        UUID id = entity.getId();
+        entityId = id != null ? id.toString() : null;
+        entityFqn = entity.getFullyQualifiedName();
+      }
+      failureRecorder.recordRelationshipWarning(
+          entityType, entityId, entityFqn, warning.getMessage());
     }
   }
 
@@ -668,6 +690,7 @@ public class PartitionWorker {
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
@@ -687,7 +710,6 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
-    contextData.put(STAGED_WRITE_KEY, true);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);

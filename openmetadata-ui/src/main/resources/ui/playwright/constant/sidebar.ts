@@ -31,7 +31,8 @@ export enum SidebarItem {
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
   DATA_MARKETPLACE = 'data-marketplace',
-  KNOWLEDGE_CENTER = 'knowledge-center',
+  CONTEXT_CENTER = 'context-center',
+  ARTICLE = 'articles',
 }
 
 export const SIDEBAR_LIST_ITEMS = {
@@ -70,6 +71,7 @@ export const SIDEBAR_LIST_ITEMS = {
     SidebarItem.GOVERNANCE,
     SidebarItem.COLUMN_BULK_OPERATIONS,
   ],
+  [SidebarItem.ARTICLE]: [SidebarItem.CONTEXT_CENTER, SidebarItem.ARTICLE],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],

@@ -246,6 +246,11 @@ public final class Databases {
     public DatabaseDeleter delete() {
       return new DatabaseDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Database> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.databases(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

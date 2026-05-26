@@ -12,8 +12,8 @@
  */
 
 import { Select } from 'antd';
-import cronstrue from 'cronstrue/i18n';
 import { isUndefined, toNumber, toString } from 'lodash';
+
 import { RuleObject } from 'rc-field-form/es/interface';
 import {
   Combination,
@@ -336,6 +336,7 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   }
 
   try {
+    const cronstrue = (await import('cronstrue/i18n')).default;
     // Check if cron is valid and get the description
     const description = cronstrue.toString(trimmedValue);
 

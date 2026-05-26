@@ -47,7 +47,7 @@ jobs:
           echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

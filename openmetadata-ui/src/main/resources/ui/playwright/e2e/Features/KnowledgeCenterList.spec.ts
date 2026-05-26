@@ -47,8 +47,8 @@ test.describe('Knowledge Center List', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
-    await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
+    await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
       .getByTestId('knowledge-page-listing')
@@ -104,7 +104,7 @@ test.describe('Knowledge Center List', () => {
 
     const upVoteBtn = card.getByTestId('up-vote-btn');
     const upVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
+      '/api/v1/contextCenter/pages/*/vote'
     );
     await upVoteBtn.click();
     await upVoteResponse;
@@ -124,7 +124,7 @@ test.describe('Knowledge Center List', () => {
 
     const downVoteBtn = card.getByTestId('down-vote-btn');
     const downVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
+      '/api/v1/contextCenter/pages/*/vote'
     );
     await downVoteBtn.click();
     await downVoteResponse;
@@ -159,7 +159,8 @@ test.describe('Knowledge Center List', () => {
     const unbookmarkResponse = page.waitForResponse((response) => {
       const url = response.url();
       return (
-        url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
+        url.includes('/api/v1/contextCenter/pages') &&
+        url.includes('/followers')
       );
     });
 
@@ -190,7 +191,7 @@ test.describe('Knowledge Center List', () => {
     const knowledgePageLink = card.getByTestId('knowledge-page-link');
 
     const navigationPromise = page.waitForURL((url) =>
-      url.pathname.includes('/knowledge-center/')
+      url.pathname.includes('/context-center/articles/')
     );
 
     await knowledgePageLink.click();
@@ -205,8 +206,8 @@ test.describe('Knowledge Center List', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
-    await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
+    await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
       .getByTestId('knowledge-page-listing')
@@ -227,7 +228,7 @@ test.describe('Knowledge Center List', () => {
     await expect(recentlyViewedItem).toBeVisible();
 
     const recentViewNavigationPromise = page.waitForURL((url) =>
-      url.pathname.includes('/knowledge-center/')
+      url.pathname.includes('/context-center/articles/')
     );
     await recentlyViewedItem.click();
     await recentViewNavigationPromise;
@@ -248,7 +249,7 @@ test.describe('Knowledge Center List', () => {
     const observerElement = page.getByTestId('observer-element');
     const paginationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter') &&
+        response.url().includes('/api/v1/contextCenter/pages') &&
         response.url().includes('after=')
     );
 
@@ -284,26 +285,6 @@ test.describe('Knowledge Center List', () => {
       bookmarkIdentifier,
       false
     );
-  });
-
-  test('Knowledge Center List - Test add article button', async ({ page }) => {
-    const addButton = page.getByTestId('add-knowledge-page-btn');
-    await expect(addButton).toBeVisible();
-
-    await addButton.click();
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
-
-    const articleOption = page.getByRole('menuitem', { name: 'Article' });
-    await expect(articleOption).toBeVisible();
-
-    const quickLinkOption = page.getByRole('menuitem', { name: 'Quick Link' });
-    await expect(quickLinkOption).toBeVisible();
-
-    const createResponse = page.waitForResponse('/api/v1/knowledgeCenter');
-    await articleOption.click();
-    await createResponse;
-
-    await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
   });
 
   test('Knowledge Center List - Test metadata section details', async ({
