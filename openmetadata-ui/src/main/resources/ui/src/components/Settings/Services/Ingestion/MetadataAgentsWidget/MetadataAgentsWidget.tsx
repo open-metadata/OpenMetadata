@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -50,6 +51,7 @@ function MetadataAgentsWidget({
   searchText,
 }: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
@@ -76,9 +78,11 @@ function MetadataAgentsWidget({
   const extraMenuItems = useMemo(
     () =>
       serviceUtilClassBase.getExtraIngestionMenuItems(
-        serviceCategory as ServiceCategory
+        serviceCategory as ServiceCategory,
+        serviceName,
+        navigate
       ),
-    [serviceCategory]
+    [navigate, serviceCategory, serviceName]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {

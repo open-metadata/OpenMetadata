@@ -78,7 +78,9 @@ function AddIngestionButton({
             ...(extraMenuItems ?? []),
           ],
           onClick: (item) => {
-            handleAddIngestionClick(item.key as PipelineType);
+            if ((types as string[]).includes(item.key)) {
+              handleAddIngestionClick(item.key as PipelineType);
+            }
           },
         }}
         placement="bottomRight"
