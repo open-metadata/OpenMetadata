@@ -1,199 +1,138 @@
-# Multi-Node Session Management Design
+# Multi-Node Session and WebSocket Session Management Design
 
-## 1. Overview
+## 1. Status
 
-### 1.1 Problem
+This document describes the current server-side session and websocket session design for
+OpenMetadata issue [#21971](https://github.com/open-metadata/OpenMetadata/issues/21971).
 
-Issue [#21971](https://github.com/open-metadata/OpenMetadata/issues/21971) is fundamentally about browser and confidential-auth session state being tied to pod-local memory instead of a shared store.
+The implementation is centered on these files:
 
-Today, OpenMetadata already does the right thing for normal API traffic:
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionService.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionStore.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/JdbcSessionStore.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/RedisSessionStore.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionStoreFactory.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/JwtFilter.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/security/jwt/JWTTokenGenerator.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/socket/SocketAddressFilter.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/socket/WebSocketManager.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java`
+- `openmetadata-service/src/main/java/org/openmetadata/service/cache/CacheBundle.java`
 
-- API and MCP requests authenticated with bearer JWTs are effectively stateless.
-- Personal access tokens and refresh tokens are already persisted in `user_tokens`.
+## 2. Problem
 
-The gap is in the server-managed login and refresh flows:
+Server-managed login state used to depend on pod-local servlet state. That breaks in a multi-node
+deployment because login, callback, refresh, logout, and websocket reconnects can land on different
+pods.
 
-- `BasicAuthServletHandler` stores refresh state in `HttpSession`.
-- `LdapAuthServletHandler` stores refresh state in `HttpSession`.
-- `SamlAuthServletHandler` stores refresh state in `HttpSession`.
-- `AuthenticationCodeFlowHandler` stores OIDC callback state and credentials in `HttpSession`.
-- `JwtTokenCacheManager` keeps logout invalidation in pod-local memory.
+The key failure modes are:
 
-This breaks or weakens correctness in multi-node deployment:
+- A login or OIDC/SAML callback starts on one node and completes on another.
+- Refresh state is unavailable when the request is routed to a different node.
+- Logout or session revocation is not visible to all nodes.
+- A websocket can remain connected after the browser session is revoked.
+- A secure websocket handshake can be spoofed if the server trusts a client-supplied `userId`.
 
-- Login starts on node A, refresh lands on node B and cannot find session state.
-- OIDC confidential callback lands on a different node than the login redirect.
-- Logout invalidation is not globally visible.
-- Session behavior depends on sticky sessions or a single pod.
+## 3. Goals
 
-### 1.2 Goals
+1. Store server-managed user sessions in a shared, authoritative backend.
+2. Support both JDBC-backed sessions and Redis-backed sessions.
+3. Bind newly issued browser access JWTs to the server-side session that issued them.
+4. Keep provider refresh tokens and OpenMetadata refresh tokens server-side.
+5. Make refresh safe under cross-node concurrency.
+6. Make logout and revocation visible to API and websocket paths.
+7. Reject websocket handshakes whose token principal, cookie session, or requested socket user do not match.
+8. Close websocket connections for revoked or expired sessions.
 
-1. Support server-managed browser sessions across multiple OpenMetadata pods.
-2. Keep normal authenticated API and MCP requests stateless.
-3. Avoid database lookups on every authenticated API request.
-4. Keep database usage bounded to login, callback, refresh, logout, and cleanup paths.
-5. Support multiple session types, starting with `AUTH` and future `MCP`.
-6. Make refresh and logout safe under concurrency across nodes.
-7. Add an integration-test harness in `openmetadata-integration-tests` that validates multi-node behavior and remains safe under parallel execution.
+## 4. Non-Goals
 
-### 1.3 Non-Goals
+1. Changing personal access token or bot token semantics.
+2. Replacing the browser-managed public OIDC flow.
+3. Making legacy JWTs without a `sessionId` claim retroactively session-bound.
+4. Guaranteeing instant cross-node websocket disconnect without pub/sub. Without pub/sub, remote
+   sockets are closed by periodic validation.
 
-1. Immediate revocation of already-issued access JWTs on every node without any bounded staleness.
-2. Adding Redis, Kafka, or another mandatory infrastructure dependency in v1.
-3. Reworking personal access token or bot token authentication.
-4. Replacing the existing public-client OIDC browser flow used entirely in the frontend.
+## 5. Architecture
 
-## 2. Current State
+### 5.1 Component Model
 
-### 2.1 Current server-side auth state
+| Component | Responsibility |
+| --- | --- |
+| `SessionService` | Creates, activates, refreshes, revokes, expires, and prunes sessions. Owns the Caffeine near-cache and revocation listeners. |
+| `SessionStore` | Shared persistence contract used by both JDBC and Redis stores. |
+| `JdbcSessionStore` | Default store backed by the `user_session` table through `SessionRepository`. |
+| `RedisSessionStore` | Optional Redis store with key TTLs, per-user status indexes, and Lua compare-and-set on `version`. |
+| `SessionStoreFactory` | Selects Redis when Redis cache is configured and available; otherwise uses JDBC. Refuses Redis-to-JDBC fallback when Redis is configured but unavailable. |
+| `SessionCookieUtil` | Reads, writes, validates, and clears the opaque `OM_SESSION` cookie. |
+| `JWTTokenGenerator` | Issues OpenMetadata JWTs and can include the `sessionId` claim for session-backed auth flows. |
+| `JwtFilter` | Validates JWTs. If the JWT has `sessionId`, it reloads the session from the store and requires an active, unexpired, username-matching session. |
+| `SocketAddressFilter` | Validates websocket handshake identity and session state before Socket.IO sees the connection. |
+| `WebSocketManager` | Tracks sockets by user and by session, sends events, and disconnects revoked or inactive session sockets. |
+| `OpenMetadataApplication` | Wires `SessionService` into auth handlers, websockets, revocation listeners, and the websocket session validator. |
+| `CacheBundle` | Handles cache invalidation pub/sub. Session invalidation messages also disconnect sockets on remote pods. |
 
-Current server-managed session state lives in memory:
+### 5.2 Storage Selection
 
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/LdapAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/SamlAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/AuthenticationCodeFlowHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/saml/JwtTokenCacheManager.java`
+`SessionStoreFactory` chooses the store at application startup:
 
-Refresh tokens are already persisted here:
+- If `cache.provider = redis` and Redis is available, sessions use `RedisSessionStore`.
+- If Redis is configured but unavailable, startup fails closed.
+- If Redis is not configured, sessions use `JdbcSessionStore`.
 
-- `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TokenRepository.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CollectionDAO.java`
-- `bootstrap/sql/schema/mysql.sql`
-- `bootstrap/sql/schema/postgres.sql`
+The system does not fail over live from Redis to JDBC. Mixing stores would split active sessions
+across backends and make revocation unpredictable.
 
-### 2.2 Current integration-test model
+### 5.3 Session Cache
 
-`openmetadata-integration-tests` already gives us:
+Each pod keeps a local Caffeine near-cache:
 
-- Shared database and search containers for the whole suite.
-- A shared OpenMetadata application instance created by `TestSuiteBootstrap`.
-- Parallel test execution enabled by default.
-- Per-test isolation via `TestNamespace` and `TestNamespaceExtension`.
+- maximum size: `10_000`
+- expire after access: `10s`
 
-Relevant files:
+The cache is a performance optimization, not a correctness boundary. Security-sensitive checks use
+fresh reloads where revocation must be observed immediately.
 
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/TestSuiteBootstrap.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/util/TestNamespace.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/util/TestNamespaceExtension.java`
-- `openmetadata-integration-tests/src/test/resources/junit-platform.properties`
+## 6. User Session Management
 
-This is a strong base, but it only boots one shared OpenMetadata app instance today.
+### 6.1 Session ID
 
-## 3. Alternatives Considered
+`UserSession.id` is an opaque bearer secret carried in the `OM_SESSION` cookie.
 
-### 3.1 Sticky sessions
+It is generated by `SessionIdGenerator` from secure random bytes and base64url encoded without
+padding. It is not a UUID.
 
-Rejected.
+### 6.2 Session Types
 
-It hides the problem instead of solving it. It also breaks on pod eviction, rolling restart, or any request that does not return to the same node.
+Current session types:
 
-### 3.2 Jetty/JDBC-backed `HttpSession`
+- `AUTH`: browser or interactive user auth session.
+- `MCP`: reserved for future interactive MCP session support.
 
-Rejected.
-
-This would make the servlet container responsible for persistence and cache behavior, but the data we need is domain-specific:
-
-- refresh token identifiers
-- provider refresh tokens
-- redirect URI
-- OIDC state, nonce, PKCE verifier
-- session type and status
-- versioning and refresh lease
-
-Jetty session serialization is also opaque, harder to test, and more expensive than a purpose-built model.
-
-### 3.3 Redis-backed session store
-
-Not chosen for v1.
-
-Redis would improve invalidation and coordination, but the issue explicitly asks for a scalable multi-node solution without requiring additional infrastructure or excessive database traffic.
-
-### 3.4 Database-backed session store with local near-cache
-
-Chosen.
-
-This gives:
-
-- correctness across nodes
-- no new mandatory dependency
-- bounded DB usage on auth-only paths
-- explicit control over refresh concurrency and session lifecycle
-
-## 4. Proposed Design
-
-### 4.1 High-level design
-
-Use a first-class server-side session model:
-
-- Source of truth: database-backed `user_session` table.
-- Fast path: per-pod Caffeine near-cache keyed by session ID.
-- Client token: opaque `OM_SESSION` cookie carrying the session ID.
-- Cookie policy:
-  - when `isHttps(config) || authenticationConfiguration.forceSecureSessionCookie` is true, set `HttpOnly`, `Secure`, `SameSite=None`
-  - when running on plain `http://` in local development or tests, set `HttpOnly`, no `Secure`, `SameSite=Lax`
-- Access token returned to the browser: OpenMetadata-signed JWT for all server-managed session flows.
-- No session lookup on normal bearer-auth API requests.
-
-The design intentionally separates:
-
-- `user_tokens`: long-lived token records like OM refresh tokens and PATs.
-- `user_session`: browser or interactive session state.
-
-### 4.2 Why OM-signed access JWTs for server-managed sessions
-
-For session-backed flows such as Basic, LDAP, SAML, confidential OIDC, and future interactive MCP auth, the server should return an OpenMetadata-signed JWT instead of returning or forwarding provider ID tokens.
-
-This simplifies the system:
-
-1. The browser still gets a stateless bearer token for normal API calls.
-2. `JwtFilter` continues to validate a single OpenMetadata token shape for these flows.
-3. OIDC provider tokens stay server-side and are used only for refresh or upstream logout.
-4. Cross-node refresh becomes deterministic because the session store is authoritative.
-
-The public-client OIDC flow that is already fully browser-managed remains unchanged.
-
-## 5. Session Domain Model
-
-### 5.1 Session types
-
-Initial `SessionType` values:
-
-- `AUTH`: browser or interactive user auth session
-- `MCP`: future MCP interactive session
-
-### 5.2 Session status
+### 6.3 Session Status
 
 `SessionStatus` values:
 
-- `PENDING`: login started, callback not completed
-- `ACTIVE`: usable session
-- `REFRESHING`: one node currently holds the refresh lease
-- `REVOKED`: logout or administrative invalidation
-- `EXPIRED`: timed out or absolute expiry reached
+- `PENDING`: login started, callback not completed.
+- `ACTIVE`: usable session.
+- `REFRESHING`: one node holds the refresh lease.
+- `REVOKED`: logout or session-limit revocation.
+- `EXPIRED`: timeout reached.
 
-### 5.3 Logical session payload
+### 6.4 Session Fields
 
-Proposed `UserSession` shape:
+The important logical fields are:
 
 ```json
 {
-  "id": "s7lM5Xq8fF0aR2tM0kB2V1N9w6QeH3zP8cD4uJ1mK7A",
+  "id": "opaque-session-id",
   "type": "AUTH",
-  "provider": "OPENMETADATA",
+  "provider": "openmetadata",
   "status": "ACTIVE",
   "userId": "uuid",
-  "principalName": "alice",
+  "username": "alice",
   "email": "alice@example.com",
-  "omRefreshTokenId": "uuid",
-  "providerRefreshToken": "fernet:gAAAAABm-example",
-  "providerAccessContext": {
-    "issuer": "https://issuer.example.com",
-    "subject": "provider-subject",
-    "claimsSnapshot": {
-      "groups": ["engineering"]
-    }
-  },
+  "omRefreshToken": "fernet:encrypted-token",
+  "providerRefreshToken": "fernet:encrypted-provider-token",
   "redirectUri": "https://ui.example.com/callback",
   "state": "oidc-state",
   "nonce": "oidc-nonce",
@@ -208,555 +147,354 @@ Proposed `UserSession` shape:
 }
 ```
 
-### 5.4 Schema and storage pattern
+Refresh tokens are encrypted before persistence with `Fernet.encryptIfApplies(...)`. If the Fernet
+key is not configured, session creation fails instead of writing plaintext refresh tokens.
 
-OpenMetadata already stores token records as JSON with generated columns. The same pattern should be used for sessions, but the MySQL and Postgres variants should follow the conventions already present in `bootstrap/sql/schema/mysql.sql` and `bootstrap/sql/schema/postgres.sql`.
+### 6.5 Session Creation
 
-Proposed schema file:
-
-- `openmetadata-spec/src/main/resources/json/schema/auth/userSession.json`
-
-#### 5.4.1 MySQL DDL pattern
-
-Use MySQL generated columns with the same `json_unquote(json_extract(...))` form already used elsewhere in the repo.
-
-Use `STORED` only for columns that participate in the primary key or indexes. Keep the rest `VIRTUAL` to reduce write amplification on refresh and access updates.
-
-```sql
-CREATE TABLE `user_session` (
-  `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
-  `userId` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.userId'))) STORED,
-  `status` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.status'))) STORED NOT NULL,
-  `expiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.expiresAt'))) STORED NOT NULL,
-  `idleExpiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.idleExpiresAt'))) STORED NOT NULL,
-  `sessionType` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.type'))) VIRTUAL NOT NULL,
-  `provider` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) VIRTUAL NOT NULL,
-  `version` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.version'))) VIRTUAL NOT NULL,
-  `lastAccessedAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.lastAccessedAt'))) VIRTUAL,
-  `refreshLeaseUntil` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.refreshLeaseUntil'))) VIRTUAL,
-  `json` json NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_user_session_user_status` (`userId`, `status`),
-  KEY `idx_user_session_status_expiry` (`status`, `expiresAt`),
-  KEY `idx_user_session_status_idle_expiry` (`status`, `idleExpiresAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-```
-
-This keeps the indexed lookup columns cheap to query while avoiding unnecessary stored-column churn for fields that are only read during refresh, debug, or admin flows.
-
-#### 5.4.2 PostgreSQL DDL pattern
-
-PostgreSQL only supports `STORED` generated columns, and the existing repo schema already uses that style everywhere. The Postgres variant should therefore use `STORED` consistently.
-
-```sql
-CREATE TABLE public.user_session (
-    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
-    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
-    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
-    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
-    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
-    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED NOT NULL,
-    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED NOT NULL,
-    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED NOT NULL,
-    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
-    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
-    json jsonb NOT NULL
-);
-
-ALTER TABLE ONLY public.user_session
-    ADD CONSTRAINT user_session_pkey PRIMARY KEY (id);
-
-CREATE INDEX idx_user_session_user_status
-    ON public.user_session USING btree (userid, status);
-
-CREATE INDEX idx_user_session_status_expiry
-    ON public.user_session USING btree (status, expiresat);
-
-CREATE INDEX idx_user_session_status_idle_expiry
-    ON public.user_session USING btree (status, idleexpiresat);
-```
-
-### 5.5 Session ID generation
-
-The `id` field is the bearer secret carried in the `OM_SESSION` cookie, so it should not be a UUID.
-
-Recommended generation:
-
-- 32 random bytes from `SecureRandom`
-- base64url encoding without padding
-- stored directly as `UserSession.id`
-- exposed to the client only in the `OM_SESSION` cookie
-
-This gives 256 bits of entropy, keeps the cookie opaque, and fits comfortably in `varchar(64)`.
-
-### 5.6 Provider refresh token storage
-
-Provider refresh tokens are high-value credentials and should be stored encrypted at rest.
-
-For v1, the design should reuse OpenMetadata's existing encryption primitive instead of introducing a second secret-management path:
-
-- encrypt with `Fernet.getInstance().encryptIfApplies(...)`
-- decrypt only on refresh or upstream logout paths
-- source the key from the existing `fernetConfiguration.fernetKey`
-- never send the provider refresh token to the browser or UI
-
-This is encryption at rest, not per-session key binding. If session secrets later need to move behind an external `SecretsManager`, the session layer should hide that behind a small codec abstraction.
-
-## 6. Core Services
-
-### 6.1 `SessionRepository`
-
-Add a repository parallel to `TokenRepository`:
-
-- `create(UserSession session)`
-- `findById(String id)`
-- `update(UserSession session)`
-- `compareAndSetStatusVersion(...)`
-- `delete(String id)`
-- `markExpired(...)`
-- `deleteExpired(...)`
-
-### 6.2 `SessionCache`
-
-Add a per-pod Caffeine cache:
-
-- key: session ID
-- value: `UserSession`
-- TTL: short, for example 30 to 60 seconds after access
-- explicit invalidation after local writes
-
-This cache is not a correctness boundary. It is only a near-cache.
-
-### 6.3 `SessionService`
-
-Centralize all lifecycle operations:
-
-- create pending session
-- activate session
-- load active session from cookie
-- acquire refresh lease
-- complete refresh
-- revoke session
-- clear cookie
-- lazy-expire stale sessions
-
-This service should replace direct `HttpSession` usage in auth handlers.
-
-### 6.4 `SessionCleanupService`
-
-Session rows will accumulate unless the system expires and prunes them proactively.
-
-Add a lightweight cleanup service with a fixed-delay schedule:
-
-- mark `ACTIVE` sessions as `EXPIRED` when `expiresAt < now()` or `idleExpiresAt < now()`
-- delete `REVOKED` and `EXPIRED` sessions older than a retention window
-- run every 15 minutes by default with a small random startup jitter
-- keep the queries idempotent so it is safe if every node runs them
-
-Recommended defaults:
-
-- cleanup interval: 15 minutes
-- lease duration: 15 seconds
-- revoked or expired row retention: 7 days
-
-Request paths should still lazy-expire obviously stale sessions on load so correctness does not depend on the background sweeper.
-
-## 7. Consistency Model
-
-### 7.1 No DB lookups on normal API traffic
-
-Normal authenticated API and MCP bearer requests continue to use JWT validation only.
-
-That means:
-
-- `JwtFilter` does not query `user_session`.
-- MCP auth filter remains stateless for bearer-token calls.
-
-### 7.2 DB usage only on session endpoints
-
-Database-backed session logic runs only on:
-
-- `/api/v1/auth/login`
-- `/api/v1/auth/refresh`
-- `/api/v1/auth/logout`
-- OIDC callback
-- SAML callback and logout
-- future interactive MCP auth endpoints
-
-### 7.3 Refresh lease
-
-Concurrent refresh is the hardest correctness problem in multi-node deployment.
-
-Without a lease, two nodes can:
-
-1. read the same session
-2. both try to rotate the same upstream refresh token
-3. produce session loss or inconsistent state
-
-Chosen approach:
-
-1. Load session from cache or DB.
-2. Validate not `REVOKED` and not expired.
-3. If the session is already `REFRESHING` but `refreshLeaseUntil < now()`, treat that lease as abandoned and allow a new claimant to recover it.
-4. Acquire a short refresh lease through DB compare-and-set:
-   - expected status = `ACTIVE`, or `REFRESHING` with stale lease
-   - expected version = current version
-   - next status = `REFRESHING`
-   - set `refreshLeaseUntil`
-   - increment `version`
-5. Lease duration defaults to 15 seconds and should remain in the 10 to 30 second range.
-6. Only the winner performs refresh or token rotation.
-7. Losers reload the session using capped exponential backoff, for example `50ms`, `100ms`, `200ms`, `400ms`, `800ms`, then cap at `1s`, until:
-   - status returns to `ACTIVE` with newer version, then use the updated session
-   - or status becomes `REVOKED` or `EXPIRED`
-   - or lease timeout is exceeded
-8. If the winner crashes mid-refresh, the next refresh attempt reclaims the stale lease through the same CAS path. No manual repair flow is required.
-
-This gives cross-node safety without putting a distributed lock system into the baseline design.
-
-### 7.4 Logout and revocation semantics
-
-Logout revokes the session in the DB and clears the cookie.
-
-Already-issued access JWTs remain valid until expiry. That is acceptable because:
-
-- normal API traffic must stay stateless
-- DB lookups on every request are explicitly out of scope
-
-To bound logout staleness, browser access JWT TTL should be shorter for session-backed auth flows.
-
-Recommended default:
-
-- browser access JWT TTL: 10 to 15 minutes
-- session idle timeout: configurable, for example 7 days
-- session absolute timeout: configurable, for example 30 days
-
-An optional future improvement can add DB-polled revocation events or Redis pub/sub, but that is not required for v1.
-
-## 8. Request Flows
-
-### 8.1 Basic, LDAP, and OpenMetadata auth
+Basic, LDAP, and OpenMetadata login create an `ACTIVE` session directly:
 
 1. Validate credentials.
-2. Create OM refresh token in `user_tokens`.
-3. Create a new `ACTIVE` `AUTH` session in `user_session`.
-4. Allow multiple simultaneous sessions for the same user by default.
-5. If `maxActiveSessionsPerUser` is configured and the new session would exceed the limit, revoke the least recently used active sessions for that user and session type.
-6. Set `OM_SESSION` cookie.
-7. Return OM-signed access JWT.
+2. Resolve the provisioned OpenMetadata user.
+3. Persist or receive the OpenMetadata refresh token.
+4. Create an `ACTIVE` `AUTH` session.
+5. Encrypt and store the refresh token in the session.
+6. Write the `OM_SESSION` cookie.
+7. Return an OpenMetadata-signed JWT with a `sessionId` claim.
 
-### 8.2 SAML
+If user lookup or session creation fails after a refresh token is created, the refresh token is
+deleted.
 
-1. Login request creates a `PENDING` `AUTH` session holding redirect information.
-2. Callback on any node loads the pending session from cookie and request state.
-3. User is created or updated.
-4. OM refresh token is created.
-5. Session is promoted to `ACTIVE`.
-6. Cookie is preserved, browser receives OM-signed access JWT.
+### 6.6 Pending Session Activation
 
-### 8.3 Confidential OIDC
+SAML and confidential OIDC use pending sessions:
 
-1. `/auth/login` creates `PENDING` `AUTH` session with:
-   - redirect URI
-   - OIDC state
-   - nonce
-   - PKCE verifier if needed
-2. Browser is redirected to the provider.
-3. Callback can land on any node.
-4. Node loads the pending session from DB.
-5. Authorization code is exchanged for upstream tokens.
-6. Provider refresh token is encrypted with Fernet and stored in the session.
-7. User is created or updated.
-8. Session becomes `ACTIVE`.
-9. Browser receives OM-signed access JWT.
+1. Login creates a `PENDING` `AUTH` session containing redirect state, OIDC state, nonce, and PKCE
+   verifier when applicable.
+2. The callback loads the pending session from the shared store.
+3. The user is created or updated.
+4. The OpenMetadata refresh token is inserted.
+5. `activatePendingSession` expires the pending session.
+6. A brand-new active session ID is generated and stored.
+7. The active session cookie replaces the pending cookie.
+8. The browser receives an OpenMetadata-signed JWT with the active session ID.
 
-### 8.4 Refresh
+Issuing a new active session ID during activation is the session fixation defense. The pre-auth
+cookie value is never reused for the authenticated session.
 
-1. Browser sends `OM_SESSION` cookie.
-2. Session service loads session from cache or DB.
-3. Session service acquires the refresh lease.
-4. Winner rotates OM refresh token or upstream provider refresh token if needed.
-5. Session is updated and returned to `ACTIVE`.
-6. Server returns a fresh OM-signed access JWT.
+If activation fails, the newly inserted refresh token is deleted and no JWT is issued.
 
-### 8.5 Logout
+### 6.7 Refresh
 
-1. Browser sends `OM_SESSION` cookie.
-2. Session is marked `REVOKED`.
-3. OM refresh token is deleted if present.
-4. Provider logout is called when applicable.
-5. `OM_SESSION` cookie is cleared.
+Refresh is guarded by an optimistic lease:
 
-### 8.6 MCP
+1. Load the session from `OM_SESSION`.
+2. Reject missing, expired, pending, revoked, or already expired sessions.
+3. If another node holds a non-stale `REFRESHING` lease, return retry guidance through
+   `SessionRefreshInProgressException`.
+4. Acquire the lease by writing `REFRESHING`, setting `refreshLeaseUntil`, and incrementing
+   `version` with compare-and-set.
+5. The winning node decrypts the stored refresh token.
+6. The provider or OpenMetadata refresh token is rotated as needed.
+7. `completeRefresh` writes the refreshed session back to `ACTIVE`, clears the lease, updates idle
+   expiry, and increments `version`.
+8. The response contains a new OpenMetadata-signed JWT bound to the same session ID.
 
-Current MCP bearer-token requests remain stateless.
+Lease duration is currently `15s`.
 
-If interactive MCP login is added, it should use the same `UserSession` table with:
+### 6.8 Logout and Revocation
 
-- `type = MCP`
-- the same refresh-lease and revocation semantics
-- no per-request DB lookup after token issuance
+Logout calls `SessionService.revokeSession(request, response)`:
 
-## 9. Proposed Code Changes
+1. Read `OM_SESSION`.
+2. Reload the session from the authoritative store.
+3. Write `REVOKED` with compare-and-set.
+4. Clear `refreshLeaseUntil`.
+5. Clear the `OM_SESSION` cookie.
+6. Notify local revocation listeners.
 
-### 9.1 New or updated spec and persistence
+Session limit enforcement also uses `revokeSession` for least-recently-used active sessions. The
+current default active-session limit is `5` sessions per user.
 
-- Add `openmetadata-spec/src/main/resources/json/schema/auth/userSession.json`
-- Add generated `UserSession` model
-- Add Flyway migrations for MySQL and Postgres
-- Update `CollectionDAO` row mappers and DAO methods
-- Add `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/SessionRepository.java`
+### 6.9 Expiration and Cleanup
 
-### 9.2 New session services
+`SessionService` runs cleanup every `15m`:
 
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionService.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionCache.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionCookieUtil.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionRefreshLease.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionIdGenerator.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionCleanupService.java`
+- mark expired sessions as `EXPIRED`
+- prune `REVOKED` and `EXPIRED` rows after `7d`
+- process in bounded batches
 
-### 9.3 Auth handlers to migrate off `HttpSession`
+For Redis, primary keys have TTLs and cleanup methods are no-ops. Session correctness still relies
+on in-process status and expiry checks.
 
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/LdapAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/auth/SamlAuthServletHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/security/AuthenticationCodeFlowHandler.java`
-- `openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java`
+Default timeouts:
 
-### 9.4 Components to retire or reduce
+- pending session timeout: `10m`
+- absolute session timeout: `30d`
+- refresh lease: `15s`
+- cleanup retention: `7d`
 
-- `JwtTokenCacheManager` should no longer be the source of logout invalidation.
-- Servlet `HttpSession` should no longer hold security-critical auth state.
+Idle timeout comes from authentication configuration through `SessionTimeoutResolver`.
 
-## 10. Operational Characteristics
+## 7. Session-Bound JWTs
 
-### 10.1 DB call budget
+Server-managed auth flows return OpenMetadata-signed access JWTs with:
 
-Expected database behavior:
+```json
+{
+  "sub": "alice",
+  "tokenType": "OM_USER",
+  "sessionId": "opaque-session-id"
+}
+```
 
-| Path | DB session read | DB session write | Notes |
-| --- | --- | --- | --- |
-| Normal API request | 0 | 0 | JWT only |
-| Login | 0-1 | 1 | create session |
-| OIDC callback | 1 | 1 | load pending, activate |
-| Refresh same node warm cache | 0-1 | 1-2 | lease plus update |
-| Refresh different node cold cache | 1 | 1-2 | bounded, auth-only |
-| Logout | 0-1 | 1 | revoke session |
+`JwtFilter` handles the claim as follows:
 
-The important property is not "zero DB calls everywhere". The important property is:
+1. Validate the JWT signature, expiry, token type, principal, and token-specific rules.
+2. If there is no `sessionId` claim, preserve existing stateless behavior.
+3. If `sessionId` exists, call `SessionService.getFreshSessionById(sessionId)`.
+4. Require:
+   - session exists
+   - status is `ACTIVE`
+   - session is not expired
+   - session username matches the JWT principal
+5. Reject the token when any check fails.
 
-- zero DB calls on the hot path for normal API traffic
-- bounded DB calls on infrequent auth/session operations
+This means session-backed browser API requests now consult the shared session store. That is an
+intentional tradeoff in the current implementation: revocation is observed on the next request
+instead of waiting for access-token expiry. PATs, bot tokens, and legacy JWTs without `sessionId`
+remain stateless.
 
-### 10.2 Metrics
+## 8. WebSocket Session Management
 
-Add metrics for:
+### 8.1 Handshake Validation
 
-- session cache hits and misses
-- sessions created, activated, refreshed, revoked, expired
-- refresh lease acquisition success and contention
-- provider token refresh latency
-- session cleanup runs, expirations, and deletes
+`SocketAddressFilter` runs before the Socket.IO server receives the connection.
 
-## 11. Testing Strategy
+When secure websocket connections are enabled:
 
-### 11.1 Unit tests in `openmetadata-service`
+1. Extract and validate the `Authorization` header.
+2. Resolve the token principal from JWT claims.
+3. Resolve the principal's user UUID server-side.
+4. Reject the request if the query `userId` is present and does not match the resolved user UUID.
+5. Inject the server-resolved `UserId` header for `WebSocketManager`.
+6. If the JWT has `sessionId`, inject a `SessionId` header.
+7. Validate `OM_SESSION` when present:
+   - reload the session fresh
+   - require `ACTIVE`
+   - require not expired
+   - require session username to match the token principal
+   - require cookie session ID to match token `sessionId` when both are present
 
-Add targeted unit tests for:
+If no `OM_SESSION` cookie is present:
 
-- session creation and activation
-- secure session ID generation
-- Fernet round-trip for provider refresh token persistence
-- refresh lease acquisition
-- stale lease recovery after winner crash
-- concurrent refresh loser behavior
-- revoke after cache hit on another node
-- cookie parsing and clearing
-- secure vs local `SameSite` cookie behavior
-- cleanup task expiring and pruning rows
-- OIDC callback state validation via persisted session state
+- session-bound JWTs are accepted because `JwtFilter` has already validated the session ID
+  against `SessionService`
+- legacy secure JWTs without `sessionId` are rejected with `401 Session is required`
+- non-secure websocket mode remains compatible with existing query-based behavior
 
-Candidate test classes:
+The filter no longer forwards trust from the user-supplied `userId` query parameter when secure
+mode is enabled.
+
+### 8.2 Socket Tracking
+
+`WebSocketManager` maintains two local maps per pod:
+
+- `activityFeedEndpoints`: `userId -> socketId -> SocketIoSocket`
+- `socketSessionIds`: `socketId -> sessionId`
+
+On connection:
+
+1. Read `UserId` from the injected header, falling back to query only for legacy/non-secure paths.
+2. Read `SessionId` from the injected header, falling back to query `sessionId` only for legacy
+   paths.
+3. Store the socket in the user's local socket map.
+4. Store the socket-to-session mapping when a session ID is available.
+
+On disconnect, both maps are cleaned up.
+
+The connection log records user and remote address only. It does not log initial headers, so bearer
+tokens are not written to logs.
+
+### 8.3 Revocation-Driven Disconnect
+
+`SessionService` exposes revocation listeners. `OpenMetadataApplication` registers a listener that:
+
+1. Converts the revoked session's `userId` to UUID.
+2. Calls `WebSocketManager.disconnectForSession(userId, sessionId)` on the local pod.
+3. Publishes a `"session"` invalidation message through cache invalidation pub/sub when available.
+
+`CacheBundle` handles remote `"session"` invalidation messages:
+
+- if the message has a session ID, call `disconnectForSession(userId, sessionId)`
+- if no session ID is present, fall back to `disconnectAllForUser(userId)` for backward
+  compatibility
+
+This gives targeted disconnects. Logging out one browser session does not force-close other
+sessions for the same user.
+
+### 8.4 Periodic WebSocket Validation
+
+`OpenMetadataApplication.WebSocketSessionValidator` runs every `15s`.
+
+Each run calls `WebSocketManager.disconnectInactiveSessions(sessionService)`, which:
+
+1. Iterates local sockets with known `sessionId`.
+2. Reloads each session fresh through `SessionService.getFreshSessionById`.
+3. Disconnects sockets whose session is missing, not `ACTIVE`, expired, or owned by a different
+   user.
+
+This is the fallback when there is no cross-pod pub/sub. With JDBC and no pub/sub, a socket on a
+remote node is closed within the validator interval instead of immediately.
+
+## 9. End-to-End Flow
+
+```mermaid
+flowchart TD
+  Browser["Browser / UI"]
+  NodeA["OpenMetadata Pod A"]
+  NodeB["OpenMetadata Pod B"]
+  AuthHandlers["Auth handlers<br/>Basic / LDAP / SAML / OIDC"]
+  SessionServiceA["SessionService A"]
+  SessionServiceB["SessionService B"]
+  Store[("Shared SessionStore<br/>JDBC user_session or Redis")]
+  JwtFilter["JwtFilter"]
+  SocketFilter["SocketAddressFilter"]
+  WebSocketManagerA["WebSocketManager A"]
+  WebSocketManagerB["WebSocketManager B"]
+  PubSub["Cache invalidation pub/sub<br/>optional"]
+  Validator["WebSocketSessionValidator<br/>every 15s"]
+
+  Browser -->|"login / callback"| NodeA
+  NodeA --> AuthHandlers
+  AuthHandlers --> SessionServiceA
+  SessionServiceA -->|"create PENDING or ACTIVE<br/>activate pending<br/>encrypt refresh tokens"| Store
+  SessionServiceA -->|"Set-Cookie: OM_SESSION"| Browser
+  AuthHandlers -->|"JWT with sessionId"| Browser
+
+  Browser -->|"API request<br/>Bearer JWT(sessionId)"| NodeB
+  NodeB --> JwtFilter
+  JwtFilter --> SessionServiceB
+  SessionServiceB -->|"fresh session lookup"| Store
+  JwtFilter -->|"allow only ACTIVE + unexpired + matching username"| NodeB
+
+  Browser -->|"websocket handshake<br/>Authorization + OM_SESSION"| NodeB
+  NodeB --> SocketFilter
+  SocketFilter -->|"validate JWT principal<br/>resolve user UUID<br/>validate session"| SessionServiceB
+  SocketFilter -->|"inject UserId + SessionId"| WebSocketManagerB
+  WebSocketManagerB -->|"track user -> sockets<br/>track socket -> session"| WebSocketManagerB
+
+  Browser -->|"logout / revoke"| NodeA
+  NodeA --> SessionServiceA
+  SessionServiceA -->|"mark REVOKED"| Store
+  SessionServiceA -->|"local disconnectForSession"| WebSocketManagerA
+  SessionServiceA -->|"publish session invalidation"| PubSub
+  PubSub -->|"remote disconnectForSession"| WebSocketManagerB
+
+  Validator --> WebSocketManagerB
+  WebSocketManagerB -->|"fresh validate socket sessions"| SessionServiceB
+  SessionServiceB --> Store
+  WebSocketManagerB -->|"disconnect inactive sockets"| Browser
+```
+
+## 10. Consistency Model
+
+### 10.1 API Requests
+
+For tokens with `sessionId`, the session store is authoritative. A revoked or expired session is
+rejected on the next API request that uses that token.
+
+For tokens without `sessionId`, existing stateless behavior is preserved.
+
+### 10.2 Refresh
+
+Refresh uses optimistic compare-and-set on `version`, so only one node can hold the refresh lease
+for a session at a time.
+
+JDBC implements this through the session repository update path. Redis implements it with a Lua CAS
+script over the stored session JSON.
+
+### 10.3 WebSockets
+
+Websocket consistency has two layers:
+
+- event-driven disconnect through local revocation listeners and optional cache invalidation pub/sub
+- polling-based validation every `15s`
+
+The event path is immediate when revocation occurs on the same pod or pub/sub delivers the remote
+event. The polling path bounds staleness when pub/sub is unavailable.
+
+## 11. Operational Characteristics
+
+| Path | Store behavior |
+| --- | --- |
+| Login | create active or pending session |
+| OIDC/SAML callback | fresh load pending session, expire pending session, create active session |
+| Session-bound API request | fresh load session by `sessionId` |
+| Refresh | load session, acquire CAS lease, complete CAS update |
+| Logout | fresh load session, CAS revoke, clear cookie |
+| WebSocket handshake | validate JWT, optionally fresh load cookie session |
+| WebSocket validator | fresh load session for each tracked socket with `sessionId` |
+
+Redis deployments should monitor Redis availability as auth-critical infrastructure. When Redis is
+configured for sessions, the service refuses to start without it.
+
+## 12. Security Properties
+
+1. `OM_SESSION` is opaque and high entropy.
+2. `OM_SESSION` is written as an HTTP-only cookie.
+3. Provider refresh tokens and OpenMetadata refresh tokens are encrypted at rest.
+4. Refresh tokens are not returned to the browser by server-managed auth flows.
+5. Pending-session activation issues a brand-new active session ID.
+6. Session-bound JWTs are invalid once the backing session is revoked, expired, deleted, or owned by
+   a different user.
+7. Secure websocket mode derives socket user identity from the JWT principal, not from query params.
+8. Websocket logs do not include initial headers or bearer tokens.
+9. Revocation targets the revoked session instead of disconnecting every socket for the user.
+
+## 13. Test Coverage
+
+Relevant unit coverage includes:
 
 - `SessionServiceTest`
-- `SessionRepositoryTest`
+- `SessionCookieUtilTest`
+- `SessionTimeoutResolverTest`
+- `SessionStoreContractTest`
+- `RedisSessionStoreTest`
+- `JwtFilterTest`
 - `BasicAuthServletHandlerTest`
 - `LdapAuthServletHandlerTest`
 - `SamlAuthServletHandlerTest`
 - `AuthenticationCodeFlowHandlerTest`
+- `SocketAddressFilterTest`
+- `WebSocketManagerTest`
 
-### 11.2 Integration test harness in `openmetadata-integration-tests`
+Relevant integration coverage includes:
 
-#### 11.2.1 Required new harness pieces
+- `SessionMultiNodeIT`
+- `SessionRedisMultiNodeIT`
+- `SessionMultiNodeCluster`
 
-Add a dedicated session test harness instead of trying to force the existing single shared app to simulate a cluster.
+Important scenarios covered or expected from this suite:
 
-Proposed additions:
+- login on one node and refresh/logout on another
+- pending OIDC/SAML callback state loaded from shared session storage
+- refresh lease contention
+- stale cache behavior after revocation
+- Redis-backed cross-node sessions
+- websocket principal binding
+- per-session websocket disconnect
+- session-bound JWT rejection for revoked sessions
 
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/MultiNodeOpenMetadataCluster.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/MultiNodeOpenMetadataExtension.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/MultiNodeOpenMetadataClusterRegistry.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/SessionTestClient.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/SessionTestUserFactory.java`
-- `openmetadata-integration-tests/src/test/java/org/openmetadata/it/session/MockOidcProvider.java`
+## 14. Current Tradeoffs and Follow-Ups
 
-#### 11.2.2 Harness behavior
-
-`MultiNodeOpenMetadataCluster` should:
-
-1. Reuse the shared DB and search containers from `TestSuiteBootstrap`.
-2. Start lazily, not during the main suite bootstrap. The first `@Tag("session")` test that asks for a given cluster profile should trigger startup.
-3. Reuse that started cluster for the remaining session tests in the same profile instead of starting two new app nodes per class.
-4. Support running only session tests via JUnit tag filters.
-5. Start two additional `DropwizardAppExtension<OpenMetadataApplicationConfig>` instances.
-6. Point both nodes at the same DB and search backend.
-7. Give each node its own local caches and random ports.
-8. Allow provider-specific config overrides without mutating the shared suite-wide app.
-9. Be able to start from `openmetadata-secure-test.yaml` and override values such as:
-   - `authenticationConfiguration.provider`
-   - `authenticationConfiguration.clientType`
-   - OIDC discovery and token endpoints
-   - callback URLs for node A and node B
-
-This is the only realistic way to verify that cache state is truly node-local while persistence is shared.
-
-#### 11.2.3 Browser session client
-
-`SessionTestClient` should use `java.net.http.HttpClient` with a dedicated per-instance `CookieManager`.
-
-This is important because cookies are part of the session contract and must be isolated per test.
-
-Do not use shared static SDK clients for browser session tests.
-
-SDK clients remain useful only for:
-
-- provisioning users
-- reading entities
-- making admin assertions
-
-#### 11.2.4 Namespaced session users
-
-`SessionTestUserFactory` should provision fresh namespaced users for every test method.
-
-It should:
-
-- use `TestNamespace`
-- create a unique username and email per test
-- create a password-backed user with `CreateUser.withPassword(...)`
-- avoid shared pre-created users for login-flow assertions
-
-This is required because browser session tests verify login, refresh, and logout behavior, not just authorization on already-issued bearer tokens.
-
-#### 11.2.5 OIDC mock provider
-
-Confidential OIDC tests need a deterministic upstream provider.
-
-The simplest choice is a lightweight mock provider using JDK `HttpServer` that exposes:
-
-- discovery document
-- authorization endpoint
-- token endpoint
-- JWKS endpoint
-- optional end-session endpoint
-
-This avoids adding a large new dependency and keeps the test harness self-contained.
-
-### 11.3 Integration test cases to add
-
-#### 11.3.1 OpenMetadata or Basic session tests
-
-1. `test_loginOnNodeA_refreshOnNodeB_succeeds`
-2. `test_loginOnNodeA_logoutOnNodeB_revokesSession`
-3. `test_revokedSessionOnNodeA_cannotRefreshFromStaleCacheOnNodeB`
-4. `test_concurrentRefreshAcrossNodes_doesNotCorruptSession`
-5. `test_expiredSessionRefreshReturnsUnauthorized`
-6. `test_sameUserCanHoldMultipleSessionsAcrossClients`
-7. `test_sessionLimitRevokesLeastRecentlyUsedSessionWhenConfigured`
-
-#### 11.3.2 Confidential OIDC session tests
-
-1. `test_oidcLoginCreatesPendingSession`
-2. `test_oidcCallbackCanLandOnDifferentNode`
-3. `test_oidcRefreshOnDifferentNode_usesPersistedProviderRefreshToken`
-4. `test_oidcLogoutRevokesSessionAcrossNodes`
-
-#### 11.3.3 MCP session tests
-
-Only if interactive MCP session issuance is implemented in the same work:
-
-1. `test_mcpInteractiveSessionRefreshAcrossNodes`
-2. `test_mcpSessionRevocationAcrossNodes`
-
-### 11.4 Parallel-test isolation rules
-
-These tests must be safe under the current parallel suite configuration.
-
-Rules:
-
-1. Every test method must use `TestNamespace`.
-2. Users created for login tests must have namespaced usernames and emails.
-3. Every browser test client must have its own cookie jar.
-4. Tests must never assert on global row counts in `user_session`.
-5. Tests must filter assertions by namespaced user, email, or session ID.
-6. Provider mocks must be per test method or per class with namespaced routes.
-7. No test may mutate the shared suite-wide auth configuration.
-8. Shared lazy clusters must be keyed by immutable profile so parallel tests never race to rewrite one cluster's auth mode.
-
-Recommended naming pattern:
-
-- user: `ns.prefix("session-user")`
-- email: derived from the namespaced user
-- session-specific redirect path or route namespace: `ns.shortPrefix("oidc")`
-
-### 11.5 Why existing `TestNamespace` is still the right mechanism
-
-`TestNamespace` already guarantees:
-
-- unique prefixes per suite run
-- method-level isolation
-- compatibility with parallel execution
-
-Session tests should continue to use it for all server-side entities and provider fixtures.
-
-The one additional requirement is cookie isolation, which `TestNamespace` does not solve by itself. That is why `SessionTestClient` must own its own `CookieManager`.
-
-## 12. Rollout Plan
-
-### Phase 1
-
-- add `user_session` schema and repository
-- add `SessionService`
-- add `SessionCleanupService`
-- migrate OpenMetadata, Basic, LDAP, and SAML handlers
-- add multi-node integration harness
-- add cross-node tests for these providers
-
-### Phase 2
-
-- migrate confidential OIDC handler
-- add mock OIDC provider harness
-- add confidential OIDC multi-node tests
-
-### Phase 3
-
-- remove or deprecate pod-local logout cache
-- finalize metrics and admin session-management APIs if needed
-- extend to interactive MCP sessions if needed
-
-## 13. Open Questions
-
-1. Do we want a short-term feature flag to switch between servlet session mode and DB session mode during rollout?
-2. Should browser access JWT TTL be reduced specifically for session-backed providers?
-3. Do we want optional Redis or DB-polled invalidation events later, or is bounded logout staleness acceptable for the first release?
-
-## 14. Recommended Default Decisions
-
-1. Use DB-backed custom session storage, not Jetty session clustering.
-2. Keep API bearer auth stateless.
-3. Return OM-signed access JWTs for all server-managed session flows.
-4. Use local near-cache plus DB compare-and-set refresh lease.
-5. Generate `OM_SESSION` IDs from `SecureRandom`, not UUIDs.
-6. Encrypt provider refresh tokens with the existing Fernet-based secret handling.
-7. Allow multiple simultaneous `AUTH` sessions by default, with `maxActiveSessionsPerUser = 5` as the recommended starting limit.
-8. Add multi-node integration tests before cutting over confidential OIDC.
+1. Session-bound browser API requests now load session state on every JWT validation. This favors
+   revocation correctness over pure statelessness for browser sessions.
+2. Tokens issued before `sessionId` support, or tokens issued by non-session flows, remain valid
+   according to existing JWT behavior until their normal expiry.
+3. Non-secure websocket mode remains query-param based for backward compatibility.
+4. The active-session limit is currently a service constant. It should become a configuration value.
+5. The websocket validator only checks sockets that have a recorded `sessionId`; legacy sockets
+   without session IDs rely on the older disconnect behavior.
+6. Redis pub/sub gives faster cross-pod websocket revocation. JDBC-only deployments rely on the
+   `15s` websocket validator interval for remote sockets.
