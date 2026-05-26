@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import subprocess
-from datetime import datetime, timedelta, timezone
 from typing import ClassVar
 
 from sqlalchemy import create_engine, text
@@ -186,7 +185,6 @@ class TestExasolQueries:
         assert len(rows) <= 5
 
     def test_system_metrics_query_returns_exasol_dml_rows(self):
-        start_time = datetime.now(timezone.utc) - timedelta(minutes=5)
         dml_statements = [
             f"""
             INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (
@@ -221,9 +219,6 @@ class TestExasolQueries:
             schema=SCHEMA_NAME,
             table=TABLE_NAME,
             operations="'INSERT', 'UPDATE', 'DELETE'",
-            start_time=start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            end_time=(datetime.now(timezone.utc) + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
-            result_limit=20,
         )
 
         with self.engine.connect() as connection:
@@ -239,4 +234,4 @@ class TestExasolQueries:
             "starttime",
             "rows",
         }
-        assert len(rows) <= 20
+        assert len(rows) <= 1

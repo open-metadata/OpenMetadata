@@ -70,11 +70,10 @@ EXASOL_SYSTEM_METRICS_QUERY = textwrap.dedent(
       s.row_count AS "rows"
     FROM EXA_DBA_AUDIT_SQL s
     WHERE s.command_name IN ({operations})
-      AND s.row_count > 0
-      AND s.start_time BETWEEN TO_TIMESTAMP('{start_time}') AND TO_TIMESTAMP('{end_time}')
+      AND s.success = TRUE
+      AND s.start_time >= ADD_DAYS(SYSTIMESTAMP, -1)
       AND UPPER(s.sql_text) LIKE UPPER('%{schema}.{table}%')
       AND s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    LIMIT {result_limit}
 """
 )

@@ -1,0 +1,104 @@
+"""
+Exasol system metrics implementation.
+"""
+
+from typing import List  # noqa: UP035
+
+from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
+
+from metadata.generated.schema.entity.data.table import SystemProfile
+from metadata.ingestion.source.database.exasol.queries import EXASOL_SYSTEM_METRICS_QUERY
+from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from metadata.profiler.metrics.system.system import (
+    CacheProvider,
+    SystemMetricsComputer,
+    register_system_metrics,
+)
+from metadata.profiler.orm.registry import PythonDialects
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.profiler_utils import QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
+
+DEFAULT_EXASOL_DATABASE = "DEFAULT"
+
+# Exasol currently does not have a fine grain separation for
+# DatabaseDMLOperations.MERGE.value into inserts, updates, & deletes.
+# To prevent miscalculations, it is not mapped to these operations.
+
+
+@register_system_metrics(PythonDialects.Exasol)
+class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
+    """Exasol system metrics computer."""
+
+    def __init__(
+        self,
+        session: Session,
+        runner: QueryRunner,
+    ):
+        self.session = session
+        self.database = DEFAULT_EXASOL_DATABASE
+        self.schema = runner.schema_name
+        self.table = runner.table_name
+
+    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
+        queries = self.get_or_update_cache(
+            f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.INSERT.value}",
+            self._get_insert_queries,
+            operation=DatabaseDMLOperations.INSERT.value,
+        )
+        return get_metric_result(queries, self.table)
+
+    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
+        queries = self.get_or_update_cache(
+            f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.DELETE.value}",
+            self._get_delete_queries,
+            operation=DatabaseDMLOperations.DELETE.value,
+        )
+        return get_metric_result(queries, self.table)
+
+    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
+        queries = self.get_or_update_cache(
+            f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.UPDATE.value}",
+            self._get_update_queries,
+            operation=DatabaseDMLOperations.UPDATE.value,
+        )
+        return get_metric_result(queries, self.table)
+
+    def _get_insert_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
+        return self._get_queries(operation, [DatabaseDMLOperations.INSERT.value])
+
+    def _get_delete_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
+        return self._get_queries(operation, [DatabaseDMLOperations.DELETE.value])
+
+    def _get_update_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
+        return self._get_queries(
+            operation,
+            [
+                DatabaseDMLOperations.UPDATE.value,
+            ],
+        )
+
+    def _get_queries(self, operation: str, operations: List[str]) -> List[QueryResult]:  # noqa: UP006
+        query = EXASOL_SYSTEM_METRICS_QUERY.format(
+            database_name=self.database,
+            schema=self.schema.upper(),
+            table=self.table.upper(),
+            operations=", ".join(f"'{item}'" for item in operations),
+        )
+        return self._get_query_results(self.session, query, operation)
+
+
+def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:  # noqa: UP006
+    """Convert audit log rows into system profiles."""
+    return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
+        [
+            {
+                "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
+                "operation": ddl.query_type,
+                "rowsAffected": ddl.rows,
+            }
+            for ddl in ddls
+            if ddl.table_name.upper() == table_name.upper()
+        ]
+    )
