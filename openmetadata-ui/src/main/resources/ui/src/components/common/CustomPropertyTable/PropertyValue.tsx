@@ -87,6 +87,14 @@ import { PropertyInput } from './PropertyInput';
 import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
 
+const stripSurroundingQuotes = (value: string): string => {
+  if (value.startsWith('"') && value.endsWith('"') && value.length > 2) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+};
+
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
   versionDataKeys,
@@ -842,14 +850,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       default:
         return null;
     }
-  };
-
-  const stripSurroundingQuotes = (value: string): string => {
-    if (value.startsWith('"') && value.endsWith('"') && value.length > 2) {
-      return value.slice(1, -1);
-    }
-
-    return value;
   };
 
   const getEntityRefLinkValue = (item: EntityReference) => {
