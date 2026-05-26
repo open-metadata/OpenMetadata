@@ -14,6 +14,8 @@
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { CONTAINER_DUMMY_DATA } from '../constants/Contianer.constants';
 import {
+  ASSET_HEALTH_WIDGET,
+  DATA_ACCESS_WIDGET,
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
@@ -63,7 +65,9 @@ type ContainerWidgetKeys =
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
-  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
+  | DetailPageWidgetKeys.ASSET_HEALTH
+  | DetailPageWidgetKeys.DATA_ACCESS;
 
 class ContainerDetailsClassBase {
   defaultWidgetHeight: Record<ContainerWidgetKeys, number>;
@@ -78,6 +82,8 @@ class ContainerDetailsClassBase {
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
+      [DetailPageWidgetKeys.ASSET_HEALTH]: 2,
+      [DetailPageWidgetKeys.DATA_ACCESS]: 2,
     };
   }
 
@@ -125,6 +131,22 @@ class ContainerDetailsClassBase {
           w: 8,
           x: 0,
           y: 0,
+          static: false,
+        },
+        {
+          h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS],
+          i: DetailPageWidgetKeys.DATA_ACCESS,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH],
+          i: DetailPageWidgetKeys.ASSET_HEALTH,
+          w: 2,
+          x: 6,
+          y: 1,
           static: false,
         },
       ];
@@ -224,6 +246,8 @@ class ContainerDetailsClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      ASSET_HEALTH_WIDGET,
+      DATA_ACCESS_WIDGET,
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
@@ -254,6 +278,10 @@ class ContainerDetailsClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_SCHEMA];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      case DetailPageWidgetKeys.ASSET_HEALTH:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH];
+      case DetailPageWidgetKeys.DATA_ACCESS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_ACCESS];
       default:
         return 1;
     }

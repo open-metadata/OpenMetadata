@@ -27,6 +27,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { useAssetHealth } from '../../components/DataAssets/AssetHealthWidget/useAssetHealth';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
@@ -615,6 +616,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tablePermissions, deleted]
   );
 
+  const { contractTone, observabilityTone } = useAssetHealth({
+    entityId: tableDetails?.id,
+    entityFqn: tableDetails?.fullyQualifiedName,
+    entityType: EntityType.TABLE,
+    testSuiteId: tableDetails?.testSuite?.id,
+  });
+
+  const contractAlert = contractTone === 'error' ? 'error' : undefined;
+  const observabilityAlert =
+    observabilityTone === 'error'
+      ? 'error'
+      : observabilityTone === 'warning'
+      ? 'warn'
+      : undefined;
+
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -640,6 +656,8 @@ const TableDetailsPageV1: React.FC = () => {
       labelMap: tabLabelMap,
       columnFqn,
       columnPart,
+      contractAlert,
+      observabilityAlert,
     });
 
     const updatedTabs = getDetailsTabWithNewLabel(
@@ -671,6 +689,8 @@ const TableDetailsPageV1: React.FC = () => {
     isViewTableType,
     columnFqn,
     columnPart,
+    contractAlert,
+    observabilityAlert,
   ]);
 
   const isExpandViewSupported = useMemo(

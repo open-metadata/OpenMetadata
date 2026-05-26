@@ -1,0 +1,166 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.data-access-widget {
+  background-color: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid @grey-15;
+  }
+
+  &__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  &__title-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background-color: @primary-1;
+    color: @primary-7;
+  }
+
+  &__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: @grey-1;
+    color: @text-grey-muted;
+  }
+
+  &__body {
+    padding: 14px 14px 16px;
+  }
+
+  &__counts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  &__counts-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__counts-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: @grey-900;
+  }
+
+  &__counts-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: @grey-900;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  &__counts-value--pending {
+    color: @red-10;
+  }
+
+  &__counts-value--approved {
+    color: @green-13;
+  }
+
+  &__dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+  }
+
+  &__dot--pending {
+    background-color: @orange-8;
+  }
+
+  &__dot--approved {
+    background-color: @green-13;
+  }
+
+  &__dot--denied {
+    background-color: @grey-7;
+  }
+
+  &__cta.ant-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    height: auto;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+
+  &__status-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+
+  &__status-card--warning {
+    background-color: @yellow-10;
+    border-color: @yellow-12;
+  }
+
+  &__status-card--success {
+    background-color: @green-9;
+    border-color: @green-16;
+  }
+
+  &__status-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: @grey-900;
+    line-height: 1.3;
+  }
+
+  &__status-sub {
+    font-size: 11.5px;
+    color: @text-grey-muted;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+}

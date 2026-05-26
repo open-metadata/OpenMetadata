@@ -869,6 +869,8 @@ export const getTableDetailPageBaseTabs = ({
   fetchTableDetails,
   isViewTableType,
   labelMap,
+  contractAlert,
+  observabilityAlert,
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
@@ -971,6 +973,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          alert={observabilityAlert}
           id={EntityTabs.PROFILER}
           name={get(
             labelMap,
@@ -1120,6 +1123,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          alert={contractAlert}
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />

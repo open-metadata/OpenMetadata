@@ -20,6 +20,8 @@ export interface TabProps {
   isHidden?: boolean;
 }
 
+export type TabAlertTone = 'warn' | 'error';
+
 export interface TabsLabelProps {
   name: string;
   id: string;
@@ -28,4 +30,5 @@ export interface TabsLabelProps {
   description?: string;
   isBeta?: boolean;
   isLoading?: boolean;
+  alert?: TabAlertTone;
 }

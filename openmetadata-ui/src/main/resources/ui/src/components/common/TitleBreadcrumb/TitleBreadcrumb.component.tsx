@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import {
   FunctionComponent,
@@ -26,6 +27,10 @@ import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkele
 import './title-breadcrumb.less';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
+const ELLIPSIS_KEY = '__breadcrumb_ellipsis__';
+
+type DisplayLink = TitleLink | { ellipsis: true; collapsed: TitleLink[] };
+
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
@@ -33,30 +38,75 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   loading = false,
   widthDeductions,
   useCustomArrow = false,
+  maxVisible = 3,
 }: TitleBreadcrumbProps) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // GitHub-style collapse: when path exceeds maxVisible, render
+  // [first, …chip, ...last(maxVisible - 1)]. Clicking the chip expands inline.
+  const displayLinks = useMemo<DisplayLink[]>(() => {
+    if (isExpanded || titleLinks.length <= maxVisible || maxVisible < 3) {
+      return titleLinks;
+    }
+    const tailCount = maxVisible - 1;
+    const collapsed = titleLinks.slice(1, titleLinks.length - tailCount);
+
+    return [
+      titleLinks[0],
+      { ellipsis: true, collapsed },
+      ...titleLinks.slice(-tailCount),
+    ];
+  }, [titleLinks, maxVisible, isExpanded]);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
-      screenWidth -
-      (widthDeductions ?? 0) - // Any extra deductions due to sibling elements of breadcrumb
-      (titleLinks.length - 1) * 25 - // Deduction for every arrow between each titleLink name
-      80 // Deduction due to margin of the container on both sides
+      screenWidth - (widthDeductions ?? 0) - (displayLinks.length - 1) * 25 - 80
     );
-  }, [screenWidth, titleLinks, widthDeductions]);
+  }, [screenWidth, displayLinks, widthDeductions]);
 
   const maxWidth = useMemo(() => {
-    return finalWidthOfBreadcrumb / titleLinks.length;
-  }, [finalWidthOfBreadcrumb, titleLinks.length]);
+    return finalWidthOfBreadcrumb / displayLinks.length;
+  }, [finalWidthOfBreadcrumb, displayLinks.length]);
 
   const changeWidth = useCallback(() => {
     setScreenWidth(window.innerWidth);
   }, []);
 
+  const renderSeparator = () =>
+    useCustomArrow ? (
+      <span className="custom-separator">
+        <RightArrowIcon />
+      </span>
+    ) : (
+      <span className="text-sm font-regular p-x-xs text-grey-muted">
+        {BREADCRUMB_SEPARATOR}
+      </span>
+    );
+
+  const renderInactiveSeparator = (
+    index: number,
+    displayLength: number,
+    showAlways: boolean
+  ) => {
+    if (!showAlways || index >= displayLength - 1) {
+      return null;
+    }
+
+    return useCustomArrow ? (
+      <span className="custom-separator">
+        <RightArrowIcon />
+      </span>
+    ) : (
+      <span className="text-xss text-grey-muted">{'>'}</span>
+    );
+  };
+
   const renderBreadcrumb = (
     index: number,
     link: TitleLink,
-    classes: string
+    classes: string,
+    displayLength: number
   ) => {
     if (link.url) {
       return (
@@ -83,16 +133,30 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           {link.icon}
           {link.name}
         </span>
-        {noLink &&
-          index < titleLinks.length - 1 &&
-          (useCustomArrow ? (
-            <span className="custom-separator">
-              <RightArrowIcon />
-            </span>
-          ) : (
-            <span className="text-xss text-grey-muted">{'>'}</span>
-          ))}
+        {renderInactiveSeparator(index, displayLength, noLink)}
       </>
+    );
+  };
+
+  const renderEllipsisChip = (collapsed: TitleLink[], position: number) => {
+    const fullPath = collapsed.map((c) => c.name).join(' / ');
+
+    return (
+      <li
+        className="d-flex items-center breadcrumb-item"
+        data-testid="breadcrumb-ellipsis"
+        key={ELLIPSIS_KEY}>
+        <Tooltip placement="bottom" title={fullPath}>
+          <button
+            className="breadcrumb-ellipsis-chip"
+            data-testid="breadcrumb-ellipsis-button"
+            type="button"
+            onClick={() => setIsExpanded(true)}>
+            …
+          </button>
+        </Tooltip>
+        {position < displayLinks.length - 1 && renderSeparator()}
+      </li>
     );
   };
 
@@ -104,15 +168,25 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [titleLinks]);
+
   return (
     <TitleBreadcrumbSkeleton loading={loading}>
       <nav
         className={classNames('breadcrumb-container', className)}
         data-testid="breadcrumb">
         <ol className="rounded-4 text-sm font-regular d-flex flex-wrap">
-          {titleLinks.map((link, index) => {
+          {displayLinks.map((entry, index) => {
+            if ('ellipsis' in entry) {
+              return renderEllipsisChip(entry.collapsed, index);
+            }
+
+            const link = entry;
             const classes =
               'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
+            const isLast = index === displayLinks.length - 1;
 
             return (
               <li
@@ -122,7 +196,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 {link.imgSrc ? (
                   <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
-                {index < titleLinks.length - 1 && !noLink ? (
+                {!isLast && !noLink && link.url ? (
                   <>
                     <Link
                       className={classes}
@@ -131,18 +205,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.icon}
                       {link.name}
                     </Link>
-                    {useCustomArrow ? (
-                      <span className="custom-separator">
-                        <RightArrowIcon />
-                      </span>
-                    ) : (
-                      <span className="text-sm font-regular p-x-xs text-grey-muted">
-                        {BREADCRUMB_SEPARATOR}
-                      </span>
-                    )}
+                    {renderSeparator()}
                   </>
                 ) : (
-                  renderBreadcrumb(index, link, classes)
+                  renderBreadcrumb(index, link, classes, displayLinks.length)
                 )}
               </li>
             );
