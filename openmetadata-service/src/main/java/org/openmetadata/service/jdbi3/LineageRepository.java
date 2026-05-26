@@ -630,6 +630,19 @@ public class LineageRepository {
       String queryFilter,
       String entityType,
       boolean deleted) {
+    return exportCsvAsync(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted, null, null);
+  }
+
+  public final String exportCsvAsync(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      String entityType,
+      boolean deleted,
+      Long startTime,
+      Long endTime) {
     try {
       SearchLineageResult response =
           Entity.getSearchRepository()
@@ -641,6 +654,8 @@ public class LineageRepository {
                       .withQueryFilter(queryFilter)
                       .withIncludeDeleted(deleted)
                       .withIsConnectedVia(isConnectedVia(entityType))
+                      .withStartTime(startTime)
+                      .withEndTime(endTime)
                       .withDirection(null));
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
@@ -1644,6 +1659,34 @@ public class LineageRepository {
       boolean deleted,
       String entityType,
       String includeSourceFields) {
+    return exportByEntityCountCsvAsync(
+        fqn,
+        direction,
+        from,
+        size,
+        nodeDepth,
+        maxDepth,
+        queryFilter,
+        deleted,
+        entityType,
+        includeSourceFields,
+        null,
+        null);
+  }
+
+  public final String exportByEntityCountCsvAsync(
+      String fqn,
+      LineageDirection direction,
+      int from,
+      int size,
+      Integer nodeDepth,
+      int maxDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      String includeSourceFields,
+      Long startTime,
+      Long endTime) {
     try {
       SearchLineageResult response =
           Entity.getSearchRepository()
@@ -1658,6 +1701,8 @@ public class LineageRepository {
                       .withQueryFilter(queryFilter)
                       .withIncludeDeleted(deleted)
                       .withIsConnectedVia(isConnectedVia(entityType))
+                      .withStartTime(startTime)
+                      .withEndTime(endTime)
                       .withIncludeSourceFields(
                           org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
                               includeSourceFields)));

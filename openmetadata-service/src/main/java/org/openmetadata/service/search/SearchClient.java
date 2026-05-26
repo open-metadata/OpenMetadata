@@ -373,8 +373,11 @@ public interface SearchClient
           def old = ctx._source.upstreamLineage[i];
           def carryCreatedAt = old.get('createdAt');
           def carryCreatedBy = old.get('createdBy');
-          if (carryCreatedAt != null) edgeData.put('createdAt', carryCreatedAt);
-          if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
+          def newCreatedAt = edgeData.get('createdAt');
+          if (carryCreatedAt != null && (newCreatedAt == null || carryCreatedAt < newCreatedAt)) {
+            edgeData.put('createdAt', carryCreatedAt);
+            if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
+          }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
@@ -706,13 +709,27 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
-  LineagePaginationInfo getLineagePaginationInfo(
+  default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
       String entityType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException;
 
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)

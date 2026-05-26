@@ -611,6 +611,20 @@ public class OSLineageGraphBuilder
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
 
     Map<Integer, Integer> upstreamDepthCounts = new HashMap<>();
     Map<Integer, Integer> downstreamDepthCounts = new HashMap<>();
@@ -630,8 +644,8 @@ public class OSLineageGraphBuilder
                 queryFilter,
                 countFilter,
                 includeDeleted,
-                null,
-                null));
+                startTime,
+                endTime));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
@@ -642,8 +656,8 @@ public class OSLineageGraphBuilder
                 queryFilter,
                 countFilter,
                 includeDeleted,
-                null,
-                null));
+                startTime,
+                endTime));
       }
     } else {
       if (upstreamDepth > 0) {
@@ -655,8 +669,8 @@ public class OSLineageGraphBuilder
                 countFilter,
                 includeDeleted,
                 entityType,
-                null,
-                null));
+                startTime,
+                endTime));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
@@ -667,8 +681,8 @@ public class OSLineageGraphBuilder
                 countFilter,
                 includeDeleted,
                 entityType,
-                null,
-                null));
+                startTime,
+                endTime));
       }
     }
 

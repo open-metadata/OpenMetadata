@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-export interface LineageTimeRange {
-  startTime?: number;
-  endTime?: number;
-}
+import type { LineageTimeRange } from '../../../context/LineageProvider/LineageProvider.interface';
 
 export interface LineageTimeFilterProps {
   startTime?: number;

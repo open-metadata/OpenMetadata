@@ -506,7 +506,14 @@ public class LineageResource {
           try {
             String csvData =
                 dao.exportCsvAsync(
-                    fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted);
+                    fqn,
+                    upstreamDepth,
+                    downstreamDepth,
+                    queryFilter,
+                    entityType,
+                    deleted,
+                    startTime,
+                    endTime);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -566,7 +573,14 @@ public class LineageResource {
       throws IOException {
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            deleted,
+            entityType,
+            startTime,
+            endTime);
   }
 
   @GET
@@ -656,7 +670,9 @@ public class LineageResource {
                     queryFilter,
                     deleted,
                     entityType,
-                    includeSourceFields);
+                    includeSourceFields,
+                    startTime,
+                    endTime);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
