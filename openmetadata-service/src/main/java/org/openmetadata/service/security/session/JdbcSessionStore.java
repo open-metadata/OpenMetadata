@@ -37,8 +37,8 @@ public class JdbcSessionStore implements SessionStore {
   }
 
   @Override
-  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status) {
-    return repository.findByUserIdAndStatus(userId, status);
+  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status, int limit) {
+    return repository.findByUserIdAndStatus(userId, status, limit);
   }
 
   @Override

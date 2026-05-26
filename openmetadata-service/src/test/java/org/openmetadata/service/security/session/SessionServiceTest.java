@@ -114,7 +114,8 @@ class SessionServiceTest {
             .withName("oidc-user")
             .withEmail("oidc-user@example.com");
     when(repository.updateIfVersion(any(UserSession.class), eq(0L))).thenReturn(true);
-    when(repository.findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE)))
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of());
 
     UserSession activated =
@@ -152,7 +153,8 @@ class SessionServiceTest {
             .build();
     User user = new User().withId(UUID.randomUUID()).withName("user").withEmail("user@example.com");
     when(repository.updateIfVersion(any(UserSession.class), eq(0L))).thenReturn(true);
-    when(repository.findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE)))
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of());
 
     UserSession activated =
@@ -516,7 +518,8 @@ class SessionServiceTest {
             activeSession(validSessionId('f'), user, 5L, 5L),
             activeSession(validSessionId('g'), user, 6L, 6L));
     List<UserSession> remainingSessions = activeSessions.stream().skip(1).toList();
-    when(repository.findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE)))
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(activeSessions, remainingSessions);
     when(repository.findById(oldestSessionId)).thenReturn(Optional.of(oldestSession));
     when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
@@ -544,7 +547,8 @@ class SessionServiceTest {
     UserSession newestSession = activeSession(validSessionId('d'), user, 4L, 4L);
     List<UserSession> activeSessions =
         List.of(oldestSession, nextOldestSession, thirdSession, newestSession);
-    when(repository.findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE)))
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), eq(3)))
         .thenReturn(activeSessions, List.of(thirdSession, newestSession));
     when(repository.findById(oldestSession.getId())).thenReturn(Optional.of(oldestSession));
     when(repository.findById(nextOldestSession.getId())).thenReturn(Optional.of(nextOldestSession));

@@ -14,7 +14,8 @@ package org.openmetadata.service.socket;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -109,7 +110,7 @@ class WebSocketManagerTest {
     SocketIoSocket healthy = mock(SocketIoSocket.class);
     when(failing.getId()).thenReturn("failing");
     when(healthy.getId()).thenReturn("healthy");
-    org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(failing).disconnect(true);
+    doThrow(new RuntimeException("boom")).when(failing).disconnect(true);
     Map<String, SocketIoSocket> sockets = new ConcurrentHashMap<>();
     sockets.put("failing", failing);
     sockets.put("healthy", healthy);
@@ -136,9 +137,5 @@ class WebSocketManagerTest {
 
     verify(socket, never()).disconnect(anyBoolean());
     assertTrue(manager.getActivityFeedEndpoints().containsKey(userId));
-  }
-
-  private static boolean anyBoolean() {
-    return org.mockito.ArgumentMatchers.anyBoolean();
   }
 }

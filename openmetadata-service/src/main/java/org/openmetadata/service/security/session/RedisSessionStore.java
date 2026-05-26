@@ -53,7 +53,6 @@ public class RedisSessionStore implements SessionStore {
   // headroom to skip stale index entries before truncating to the caller's limit. 3× is enough for
   // typical workloads without becoming expensive on a very chatty user.
   private static final int USER_INDEX_OVERSAMPLE = 3;
-  private static final int ACTIVE_SESSION_LOOKUP_LIMIT = 10;
 
   // Lua CAS: parses "version":N from the stored JSON, compares against ARGV[1], rewrites with
   // ARGV[2] and TTL ARGV[3] when matched. Returns 1 on success, 0 on miss (key absent or version
@@ -119,22 +118,22 @@ public class RedisSessionStore implements SessionStore {
   }
 
   @Override
-  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status) {
-    if (nullOrEmpty(userId)) {
+  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status, int limit) {
+    if (nullOrEmpty(userId) || limit <= 0) {
       return Collections.emptyList();
     }
     String indexKey = userIndexKey(userId, status);
     // Oversample so lazy cleanup of stale index entries doesn't shrink the result below
-    // ACTIVE_SESSION_LOOKUP_LIMIT for a user whose oldest entries are TTL-expired.
-    long stop = (long) ACTIVE_SESSION_LOOKUP_LIMIT * USER_INDEX_OVERSAMPLE - 1;
+    // the requested limit for a user whose oldest entries are TTL-expired.
+    long stop = (long) limit * USER_INDEX_OVERSAMPLE - 1;
     List<String> ids = commands.zrange(indexKey, 0, stop);
     if (ids == null || ids.isEmpty()) {
       return Collections.emptyList();
     }
-    List<UserSession> sessions = new ArrayList<>(ACTIVE_SESSION_LOOKUP_LIMIT);
+    List<UserSession> sessions = new ArrayList<>(limit);
     List<String> stale = new ArrayList<>();
     for (String id : ids) {
-      if (sessions.size() >= ACTIVE_SESSION_LOOKUP_LIMIT) {
+      if (sessions.size() >= limit) {
         break;
       }
       String json = commands.get(sessionKey(id));

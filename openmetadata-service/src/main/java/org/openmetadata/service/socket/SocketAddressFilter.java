@@ -117,11 +117,6 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
-  private boolean isSessionStillActive(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
-    return isSessionStillActive(request, response, null);
-  }
-
   private boolean isSessionStillActive(
       HttpServletRequest request,
       HttpServletResponse response,
@@ -132,19 +127,32 @@ public class SocketAddressFilter implements Filter {
     }
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
-      if (tokenPrincipal == null || tokenPrincipal.sessionId() != null) {
+      if (tokenPrincipal == null) {
         return true;
+      }
+      if (tokenPrincipal.sessionId() != null) {
+        return validateSessionStillActive(
+            request, response, tokenPrincipal.sessionId(), tokenPrincipal);
       }
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
       return false;
     }
-    Optional<UserSession> session = sessionService.getFreshSessionById(sessionId.get());
+    return validateSessionStillActive(request, response, sessionId.get(), tokenPrincipal);
+  }
+
+  private boolean validateSessionStillActive(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      String sessionId,
+      ValidatedTokenPrincipal tokenPrincipal)
+      throws IOException {
+    Optional<UserSession> session = sessionService.getFreshSessionById(sessionId);
     if (session.isEmpty()
         || session.get().getStatus() != SessionStatus.ACTIVE
         || session.get().isExpired(System.currentTimeMillis())) {
       LOG.info(
           "Rejecting WebSocket handshake: session {} is not active",
-          SessionService.truncateId(sessionId.get()));
+          SessionService.truncateId(sessionId));
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
       return false;
     }

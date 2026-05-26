@@ -436,24 +436,30 @@ public final class SecurityUtil {
     }
 
     URI candidate = parseTrustedRedirectUri(normalizedRedirect);
-    URI normalizedCandidate;
+    List<URI> normalizedCandidates;
     if (!candidate.isAbsolute()) {
       String rawPath = candidate.getRawPath();
       if (nullOrEmpty(rawPath) || !rawPath.startsWith("/")) {
         throw new IllegalArgumentException("Redirect URI must be absolute or root-relative");
       }
-      normalizedCandidate = parseTrustedRedirectUri(canonicalize(trustedUris.get(0), candidate));
+      normalizedCandidates =
+          trustedUris.stream()
+              .map(trustedUri -> parseTrustedRedirectUri(canonicalize(trustedUri, candidate)))
+              .toList();
     } else {
       if (!nullOrEmpty(candidate.getRawUserInfo())) {
         throw new IllegalArgumentException("Redirect URI must not contain user-info");
       }
-      normalizedCandidate = candidate.normalize();
+      normalizedCandidates = List.of(candidate.normalize());
     }
 
     URI matchedTrustedUri =
         trustedUris.stream()
             .map(URI::normalize)
-            .filter(trustedUri -> sameRedirect(trustedUri, normalizedCandidate))
+            .filter(
+                trustedUri ->
+                    normalizedCandidates.stream()
+                        .anyMatch(candidateUri -> sameRedirect(trustedUri, candidateUri)))
             .findFirst()
             .orElseThrow(
                 () ->

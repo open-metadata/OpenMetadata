@@ -467,9 +467,11 @@ public class SessionService implements Managed {
 
   private void applySessionLimit(String userId, String currentSessionId) {
     int maxActiveSessionsPerUser = getMaxActiveSessionsPerUser();
+    int sessionLookupLimit = sessionLookupLimit(maxActiveSessionsPerUser);
     for (int attempt = 0; attempt < SESSION_LIMIT_RETRIES; attempt++) {
       List<UserSession> sessions =
-          new ArrayList<>(repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE));
+          new ArrayList<>(
+              repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, sessionLookupLimit));
       if (sessions.size() <= maxActiveSessionsPerUser) {
         return;
       }
@@ -501,6 +503,11 @@ public class SessionService implements Managed {
     return configuredLimit != null && configuredLimit >= 1
         ? configuredLimit
         : DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
+  }
+
+  private int sessionLookupLimit(int maxActiveSessionsPerUser) {
+    long lookupLimit = (long) maxActiveSessionsPerUser + 1L;
+    return lookupLimit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) lookupLimit;
   }
 
   private void expireSessionsInBatches(long now) {

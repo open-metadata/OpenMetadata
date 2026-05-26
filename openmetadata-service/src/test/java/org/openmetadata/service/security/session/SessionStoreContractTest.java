@@ -131,7 +131,7 @@ public abstract class SessionStoreContractTest {
     store.create(oldest);
     store.create(middle);
 
-    List<UserSession> sessions = store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
+    List<UserSession> sessions = store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10);
 
     assertEquals(3, sessions.size());
     assertEquals(oldest.getId(), sessions.get(0).getId());
@@ -145,8 +145,8 @@ public abstract class SessionStoreContractTest {
     store.create(sample(userId, SessionStatus.ACTIVE));
     store.create(sample(userId, SessionStatus.PENDING));
 
-    List<UserSession> active = store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
-    List<UserSession> pending = store.findByUserIdAndStatus(userId, SessionStatus.PENDING);
+    List<UserSession> active = store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10);
+    List<UserSession> pending = store.findByUserIdAndStatus(userId, SessionStatus.PENDING, 10);
 
     assertEquals(1, active.size());
     assertEquals(1, pending.size());
@@ -159,14 +159,34 @@ public abstract class SessionStoreContractTest {
     String userId = UUID.randomUUID().toString();
     UserSession session = sample(userId, SessionStatus.ACTIVE);
     store.create(session);
-    assertEquals(1, store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE).size());
+    assertEquals(1, store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).size());
 
     UserSession revoked = session.toBuilder().version(1L).status(SessionStatus.REVOKED).build();
     assertTrue(store.updateIfVersion(revoked, 0L));
 
     assertTrue(
-        store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE).isEmpty(),
+        store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty(),
         "REVOKED session must no longer appear in the ACTIVE per-user index");
+  }
+
+  @Test
+  void findByUserIdAndStatus_respectsLimit() {
+    String userId = UUID.randomUUID().toString();
+    UserSession oldest =
+        sample(userId, SessionStatus.ACTIVE).toBuilder().lastAccessedAt(1000L).build();
+    UserSession middle =
+        sample(userId, SessionStatus.ACTIVE).toBuilder().lastAccessedAt(2000L).build();
+    UserSession newest =
+        sample(userId, SessionStatus.ACTIVE).toBuilder().lastAccessedAt(3000L).build();
+    store.create(oldest);
+    store.create(middle);
+    store.create(newest);
+
+    List<UserSession> sessions = store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 2);
+
+    assertEquals(2, sessions.size());
+    assertEquals(oldest.getId(), sessions.get(0).getId());
+    assertEquals(middle.getId(), sessions.get(1).getId());
   }
 
   @Test
@@ -178,7 +198,7 @@ public abstract class SessionStoreContractTest {
     store.delete(session.getId());
 
     assertTrue(store.findById(session.getId()).isEmpty());
-    assertTrue(store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE).isEmpty());
+    assertTrue(store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
   }
 
   @Test

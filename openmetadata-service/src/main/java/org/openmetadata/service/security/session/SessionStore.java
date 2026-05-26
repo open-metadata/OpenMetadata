@@ -29,11 +29,11 @@ public interface SessionStore {
   Optional<UserSession> findById(String sessionId);
 
   /**
-   * Active-status filter used by per-user session-cap enforcement. Returns up to
-   * {@code ACTIVE_SESSION_LOOKUP_LIMIT} sessions ordered by {@code lastAccessedAt ASC} so the
-   * oldest sessions are evicted first when the cap is exceeded.
+   * Status filter used by per-user session-cap enforcement. Returns up to {@code limit} sessions
+   * ordered by {@code lastAccessedAt ASC} so the oldest sessions are evicted first when the cap is
+   * exceeded.
    */
-  List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status);
+  List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status, int limit);
 
   /**
    * Returns sessions whose absolute-or-idle timeout has passed and that are still in a non-terminal

@@ -18,6 +18,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
 
 @ExtendWith(MockitoExtension.class)
 class SocketAddressFilterTest {
@@ -87,6 +90,8 @@ class SocketAddressFilterTest {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
     mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -105,6 +110,30 @@ class SocketAddressFilterTest {
         "session-1", wrappedRequest.getHeader("SessionId"));
   }
 
+  @Test
+  void secureSocketRejectsInactiveJwtSessionWhenCookieIsMissing() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(
+            Optional.of(
+                activeSession("session-1", "sam").toBuilder()
+                    .status(SessionStatus.REVOKED)
+                    .build()));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
   private void mockRequest(String queryString, String authorizationHeader) {
     when(request.getQueryString()).thenReturn(queryString);
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
@@ -119,6 +148,17 @@ class SocketAddressFilterTest {
     when(jwtFilter.validateJwtAndGetClaims("token"))
         .thenReturn(Map.of("sub", usernameClaim, JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
     when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+  }
+
+  private UserSession activeSession(String sessionId, String username) {
+    long now = System.currentTimeMillis();
+    return UserSession.builder()
+        .id(sessionId)
+        .username(username)
+        .status(SessionStatus.ACTIVE)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000)
+        .build();
   }
 
   private static void initializeJwtTokenGenerator() {

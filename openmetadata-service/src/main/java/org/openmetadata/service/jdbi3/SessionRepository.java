@@ -14,7 +14,6 @@ import org.openmetadata.service.security.session.UserSession;
 @Slf4j
 @Repository
 public class SessionRepository {
-  private static final int ACTIVE_SESSION_LOOKUP_LIMIT = 10;
   private final CollectionDAO dao;
 
   public SessionRepository() {
@@ -25,9 +24,11 @@ public class SessionRepository {
     return Optional.ofNullable(dao.getUserSessionDAO().findById(sessionId));
   }
 
-  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status) {
-    return dao.getUserSessionDAO()
-        .findByUserIdAndStatus(userId, status.name(), ACTIVE_SESSION_LOOKUP_LIMIT);
+  public List<UserSession> findByUserIdAndStatus(String userId, SessionStatus status, int limit) {
+    if (limit <= 0) {
+      return List.of();
+    }
+    return dao.getUserSessionDAO().findByUserIdAndStatus(userId, status.name(), limit);
   }
 
   public List<UserSession> findSessionsToExpire(long now, int limit) {
@@ -37,15 +38,30 @@ public class SessionRepository {
             SessionStatus.REFRESHING.name(),
             SessionStatus.PENDING.name());
     Map<String, UserSession> combined = new LinkedHashMap<>();
-    for (UserSession s :
-        dao.getUserSessionDAO().findSessionsExpiredByAbsoluteTimeout(statuses, now, limit)) {
-      combined.putIfAbsent(s.getId(), s);
+    if (limit <= 0) {
+      return List.of();
     }
-    for (UserSession s :
-        dao.getUserSessionDAO().findSessionsExpiredByIdleTimeout(statuses, now, limit)) {
-      combined.putIfAbsent(s.getId(), s);
+    addSessionsUntilLimit(
+        combined,
+        dao.getUserSessionDAO().findSessionsExpiredByAbsoluteTimeout(statuses, now, limit),
+        limit);
+    if (combined.size() < limit) {
+      addSessionsUntilLimit(
+          combined,
+          dao.getUserSessionDAO().findSessionsExpiredByIdleTimeout(statuses, now, limit),
+          limit);
     }
     return new ArrayList<>(combined.values());
+  }
+
+  private void addSessionsUntilLimit(
+      Map<String, UserSession> combined, List<UserSession> sessions, int limit) {
+    for (UserSession session : sessions) {
+      if (combined.size() >= limit) {
+        return;
+      }
+      combined.putIfAbsent(session.getId(), session);
+    }
   }
 
   public List<UserSession> findSessionsToPrune(long cutoff, int limit) {
