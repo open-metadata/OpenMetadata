@@ -85,7 +85,7 @@ export interface UseCodeMirrorOptions {
 }
 
 export interface UseCodeMirrorReturn {
-  editorRef: RefObject<HTMLDivElement>;
+  editorRef: RefObject<HTMLDivElement | null>;
   viewRef: RefObject<EditorView | null>;
   requestRefresh: () => void;
 }
@@ -133,7 +133,7 @@ function buildDynamicExtensions(opts: UseCodeMirrorOptions): Extension[] {
 }
 
 export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
-  const editorRef = useRef<HTMLDivElement>(null!);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const dynamicCompartment = useRef(new Compartment());
   const onChangeRef = useRef(opts.onChange);
@@ -218,7 +218,8 @@ export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
       ),
     });
   }, [
-    opts.mode,
+    opts.mode?.name,
+    opts.mode?.json,
     opts.readOnly,
     opts.showLineNumbers,
     opts.lineWrapping,
