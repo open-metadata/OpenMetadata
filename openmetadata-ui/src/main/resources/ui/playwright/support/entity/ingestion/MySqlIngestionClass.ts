@@ -144,10 +144,15 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.click('[data-menu-id*="profiler"]');
 
       await waitForAllLoadersToDisappear(page);
-      await page
-        .locator('.advanced-properties-collapse')
-        .getByText('Advanced Config')
-        .click();
+      const advancedConfigHeader = page
+        .locator('.advanced-properties-collapse .ant-collapse-header')
+        .first();
+      await advancedConfigHeader.waitFor();
+      const isAdvancedConfigExpanded =
+        (await advancedConfigHeader.getAttribute('aria-expanded')) === 'true';
+      if (!isAdvancedConfigExpanded) {
+        await advancedConfigHeader.click();
+      }
 
       const sampleConfigTypeSelect = page.getByTestId(
         'sample-config-type-select'

@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
+import { test } from '../../fixtures/pages';
 
 const PROFILE_PIPELINES_URL = '/api/v1/services/ingestionPipelines';
 
@@ -56,12 +57,21 @@ const openProfilerForm = async (page: Page) => {
   await page.click('[data-menu-id*="profiler"]');
 
   await waitForAllLoadersToDisappear(page);
-  await page
-    .locator('.advanced-properties-collapse')
-    .getByText('Advanced Config')
-    .click();
+  await expandAdvancedConfig(page);
 
   await expect(page.getByTestId('sample-config-type-select')).toBeVisible();
+};
+
+const expandAdvancedConfig = async (page: Page) => {
+  const collapseHeader = page
+    .locator('.advanced-properties-collapse .ant-collapse-header')
+    .first();
+  await collapseHeader.waitFor();
+  const isExpanded =
+    (await collapseHeader.getAttribute('aria-expanded')) === 'true';
+  if (!isExpanded) {
+    await collapseHeader.click();
+  }
 };
 
 const selectSampleConfigType = async (
@@ -71,6 +81,11 @@ const selectSampleConfigType = async (
   await page.getByTestId('sample-config-type-select').click();
   await page.locator(`[data-key="${type}"]`).click();
 };
+
+const isCreatePipelineCall = (url: string, method: string) =>
+  method === 'POST' &&
+  url.endsWith(PROFILE_PIPELINES_URL) &&
+  !url.includes('/deploy/');
 
 const submitAndCaptureCreatePayload = async (
   page: Page
@@ -83,17 +98,20 @@ const submitAndCaptureCreatePayload = async (
     .getByText('On Demand')
     .click();
 
-  const createRequestPromise = page.waitForRequest(
-    (req) =>
-      req.method() === 'POST' &&
-      req.url().endsWith(PROFILE_PIPELINES_URL) &&
-      !req.url().includes('/deploy/')
+  const createResponsePromise = page.waitForResponse((response) =>
+    isCreatePipelineCall(response.url(), response.request().method())
   );
 
   await page.click('[data-testid="deploy-button"]');
 
-  const createRequest = await createRequestPromise;
-  const body = JSON.parse(createRequest.postData() ?? '{}');
+  const createResponse = await createResponsePromise;
+
+  expect(
+    createResponse.ok(),
+    `Create pipeline call returned ${createResponse.status()}: ${await createResponse.text()}`
+  ).toBe(true);
+
+  const body = JSON.parse(createResponse.request().postData() ?? '{}');
 
   return body?.sourceConfig?.config?.profileSampleConfig;
 };
