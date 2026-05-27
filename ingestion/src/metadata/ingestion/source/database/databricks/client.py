@@ -83,10 +83,6 @@ class DatabricksClient:
         self.base_job_url = f"https://{base_url}{JOB_API_VERSION}/jobs"
         self.jobs_list_url = f"{self.base_job_url}/list"
         self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
-        self.headers = {
-            **self._get_auth_header(),
-            "Content-Type": "application/json",
-        }
         self.api_timeout = self.config.connectionTimeout or 120
         self._entity_table_lineage_executed: bool = False
         self.entity_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -119,6 +115,16 @@ class DatabricksClient:
             return {"Authorization": f"Bearer {auth_args['access_token']}"}
 
         return auth_args["credentials_provider"]()()
+
+    @property
+    def headers(self) -> dict[str, str]:
+        """
+        Return auth headers for each API request.
+        """
+        return {
+            **self._get_auth_header(),
+            "Content-Type": "application/json",
+        }
 
     def _list_scim_resources(self, path: str) -> Iterable[dict]:
         """

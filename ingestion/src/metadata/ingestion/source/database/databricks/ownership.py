@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import dataclass
+from threading import Lock
 from typing import TYPE_CHECKING
 
-from cachetools import LRUCache
-from pydantic import EmailStr
-from pydantic_core import PydanticCustomError
+from pydantic import EmailStr, TypeAdapter, ValidationError
 
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 
 if TYPE_CHECKING:
     from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 IDENTITY_CACHE_SIZE = 10000
+EMAIL_STR_ADAPTER = TypeAdapter(EmailStr)
 
 
 @dataclass(frozen=True)
@@ -59,10 +60,11 @@ class DatabricksOwnerResolver:
         self.metadata = metadata
         self.include_owners = include_owners
         self._identity_maps_loaded = False
-        self._service_principal_names = LRUCache(maxsize=IDENTITY_CACHE_SIZE)
-        self._group_names_by_id = LRUCache(maxsize=IDENTITY_CACHE_SIZE)
-        self._group_names = LRUCache(maxsize=IDENTITY_CACHE_SIZE)
-        self._owner_cache = LRUCache(maxsize=IDENTITY_CACHE_SIZE)
+        self._identity_maps_lock = Lock()
+        self._service_principal_names = LRUCache(capacity=IDENTITY_CACHE_SIZE)
+        self._group_names_by_id = LRUCache(capacity=IDENTITY_CACHE_SIZE)
+        self._group_names = LRUCache(capacity=IDENTITY_CACHE_SIZE)
+        self._owner_cache = LRUCache(capacity=IDENTITY_CACHE_SIZE)
 
     def get_owner_ref(self, owner: str | None) -> EntityReferenceList | None:
         """
@@ -78,11 +80,14 @@ class DatabricksOwnerResolver:
             return None
 
         if owner_name in self._owner_cache:
-            return self._owner_cache[owner_name]
+            try:
+                return self._owner_cache.get(owner_name)
+            except KeyError:
+                pass
 
         resolved_owner = self.resolve_owner(owner_name)
         owner_ref = self._get_reference(resolved_owner)
-        self._owner_cache[owner_name] = owner_ref
+        self._owner_cache.put(owner_name, owner_ref)
         return owner_ref
 
     def resolve_owner(self, owner: str) -> ResolvedDatabricksOwner:
@@ -95,54 +100,60 @@ class DatabricksOwnerResolver:
         self._load_identity_maps()
         owner_key = owner.casefold()
 
-        service_principal_name = self._service_principal_names.get(owner_key)
+        service_principal_name = self._get_cached_value(self._service_principal_names, owner_key)
         if service_principal_name:
             return ResolvedDatabricksOwner(service_principal_name)
 
-        group_name = self._group_names_by_id.get(owner_key) or self._group_names.get(owner_key)
+        group_name = self._get_cached_value(self._group_names_by_id, owner_key) or self._get_cached_value(
+            self._group_names, owner_key
+        )
         if group_name:
             return ResolvedDatabricksOwner(group_name, is_group=True)
 
         return ResolvedDatabricksOwner(owner)
 
     def _load_identity_maps(self) -> None:
-        if self._identity_maps_loaded:
-            return
+        with self._identity_maps_lock:
+            if self._identity_maps_loaded:
+                return
 
-        self._identity_maps_loaded = True
-        try:
-            for principal in self.api_client.list_service_principals():
-                application_id = principal.get("applicationId")
-                display_name = principal.get("displayName")
-                if application_id and display_name:
-                    self._service_principal_names[application_id.casefold()] = display_name
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to fetch Databricks service principals: {exc}")
+            self._identity_maps_loaded = True
+            try:
+                for principal in self.api_client.list_service_principals():
+                    application_id = principal.get("applicationId")
+                    display_name = principal.get("displayName")
+                    if application_id and display_name:
+                        self._service_principal_names.put(application_id.casefold(), display_name)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unable to fetch Databricks service principals: {exc}")
 
-        try:
-            for group in self.api_client.list_groups():
-                group_id = group.get("id")
-                display_name = group.get("displayName")
-                if not display_name:
-                    continue
-                self._group_names[display_name.casefold()] = display_name
-                if group_id:
-                    self._group_names_by_id[str(group_id).casefold()] = display_name
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to fetch Databricks groups: {exc}")
+            try:
+                for group in self.api_client.list_groups():
+                    group_id = group.get("id")
+                    display_name = group.get("displayName")
+                    if not display_name:
+                        continue
+                    self._group_names.put(display_name.casefold(), display_name)
+                    if group_id:
+                        self._group_names_by_id.put(str(group_id).casefold(), display_name)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unable to fetch Databricks groups: {exc}")
 
     def _get_reference(self, owner: ResolvedDatabricksOwner) -> EntityReferenceList | None:
         if owner.is_group:
             return self.metadata.get_reference_by_name(name=owner.name, is_owner=True)
 
         try:
-            owner_email = EmailStr._validate(owner.name)
+            owner_email = EMAIL_STR_ADAPTER.validate_python(owner.name)
             owner_ref = self.metadata.get_reference_by_email(email=owner_email)
             if owner_ref:
                 return owner_ref
-        except PydanticCustomError:
+            owner_ref = self.metadata.get_reference_by_name(name=owner_email.split("@")[0])
+            if owner_ref:
+                return owner_ref
+        except ValidationError:
             pass
 
         return self.metadata.get_reference_by_name(name=owner.name)
@@ -150,8 +161,17 @@ class DatabricksOwnerResolver:
     @staticmethod
     def _is_email(owner: str) -> bool:
         try:
-            EmailStr._validate(owner)
-        except PydanticCustomError:
+            EMAIL_STR_ADAPTER.validate_python(owner)
+        except ValidationError:
             return False
         else:
             return True
+
+    @staticmethod
+    def _get_cached_value(cache: LRUCache[str | None], key: str) -> str | None:
+        if key not in cache:
+            return None
+        try:
+            return cache.get(key)
+        except KeyError:
+            return None

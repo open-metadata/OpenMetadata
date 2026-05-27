@@ -44,7 +44,7 @@ class ScimResponse:
 def _client_with_responses(responses):
     client = DatabricksClient.__new__(DatabricksClient)
     client.base_url = "https://workspace.cloud.databricks.com/api/2.0"
-    client.headers = {"Authorization": "Bearer token"}
+    client._get_auth_header = Mock(return_value={"Authorization": "Bearer token"})
     client.api_timeout = 120
     client.client = Mock()
     client.client.get.side_effect = responses
@@ -79,6 +79,7 @@ def test_scim_resource_listing_handles_pagination():
     ]
     assert client.client.get.call_args_list[0].kwargs["params"] == {"startIndex": 1, "count": 100}
     assert client.client.get.call_args_list[1].kwargs["params"] == {"startIndex": 2, "count": 100}
+    assert client._get_auth_header.call_count == 2
 
 
 def test_owner_resolver_maps_service_principal_app_id_to_display_name():
@@ -127,6 +128,17 @@ def test_owner_resolver_uses_email_lookup_for_email_owner():
     api_client.list_service_principals.assert_not_called()
     api_client.list_groups.assert_not_called()
     metadata.get_reference_by_email.assert_called_once()
+
+
+def test_owner_resolver_falls_back_to_email_local_part_name():
+    api_client = Mock()
+    metadata = Mock()
+    metadata.get_reference_by_email.return_value = None
+    metadata.get_reference_by_name.return_value = "owner-ref"
+    resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
+
+    assert resolver.get_owner_ref("user@example.com") == "owner-ref"
+    metadata.get_reference_by_name.assert_called_once_with(name="user")
 
 
 def test_owner_resolver_falls_back_to_raw_owner_when_scim_fails():

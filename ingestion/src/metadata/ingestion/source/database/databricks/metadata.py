@@ -16,8 +16,6 @@ import traceback
 from copy import deepcopy
 from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
-from pydantic import EmailStr
-from pydantic_core import PydanticCustomError
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.engine.reflection import Inspector
@@ -1324,16 +1322,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
-            owner_resolver = self.__dict__.get("owner_resolver")
-            if owner_resolver:
-                return owner_resolver.get_owner_ref(owner)
-
-            try:
-                owner_email = EmailStr._validate(owner)
-                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
-            except PydanticCustomError:
-                owner_ref = self.metadata.get_reference_by_name(name=owner)
-            return owner_ref  # noqa: TRY300
+            return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
