@@ -250,7 +250,7 @@ test.describe('Knowledge Center List', () => {
     const paginationResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/contextCenter/pages') &&
-        response.url().includes('after=')
+        response.url().includes('offset=')
     );
 
     await observerElement.scrollIntoViewIfNeeded();

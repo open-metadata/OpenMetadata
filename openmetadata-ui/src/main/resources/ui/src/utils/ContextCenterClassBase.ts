@@ -46,6 +46,10 @@ class ContextCenterClassBase {
     return '';
   }
 
+  public getHomePath(): string {
+    return ROUTES.HOME;
+  }
+
   public getContextCenterPath(): string {
     return ROUTES.CONTEXT_CENTER;
   }

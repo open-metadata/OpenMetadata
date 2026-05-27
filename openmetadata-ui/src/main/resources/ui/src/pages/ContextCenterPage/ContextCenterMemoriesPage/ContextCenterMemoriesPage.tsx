@@ -15,18 +15,11 @@ import {
   Button,
   Card,
   Dropdown,
-  Input,
   PaginationCardMinimal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  FilterLines,
-  Home02,
-  Plus,
-  SearchLg,
-} from '@untitledui/icons';
+import { ChevronDown, FilterLines, Home02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
@@ -50,7 +43,6 @@ import {
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -76,7 +68,6 @@ const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ri
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const currentUserName = getEntityName(currentUser);
   const { alert } = useAlertStore();
 
   const [memories, setMemories] = useState<MemoryItem[]>([]);
@@ -125,6 +116,8 @@ const ContextCenterMemoriesPage: FC = () => {
         usageCount: m.usageCount,
         lastUsedAt: m.lastUsedAt,
         relatedEntities: m.relatedEntities,
+        visibility: m.shareConfig?.visibility,
+        owners: m.owners,
       }));
       setMemories(items);
     } catch (err) {
@@ -299,7 +292,7 @@ const ContextCenterMemoriesPage: FC = () => {
     try {
       await deleteContextMemory(memoryToDelete.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
       fetchMemories();
@@ -349,29 +342,19 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const headerActions = (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      <Input
-        className="tw:w-75"
-        data-testid="memories-search-input"
-        icon={SearchLg}
-        placeholder={t('label.search-memories')}
-        value={searchValue}
-        onChange={handleSearchChange}
-      />
-      <Button
-        color="primary"
-        data-testid="add-memory-btn"
-        iconLeading={Plus}
-        size="sm"
-        onClick={() => setIsCreateModalOpen(true)}>
-        {t('label.add-entity', { entity: t('label.memory') })}
-      </Button>
-    </div>
+    <Button
+      color="primary"
+      data-testid="add-memory-btn"
+      iconLeading={Plus}
+      size="sm"
+      onClick={() => setIsCreateModalOpen(true)}>
+      {t('label.add-entity', { entity: t('label.memory') })}
+    </Button>
   );
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
@@ -380,7 +363,7 @@ const ContextCenterMemoriesPage: FC = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -393,67 +376,58 @@ const ContextCenterMemoriesPage: FC = () => {
             url: '',
           },
         ]}
+        className="tw:mb-3"
+        searchPlaceholder={t('label.search-memories')}
+        searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
         title={t('label.memory-plural')}
+        onSearch={handleSearchChange}
       />
 
       {/* Stats cards */}
-      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-5">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-3">
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.total-memory-plural')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {memories.length}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.created-by-me')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {createdByMeCount}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.shared-with-workspace')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {sharedCount}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.times-used-in-chats')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {totalUsageCount}
           </Typography>
         </Card>
       </div>
 
       {/* Memories card with tabs */}
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:overflow-hidden">
-        <div className="tw:px-6 tw:py-5">
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Typography size="text-md" weight="medium">
-              {t('label.memory-plural')}
-            </Typography>
-            <Badge color="brand" type="pill-color">
-              {filteredMemories.length}
-            </Badge>
-          </div>
-          <Typography className="tw:text-gray-600" size="text-sm">
-            {t('label.signed-in-as')} <strong>{currentUserName}</strong>.{' '}
-            {t('message.you-can-edit-memories-you-created')}.
-          </Typography>
-        </div>
-
-        <div className="tw:px-5 tw:py-3 tw:bg-tertiary tw:flex tw:items-center tw:gap-3 tw:flex-wrap">
+      <Card
+        className="tw:flex tw:flex-col tw:h-auto"
+        style={{ overflow: 'unset' }}>
+        <div className="tw:px-5 tw:py-3 tw:border-b tw:border-gray-blue-100 tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:sticky tw:top-0 tw:z-10 tw:bg-white tw:rounded-tl-xl tw:rounded-tr-xl">
           <Tabs
             className="tw:w-max"
             selectedKey={activeFilter}
@@ -642,10 +616,12 @@ const ContextCenterMemoriesPage: FC = () => {
           </div>
         </div>
 
-        <div className="tw:flex-1 tw:overflow-y-auto">
+        <div>
           <MemoriesView
             canDelete
+            currentUserName={currentUser?.name}
             data={pagedMemories}
+            isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
@@ -662,6 +638,12 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
+        canDelete={
+          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
+            false) ||
+          Boolean(currentUser?.isAdmin)
+        }
+        currentUserName={currentUser?.name}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -674,10 +656,19 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
+          canDelete={
+            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
+              false) ||
+            Boolean(currentUser?.isAdmin)
+          }
+          currentUserName={currentUser?.name}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
           onCreated={handleViewModalClose}
+          onDeleted={handleModalSuccess}
+          onEditMemory={handleEditMemory}
+          onUpdated={handleModalSuccess}
         />
       )}
 

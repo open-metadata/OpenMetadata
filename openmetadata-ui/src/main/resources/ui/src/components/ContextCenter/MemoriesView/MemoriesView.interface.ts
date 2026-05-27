@@ -13,6 +13,7 @@
 import {
   MemoryStatus,
   MemoryType,
+  ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -32,6 +33,8 @@ export interface MemoryItem {
   usageCount?: number;
   lastUsedAt?: number;
   relatedEntities?: EntityReference[];
+  visibility?: ShareVisibility;
+  owners?: EntityReference[];
 }
 
 export type MemoryFilterTab =
@@ -47,6 +50,8 @@ export interface MemoriesViewProps {
   data: MemoryItem[];
   isLoading: boolean;
   canDelete?: boolean;
+  currentUserName?: string;
+  isAdminUser?: boolean;
   onDeleteMemory?: (memory: MemoryItem) => void;
   onEditMemory?: (memory: MemoryItem) => void;
   onViewMemory?: (memory: MemoryItem) => void;
@@ -56,7 +61,6 @@ export interface MemoryActionsProps {
   canDelete?: boolean;
   memory: MemoryItem;
   onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
 }
 
 export interface MemoryActionsWithOpenProps extends MemoryActionsProps {

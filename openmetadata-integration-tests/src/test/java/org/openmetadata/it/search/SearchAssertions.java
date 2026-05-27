@@ -55,20 +55,24 @@ public final class SearchAssertions {
   }
 
   /**
-   * Cardinality of the OM entity id ({@code id.keyword}) on the alias — i.e., the count
-   * of distinct entities regardless of how many backing indices the alias spans. Used by
-   * the no-duplicates invariant: during reindex, {@code count(alias) == distinctIds(alias)}
-   * must always hold, otherwise two backing indices are returning the same logical entity.
+   * Whether any OM entity id appears in more than one document under the alias — the exact
+   * duplicate check behind the no-duplicates-during-reindex invariant. A non-atomic alias swap
+   * leaves the alias transiently spanning both the old and new backing index, so the same
+   * logical entity is returned twice; a {@code terms} aggregation on {@code id.keyword} with
+   * {@code min_doc_count=2} surfaces exactly that.
    *
    * <p>Aggregating on {@code id.keyword} rather than {@code _id} works without enabling
-   * fielddata; OM sets the doc {@code _id} equal to the entity id so the two values match.
+   * fielddata; OM sets the doc {@code _id} equal to the entity id so the two values match. This
+   * is exact on a single-shard index (the OM test indices are created single-shard from the
+   * static mapping), unlike an approximate {@code cardinality} aggregation, which can differ
+   * from the doc count by a handful purely from HyperLogLog error and produce false positives.
    */
-  public long distinctIds(final String alias) {
+  public boolean hasDuplicateIds(final String alias) {
     final String body =
-        "{\"size\":0,\"aggs\":{\"distinct_ids\":{\"cardinality\":{\"field\":\"id.keyword\","
-            + "\"precision_threshold\":40000}}}}";
+        "{\"size\":0,\"aggs\":{\"dupes\":{\"terms\":{\"field\":\"id.keyword\","
+            + "\"min_doc_count\":2,\"size\":1}}}}";
     final JsonNode response = search.post("/" + alias + "/_search", body);
-    return response.path("aggregations").path("distinct_ids").path("value").asLong();
+    return !response.path("aggregations").path("dupes").path("buckets").isEmpty();
   }
 
   public void assertCountAtLeast(final String indexOrAlias, final long minimum) {
@@ -91,7 +95,7 @@ public final class SearchAssertions {
             + "{\"term\":{\"entityType\":\""
             + entityType
             + "\"}},"
-            + "{\"term\":{\"fullyQualifiedName.keyword\":\""
+            + "{\"term\":{\"fullyQualifiedName\":\""
             + escape(fqn)
             + "\"}}"
             + "]}}}";
@@ -107,7 +111,7 @@ public final class SearchAssertions {
             + "{\"term\":{\"entityType\":\""
             + entityType
             + "\"}},"
-            + "{\"term\":{\"fullyQualifiedName.keyword\":\""
+            + "{\"term\":{\"fullyQualifiedName\":\""
             + escape(fqn)
             + "\"}}"
             + "]}}}";

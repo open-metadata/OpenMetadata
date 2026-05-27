@@ -69,7 +69,6 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import { hasEditAccess } from '../../../utils/CommonUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -81,6 +80,7 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
+  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -620,6 +620,7 @@ export const DataAssetsHeader = ({
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
+      currentUser?.isAdmin ||
       !canCreateTask
     ) {
       return null;

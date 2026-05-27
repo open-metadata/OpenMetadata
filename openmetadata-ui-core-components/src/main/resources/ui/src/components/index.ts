@@ -93,6 +93,7 @@ export {
   getField,
 } from './application/form-field/form-field';
 export * from './application/accordion/accordion';
+export * from './application/tree/tree';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,
