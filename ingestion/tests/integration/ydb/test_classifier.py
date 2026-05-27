@@ -47,6 +47,5 @@ def test_sample_data(
     assert with_samples.sampleData is not None
     # We seeded 3 rows; sampling fetches up to sample_limit (default 50).
     assert len(with_samples.sampleData.rows or []) == 3
-    col_names = {str(c.root) if hasattr(c, "root") else str(c)
-                 for c in (with_samples.sampleData.columns or [])}
+    col_names = {str(c.root) if hasattr(c, "root") else str(c) for c in (with_samples.sampleData.columns or [])}
     assert col_names == {"event_id", "user_id", "ts"}

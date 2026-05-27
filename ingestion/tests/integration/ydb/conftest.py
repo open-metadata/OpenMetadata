@@ -28,12 +28,6 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.schema import DDL
 
-
-def _pick_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
-
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -45,8 +39,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-YDB_IMAGE = os.environ.get("YDB_IMAGE", "ydbplatform/local-ydb:trunk")
+YDB_IMAGE = os.environ.get("YDB_IMAGE", "ydbplatform/local-ydb:26.1.1")
 YDB_GRPC_PORT = 2136
+
+
+def _pick_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 @pytest.fixture(scope="module")
@@ -105,21 +105,16 @@ def ydb_container():
             try:
                 engine = create_engine(c.grpc_url())
                 with engine.connect() as conn:
-                    conn.execute(
-                        DDL(
-                            f"CREATE TABLE {probe} (k Int64, PRIMARY KEY (k))"
-                        )
-                    )
+                    conn.execute(DDL(f"CREATE TABLE {probe} (k Int64, PRIMARY KEY (k))"))
                     conn.execute(DDL(f"DROP TABLE {probe}"))
                     conn.commit()
                 engine.dispose()
-                return
             except Exception as exc:
                 last_err = exc
                 time.sleep(2)
-        raise TimeoutError(
-            f"YDB did not become writable in {timeout_s}s — last error: {last_err}"
-        )
+            else:
+                return
+        raise TimeoutError(f"YDB did not become writable in {timeout_s}s — last error: {last_err}")
 
     container = _YdbContainer()
     with container as started:
@@ -141,10 +136,7 @@ def unmask_password():
 
 @pytest.fixture(scope="module")
 def create_service_request(ydb_container):
-    host_port = (
-        f"{ydb_container.get_container_host_ip()}:"
-        f"{ydb_container.get_exposed_port(ydb_container.port)}"
-    )
+    host_port = f"{ydb_container.get_container_host_ip()}:{ydb_container.get_exposed_port(ydb_container.port)}"
     return CreateDatabaseServiceRequest(
         name=f"docker_test_ydb_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.YDB,
@@ -217,8 +209,8 @@ def create_test_data(ydb_container):
         ),
     ]
     with engine.connect() as conn:
-        for stmt in setup:
-            stmt = stmt.strip()
+        for statement in setup:
+            stmt = statement.strip()
             if not stmt:
                 continue
             # YDB rejects scheme ops inside a transaction. SQLAlchemy

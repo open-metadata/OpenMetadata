@@ -47,17 +47,13 @@ def test_profiler(
     service = db_service.fullyQualifiedName.root
 
     # raw.events: table-level row/column counts.
-    events = metadata.get_latest_table_profile(
-        fqn=f"{service}./local.raw.events"
-    )
+    events = metadata.get_latest_table_profile(fqn=f"{service}./local.raw.events")
     assert events is not None and events.profile is not None
     assert events.profile.rowCount == 3.0
     assert events.profile.columnCount == 3.0
 
     # orders: table-level counts.
-    orders = metadata.get_latest_table_profile(
-        fqn=f"{service}./local.(root).orders"
-    )
+    orders = metadata.get_latest_table_profile(fqn=f"{service}./local.(root).orders")
     assert orders is not None and orders.profile is not None
     assert orders.profile.rowCount == 3.0
     assert orders.profile.columnCount == 2.0
@@ -86,9 +82,7 @@ def test_profiler(
     assert order_id_col.profile.max == 3.0
 
     # raw.events.event_id: text column — distinct count and nulls.
-    events = metadata.get_latest_table_profile(
-        fqn=f"{service}./local.raw.events"
-    )
+    events = metadata.get_latest_table_profile(fqn=f"{service}./local.raw.events")
     assert events is not None and events.columns
     event_id_col = next(c for c in events.columns if c.name.root == "event_id")
     assert event_id_col.profile is not None

@@ -33,11 +33,7 @@ def lineage_config(db_service, workflow_config, sink_config):
         "source": {
             "type": "ydb-lineage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {
-                    "type": DatabaseLineageConfigType.DatabaseLineage.value
-                }
-            },
+            "sourceConfig": {"config": {"type": DatabaseLineageConfigType.DatabaseLineage.value}},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
@@ -60,9 +56,7 @@ def test_view_lineage(
     service = db_service.fullyQualifiedName.root
 
     # staging/events ← raw/events
-    staging_edges = metadata.get_lineage_by_name(
-        entity=Table, fqn=f"{service}./local.staging.events"
-    )
+    staging_edges = metadata.get_lineage_by_name(entity=Table, fqn=f"{service}./local.staging.events")
     edge_fqns = {n["fullyQualifiedName"] for n in staging_edges.get("nodes", [])}
     assert f"{service}./local.raw.events" in edge_fqns, (
         f"raw.events not upstream of staging.events; got nodes: {edge_fqns}"
@@ -75,6 +69,5 @@ def test_view_lineage(
     )
     marts_fqns = {n["fullyQualifiedName"] for n in marts_edges.get("nodes", [])}
     assert f"{service}./local.staging.events" in marts_fqns, (
-        f"staging.events not upstream of marts/analytics.events_by_user; "
-        f"got nodes: {marts_fqns}"
+        f"staging.events not upstream of marts/analytics.events_by_user; got nodes: {marts_fqns}"
     )

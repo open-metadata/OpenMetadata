@@ -47,9 +47,7 @@ def test_metadata_ingestion(
     for fqn, expected_type in expected:
         table = metadata.get_by_name(entity=Table, fqn=fqn)
         assert table is not None, f"Table {fqn} not ingested"
-        assert table.tableType == expected_type, (
-            f"{fqn}: expected {expected_type}, got {table.tableType}"
-        )
+        assert table.tableType == expected_type, f"{fqn}: expected {expected_type}, got {table.tableType}"
         assert table.columns, f"{fqn}: ingested with zero columns"
 
 
@@ -73,17 +71,13 @@ def test_column_types(
 
     service = db_service.fullyQualifiedName.root
 
-    orders = metadata.get_by_name(
-        entity=Table, fqn=f"{service}./local.(root).orders"
-    )
+    orders = metadata.get_by_name(entity=Table, fqn=f"{service}./local.(root).orders")
     assert orders is not None
     orders_by_name = {c.name.root: c for c in orders.columns}
     assert orders_by_name["order_id"].dataType.name.lower() == "int"
     assert orders_by_name["amount"].dataType.name.lower() == "float"
 
-    events = metadata.get_by_name(
-        entity=Table, fqn=f"{service}./local.raw.events"
-    )
+    events = metadata.get_by_name(entity=Table, fqn=f"{service}./local.raw.events")
     assert events is not None
     events_by_name = {c.name.root: c for c in events.columns}
     assert events_by_name["event_id"].dataType.name.lower() == "text"
