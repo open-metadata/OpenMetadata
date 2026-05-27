@@ -56,7 +56,7 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import {
   getEntityImportPath,
   getEntityVoteStatus,

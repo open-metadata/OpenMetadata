@@ -38,6 +38,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
   LONG_DELAY,
   SHORT_DELAY,
 } from '../../../constants/constants';
@@ -78,12 +79,12 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/CommonUtils';
-import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+} from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -91,6 +92,7 @@ import {
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -715,6 +717,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     () => tabs?.find((t) => t?.key === activeTab)?.children ?? null,
     [tabs, activeTab]
   );
+
+  useEffect(() => {
+    tagClassBase.setFilterClassification([]);
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, []);
 
   const pageConfig = useMemo(() => {
     let rightPanel = null;

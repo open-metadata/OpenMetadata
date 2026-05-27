@@ -25,7 +25,6 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   getColumnFunctionValue,
@@ -33,6 +32,7 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';

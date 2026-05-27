@@ -20,10 +20,11 @@ import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { KNOWLEDGE_CENTER_CLASSIFICATION } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../generated/entity/type';
@@ -46,7 +47,8 @@ import {
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -75,6 +77,18 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const { t } = useTranslation('translation', { i18n });
 
   const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      tagClassBase.setFilterClassification([]);
+    } else {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    }
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, [isOpen]);
 
   const { initialValues, initialDataAssetsOptions, restRelatedDataAssets } =
     useMemo(() => {
@@ -169,6 +183,11 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         { fields: getKnowledgePageFields() }
       );
 
+      showSuccessToast(
+        t('message.entity-saved-successfully', {
+          entity: t('label.quick-link'),
+        })
+      );
       onSave({
         displayName: response.displayName,
         description: response.description,
@@ -181,6 +200,11 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleCancel = () => {
+    form.resetFields();
+    onCancel();
   };
 
   const handleFormFinish = (
@@ -324,14 +348,14 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       isDismissable
       isOpen={isOpen}
       style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && onCancel()}>
+      onOpenChange={(open) => !open && handleCancel()}>
       <Modal>
         <Dialog
           showCloseButton
           className="quick-link-form-modal"
-          title={title}
           width={600}
-          onClose={onCancel}>
+          onClose={handleCancel}>
+          <Dialog.Header title={title} />
           <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
             <Form
               className="new-form-style"
@@ -357,8 +381,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           </Dialog.Content>
 
           <Dialog.Footer className="quick-link-modal-footer">
-            <Button color="secondary" onClick={onCancel}>
-              {t('label.back')}
+            <Button color="secondary" onClick={handleCancel}>
+              {t('label.cancel')}
             </Button>
             <Button
               color="primary"

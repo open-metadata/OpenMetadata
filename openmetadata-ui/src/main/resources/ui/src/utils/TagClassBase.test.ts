@@ -23,7 +23,7 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockReturnValue('test'),
   escapeESReservedCharacters: jest.fn().mockReturnValue('test'),
 }));

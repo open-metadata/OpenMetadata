@@ -32,16 +32,14 @@ import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../../../rest/announcementsAPI';
-import {
-  getRecentlyViewedData,
-  isLinearGradient,
-} from '../../../../utils/CommonUtils';
+import { isLinearGradient } from '../../../../utils/ColorUtils';
 import {
   CustomNextArrow,
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getDomainDisplayName } from '../../../../utils/EntityUtils';
+import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
