@@ -511,6 +511,7 @@ public class CreateTask implements TaskListener {
       if (effectiveDueDate != null) {
         updatedTask.setDueDate(effectiveDueDate);
       }
+      updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -572,6 +573,7 @@ public class CreateTask implements TaskListener {
     if (effectiveDueDate != null) {
       task.setDueDate(effectiveDueDate);
     }
+    task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -734,6 +736,52 @@ public class CreateTask implements TaskListener {
       return requestedDueDate;
     }
     return parseMillisFromIso8601Duration(duration, requestedDueDate);
+  }
+
+  /**
+   * Compute {@code payload.expirationDate} when the workflow enters the Granted stage.
+   *
+   * <p>Anchoring this on stage entry (instead of on the user-invoked transition) makes
+   * both the manual path (Approved → markAsGranted → Granted) and the automated PolicyAgent
+   * path (Review → approve → PolicyAgent[granted] → Granted) populate expirationDate, since
+   * both routes funnel through this listener.
+   *
+   * <p>Returns null when the stage isn't Granted, the payload doesn't carry a parseable
+   * duration, or the payload already has an expirationDate (idempotency for re-entry).
+   */
+  static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
+    if (stageStatus != TaskEntityStatus.Granted || !(payload instanceof Map<?, ?> rawMap)) {
+      return null;
+    }
+    Object existing = rawMap.get("expirationDate");
+    if (existing instanceof Number existingNum) {
+      return existingNum.longValue();
+    }
+    Object durationValue = rawMap.get("duration");
+    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+      return null;
+    }
+    return parseMillisFromIso8601Duration(duration, null);
+  }
+
+  /**
+   * Returns the payload with {@code expirationDate} merged in when the task enters
+   * Granted. Returns the original reference unchanged when there's nothing to add, so
+   * non-DAR workflows that target Granted aren't penalised and the input map is never
+   * mutated.
+   */
+  static Object withGrantExpirationDate(TaskEntityStatus stageStatus, Object payload) {
+    Long expiration = resolveEffectiveExpirationDate(stageStatus, payload);
+    if (expiration == null || !(payload instanceof Map<?, ?> rawMap)) {
+      return payload;
+    }
+    if (rawMap.get("expirationDate") instanceof Number) {
+      return payload;
+    }
+    Map<String, Object> merged = new LinkedHashMap<>();
+    rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
+    merged.put("expirationDate", expiration);
+    return merged;
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
