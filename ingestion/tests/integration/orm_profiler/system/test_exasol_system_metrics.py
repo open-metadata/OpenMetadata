@@ -28,7 +28,6 @@ How to use this test
 """
 
 import subprocess
-import time
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
@@ -37,11 +36,13 @@ import pytest
 import yaml
 from sqlalchemy import create_engine, text
 
+from ingestion.tests.integration.orm_profiler.system.utilities import wait_for_system_table
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.exasol.queries import EXASOL_SYSTEM_METRICS_QUERY
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
@@ -116,6 +117,14 @@ def _prepare_exasol_objects(engine) -> None:
         for statement in dml_statements:
             connection.execute(text(statement))
 
+    query = EXASOL_SYSTEM_METRICS_QUERY.format(
+        database_name="default",
+        schema=SCHEMA_NAME,
+        table=TABLE_NAME,
+        operations="'INSERT', 'UPDATE', 'DELETE'",
+    )
+    wait_for_system_table(engine, query, expected_count=4)
+
 
 @pytest.mark.skip(reason="Disabled by default. Should be ran manually on system metric updates")
 class TestExasolSystem(TestCase):
@@ -187,8 +196,6 @@ class TestExasolSystem(TestCase):
             "config": {},
         }
 
-        # give sufficient time for changes to propagate to audit log
-        time.sleep(10)
         profiler_workflow = ProfilerWorkflow.create(config)
         profiler_workflow.execute()
         profiler_workflow.raise_from_status()

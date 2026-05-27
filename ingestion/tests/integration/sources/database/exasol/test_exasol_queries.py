@@ -15,6 +15,7 @@ from typing import ClassVar
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from ingestion.tests.integration.orm_profiler.system.utilities import wait_for_system_table
 from metadata.ingestion.source.database.exasol.queries import (
     EXASOL_GET_COLUMN_COMMENTS,
     EXASOL_GET_TABLE_COMMENTS,
@@ -144,8 +145,11 @@ class TestExasolQueries:
         ]
 
     def test_connection_test_get_queries(self):
+        query = EXASOL_TEST_GET_QUERIES
+        wait_for_system_table(self.engine, query, expected_count=1)
+
         with self.engine.connect() as connection:
-            result = connection.execute(text(EXASOL_TEST_GET_QUERIES))
+            result = connection.execute(text(query))
             result_columns = result.keys()
             columns = {column.lower() for column in result_columns}
             rows = result.fetchall()
@@ -158,7 +162,7 @@ class TestExasolQueries:
             "stop_time",
             "duration",
         }
-        assert len(rows) <= 1
+        assert len(rows) == 1
 
     def test_sql_statement_query(self):
         query = EXASOL_SQL_STATEMENT.format(
@@ -167,6 +171,8 @@ class TestExasolQueries:
             filters="",
             result_limit=5,
         )
+
+        wait_for_system_table(self.engine, query, expected_count=5)
 
         with self.engine.connect() as connection:
             result = connection.execute(text(query))
@@ -182,31 +188,31 @@ class TestExasolQueries:
             "end_time",
             "duration",
         }
-        assert len(rows) <= 5
+        assert len(rows) == 5
 
     def test_system_metrics_query_returns_exasol_dml_rows(self):
         dml_statements = [
             f"""
-            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (
-                col_boolean,
-                col_decimal,
-                col_date,
-                col_timestamp,
-                col_timestamp_local,
-                col_char,
-                col_varchar
-            ) VALUES
-            (TRUE, 1.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'x', 'y')
-            """,
+                INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (
+                    col_boolean,
+                    col_decimal,
+                    col_date,
+                    col_timestamp,
+                    col_timestamp_local,
+                    col_char,
+                    col_varchar
+                ) VALUES
+                (TRUE, 1.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'x', 'y')
+                """,
             f"""
-            UPDATE {SCHEMA_NAME}.{TABLE_NAME}
-            SET col_varchar = 'z'
-            WHERE col_char = 'x'
-            """,
+                UPDATE {SCHEMA_NAME}.{TABLE_NAME}
+                SET col_varchar = 'z'
+                WHERE col_char = 'x'
+                """,
             f"""
-            DELETE FROM {SCHEMA_NAME}.{TABLE_NAME}
-            WHERE col_char = 'x'
-            """,
+                DELETE FROM {SCHEMA_NAME}.{TABLE_NAME}
+                WHERE col_char = 'x'
+                """,
         ]
 
         with self.engine.begin() as connection:
@@ -214,12 +220,12 @@ class TestExasolQueries:
                 connection.execute(text(statement))
 
         query = EXASOL_SYSTEM_METRICS_QUERY.format(
-            database="default",
             database_name="default",
             schema=SCHEMA_NAME,
             table=TABLE_NAME,
             operations="'INSERT', 'UPDATE', 'DELETE'",
         )
+        wait_for_system_table(self.engine, query, expected_count=3, timeout_seconds=120)
 
         with self.engine.connect() as connection:
             result = connection.execute(text(query))
@@ -234,4 +240,4 @@ class TestExasolQueries:
             "starttime",
             "rows",
         }
-        assert len(rows) <= 1
+        assert len(rows) == 3

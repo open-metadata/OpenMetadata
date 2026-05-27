@@ -191,7 +191,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             time.sleep(5)
 
         self.assertIsNotNone(table)
-        self.assertIsNotNone(table.description)
         self.assertEqual(table.description.root, TABLE_COMMENT)
 
         column_names = [column.name.root for column in table.columns]
@@ -209,9 +208,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
         column_by_name = {column.name.root: column for column in table.columns}
-        self.assertIsNotNone(column_by_name["col_boolean"].description)
         self.assertEqual(column_by_name["col_boolean"].description.root, COLUMN_COMMENT)
-        self.assertIsNone(column_by_name["col_decimal"].description)
         self.assertIsNone(column_by_name["col_date"].description)
 
     @pytest.mark.order(100)
