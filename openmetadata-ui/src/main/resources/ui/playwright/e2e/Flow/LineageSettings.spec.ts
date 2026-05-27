@@ -281,7 +281,7 @@ test.describe.serial('Lineage Settings Tests', () => {
     });
 
     await page.getByTestId('lineage-time-filter').click();
-    await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+    await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
 
     const response = await lineageTimeFilteredResponse;
     const responseUrl = new URL(response.url());
