@@ -12,31 +12,8 @@
  */
 import {
   ICSamplingConfig,
-  ProfileSampleType,
   SampleConfigType,
-  SamplingMethodType,
-  Threshold,
 } from '../generated/metadataIngestion/databaseServiceProfilerPipeline';
-
-export const SAMPLE_CONFIG_TYPE_OPTIONS = [
-  { id: SampleConfigType.Static, label: 'STATIC' },
-  { id: SampleConfigType.Dynamic, label: 'DYNAMIC' },
-];
-
-export const PROFILE_SAMPLE_TYPE_OPTIONS = [
-  { id: ProfileSampleType.Percentage, label: 'PERCENTAGE' },
-  { id: ProfileSampleType.Rows, label: 'ROWS' },
-];
-
-export const SAMPLING_METHOD_TYPE_OPTIONS = [
-  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
-  { id: SamplingMethodType.System, label: 'SYSTEM' },
-];
-
-export const DEFAULT_THRESHOLD: Threshold = {
-  rowCountThreshold: 1,
-  profileSample: 100,
-};
 
 export const STATIC_CONFIG_KEYS: ReadonlyArray<keyof ICSamplingConfig> = [
   'profileSample',

@@ -32,17 +32,31 @@ import {
   SamplingMethodType,
   Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import {
-  DEFAULT_THRESHOLD,
-  pickConfigForType,
-  PROFILE_SAMPLE_TYPE_OPTIONS,
-  SAMPLE_CONFIG_TYPE_OPTIONS,
-  SAMPLING_METHOD_TYPE_OPTIONS,
-} from '../../../../../utils/ProfileSampleConfigUtils';
+import { pickConfigForType } from '../../../../../utils/ProfileSampleConfigUtils';
+
+const DEFAULT_THRESHOLD: Threshold = {
+  rowCountThreshold: 1,
+  profileSample: 100,
+};
+
+const SAMPLING_METHOD_TYPE_OPTIONS = [
+  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
+  { id: SamplingMethodType.System, label: 'SYSTEM' },
+];
 
 const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;
   const { t } = useTranslation();
+
+  const SAMPLE_CONFIG_TYPE_OPTIONS = [
+    { id: SampleConfigType.Static, label: t('label.static') },
+    { id: SampleConfigType.Dynamic, label: t('label.dynamic') },
+  ];
+
+  const PROFILE_SAMPLE_TYPE_OPTIONS = [
+    { id: ProfileSampleType.Percentage, label: t('label.percentage') },
+    { id: ProfileSampleType.Rows, label: t('label.row-plural') },
+  ];
 
   const sampleConfigType =
     formData?.sampleConfigType ?? SampleConfigType.Dynamic;

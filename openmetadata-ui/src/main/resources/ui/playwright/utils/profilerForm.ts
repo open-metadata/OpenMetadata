@@ -43,8 +43,8 @@ export const openProfilerForm = async (
   service: DatabaseServiceClass
 ) => {
   await redirectToHomePage(page);
-  const serviceDetailResponse = page.waitForResponse(
-    '/api/v1/services/databaseServices/name/*'
+  const serviceDetailResponse = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/services/databaseServices/name/')
   );
   await visitServiceDetailsPage(
     page,

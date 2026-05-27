@@ -17,45 +17,13 @@ import {
   SamplingMethodType,
 } from '../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import {
-  DEFAULT_THRESHOLD,
   DYNAMIC_CONFIG_KEYS,
   pickConfigForType,
-  PROFILE_SAMPLE_TYPE_OPTIONS,
-  SAMPLE_CONFIG_TYPE_OPTIONS,
-  SAMPLING_METHOD_TYPE_OPTIONS,
   STATIC_CONFIG_KEYS,
 } from './ProfileSampleConfigUtils';
 
 describe('ProfileSampleConfigUtils', () => {
-  describe('option constants', () => {
-    it('SAMPLE_CONFIG_TYPE_OPTIONS exposes STATIC and DYNAMIC ids', () => {
-      expect(SAMPLE_CONFIG_TYPE_OPTIONS.map((o) => o.id)).toEqual([
-        SampleConfigType.Static,
-        SampleConfigType.Dynamic,
-      ]);
-    });
-
-    it('PROFILE_SAMPLE_TYPE_OPTIONS exposes PERCENTAGE and ROWS ids', () => {
-      expect(PROFILE_SAMPLE_TYPE_OPTIONS.map((o) => o.id)).toEqual([
-        ProfileSampleType.Percentage,
-        ProfileSampleType.Rows,
-      ]);
-    });
-
-    it('SAMPLING_METHOD_TYPE_OPTIONS exposes BERNOULLI and SYSTEM ids', () => {
-      expect(SAMPLING_METHOD_TYPE_OPTIONS.map((o) => o.id)).toEqual([
-        SamplingMethodType.Bernoulli,
-        SamplingMethodType.System,
-      ]);
-    });
-
-    it('DEFAULT_THRESHOLD has rowCountThreshold=1 and profileSample=100', () => {
-      expect(DEFAULT_THRESHOLD).toEqual({
-        rowCountThreshold: 1,
-        profileSample: 100,
-      });
-    });
-
+  describe('discriminator key constants', () => {
     it('STATIC_CONFIG_KEYS contains only static-side fields', () => {
       expect(STATIC_CONFIG_KEYS).toEqual([
         'profileSample',

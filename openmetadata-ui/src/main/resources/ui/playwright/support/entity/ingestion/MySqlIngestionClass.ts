@@ -29,6 +29,7 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { expandAdvancedConfig } from '../../../utils/profilerForm';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -144,15 +145,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await profilerMenuItem.click();
 
       await waitForAllLoadersToDisappear(page);
-      const advancedConfigHeader = page
-        .locator('.advanced-properties-collapse .ant-collapse-header')
-        .first();
-      await advancedConfigHeader.waitFor();
-      const isAdvancedConfigExpanded =
-        (await advancedConfigHeader.getAttribute('aria-expanded')) === 'true';
-      if (!isAdvancedConfigExpanded) {
-        await advancedConfigHeader.click();
-      }
+      await expandAdvancedConfig(page);
 
       const sampleConfigTypeSelect = page.getByTestId(
         'sample-config-type-select'
