@@ -6,7 +6,7 @@ from metadata.profiler.interface.sqlalchemy.exasol.profiler_interface import (
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    profiler_class=ExasolProfilerInterface,
+    profiler_class=ExasolProfilerInterface,  # pyright: ignore[reportArgumentType]
     metadata_source_class=ExasolSource,
     lineage_source_class=ExasolLineageSource,
 )
