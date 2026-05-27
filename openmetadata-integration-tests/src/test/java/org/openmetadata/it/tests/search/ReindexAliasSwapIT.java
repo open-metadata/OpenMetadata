@@ -2,8 +2,10 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,11 +66,21 @@ class ReindexAliasSwapIT {
     final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
+    // Per-entity alias promotions are fired by callbacks that can lag a beat behind the run
+    // reaching a terminal status (an empty entity like aiAgent is promoted last, milliseconds
+    // after success). Poll until every alias has flipped rather than reading the swap state once
+    // and racing those callbacks.
+    Awaitility.await("every alias swaps to a new backing index")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertEveryAliasSwapped(beforeSwap));
+  }
+
+  private static void assertEveryAliasSwapped(final Map<String, String> beforeSwap) {
     final Map<String, String> afterSwap = inspector.aliasToIndex();
     assertThat(afterSwap.keySet())
         .as("alias set must be unchanged after reindex")
         .containsExactlyInAnyOrderElementsOf(beforeSwap.keySet());
-
     beforeSwap.forEach(
         (alias, beforeIndex) ->
             assertThat(afterSwap.get(alias))
