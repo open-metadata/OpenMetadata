@@ -84,7 +84,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private EntityReference getPrimaryEntity(ContextMemory entity) {
     List<EntityReference> refs =
-        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null);
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.APPLIED_TO, null);
     return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
