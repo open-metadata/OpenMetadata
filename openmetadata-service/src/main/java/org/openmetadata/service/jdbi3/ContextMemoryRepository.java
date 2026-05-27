@@ -190,7 +190,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           entity.getId(),
           entity.getPrimaryEntity().getType(),
           Entity.CONTEXT_MEMORY,
-          Relationship.HAS);
+          Relationship.APPLIED_TO);
     }
 
     for (var relatedEntity : listOrEmpty(entity.getRelatedEntities())) {
@@ -320,7 +320,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           asRefList(original.getPrimaryEntity()),
           asRefList(updated.getPrimaryEntity()),
-          Relationship.HAS,
+          Relationship.APPLIED_TO,
           Entity.CONTEXT_MEMORY,
           original.getId());
       updateFromRelationships(
