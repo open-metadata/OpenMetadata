@@ -50,12 +50,16 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
     DescribeJsonPayload,
     DescribeJsonType,
     NestedDescriptions,
     NestedFieldPath,
+)
+from metadata.ingestion.source.database.databricks.ownership import (
+    DatabricksOwnerResolver,
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
@@ -844,6 +848,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.table_tags = {}
         self.external_location_map = {}
         self.column_tags = {}
+        self.api_client = DatabricksClient(self.service_connection)
+        self.owner_resolver = DatabricksOwnerResolver(
+            api_client=self.api_client,
+            metadata=self.metadata,
+            include_owners=self.source_config.includeOwners,
+        )
 
     def _init_version(self):
         try:
@@ -1314,7 +1324,10 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
-            owner_ref = None
+            owner_resolver = self.__dict__.get("owner_resolver")
+            if owner_resolver:
+                return owner_resolver.get_owner_ref(owner)
+
             try:
                 owner_email = EmailStr._validate(owner)
                 owner_ref = self.metadata.get_reference_by_email(email=owner_email)

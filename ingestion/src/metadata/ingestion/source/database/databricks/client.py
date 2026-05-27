@@ -23,8 +23,20 @@ import requests
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
+    AzureAdSetup,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
@@ -44,6 +56,8 @@ PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
 API_VERSION = "/api/2.0"
 JOB_API_VERSION = "/api/2.1"
+SCIM_SERVICE_PRINCIPALS_PATH = "/preview/scim/v2/ServicePrincipals"
+SCIM_GROUPS_PATH = "/preview/scim/v2/Groups"
 
 
 class DatabricksClientException(Exception):  # noqa: N818
@@ -59,7 +73,7 @@ class DatabricksClient:
 
     def __init__(
         self,
-        config: Union[DatabricksConnection, DatabricksPipelineConnection],  # noqa: UP007
+        config: Union[DatabricksConnection, DatabricksPipelineConnection, UnityCatalogConnection],  # noqa: UP007
         engine: Optional[Engine] = None,  # noqa: UP045
     ):
         self.config = config
@@ -87,7 +101,65 @@ class DatabricksClient:
         """
         Method to get auth header
         """
-        return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
+        if isinstance(self.config, DatabricksPipelineConnection):
+            return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
+
+        from metadata.ingestion.source.database.databricks import auth  # noqa: PLC0415
+
+        auth_method = {
+            PersonalAccessToken: auth.get_personal_access_token_auth,
+            DatabricksOauth: auth.get_databricks_oauth_auth,
+            AzureAdSetup: auth.get_azure_ad_auth,
+        }.get(type(self.config.authType))
+        if not auth_method:
+            raise ValueError(f"Unsupported authentication type: {type(self.config.authType)}")
+
+        auth_args = auth_method(self.config)
+        if auth_args.get("access_token"):
+            return {"Authorization": f"Bearer {auth_args['access_token']}"}
+
+        return auth_args["credentials_provider"]()()
+
+    def _list_scim_resources(self, path: str) -> Iterable[dict]:
+        """
+        List workspace SCIM resources using Databricks' 1-based pagination.
+        """
+        start_index = 1
+        while True:
+            response = self.client.get(
+                f"{self.base_url}{path}",
+                headers=self.headers,
+                params={"startIndex": start_index, "count": PAGE_SIZE},
+                timeout=self.api_timeout,
+            )
+            if response.status_code != 200:
+                raise DatabricksClientException(
+                    f"Failed to list Databricks SCIM resources from [{path}]. "
+                    f"Status code: {response.status_code}, response: {response.text}"
+                )
+
+            payload = response.json()
+            resources = payload.get("Resources") or []
+            yield from resources
+
+            items_per_page = int(payload.get("itemsPerPage") or len(resources))
+            total_results = int(payload.get("totalResults") or 0)
+            current_start = int(payload.get("startIndex") or start_index)
+            if not resources or current_start + items_per_page > total_results:
+                break
+            start_index = current_start + items_per_page
+
+    def list_service_principals(self) -> Iterable[dict]:
+        """
+        List Databricks workspace service principals from SCIM.
+        """
+        yield from self._list_scim_resources(SCIM_SERVICE_PRINCIPALS_PATH)
+
+    def list_groups(self) -> Iterable[dict]:
+        """
+        List Databricks workspace groups from SCIM.
+        """
+        yield from self._list_scim_resources(SCIM_GROUPS_PATH)
 
     def test_query_api_access(self) -> None:
         res = self.client.get(self.base_query_url, headers=self.headers, timeout=self.api_timeout)
