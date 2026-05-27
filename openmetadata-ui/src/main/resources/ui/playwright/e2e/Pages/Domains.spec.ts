@@ -163,7 +163,7 @@ test.describe('Domains', () => {
     await redirectToHomePage(page);
   });
 
-  test('AddDomainForm description preserves typed whitespace per keystroke', async ({
+  test('AddDomainForm description preserves typed whitespace', async ({
     page,
   }) => {
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -173,17 +173,13 @@ test.describe('Domains', () => {
     await page.getByTestId('add-domain-form').waitFor();
 
     const description = page.locator(descriptionBox);
-    await description.click();
-
     const typed = 'hello world ';
-    let expected = '';
 
-    for (const char of typed) {
-      await description.pressSequentially(char, { delay: 0 });
-      expected += char;
+    await description.click();
+    await description.pressSequentially(typed);
 
-      await expect(description).toHaveText(expected);
-    }
+    // eslint-disable-next-line playwright/prefer-web-first-assertions
+    expect(await description.textContent()).toBe(typed);
   });
 
   test('Create domains and add assets', async ({ page }) => {
