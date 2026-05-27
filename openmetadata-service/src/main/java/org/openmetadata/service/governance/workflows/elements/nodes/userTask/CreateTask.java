@@ -746,8 +746,10 @@ public class CreateTask implements TaskListener {
    * path (Review → approve → PolicyAgent[granted] → Granted) populate expirationDate, since
    * both routes funnel through this listener.
    *
-   * <p>Returns null when the stage isn't Granted, the payload doesn't carry a parseable
-   * duration, or the payload already has an expirationDate (idempotency for re-entry).
+   * <p>Returns null when the stage isn't Granted or the payload doesn't carry a parseable
+   * duration. When the payload already carries a numeric {@code expirationDate} (re-entry into
+   * the Granted stage, or upstream-set value), returns that existing value unchanged — silent
+   * overwrites would extend access on every workflow listener fire.
    */
   static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
     if (stageStatus != TaskEntityStatus.Granted || !(payload instanceof Map<?, ?> rawMap)) {
@@ -796,7 +798,9 @@ public class CreateTask implements TaskListener {
           .toInstant()
           .toEpochMilli();
     } catch (DateTimeParseException e) {
-      LOG.warn("[CreateTask] Could not parse duration '{}'; using taskDueDate", duration);
+      LOG.warn(
+          "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
+          duration);
       return fallback;
     }
   }
