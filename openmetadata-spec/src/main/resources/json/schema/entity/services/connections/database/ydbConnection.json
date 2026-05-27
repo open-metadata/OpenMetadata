@@ -46,7 +46,7 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the YDB endpoint, e.g. localhost:2136 or ydb.serverless.yandexcloud.net:2135",
+      "description": "Host and port of the YDB endpoint, e.g. localhost:2136 or ydb.serverless.example.com:2135",
       "type": "string",
       "exposedInUI": true
     },

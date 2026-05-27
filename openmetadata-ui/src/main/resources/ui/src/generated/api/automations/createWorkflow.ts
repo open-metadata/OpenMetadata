@@ -654,7 +654,7 @@ export interface ConfigObject {
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
      * Host and port of the YDB endpoint, e.g. localhost:2136 or
-     * ydb.serverless.yandexcloud.net:2135
+     * ydb.serverless.example.com:2135
      *
      * URL to the Looker instance.
      *
@@ -1334,6 +1334,8 @@ export interface ConfigObject {
     queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
+     *
+     * Transport protocol for YDB connection.
      */
     protocol?: string;
     /**
@@ -2627,9 +2629,9 @@ export enum AuthProvider {
  *
  * IAM access token credentials for YDB.
  *
- * Yandex Cloud IAM service account JSON key contents.
+ * IAM service account JSON key contents.
  *
- * Credentials from instance metadata — for Yandex Cloud VMs.
+ * Credentials read from the VM instance metadata service (no explicit credentials).
  *
  * Types of methods used to authenticate to the tableau instance
  *
@@ -2776,7 +2778,7 @@ export interface AuthenticationType {
      */
     username?: string;
     /**
-     * Contents of the Yandex Cloud service account JSON key file.
+     * Contents of the service account JSON key file.
      */
     serviceAccountJson?: string;
     /**

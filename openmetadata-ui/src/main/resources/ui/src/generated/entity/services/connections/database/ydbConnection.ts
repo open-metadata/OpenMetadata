@@ -33,10 +33,13 @@ export interface YdbConnection {
      */
     databaseFilterPattern?: FilterPattern;
     /**
-     * Host and port of the YDB endpoint, e.g. localhost:2136 or
-     * ydb.serverless.yandexcloud.net:2135
+     * Host and port of the YDB endpoint, e.g. localhost:2136 or ydb.serverless.example.com:2135
      */
-    hostPort:                 string;
+    hostPort: string;
+    /**
+     * Transport protocol for YDB connection.
+     */
+    protocol?:                YDBProtocol;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -70,16 +73,16 @@ export interface YdbConnection {
  *
  * IAM access token credentials for YDB.
  *
- * Yandex Cloud IAM service account JSON key contents.
+ * IAM service account JSON key contents.
  *
- * Credentials from instance metadata — for Yandex Cloud VMs.
+ * Credentials read from the VM instance metadata service (no explicit credentials).
  */
 export interface AuthenticationType {
     password?: string;
     username?: string;
     token?:    string;
     /**
-     * Contents of the Yandex Cloud service account JSON key file.
+     * Contents of the service account JSON key file.
      */
     serviceAccountJson?: string;
 }
@@ -102,6 +105,14 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Transport protocol for YDB connection.
+ */
+export enum YDBProtocol {
+    Grpc = "grpc",
+    Grpcs = "grpcs",
 }
 
 /**

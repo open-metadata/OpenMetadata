@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Yandex Cloud IAM service account JSON key contents.
+ * IAM service account JSON key contents.
  */
 export interface ServiceAccountCredentials {
     /**
-     * Contents of the Yandex Cloud service account JSON key file.
+     * Contents of the service account JSON key file.
      */
     serviceAccountJson: string;
 }

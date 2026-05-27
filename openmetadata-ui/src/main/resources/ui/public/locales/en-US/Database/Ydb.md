@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the YDB connector.
 
 ## Requirements
 
-YDB is a distributed SQL database developed by Yandex. OpenMetadata connects via the `ydb-sqlalchemy` driver using the gRPC transport.
+YDB is an open-source distributed SQL database. OpenMetadata connects via the `ydb-sqlalchemy` driver using the gRPC transport.
 
 The user (or service account) must have `ydb.databases.connect` permission on the target database. For anonymous access on a local YDB instance no credentials are required.
 
@@ -24,7 +24,7 @@ $$section
 Transport protocol for the YDB gRPC connection.
 
 - `grpc` — plain-text, suitable for local or trusted-network deployments.
-- `grpcs` — TLS-encrypted, required for Yandex Cloud and production deployments. Pair with a CA Certificate when using a custom or self-signed CA.
+- `grpcs` — TLS-encrypted, required for production and any TLS-secured deployment. Pair with a CA Certificate when using a custom or self-signed CA.
 $$
 
 $$section
@@ -33,7 +33,7 @@ $$section
 Host and port of the YDB endpoint. Examples:
 
 - Local YDB: `localhost:2136`
-- Yandex Cloud serverless: `ydb.serverless.yandexcloud.net:2135`
+- YC serverless: `ydb.serverless.example.com:2135`
 $$
 
 $$section
@@ -42,7 +42,7 @@ $$section
 YDB database path. Examples:
 
 - Local: `/local`
-- Yandex Cloud: `/ru-central1/b1g.../etn...`
+- YC: `/ru-central1/b1g.../etn...`
 $$
 
 $$section
@@ -55,8 +55,8 @@ Authentication mode for YDB. Five modes are supported:
 | **Anonymous** | Local or dev YDB with no authentication |
 | **Static Credentials** | Username + password |
 | **Access Token** | Short-lived IAM token (e.g. `yc iam create-token`) |
-| **Service Account Key (JSON)** | Yandex Cloud service account JSON key file contents |
-| **Metadata URL** | Yandex Cloud VM instance metadata (no explicit credentials) |
+| **Service Account Key (JSON)** | Service account JSON key file contents |
+| **Metadata URL** | VM instance metadata (no explicit credentials) |
 $$
 
 ## Static Credentials
@@ -78,7 +78,7 @@ $$
 $$section
 ### Access Token $(id="token")
 
-IAM access token. Obtain with `yc iam create-token` (Yandex Cloud CLI) or the Yandex Cloud API. Tokens are short-lived (typically 12 hours).
+IAM access token.
 $$
 
 ## Service Account Key (JSON)
@@ -86,7 +86,7 @@ $$
 $$section
 ### Service Account JSON $(id="serviceAccountJson")
 
-Full contents of a Yandex Cloud service account JSON key file (generated with `yc iam service-account key create`). The key is stored encrypted.
+Full contents of a service account JSON key file. The key is stored encrypted.
 $$
 
 $$section

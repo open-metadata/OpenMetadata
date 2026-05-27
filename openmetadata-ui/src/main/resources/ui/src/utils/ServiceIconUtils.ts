@@ -23,7 +23,6 @@ import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import doris from '../assets/img/service-icon-doris.png';
-import ydb from '../assets/img/service-icon-ydb.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import exasol from '../assets/img/service-icon-exasol.png';
@@ -57,6 +56,7 @@ import timescale from '../assets/img/service-icon-timescale.png';
 import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
+import ydb from '../assets/img/service-icon-ydb.png';
 import teradata from '../assets/svg/teradata.svg';
 
 // Messaging services

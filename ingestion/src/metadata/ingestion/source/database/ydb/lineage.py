@@ -44,9 +44,7 @@ class YdbLineageSource(LineageSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: YDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, YDBConnection):
-            raise InvalidSourceException(
-                f"Expected YDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected YDBConnection, but got {connection}")
         return cls(config, metadata)
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -57,12 +55,6 @@ class YdbLineageSource(LineageSource):
         # used during metadata ingestion.
         for view in super().view_lineage_producer():
             if view.view_definition:
-                yield view.model_copy(
-                    update={
-                        "view_definition": rewrite_yql_paths_to_dotted(
-                            view.view_definition
-                        )
-                    }
-                )
+                yield view.model_copy(update={"view_definition": rewrite_yql_paths_to_dotted(view.view_definition)})
             else:
                 yield view

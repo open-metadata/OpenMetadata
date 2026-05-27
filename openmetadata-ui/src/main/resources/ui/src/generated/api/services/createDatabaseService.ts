@@ -273,8 +273,7 @@ export interface Connection {
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
-     * Host and port of the YDB endpoint, e.g. localhost:2136 or
-     * ydb.serverless.yandexcloud.net:2135
+     * Host and port of the YDB endpoint, e.g. localhost:2136 or ydb.serverless.example.com:2135
      */
     hostPort?: string;
     /**
@@ -846,6 +845,8 @@ export interface Connection {
     queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
+     *
+     * Transport protocol for YDB connection.
      */
     protocol?: string;
     /**
@@ -1239,9 +1240,9 @@ export enum AuthMechanismEnum {
  *
  * IAM access token credentials for YDB.
  *
- * Yandex Cloud IAM service account JSON key contents.
+ * IAM service account JSON key contents.
  *
- * Credentials from instance metadata — for Yandex Cloud VMs.
+ * Credentials read from the VM instance metadata service (no explicit credentials).
  */
 export interface AuthenticationType {
     /**
@@ -1323,7 +1324,7 @@ export interface AuthenticationType {
      */
     username?: string;
     /**
-     * Contents of the Yandex Cloud service account JSON key file.
+     * Contents of the service account JSON key file.
      */
     serviceAccountJson?: string;
 }

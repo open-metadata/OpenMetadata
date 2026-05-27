@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Credentials from instance metadata — for Yandex Cloud VMs.
+ * Credentials read from the VM instance metadata service (no explicit credentials).
  */
 export interface MetadataCredentials {
 }
