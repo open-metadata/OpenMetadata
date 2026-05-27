@@ -16,7 +16,7 @@ import { NavLink } from 'react-router-dom';
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta },
+  data: { title, redirect_url, dataTestId, isBeta, onClick },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -26,7 +26,8 @@ const LeftSidebarItem = ({
       data-testid={dataTestId}
       to={{
         pathname: redirect_url,
-      }}>
+      }}
+      onClick={onClick}>
       {t(title)}
 
       {isBeta && (

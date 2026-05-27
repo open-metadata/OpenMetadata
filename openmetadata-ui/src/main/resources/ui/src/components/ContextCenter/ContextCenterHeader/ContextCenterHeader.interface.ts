@@ -23,4 +23,7 @@ export interface ContextCenterHeaderProps {
   onUploadFile?: () => void;
   /** Replaces the default action buttons with a custom slot */
   actionsSlot?: React.ReactNode;
+  searchQuery?: string;
+  searchPlaceholder?: string;
+  onSearch?: (value: string) => void;
 }
