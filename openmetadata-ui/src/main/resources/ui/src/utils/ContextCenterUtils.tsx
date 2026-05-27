@@ -13,7 +13,6 @@
 
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
@@ -21,16 +20,22 @@ import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
+import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import {
   CreateKnowledgePage,
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import { downloadAsset, listAssetsByFqn } from '../rest/assetAPI';
+import {
+  downloadDriveFile,
+  listAssetsByFqn,
+  ListAssetsByFqnParams,
+} from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -43,27 +48,6 @@ export const CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK = EntityLink.getEntityLink(
   EntityType.KNOWLEDGE_PAGE,
   CONTEXT_CENTER_DOCUMENTS_FQN
 );
-
-export const extensionToFileType = (
-  fileName: string
-): UploadedDocumentItem['fileType'] => {
-  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-
-  if (['doc', 'docx'].includes(ext)) {
-    return 'doc';
-  }
-  if (ext === 'pdf') {
-    return 'pdf';
-  }
-  if (['xls', 'xlsx', 'csv'].includes(ext)) {
-    return 'xls';
-  }
-  if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
-    return 'image';
-  }
-
-  return 'other';
-};
 
 export const getFileTypeIcon = (fileType: string) => {
   const commonProps = {
@@ -80,7 +64,13 @@ export const getFileTypeIcon = (fileType: string) => {
     case 'image':
       return <ImageIcon {...commonProps} />;
     default:
-      return <File06 {...commonProps} className="tw:text-gray-500" />;
+      return (
+        <File06
+          strokeWidth={1.2}
+          {...commonProps}
+          className="tw:text-gray-500"
+        />
+      );
   }
 };
 
@@ -98,14 +88,41 @@ export const formatBytes = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const assetToDocumentItem = (asset: Asset): UploadedDocumentItem => ({
-  fileType: extensionToFileType(asset.fileName),
+export const assetToDocumentItem = (
+  asset: ContextFile
+): UploadedDocumentItem => ({
+  fileExtension: asset.fileExtension ?? '',
   id: asset.id,
-  name: asset.fileName,
-  sizeLabel: formatBytes(asset.size),
+  name: getEntityName(asset) ?? '',
+  sizeLabel: formatBytes(asset.fileSize),
   status: 'processed',
   updatedBy: asset.updatedBy ?? '',
   updatedAt: asset.updatedAt ?? 0,
+});
+
+export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
+  driveFileId: file.id,
+  folderId: file.folder?.id,
+  folderFqn: file.folder?.fullyQualifiedName,
+  id: file.assetId ?? file.id,
+  name: file.displayName ?? file.name,
+  sizeLabel: formatBytes(file.fileSize),
+  fileExtension: file.fileExtension ?? '',
+  updatedAt: file.updatedAt,
+  updatedBy: file.updatedBy,
+});
+
+export const contextFileToUploadedDocumentItem = (
+  file: ContextFile
+): UploadedDocumentItem => ({
+  driveFileId: file.id,
+  id: file.assetId ?? file.id,
+  name: file.displayName ?? file.name,
+  sizeLabel: formatBytes(file.fileSize),
+  status: 'processed',
+  updatedAt: file.updatedAt ?? 0,
+  updatedBy: file.updatedBy ?? '',
+  fileExtension: file.fileExtension ?? '',
 });
 
 export const knowledgePageToArticleItem = (
@@ -136,8 +153,14 @@ export const knowledgePageToArticleItem = (
   title: getEntityName(data) || untitledLabel,
 });
 
-export const fetchContextCenterDocuments = async (): Promise<Asset[]> => {
-  return listAssetsByFqn(CONTEXT_CENTER_DOCUMENTS_FQN, AssetType.External);
+export const fetchContextCenterDocuments = async (
+  params?: ListAssetsByFqnParams
+): Promise<Asset[]> => {
+  return listAssetsByFqn(
+    CONTEXT_CENTER_DOCUMENTS_FQN,
+    AssetType.External,
+    params
+  );
 };
 
 export const createArticleKnowledgePage = async (
@@ -175,7 +198,7 @@ export const handleAssetDownload = async (file: DocFile) => {
   let element: HTMLAnchorElement | undefined;
 
   try {
-    const blob = await downloadAsset(file.id);
+    const blob = await downloadDriveFile(file.driveFileId ?? file.id);
     url = URL.createObjectURL(blob);
     element = document.createElement('a');
     element.href = url;

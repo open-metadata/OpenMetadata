@@ -444,6 +444,7 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        stepStats.setWarningRecords(safeToInt(es.getWarningRecords()));
         // Per-entity stage timing — surface ALL four stage timings on the entity-level
         // StepStats so the UI table can render Reader / Process / Sink / Vector avg latencies
         // side-by-side. Job-level totals still use the per-stage StepStats.totalTimeMs.

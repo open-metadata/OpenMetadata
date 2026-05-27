@@ -50,7 +50,7 @@ jest.mock('../../../../utils/EntityVersionUtils', () => ({
     (_changeDescription, columns) => columns
   ),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn(() => 'Column'),
 }));
 jest.mock('../../../../utils/TableUtils', () => ({

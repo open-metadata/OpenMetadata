@@ -85,7 +85,6 @@ import {
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
   defaultFields as DashboardFields,
@@ -98,6 +97,7 @@ import { defaultFieldsWithColumns as TableFields } from './DatasetDetailsUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { ENTITY_LINK_SEPARATOR, getEntityName } from './EntityUtils';
 import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
@@ -111,7 +111,7 @@ import {
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -1303,4 +1303,23 @@ export const isDarApprovalActive = (
   const parsed = Duration.fromISO(duration);
 
   return parsed.isValid && now <= approvedAt + parsed.toMillis();
+};
+
+export const getDarButtonTooltip = (
+  isDarDisabled: boolean,
+  isDarGranted: boolean,
+  isDarAwaitingGrant: boolean,
+  t: (key: string) => string
+): string | undefined => {
+  if (!isDarDisabled) {
+    return undefined;
+  }
+  if (isDarGranted) {
+    return t('message.data-access-request-already-granted');
+  }
+  if (isDarAwaitingGrant) {
+    return t('message.data-access-request-awaiting-grant-message');
+  }
+
+  return t('message.data-access-request-already-exists');
 };

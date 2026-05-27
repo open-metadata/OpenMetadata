@@ -297,6 +297,9 @@ class SearchRepositoryBehaviorTest {
               Entity.FIELD_DATA_PRODUCTS,
               PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
               null));
+      descriptors.add(
+          new PropagationDescriptor(
+              "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     } else if (Entity.GLOSSARY_TERM.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
@@ -929,9 +932,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")),
-            matchCaptor.capture(),
-            updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
     assertEquals("table.id", matchCaptor.getValue().getLeft());
     assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
@@ -960,7 +961,7 @@ class SearchRepositoryBehaviorTest {
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")), any(Pair.class), updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
     assertNull(updatesCaptor.getValue().getRight().get("certification"));
   }
@@ -1114,7 +1115,8 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("updatedDomains"));
     assertTrue(updates.getLeft().contains("updatedFollowers"));
     assertTrue(updates.getLeft().contains("ctx._source.service.displayName = params.displayName"));
-    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', 'true')"));
+    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', params.disabled);"));
+    assertEquals(true, updates.getRight().get(Entity.FIELD_DISABLED));
     assertEquals("Renamed Service", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
     assertTrue(
         ((List<EntityReference>) updates.getRight().get("updatedOwners"))
@@ -1165,6 +1167,38 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("ctx._source.remove('disabled')"));
     assertEquals(List.of("suite1"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
     assertEquals("Orders Table", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void inheritedFieldChangesSimpleValueBindsValueAsParamAndTerminatesStatements() throws Exception {
+    EntityInterface tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
+
+    String renamedTag = "O'Brien's Tag";
+    String certification = "Gold's";
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("name").withNewValue(renamedTag),
+                new FieldChange().withName("certification").withNewValue(certification)),
+            List.of());
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tagEntity);
+
+    String script = updates.getLeft();
+
+    assertTrue(
+        script.contains("ctx._source.put('name', params.name);"),
+        "SIMPLE_VALUE must bind the value as a param and terminate the statement");
+    assertTrue(
+        script.contains("ctx._source.put('certification', params.certification);"),
+        "Each propagated SIMPLE_VALUE field must produce its own terminated statement");
+    assertFalse(
+        script.contains(renamedTag) || script.contains(certification),
+        "Raw values must not be inlined into the Painless source (would break compilation)");
+    assertEquals(renamedTag, updates.getRight().get("name"));
+    assertEquals(certification, updates.getRight().get("certification"));
   }
 
   @Test
@@ -1808,6 +1842,52 @@ class SearchRepositoryBehaviorTest {
                 List.of()),
             Entity.TAG,
             tag));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationUpdate() throws Exception {
+    // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
+    // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
+    // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName("certification")
+                        .withOldValue("{}")
+                        .withNewValue("{}")),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(new FieldChange().withName("certification").withNewValue("{}")),
+                List.of(),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(),
+                List.of(new FieldChange().withName("certification").withOldValue("{}"))),
+            Entity.TABLE,
+            table));
   }
 
   @Test

@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { ADMONITION_TYPES } from './BlockEditor.constants';
+export const ADMONITION_TYPES = [
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+] as const;
 
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
@@ -56,6 +63,9 @@ export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+export const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
 

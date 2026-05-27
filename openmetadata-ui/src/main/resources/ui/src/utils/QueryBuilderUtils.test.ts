@@ -25,7 +25,7 @@ import {
   resolveFieldType,
 } from './QueryBuilderUtils';
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   generateUUID: jest.fn(),
 }));
 
@@ -37,7 +37,7 @@ describe('getJsonTreeFromQueryFilter', () => {
   it('should return a valid JSON tree structure for a given query filter', () => {
     const mockUUIDs = ['uuid1', 'uuid2', 'uuid3', 'uuid4'];
     (
-      jest.requireMock('./StringsUtils').generateUUID as jest.Mock
+      jest.requireMock('./StringUtils').generateUUID as jest.Mock
     ).mockImplementation(() => mockUUIDs.shift());
     const queryFilter: QueryFilterInterface = {
       query: {

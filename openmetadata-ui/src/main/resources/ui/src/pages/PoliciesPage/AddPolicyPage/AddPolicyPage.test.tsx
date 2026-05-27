@@ -63,7 +63,7 @@ jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
 const mockProps = {
   pageTitle: 'add-policy',
 };
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/SearchUtils', () => ({
   getIsErrorMatch: jest.fn(),
 }));
 

@@ -971,3 +971,29 @@ class SnowflakeBadNameIsolationTest(TestCase):
         # Build a snowflake source we can mutate per-test.
         if not hasattr(self, "sources"):
             self.sources = get_snowflake_sources()
+
+
+def test_test_connection_validates_access_history_and_query_history():
+    """
+    ACCESS_HISTORY is the default lineage source, so the test connection must
+    register a GetAccessHistory step that actually probes ACCESS_HISTORY, while
+    keeping GetQueries for the usage workflow / legacy lineage fallback.
+    """
+    from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+        SnowflakeConnection as SnowflakeConnectionConfig,
+    )
+    from metadata.ingestion.source.database.snowflake.connection import (
+        SnowflakeConnection,
+    )
+
+    connection = SnowflakeConnection(SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"))
+    connection._client = MagicMock()
+
+    with patch("metadata.ingestion.source.database.snowflake.connection.test_connection_steps") as mocked_steps:
+        connection.test_connection(metadata=MagicMock())
+
+    test_fn = mocked_steps.call_args.kwargs["test_fn"]
+    assert "GetAccessHistory" in test_fn
+    assert "GetQueries" in test_fn
+    assert "ACCESS_HISTORY" in test_fn["GetAccessHistory"].keywords["statement"]
+    assert "query_history" in test_fn["GetQueries"].keywords["statement"].lower()

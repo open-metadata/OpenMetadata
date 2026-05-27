@@ -47,7 +47,7 @@ test.describe('Knowledge Center List', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
     await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
@@ -104,7 +104,7 @@ test.describe('Knowledge Center List', () => {
 
     const upVoteBtn = card.getByTestId('up-vote-btn');
     const upVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
+      '/api/v1/contextCenter/pages/*/vote'
     );
     await upVoteBtn.click();
     await upVoteResponse;
@@ -124,7 +124,7 @@ test.describe('Knowledge Center List', () => {
 
     const downVoteBtn = card.getByTestId('down-vote-btn');
     const downVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
+      '/api/v1/contextCenter/pages/*/vote'
     );
     await downVoteBtn.click();
     await downVoteResponse;
@@ -159,7 +159,8 @@ test.describe('Knowledge Center List', () => {
     const unbookmarkResponse = page.waitForResponse((response) => {
       const url = response.url();
       return (
-        url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
+        url.includes('/api/v1/contextCenter/pages') &&
+        url.includes('/followers')
       );
     });
 
@@ -205,7 +206,7 @@ test.describe('Knowledge Center List', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
     await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
@@ -248,8 +249,8 @@ test.describe('Knowledge Center List', () => {
     const observerElement = page.getByTestId('observer-element');
     const paginationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter') &&
-        response.url().includes('after=')
+        response.url().includes('/api/v1/contextCenter/pages') &&
+        response.url().includes('offset=')
     );
 
     await observerElement.scrollIntoViewIfNeeded();
