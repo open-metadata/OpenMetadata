@@ -58,10 +58,6 @@
     "supportsViewLineageExtraction": {
       "title": "Supports View Lineage Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
-    },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

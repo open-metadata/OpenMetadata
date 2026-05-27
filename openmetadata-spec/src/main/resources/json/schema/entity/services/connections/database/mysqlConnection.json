@@ -141,10 +141,6 @@
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
-    },
     "useSlowLogs": {
       "title": "Use Slow Logs for Lineage",
       "description": "Use slow logs to extract lineage.",

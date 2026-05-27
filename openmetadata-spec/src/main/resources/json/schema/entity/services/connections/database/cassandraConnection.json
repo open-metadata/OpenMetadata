@@ -79,10 +79,6 @@
         "supportsMetadataExtraction": {
             "title": "Supports Metadata Extraction",
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-        },
-        "supportsPolicyAgent": {
-            "title": "Supports Policy Agent",
-            "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
         }
     },
     "additionalProperties": false

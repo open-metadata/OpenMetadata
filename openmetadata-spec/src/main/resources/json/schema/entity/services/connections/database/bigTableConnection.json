@@ -57,10 +57,6 @@
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
-    },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

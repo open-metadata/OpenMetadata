@@ -94,10 +94,6 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
-    },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"

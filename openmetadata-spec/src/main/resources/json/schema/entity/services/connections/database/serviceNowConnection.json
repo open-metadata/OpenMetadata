@@ -69,10 +69,6 @@
       "supportsLineageExtraction": {
         "title": "Supports Lineage Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
-      },
-      "supportsPolicyAgent": {
-        "title": "Supports Policy Agent",
-        "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
       }
     },
     "additionalProperties": false,

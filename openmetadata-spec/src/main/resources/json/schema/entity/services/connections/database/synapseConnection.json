@@ -169,10 +169,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
     }
   },
   "additionalProperties": false,

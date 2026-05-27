@@ -148,7 +148,13 @@
     },
     "supportsPolicyAgent": {
       "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent"
+      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": false,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": true
+      }
     },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
