@@ -36,9 +36,9 @@ test.describe('Pipeline entity name validation', () => {
           connection: {
             config: {
               type: 'Dagster',
-              host: 'admin',
+              host: 'http://localhost:3000',
               token: 'admin',
-              timeout: '1000',
+              timeout: 1000,
               supportsMetadataExtraction: true,
             },
           },

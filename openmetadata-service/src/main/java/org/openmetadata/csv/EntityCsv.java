@@ -127,6 +127,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+  private static final String NAME_PATTERN_VALIDATION_PREFIX = "name must match ";
+  private static final String EMAIL_FORMAT_VALIDATION = "email must be a well-formed email address";
 
   // Additional fields for export/import with multiple entity types
   public static final String FIELD_ENTITY_TYPE = "entityType";
@@ -1483,10 +1485,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String userNameEmailViolation = "";
 
-    if (violations == null || violations.isEmpty()) {
-      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    } else if (!violations.contains("name must match \"^((?!::)[^><\"|\\x00-\\x1f])*$\"")
-        && !violations.contains("email must be a well-formed email address")) {
+    if (shouldValidateUserNameWithEmailPrefix(violationList)) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
     }
 
@@ -1531,6 +1530,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
     }
+  }
+
+  private static boolean shouldValidateUserNameWithEmailPrefix(List<String> violationList) {
+    return violationList.stream()
+        .noneMatch(
+            violation ->
+                violation.startsWith(NAME_PATTERN_VALIDATION_PREFIX)
+                    || EMAIL_FORMAT_VALIDATION.equals(violation));
   }
 
   protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
