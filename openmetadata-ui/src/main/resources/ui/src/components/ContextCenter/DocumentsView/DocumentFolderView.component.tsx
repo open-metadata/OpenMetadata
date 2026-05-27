@@ -106,7 +106,7 @@ const DocumentFolderView = ({
 
   return (
     <>
-      <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col">
+      <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
