@@ -35,7 +35,7 @@ import {
   getEntityStatsData,
 } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
-import { formatJsonString } from '../../../../utils/StringsUtils';
+import { formatJsonString } from '../../../../utils/StringUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import './app-logs-viewer.less';
