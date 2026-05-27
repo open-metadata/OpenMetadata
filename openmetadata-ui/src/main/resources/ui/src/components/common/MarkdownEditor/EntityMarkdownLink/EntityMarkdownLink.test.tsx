@@ -17,7 +17,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import EntityMarkdownLink from './EntityMarkdownLink';
 
-
 // Mock EntityPopOverCard to prevent complex dependencies in tests
 jest.mock('../../PopOverCard/EntityPopOverCard', () => ({
   __esModule: true,
