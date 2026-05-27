@@ -60,7 +60,7 @@ const CodeEditor = ({
   const { editorRef, viewRef, requestRefresh } = useCodeMirror({
     value: internalValue,
     mode,
-    readOnly: readOnly ?? options?.readOnly === true ?? false,
+    readOnly: readOnly ?? options?.readOnly === true,
     showLineNumbers: options?.lineNumbers === true,
     lineWrapping: options?.lineWrapping === true,
     showFoldGutter: false,

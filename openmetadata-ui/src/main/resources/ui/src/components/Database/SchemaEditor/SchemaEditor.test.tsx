@@ -21,7 +21,6 @@ const mockOnCopyToClipBoard = jest.fn();
 const mockRequestRefresh = jest.fn();
 
 let capturedOnChange: ((val: string) => void) | undefined;
-let capturedOnFocus: (() => void) | undefined;
 let capturedOpts: Partial<UseCodeMirrorOptions> = {};
 
 jest.mock('../../../constants/constants', () => ({
@@ -42,7 +41,6 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 jest.mock('../../../hooks/useCodeMirror', () => ({
   useCodeMirror: jest.fn().mockImplementation((opts: UseCodeMirrorOptions) => {
     capturedOnChange = opts.onChange;
-    capturedOnFocus = opts.onFocus;
     capturedOpts = { ...opts };
 
     return {

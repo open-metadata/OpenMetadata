@@ -62,7 +62,7 @@ const SchemaEditor = ({
   const { editorRef, requestRefresh } = useCodeMirror({
     value: internalValue,
     mode,
-    readOnly: readOnly ?? options?.readOnly === true ?? false,
+    readOnly: readOnly ?? options?.readOnly === true,
     showLineNumbers: options?.lineNumbers !== false,
     lineWrapping: options?.lineWrapping !== false,
     showFoldGutter: options?.foldGutter !== false,
