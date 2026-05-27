@@ -425,12 +425,16 @@ async function applyDashboardTagBasedFilter(
   await page.getByRole('button', { name: buttonName }).click();
   await page.getByTestId('search-input').click();
 
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.url().includes('index=tag') &&
-      res.url().includes(`*${encodeURIComponent(searchText)}*`)
-  );
+  const searchRes = page.waitForResponse((res) => {
+    if (!res.url().includes('/api/v1/search/query')) {
+      return false;
+    }
+    const parsed = new URL(res.url());
+    return (
+      parsed.searchParams.get('index') === 'tag' &&
+      (parsed.searchParams.get('q') ?? '').includes(`*${searchText}*`)
+    );
+  });
   await page.getByTestId('search-input').fill(searchText);
   await searchRes;
 

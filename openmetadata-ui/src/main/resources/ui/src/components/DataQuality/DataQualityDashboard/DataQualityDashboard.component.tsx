@@ -421,7 +421,7 @@ const DataQualityDashboard = ({
     if (isEmpty(query)) {
       setTierOptions((prev) => ({
         ...prev,
-        options: prev.defaultOptions,
+        options: [...selectedTierFilter, ...prev.defaultOptions],
       }));
     } else {
       setIsTierLoading(true);
@@ -463,7 +463,7 @@ const DataQualityDashboard = ({
     if (isEmpty(query)) {
       setCertificationOptions((prev) => ({
         ...prev,
-        options: prev.defaultOptions,
+        options: [...selectedCertificationFilter, ...prev.defaultOptions],
       }));
     } else {
       setIsCertificationLoading(true);
