@@ -548,15 +548,15 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   let adminUser: UserClass;
   let otherUser: UserClass;
   let table: TableClass;
-  let taskId: string | undefined;
+  const taskIds: string[] = [];
 
   test.afterAll(
     'Delete task, table, admin user and other user',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        if (taskId) {
-          await apiContext.delete(`/api/v1/tasks/${taskId}`);
+        for (const id of taskIds) {
+          await apiContext.delete(`/api/v1/feed/${id}`);
         }
         await table.delete(apiContext);
         await adminUser.delete(apiContext);
@@ -612,17 +612,25 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
       const { apiContext, afterAction } = await getApiContext(page);
       try {
-        const response = await apiContext.post('/api/v1/tasks', {
+        const response = await apiContext.post('/api/v1/feed', {
           data: {
-            about: entityFqn,
-            aboutType: 'table',
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [adminUser.responseData.name],
+            message: `Update description for table ${entityFqn}`,
+            about: `<#E::table::${entityFqn}::description>`,
+            type: 'Task',
+            taskDetails: {
+              type: 'UpdateDescription',
+              assignees: [{ id: adminUser.responseData.id, type: 'user' }],
+              oldValue: '',
+              suggestion: '',
+            },
           },
         });
+        expect(
+          response.ok(),
+          `Task creation failed: ${await response.text()}`
+        ).toBeTruthy();
         const created = await response.json();
-        taskId = created.id;
+        taskIds.push(created.id);
       } finally {
         await afterAction();
       }
@@ -634,8 +642,10 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
       const notifFeedResponse = page.waitForResponse(
         (r) =>
-          r.url().includes('/api/v1/tasks/assigned') &&
-          r.url().includes('status=Open')
+          r.url().includes('/api/v1/feed') &&
+          r.url().includes('filterType=ASSIGNED_TO') &&
+          r.url().includes('type=Task') &&
+          r.request().method() === 'GET'
       );
       await notificationBell.click();
       await notifFeedResponse;
@@ -713,17 +723,25 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await test.step('Admin creates a task via API and assigns to other user', async () => {
         const { apiContext, afterAction } = await getApiContext(adminPage);
         try {
-          const response = await apiContext.post('/api/v1/tasks', {
+          const response = await apiContext.post('/api/v1/feed', {
             data: {
-              about: entityFqn,
-              aboutType: 'table',
-              type: 'DescriptionUpdate',
-              category: 'MetadataUpdate',
-              assignees: [otherUser.responseData.name],
+              message: `Update description for table ${entityFqn}`,
+              about: `<#E::table::${entityFqn}::description>`,
+              type: 'Task',
+              taskDetails: {
+                type: 'UpdateDescription',
+                assignees: [{ id: otherUser.responseData.id, type: 'user' }],
+                oldValue: '',
+                suggestion: '',
+              },
             },
           });
+          expect(
+            response.ok(),
+            `Task creation failed: ${await response.text()}`
+          ).toBeTruthy();
           const created = await response.json();
-          taskId = created.id;
+          taskIds.push(created.id);
         } finally {
           await afterAction();
         }
@@ -735,8 +753,10 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
         const notifFeedResponse = userPage.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/tasks/assigned') &&
-            r.url().includes('status=Open')
+            r.url().includes('/api/v1/feed') &&
+            r.url().includes('filterType=ASSIGNED_TO') &&
+            r.url().includes('type=Task') &&
+            r.request().method() === 'GET'
         );
         await notificationBell.click();
         await notifFeedResponse;

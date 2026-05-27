@@ -12,8 +12,10 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import { RelationCardinality } from '../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { deriveCardinality } from '../../../utils/Glossary/glossaryTermRelationUtils';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
@@ -54,7 +56,39 @@ import {
   computeGlossaryGroupPositions,
   computeOutermostRingRadius,
 } from '../utils/layoutCalculations';
-import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
+
+interface CardinalityInfo {
+  cardinality?: RelationCardinality;
+  sourceMax?: number | null;
+  targetMax?: number | null;
+}
+
+function getCardinalityEndLabels(
+  relationType: string,
+  cardinalityMap: Map<string, CardinalityInfo>
+): { startLabelText: string; endLabelText: string } | null {
+  const info = cardinalityMap.get(relationType);
+  if (!info?.cardinality) {
+    return null;
+  }
+  switch (info.cardinality) {
+    case RelationCardinality.OneToOne:
+      return { startLabelText: '1', endLabelText: '1' };
+    case RelationCardinality.OneToMany:
+      return { startLabelText: '1', endLabelText: 'M' };
+    case RelationCardinality.ManyToOne:
+      return { startLabelText: 'M', endLabelText: '1' };
+    case RelationCardinality.ManyToMany:
+      return { startLabelText: 'M', endLabelText: 'M' };
+    case RelationCardinality.Custom:
+      return {
+        startLabelText: info.sourceMax === 1 ? '1' : 'M',
+        endLabelText: info.targetMax === 1 ? '1' : 'M',
+      };
+    default:
+      return null;
+  }
+}
 
 interface RelationMaps {
   inverseMap: Record<string, string>;
@@ -201,6 +235,21 @@ export function useGraphDataBuilder({
       if (effectiveColor) {
         map[rt.name] = effectiveColor;
       }
+    });
+
+    return map;
+  }, [relationTypes]);
+
+  const cardinalityMap = useMemo<Map<string, CardinalityInfo>>(() => {
+    const map = new Map<string, CardinalityInfo>();
+    relationTypes?.forEach((rt) => {
+      const cardinality =
+        rt.cardinality ?? deriveCardinality(rt.sourceMax, rt.targetMax);
+      map.set(rt.name, {
+        cardinality,
+        sourceMax: rt.sourceMax,
+        targetMax: rt.targetMax,
+      });
     });
 
     return map;
@@ -388,7 +437,10 @@ export function useGraphDataBuilder({
         from: e.from,
         to: e.to,
         relationType: e.relationType,
-        isBidirectional: false,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
+        isBidirectional: Boolean(e.inverseRelationType),
       }));
     } else {
       nodesForGraph = inputNodes;
@@ -676,22 +728,6 @@ export function useGraphDataBuilder({
           toType !== 'dataAsset' &&
           toType !== 'metric';
 
-        const isTermTermEdge =
-          fromType !== 'dataAsset' &&
-          fromType !== 'metric' &&
-          toType !== 'dataAsset' &&
-          toType !== 'metric';
-
-        const isCrossGlossaryTermEdge =
-          isCrossTeam && isTermTermEdge && explorationMode !== 'data';
-
-        const useComboAwarePolyline =
-          isTermTermInDataMode || isCrossGlossaryTermEdge;
-
-        const edgeType = useComboAwarePolyline
-          ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
-          : 'line';
-
         return group.map((singleEdge, i) => {
           const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${singleEdge.relationType}`;
           const isPrimary = i === 0;
@@ -757,6 +793,11 @@ export function useGraphDataBuilder({
             }
           }
 
+          const cardinalityLabels =
+            showLabel && isPrimary
+              ? getCardinalityEndLabels(singleEdge.relationType, cardinalityMap)
+              : null;
+
           const labelStyle = labelText
             ? {
                 ...getEdgeRelationLabelStyle(
@@ -768,6 +809,7 @@ export function useGraphDataBuilder({
                 labelAutoRotate: false,
                 labelOffsetX,
                 labelOffsetY,
+                ...cardinalityLabels,
               }
             : {};
 
@@ -775,13 +817,6 @@ export function useGraphDataBuilder({
             lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
             opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
             ...labelStyle,
-            ...(useComboAwarePolyline && {
-              router: {
-                type: 'shortest-path',
-                offset: 20,
-                enableObstacleAvoidance: true,
-              },
-            }),
           };
 
           return {
@@ -796,7 +831,6 @@ export function useGraphDataBuilder({
               isCrossTeam,
               isEdgeDimmed,
             },
-            type: edgeType,
             style: isPrimary
               ? {
                   stroke: edgeColor,
@@ -901,6 +935,8 @@ export function useGraphDataBuilder({
     hierarchyCombos,
     graphSearchHighlight,
     glossaries,
+    cardinalityMap,
+    customRelationColorMap,
   ]);
 
   const assetToTermMap = useMemo(() => {
@@ -935,11 +971,27 @@ export function useGraphDataBuilder({
     return map;
   }, [explorationMode, inputNodes, mergedEdgesList]);
 
+  const cardinalityLabelMap = useMemo(() => {
+    const result: Record<
+      string,
+      { startLabelText: string; endLabelText: string }
+    > = {};
+    cardinalityMap.forEach((_, relationType) => {
+      const labels = getCardinalityEndLabels(relationType, cardinalityMap);
+      if (labels) {
+        result[relationType] = labels;
+      }
+    });
+
+    return result;
+  }, [cardinalityMap]);
+
   return {
     graphData,
     mergedEdgesList,
     neighborSet,
     computeNodeColor,
     assetToTermMap,
+    cardinalityLabelMap,
   };
 }

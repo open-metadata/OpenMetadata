@@ -17,7 +17,7 @@ import traceback
 from typing import List
 
 from airflow.models.baseoperator import BaseOperator
-from airflow.utils.context import Context
+from airflow.sdk.definitions.context import Context
 
 logger = logging.getLogger(__name__)
 
