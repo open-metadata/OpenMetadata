@@ -172,4 +172,29 @@ describe('searchAPI tests', () => {
       })
     );
   });
+
+  it('rawSearchQuery should forward searchAfter values unchanged', async () => {
+    const mockGet = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: mockTableSearchResponse })
+      );
+
+    jest.mock('./index', () => ({
+      get: mockGet,
+    }));
+
+    const { rawSearchQuery } = require('./searchAPI');
+    const searchAfter = ['glossary,term,with,comma', 'table-123'];
+
+    await rawSearchQuery({
+      searchIndex: SearchIndex.TABLE,
+      searchAfter,
+    });
+
+    const [, config] = mockGet.mock.calls[0];
+
+    expect(config.params.search_after).toEqual(searchAfter);
+    expect(config.paramsSerializer).toEqual({ indexes: null });
+  });
 });
