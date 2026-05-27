@@ -72,7 +72,7 @@ import {
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
-import { bytesToSize } from './StringsUtils';
+import { bytesToSize } from './StringUtils';
 import { getUsagePercentile } from './TableUtils';
 
 const { t } = i18n;

@@ -52,11 +52,16 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
   restoreStoredProcedures: jest.fn(),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 

@@ -41,9 +41,9 @@ import {
   DataInsightTabs,
 } from '../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
-import { pluralize } from './CommonUtils';
 import { customFormatDateTime } from './date-time/DateTimeUtils';
 import { t, translateWithNestedKeys } from './i18next/LocalUtil';
+import { pluralize } from './StringUtils';
 
 export const getEntryFormattedValue = (
   value: number | string | undefined,
