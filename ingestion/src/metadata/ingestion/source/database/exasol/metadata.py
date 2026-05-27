@@ -21,7 +21,7 @@ from metadata.utils.sqlalchemy_utils import (
 
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
-get_columns._original = EXADialect.get_columns  # pylint: disable=protected-access
+get_columns._original = EXADialect.get_columns  # pylint: disable=protected-access  # pyright: ignore[reportFunctionMemberAccess]
 EXADialect.get_columns = get_columns
 EXADialect.get_table_comment = get_table_comment
 EXADialect.get_all_table_comments = get_all_table_comments  # pyright: ignore[reportAttributeAccessIssue]

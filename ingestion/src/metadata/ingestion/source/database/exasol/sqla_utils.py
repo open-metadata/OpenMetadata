@@ -40,9 +40,9 @@ def get_columns(
     """
     Return reflected columns and enrich them with column comments.
     """
-    columns = get_columns._original(self, connection, table_name, schema, **kw)  # pylint: disable=protected-access
+    columns = get_columns._original(self, connection, table_name, schema, **kw)  # pylint: disable=protected-access  # pyright: ignore[reportFunctionMemberAccess]
 
-    schema_name = connection.dialect._get_schema_for_input(connection, schema)
+    schema_name = connection.dialect._get_schema_for_input(connection, schema)  # pyright: ignore[reportAttributeAccessIssue]
     normalized_schema_name = connection.dialect.denormalize_name(schema_name)
 
     normalized_table_name = connection.dialect.denormalize_name(table_name)
