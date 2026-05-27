@@ -313,7 +313,6 @@ export interface Connection {
      */
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsPolicyAgent?:        SupportsPolicyAgent;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsSystemProfile?:      boolean;
@@ -697,7 +696,8 @@ export interface Connection {
      * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
      * must expose columns compatible with the selected log path.
      */
-    queryHistoryTable?: string;
+    queryHistoryTable?:   string;
+    supportsPolicyAgent?: SupportsPolicyAgent;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */

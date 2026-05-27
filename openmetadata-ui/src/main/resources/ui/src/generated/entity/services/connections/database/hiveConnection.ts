@@ -70,7 +70,6 @@ export interface HiveConnection {
     sslConfig?:                     Config;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
-    supportsPolicyAgent?:           SupportsPolicyAgent;
     supportsProfiler?:              boolean;
     supportsViewLineageExtraction?: boolean;
     /**

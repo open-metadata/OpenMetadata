@@ -40,7 +40,6 @@ export interface CassandraConnection {
     sslConfig?:                  Config;
     sslMode?:                    SSLMode;
     supportsMetadataExtraction?: boolean;
-    supportsPolicyAgent?:        SupportsPolicyAgent;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -148,28 +147,6 @@ export enum SSLMode {
     Require = "require",
     VerifyCA = "verify-ca",
     VerifyFull = "verify-full",
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**

@@ -29,7 +29,6 @@ export interface QuestdbConnection {
      */
     scheme?:                        QuestDBScheme;
     supportsMetadataExtraction?:    boolean;
-    supportsPolicyAgent?:           SupportsPolicyAgent;
     supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
@@ -62,28 +61,6 @@ export interface AuthConfigurationType {
  */
 export enum QuestDBScheme {
     PostgresqlPsycopg2 = "postgresql+psycopg2",
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**

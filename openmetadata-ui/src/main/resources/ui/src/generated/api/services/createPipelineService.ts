@@ -801,7 +801,6 @@ export interface ConnectionClass {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
-    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -850,6 +849,7 @@ export interface ConnectionClass {
     queryStatementSource?: string;
     sslMode?:              SSLMode;
     supportsDatabase?:     boolean;
+    supportsPolicyAgent?:  SupportsPolicyAgent;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1340,7 +1340,6 @@ export interface DatabaseConnectionClass {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
-    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;

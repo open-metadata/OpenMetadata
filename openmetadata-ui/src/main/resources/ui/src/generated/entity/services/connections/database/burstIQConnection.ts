@@ -37,7 +37,6 @@ export interface BurstIQConnection {
     realmName:                   string;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsPolicyAgent?:        SupportsPolicyAgent;
     supportsProfiler?:           boolean;
     /**
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
@@ -52,28 +51,6 @@ export interface BurstIQConnection {
      * in BurstIQ LifeGraph.
      */
     username: string;
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
