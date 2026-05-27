@@ -4206,6 +4206,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
+        normalizeFollowersField(json);
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
@@ -4223,6 +4224,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
               subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
+    }
+  }
+
+  /**
+   * The search index stores `followers` as a flat list of UUID strings (see
+   * {@code SearchIndexUtils.parseFollowers}), but every entity declares
+   * {@code List<EntityReference> followers}. Rehydrate each string into a minimal
+   * {@code EntityReference} so Jackson can construct the field — otherwise listing
+   * any entity with followers via this search-backed path returns HTTP 400.
+   */
+  private static void normalizeFollowersField(Map<String, Object> json) {
+    Object followers = json.get("followers");
+    if (followers instanceof List<?> list && !list.isEmpty() && list.getFirst() instanceof String) {
+      List<Map<String, String>> normalized =
+          list.stream().map(Object::toString).map(id -> Map.of("id", id, "type", USER)).toList();
+      json.put("followers", normalized);
     }
   }
 
