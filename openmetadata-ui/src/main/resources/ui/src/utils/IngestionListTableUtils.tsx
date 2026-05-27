@@ -23,10 +23,10 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
+import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
@@ -70,16 +70,13 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
   );
 };
 
-export const renderScheduleField = (_: string, record: IngestionPipeline) => {
-  if (isUndefined(record.airflowConfig?.scheduleInterval)) {
-    return (
-      <Typography.Text data-testid="scheduler-no-data">
-        {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
-    );
-  }
+const ScheduleFieldCell = ({
+  scheduleInterval,
+}: {
+  scheduleInterval: string;
+}) => {
   const { descriptionFirstPart, descriptionSecondPart } =
-    getScheduleDescriptionTexts(record.airflowConfig.scheduleInterval);
+    useScheduleDescriptionTexts(scheduleInterval);
 
   return (
     <Row gutter={[8, 8]} wrap={false}>
@@ -105,5 +102,21 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
         </Row>
       </Col>
     </Row>
+  );
+};
+
+export const renderScheduleField = (_: string, record: IngestionPipeline) => {
+  if (isUndefined(record.airflowConfig?.scheduleInterval)) {
+    return (
+      <Typography.Text data-testid="scheduler-no-data">
+        {NO_DATA_PLACEHOLDER}
+      </Typography.Text>
+    );
+  }
+
+  return (
+    <ScheduleFieldCell
+      scheduleInterval={record.airflowConfig.scheduleInterval}
+    />
   );
 };

@@ -56,13 +56,14 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
         />
 
         <div
-          className={classNames({
+          className={classNames('owner-team-name-wrapper', {
             'tw:max-w-30': placement === 'vertical' || owners.length < 2,
             'tw:max-w-16': placement !== 'vertical' && owners.length >= 2,
           })}>
           <Typography
             ellipsis
             as="p"
+            className="owner-team-name"
             data-testid={getEntityName(visibleTeam)}
             size="text-xs"
             weight="medium">

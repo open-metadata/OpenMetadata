@@ -33,7 +33,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     {
       name: '',
       icon: <Home02 size={14} />,
-      url: '/',
+      url: contextCenterClassBase.getHomePath(),
       activeTitle: true,
     },
     {
@@ -95,6 +95,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
             <File06
               className="tw:text-gray-500"
               height={40}
+              strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}
               width={40}
             />

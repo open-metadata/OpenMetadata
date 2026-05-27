@@ -58,7 +58,7 @@ import {
 } from '../interface/search.interface';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
-import { getCountBadge } from '../utils/CommonUtils';
+import { getCountBadge } from '../utils/EntityDisplayUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';

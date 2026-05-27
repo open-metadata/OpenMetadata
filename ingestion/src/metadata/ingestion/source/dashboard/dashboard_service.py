@@ -60,6 +60,7 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -367,6 +368,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # Flush the sink buffer so charts, datamodels and dashboards created in this
+        # stage are persisted before lineage resolution looks them up via get_by_name.
+        yield Either(right=Barrier(reason="dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
         # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
             yield from self.yield_lineage_request(lineage)

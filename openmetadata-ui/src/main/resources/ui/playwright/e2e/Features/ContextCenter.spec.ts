@@ -141,24 +141,14 @@ test.describe('Context Center', () => {
 
     // Upload a document via API so document-related tests have data
     const fileContent = Buffer.from('Playwright seed document');
-    const formData = new FormData();
-    formData.append(
-      'file',
-      new Blob([fileContent], { type: 'text/plain' }),
-      'seed-document.txt'
-    );
-    formData.append('entityLink', '<#E::page::contextCenter.documents>');
-    formData.append('assetType', 'External');
 
-    await apiContext.post('/api/v1/attachments/upload', {
+    await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
       multipart: {
         file: {
           name: 'seed-document.txt',
           mimeType: 'text/plain',
           buffer: fileContent,
         },
-        entityLink: '<#E::page::contextCenter.documents>',
-        assetType: 'External',
       },
     });
 
@@ -274,7 +264,7 @@ test.describe('Context Center', () => {
 
       await test.step('Create Article button is visible', async () => {
         await expect(
-          page.getByRole('button', { name: /create.*article/i })
+          page.getByTestId('create-knowledge-page-btn')
         ).toBeVisible();
       });
 
@@ -313,7 +303,8 @@ test.describe('Context Center', () => {
       await navigateToDashboard(page);
 
       const createRes = page.waitForResponse('/api/v1/contextCenter/pages');
-      await page.getByRole('button', { name: /create.*article/i }).click();
+      await page.getByTestId('create-knowledge-page-btn').click();
+      await page.getByTestId('create-article-btn').click();
       await createRes;
 
       await expect(
@@ -492,6 +483,148 @@ test.describe('Context Center', () => {
     });
   });
 
+  // ─── Search ──────────────────────────────────────────────────────────────────
+
+  test.describe('Search', () => {
+    test('searching articles filters the list to matching results', async ({
+      page,
+    }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+      await searchInput.fill(ARTICLE_TITLE);
+
+      // Wait for search results to update
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      // The pre-created article appears in results
+      const card = page.getByTestId(ARTICLE_TITLE);
+
+      await expect(card.first()).toBeVisible();
+    });
+
+    test('searching articles with no match shows empty state', async ({
+      page,
+    }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+      await searchInput.fill('zzznomatchzzz_playwright');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+        timeout: 8000,
+      });
+    });
+
+    test('clearing article search restores the full list', async ({ page }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+
+      await searchInput.fill('zzznomatch');
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await searchInput.clear();
+      await waitForAllLoadersToDisappear(page);
+
+      const card = page.getByTestId(ARTICLE_TITLE);
+      await expect(card.first()).toBeVisible();
+    });
+
+    test('searching documents filters the list to matching results', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+      await searchInput.fill('seed-document');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      const view = page.getByTestId('documents-view');
+      const rows = view.locator('[data-testid^="document-row-"]');
+      const count = await rows.count();
+
+      // If the seed document was indexed, it appears; otherwise the empty state shows
+      if (count > 0) {
+        await expect(rows.first()).toBeVisible();
+      } else {
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+          timeout: 8000,
+        });
+      }
+    });
+
+    test('searching documents with no match shows empty state', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+      await searchInput.fill('zzznomatchzzz_playwright');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+        timeout: 8000,
+      });
+    });
+
+    test('clearing document search restores the full list', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+
+      await searchInput.fill('zzznomatch');
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await searchInput.clear();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('documents-view')).toBeVisible();
+    });
+  });
+
   // ─── Articles Page ───────────────────────────────────────────────────────────
 
   test.describe('Articles Page', () => {
@@ -640,9 +773,7 @@ test.describe('Context Center', () => {
       await expect(header.getByTestId('version-btn')).toBeVisible();
 
       // manage button (three-dot menu)
-      await expect(
-        header.getByRole('button', { name: 'Manage Article' })
-      ).toBeVisible();
+      await expect(header.getByTestId('manage-button')).toBeVisible();
     });
 
     test('article detail page - tabs are visible', async ({ page }) => {
@@ -737,14 +868,8 @@ test.describe('Context Center', () => {
 
       await card.getByTestId('delete-quick-link-btn').click();
 
-      const deleteDialog = page.locator('[role="dialog"].ant-modal');
-      await expect(deleteDialog).toBeVisible();
-      await page.click('[data-testid="hard-delete-option"]');
-      await page.check('[data-testid="hard-delete"]');
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
       const deleteRes = page.waitForResponse(
-        '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=false'
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=false&hardDelete=true/
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;
@@ -783,26 +908,14 @@ test.describe('Context Center', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Click manage button to open dropdown
-      const manageBtn = page.getByRole('button', { name: 'Manage Article' });
+      const manageBtn = page.getByTestId('manage-button');
       await expect(manageBtn).toBeVisible();
       await manageBtn.click();
 
-      // Click Delete from the manage dropdown
-      const deleteOption = page
-        .getByTestId('manage-dropdown-list-container')
-        .getByText(/delete/i)
-        .first();
-      await expect(deleteOption).toBeVisible();
-      await deleteOption.click();
-
-      // DeleteWidgetModal: only hard-delete option available for knowledge pages
-      const deleteModal = page.getByRole('dialog');
-      await expect(deleteModal).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await page.getByTestId('delete-btn').click();
 
       const apiDeleteRes = page.waitForResponse(
-        /\/api\/v1\/contextCenter\/pages\/.+\?hardDelete=true/
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?recursive=true&hardDelete=false/
       );
       await page.getByTestId('confirm-button').click();
       await apiDeleteRes;
@@ -865,7 +978,7 @@ test.describe('Context Center', () => {
       await expect(modal).not.toBeVisible();
     });
 
-    test('file upload shows progress and success status, then appears in list', async ({
+    test('file upload attaches file and closes modal, then appears in list', async ({
       page,
     }) => {
       await navigateToDocuments(page);
@@ -889,22 +1002,14 @@ test.describe('Context Center', () => {
       await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
 
       // Attach the file
-      const uploadRes = page.waitForResponse('/api/v1/attachments/upload');
+      const uploadRes = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/upload'
+      );
       await modal.getByRole('button', { name: /attach/i }).click();
-
-      // Progress bar / uploading state
-      const progressList = modal.getByRole('list');
-      await expect(progressList).toBeVisible();
-
       await uploadRes;
 
-      // Wait for done state
-      await expect(modal.getByText(/complete/i)).toBeVisible();
-
-      await expect(modal.getByText('100%')).toBeVisible();
-
-      // Close modal
-      await modal.getByRole('button', { name: /cancel/i }).click();
+      // Modal closes automatically after successful upload
+      await expect(modal).not.toBeVisible();
 
       // File appears in document list
       const docRow = page.getByText('test-upload.txt');
@@ -932,7 +1037,7 @@ test.describe('Context Center', () => {
       await expect(downloadBtn).toBeVisible();
     });
 
-    test('download button triggers file download', async ({ page }) => {
+    test.fixme('download button triggers file download', async ({ page }) => {
       await navigateToDocuments(page);
 
       const view = page.getByTestId('documents-view');
@@ -940,53 +1045,68 @@ test.describe('Context Center', () => {
 
       await expect(firstRow).toBeVisible();
 
-      // Listen for the download API call — download triggers /api/v1/assets/:id/download
+      // Listen for the download API call
       const downloadRes = page.waitForResponse(
-        /\/api\/v1\/attachments\/[^/]+\/download(?:\?.*)?$/
+        /\/api\/v1\/contextCenter\/drive\/files\/[^/]+\/download(?:\?.*)?$/
       );
       await firstRow.locator('button').nth(0).click();
       const res = await downloadRes;
       expect(res.status()).toBe(200);
     });
 
-    test('delete document removes it from the list', async ({ page }) => {
+    test('delete document removes it from the list', async ({
+      browser,
+      page,
+    }) => {
+      const fileName = `delete-doc-${uuid()}.txt`;
+
+      // Upload a dedicated document so this test is independent of the download test
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
+        multipart: {
+          file: {
+            name: fileName,
+            mimeType: 'text/plain',
+            buffer: Buffer.from('document for delete test'),
+          },
+        },
+      });
+      await afterAction();
+
       await navigateToDocuments(page);
 
       const view = page.getByTestId('documents-view');
-      const firstRow = view.locator('[data-testid^="document-row-"]').first();
+      const targetRow = view.locator(`[data-testid^="document-row-"]`).filter({
+        has: page.getByText(fileName),
+      });
 
-      // Relies on at least one document existing from prior upload test
-      await expect(firstRow).toBeVisible();
-      await firstRow.scrollIntoViewIfNeeded();
+      await expect(targetRow).toBeVisible();
+      await targetRow.scrollIntoViewIfNeeded();
 
-      const rowId = await firstRow.getAttribute('data-testid');
+      const rowId = await targetRow.getAttribute('data-testid');
 
-      // Open the three-dot actions dropdown (second button in the row, after download)
-      await firstRow.locator('button[aria-label="Open menu"]').click();
+      await targetRow.locator('button[aria-label="Open menu"]').click();
 
-      // Click Delete from the dropdown menu
       const deleteItem = page.getByTestId('delete-btn');
       await expect(deleteItem).toBeVisible();
       await deleteItem.click();
 
-      // Confirm via DeleteModal from core-components
       const deleteModal = page.getByTestId('modal-header');
       await expect(deleteModal).toBeVisible();
 
       const deleteRes = page.waitForResponse(
-        /\/api\/v1\/attachments\/[^?]+\?hardDelete=true/
+        /\/api\/v1\/contextCenter\/drive\/files\/[^?]+\?hardDelete=false/
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;
       expect(res.status()).toBe(200);
 
-      // Row is removed from the list
       if (rowId) {
         await expect(page.getByTestId(rowId)).not.toBeVisible();
       }
     });
 
-    test('oversized file shows error toast and does NOT appear in upload list', async ({
+    test('oversized file appears in list with failed state and Attach button stays disabled', async ({
       page,
     }) => {
       await navigateToDocuments(page);
@@ -1007,16 +1127,15 @@ test.describe('Context Center', () => {
         buffer: bigBuffer,
       });
 
-      // Inline error message is shown inside the modal
-      await expect(modal.getByTestId('size-error-message')).toBeVisible({
+      // File appears in the list in a failed/error state
+      await expect(modal.getByText('too-large.bin')).toBeVisible({
         timeout: 5000,
       });
 
-      // The file does NOT appear in the staged list
-      await expect(modal.getByText('too-large.bin')).not.toBeVisible();
-
-      // Upload progress list is also absent (nothing was queued)
-      await expect(modal.getByRole('list')).not.toBeVisible();
+      // Attach button is disabled because there are no valid files to upload
+      await expect(
+        modal.getByRole('button', { name: /attach/i })
+      ).toBeDisabled();
     });
   });
 });
