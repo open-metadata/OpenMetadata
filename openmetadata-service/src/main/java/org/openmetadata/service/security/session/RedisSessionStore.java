@@ -20,6 +20,7 @@ import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +36,8 @@ import org.openmetadata.schema.utils.JsonUtils;
  *
  * <p>Per-user session enumeration is supported by a secondary ZSET index per
  * {@code (userId, status)} scored by {@code lastAccessedAt}. Updates that change a session's
- * status maintain the indexes (active → terminal moves the entry out of the active index).
+ * status maintain the indexes in the same CAS script (active → terminal moves the entry out of the
+ * active index).
  *
  * <p>Optimistic CAS on the {@code version} field is implemented as a server-side Lua script that
  * reads the current JSON, parses out the version, compares against the expected value, and
@@ -54,14 +56,22 @@ public class RedisSessionStore implements SessionStore {
   // typical workloads without becoming expensive on a very chatty user.
   private static final int USER_INDEX_OVERSAMPLE = 3;
 
+  private static final List<SessionStatus> INDEXED_STATUSES =
+      Arrays.stream(SessionStatus.values()).filter(status -> !isTerminal(status)).toList();
+
   // Lua CAS: parses "version":N from the stored JSON, compares against ARGV[1], rewrites with
-  // ARGV[2] and TTL ARGV[3] when matched. Returns 1 on success, 0 on miss (key absent or version
-  // mismatch). Pattern keeps the script tiny and self-contained — no JSON parsing dependency.
+  // ARGV[2] and TTL ARGV[3] when matched, and updates secondary indexes in the same Redis script.
+  // Returns 1 on success, 0 on miss (key absent or version mismatch). Pattern keeps the script
+  // tiny and self-contained — no JSON parsing dependency beyond the version check.
   //
   //   KEYS[1] = session key
+  //   KEYS[2..n] = non-terminal status index keys for this session's user
   //   ARGV[1] = expected version (decimal string)
   //   ARGV[2] = new JSON
   //   ARGV[3] = TTL seconds (positive; 0 means "no TTL set")
+  //   ARGV[4] = session ID
+  //   ARGV[5] = target index key position in KEYS (0 for terminal/no-user sessions)
+  //   ARGV[6] = target index score
   private static final String CAS_LUA =
       "local current = redis.call('GET', KEYS[1])\n"
           + "if current == false then return 0 end\n"
@@ -72,6 +82,13 @@ public class RedisSessionStore implements SessionStore {
           + "  redis.call('SET', KEYS[1], ARGV[2], 'EX', ttl)\n"
           + "else\n"
           + "  redis.call('SET', KEYS[1], ARGV[2])\n"
+          + "end\n"
+          + "for i = 2, #KEYS do\n"
+          + "  redis.call('ZREM', KEYS[i], ARGV[4])\n"
+          + "end\n"
+          + "local targetIndex = tonumber(ARGV[5])\n"
+          + "if targetIndex and targetIndex > 1 then\n"
+          + "  redis.call('ZADD', KEYS[targetIndex], ARGV[6], ARGV[4])\n"
           + "end\n"
           + "return 1\n";
 
@@ -186,15 +203,14 @@ public class RedisSessionStore implements SessionStore {
         commands.eval(
             CAS_LUA,
             ScriptOutputType.INTEGER,
-            new String[] {sessionKey(session.getId())},
+            casKeysFor(session),
             Long.toString(expectedVersion),
             json,
-            Long.toString(ttl));
-    if (result == null || result == 0L) {
-      return false;
-    }
-    maintainUserIndex(session);
-    return true;
+            Long.toString(ttl),
+            session.getId(),
+            Integer.toString(targetIndexKeyPosition(session)),
+            Double.toString(scoreFor(session)));
+    return result != null && result > 0L;
   }
 
   private double scoreFor(UserSession session) {
@@ -202,29 +218,28 @@ public class RedisSessionStore implements SessionStore {
     return lastAccessed == null ? 0.0 : lastAccessed.doubleValue();
   }
 
-  private void maintainUserIndex(UserSession session) {
+  private String[] casKeysFor(UserSession session) {
     if (nullOrEmpty(session.getUserId())) {
-      return;
+      return new String[] {sessionKey(session.getId())};
     }
-    String userId = session.getUserId();
-    SessionStatus status = session.getStatus();
-    if (isTerminal(status)) {
-      // Remove from every per-status index; we don't know which one previously held it.
-      for (SessionStatus s : SessionStatus.values()) {
-        if (!isTerminal(s)) {
-          commands.zrem(userIndexKey(userId, s), session.getId());
-        }
-      }
-      return;
+    List<String> keys = new ArrayList<>(INDEXED_STATUSES.size() + 1);
+    keys.add(sessionKey(session.getId()));
+    for (SessionStatus status : INDEXED_STATUSES) {
+      keys.add(userIndexKey(session.getUserId(), status));
     }
-    // Active/pending/refreshing — make sure the entry sits in the right per-status index and
-    // not in any sibling indexes (a refresh moves ACTIVE → REFRESHING, etc.).
-    commands.zadd(userIndexKey(userId, status), scoreFor(session), session.getId());
-    for (SessionStatus s : SessionStatus.values()) {
-      if (s != status && !isTerminal(s)) {
-        commands.zrem(userIndexKey(userId, s), session.getId());
+    return keys.toArray(new String[0]);
+  }
+
+  private int targetIndexKeyPosition(UserSession session) {
+    if (nullOrEmpty(session.getUserId()) || isTerminal(session.getStatus())) {
+      return 0;
+    }
+    for (int i = 0; i < INDEXED_STATUSES.size(); i++) {
+      if (INDEXED_STATUSES.get(i) == session.getStatus()) {
+        return i + 2;
       }
     }
+    return 0;
   }
 
   @Override

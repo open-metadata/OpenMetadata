@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Include;
@@ -52,7 +53,10 @@ public class WebSocketManager {
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
       new ConcurrentHashMap<>();
 
+  private static final long DEFAULT_SESSION_REVALIDATION_INTERVAL_MILLIS =
+      TimeUnit.MINUTES.toMillis(1);
   private final Map<String, String> socketSessionIds = new ConcurrentHashMap<>();
+  private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     engineIoServer = new EngineIoServer(eiOptions);
@@ -97,6 +101,7 @@ public class WebSocketManager {
                       (key, connections) -> {
                         connections.remove(socket.getId());
                         socketSessionIds.remove(socket.getId());
+                        socketSessionValidatedAt.remove(socket.getId());
                         return connections.isEmpty() ? null : connections;
                       });
                 });
@@ -213,9 +218,15 @@ public class WebSocketManager {
   }
 
   public void disconnectInactiveSessions(SessionService sessionService) {
+    disconnectInactiveSessions(sessionService, DEFAULT_SESSION_REVALIDATION_INTERVAL_MILLIS);
+  }
+
+  public void disconnectInactiveSessions(
+      SessionService sessionService, long sessionRevalidationIntervalMillis) {
     if (sessionService == null || activityFeedEndpoints.isEmpty()) {
       return;
     }
+    long now = System.currentTimeMillis();
     activityFeedEndpoints.forEach(
         (userId, sockets) -> {
           List<SocketIoSocket> socketsToDisconnect = new ArrayList<>();
@@ -223,14 +234,30 @@ public class WebSocketManager {
               (socketId, socket) -> {
                 String sessionId = socketSessionIds.get(socketId);
                 if (sessionId != null
-                    && !isSessionActiveForUser(sessionService, sessionId, userId)) {
-                  socketsToDisconnect.add(socket);
+                    && isSessionRevalidationDue(socketId, now, sessionRevalidationIntervalMillis)) {
+                  if (isSessionActiveForUser(sessionService, sessionId, userId)) {
+                    socketSessionValidatedAt.put(socketId, now);
+                  } else {
+                    socketsToDisconnect.add(socket);
+                  }
                 }
               });
           socketsToDisconnect.forEach(socket -> disconnectSocket(userId, socket));
           activityFeedEndpoints.computeIfPresent(
               userId, (key, connections) -> connections.isEmpty() ? null : connections);
         });
+  }
+
+  private boolean isSessionRevalidationDue(
+      String socketId, long now, long sessionRevalidationIntervalMillis) {
+    if (sessionRevalidationIntervalMillis <= 0) {
+      return true;
+    }
+    Long lastValidatedAt = socketSessionValidatedAt.get(socketId);
+    if (lastValidatedAt != null && now - lastValidatedAt < sessionRevalidationIntervalMillis) {
+      return false;
+    }
+    return true;
   }
 
   private boolean isSessionActiveForUser(
@@ -248,6 +275,7 @@ public class WebSocketManager {
   private void disconnectSocket(UUID userId, SocketIoSocket socket) {
     try {
       socketSessionIds.remove(socket.getId());
+      socketSessionValidatedAt.remove(socket.getId());
       Map<String, SocketIoSocket> sockets = activityFeedEndpoints.get(userId);
       if (sockets != null) {
         sockets.remove(socket.getId());

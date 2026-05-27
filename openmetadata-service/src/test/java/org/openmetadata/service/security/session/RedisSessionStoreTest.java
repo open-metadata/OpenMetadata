@@ -12,13 +12,19 @@
  */
 package org.openmetadata.service.security.session;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -66,5 +72,32 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
   @Override
   protected SessionStore newStore() {
     return new RedisSessionStore(commands, "om-test");
+  }
+
+  @Test
+  void updateIfVersionMovesNonTerminalIndexInCasScript() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+    UserSession active =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(30))
+            .build();
+    redisStore.create(active);
+
+    UserSession refreshing =
+        active.toBuilder().status(SessionStatus.REFRESHING).version(1L).build();
+
+    assertTrue(redisStore.updateIfVersion(refreshing, 0L));
+    assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
+    assertEquals(1L, redisStore.userIndexSize(userId, SessionStatus.REFRESHING));
   }
 }

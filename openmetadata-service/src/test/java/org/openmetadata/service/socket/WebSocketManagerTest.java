@@ -25,10 +25,14 @@ import static org.mockito.Mockito.when;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoSocket;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
 
 class WebSocketManagerTest {
 
@@ -137,5 +141,41 @@ class WebSocketManagerTest {
 
     verify(socket, never()).disconnect(anyBoolean());
     assertTrue(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
+  @Test
+  void disconnectInactiveSessionsThrottlesFreshSessionLookups() throws Exception {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn("socket-a");
+    Map<String, SocketIoSocket> sockets = new ConcurrentHashMap<>();
+    sockets.put("socket-a", socket);
+    manager.getActivityFeedEndpoints().put(userId, sockets);
+    java.lang.reflect.Field socketSessionIds =
+        WebSocketManager.class.getDeclaredField("socketSessionIds");
+    socketSessionIds.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<String, String> sessionIds = (Map<String, String>) socketSessionIds.get(manager);
+    sessionIds.put("socket-a", "session-a");
+    SessionService sessionService = mock(SessionService.class);
+    when(sessionService.getFreshSessionById("session-a"))
+        .thenReturn(Optional.of(activeSession("session-a", userId)));
+
+    manager.disconnectInactiveSessions(sessionService, 60_000L);
+    manager.disconnectInactiveSessions(sessionService, 60_000L);
+
+    verify(sessionService, times(1)).getFreshSessionById("session-a");
+    verify(socket, never()).disconnect(anyBoolean());
+  }
+
+  private UserSession activeSession(String sessionId, UUID userId) {
+    long now = System.currentTimeMillis();
+    return UserSession.builder()
+        .id(sessionId)
+        .userId(userId.toString())
+        .status(SessionStatus.ACTIVE)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000)
+        .build();
   }
 }

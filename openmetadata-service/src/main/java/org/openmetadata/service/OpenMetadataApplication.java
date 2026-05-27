@@ -1242,12 +1242,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   public static class WebSocketSessionValidator implements Managed {
-    private static final long VALIDATION_INTERVAL_SECONDS = 15L;
+    private static final long DEFAULT_VALIDATION_INTERVAL_SECONDS = 60L;
+    private static final long MIN_VALIDATION_INTERVAL_SECONDS = 15L;
+    private static final String VALIDATION_INTERVAL_PROPERTY =
+        "openmetadata.websocketSessionValidationIntervalSeconds";
+    private static final String VALIDATION_INTERVAL_ENV =
+        "WEBSOCKET_SESSION_VALIDATION_INTERVAL_SECONDS";
     private final SessionService sessionService;
+    private final long validationIntervalSeconds;
     private ScheduledExecutorService scheduler;
 
     public WebSocketSessionValidator(SessionService sessionService) {
+      this(sessionService, resolveValidationIntervalSeconds());
+    }
+
+    WebSocketSessionValidator(SessionService sessionService, long validationIntervalSeconds) {
       this.sessionService = sessionService;
+      this.validationIntervalSeconds =
+          Math.max(MIN_VALIDATION_INTERVAL_SECONDS, validationIntervalSeconds);
     }
 
     @Override
@@ -1261,8 +1273,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               });
       scheduler.scheduleWithFixedDelay(
           this::validateSessions,
-          VALIDATION_INTERVAL_SECONDS,
-          VALIDATION_INTERVAL_SECONDS,
+          validationIntervalSeconds,
+          validationIntervalSeconds,
           TimeUnit.SECONDS);
     }
 
@@ -1277,10 +1289,30 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       try {
         WebSocketManager wsManager = WebSocketManager.getInstance();
         if (wsManager != null) {
-          wsManager.disconnectInactiveSessions(sessionService);
+          wsManager.disconnectInactiveSessions(
+              sessionService, TimeUnit.SECONDS.toMillis(validationIntervalSeconds));
         }
       } catch (Exception e) {
         LOG.debug("WebSocket session validation failed", e);
+      }
+    }
+
+    private static long resolveValidationIntervalSeconds() {
+      String configured = System.getProperty(VALIDATION_INTERVAL_PROPERTY);
+      if (configured == null || configured.isBlank()) {
+        configured = System.getenv(VALIDATION_INTERVAL_ENV);
+      }
+      if (configured == null || configured.isBlank()) {
+        return DEFAULT_VALIDATION_INTERVAL_SECONDS;
+      }
+      try {
+        return Long.parseLong(configured.trim());
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Invalid WebSocket session validation interval '{}'; using default {} seconds",
+            configured,
+            DEFAULT_VALIDATION_INTERVAL_SECONDS);
+        return DEFAULT_VALIDATION_INTERVAL_SECONDS;
       }
     }
   }

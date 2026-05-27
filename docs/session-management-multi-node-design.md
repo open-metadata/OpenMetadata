@@ -61,7 +61,7 @@ The key failure modes are:
 | `SessionService` | Creates, activates, refreshes, revokes, expires, and prunes sessions. Owns the Caffeine near-cache and revocation listeners. |
 | `SessionStore` | Shared persistence contract used by both JDBC and Redis stores. |
 | `JdbcSessionStore` | Default store backed by the `user_session` table through `SessionRepository`. |
-| `RedisSessionStore` | Optional Redis store with key TTLs, per-user status indexes, and Lua compare-and-set on `version`. |
+| `RedisSessionStore` | Optional Redis store with key TTLs, per-user status indexes, and Lua compare-and-set on `version` plus index maintenance. |
 | `SessionStoreFactory` | Selects Redis when Redis cache is configured and available; otherwise uses JDBC. Refuses Redis-to-JDBC fallback when Redis is configured but unavailable. |
 | `SessionCookieUtil` | Reads, writes, validates, and clears the opaque `OM_SESSION` cookie. |
 | `JWTTokenGenerator` | Issues OpenMetadata JWTs and can include the `sessionId` claim for session-backed auth flows. |
@@ -338,12 +338,16 @@ sessions for the same user.
 
 ### 8.4 Periodic WebSocket Validation
 
-`OpenMetadataApplication.WebSocketSessionValidator` runs every `15s`.
+`OpenMetadataApplication.WebSocketSessionValidator` runs every `60s` by default. Operators can tune
+the interval with the `openmetadata.websocketSessionValidationIntervalSeconds` system property or
+the `WEBSOCKET_SESSION_VALIDATION_INTERVAL_SECONDS` environment variable. Values below `15s` are
+clamped to `15s`.
 
-Each run calls `WebSocketManager.disconnectInactiveSessions(sessionService)`, which:
+Each run calls `WebSocketManager.disconnectInactiveSessions(sessionService, intervalMillis)`, which:
 
 1. Iterates local sockets with known `sessionId`.
-2. Reloads each session fresh through `SessionService.getFreshSessionById`.
+2. Reloads a socket's session fresh through `SessionService.getFreshSessionById` only when that
+   socket's revalidation interval is due.
 3. Disconnects sockets whose session is missing, not `ACTIVE`, expired, or owned by a different
    user.
 
@@ -366,7 +370,7 @@ flowchart TD
   WebSocketManagerA["WebSocketManager A"]
   WebSocketManagerB["WebSocketManager B"]
   PubSub["Cache invalidation pub/sub<br/>optional"]
-  Validator["WebSocketSessionValidator<br/>every 15s"]
+  Validator["WebSocketSessionValidator<br/>default 60s, min 15s"]
 
   Browser -->|"login / callback"| NodeA
   NodeA --> AuthHandlers
@@ -415,17 +419,20 @@ Refresh uses optimistic compare-and-set on `version`, so only one node can hold 
 for a session at a time.
 
 JDBC implements this through the session repository update path. Redis implements it with a Lua CAS
-script over the stored session JSON.
+script over the stored session JSON. The Redis script also removes the session ID from all
+non-terminal per-user status indexes and adds it to the target non-terminal index before returning,
+so the JSON write and index movement succeed or fail together.
 
 ### 10.3 WebSockets
 
 Websocket consistency has two layers:
 
 - event-driven disconnect through local revocation listeners and optional cache invalidation pub/sub
-- polling-based validation every `15s`
+- polling-based validation with a `60s` default interval and `15s` minimum
 
 The event path is immediate when revocation occurs on the same pod or pub/sub delivers the remote
-event. The polling path bounds staleness when pub/sub is unavailable.
+event. The polling path bounds staleness when pub/sub is unavailable, and each socket is fresh
+loaded at most once per validation interval.
 
 ## 11. Operational Characteristics
 
@@ -437,7 +444,7 @@ event. The polling path bounds staleness when pub/sub is unavailable.
 | Refresh | load session, acquire CAS lease, complete CAS update |
 | Logout | fresh load session, CAS revoke, clear cookie |
 | WebSocket handshake | validate JWT, optionally fresh load cookie session |
-| WebSocket validator | fresh load session for each tracked socket with `sessionId` |
+| WebSocket validator | throttled fresh load for each tracked socket with `sessionId` |
 
 Redis deployments should monitor Redis availability as auth-critical infrastructure. When Redis is
 configured for sessions, the service refuses to start without it.
@@ -503,8 +510,8 @@ Important scenarios covered or expected from this suite:
    `authenticationConfiguration.maxActiveSessionsPerUser` and
    `AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER`; the default remains `5`.
 5. Secure, session-managed websocket handshakes now record a session ID from the JWT claim or
-   `OM_SESSION` cookie. The validator checks those sockets every `15s`; sockets without session IDs
-   are legacy/non-secure compatibility cases.
+   `OM_SESSION` cookie. The validator checks those sockets on a configurable interval with a `60s`
+   default and `15s` minimum; sockets without session IDs are legacy/non-secure compatibility cases.
 6. Cross-pod websocket revocation has two paths: cache invalidation pub/sub for immediate targeted
-   disconnects when available, and the `15s` websocket validator as the bounded-staleness fallback
-   for JDBC-only deployments.
+   disconnects when available, and the configurable websocket validator as the bounded-staleness
+   fallback for JDBC-only deployments.
