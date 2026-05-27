@@ -112,12 +112,13 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import entityUtilClassBase from '../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getNodeHeight } from './CanvasUtils';
-import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
+import { isDeleted } from './EntityStatusUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
-import { jsonToCSV } from './StringsUtils';
+import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 interface LayoutedElements {

@@ -54,7 +54,7 @@ import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';

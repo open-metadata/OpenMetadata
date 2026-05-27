@@ -21,8 +21,8 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getEntityTaskDetails,
   getRequestDescriptionPath,

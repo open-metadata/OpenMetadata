@@ -47,7 +47,7 @@ import { getBotsPath } from '../../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   stringToHTML,
-} from '../../../../utils/StringsUtils';
+} from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

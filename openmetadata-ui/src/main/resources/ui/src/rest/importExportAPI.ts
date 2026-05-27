@@ -13,7 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { EntityType } from '../enums/entity.enum';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export interface importEntityInCSVFormatRequestParams {

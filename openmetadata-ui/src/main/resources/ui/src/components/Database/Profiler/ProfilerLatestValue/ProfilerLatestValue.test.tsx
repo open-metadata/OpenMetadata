@@ -29,7 +29,7 @@ jest.mock('../../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
   getStatisticsDisplayValue: jest.fn().mockImplementation(() => '10'),
 }));
 

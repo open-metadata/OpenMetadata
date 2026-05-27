@@ -19,7 +19,7 @@ import {
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../../utils/StringUtils';
 
 type TeamHierarchyNameCellProps = {
   record: Team;

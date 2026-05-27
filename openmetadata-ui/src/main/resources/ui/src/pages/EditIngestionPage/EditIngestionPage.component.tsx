@@ -49,7 +49,7 @@ import {
   updateIngestionPipeline,
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,

@@ -23,8 +23,11 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getExplorePath: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('getServiceLogo'),
+}));
+
+jest.mock('../../../../../utils/FilterQueryUtils', () => ({
   getServiceTypeExploreQueryFilter: jest
     .fn()
     .mockImplementation(() => filterQuery),
