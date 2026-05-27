@@ -1088,7 +1088,7 @@ describe('DataQualityDashboard', () => {
       ).toBeInTheDocument();
     });
 
-    it('does not call getTags API when both tier and certification are in hiddenFilters', async () => {
+    it('does not call getTags API when tier is in hiddenFilters', async () => {
       render(
         <DataQualityDashboard hiddenFilters={['tier', 'certification']} />,
         { wrapper: MemoryRouter }
@@ -1103,19 +1103,23 @@ describe('DataQualityDashboard', () => {
       expect(mockGetTags).not.toHaveBeenCalled();
     });
 
-    it('fetches only Certification (not Tier) when tier is in hiddenFilters', async () => {
+    it('fetches Certification via searchQuery when tier is in hiddenFilters', async () => {
       render(<DataQualityDashboard hiddenFilters={['tier']} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetTags).toHaveBeenCalledWith({ parent: 'Certification' });
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            filters: 'disabled:false AND classification.name:Certification',
+          })
+        );
       });
 
       expect(mockGetTags).not.toHaveBeenCalledWith({ parent: 'Tier' });
     });
 
-    it('fetches only Tier (not Certification) when certification is in hiddenFilters', async () => {
+    it('does not fetch Certification when certification is in hiddenFilters', async () => {
       render(<DataQualityDashboard hiddenFilters={['certification']} />, {
         wrapper: MemoryRouter,
       });
@@ -1124,7 +1128,11 @@ describe('DataQualityDashboard', () => {
         expect(mockGetTags).toHaveBeenCalledWith({ parent: 'Tier' });
       });
 
-      expect(mockGetTags).not.toHaveBeenCalledWith({ parent: 'Certification' });
+      expect(mockSearchQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: 'disabled:false AND classification.name:Certification',
+        })
+      );
     });
 
     it('does not call tag search API when tags is in hiddenFilters', async () => {
@@ -1141,8 +1149,8 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      // only glossaryTerms fetch runs — searchQuery called once, not twice
-      expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+      // certification + glossaryTerms fetches run — searchQuery called twice
+      expect(mockSearchQuery).toHaveBeenCalledTimes(2);
     });
 
     it('does not call glossary term search API when glossaryTerms is in hiddenFilters', async () => {
@@ -1161,8 +1169,8 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      // only tags fetch runs — searchQuery called once, not twice
-      expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+      // certification + tags fetches run — searchQuery called twice
+      expect(mockSearchQuery).toHaveBeenCalledTimes(2);
     });
 
     it('hideFilterBar is a hard override — hides the entire bar even when hiddenFilters is set', () => {
@@ -1384,7 +1392,7 @@ describe('DataQualityDashboard', () => {
           (args[0] as Record<string, unknown>).query === '***'
       );
 
-      expect(wildcardCalls.length).toBeGreaterThanOrEqual(3); // tags + glossaryTerms + data products
+      expect(wildcardCalls.length).toBeGreaterThanOrEqual(4); // tags + glossaryTerms + data products + certification
       expect(tripleStarCalls).toHaveLength(0);
     });
 
