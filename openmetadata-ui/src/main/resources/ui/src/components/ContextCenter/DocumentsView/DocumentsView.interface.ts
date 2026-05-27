@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-export type DocFileType = 'pdf' | 'xls' | 'csv' | 'doc' | 'image' | 'other';
-
 export interface DocFile {
   id: string;
   driveFileId?: string;
   name: string;
-  fileType: DocFileType;
+  fileExtension?: string;
   sizeLabel: string;
   updatedBy?: string;
   updatedAt?: number;

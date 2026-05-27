@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -44,8 +45,6 @@ import org.openmetadata.sdk.network.HttpMethod;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class IndexFieldExplosionIT {
 
-  private static final String TABLE_ALIAS = "table_search_index";
-  private static final String SCHEMA_ALIAS = "database_schema_search_index";
   private static final int CUSTOM_PROPERTIES_TO_ADD = 30;
   private static final int CHILD_TABLES = 50;
 
@@ -57,12 +56,15 @@ class IndexFieldExplosionIT {
     server = OssTestServer.defaultHandle();
     inspector = new IndexAliasInspector(server);
     Apps.setDefaultClient(SdkClients.adminClient());
-    ReindexHelpers.triggerSearchIndexAndWait(server);
+    // Recreate the baseline so the (cluster-alias-prefixed) indices exist/queryable even if a
+    // prior search IT dropped or left them unswapped.
+    ReindexHelpers.recreateAllAndWait(server, Duration.ofMinutes(5));
   }
 
   @Test
   void manyChildTablesDoNotInflateSchemaMappingFieldCount(final TestNamespace ns) {
-    final long schemaBefore = inspector.fieldCount(SCHEMA_ALIAS);
+    final String schemaAlias = inspector.aliasFor("databaseSchema");
+    final long schemaBefore = inspector.fieldCount(schemaAlias);
 
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     for (int i = 0; i < CHILD_TABLES; i++) {
@@ -70,7 +72,7 @@ class IndexFieldExplosionIT {
     }
     ReindexHelpers.triggerSearchIndexAndWait(server);
 
-    final long schemaAfter = inspector.fieldCount(SCHEMA_ALIAS);
+    final long schemaAfter = inspector.fieldCount(schemaAlias);
     assertThat(schemaAfter)
         .as(
             "databaseSchema mapping field count must not scale with child tables (before=%d after=%d)",
@@ -80,7 +82,8 @@ class IndexFieldExplosionIT {
 
   @Test
   void customPropertiesDoNotInflateTableMappingFieldCount() throws Exception {
-    final long tableBefore = inspector.fieldCount(TABLE_ALIAS);
+    final String tableAlias = inspector.aliasFor("table");
+    final long tableBefore = inspector.fieldCount(tableAlias);
     final OpenMetadataClient client = SdkClients.adminClient();
     final Type tableType = getTypeByName(client, "table");
     final Type stringType = getTypeByName(client, "string");
@@ -97,7 +100,7 @@ class IndexFieldExplosionIT {
     }
     ReindexHelpers.triggerSearchIndexAndWait(server);
 
-    final long tableAfter = inspector.fieldCount(TABLE_ALIAS);
+    final long tableAfter = inspector.fieldCount(tableAlias);
     assertThat(tableAfter)
         .as(
             "table mapping field count must not scale with custom properties (before=%d after=%d, added=%d)",

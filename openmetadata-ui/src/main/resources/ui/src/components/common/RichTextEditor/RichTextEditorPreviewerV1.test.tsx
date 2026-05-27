@@ -28,7 +28,7 @@ jest.mock('../../../utils/BlockEditorUtils', () => ({
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getTrimmedContent: jest.fn((content, maxLength) =>
     content.slice(0, maxLength)
   ),
@@ -180,7 +180,7 @@ describe('RichTextEditorPreviewerV1', () => {
   });
 
   it('should render trimmed content when not expanded', () => {
-    const { getTrimmedContent } = require('../../../utils/CommonUtils');
+    const { getTrimmedContent } = require('../../../utils/StringUtils');
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
     expect(getTrimmedContent).toHaveBeenCalledWith(mockLongMarkdown, 50);
@@ -304,7 +304,7 @@ describe('RichTextEditorPreviewerV1', () => {
   });
 
   it('should render ellipsis after trimmed content', () => {
-    const { getTrimmedContent } = require('../../../utils/CommonUtils');
+    const { getTrimmedContent } = require('../../../utils/StringUtils');
     getTrimmedContent.mockReturnValue('Trimmed content');
 
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);

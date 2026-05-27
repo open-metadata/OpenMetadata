@@ -52,13 +52,13 @@ import {
 import { DatabaseServiceSearchSource } from '../interface/search.interface';
 import { ServicesType } from '../interface/service.interface';
 import { searchService } from '../rest/serviceAPI';
-import { replaceAllSpacialCharWith_ } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtils';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
+import { replaceAllSpacialCharWith_ } from './StringUtils';
 
 export const getIngestionName = (
   serviceName: string,
