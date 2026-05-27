@@ -53,15 +53,46 @@ const DEFAULT_THRESHOLD: Threshold = {
   profileSample: 100,
 };
 
+const STATIC_CONFIG_KEYS: ReadonlyArray<keyof ICSamplingConfig> = [
+  'profileSample',
+  'profileSampleType',
+  'samplingMethodType',
+];
+
+const DYNAMIC_CONFIG_KEYS: ReadonlyArray<keyof ICSamplingConfig> = [
+  'smartSampling',
+  'thresholds',
+];
+
+const pickConfigForType = (
+  config: ICSamplingConfig | undefined,
+  type: SampleConfigType
+): ICSamplingConfig => {
+  if (!config) {
+    return {};
+  }
+  const allowedKeys =
+    type === SampleConfigType.Static ? STATIC_CONFIG_KEYS : DYNAMIC_CONFIG_KEYS;
+  const result: ICSamplingConfig = {};
+  for (const key of allowedKeys) {
+    if (config[key] !== undefined) {
+      (result as Record<string, unknown>)[key] = config[key];
+    }
+  }
+
+  return result;
+};
+
 const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;
   const { t } = useTranslation();
 
   const sampleConfigType =
     formData?.sampleConfigType ?? SampleConfigType.Dynamic;
-  const config: ICSamplingConfig = formData?.config ?? {
-    smartSampling: true,
-  };
+  const config: ICSamplingConfig = pickConfigForType(
+    formData?.config,
+    sampleConfigType
+  );
 
   const handleConfigTypeChange = useCallback(
     (type: string | number | null) => {

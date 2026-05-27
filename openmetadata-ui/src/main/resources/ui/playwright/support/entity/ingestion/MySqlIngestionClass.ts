@@ -144,6 +144,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.click('[data-menu-id*="profiler"]');
 
       await waitForAllLoadersToDisappear(page);
+      await page
+        .locator('.advanced-properties-collapse')
+        .getByText('Advanced Config')
+        .click();
 
       const sampleConfigTypeSelect = page.getByTestId(
         'sample-config-type-select'
