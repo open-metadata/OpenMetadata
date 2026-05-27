@@ -19,6 +19,7 @@ export interface ContextCenterHeaderProps {
   title: string;
   subtitle?: string;
   hasPermission?: boolean;
+  className?: string;
   onCreateArticle?: () => void;
   onUploadFile?: () => void;
   /** Replaces the default action buttons with a custom slot */
