@@ -37,8 +37,14 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -61,6 +67,8 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
+    get_mssql_metastore_connection_url,
+    get_validated_metastore_connection,
 )
 from metadata.ingestion.source.database.hive.connection import (
     test_connection as hive_test_connection,
@@ -1172,3 +1180,149 @@ class HiveSourceMetastoreValidationTest(TestCase):
         self.hive.service_connection.metastoreConnection = invalid_dict
         result = self.hive._get_validated_metastore_connection()
         self.assertIsNone(result)
+
+    def test_get_validated_metastore_connection_with_mssql_object(self):
+        """
+        Test _get_validated_metastore_connection returns MssqlConnection when already validated
+        """
+        mssql_conn = MssqlConnection(
+            username="mssql_user",
+            hostPort="localhost:1433",
+            database="hive_metastore",
+        )
+        self.hive.service_connection.metastoreConnection = mssql_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MssqlConnection)
+        self.assertEqual(result, mssql_conn)
+
+    def test_get_validated_metastore_connection_with_oracle_object(self):
+        """
+        Test _get_validated_metastore_connection returns OracleConnection when already validated
+        """
+        oracle_conn = OracleConnection(
+            username="oracle_user",
+            hostPort="localhost:1521",
+            oracleConnectionType={"oracleServiceName": "XE"},
+        )
+        self.hive.service_connection.metastoreConnection = oracle_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, OracleConnection)
+        self.assertEqual(result, oracle_conn)
+
+    def test_get_validated_metastore_connection_with_mssql_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as MssqlConnection
+        """
+        mssql_dict = {
+            "type": "Mssql",
+            "username": "mssql_user",
+            "hostPort": "localhost:1433",
+            "database": "hive_metastore",
+        }
+        self.hive.service_connection.metastoreConnection = mssql_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MssqlConnection)
+        self.assertEqual(result.username, "mssql_user")
+
+    def test_get_validated_metastore_connection_with_oracle_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as OracleConnection
+        """
+        oracle_dict = {
+            "type": "Oracle",
+            "username": "oracle_user",
+            "hostPort": "localhost:1521",
+            "oracleConnectionType": {"oracleServiceName": "XE"},
+        }
+        self.hive.service_connection.metastoreConnection = oracle_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, OracleConnection)
+        self.assertEqual(result.username, "oracle_user")
+
+    def test_get_validated_metastore_connection_uses_type_discriminator(self):
+        """
+        Test metastore dict validation uses type before trying overlapping models.
+        """
+        mssql_dict = {
+            "type": "Mssql",
+            "username": "mssql_user",
+            "hostPort": "localhost:1433",
+            "database": "hive_metastore",
+        }
+
+        result = get_validated_metastore_connection(mssql_dict)
+
+        self.assertIsInstance(result, MssqlConnection)
+        if isinstance(result, MssqlConnection):
+            self.assertEqual(result.username, "mssql_user")
+
+    def test_get_validated_metastore_connection_rejects_unknown_type(self):
+        """
+        Test unknown type values do not fall through to overlapping models.
+        """
+        invalid_dict = {
+            "type": "Unknown",
+            "username": "postgres_user",
+            "hostPort": "localhost:5432",
+            "database": "hive_metastore",
+        }
+
+        result = get_validated_metastore_connection(invalid_dict)
+
+        self.assertIsNone(result)
+
+    def test_mssql_metastore_url_preserves_pytds_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps the configured pytds DBAPI.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pytds"),
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pytds://mssql_user:password@localhost:1433/hive_metastore"
+        )
+
+    def test_mssql_metastore_url_preserves_pymssql_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps the configured pymssql DBAPI.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pymssql"),
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pymssql://mssql_user:password@localhost:1433/hive_metastore"
+        )
+
+    def test_mssql_metastore_url_preserves_pyodbc_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps pyodbc driver query parameters.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pyodbc"),
+            driver="ODBC Driver 18 for SQL Server",
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pyodbc://mssql_user:password@localhost:1433/hive_metastore"
+            "?driver=ODBC+Driver+18+for+SQL+Server"
+        )

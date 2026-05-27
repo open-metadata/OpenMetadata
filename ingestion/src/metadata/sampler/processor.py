@@ -15,7 +15,7 @@ Data Sampler for the PII Workflow
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -93,9 +93,14 @@ class SamplerProcessor(Processor):
         self.sampler_class = import_sampler_class(self.service_type, source_type=self._interface_type)
 
         self._sample_data_config = None
-        settings = self.metadata.get_profiler_config_settings()
+        try:
+            settings = self.metadata.get_profiler_config_settings()
+        except Exception as exc:
+            logger.debug("Could not fetch global profiler config: %s", exc, exc_info=True)
+            settings = None
+
         if settings:
-            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
+            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006, RUF100
             self._sample_data_config = profiler_cfg.sampleDataConfig
 
     @property
@@ -179,7 +184,7 @@ class SamplerProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> Step:
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

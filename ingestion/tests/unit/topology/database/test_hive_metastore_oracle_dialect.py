@@ -9,26 +9,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Test Hive Postgres Metastore Dialect
+Test Hive Oracle Metastore Dialect
 """
 
 from unittest.mock import MagicMock, Mock
 
-from metadata.ingestion.source.database.hive.metastore_dialects.postgres.dialect import (
-    HivePostgresMetaStoreDialect,
+from metadata.ingestion.source.database.hive.metastore_dialects.oracle.dialect import (
+    HiveOracleMetaStoreDialect,
 )
 
 
-class TestHivePostgresMetastoreDialectGetTableNames:
+class TestHiveOracleMetastoreDialectGetTableNames:
     """
-    Test get_table_names null-safe filtering in HivePostgresMetaStoreDialect.
-
-    In SQL, NULL != 'VIRTUAL_VIEW' evaluates to NULL (not TRUE), so rows with
-    a NULL TBL_TYPE would be silently excluded without the IS NULL guard.
+    Oracle dialect uses double-quoted identifiers for case-insensitive column names,
+    matching the Postgres dialect behaviour. NULL-safe TBL_TYPE filtering applies.
     """
 
     def setup_method(self):
-        self.dialect = HivePostgresMetaStoreDialect()
+        self.dialect = HiveOracleMetaStoreDialect()
 
     def test_get_table_names_query_excludes_virtual_views(self):
         mock_connection = Mock()
@@ -97,22 +95,34 @@ class TestHivePostgresMetastoreDialectGetTableNames:
 
         assert result == []
 
+    def test_get_schema_names_uses_quoted_identifiers(self):
+        """Oracle dialect uses double-quoted NAME to preserve case."""
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [("db1",), ("db2",)]
 
-class TestHivePostgresMetastoreDialectGetTableColumns:
+        result = self.dialect.get_schema_names(mock_connection)
+
+        executed_query = str(mock_connection.execute.call_args[0][0])
+        assert '"NAME"' in executed_query
+        assert '"DBS"' in executed_query
+        assert result == ["db1", "db2"]
+
+
+class TestHiveOracleMetastoreDialectGetTableColumns:
     """
-    Test _get_table_columns in HivePostgresMetaStoreDialect.
-    Postgres dialect uses CTE (WITH clause) which is valid for all Postgres versions.
+    Oracle dialect uses CTE (WITH clause) and double-quoted identifiers,
+    matching the Postgres dialect pattern.
     """
 
     def setup_method(self):
-        self.dialect = HivePostgresMetaStoreDialect()
+        self.dialect = HiveOracleMetaStoreDialect()
 
     def test_get_table_columns_uses_cte(self):
         mock_connection = Mock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [
-            ("col1", "text", "First column"),
-            ("col2", "integer", "Second column"),
+            ("col1", "VARCHAR2", "First column"),
+            ("col2", "NUMBER", "Second column"),
         ]
         mock_connection.execute.return_value = mock_result
 
@@ -126,7 +136,7 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
     def test_get_table_columns_with_schema(self):
         mock_connection = Mock()
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [("col1", "text", None)]
+        mock_result.fetchall.return_value = [("col1", "VARCHAR2", None)]
         mock_connection.execute.return_value = mock_result
 
         self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
@@ -142,7 +152,7 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
     def test_get_table_columns_without_schema(self):
         mock_connection = Mock()
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [("col1", "text", None)]
+        mock_result.fetchall.return_value = [("col1", "VARCHAR2", None)]
         mock_connection.execute.return_value = mock_result
 
         self.dialect._get_table_columns(mock_connection, "test_table", None)
@@ -154,7 +164,7 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         assert mock_connection.execute.call_args[0][1] == {"table_name": "test_table"}
 
     def test_get_table_columns_uses_quoted_identifiers(self):
-        """Postgres dialect uses double-quoted identifiers for case-sensitivity."""
+        """Oracle dialect uses double-quoted identifiers for case-sensitivity."""
         mock_connection = Mock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
@@ -168,6 +178,7 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         assert '"TBLS"' in executed_query
 
     def test_get_table_columns_contains_both_selects(self):
+        """Query must select from both COLUMNS_V2 and PARTITION_KEYS."""
         mock_connection = Mock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []

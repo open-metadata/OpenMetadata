@@ -2043,6 +2043,10 @@ export enum Logmech {
  * Postgres Database Connection Config
  *
  * Mysql Database Connection Config
+ *
+ * Mssql Database Connection Config
+ *
+ * Oracle Database Connection Config
  */
 export interface HiveMetastoreConnectionDetails {
     /**
@@ -2070,11 +2074,17 @@ export interface HiveMetastoreConnectionDetails {
      *
      * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
      * the format 'project_id:region:instance_name'.
+     *
+     * Host and port of the MSSQL service.
+     *
+     * Host and port of the Oracle service.
      */
     hostPort?: string;
     /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -2095,6 +2105,9 @@ export interface HiveMetastoreConnectionDetails {
     scheme?: HiveMetastoreConnectionDetailsScheme;
     /**
      * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
      */
     sslConfig?: Config;
     sslMode?:   SSLMode;
@@ -2124,6 +2137,12 @@ export interface HiveMetastoreConnectionDetails {
      *
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
+     *
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     *
+     * Username to connect to Oracle. This user should have privileges to read all the metadata
+     * in Oracle.
      */
     username?: string;
     /**
@@ -2147,6 +2166,55 @@ export interface HiveMetastoreConnectionDetails {
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     *
+     * Password to connect to Oracle.
+     */
+    password?: string;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
+    /**
+     * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
+     * you need to enable thick connection mode. By default, we bring instant client 19 and
+     * point to /instantclient.
+     */
+    instantClientDirectory?: string;
+    /**
+     * Connect with oracle by either passing service name or database schema name.
+     */
+    oracleConnectionType?: OracleConnectionType;
+    /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?: boolean;
+    /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
 }
 
 /**
@@ -2177,6 +2245,29 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GCPCredentials;
+}
+
+/**
+ * Connect with oracle by either passing service name or database schema name.
+ */
+export interface OracleConnectionType {
+    /**
+     * databaseSchema of the data source. This is optional parameter, if you would like to
+     * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
+     * Ingestion attempts to scan all the databaseSchema.
+     */
+    databaseSchema?: string;
+    /**
+     * The Oracle Service name is the TNS alias that you give when you remotely connect to your
+     * database.
+     */
+    oracleServiceName?: string;
+    /**
+     * Pass the full constructed TNS string, e.g.,
+     * (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
+     */
+    oracleTNSConnection?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2267,7 +2358,11 @@ export interface AwsCredentials {
  * SQLAlchemy driver scheme options.
  */
 export enum HiveMetastoreConnectionDetailsScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
+    OracleCxOracle = "oracle+cx_oracle",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     PostgresqlPsycopg2 = "postgresql+psycopg2",
 }
@@ -2325,31 +2420,10 @@ export enum SSLMode {
  * Service type.
  */
 export enum HiveMetastoreConnectionDetailsType {
+    Mssql = "Mssql",
     Mysql = "Mysql",
+    Oracle = "Oracle",
     Postgres = "Postgres",
-}
-
-/**
- * Connect with oracle by either passing service name or database schema name.
- */
-export interface OracleConnectionType {
-    /**
-     * databaseSchema of the data source. This is optional parameter, if you would like to
-     * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
-     * Ingestion attempts to scan all the databaseSchema.
-     */
-    databaseSchema?: string;
-    /**
-     * The Oracle Service name is the TNS alias that you give when you remotely connect to your
-     * database.
-     */
-    oracleServiceName?: string;
-    /**
-     * Pass the full constructed TNS string, e.g.,
-     * (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
-     */
-    oracleTNSConnection?: string;
-    [property: string]: any;
 }
 
 /**

@@ -8,13 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportIncompatibleMethodOverride=false
 """
-Hive Metastore Postgres Dialect Mixin
+Hive Metastore MSSQL Dialect Mixin
 """
 
 from sqlalchemy import text
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.mssql.pymssql import MSDialect_pymssql
+from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.engine import reflection
+from sqlalchemy_pytds.dialect import MSDialect_pytds
 
 from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
     HiveMetaStoreDialectMixin,
@@ -29,38 +32,35 @@ logger = ingestion_logger()
 
 
 # pylint: disable=abstract-method
-class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2):
+class HiveMssqlMetaStoreDialectMixin(HiveMetaStoreDialectMixin):
     """
-    Postgres metastore dialect class
+    MSSQL metastore dialect mixin for Hive metastore backed by SQL Server.
+    Uses unquoted identifiers and supports CTEs.
     """
 
     name = "hive"
-    driver = "postgres"
     supports_statement_cache = False
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        schema_names = [row[0] for row in connection.execute(text('select "NAME" from "DBS";'))]
+        schema_names = [row[0] for row in connection.execute(text("SELECT NAME FROM DBS"))]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 
     # pylint: disable=arguments-differ
     def get_view_names(self, connection, schema=None, **kw):
-        # Hive does not provide functionality to query tableType
-        # This allows reflection to not crash at the cost of being inaccurate
         query, params = self._get_table_names_base_query(schema=schema)
-        query += """ WHERE "TBL_TYPE" = 'VIRTUAL_VIEW'"""
+        query += " WHERE TBL_TYPE = 'VIRTUAL_VIEW'"
         view_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched view names for schema '{schema}': {view_names}")
         return view_names
 
     def _get_table_columns(self, connection, table_name, schema):
-        # Build schema join clause if schema is provided
         params = {"table_name": table_name}
         schema_join = (
             """
-            JOIN "DBS" db on tbsl."DB_ID" = db."DB_ID"
-            AND db."NAME" = :schema
+            JOIN DBS db ON tbsl.DB_ID = db.DB_ID
+            AND db.NAME = :schema
         """
             if schema
             else ""
@@ -70,30 +70,27 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
         query = f"""
             WITH regular_columns AS (
-                -- Get regular table columns from COLUMNS_V2
                 SELECT
-                    col."COLUMN_NAME",
-                    col."TYPE_NAME",
-                    col."COMMENT"
-                FROM "COLUMNS_V2" col
-                JOIN "CDS" cds ON col."CD_ID" = cds."CD_ID"
-                JOIN "SDS" sds ON sds."CD_ID" = cds."CD_ID"
-                JOIN "TBLS" tbsl ON sds."SD_ID" = tbsl."SD_ID"
-                    AND tbsl."TBL_NAME" = :table_name
+                    col.COLUMN_NAME,
+                    col.TYPE_NAME,
+                    col.COMMENT
+                FROM COLUMNS_V2 col
+                JOIN CDS cds ON col.CD_ID = cds.CD_ID
+                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                    AND tbsl.TBL_NAME = :table_name
                 {schema_join}
             ),
             partition_columns AS (
-                -- Get partition key columns from PARTITION_KEYS
                 SELECT
-                    pk."PKEY_NAME" as "COLUMN_NAME",
-                    pk."PKEY_TYPE" as "TYPE_NAME",
-                    pk."PKEY_COMMENT" as "COMMENT"
-                FROM "PARTITION_KEYS" pk
-                JOIN "TBLS" tbsl ON pk."TBL_ID" = tbsl."TBL_ID"
-                    AND tbsl."TBL_NAME" = :table_name
+                    pk.PKEY_NAME AS COLUMN_NAME,
+                    pk.PKEY_TYPE AS TYPE_NAME,
+                    pk.PKEY_COMMENT AS COMMENT
+                FROM PARTITION_KEYS pk
+                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                    AND tbsl.TBL_NAME = :table_name
                 {schema_join}
             )
-            -- Combine regular and partition columns
             SELECT * FROM regular_columns
             UNION ALL
             SELECT * FROM partition_columns
@@ -101,17 +98,16 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
         return connection.execute(text(query), params).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
-        query = 'SELECT "TBL_NAME" from "TBLS" tbl'
+        query = "SELECT TBL_NAME FROM TBLS tbl"
         params = {}
         if schema:
-            query += """ JOIN "DBS" db on tbl."DB_ID" = db."DB_ID"
-            and db."NAME" = :schema"""
+            query += " JOIN DBS db ON tbl.DB_ID = db.DB_ID AND db.NAME = :schema"
             params["schema"] = schema
         return query, params
 
     def get_table_names(self, connection, schema=None, **kw):
         query, params = self._get_table_names_base_query(schema=schema)
-        query += """ WHERE ("TBL_TYPE" != 'VIRTUAL_VIEW' OR "TBL_TYPE" IS NULL)"""
+        query += " WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"
         table_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names
@@ -119,16 +115,14 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         query = """
-            SELECT 
-                dbs."NAME" "schema",
-                tbls."TBL_NAME" view_name,
-                tbls."VIEW_ORIGINAL_TEXT" view_def
-            from
-                "TBLS" tbls
-                JOIN "DBS" dbs on tbls."DB_ID" = dbs."DB_ID"
-            where
-                tbls."VIEW_ORIGINAL_TEXT" is not null;
-        """  # noqa: W291
+            SELECT
+                dbs.NAME AS [schema],
+                tbls.TBL_NAME AS view_name,
+                tbls.VIEW_ORIGINAL_TEXT AS view_def
+            FROM TBLS tbls
+            JOIN DBS dbs ON tbls.DB_ID = dbs.DB_ID
+            WHERE tbls.VIEW_ORIGINAL_TEXT IS NOT NULL
+        """
         return get_view_definition_wrapper(
             self,
             connection,
@@ -140,17 +134,15 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):
         query = """
-            SELECT 
-                "DBS"."NAME" AS "schema",
-                "TBLS"."TBL_NAME" AS table_name,
-                "TABLE_PARAMS"."PARAM_VALUE" AS table_comment
-            FROM
-                "DBS"
-            JOIN
-                "TBLS" ON "DBS"."DB_ID" = "TBLS"."DB_ID"
-                LEFT JOIN "TABLE_PARAMS" ON "TBLS"."TBL_ID" = "TABLE_PARAMS"."TBL_ID"
-                and "TABLE_PARAMS"."PARAM_KEY" = 'comment'
-        """  # noqa: W291
+            SELECT
+                DBS.NAME AS [schema],
+                TBLS.TBL_NAME AS table_name,
+                TABLE_PARAMS.PARAM_VALUE AS table_comment
+            FROM DBS
+            JOIN TBLS ON DBS.DB_ID = TBLS.DB_ID
+            LEFT JOIN TABLE_PARAMS ON TBLS.TBL_ID = TABLE_PARAMS.TBL_ID
+                AND TABLE_PARAMS.PARAM_KEY = 'comment'
+        """
         return get_table_comment_wrapper(
             self,
             connection,
@@ -161,4 +153,28 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     # pylint: disable=arguments-renamed
     def get_dialect_cls(self):
-        return HivePostgresMetaStoreDialect
+        return type(self)
+
+
+class HiveMssqlMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pytds):
+    """
+    MSSQL metastore dialect using the default pytds driver.
+    """
+
+    driver = "mssql.pytds"
+
+
+class HiveMssqlPyodbcMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pyodbc):
+    """
+    MSSQL metastore dialect using the pyodbc driver.
+    """
+
+    driver = "mssql.pyodbc"
+
+
+class HiveMssqlPymssqlMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pymssql):
+    """
+    MSSQL metastore dialect using the pymssql driver.
+    """
+
+    driver = "mssql.pymssql"

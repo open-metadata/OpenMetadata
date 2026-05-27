@@ -47,21 +47,24 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     def get_view_names(self, connection, schema=None, **kw):
         # Hive does not provide functionality to query tableType
         # This allows reflection to not crash at the cost of being inaccurate
-        query = self._get_table_names_base_query(schema=schema)
+        query, params = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE = 'VIRTUAL_VIEW'"""
-        view_names = [row[0] for row in connection.execute(text(query))]
+        view_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched view names for schema '{schema}': {view_names}")
         return view_names
 
     def _get_table_columns(self, connection, table_name, schema):
+        params = {"table_name": table_name}
         schema_join = (
-            f"""
+            """
             JOIN DBS db on tbsl.DB_ID = db.DB_ID
-            AND db.NAME = '{schema}'
+            AND db.NAME = :schema
         """
             if schema
             else ""
         )
+        if schema:
+            params["schema"] = schema
 
         # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility
         # Using direct UNION ALL of subqueries instead of WITH clause
@@ -74,7 +77,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             JOIN CDS cds ON col.CD_ID = cds.CD_ID
             JOIN SDS sds ON sds.CD_ID = cds.CD_ID
             JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                AND tbsl.TBL_NAME = '{table_name}'
+                AND tbsl.TBL_NAME = :table_name
             {schema_join}
             UNION ALL
             SELECT 
@@ -83,23 +86,25 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
                 pk.PKEY_COMMENT as COMMENT
             FROM PARTITION_KEYS pk
             JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                AND tbsl.TBL_NAME = '{table_name}'
+                AND tbsl.TBL_NAME = :table_name
             {schema_join}
         """  # noqa: W291
 
-        return connection.execute(text(query)).fetchall()
+        return connection.execute(text(query), params).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
         query = "SELECT TBL_NAME from TBLS tbl"
+        params = {}
         if schema:
-            query += f""" JOIN DBS db on tbl.DB_ID = db.DB_ID
-            and db.NAME = '{schema}'"""
-        return query
+            query += """ JOIN DBS db on tbl.DB_ID = db.DB_ID
+            and db.NAME = :schema"""
+            params["schema"] = schema
+        return query, params
 
     def get_table_names(self, connection, schema=None, **kw):
-        query = self._get_table_names_base_query(schema=schema)
+        query, params = self._get_table_names_base_query(schema=schema)
         query += """ WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"""
-        table_names = [row[0] for row in connection.execute(text(query))]
+        table_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names
 
