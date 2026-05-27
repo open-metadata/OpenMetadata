@@ -18,12 +18,20 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
+    ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.database.ydbConnection import (
+    YDBConnection,
+)
 from metadata.ingestion.source.database.ydb.utils import (
     ROOT_SCHEMA,
     full_name,
     schema_of,
     table_of,
 )
+from metadata.utils import fqn
 
 # ---------------------------------------------------------------------------
 # schema_of
@@ -90,6 +98,63 @@ class TestFullName:
         path = "marts/analytics/session_stats"
         assert full_name(schema_of(path), table_of(path)) == path
 
+
+class TestFqnWithDots:
+    def test_schema_and_table_dots_are_quoted_in_fqn(self):
+        from metadata.generated.schema.entity.data.table import Table
+
+        table_fqn = fqn.build(
+            metadata=None,
+            entity_type=Table,
+            service_name="ydb_service",
+            database_name="/local",
+            schema_name="raw.v1",
+            table_name="events.v2",
+            skip_es_search=True,
+        )
+
+        assert table_fqn == 'ydb_service./local."raw.v1"."events.v2"'
+        assert [fqn.unquote_name(part) for part in fqn.split(table_fqn)] == [
+            "ydb_service",
+            "/local",
+            "raw.v1",
+            "events.v2",
+        ]
+
+
+class TestConnection:
+    def test_get_connection_url_appends_encoded_options(self):
+        from metadata.ingestion.source.database.ydb.connection import (
+            get_connection_url,
+        )
+
+        connection = YDBConnection(
+            hostPort="localhost:2136",
+            database="/local",
+            connectionOptions=ConnectionOptions(root={"trace id": "abc 123"}),
+        )
+
+        assert get_connection_url(connection) == "yql+ydb://localhost:2136/local?trace+id=abc+123"
+
+    def test_get_connection_merges_generated_and_user_arguments(self):
+        from metadata.ingestion.source.database.ydb.connection import get_connection
+
+        connection = YDBConnection(
+            hostPort="localhost:2136",
+            database="/local",
+            connectionArguments=ConnectionArguments(root={"root_certificates_path": "/tmp/ca.pem"}),
+        )
+
+        with patch("metadata.ingestion.source.database.ydb.connection.create_engine") as create_engine:
+            get_connection(connection)
+
+        create_engine.assert_called_once_with(
+            "yql+ydb://localhost:2136/local",
+            connect_args={
+                "protocol": "grpc",
+                "root_certificates_path": "/tmp/ca.pem",
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -184,8 +249,7 @@ class TestGetSchemaDefinition:
         ):
             from metadata.ingestion.source.database.ydb.metadata import YdbSource
 
-            src = YdbSource.__new__(YdbSource)
-            return src
+            return YdbSource.__new__(YdbSource)
 
     def test_view_returns_definition(self, source):
         inspector = MagicMock()
@@ -311,15 +375,10 @@ class TestYdbLineageSourceProducer:
                 table_name="session_stats",
                 schema_name="marts/analytics",
                 db_name="/local",
-                view_definition=(
-                    "CREATE VIEW `marts/analytics/session_stats` AS "
-                    "SELECT * FROM `staging/events`"
-                ),
+                view_definition=("CREATE VIEW `marts/analytics/session_stats` AS SELECT * FROM `staging/events`"),
             )
         ]
-        with patch.object(
-            LineageSource, "view_lineage_producer", return_value=iter(upstream)
-        ):
+        with patch.object(LineageSource, "view_lineage_producer", return_value=iter(upstream)):
             out = list(src.view_lineage_producer())
         assert len(out) == 1
         assert "`staging`.`events`" in out[0].view_definition
@@ -338,9 +397,7 @@ class TestYdbLineageSourceProducer:
                 view_definition=None,
             )
         ]
-        with patch.object(
-            LineageSource, "view_lineage_producer", return_value=iter(upstream)
-        ):
+        with patch.object(LineageSource, "view_lineage_producer", return_value=iter(upstream)):
             out = list(src.view_lineage_producer())
         assert len(out) == 1
         assert out[0].view_definition is None
@@ -349,9 +406,7 @@ class TestYdbLineageSourceProducer:
         from metadata.ingestion.source.database.lineage_source import LineageSource
 
         src = self._make_source()
-        with patch.object(
-            LineageSource, "view_lineage_producer", return_value=iter([])
-        ):
+        with patch.object(LineageSource, "view_lineage_producer", return_value=iter([])):
             assert list(src.view_lineage_producer()) == []
 
 
@@ -371,9 +426,7 @@ class TestYdbSamplerBuildTableOrm:
             Table as OMTable,
         )
 
-        col_objs = [
-            Column(name=name, dataType=DataType.INT) for name in columns
-        ]
+        col_objs = [Column(name=name, dataType=DataType.INT) for name in columns]
         tbl = MagicMock(spec=OMTable)
         tbl.name = MagicMock()
         tbl.name.root = table_name
@@ -396,9 +449,7 @@ class TestYdbSamplerBuildTableOrm:
     def test_tablename_uses_slash_path_and_schema_is_none(self):
         sampler = self._make_sampler()
         tbl = self._make_om_table("customers", ["id", "name"])
-        orm = sampler.build_table_orm(
-            tbl, MagicMock(), self._ometa_for_schema("jaffle_shop")
-        )
+        orm = sampler.build_table_orm(tbl, MagicMock(), self._ometa_for_schema("jaffle_shop"))
         assert orm is not None
         assert orm.__tablename__ == "jaffle_shop/customers"
         assert orm.__table_args__["schema"] is None
@@ -407,18 +458,14 @@ class TestYdbSamplerBuildTableOrm:
     def test_root_schema_table_omits_prefix(self):
         sampler = self._make_sampler()
         tbl = self._make_om_table("orders", ["id"])
-        orm = sampler.build_table_orm(
-            tbl, MagicMock(), self._ometa_for_schema("(root)")
-        )
+        orm = sampler.build_table_orm(tbl, MagicMock(), self._ometa_for_schema("(root)"))
         # ROOT_SCHEMA collapses path back to bare table name.
         assert orm.__tablename__ == "orders"
 
     def test_nested_schema_preserves_directory_path(self):
         sampler = self._make_sampler()
         tbl = self._make_om_table("session_stats", ["user_id"])
-        orm = sampler.build_table_orm(
-            tbl, MagicMock(), self._ometa_for_schema("marts/analytics")
-        )
+        orm = sampler.build_table_orm(tbl, MagicMock(), self._ometa_for_schema("marts/analytics"))
         assert orm.__tablename__ == "marts/analytics/session_stats"
 
     def test_empty_columns_returns_none(self):
@@ -468,6 +515,8 @@ class TestYdbSamplerGetSampleQuery:
         sampler.partition_details = None
         sampler.sample_config = SampleConfig(randomizedSample=randomized)
         sampler.session_factory = sessionmaker(bind=engine)
+        sampler._get_asset_row_count = lambda: 200
+        sampler.connection = MagicMock()
         return sampler
 
     def _compile(self, sq) -> str:
@@ -482,16 +531,13 @@ class TestYdbSamplerGetSampleQuery:
         )
 
         sampler = self._make_sampler_with_orm()
-        static = StaticSamplingConfig(
-            profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE
-        )
+        static = StaticSamplingConfig(profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE)
         result = sampler.get_sample_query(static)
         assert isinstance(result, Subquery)
         assert not isinstance(result, CTE)
-        # CTE rendering prepends WITH; subquery is inlined as FROM (SELECT ...).
         sql = self._compile(result)
         assert "WITH" not in sql.upper().split("\n")[0]
-        assert "FROM (SELECT" in sql.replace("\n", " ")
+        assert "LIMIT 100" in sql
 
     def test_rows_path_returns_subquery_not_cte(self):
         from sqlalchemy.sql.selectable import CTE, Subquery
@@ -502,9 +548,7 @@ class TestYdbSamplerGetSampleQuery:
         )
 
         sampler = self._make_sampler_with_orm()
-        static = StaticSamplingConfig(
-            profileSample=100, profileSampleType=ProfileSampleType.ROWS
-        )
+        static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.ROWS)
         result = sampler.get_sample_query(static)
         assert isinstance(result, Subquery)
         assert not isinstance(result, CTE)
@@ -520,19 +564,14 @@ class TestYdbSamplerGetSampleQuery:
         assert not isinstance(result, CTE)
 
     def test_percentage_path_has_no_order_by(self):
-        """YQL rejects subqueries with ``ORDER BY`` and no ``LIMIT`` (issue
-        4504, severity 2 — treated as fatal by ydb-dbapi). The base sampler
-        adds ``ORDER BY rnd.random`` when ``profileSample==100`` and
-        ``randomizedSample is True``; our override must drop it."""
+        """YDB percentage sampling is bounded by LIMIT instead of random sort."""
         from metadata.generated.schema.type.basic import ProfileSampleType
         from metadata.generated.schema.type.staticSamplingConfig import (
             StaticSamplingConfig,
         )
 
         sampler = self._make_sampler_with_orm(randomized=True)
-        static = StaticSamplingConfig(
-            profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE
-        )
+        static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE)
         sql = self._compile(sampler.get_sample_query(static)).replace("\n", " ")
         assert "ORDER BY" not in sql.upper()
 
@@ -591,9 +630,7 @@ class TestGetCredentials:
         from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
         sa_data = {"id": "key-id", "service_account_id": "sa-id", "private_key": "pk"}
-        creds = ServiceAccountCredentials(
-            serviceAccountJson=CustomSecretStr(json.dumps(sa_data))
-        )
+        creds = ServiceAccountCredentials(serviceAccountJson=CustomSecretStr(json.dumps(sa_data)))
 
         result = self._get_credentials(creds)
 

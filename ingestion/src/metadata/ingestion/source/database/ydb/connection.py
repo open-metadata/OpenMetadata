@@ -15,7 +15,9 @@ YDB connection handler
 
 import json
 from typing import Optional
+from urllib.parse import quote_plus
 
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -42,13 +44,23 @@ from metadata.generated.schema.entity.services.connections.database.ydbConnectio
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.builders import (
+    get_connection_args_common,
+    get_connection_options_dict,
+)
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: YDBConnection) -> str:
-    return f"{connection.scheme.value}://{connection.hostPort}{connection.database}"
+    url = f"{connection.scheme.value}://{connection.hostPort}{connection.database}"
+    options = get_connection_options_dict(connection)
+    if options:
+        params = "&".join(f"{quote_plus(str(key))}={quote_plus(str(value))}" for key, value in options.items() if value)
+        if params:
+            url = f"{url}?{params}"
+    return url
 
 
 def _get_credentials(auth_type):
@@ -62,22 +74,16 @@ def _get_credentials(auth_type):
     if isinstance(auth_type, TokenCredentials):
         return {"token": auth_type.token.get_secret_value()}
     if isinstance(auth_type, ServiceAccountCredentials):
-        return {
-            "service_account_json": json.loads(
-                auth_type.serviceAccountJson.get_secret_value()
-            )
-        }
+        return {"service_account_json": json.loads(auth_type.serviceAccountJson.get_secret_value())}
     if isinstance(auth_type, MetadataCredentials):
-        import ydb.iam  # pylint: disable=import-outside-toplevel
+        import ydb.iam  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         return ydb.iam.MetadataUrlCredentials()
     return None
 
 
 def get_connection(connection: YDBConnection) -> Engine:
-    from sqlalchemy import create_engine  # pylint: disable=import-outside-toplevel
-
-    connect_args = {}
+    connect_args = dict(get_connection_args_common(connection))
 
     if connection.protocol:
         connect_args["protocol"] = connection.protocol.value
@@ -87,9 +93,7 @@ def get_connection(connection: YDBConnection) -> Engine:
         connect_args["credentials"] = credentials
 
     if connection.caCertificate:
-        connect_args["root_certificates"] = (
-            connection.caCertificate.get_secret_value()
-        )
+        connect_args["root_certificates"] = connection.caCertificate.get_secret_value()
 
     return create_engine(
         get_connection_url(connection),

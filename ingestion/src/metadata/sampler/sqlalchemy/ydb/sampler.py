@@ -20,6 +20,7 @@ as the table name and no schema, so generated SQL becomes
 ``FROM `jaffle_shop/customers``` — the form YDB accepts.
 """
 
+from math import ceil
 from typing import Optional
 
 from pydantic import BaseModel
@@ -39,10 +40,8 @@ from metadata.profiler.orm.converter.base import (
     Base,
     build_orm_col,
 )
-from metadata.profiler.orm.functions.modulo import ModuloFn
-from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
-from metadata.sampler.sqlalchemy.sampler import RANDOM_LABEL, SQASampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 @compiles(AvgFn, Dialects.YDB)
@@ -59,9 +58,7 @@ def _ydb_avg(element, compiler, **kw):
 class YdbSampler(SQASampler):
     """SQA sampler that builds ORM classes with YDB-native path identifiers."""
 
-    def get_sample_query(
-        self, static: StaticSamplingConfig | None, *, column=None
-    ) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """Mirror of :py:meth:`SQASampler.get_sample_query` adapted for YDB.
 
         Two YQL-specific deviations from the base implementation:
@@ -73,33 +70,24 @@ class YdbSampler(SQASampler):
           (``inspect(ds).c`` / ``select_from(ds)``) work identically for
           ``CTE`` and ``Subquery``.
 
-        * **No ``ORDER BY random`` in the sample subquery.** YQL raises
-          ``ORDER BY without LIMIT in subquery will be ignored`` (issue 4504)
-          when a subquery has ``ORDER BY`` but no ``LIMIT``. The
-          ``RandomNumFn`` compile override for YDB emits ``0`` (see
-          ``random_num.py``), so the order would be over a constant column
-          anyway — dropping it removes the warning with no behavioural
-          change.
+        * **Bounded percentage sampling.** The generic sampler depends on a
+          random-number expression. YDB's ``Random`` requires a row-varying
+          seed that is not available at this layer, so percentage sampling is
+          translated to ``LIMIT ceil(row_count * percentage / 100)``.
         """
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
-        with self.session_factory() as client:
-            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-                rnd = self._base_sample_query(
-                    selectable,
-                    column,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-                ).subquery(f"{self.get_sampler_table_name()}_rnd")
-                session_query = client.query(rnd).where(
-                    rnd.c.random <= static.profileSample
-                )
-                return session_query.subquery(
-                    f"{self.get_sampler_table_name()}_sample"
-                )
-
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            row_count = self._get_asset_row_count()
+            sample_size = ceil(row_count * static.profileSample / 100)
             session_query = self._base_sample_query(selectable, column, None)
-            return session_query.limit(
-                static.profileSample if static else None
-            ).subquery(f"{self.get_sampler_table_name()}_rnd")
+            if sample_size <= 0:
+                return session_query.subquery(f"{self.get_sampler_table_name()}_sample")
+            return session_query.limit(sample_size).subquery(f"{self.get_sampler_table_name()}_sample")
+
+        session_query = self._base_sample_query(selectable, column, None)
+        return session_query.limit(static.profileSample if static else None).subquery(
+            f"{self.get_sampler_table_name()}_rnd"
+        )
 
     def build_table_orm(
         self,
@@ -110,24 +98,18 @@ class YdbSampler(SQASampler):
         if not table.columns:
             return None
 
-        schema = ometa_client.get_by_id(
-            entity=DatabaseSchema, entity_id=table.databaseSchema.id
-        )
+        schema = ometa_client.get_by_id(entity=DatabaseSchema, entity_id=table.databaseSchema.id)
         schema_name = str(schema.name.root)
         table_name = str(table.name.root)
         ydb_path = full_name(schema_name, table_name)
 
         # ORM class name must be a valid Python identifier — strip the slashes.
-        orm_class_name = f"ydb_{schema_name}_{table_name}".replace("/", "_").replace(
-            ".", "_"
-        )
+        orm_class_name = f"ydb_{schema_name}_{table_name}".replace("/", "_").replace(".", "_")
 
         cols = {
-            (
-                col.name.root + "_"
-                if col.name.root in SQA_RESERVED_ATTRIBUTES
-                else col.name.root
-            ): build_orm_col(idx, col, table.serviceType)
+            (col.name.root + "_" if col.name.root in SQA_RESERVED_ATTRIBUTES else col.name.root): build_orm_col(
+                idx, col, table.serviceType
+            )
             for idx, col in enumerate(table.columns)
         }
 

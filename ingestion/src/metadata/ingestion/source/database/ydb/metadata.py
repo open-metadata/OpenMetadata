@@ -52,9 +52,7 @@ class YdbSource(CommonDbSourceService):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, YDBConnection):
-            raise InvalidSourceException(
-                f"Expected YDBConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected YDBConnection, but got {connection}")
         return cls(config, metadata)
 
     @property
@@ -79,9 +77,7 @@ class YdbSource(CommonDbSourceService):
 
     def query_table_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         return [
-            TableNameAndType(name=table_of(full))
-            for full in self._all_table_names
-            if schema_of(full) == schema_name
+            TableNameAndType(name=table_of(full)) for full in self._all_table_names if schema_of(full) == schema_name
         ]
 
     def query_view_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
@@ -92,17 +88,13 @@ class YdbSource(CommonDbSourceService):
         ]
 
     @staticmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         return None
 
     def _get_columns_with_constraints(
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        return super()._get_columns_with_constraints(
-            None, full_name(schema_name, table_name), inspector
-        )
+        return super()._get_columns_with_constraints(None, full_name(schema_name, table_name), inspector)
 
     def _get_columns_internal(
         self,
@@ -134,9 +126,7 @@ class YdbSource(CommonDbSourceService):
         if table_type not in view_types:
             return None
         try:
-            return inspector.get_view_definition(
-                full_name(schema_name, table_name), schema=None
-            )
+            return inspector.get_view_definition(full_name(schema_name, table_name), schema=None)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch view definition for {table_name}: {exc}")
