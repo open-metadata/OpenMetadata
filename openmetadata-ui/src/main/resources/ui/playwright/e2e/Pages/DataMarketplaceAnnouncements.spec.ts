@@ -81,6 +81,8 @@ test.describe(
       });
 
       await test.step('Verify announcement items are displayed', async () => {
+        await page.getByTestId(/^announcement-item-/).first().waitFor();
+
         const viewAll = page.getByTestId('view-all-btn');
         if (await viewAll.isVisible()) {
           await viewAll.click();
