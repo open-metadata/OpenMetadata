@@ -358,17 +358,17 @@ export const updateTableColumn = async (
 };
 
 export interface GetColumnByFQNParams {
-  entityType?: string;
+  entityType: string;
   fields?: string;
 }
 
 export const getColumnByFQN = async (
   columnFqn: string,
-  params?: GetColumnByFQNParams
+  params: GetColumnByFQNParams
 ) => {
   const response = await APIClient.get<Column>(
     `/columns/name/${getEncodedFqn(columnFqn)}`,
-    { params: { entityType: 'table', ...params } }
+    { params }
   );
 
   return response.data;
