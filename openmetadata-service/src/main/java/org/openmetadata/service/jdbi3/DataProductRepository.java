@@ -603,8 +603,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       BulkAssets request,
       boolean isAdd,
       String userName) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
 
@@ -621,7 +622,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       assetsByType.computeIfAbsent(asset.getType(), k -> new ArrayList<>()).add(asset);
     }
 
-    // Fetch all asset entities grouped by type for validation
+    // Fetch all asset entities grouped by type so add-validation can still run during dryRun
     Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
@@ -643,6 +644,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
           }
           validateAssetDataProductAssignment(assetEntity, dataProductRef);
+        }
+
+        if (dryRun) {
+          success.add(new BulkResponse().withRequest(ref));
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+          continue;
+        }
+
+        if (isAdd) {
           addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
         } else {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
@@ -684,8 +694,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setStatus(ApiStatus.FAILURE);
     }
 
-    // Create a Change Event on successful operations
-    if (!success.isEmpty()) {
+    // Create a Change Event on successful operations (skip when dryRun makes no changes)
+    if (!dryRun && !success.isEmpty()) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       List<EntityReference> successfulAssets = new ArrayList<>();
       for (BulkResponse response : success) {
