@@ -2765,18 +2765,19 @@ test.describe('Glossary tests', () => {
 
       const updateNameResponse = page.waitForResponse('/api/v1/glossaries/*');
       await page.click('[data-testid="save-button"]');
-      await updateNameResponse;
+      const renamedGlossary = await (await updateNameResponse).json();
 
-      await waitForAllLoadersToDisappear(page);
+      expect(renamedGlossary.name).toBe(newName);
 
-      // Verify the name was updated in the header
-      await expect(
-        page.locator('[data-testid="entity-header-name"]')
-      ).toHaveText(newName);
+      glossary.responseData.name = renamedGlossary.name;
+      glossary.responseData.fullyQualifiedName =
+        renamedGlossary.fullyQualifiedName;
 
-      // Update glossary object for cleanup
-      glossary.responseData.name = newName;
-      glossary.responseData.fullyQualifiedName = newName;
+      await expect(async () => {
+        await visitGlossaryPage(page, glossary.data.displayName);
+
+        expect(page.url()).toContain('-renamed');
+      }).toPass({ intervals: [2_000, 4_000, 6_000], timeout: 60_000 });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
