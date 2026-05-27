@@ -63,6 +63,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
           <Typography
             ellipsis
             as="p"
+            className="owner-team-name"
             data-testid={getEntityName(visibleTeam)}
             size="text-xs"
             weight="medium">
