@@ -169,7 +169,9 @@ describe('ServiceUtilClassBase', () => {
         ) {
           const config = (
             serviceDetails as {
-              connection?: { config?: { policyAgentConfig?: { enabled?: boolean } } };
+              connection?: {
+                config?: { policyAgentConfig?: { enabled?: boolean } };
+              };
             }
           )?.connection?.config;
           const enabled = config?.policyAgentConfig?.enabled;
