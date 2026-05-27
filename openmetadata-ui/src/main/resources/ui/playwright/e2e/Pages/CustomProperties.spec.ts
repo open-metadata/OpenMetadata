@@ -525,7 +525,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
-          await page.locator("pre[role='presentation']").last().click();
+          await page.locator('.cm-content').last().click();
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
           await page.keyboard.type(value + '\n' + value);

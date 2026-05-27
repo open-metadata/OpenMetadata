@@ -161,7 +161,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
+      await container.locator('.cm-content').last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -1445,7 +1445,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
+      await page.locator('.cm-content').last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 

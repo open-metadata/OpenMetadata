@@ -117,7 +117,7 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
-  await page.locator("pre[role='presentation']").last().click();
+  await page.locator('.cm-content').last().click();
   await page.keyboard.type(code);
 
   const patchPromise = page.waitForResponse(
@@ -291,7 +291,7 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
-  await page.locator("pre[role='presentation']").last().click();
+  await page.locator('.cm-content').last().click();
   await page.keyboard.type(metricData.metricExpression.code);
 
   const postPromise = page.waitForResponse(
