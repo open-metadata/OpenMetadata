@@ -67,12 +67,28 @@ public final class IndexAliasInspector {
    * exists in the engine instead of a name that 404s under a cluster alias.
    */
   public String aliasFor(final String entityType) {
+    return mappingFor(entityType).getAlias(clusterAlias());
+  }
+
+  /**
+   * The entity's own canonical index name, cluster-alias-aware ({@code table} ->
+   * {@code openmetadata_table_search_index}). Unlike {@link #aliasFor}, this resolves to the 1:1
+   * read alias the server attaches to each entity's single backing index — not the short grouping
+   * alias ({@code openmetadata_table}) that also spans child/sibling indices (e.g. columns under
+   * {@code table}, time-series under {@code testCase}). Use this whenever an assertion must target
+   * exactly one entity type's index rather than an alias that fans out across several.
+   */
+  public String indexNameFor(final String entityType) {
+    return mappingFor(entityType).getIndexName(clusterAlias());
+  }
+
+  private static IndexMapping mappingFor(final String entityType) {
     final IndexMapping mapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
     if (mapping == null) {
       throw new IllegalArgumentException(
           "No index mapping declared for entity type: " + entityType);
     }
-    return mapping.getAlias(clusterAlias());
+    return mapping;
   }
 
   /** The server's configured cluster alias (empty string when none), or {@code null} if the

@@ -353,10 +353,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
-      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
+      // The search-it suite reindexes the full shared catalog on every test (beforeEach recreate),
+      // and heavy-seed tests (ReindexStopUnderLoadIT seeds 10k tables) leave thousands of entities
+      // in the DB that every later recreate re-indexes. With only 1g heap / 1g tmpfs the
+      // single-node
+      // engine saturates and live-index writes block until the 60s socket timeout, cascading
+      // failures
+      // into whichever test runs next. 2g heap + 2g tmpfs gives the headroom to absorb that load.
+      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms2g -Xmx2g");
       opensearch.withStartupAttempts(3);
       opensearch.withTmpFs(
-          java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g,uid=1000,gid=1000"));
+          java.util.Map.of("/usr/share/opensearch/data", "rw,size=2g,uid=1000,gid=1000"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
