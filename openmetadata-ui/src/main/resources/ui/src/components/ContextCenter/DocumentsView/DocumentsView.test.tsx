@@ -20,6 +20,37 @@ jest.mock(
   () => jest.fn(() => <div data-testid="error-placeholder" />)
 );
 
+jest.mock('react-aria-components', () => ({
+  Menu: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  MenuItem: jest.fn(
+    ({
+      children,
+      onAction,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode | (() => React.ReactNode);
+      onAction?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div
+        data-testid={testId}
+        role="menuitem"
+        onClick={onAction}
+        onKeyDown={undefined}>
+        {typeof children === 'function' ? children() : children}
+      </div>
+    )
+  ),
+  Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  SubmenuTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(
     ({
@@ -64,6 +95,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button data-testid={`dropdown-item-${id}`}>{label}</button>
     )),
   },
+  FileIcon: jest.fn(({ type }: { type: string }) => (
+    <span data-testid={`file-icon-${type}`} />
+  )),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -80,6 +114,7 @@ const mockFiles: DocFile[] = [
   {
     id: 'file-1',
     name: 'report.pdf',
+    fileExtension: 'pdf',
     fileType: 'pdf',
     sizeLabel: '2 MB',
     updatedBy: 'alice',
@@ -88,6 +123,7 @@ const mockFiles: DocFile[] = [
   {
     id: 'file-2',
     name: 'data.csv',
+    fileExtension: 'csv',
     fileType: 'csv',
     sizeLabel: '500 KB',
   },
@@ -122,16 +158,16 @@ describe('DocumentsView', () => {
     expect(screen.getByText('alice')).toBeInTheDocument();
   });
 
-  it('renders the PDF badge label for pdf files', () => {
+  it('renders the file icon for pdf files', () => {
     render(<DocumentsView data={[mockFiles[0]]} isLoading={false} />);
 
-    expect(screen.getByText('PDF')).toBeInTheDocument();
+    expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
   });
 
-  it('renders the CSV badge label for csv files', () => {
+  it('renders the file icon for csv files', () => {
     render(<DocumentsView data={[mockFiles[1]]} isLoading={false} />);
 
-    expect(screen.getByText('CSV')).toBeInTheDocument();
+    expect(screen.getByTestId('file-icon-csv')).toBeInTheDocument();
   });
 
   it('renders the error placeholder when data is empty and not loading', () => {

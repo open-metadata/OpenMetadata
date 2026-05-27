@@ -136,9 +136,13 @@ public final class ReindexHelpers {
    * run). Used by {@code SearchClusterResetExtension}.
    */
   public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
-    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
     final long triggeredAtMillis = System.currentTimeMillis();
-    triggerAppWithConfig(server, SEARCH_INDEX_APP, Map.of("recreateIndex", true));
+    // Trigger via the idle-aware path: the SearchIndexApp single-run lock can linger briefly after
+    // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
+    // running" (notably at class transitions in the serial search-it suite). This waits for the
+    // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
+    triggerSearchIndexWithConfigWhenIdle(
+        server, Map.of("recreateIndex", true), Duration.ofSeconds(60));
     return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
   }
 
