@@ -225,6 +225,7 @@ import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -11970,6 +11971,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
+    validateScope(request.getScopeEntityType(), request.getScopeFqn());
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     boolean hardDelete = Boolean.TRUE.equals(request.getHardDelete());
     boolean recursive = !Boolean.FALSE.equals(request.getRecursive());
@@ -11997,6 +11999,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
+  }
+
+  /**
+   * Verifies the request scope is coherent before any deletes run: {@code scopeEntityType} must be
+   * a registered entity type, and a live entity with FQN {@code scopeFqn} must exist under that
+   * type. Catches typos, swapped fields, and stale FQNs that would otherwise let a request silently
+   * affect the wrong subtree (or no subtree at all).
+   */
+  private void validateScope(String scopeEntityType, String scopeFqn) {
+    if (nullOrEmpty(scopeFqn)) {
+      throw BadRequestException.of("scopeFqn is required for deleteStale");
+    }
+    if (nullOrEmpty(scopeEntityType)) {
+      throw BadRequestException.of("scopeEntityType is required for deleteStale");
+    }
+    if (!Entity.hasEntityRepository(scopeEntityType)) {
+      throw BadRequestException.of(
+          String.format("Unsupported scopeEntityType '%s' for deleteStale", scopeEntityType));
+    }
+    EntityRepository<? extends EntityInterface> scopeRepository =
+        Entity.getEntityRepository(scopeEntityType);
+    if (scopeRepository.findByNameOrNull(scopeFqn, Include.NON_DELETED) == null) {
+      throw BadRequestException.of(
+          String.format("Scope %s '%s' not found for deleteStale", scopeEntityType, scopeFqn));
+    }
   }
 
   /**

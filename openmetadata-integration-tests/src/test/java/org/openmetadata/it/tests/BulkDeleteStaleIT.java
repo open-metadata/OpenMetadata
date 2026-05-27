@@ -186,6 +186,52 @@ public class BulkDeleteStaleIT {
     assertEquals(403, response.statusCode(), "a user without DELETE permission must be forbidden");
   }
 
+  @Test
+  void test_unknownScopeEntityType_returns400(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("notARealEntityType")
+                .withSeenFqns(new ArrayList<>()),
+            SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "unknown scopeEntityType must be rejected");
+  }
+
+  @Test
+  void test_missingScopeEntityType_returns400(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("")
+                .withSeenFqns(new ArrayList<>()),
+            SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "blank scopeEntityType must be rejected");
+  }
+
+  @Test
+  void test_nonExistentScopeFqn_returns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(ns.prefix("does.not.exist"))
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(new ArrayList<>()),
+            SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "non-existent scopeFqn must be rejected");
+  }
+
   // ===================================================================
   // HELPERS
   // ===================================================================
