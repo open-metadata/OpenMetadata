@@ -117,8 +117,10 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
-  await page.locator('.cm-content').last().click();
-  await page.keyboard.type(code);
+  const cmEditor = page.locator('.cm-content').last();
+  await expect(cmEditor).toBeVisible();
+  await cmEditor.click();
+  await page.keyboard.insertText(code);
 
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
@@ -291,8 +293,10 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
-  await page.locator('.cm-content').last().click();
-  await page.keyboard.type(metricData.metricExpression.code);
+  const cmEditorAdd = page.locator('.cm-content').last();
+  await expect(cmEditorAdd).toBeVisible();
+  await cmEditorAdd.click();
+  await page.keyboard.insertText(metricData.metricExpression.code);
 
   const postPromise = page.waitForResponse(
     (response) => response.request().method() === 'POST'
