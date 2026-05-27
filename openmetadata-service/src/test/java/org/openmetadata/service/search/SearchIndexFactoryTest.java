@@ -260,6 +260,27 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void apiEndpointAndTopicReindexFieldsIncludeSchema() {
+    // Regression: APIEndpointRepository.fetchAndSetSchemaFieldTagsInBatch is gated on
+    // fields.contains("requestSchema") || fields.contains("responseSchema"), and
+    // TopicRepository.bulkPopulateEntityFieldTags only fires when fields.contains("messageSchema").
+    // Without these in the reindex field set, nested schema-field tags are not hydrated and the
+    // reindexed doc loses _source.tags until the next per-entity write repopulates it.
+    Set<String> apiEndpointFields = factory.getReindexFieldsFor(Entity.API_ENDPOINT);
+    assertTrue(
+        apiEndpointFields.contains("requestSchema"),
+        () -> "API Endpoint reindex fields must include 'requestSchema'; got " + apiEndpointFields);
+    assertTrue(
+        apiEndpointFields.contains("responseSchema"),
+        () ->
+            "API Endpoint reindex fields must include 'responseSchema'; got " + apiEndpointFields);
+    Set<String> topicFields = factory.getReindexFieldsFor(Entity.TOPIC);
+    assertTrue(
+        topicFields.contains("messageSchema"),
+        () -> "Topic reindex fields must include 'messageSchema'; got " + topicFields);
+  }
+
+  @Test
   void reindexFieldsOmitKnownFanOutFields() {
     // These are the "blow up the heap" relationships we explicitly do NOT want fetched during
     // reindex. They either live in the Index's getExcludedFields() (stripped post-hoc) or
