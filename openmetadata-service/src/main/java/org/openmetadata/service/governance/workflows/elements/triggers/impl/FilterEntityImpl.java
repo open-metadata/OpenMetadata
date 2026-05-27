@@ -8,6 +8,7 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -229,15 +230,18 @@ public class FilterEntityImpl implements JavaDelegate {
               || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
-    // Apply JSON filter
-    boolean passesJsonFilter = true;
-    if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-      passesJsonFilter =
-          Boolean.TRUE.equals(
-              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
-    }
+    boolean passesJsonFilter = applyJsonFilter(filterLogic, JsonUtils.getMap(entity));
 
     return fieldBasedFilter && passesJsonFilter;
+  }
+
+  private static boolean applyJsonFilter(String filterLogic, Map<String, Object> entityMap) {
+    boolean result = true;
+    if (filterLogic != null && !filterLogic.trim().isEmpty()) {
+      Object ruleResult = RuleEngine.getInstance().apply(filterLogic, entityMap);
+      result = !Boolean.TRUE.equals(ruleResult);
+    }
+    return result;
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.FieldChange;
@@ -26,6 +27,7 @@ class FilterEntityImplTest {
 
   private FilterEntityImpl filterEntity;
   private Method passesFieldBasedFilter;
+  private Method applyJsonFilter;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -34,6 +36,9 @@ class FilterEntityImplTest {
         FilterEntityImpl.class.getDeclaredMethod(
             "passesFieldBasedFilter", List.class, List.class, List.class);
     passesFieldBasedFilter.setAccessible(true);
+    applyJsonFilter =
+        FilterEntityImpl.class.getDeclaredMethod("applyJsonFilter", String.class, Map.class);
+    applyJsonFilter.setAccessible(true);
   }
 
   @Test
@@ -209,9 +214,50 @@ class FilterEntityImplTest {
         passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
   }
 
+  private boolean invokeApplyJsonFilter(String filterLogic, Map<String, Object> entityMap)
+      throws Exception {
+    return (boolean) applyJsonFilter.invoke(null, filterLogic, entityMap);
+  }
+
   private FieldChange fieldChange(String name) {
     FieldChange fc = new FieldChange();
     fc.setName(name);
     return fc;
+  }
+
+  @Test
+  void testApplyJsonFilterPassesWhenFilterLogicIsNull() throws Exception {
+    assertTrue(invokeApplyJsonFilter(null, Map.of("name", "mysql_sample")));
+  }
+
+  @Test
+  void testApplyJsonFilterPassesWhenFilterLogicIsEmpty() throws Exception {
+    assertTrue(invokeApplyJsonFilter("", Map.of("name", "mysql_sample")));
+    assertTrue(invokeApplyJsonFilter("   ", Map.of("name", "mysql_sample")));
+  }
+
+  @Test
+  void testApplyJsonFilterPassesWhenFilterIsNotJsonLogic() throws Exception {
+    String esQuery =
+        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"name.keyword\":\"mysql_sample\"}}]}}}";
+    Map<String, Object> entity = Map.of("name", "mysql_sample", "entityType", "databaseService");
+
+    assertTrue(invokeApplyJsonFilter(esQuery, entity));
+  }
+
+  @Test
+  void testApplyJsonFilterExcludesWhenJsonLogicMatches() throws Exception {
+    String jsonLogic = "{\"==\":[{\"var\":\"name\"},\"mysql_sample\"]}";
+    Map<String, Object> entity = Map.of("name", "mysql_sample");
+
+    assertFalse(invokeApplyJsonFilter(jsonLogic, entity));
+  }
+
+  @Test
+  void testApplyJsonFilterPassesWhenJsonLogicDoesNotMatch() throws Exception {
+    String jsonLogic = "{\"==\":[{\"var\":\"name\"},\"other_service\"]}";
+    Map<String, Object> entity = Map.of("name", "mysql_sample");
+
+    assertTrue(invokeApplyJsonFilter(jsonLogic, entity));
   }
 }
