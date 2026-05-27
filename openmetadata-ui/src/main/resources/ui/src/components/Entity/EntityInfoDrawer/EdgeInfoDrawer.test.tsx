@@ -48,7 +48,7 @@ jest.mock('../../../components/common/OverviewSection/OverviewSection', () => {
   ));
 });
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 

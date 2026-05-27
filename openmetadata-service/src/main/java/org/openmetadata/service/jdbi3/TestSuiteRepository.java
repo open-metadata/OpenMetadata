@@ -700,7 +700,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
-      cleanup(updated);
+      cleanup(updatedBy, updated);
       changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());

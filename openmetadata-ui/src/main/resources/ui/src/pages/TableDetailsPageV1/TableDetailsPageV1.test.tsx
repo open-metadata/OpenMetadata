@@ -139,14 +139,23 @@ jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
+}));
+jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 

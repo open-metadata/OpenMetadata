@@ -43,8 +43,8 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
-import { getServiceLogo } from '../../../utils/CommonUtils';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import {
   getColumnSorter,
   getEntityName,
@@ -58,7 +58,7 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,

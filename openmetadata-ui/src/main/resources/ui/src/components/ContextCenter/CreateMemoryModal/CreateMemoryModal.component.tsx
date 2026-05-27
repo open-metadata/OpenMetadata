@@ -350,7 +350,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
-          <Dialog.Content className="tw:p-0">
+          <Dialog.Content className="tw:p-0!">
             <div
               className="tw:flex tw:flex-col tw:max-h-[80vh]"
               ref={modalContainerRef}>
@@ -359,7 +359,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   modalContainerRef.current ?? document.body
                 }>
                 {/* Sticky header */}
-                <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0">
+                <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
                   <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-blue-50 tw:border tw:border-indigo-100 tw:shrink-0">
                     <Lightbulb03
                       className="tw:text-brand-700"
@@ -368,9 +368,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     />
                   </div>
                   <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
-                    <Typography size="text-lg" weight="semibold">
-                      {modalTitle}
-                    </Typography>
+                    <div className="tw:max-w-112">
+                      <Typography ellipsis size="text-lg" weight="semibold">
+                        {modalTitle}
+                      </Typography>
+                    </div>
                     {memoryToEdit?.updatedBy && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography className="tw:text-gray-500" size="text-xs">
@@ -394,7 +396,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 </div>
 
                 {/* Scrollable body */}
-                <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1">
+                <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
                   {/* Section 1: Title */}
                   <div className="tw:flex tw:flex-col tw:gap-1">
                     <Input
@@ -683,7 +685,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                 {/* Sticky footer */}
                 {!viewOnly && (
-                  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0">
+                  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
                     <div>
                       {isEditMode && (
                         <Button
