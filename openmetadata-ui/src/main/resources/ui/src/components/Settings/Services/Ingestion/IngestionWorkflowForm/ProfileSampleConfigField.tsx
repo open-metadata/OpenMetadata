@@ -22,7 +22,7 @@ import {
 import { FieldProps } from '@rjsf/utils';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { Form, Switch } from 'antd';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ICSamplingConfig,
@@ -48,15 +48,21 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;
   const { t } = useTranslation();
 
-  const SAMPLE_CONFIG_TYPE_OPTIONS = [
-    { id: SampleConfigType.Static, label: t('label.static') },
-    { id: SampleConfigType.Dynamic, label: t('label.dynamic') },
-  ];
+  const SAMPLE_CONFIG_TYPE_OPTIONS = useMemo(
+    () => [
+      { id: SampleConfigType.Static, label: t('label.static') },
+      { id: SampleConfigType.Dynamic, label: t('label.dynamic') },
+    ],
+    [t]
+  );
 
-  const PROFILE_SAMPLE_TYPE_OPTIONS = [
-    { id: ProfileSampleType.Percentage, label: t('label.percentage') },
-    { id: ProfileSampleType.Rows, label: t('label.row-plural') },
-  ];
+  const PROFILE_SAMPLE_TYPE_OPTIONS = useMemo(
+    () => [
+      { id: ProfileSampleType.Percentage, label: t('label.percentage') },
+      { id: ProfileSampleType.Rows, label: t('label.row-plural') },
+    ],
+    [t]
+  );
 
   const sampleConfigType =
     formData?.sampleConfigType ?? SampleConfigType.Dynamic;
