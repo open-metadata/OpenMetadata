@@ -4206,9 +4206,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
               subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
+        // The search index stores relationship-shaped fields in shapes that don't match the
+        // entity schema — `followers` in particular is a flat List<String> of UUIDs (see
+        // SearchIndexUtils.parseFollowers), but the schema types it as List<EntityReference>.
+        // Strip those fields here so Jackson sees the same JSON shape the DB-backed list
+        // produces (FIELDS_STORED_AS_RELATIONSHIPS is the same set stripped on write by
+        // storageJsonNode). setFieldsInBulk below repopulates only what the caller requested,
+        // using the same 2-query batched fetch the DB path uses.
+        FIELDS_STORED_AS_RELATIONSHIPS.forEach(json::remove);
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
-        entityList.add(withHref(uriInfo, entity));
+        entityList.add(entity);
       }
+      setFieldsInBulk(fields, entityList);
+      entityList.forEach(entity -> withHref(uriInfo, entity));
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
       SearchResultListMapper results =
