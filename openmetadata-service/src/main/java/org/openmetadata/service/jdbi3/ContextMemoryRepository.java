@@ -40,6 +40,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
+  static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
+  static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  private static final String PATCH_FIELDS =
+      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+  private static final String UPDATE_FIELDS =
+      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+
   static {
     ContextMemoryBodyTextContributor.INSTANCE.register();
   }
@@ -50,19 +57,39 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         Entity.CONTEXT_MEMORY,
         ContextMemory.class,
         Entity.getCollectionDAO().contextMemoryDAO(),
-        "",
-        "");
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 
   @Override
   protected void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
-    // ContextMemory stores its fields in the entity JSON for now.
+    if (fields.contains(FIELD_PRIMARY_ENTITY)) {
+      entity.setPrimaryEntity(getPrimaryEntity(entity));
+    }
+    if (fields.contains(FIELD_RELATED_ENTITIES)) {
+      entity.setRelatedEntities(getRelatedEntities(entity));
+    }
   }
 
   @Override
   protected void clearFields(ContextMemory entity, Fields fields) {
-    // ContextMemory stores its fields in the entity JSON for now.
+    if (!fields.contains(FIELD_PRIMARY_ENTITY)) {
+      entity.setPrimaryEntity(null);
+    }
+    if (!fields.contains(FIELD_RELATED_ENTITIES)) {
+      entity.setRelatedEntities(null);
+    }
+  }
+
+  private EntityReference getPrimaryEntity(ContextMemory entity) {
+    List<EntityReference> refs =
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
+  }
+
+  private List<EntityReference> getRelatedEntities(ContextMemory entity) {
+    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }
 
   @Override
@@ -289,7 +316,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       // the specific changed refs (never a blanket delete), so the framework's
       // domain --HAS--> memory edge is left intact.
       updateFromRelationships(
-          "primaryEntity",
+          FIELD_PRIMARY_ENTITY,
           Entity.CONTEXT_MEMORY,
           asRefList(original.getPrimaryEntity()),
           asRefList(updated.getPrimaryEntity()),
@@ -297,7 +324,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           original.getId());
       updateFromRelationships(
-          "relatedEntities",
+          FIELD_RELATED_ENTITIES,
           Entity.CONTEXT_MEMORY,
           listOrEmpty(original.getRelatedEntities()),
           listOrEmpty(updated.getRelatedEntities()),

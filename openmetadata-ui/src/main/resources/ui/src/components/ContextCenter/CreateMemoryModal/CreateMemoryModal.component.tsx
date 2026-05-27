@@ -53,6 +53,7 @@ import {
 } from '../../../constants/ContextCenter.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
+  EntityReference,
   LabelType,
   MemoryType,
   ShareVisibility,
@@ -219,18 +220,24 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   useEffect(() => {
     if (memoryToEdit) {
       setTitle(memoryToEdit.title ?? '');
-      setMemory(memoryToEdit.answer || memoryToEdit.question);
+      setMemory(memoryToEdit.answer ?? memoryToEdit.question ?? '');
       setMemoryType(memoryToEdit.memoryType ?? '');
-      setVisibility(memoryToEdit.visibility ?? ShareVisibility.Shared);
+      setVisibility(
+        memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Shared
+      );
       setSelectedTags(memoryToEdit.tags ?? []);
-      const assetOptions: DataAssetOption[] = (
-        memoryToEdit.relatedEntities ?? []
-      ).map((ref) => ({
+      const toAssetOption = (ref: EntityReference): DataAssetOption => ({
         label: ref.displayName ?? ref.name ?? '',
         value: ref.fullyQualifiedName ?? ref.id,
         displayName: ref.displayName ?? ref.name ?? '',
         reference: ref,
-      }));
+      });
+      const assetOptions: DataAssetOption[] = [
+        ...(memoryToEdit.primaryEntity
+          ? [toAssetOption(memoryToEdit.primaryEntity)]
+          : []),
+        ...(memoryToEdit.relatedEntities ?? []).map(toAssetOption),
+      ];
       setLinkedAssets(assetOptions);
     } else {
       setTitle('');
@@ -303,27 +310,22 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setIsSubmitting(true);
     setModalError('');
     try {
-      const relatedEntities = linkedAssets
-        .filter((a) => a.reference?.id && a.reference?.type)
-        .map((a) => ({
-          id: a.reference!.id,
-          type: a.reference!.type,
-          name: a.reference?.name,
-          displayName: a.reference?.displayName,
-          fullyQualifiedName: a.reference?.fullyQualifiedName,
-        }));
+      const validAssets = linkedAssets.filter(
+        (a) => a.reference?.id && a.reference?.type
+      );
+      const toRef = (a: DataAssetOption): EntityReference => ({
+        id: a.reference!.id,
+        type: a.reference!.type,
+        name: a.reference?.name,
+        displayName: a.reference?.displayName,
+        fullyQualifiedName: a.reference?.fullyQualifiedName,
+      });
+      const primaryEntity = validAssets[0] ? toRef(validAssets[0]) : undefined;
+      const relatedEntities = validAssets.slice(1).map(toRef);
 
       if (isEditMode && memoryToEdit) {
-        const originalRelatedEntities = (
-          memoryToEdit.relatedEntities ?? []
-        ).map((r) => ({
-          id: r.id,
-          type: r.type,
-          name: r.name,
-          displayName: r.displayName,
-          fullyQualifiedName: r.fullyQualifiedName,
-        }));
-        const hasExistingShareConfig = memoryToEdit.visibility !== undefined;
+        const hasExistingShareConfig =
+          memoryToEdit.shareConfig?.visibility !== undefined;
         const original = {
           title: memoryToEdit.title ?? '',
           summary: memoryToEdit.summary ?? '',
@@ -331,9 +333,16 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           question: memoryToEdit.question,
           memoryType: memoryToEdit.memoryType,
           tags: memoryToEdit.tags ?? [],
-          relatedEntities: originalRelatedEntities,
+          primaryEntity: memoryToEdit.primaryEntity,
+          relatedEntities: (memoryToEdit.relatedEntities ?? []).map((r) => ({
+            id: r.id,
+            type: r.type,
+            name: r.name,
+            displayName: r.displayName,
+            fullyQualifiedName: r.fullyQualifiedName,
+          })),
           ...(hasExistingShareConfig
-            ? { shareConfig: { visibility: memoryToEdit.visibility } }
+            ? { shareConfig: { visibility: memoryToEdit.shareConfig?.visibility } }
             : {}),
         };
         const updated = {
@@ -343,6 +352,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           question: memory.trim(),
           memoryType: memoryType || undefined,
           tags: selectedTags,
+          primaryEntity,
           relatedEntities,
           ...(hasExistingShareConfig || visibility !== ShareVisibility.Shared
             ? { shareConfig: { visibility } }
@@ -367,6 +377,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(memoryType ? { memoryType } : {}),
           ...(selectedTags.length > 0 ? { tags: selectedTags } : {}),
+          ...(primaryEntity ? { primaryEntity } : {}),
           ...(relatedEntities.length > 0 ? { relatedEntities } : {}),
           shareConfig: { visibility },
         });
