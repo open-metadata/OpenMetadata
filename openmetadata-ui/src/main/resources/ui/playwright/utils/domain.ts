@@ -394,7 +394,18 @@ export const fillCommonFormItems = async (
 ) => {
   await page.locator('#root\\/name').fill(entity.name);
   await page.locator('#root\\/displayName').fill(entity.displayName);
-  await page.locator(descriptionBox).fill(entity.description);
+
+  const description = page.locator(descriptionBox);
+  await description.click();
+  let expectedDescription = '';
+  for (const char of entity.description) {
+    await description.type(char, { delay: 0 });
+    expectedDescription += char;
+
+    const actual = ((await description.textContent()) ?? '').replace(/ /g, ' ');
+
+    expect(actual).toBe(expectedDescription);
+  }
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
