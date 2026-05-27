@@ -4206,8 +4206,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        normalizeFollowersField(json);
-        T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
+        T entity = readSearchSource(json);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
@@ -4228,19 +4227,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * The search index stores `followers` as a flat list of UUID strings (see
-   * {@code SearchIndexUtils.parseFollowers}), but every entity declares
-   * {@code List<EntityReference> followers}. Rehydrate each string into a minimal
-   * {@code EntityReference} so Jackson can construct the field — otherwise listing
-   * any entity with followers via this search-backed path returns HTTP 400.
+   * Deserializes a search hit source into the entity type. Normalizes known
+   * index-shape drifts so Jackson can construct the POJO: {@code followers} is
+   * stored as a flat list of UUID strings (see {@link SearchIndexUtils#parseFollowers})
+   * but every entity declares {@code List<EntityReference> followers}. Mirrors the
+   * targeted-scrub pattern in {@link EntityTimeSeriesRepository}; the scrub becomes a
+   * no-op once an index rebuild closes the divergence.
    */
-  private static void normalizeFollowersField(Map<String, Object> json) {
-    Object followers = json.get("followers");
+  protected T readSearchSource(Map<String, Object> source) {
+    Object followers = source.get(FIELD_FOLLOWERS);
     if (followers instanceof List<?> list && !list.isEmpty() && list.getFirst() instanceof String) {
+      Map<String, Object> scrubbed = new HashMap<>(source);
       List<Map<String, String>> normalized =
           list.stream().map(Object::toString).map(id -> Map.of("id", id, "type", USER)).toList();
-      json.put("followers", normalized);
+      scrubbed.put(FIELD_FOLLOWERS, normalized);
+      return JsonUtils.readOrConvertValueLenient(scrubbed, entityClass);
     }
+    return JsonUtils.readOrConvertValueLenient(source, entityClass);
   }
 
   @Transaction
