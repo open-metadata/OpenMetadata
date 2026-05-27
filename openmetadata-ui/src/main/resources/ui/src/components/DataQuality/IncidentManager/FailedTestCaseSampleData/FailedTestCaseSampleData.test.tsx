@@ -118,10 +118,11 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('column_x'),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/EntityDisplayUtils', () => ({
   getEntityDeleteMessage: jest.fn().mockReturnValue('delete-message'),
 }));
 

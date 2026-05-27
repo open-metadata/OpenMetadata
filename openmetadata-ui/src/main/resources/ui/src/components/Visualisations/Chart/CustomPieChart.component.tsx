@@ -17,7 +17,7 @@ import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
 import { GREY_200 } from '../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
 
