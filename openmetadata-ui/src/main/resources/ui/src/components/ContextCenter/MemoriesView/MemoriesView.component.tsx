@@ -28,6 +28,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import {
   MemoriesViewProps,
   MemoryActionsWithOpenProps,
@@ -163,7 +164,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <Typography
             className="tw:text-gray-600 tw:line-clamp-2"
             size="text-xs">
-            {memory.summary ?? memory.answer}
+            {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
           {memory.tags && memory.tags.length > 0 && (
