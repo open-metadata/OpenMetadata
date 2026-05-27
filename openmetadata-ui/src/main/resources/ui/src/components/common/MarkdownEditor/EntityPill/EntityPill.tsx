@@ -14,7 +14,6 @@
 import { Badge } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 
@@ -29,15 +28,9 @@ const EntityPill: React.FC<EntityPillProps> = ({
   fullyQualifiedName,
   label,
 }) => {
-  const { icon } = useMemo(() => {
-    return {
-      entityPath: entityUtilClassBase.getEntityLink(
-        entityType,
-        fullyQualifiedName
-      ),
-      icon: searchClassBase.getEntityIcon(entityType),
-    };
-  }, [entityType, fullyQualifiedName]);
+  const icon = useMemo(() => {
+    return searchClassBase.getEntityIcon(entityType);
+  }, [entityType]);
 
   return (
     <EntityPopOverCard entityFQN={fullyQualifiedName} entityType={entityType}>

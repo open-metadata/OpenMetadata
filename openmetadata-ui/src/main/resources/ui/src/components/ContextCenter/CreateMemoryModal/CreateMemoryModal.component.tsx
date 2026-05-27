@@ -598,8 +598,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           color="secondary"
                           size="sm"
                           onClick={() =>
-                            setMemoryTab((t) =>
-                              t === 'edit' ? 'preview' : 'edit'
+                            setMemoryTab((prev) =>
+                              prev === 'edit' ? 'preview' : 'edit'
                             )
                           }>
                           {memoryTab === 'edit'
