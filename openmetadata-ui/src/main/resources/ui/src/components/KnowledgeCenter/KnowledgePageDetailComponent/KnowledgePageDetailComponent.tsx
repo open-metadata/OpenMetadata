@@ -79,12 +79,12 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/CommonUtils';
-import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+} from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,

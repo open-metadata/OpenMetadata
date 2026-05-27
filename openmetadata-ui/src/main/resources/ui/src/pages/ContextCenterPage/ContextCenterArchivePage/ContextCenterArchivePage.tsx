@@ -194,7 +194,7 @@ const ContextCenterArchivePage: FC = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {

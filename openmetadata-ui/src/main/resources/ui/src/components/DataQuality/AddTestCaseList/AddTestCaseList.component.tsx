@@ -49,7 +49,6 @@ import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -61,8 +60,9 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { replacePlus } from '../../../utils/StringsUtils';
+import { replacePlus } from '../../../utils/StringUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';

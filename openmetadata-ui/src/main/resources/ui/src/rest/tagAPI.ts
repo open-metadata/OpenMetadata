@@ -23,7 +23,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { EntityReference, Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/classifications';

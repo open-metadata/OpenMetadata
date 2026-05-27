@@ -12,7 +12,7 @@
  */
 
 import { EditorState } from '@tiptap/pm/state';
-import { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import { isEmpty, isString } from 'lodash';
 import Showdown from 'showdown';
 import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';

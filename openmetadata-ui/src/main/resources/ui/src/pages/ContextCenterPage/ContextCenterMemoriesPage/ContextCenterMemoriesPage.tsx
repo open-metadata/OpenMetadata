@@ -363,7 +363,7 @@ const ContextCenterMemoriesPage: FC = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -423,7 +423,7 @@ const ContextCenterMemoriesPage: FC = () => {
       </div>
 
       {/* Memories card with tabs */}
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:overflow-hidden">
+      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-115">
         <div className="tw:px-6 tw:py-5">
           <div className="tw:flex tw:items-center tw:gap-2">
             <Typography size="text-md" weight="medium">

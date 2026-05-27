@@ -108,9 +108,12 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div data-testid="next-previous" />)
 );
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
-  formatNumberWithComma: jest.fn().mockImplementation((v) => String(v)),
+jest.mock('../../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
+}));
+
+jest.mock('../../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: jest.fn().mockImplementation((v) => String(v)),
   calculatePercentage: jest
     .fn()
     .mockImplementation(

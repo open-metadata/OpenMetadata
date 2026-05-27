@@ -20,7 +20,7 @@ import {
   MOCK_ASSETS_DATA,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import * as CommonUtils from '../../../utils/CommonUtils';
+import * as FeedUtils from '../../../utils/FeedUtils';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryTerms from './GlossaryTermsV1.component';
@@ -224,10 +224,10 @@ describe('Test Glossary-term component', () => {
 
   it('should fetch feed counts on mount when not in version view', async () => {
     const fetchTaskCountsSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
       .mockImplementation(jest.fn());
     const fetchActivityCountSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
+      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
@@ -248,10 +248,10 @@ describe('Test Glossary-term component', () => {
 
   it('should not fetch feed counts when in version view', async () => {
     const fetchTaskCountsSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
       .mockImplementation(jest.fn());
     const fetchActivityCountSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
+      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({

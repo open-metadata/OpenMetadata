@@ -31,16 +31,16 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
-import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import {
   getPrioritizedEditPermission,

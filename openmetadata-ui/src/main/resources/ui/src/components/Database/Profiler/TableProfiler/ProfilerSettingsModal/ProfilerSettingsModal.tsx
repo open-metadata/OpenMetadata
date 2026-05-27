@@ -62,7 +62,7 @@ import {
   getTableProfilerConfig,
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
-import { reducerWithoutAction } from '../../../../../utils/CommonUtils';
+import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
 import {
   showErrorToast,
   showSuccessToast,
