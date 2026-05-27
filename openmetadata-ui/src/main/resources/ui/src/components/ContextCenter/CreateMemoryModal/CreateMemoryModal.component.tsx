@@ -342,7 +342,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
             fullyQualifiedName: r.fullyQualifiedName,
           })),
           ...(hasExistingShareConfig
-            ? { shareConfig: { visibility: memoryToEdit.shareConfig?.visibility } }
+            ? {
+                shareConfig: {
+                  visibility: memoryToEdit.shareConfig?.visibility,
+                },
+              }
             : {}),
         };
         const updated = {
