@@ -81,7 +81,9 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Alert: jest.fn(({ title }: { title: string }) => <div role="alert">{title}</div>),
+  Alert: jest.fn(({ title }: { title: string }) => (
+    <div role="alert">{title}</div>
+  )),
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
