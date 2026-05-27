@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { ServiceCategory } from '../enums/service.enum';
+import { ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
@@ -115,5 +117,89 @@ describe('ServiceUtilClassBase', () => {
     );
 
     expect(result).toEqual(ExplorePageTabs.TABLES);
+  });
+
+  describe('getExtraIngestionMenuItems', () => {
+    it('returns empty array when called with only serviceCategory', () => {
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when called with serviceCategory, serviceName and navigate', () => {
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'my-service',
+        jest.fn()
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when serviceDetails is provided', () => {
+      const serviceDetails = {
+        serviceType: 'Snowflake',
+        connection: {
+          config: {
+            type: 'Snowflake',
+            policyAgentConfig: { enabled: true },
+          },
+        },
+      } as unknown as ServicesType;
+
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'my-snowflake-service',
+        jest.fn(),
+        serviceDetails
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('allows a subclass override to receive and use serviceDetails', () => {
+      class TestOverride extends ServiceUtilClassBase {
+        public getExtraIngestionMenuItems(
+          _serviceCategory: ServiceCategory,
+          _serviceName?: string,
+          _navigate?: (path: string) => void,
+          serviceDetails?: ServicesType
+        ) {
+          const config = (
+            serviceDetails as {
+              connection?: { config?: { policyAgentConfig?: { enabled?: boolean } } };
+            }
+          )?.connection?.config;
+          const enabled = config?.policyAgentConfig?.enabled;
+
+          return enabled ? [{ key: 'custom-item', label: 'Custom' }] : [];
+        }
+      }
+
+      const override = new TestOverride();
+
+      const withEnabled = override.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'svc',
+        jest.fn(),
+        {
+          connection: { config: { policyAgentConfig: { enabled: true } } },
+        } as unknown as ServicesType
+      );
+
+      const withDisabled = override.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'svc',
+        jest.fn(),
+        {
+          connection: { config: { policyAgentConfig: { enabled: false } } },
+        } as unknown as ServicesType
+      );
+
+      expect(withEnabled).toHaveLength(1);
+      expect(withDisabled).toHaveLength(0);
+    });
   });
 });
