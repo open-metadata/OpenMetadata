@@ -292,19 +292,25 @@ const GlossaryPage = () => {
 
   useEffect(() => {
     if (glossaries.length && isGlossaryActive) {
-      setActiveGlossary(
-        glossaries.find(
-          (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        ) || glossaries[0]
+      const matchedGlossary = glossaries.find(
+        (glossary) => glossary.fullyQualifiedName === glossaryFqn
       );
 
-      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
-        navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
-          replace: true,
-        });
+      if (isEmpty(glossaryFqn)) {
+        setActiveGlossary(glossaries[0]);
+
+        if (glossaries[0].fullyQualifiedName) {
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+            replace: true,
+          });
+        }
+      } else if (matchedGlossary) {
+        setActiveGlossary(matchedGlossary);
+      } else if (!isLoading) {
+        setActiveGlossary(glossaries[0]);
       }
     }
-  }, [isGlossaryActive, glossaryFqn, glossaries]);
+  }, [isGlossaryActive, glossaryFqn, glossaries, isLoading]);
 
   const isRightPanelLoading = useMemo(() => {
     if (!glossaries.length) {
