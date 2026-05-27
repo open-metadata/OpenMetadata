@@ -70,7 +70,7 @@ class TestGenerateSampleData:
         sampler.entity.fullyQualifiedName.root = "test_service.db.schema.table"
         sampler.columns = [MagicMock(name="col1"), MagicMock(name="col2")]
         sampler.sample_limit = 50
-        sampler.storage_config = None
+        sampler.upload_sample_storage_config = None
 
         sample_table_data = TableData(
             columns=["col1", "col2"],
@@ -121,7 +121,7 @@ class TestGenerateSampleData:
         sampler.fetch_sample_data.assert_called_once()
 
     def test_store_enabled_with_storage_config_uploads(self, sampler):
-        sampler.storage_config = MagicMock()
+        sampler.upload_sample_storage_config = MagicMock()
         config = SampleDataIngestionConfig(storeSampleData=True, readSampleData=True)
         with patch("metadata.sampler.sampler_interface.upload_sample_data") as mock_upload:
             result = sampler.generate_sample_data(config)
@@ -130,7 +130,7 @@ class TestGenerateSampleData:
             assert len(result.rows) == 2
 
     def test_store_disabled_with_storage_config_does_not_upload(self, sampler):
-        sampler.storage_config = MagicMock()
+        sampler.upload_sample_storage_config = MagicMock()
         config = SampleDataIngestionConfig(storeSampleData=False, readSampleData=True)
         with patch("metadata.sampler.sampler_interface.upload_sample_data") as mock_upload:
             result = sampler.generate_sample_data(config)

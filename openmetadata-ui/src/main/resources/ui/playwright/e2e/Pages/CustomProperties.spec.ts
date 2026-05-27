@@ -956,6 +956,286 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           ).toBeVisible();
         });
       });
+
+      // #27482 – Regression: between operator was dropping the upper bound
+      if (key === 'entity_table') {
+        test('Number CP between operator sends gte/lte bounds (Issue #27482)', async ({
+          page,
+        }) => {
+          test.slow();
+          const numberPropertyName = `pwNumberBetweenTest${uuid()}`;
+          const assignedValue = '55.7';
+
+          await test.step('Create number custom property and assign value', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName: numberPropertyName,
+              customPropertyData: entity,
+              customType: 'Number',
+            });
+
+            await mainEntity.visitEntityPage(page);
+
+            const customPropertyResponse = page.waitForResponse(
+              '/api/v1/metadata/types/name/table?fields=customProperties'
+            );
+            await page.getByTestId('custom_properties').click();
+            await customPropertyResponse;
+
+            await page.locator('.ant-skeleton-active').waitFor({
+              state: 'detached',
+            });
+
+            await setValueForProperty({
+              page,
+              propertyName: numberPropertyName,
+              value: assignedValue,
+              propertyType: 'number',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+          });
+
+          await test.step('between [50, 60]: query_filter must contain gte:50 and lte:60', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'between',
+              CP_RANGE_VALUES.number,
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            const res = await searchResponse;
+
+            const url = res.request().url();
+            const params = new URLSearchParams(url.split('?')[1]);
+            const queryFilter = JSON.parse(params.get('query_filter') ?? '{}');
+            const queryFilterStr = JSON.stringify(queryFilter);
+
+            expect(queryFilterStr).toContain('"gte":50');
+            expect(queryFilterStr).toContain('"lte":60');
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${responseData.fullyQualifiedName ?? ''}`
+              )
+            ).toBeVisible();
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('not_between [1, 5]: query_filter must contain must_not with gte:1 and lte:5', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'not_between',
+              { start: 1, end: 5 },
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            const res = await searchResponse;
+
+            const url = res.request().url();
+            const params = new URLSearchParams(url.split('?')[1]);
+            const queryFilter = JSON.parse(params.get('query_filter') ?? '{}');
+            const queryFilterStr = JSON.stringify(queryFilter);
+
+            expect(queryFilterStr).toContain('"must_not"');
+            expect(queryFilterStr).toContain('"gte":1');
+            expect(queryFilterStr).toContain('"lte":5');
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('between [100, 200]: entity with value 55.7 should NOT be visible', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'between',
+              { start: 100, end: 200 },
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            await searchResponse;
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${responseData.fullyQualifiedName ?? ''}`
+              )
+            ).not.toBeVisible();
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Cleanup', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await deleteCreatedProperty(page, numberPropertyName);
+          });
+        });
+
+        test('no duplicate card after update', async ({ page }) => {
+          test.slow();
+
+          const propertyName = `pw.edge.update.${uuid()}`;
+
+          await test.step('Create property', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName,
+              customPropertyData: entity,
+              customType: 'String',
+            });
+          });
+
+          await test.step('Set initial value', async () => {
+            await mainEntity.visitEntityPage(page);
+            await waitForAllLoadersToDisappear(page);
+
+            await setValueForProperty({
+              page,
+              propertyName,
+              value: 'initial value',
+              propertyType: 'string',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'initial value',
+              propertyType: 'string',
+            });
+          });
+
+          await test.step('Update value and verify only one card exists', async () => {
+            await setValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+            });
+
+            await expect(
+              page.getByTestId(`custom-property-${propertyName}-card`)
+            ).toHaveCount(1);
+            await expect(
+              page.getByTestId(`custom-property-"${propertyName}"-card`)
+            ).toHaveCount(0);
+          });
+
+          await test.step('Value persists after reload', async () => {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+            });
+
+            await expect(
+              page.getByTestId(`custom-property-${propertyName}-card`)
+            ).toHaveCount(1);
+            await expect(
+              page.getByTestId(`custom-property-"${propertyName}"-card`)
+            ).toHaveCount(0);
+          });
+
+          await test.step('Updated value is searchable via Advanced Search', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+
+            await showAdvancedSearchDialog(page);
+
+            const ruleLocator = page.locator('.rule').nth(0);
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              'Custom Properties',
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              'Table',
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              propertyName,
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--operator .ant-select'),
+              CONDITIONS_MUST.equalTo.name
+            );
+
+            await ruleLocator
+              .locator('.rule--widget--TEXT input[type="text"]')
+              .fill('updated value');
+
+            await advanceSearchSaveFilter(page, 'updated value');
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${
+                  (mainEntity as TableClass).entityResponseData
+                    .fullyQualifiedName
+                }`
+              )
+            ).toBeVisible();
+          });
+        });
+      }
     }
 
     // ── Container-specific extra tests ─────────────────────────────────────

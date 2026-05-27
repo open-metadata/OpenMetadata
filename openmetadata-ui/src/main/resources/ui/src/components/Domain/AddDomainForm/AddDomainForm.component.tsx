@@ -55,7 +55,7 @@ import {
 import { searchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
-import { getRandomColor } from '../../../utils/CommonUtils';
+import { getRandomColor } from '../../../utils/ColorUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,

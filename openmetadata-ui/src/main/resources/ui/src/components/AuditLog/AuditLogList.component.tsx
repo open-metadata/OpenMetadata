@@ -31,7 +31,7 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../utils/RouterUtils';
-import { isValidJSONString } from '../../utils/StringsUtils';
+import { isValidJSONString } from '../../utils/StringUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {

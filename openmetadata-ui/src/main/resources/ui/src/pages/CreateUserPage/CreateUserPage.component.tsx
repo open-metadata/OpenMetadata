@@ -24,12 +24,8 @@ import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { createBot } from '../../rest/botsAPI';
-import {
-  createUser,
-  createUserWithPut,
-  getBotByName,
-} from '../../rest/userAPI';
+import { createBot, getBotByName } from '../../rest/botsAPI';
+import { createUser, createUserWithPut } from '../../rest/userAPI';
 import {
   getBotsPagePath,
   getSettingPath,

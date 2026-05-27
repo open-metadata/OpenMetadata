@@ -37,7 +37,6 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -47,6 +46,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -253,6 +257,22 @@ function SpreadsheetDetails({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedSpreadsheetFQN) {
+      fetchEntityTaskCountsInto(decodedSpreadsheetFQN, setFeedCount);
+    }
+  }, [decodedSpreadsheetFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedSpreadsheetFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.SPREADSHEET,
+        decodedSpreadsheetFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedSpreadsheetFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -305,7 +325,8 @@ function SpreadsheetDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [spreadsheetPermissions, decodedSpreadsheetFQN]);
 
   const tabs = useMemo(() => {

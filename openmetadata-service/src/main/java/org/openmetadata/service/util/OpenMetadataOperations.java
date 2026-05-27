@@ -1304,11 +1304,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
-              names = {"--recreate-indexes"},
-              defaultValue = "true",
-              description = "Flag to determine if indexes should be recreated.")
-          boolean recreateIndexes,
-      @Option(
               names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
@@ -1371,11 +1366,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String slackChannel) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1410,7 +1404,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           entities,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1778,7 +1771,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Set<String> entities,
       int batchSize,
       long payloadSize,
-      boolean recreateIndexes,
       int producerThreads,
       int consumerThreads,
       int queueSize,
@@ -1797,8 +1789,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     IndexMappingVersionTracker versionTracker = null;
     boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
+    boolean shouldReindex = true;
 
-    if (!force && recreateIndexes) {
+    if (!force) {
       try {
         String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
         versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
@@ -1807,7 +1800,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
         if (changedMappings.isEmpty()) {
           LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
-          recreateIndexes = false;
+          shouldReindex = false;
 
           // Send Slack notification if configured
           if (slackBotToken != null
@@ -1836,7 +1829,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             if (requestedAndChanged.isEmpty()) {
               LOG.info(
                   "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
-              recreateIndexes = false;
+              shouldReindex = false;
               shouldUpdateVersions = false;
 
               // Send Slack notification if configured
@@ -1859,7 +1852,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
 
           // Initialize progress monitor for entities that will be reindexed
-          if (recreateIndexes) {
+          if (shouldReindex) {
             progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
             progressMonitor.printInitialSummary();
           }
@@ -1871,7 +1864,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     // Initialize progress monitor for force mode as well to get clean output
-    if (progressMonitor == null && recreateIndexes && force) {
+    if (progressMonitor == null && force) {
       progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
       LOG.info("");
       LOG.info("🔄 Force Reindexing");
@@ -1881,8 +1874,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("");
     }
 
-    // If recreateIndexes is false, we should not proceed with reindexing
-    if (!recreateIndexes) {
+    // If no mapping changes were detected, we should not proceed with reindexing
+    if (!shouldReindex) {
       LOG.info("Reindexing skipped - no changes detected");
       return 0; // Success - no reindexing needed
     }
@@ -1892,7 +1885,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
-            .withRecreateIndex(recreateIndexes)
             .withProducerThreads(producerThreads)
             .withConsumerThreads(consumerThreads)
             .withQueueSize(queueSize)

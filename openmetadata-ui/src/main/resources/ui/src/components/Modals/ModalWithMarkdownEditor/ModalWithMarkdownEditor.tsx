@@ -15,7 +15,7 @@ import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
+import { removeAttachmentsWithoutUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';

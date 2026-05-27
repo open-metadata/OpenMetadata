@@ -17,7 +17,7 @@ import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import { CustomPropertiesForAssets } from './metadataTypeAPI.interface';
 
