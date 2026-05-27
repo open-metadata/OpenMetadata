@@ -20,8 +20,8 @@ import {
   ConfigContext,
   ImmutableTree,
   JsonTree,
-  Query,
   Utils as QbUtils,
+  Query,
 } from '@react-awesome-query-builder/antd';
 import {
   Alert,
@@ -186,13 +186,14 @@ const QueryBuilderWidgetV1: FC<{
         query: data,
       };
       if (data) {
-        const qFilterWithEntityType = addEntityTypeFilter(
-          qFilter as unknown as QueryFilterInterface,
+        // Deep-clone before mutating so addEntityTypeFilter doesn't pollute qFilter
+        const qFilterForCount = addEntityTypeFilter(
+          JSON.parse(JSON.stringify(qFilter)) as QueryFilterInterface,
           entityType
         );
 
         debouncedFetchEntityCount(
-          qFilterWithEntityType as unknown as Record<string, unknown>
+          qFilterForCount as unknown as Record<string, unknown>
         );
       }
 
