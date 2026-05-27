@@ -1440,7 +1440,8 @@ export interface ConfigObject {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?: string;
+    httpPath?:          string;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
      *
@@ -1448,8 +1449,7 @@ export interface ConfigObject {
      * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
      * must expose columns compatible with the selected log path.
      */
-    queryHistoryTable?:   string;
-    supportsPolicyAgent?: SupportsPolicyAgent;
+    queryHistoryTable?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -3724,6 +3724,7 @@ export interface ConfigConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
+    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -3750,7 +3751,6 @@ export interface ConfigConnection {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
-    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -3941,6 +3941,28 @@ export interface AuthTypeClass {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * Authentication provider for the Superset service. For basic user/password authentication,
  * the default value `db` can be used. This parameter is used internally to connect to
  * Superset's REST API.
@@ -4114,28 +4136,6 @@ export enum SSLMode {
     Require = "require",
     VerifyCA = "verify-ca",
     VerifyFull = "verify-full",
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -4480,6 +4480,7 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
+    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -4510,7 +4511,6 @@ export interface HiveMetastoreConnectionDetails {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
-    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;

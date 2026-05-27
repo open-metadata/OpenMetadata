@@ -727,6 +727,7 @@ export interface SupersetConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
+    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -753,7 +754,6 @@ export interface SupersetConnection {
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
-    supportsPolicyAgent?:          SupportsPolicyAgent;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -968,6 +968,28 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * Authentication provider for the Superset service. For basic user/password authentication,
  * the default value `db` can be used. This parameter is used internally to connect to
  * Superset's REST API.
@@ -1105,28 +1127,6 @@ export enum SSLMode {
     Require = "require",
     VerifyCA = "verify-ca",
     VerifyFull = "verify-full",
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**

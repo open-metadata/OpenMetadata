@@ -49,7 +49,8 @@ export interface DatabricksConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath: string;
+    httpPath:           string;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
      */
@@ -67,7 +68,6 @@ export interface DatabricksConnection {
     supportsDBTExtraction?:      boolean;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsPolicyAgent?:        SupportsPolicyAgent;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
@@ -140,6 +140,28 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -231,28 +253,6 @@ export interface AwsCredentials {
  */
 export enum DatabricksScheme {
     Databricks = "databricks",
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface SupportsPolicyAgent {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
