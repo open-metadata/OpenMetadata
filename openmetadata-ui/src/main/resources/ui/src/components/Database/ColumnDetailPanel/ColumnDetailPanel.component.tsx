@@ -823,7 +823,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
               <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
             </div>
-            <div className="tw:flex tw:flex-col tw:min-w-0 tw:flex-1 tw:overflow-hidden">
+            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
               <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                 <Tooltip
                   mouseEnterDelay={0.5}
