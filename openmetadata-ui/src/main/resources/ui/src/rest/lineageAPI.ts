@@ -24,6 +24,7 @@ import {
 } from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
 import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
@@ -227,11 +228,9 @@ export const exportLineageByEntityCountAsync = async (params: {
  * `EntityInterface`. Callers should narrow per-type at the call-site — e.g.
  * `entitiesByType.table as Table[]` — once they know which key they're consuming.
  */
-export const hydrateLineageEntities = async (params: {
-  entities: { type: string; id: string }[];
-  fields?: string;
-  include?: 'all' | 'deleted' | 'non-deleted';
-}): Promise<HydrateLineageResponse> => {
+export const hydrateLineageEntities = async (
+  params: HydrateLineageRequest
+): Promise<HydrateLineageResponse> => {
   const response = await APIClient.post<HydrateLineageResponse>(
     `/lineage/hydrate`,
     params
