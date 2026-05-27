@@ -85,6 +85,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   private EntityReference getPrimaryEntity(ContextMemory entity) {
     List<EntityReference> refs =
         findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.APPLIED_TO, null);
+    if (nullOrEmpty(refs)) {
+      // Fallback for data written before the APPLIED_TO migration. Filter out domain refs
+      // because domains use the same HAS relationship type (domain --HAS--> contextMemory).
+      refs =
+          findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null).stream()
+              .filter(r -> !Entity.DOMAIN.equals(r.getType()))
+              .toList();
+    }
     return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
