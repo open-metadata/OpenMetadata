@@ -36,7 +36,7 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
 import AddDomainForm, {

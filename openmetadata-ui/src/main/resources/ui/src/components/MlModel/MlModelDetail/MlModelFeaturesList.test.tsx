@@ -115,7 +115,7 @@ const mockData = {
   deleted: false,
 };
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));

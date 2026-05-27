@@ -47,7 +47,7 @@ import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
 const updateCachedEntityData = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
@@ -55,7 +55,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn(),
   getEncodedFqn: jest.fn(),
 }));
