@@ -32,56 +32,13 @@ import {
   SamplingMethodType,
   Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-
-const SAMPLE_CONFIG_TYPE_OPTIONS = [
-  { id: SampleConfigType.Static, label: 'STATIC' },
-  { id: SampleConfigType.Dynamic, label: 'DYNAMIC' },
-];
-
-const PROFILE_SAMPLE_TYPE_OPTIONS = [
-  { id: ProfileSampleType.Percentage, label: 'PERCENTAGE' },
-  { id: ProfileSampleType.Rows, label: 'ROWS' },
-];
-
-const SAMPLING_METHOD_TYPE_OPTIONS = [
-  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
-  { id: SamplingMethodType.System, label: 'SYSTEM' },
-];
-
-const DEFAULT_THRESHOLD: Threshold = {
-  rowCountThreshold: 1,
-  profileSample: 100,
-};
-
-const STATIC_CONFIG_KEYS: ReadonlyArray<keyof ICSamplingConfig> = [
-  'profileSample',
-  'profileSampleType',
-  'samplingMethodType',
-];
-
-const DYNAMIC_CONFIG_KEYS: ReadonlyArray<keyof ICSamplingConfig> = [
-  'smartSampling',
-  'thresholds',
-];
-
-const pickConfigForType = (
-  config: ICSamplingConfig | undefined,
-  type: SampleConfigType
-): ICSamplingConfig => {
-  if (!config) {
-    return {};
-  }
-  const allowedKeys =
-    type === SampleConfigType.Static ? STATIC_CONFIG_KEYS : DYNAMIC_CONFIG_KEYS;
-  const result: ICSamplingConfig = {};
-  for (const key of allowedKeys) {
-    if (config[key] !== undefined) {
-      (result as Record<string, unknown>)[key] = config[key];
-    }
-  }
-
-  return result;
-};
+import {
+  DEFAULT_THRESHOLD,
+  pickConfigForType,
+  PROFILE_SAMPLE_TYPE_OPTIONS,
+  SAMPLE_CONFIG_TYPE_OPTIONS,
+  SAMPLING_METHOD_TYPE_OPTIONS,
+} from '../../../../../utils/ProfileSampleConfigUtils';
 
 const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;

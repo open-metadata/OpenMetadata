@@ -137,11 +137,11 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="profiler"]')
-        .waitFor();
-
-      await page.click('[data-menu-id*="profiler"]');
+      const profilerMenuItem = page
+        .locator('.ant-dropdown:visible')
+        .getByTestId('agent-item-profiler');
+      await expect(profilerMenuItem).toBeVisible();
+      await profilerMenuItem.click();
 
       await waitForAllLoadersToDisappear(page);
       const advancedConfigHeader = page
