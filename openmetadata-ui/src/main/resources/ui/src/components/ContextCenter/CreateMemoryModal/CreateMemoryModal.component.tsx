@@ -38,7 +38,7 @@ import {
   Plus,
   Share07,
   Trash01,
-  X
+  X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
@@ -583,9 +583,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           )}
                         </Typography>
                         <Tooltip
-                          title={t(
-                            'message.what-should-ask-collate-remember'
-                          )}>
+                          title={t('message.what-should-ask-collate-remember')}>
                           <TooltipTrigger className="tw:leading-0">
                             <InfoCircle
                               className="tw:text-gray-400 tw:cursor-pointer"

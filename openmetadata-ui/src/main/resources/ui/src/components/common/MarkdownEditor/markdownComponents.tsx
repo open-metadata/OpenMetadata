@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
-import { CSMode } from '../../../enums/codemirror.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import React from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import EntityMarkdownLink from './EntityMarkdownLink/EntityMarkdownLink';
 import EntityPill from './EntityPill/EntityPill';
 

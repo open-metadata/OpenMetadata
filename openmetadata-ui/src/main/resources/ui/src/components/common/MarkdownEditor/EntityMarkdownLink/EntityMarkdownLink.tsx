@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
-import { EntityType } from '../../../../enums/entity.enum';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import React, { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { EntityType } from '../../../../enums/entity.enum';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 import {
   EntityMarkdownLinkProps,
   ParsedEntityLink,

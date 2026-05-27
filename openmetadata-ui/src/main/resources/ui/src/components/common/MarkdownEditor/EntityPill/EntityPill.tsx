@@ -12,11 +12,11 @@
  */
 
 import { Badge } from '@openmetadata/ui-core-components';
-import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
+import React, { useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import React, { useMemo } from 'react';
+import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 
 export interface EntityPillProps {
   entityType: EntityType;
