@@ -70,7 +70,7 @@ import {
   getShortRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
