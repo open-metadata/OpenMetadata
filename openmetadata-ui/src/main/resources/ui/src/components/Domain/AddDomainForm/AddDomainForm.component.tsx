@@ -732,7 +732,7 @@ const AddDomainForm = ({
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
               className="add-domain-form-description new-form-style"
-              initialValue={typeof field.value === 'string' ? field.value : ''}
+              initialValue=""
               key={descriptionEditorKey}
               onTextChange={field.onChange}
             />
