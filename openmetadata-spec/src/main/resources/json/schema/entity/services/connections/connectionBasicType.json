@@ -90,10 +90,10 @@
       "type": "boolean",
       "default": true
     },
-    "supportsPolicyAgent": {
+    "policyAgentConfig": {
       "description": "Policy agent configuration for access control extraction.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.database.SupportsPolicyAgent",
+      "javaType": "org.openmetadata.schema.services.connections.database.PolicyAgentConfig",
       "properties": {
         "enabled": {
           "title": "Enabled",

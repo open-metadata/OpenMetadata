@@ -212,9 +212,9 @@
       "type": "string",
       "default": "app.snowflake.com"
     },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent",
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
       "default": {
         "enabled": true,
         "supportsColumnAccess": false,

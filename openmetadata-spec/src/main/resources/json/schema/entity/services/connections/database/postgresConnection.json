@@ -161,9 +161,9 @@
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
-    "supportsPolicyAgent": {
-      "title": "Supports Policy Agent",
-      "$ref": "../connectionBasicType.json#/definitions/supportsPolicyAgent",
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
       "default": {
         "enabled": true,
         "supportsColumnAccess": true,
