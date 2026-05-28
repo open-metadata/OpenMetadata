@@ -40,7 +40,6 @@ class TestKafkaAutoClassification:
         assert topic is not None
         assert topic.name.root == PII_TOPIC_NAME
 
-    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_email_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -61,7 +60,6 @@ class TestKafkaAutoClassification:
             "email field should be tagged as PII.Sensitive"
         )
 
-    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_ssn_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -79,7 +77,6 @@ class TestKafkaAutoClassification:
         assert ssn_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in ssn_field.tags)
 
-    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_credit_card_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -97,7 +94,6 @@ class TestKafkaAutoClassification:
         assert cc_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in cc_field.tags)
 
-    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_non_pii_field_not_tagged(
         self,
         metadata: OpenMetadata,
@@ -114,7 +110,6 @@ class TestKafkaAutoClassification:
         assert id_field is not None
         assert id_field.tags is None or len(id_field.tags) == 0, "customer_id should not have PII tags"
 
-    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_non_pii_topic_fields_not_tagged(
         self,
         metadata: OpenMetadata,
