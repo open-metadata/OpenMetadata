@@ -77,9 +77,11 @@ public final class SharedEntities {
   public final User USER1;
   public final User USER2;
   public final User USER3;
+  public final User DATA_CONSUMER_USER;
   public final EntityReference USER1_REF;
   public final EntityReference USER2_REF;
   public final EntityReference USER3_REF;
+  public final EntityReference DATA_CONSUMER_USER_REF;
 
   // Teams
   public final Team ORG_TEAM;
@@ -123,6 +125,7 @@ public final class SharedEntities {
       User user1,
       User user2,
       User user3,
+      User dataConsumerUser,
       Team orgTeam,
       Team team1,
       Team team11,
@@ -145,9 +148,11 @@ public final class SharedEntities {
     this.USER1 = user1;
     this.USER2 = user2;
     this.USER3 = user3;
+    this.DATA_CONSUMER_USER = dataConsumerUser;
     this.USER1_REF = user1.getEntityReference();
     this.USER2_REF = user2.getEntityReference();
     this.USER3_REF = user3.getEntityReference();
+    this.DATA_CONSUMER_USER_REF = dataConsumerUser.getEntityReference();
 
     this.ORG_TEAM = orgTeam;
     this.TEAM1 = team1;
@@ -254,6 +259,9 @@ public final class SharedEntities {
               userService, "shared_user1", List.of(team1.getId()), List.of(testAdminRole.getId()));
       User user2 = createUser(userService, "shared_user2", List.of(team2.getId()), List.of());
       User user3 = createUser(userService, "shared_user3", List.of(), List.of());
+      User dataConsumerUser =
+          createUser(
+              userService, "shared_data_consumer", List.of(), List.of(dataConsumerRole.getId()));
 
       // Create domains
       DomainService domainService = new DomainService(adminClient.getHttpClient());
@@ -289,6 +297,7 @@ public final class SharedEntities {
               user1,
               user2,
               user3,
+              dataConsumerUser,
               orgTeam,
               team1,
               team11,

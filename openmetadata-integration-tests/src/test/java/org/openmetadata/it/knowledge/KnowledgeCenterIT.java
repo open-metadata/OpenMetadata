@@ -386,13 +386,14 @@ public class KnowledgeCenterIT {
 
     Page page = createPage(rest, buildCreateRequest(ns.prefix("followed-page"), orgRef));
     String followerName = ns.prefix("follower");
+    String followerEmail = ns.shortPrefix("follower") + "@test.openmetadata.org";
     User follower =
         adminClient
             .users()
             .create(
                 new CreateUser()
                     .withName(followerName)
-                    .withEmail(followerName + "@test.openmetadata.org"));
+                    .withEmail(followerEmail));
 
     adminClient
         .getHttpClient()

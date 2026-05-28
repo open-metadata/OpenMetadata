@@ -262,9 +262,9 @@ public class WorkflowTriggerPermissionsIT {
 
   private static String dataConsumerToken() {
     return JwtAuthProvider.tokenFor(
-        "data-consumer@open-metadata.org",
-        "data-consumer@open-metadata.org",
-        new String[] {"DataConsumer"},
+        "shared_data_consumer@test.openmetadata.org",
+        "shared_data_consumer@test.openmetadata.org",
+        new String[] {},
         TOKEN_TTL_SECONDS);
   }
 
