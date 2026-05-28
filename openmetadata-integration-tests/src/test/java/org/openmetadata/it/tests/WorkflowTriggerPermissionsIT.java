@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -20,6 +21,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -31,6 +33,8 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.services.teams.UserService;
 
 /**
  * Integration tests for trigger-endpoint authorization on
@@ -53,6 +57,29 @@ public class WorkflowTriggerPermissionsIT {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String TRIGGER_PATH = "/v1/automations/workflows/trigger/";
   private static final long TOKEN_TTL_SECONDS = 3600;
+  private static final String DATA_CONSUMER_NAME = "data-consumer";
+  private static final String DATA_CONSUMER_EMAIL = "data-consumer@open-metadata.org";
+
+  // Tests that use a JWT for `data-consumer@open-metadata.org` hit SubjectCache.getUserContext
+  // during authorization. If that user has never been created in this JVM session, the lookup
+  // throws EntityNotFoundException — which maps to 404, not the expected 403. Other suites
+  // (e.g. ColumnBulkUpdateIT, UserTestFactory.getDataConsumer) create this user lazily, so
+  // whether it exists when this class runs depends on suite ordering — flaky. Force-create it
+  // once up front so the trigger authorizer can resolve the subject and return a real 403.
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserService userService = new UserService(SdkClients.adminClient().getHttpClient());
+    try {
+      userService.getByName(DATA_CONSUMER_NAME, null);
+    } catch (OpenMetadataException notFound) {
+      try {
+        userService.create(
+            new CreateUser().withName(DATA_CONSUMER_NAME).withEmail(DATA_CONSUMER_EMAIL));
+      } catch (OpenMetadataException conflict) {
+        // Another test class's @BeforeAll created it between our get and create.
+      }
+    }
+  }
 
   @Test
   void test_triggerWorkflow_noAuth_returns401(TestNamespace ns) throws Exception {

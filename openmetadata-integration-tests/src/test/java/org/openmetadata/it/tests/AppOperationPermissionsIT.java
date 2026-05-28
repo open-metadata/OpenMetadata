@@ -1,12 +1,12 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -15,6 +15,9 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.services.teams.UserService;
 
 /**
  * Integration tests for App operational endpoint permissions.
@@ -33,6 +36,28 @@ public class AppOperationPermissionsIT {
 
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String APP_NAME = "SearchIndexingApplication";
+  private static final String DATA_CONSUMER_NAME = "data-consumer";
+  private static final String DATA_CONSUMER_EMAIL = "data-consumer@open-metadata.org";
+
+  // Tests use a JWT for `data-consumer@open-metadata.org`. The authorizer's first step is
+  // SubjectCache.getUserContext(...), which throws EntityNotFoundException (→404) if the user
+  // hasn't been created in this JVM session yet. Whether that's true depends on test suite
+  // ordering, so the asserts here previously accepted both 403 and 404. Force-create the user
+  // up front so we can assert the real expected status (403) deterministically.
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserService userService = new UserService(SdkClients.adminClient().getHttpClient());
+    try {
+      userService.getByName(DATA_CONSUMER_NAME, null);
+    } catch (OpenMetadataException notFound) {
+      try {
+        userService.create(
+            new CreateUser().withName(DATA_CONSUMER_NAME).withEmail(DATA_CONSUMER_EMAIL));
+      } catch (OpenMetadataException conflict) {
+        // Another test class's @BeforeAll created it between our get and create.
+      }
+    }
+  }
 
   @Test
   void test_triggerApp_noAuth_returns401(TestNamespace ns) throws Exception {
@@ -53,9 +78,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/trigger/" + APP_NAME, "{}", getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to trigger applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to trigger applications");
   }
 
   @Test
@@ -77,9 +101,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/deploy/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to deploy applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to deploy applications");
   }
 
   @Test
@@ -101,9 +124,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/stop/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to stop applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to stop applications");
   }
 
   @Test
@@ -125,9 +147,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/schedule/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to schedule applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to schedule applications");
   }
 
   @Test
@@ -149,9 +170,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/configure/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to configure applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to configure applications");
   }
 
   private static String getDataConsumerToken() {
