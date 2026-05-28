@@ -45,6 +45,10 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 jest.mock('../../../utils/KnowledgePageUtils', () => ({
+  getKnowledgePageName: jest.fn(
+    (entity?: { displayName?: string; name?: string }) =>
+      entity?.displayName || entity?.name || 'label.untitled'
+  ),
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
