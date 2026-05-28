@@ -32,10 +32,12 @@ import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryMod
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
 import {
   MemoryFilterTab,
-  MemoryItem,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  MemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -47,7 +49,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,relatedEntities';
+const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
@@ -70,12 +72,12 @@ const ContextCenterMemoriesPage: FC = () => {
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
 
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
-  const [memoryToDelete, setMemoryToDelete] = useState<MemoryItem>();
-  const [memoryToEdit, setMemoryToEdit] = useState<MemoryItem>();
-  const [memoryToView, setMemoryToView] = useState<MemoryItem>();
+  const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
+  const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
+  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -101,25 +103,7 @@ const ContextCenterMemoriesPage: FC = () => {
         limit: 1000,
         fields: MEMORY_FIELDS,
       });
-      const items: MemoryItem[] = (response.data ?? []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        title: m.title,
-        summary: m.summary,
-        question: m.question ?? '',
-        answer: m.answer ?? '',
-        memoryType: m.memoryType,
-        status: m.status,
-        updatedBy: m.updatedBy,
-        updatedAt: m.updatedAt,
-        tags: m.tags,
-        usageCount: m.usageCount,
-        lastUsedAt: m.lastUsedAt,
-        relatedEntities: m.relatedEntities,
-        visibility: m.shareConfig?.visibility,
-        owners: m.owners,
-      }));
-      setMemories(items);
+      setMemories(response.data ?? []);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -214,8 +198,8 @@ const ContextCenterMemoriesPage: FC = () => {
         (m) =>
           m.title?.toLowerCase().includes(q) ||
           m.summary?.toLowerCase().includes(q) ||
-          m.question.toLowerCase().includes(q) ||
-          m.answer.toLowerCase().includes(q)
+          m.question?.toLowerCase().includes(q) ||
+          m.answer?.toLowerCase().includes(q)
       );
     }
 
@@ -276,7 +260,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleDeleteMemory = useCallback((memory: MemoryItem) => {
+  const handleDeleteMemory = useCallback((memory: ContextMemory) => {
     setMemoryToDelete(memory);
   }, []);
 
@@ -303,14 +287,14 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, t]);
 
-  const handleEditMemory = useCallback((memory: MemoryItem) => {
+  const handleEditMemory = useCallback((memory: ContextMemory) => {
     setMemoryToEdit(memory);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
     setIsCreateModalOpen(true);
   }, []);
 
-  const handleViewMemory = useCallback((memory: MemoryItem) => {
+  const handleViewMemory = useCallback((memory: ContextMemory) => {
     setMemoryToView(memory);
     setIsViewModalOpen(true);
   }, []);
@@ -674,10 +658,10 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {memoryToDelete && (
         <DeleteModal
-          entityTitle={memoryToDelete.title ?? memoryToDelete.question}
+          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
           message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question,
+            entity: memoryToDelete.title ?? memoryToDelete.question ?? '',
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}

@@ -160,6 +160,16 @@
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": true,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": true
+      }
     }
   },
   "additionalProperties": false,
