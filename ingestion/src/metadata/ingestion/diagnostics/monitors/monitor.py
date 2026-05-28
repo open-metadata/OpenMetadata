@@ -23,8 +23,8 @@ import logging
 import threading
 from collections.abc import Callable
 
-from metadata.ingestion.diagnostics import emit_log
 from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
+from metadata.ingestion.diagnostics.kernel import emit_log
 
 
 class Monitor:

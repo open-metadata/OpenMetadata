@@ -10,27 +10,28 @@
 #  limitations under the License.
 """End-of-run summary reporting.
 
-A `Reporter` renders one structured summary line from its own accumulated
-state. `emit_report` drives every reporter at shutdown and emits the
-non-empty lines, so adding a new summary (memory, stage budget, ...) is
-implement-`render()`-and-register — the shutdown path never changes.
+`emit_report` drives every `HasSummary` participant at shutdown and emits the
+non-empty lines. Adding a new summary (memory, time budget, …) is
+implement-`render_summary`-and-include-in-aspects — the shutdown path never
+changes.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Protocol
+from typing import TYPE_CHECKING
 
-from metadata.ingestion.diagnostics import emit_log
+from metadata.ingestion.diagnostics.kernel import emit_log
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from metadata.ingestion.diagnostics.protocols import HasSummary
 
 
-class Reporter(Protocol):
-    def render(self) -> str | None:
-        """Return one end-of-run summary line, or None when there is nothing to report."""
-
-
-def emit_report(reporters: list[Reporter]) -> None:
-    for reporter in reporters:
-        line = reporter.render()
+def emit_report(summary_lines: Iterable[HasSummary]) -> None:
+    """Fan out `render_summary()` over the participants; emit the non-empty lines."""
+    for participant in summary_lines:
+        line = participant.render_summary()
         if line:
             emit_log(logging.INFO, line)

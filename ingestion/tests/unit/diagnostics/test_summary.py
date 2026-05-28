@@ -20,7 +20,7 @@ class _FakeReporter:
     def __init__(self, line: str | None) -> None:
         self._line = line
 
-    def render(self) -> str | None:
+    def render_summary(self) -> str | None:
         return self._line
 
 

@@ -29,6 +29,10 @@ import os
 import threading
 import time
 from collections import Counter, deque
+from typing import TextIO
+
+from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
+from metadata.ingestion.diagnostics.formatting import format_bytes, format_signed_bytes
 
 RING_BUFFER_SIZE = 10
 TOP_TYPES_LIMIT = 10
@@ -79,11 +83,13 @@ class MemorySample:
 
 
 class MemoryTracker:
-    """Thread-safe rolling memory sampler."""
+    """Thread-safe rolling memory sampler — a poll-driven aspect that renders
+    its own heartbeat field, dump fragment, and end-of-run summary."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._ring: deque[MemorySample] = deque(maxlen=RING_BUFFER_SIZE)
+        self._started_at = time.monotonic()
         self._psutil = _import_psutil()
         # Cache the Process handle. Construction reads /proc/<pid>/stat;
         # caching saves that read on every sample. The handle remains
@@ -154,18 +160,57 @@ class MemoryTracker:
         with self._lock:
             return self._ring[-1] if self._ring else None
 
-    def render(self, prefix: str = "diag.mem_budget") -> str | None:
-        """One end-of-run line summarising memory. Satisfies the Reporter contract.
+    def render_summary(self) -> str | None:
+        """The end-of-run `diag.mem_budget` line.
 
-        Returns None when no sample was ever folded in, so emit_report skips it.
+        Takes a final reading if no heartbeat ever fed one (runs shorter than
+        the heartbeat interval), so the line still appears. Returns None only
+        if even that sampling fails.
         """
+        if self._last_sample is None:
+            try:
+                self.note_sample(self.sample(), "")
+            except Exception:
+                return None
         with self._lock:
             latest, baseline = self._last_sample, self._baseline_rss
             peak, high_water_op, psi_max = self._peak_rss, self._high_water_op, self._psi_avg10_max
+            elapsed = time.monotonic() - self._started_at
         result = None
         if latest is not None and baseline is not None:
-            result = _format_mem_budget(prefix, latest, peak, baseline, high_water_op, psi_max)
+            result = _format_mem_budget("diag.mem_budget", latest, peak, baseline, high_water_op, psi_max, elapsed)
         return result
+
+    def render_instant(self) -> str:
+        """The heartbeat memory field, from the latest sample (the heartbeat
+        drives `sample()`/`note_sample()` before fanning instants)."""
+        sample = self._last_sample
+        result = ""
+        if sample is not None:
+            delta_30s = self.rss_delta_bytes_since(30.0)
+            oom = sample.oom_kill_count if sample.oom_kill_count is not None else "?"
+            result = (
+                f" rss={format_bytes(sample.rss)} "
+                f"rss_delta_30s={format_signed_bytes(delta_30s)} "
+                f"cgroup={format_bytes(sample.cgroup_current)}/{format_bytes(sample.cgroup_max)} "
+                f"oom_kills={oom}"
+            )
+        return result
+
+    def render_dump(self, out: TextIO) -> None:
+        out.write(f"{DIAG_LOG_PREFIX}.dump.memory\n")
+        sample = self.sample()
+        delta_30s = self.rss_delta_bytes_since(30.0)
+        out.write(
+            f"  rss={format_bytes(sample.rss)} "
+            f"rss_delta_30s={format_signed_bytes(delta_30s)} "
+            f"cgroup_current={format_bytes(sample.cgroup_current)} "
+            f"cgroup_max={format_bytes(sample.cgroup_max)} "
+            f"oom_kills={sample.oom_kill_count if sample.oom_kill_count is not None else '?'}\n"
+        )
+        out.write("  top_types:\n")
+        for type_name, count in self.top_object_types():
+            out.write(f"    {type_name:<32} {count}\n")
 
     def rss_delta_bytes_since(self, seconds_ago: float) -> int | None:
         """RSS change between the most recent sample and the oldest within `seconds_ago`."""
@@ -366,45 +411,42 @@ def _format_mem_budget(
     baseline: int,
     high_water_op: str,
     psi_avg10_max: float,
+    elapsed: float,
 ) -> str:
-    headroom = None
-    if latest.cgroup_max is not None and latest.cgroup_current is not None:
-        headroom = latest.cgroup_max - latest.cgroup_current
-    oom_kills = latest.oom_kill_count if latest.oom_kill_count is not None else "?"
-    return (
-        f"{prefix} "
-        f"peak={format_bytes(peak)} "
-        f"final={format_bytes(latest.rss)} "
-        f"growth={format_signed_bytes(latest.rss - baseline)} "
-        f"high_water_op={high_water_op or '-'} "
-        f"cgroup_headroom={format_bytes(headroom)} "
-        f"psi_avg10_max={psi_avg10_max:.1f} "
-        f"oom_kills={oom_kills} "
-        f"pressure_events={_format_pressure_events(latest)}"
+    """Render the mem_budget block: title, rss numbers, attribution, optional `unavailable:`."""
+    lines: list[str] = [prefix]
+    lines.append(
+        f"  elapsed={elapsed:.1f}s  "
+        f"baseline={format_bytes(baseline)}  "
+        f"peak={format_bytes(peak)}  "
+        f"final={format_bytes(latest.rss)}  "
+        f"Δpeak={format_signed_bytes(peak - baseline)}"
     )
 
+    attribution_parts = [f"high_water_op={high_water_op or '-'}", f"psi_avg10_max={psi_avg10_max:.1f}"]
+    unavailable: list[str] = []
 
-def _format_pressure_events(latest: MemorySample) -> str:
-    high = latest.cgroup_events_high if latest.cgroup_events_high is not None else "?"
-    oom = latest.cgroup_events_oom if latest.cgroup_events_oom is not None else "?"
-    return f"high={high}/oom={oom}"
+    if latest.cgroup_max is not None and latest.cgroup_current is not None:
+        attribution_parts.append(f"cgroup_headroom={format_bytes(latest.cgroup_max - latest.cgroup_current)}")
+    else:
+        unavailable.append("cgroup_headroom")
 
+    if latest.oom_kill_count is not None:
+        attribution_parts.append(f"oom_kills={latest.oom_kill_count}")
+    else:
+        unavailable.append("oom_kills")
 
-def format_bytes(n: int | None) -> str:
-    if n is None:
-        return "?"
-    abs_n = abs(n)
-    if abs_n >= 1024 * 1024 * 1024:
-        return f"{n / (1024 * 1024 * 1024):.1f}G"
-    if abs_n >= 1024 * 1024:
-        return f"{n / (1024 * 1024):.0f}M"
-    if abs_n >= 1024:
-        return f"{n / 1024:.0f}K"
-    return f"{n}B"
+    if latest.cgroup_events_high is not None:
+        attribution_parts.append(f"events.high={latest.cgroup_events_high}")
+    else:
+        unavailable.append("events.high")
 
+    if latest.cgroup_events_oom is not None:
+        attribution_parts.append(f"events.oom={latest.cgroup_events_oom}")
+    else:
+        unavailable.append("events.oom")
 
-def format_signed_bytes(n: int | None) -> str:
-    if n is None:
-        return "?"
-    sign = "+" if n >= 0 else "-"
-    return sign + format_bytes(abs(n))
+    lines.append("  " + "  ".join(attribution_parts))
+    if unavailable:
+        lines.append("  unavailable: " + "  ".join(unavailable))
+    return "\n".join(lines)
