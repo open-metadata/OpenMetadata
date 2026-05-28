@@ -13,7 +13,7 @@ Module containing the logic to trigger a DAG
 """
 
 import inspect
-from typing import Optional, Tuple  # noqa: UP035
+from typing import Optional  # noqa: UP035
 
 try:
     from airflow.api.common.trigger_dag import trigger_dag
@@ -34,7 +34,7 @@ except ImportError:
 # XSS rule doesn't trace jsonify through the ApiResponse helper chain.
 def trigger(
     dag_id: str, run_id: Optional[str], conf: Optional[dict] = None  # noqa: UP045
-) -> Tuple[dict, int]:
+) -> tuple[dict, int]:
     trigger_params = {
         "dag_id": dag_id,
         "run_id": run_id,
