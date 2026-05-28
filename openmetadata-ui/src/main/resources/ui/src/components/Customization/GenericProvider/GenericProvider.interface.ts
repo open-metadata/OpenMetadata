@@ -13,7 +13,6 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
-import { Column } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -34,7 +33,6 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   customizedPage?: Page | null;
   muiTags?: boolean;
   columnFqn?: string;
-  onColumnsUpdate?: (columns: Column[]) => void;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
