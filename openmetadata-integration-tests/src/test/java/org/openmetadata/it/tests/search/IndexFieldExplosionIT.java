@@ -47,6 +47,7 @@ class IndexFieldExplosionIT {
 
   private static final int CUSTOM_PROPERTIES_TO_ADD = 30;
   private static final int CHILD_TABLES = 50;
+  private static final int BASELINE_CHILD_TABLES = 3;
 
   private static ServerHandle server;
   private static IndexAliasInspector inspector;
@@ -63,16 +64,25 @@ class IndexFieldExplosionIT {
 
   @Test
   void manyChildTablesDoNotInflateSchemaMappingFieldCount(final TestNamespace ns) {
-    final String schemaAlias = inspector.aliasFor("databaseSchema");
-    final long schemaBefore = inspector.fieldCount(schemaAlias);
-
+    final String schemaIndex = inspector.indexNameFor("databaseSchema");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+
+    // Baseline against a schema that already has a few indexed children, so any one-time
+    // dynamic field a populated schema doc introduces is already in the mapping. The assertion
+    // then isolates the regression we guard against: the field count must not grow with the
+    // NUMBER of child tables (#23514), as opposed to merely having children at all.
+    for (int i = 0; i < BASELINE_CHILD_TABLES; i++) {
+      TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "seed" + i);
+    }
+    ReindexHelpers.triggerSearchIndexAndWait(server);
+    final long schemaBefore = inspector.fieldCount(schemaIndex);
+
     for (int i = 0; i < CHILD_TABLES; i++) {
-      TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+      TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "child" + i);
     }
     ReindexHelpers.triggerSearchIndexAndWait(server);
 
-    final long schemaAfter = inspector.fieldCount(schemaAlias);
+    final long schemaAfter = inspector.fieldCount(schemaIndex);
     assertThat(schemaAfter)
         .as(
             "databaseSchema mapping field count must not scale with child tables (before=%d after=%d)",
@@ -82,8 +92,8 @@ class IndexFieldExplosionIT {
 
   @Test
   void customPropertiesDoNotInflateTableMappingFieldCount() throws Exception {
-    final String tableAlias = inspector.aliasFor("table");
-    final long tableBefore = inspector.fieldCount(tableAlias);
+    final String tableIndex = inspector.indexNameFor("table");
+    final long tableBefore = inspector.fieldCount(tableIndex);
     final OpenMetadataClient client = SdkClients.adminClient();
     final Type tableType = getTypeByName(client, "table");
     final Type stringType = getTypeByName(client, "string");
@@ -100,7 +110,7 @@ class IndexFieldExplosionIT {
     }
     ReindexHelpers.triggerSearchIndexAndWait(server);
 
-    final long tableAfter = inspector.fieldCount(tableAlias);
+    final long tableAfter = inspector.fieldCount(tableIndex);
     assertThat(tableAfter)
         .as(
             "table mapping field count must not scale with custom properties (before=%d after=%d, added=%d)",
