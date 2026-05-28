@@ -36,7 +36,8 @@ export interface ElasticSearchConnection {
     /**
      * ElasticSearch Type
      */
-    type?: ElasticSearchType;
+    type?:      ElasticSearchType;
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -137,4 +138,13 @@ export interface SSLCertificates {
  */
 export enum ElasticSearchType {
     ElasticSearch = "ElasticSearch",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

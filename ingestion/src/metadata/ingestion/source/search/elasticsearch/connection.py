@@ -104,8 +104,8 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
 
 
 def get_ssl_context(
-    ssl_config: Optional[SslConfig], verify_ssl: Optional[VerifySSL] = VerifySSL.validate
-) -> Optional[ssl.SSLContext]:
+    ssl_config: SslConfig | None, verify_ssl: VerifySSL | None = VerifySSL.validate
+) -> ssl.SSLContext | None:
     """
     Method to get SSL Context
     """

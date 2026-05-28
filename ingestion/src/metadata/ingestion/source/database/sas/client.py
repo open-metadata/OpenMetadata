@@ -121,7 +121,11 @@ class SASClient:
 
         logger.debug(
             "Configuration for %s: enable %s - %s, custom %s filter - %s",
-            assets, assets, enable_asset, assets, asset_filter
+            assets,
+            assets,
+            enable_asset,
+            assets,
+            asset_filter,
         )
         endpoint = f"catalog/search?indices={assets}&q={asset_filter if str(asset_filter) != 'None' else '*'}"
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
