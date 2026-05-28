@@ -232,7 +232,7 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link.textContent).toContain('label.untitled');
+      expect(link.textContent).toContain('Knowledge No Name');
     });
 
     it('should use fullyQualifiedName in test ID when displayName is not provided', () => {
