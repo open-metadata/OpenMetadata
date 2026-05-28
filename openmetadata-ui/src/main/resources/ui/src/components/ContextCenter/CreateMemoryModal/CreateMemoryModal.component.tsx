@@ -505,7 +505,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         {modalTitle}
                       </Typography>
                     </div>
-                    {memoryToEdit?.updatedBy && (
+                    {(memoryToEdit?.owners?.[0]?.name ??
+                      memoryToEdit?.updatedBy) && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography className="tw:text-gray-500" size="text-xs">
                           {t('label.created-by')}
@@ -514,7 +515,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           showUserName
                           className="tw:text-gray-900"
                           profileWidth={16}
-                          userName={memoryToEdit.updatedBy}
+                          userName={memoryToEdit?.owners?.[0]?.name || ''}
                         />
                         <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
                           &middot;

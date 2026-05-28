@@ -24,6 +24,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -40,6 +41,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import {
   deleteContextMemory,
   getListContextMemories,
@@ -71,9 +73,13 @@ const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
+  const { onCopyToClipBoard } = useClipboard('', 1500, () =>
+    showSuccessToast(t('message.link-copy-to-clipboard'))
+  );
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
-  const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
+  const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
   const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
@@ -164,18 +170,19 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [memories, t]);
 
   const authorOptions = useMemo(() => {
-    const authors = new Set<string>();
+    const seen = new Map<string, string>();
     memories.forEach((m) => {
-      if (m.updatedBy) {
-        authors.add(m.updatedBy);
+      const owner = m.owners?.[0];
+      if (owner?.name) {
+        seen.set(owner.name, owner.displayName ?? owner.name);
       }
     });
 
     return [
       { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
-      ...Array.from(authors)
-        .sort()
-        .map((name) => ({ id: name, label: name })),
+      ...Array.from(seen.entries())
+        .sort(([, a], [, b]) => a.localeCompare(b))
+        .map(([name, displayName]) => ({ id: name, label: displayName })),
     ];
   }, [memories, t]);
 
@@ -183,7 +190,9 @@ const ContextCenterMemoriesPage: FC = () => {
     let list = memories;
 
     if (activeFilter === 'created-by-me') {
-      list = list.filter((m) => m.updatedBy === currentUser?.name);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === currentUser?.name)
+      );
     } else if (activeFilter === 'pinned') {
       list = list.filter(
         (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
@@ -207,7 +216,9 @@ const ContextCenterMemoriesPage: FC = () => {
     }
 
     if (selectedAuthor) {
-      list = list.filter((m) => m.updatedBy === selectedAuthor);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === selectedAuthor)
+      );
     }
 
     if (searchValue.trim()) {
@@ -229,7 +240,9 @@ const ContextCenterMemoriesPage: FC = () => {
       sorted.sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0));
     } else if (sortBy === 'author') {
       sorted.sort((a, b) =>
-        (a.updatedBy ?? '').localeCompare(b.updatedBy ?? '')
+        (a.owners?.[0]?.displayName ?? a.owners?.[0]?.name ?? '').localeCompare(
+          b.owners?.[0]?.displayName ?? b.owners?.[0]?.name ?? ''
+        )
       );
     }
 
@@ -312,10 +325,20 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsCreateModalOpen(true);
   }, []);
 
-  const handleViewMemory = useCallback((memory: ContextMemory) => {
-    setMemoryToView(memory);
-    setIsViewModalOpen(true);
-  }, []);
+  const handleViewMemory = useCallback(
+    (memory: ContextMemory) => {
+      setMemoryToView(memory);
+      setIsViewModalOpen(true);
+      setSearchParams((prev) => {
+        if (memory.name) {
+          prev.set('memory', memory.name);
+        }
+
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -325,7 +348,55 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-  }, []);
+    setSearchParams((prev) => {
+      prev.delete('memory');
+
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  const handleShareMemory = useCallback(
+    (memory: ContextMemory) => {
+      if (!memory.name) {
+        return;
+      }
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?memory=${encodeURIComponent(memory.name)}`;
+      onCopyToClipBoard(url);
+    },
+    [onCopyToClipBoard]
+  );
+
+  useEffect(() => {
+    const memoryName = searchParams.get('memory');
+    if (!memoryName || isMemoriesLoading || isViewModalOpen) {
+      return;
+    }
+    const match = memories.find((m) => m.name === memoryName);
+    if (match) {
+      handleViewMemory(match);
+    } else {
+      showErrorToast(
+        `${t('message.no-entity-available-with-name', {
+          entity: t('label.memory'),
+        })} "${memoryName}"`
+      );
+      setSearchParams((prev) => {
+        prev.delete('memory');
+
+        return prev;
+      });
+    }
+  }, [
+    memories,
+    isMemoriesLoading,
+    isViewModalOpen,
+    searchParams,
+    handleViewMemory,
+    t,
+    setSearchParams,
+  ]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -335,8 +406,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const sharedCount = memories.filter(
     (m) => m.status === MemoryStatus.Active
   ).length;
-  const createdByMeCount = memories.filter(
-    (m) => m.updatedBy === currentUser?.name
+  const createdByMeCount = memories.filter((m) =>
+    m.owners?.some((o) => o.name === currentUser?.name)
   ).length;
   const totalUsageCount = memories.reduce(
     (sum, m) => sum + (m.usageCount ?? 0),
@@ -627,6 +698,7 @@ const ContextCenterMemoriesPage: FC = () => {
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
+            onShareMemory={handleShareMemory}
             onViewMemory={handleViewMemory}
           />
         </div>
