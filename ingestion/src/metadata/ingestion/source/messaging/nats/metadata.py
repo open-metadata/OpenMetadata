@@ -72,7 +72,9 @@ _SAMPLE_SIZE = 10
 def _detect_schema_type(schema_text: str) -> str:
     stripped = schema_text.strip()
     if not stripped.startswith("{"):
-        if "syntax " in stripped or "message " in stripped:
+        if ("syntax " in stripped and "message " in stripped) or (
+            stripped.startswith("syntax") and ("proto2" in stripped or "proto3" in stripped)
+        ):
             return SchemaType.Protobuf.value.lower()
         return SchemaType.Other.value.lower()
     try:
