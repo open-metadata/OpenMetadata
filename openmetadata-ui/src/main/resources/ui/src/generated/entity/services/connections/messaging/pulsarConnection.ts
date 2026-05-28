@@ -15,6 +15,7 @@
  */
 export interface PulsarConnection {
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
      */
