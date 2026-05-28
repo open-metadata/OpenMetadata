@@ -220,7 +220,7 @@ const ContextCenterDocumentsPage: FC = () => {
       <ReflexContainer
         className="tw:flex-1 tw:overflow-hidden"
         orientation="vertical">
-        <ReflexElement flex={0.25} minSize={200}>
+        <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
           <DocumentFolderView
             files={allDocuments}
             selectedFolderId={selectedFolderId}

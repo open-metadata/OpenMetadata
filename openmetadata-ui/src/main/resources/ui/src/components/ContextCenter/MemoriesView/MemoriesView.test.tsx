@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
-import { MemoryItem } from './MemoriesView.interface';
 
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -66,7 +66,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
 }));
 
-const mockMemories: MemoryItem[] = [
+const mockMemories: ContextMemory[] = [
   {
     id: 'mem-1',
     name: 'my-first-memory',

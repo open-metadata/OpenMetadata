@@ -80,9 +80,10 @@ function MetadataAgentsWidget({
       serviceUtilClassBase.getExtraIngestionMenuItems(
         serviceCategory as ServiceCategory,
         serviceName,
-        navigate
+        navigate,
+        serviceDetails
       ),
-    [navigate, serviceCategory, serviceName]
+    [navigate, serviceCategory, serviceDetails, serviceName]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
