@@ -422,11 +422,7 @@ public class MigrationUtil {
         }
       } catch (Exception e) {
         // Per-table failure shouldn't stop the rest; logged at ERROR so it isn't lost.
-        LOG.error(
-            "v1130 heal failed for table '{}': {}. Re-run the migration to retry.",
-            table,
-            e.getMessage(),
-            e);
+        LOG.error("v1130 heal failed for table '{}': {}", table, e.getMessage(), e);
       }
     }
     LOG.info("v1130 heal: total stuck certification rows healed: {}", totalHealed);
@@ -447,102 +443,115 @@ public class MigrationUtil {
 
   private static int healCertificationBatch(Handle handle, ConnectionType connType, String table) {
     boolean isPostgres = connType == ConnectionType.POSTGRES;
+    int healed = 0;
     List<Map<String, Object>> rows =
         handle.createQuery(buildSelectStuckCertificationSql(table, isPostgres)).mapToMap().list();
-    if (rows.isEmpty()) {
-      return 0;
-    }
-
-    List<String> selectedIds = new ArrayList<>();
-    PreparedBatch batch = handle.prepareBatch(buildInsertTagUsageSql(isPostgres));
-    for (Map<String, Object> row : rows) {
-      String tagFQN = (String) row.get("tagfqn");
-      // SELECT already filters tagFQN NOT NULL, but stay defensive against concurrent edits.
-      if (tagFQN == null) {
-        continue;
+    if (!rows.isEmpty()) {
+      List<String> selectedIds = new ArrayList<>();
+      PreparedBatch batch = handle.prepareBatch(buildInsertTagUsageSql(isPostgres));
+      for (Map<String, Object> row : rows) {
+        String tagFQN = (String) row.get("tagfqn");
+        // SELECT already filters tagFQN NOT NULL, but stay defensive against concurrent edits.
+        if (tagFQN != null) {
+          selectedIds.add(row.get("id").toString());
+          batch
+              .bind("source", CERT_SOURCE)
+              .bind("tagFQN", tagFQN)
+              .bind("tagFQNHash", FullyQualifiedName.buildHash(tagFQN))
+              .bind("targetFQNHash", row.get("fqnhash").toString())
+              .bind("labelType", CERT_LABEL_TYPE)
+              .bind("state", CERT_STATE)
+              .bind("appliedAt", parseEpochMillisToTimestamp(row.get("applieddate")))
+              .bind("metadata", buildCertMetadataJson(row.get("expirydate")))
+              .add();
+        }
       }
-      selectedIds.add(row.get("id").toString());
-      batch
-          .bind("source", CERT_SOURCE)
-          .bind("tagFQN", tagFQN)
-          .bind("tagFQNHash", FullyQualifiedName.buildHash(tagFQN))
-          .bind("targetFQNHash", row.get("fqnhash").toString())
-          .bind("labelType", CERT_LABEL_TYPE)
-          .bind("state", CERT_STATE)
-          .bind("appliedAt", parseEpochMillisToTimestamp(row.get("applieddate")))
-          .bind("metadata", buildCertMetadataJson(row.get("expirydate")))
-          .add();
+      if (!selectedIds.isEmpty()) {
+        batch.execute();
+        handle
+            .createUpdate(buildStripCertificationFromJsonSql(table, isPostgres))
+            .bindList("ids", selectedIds)
+            .execute();
+        healed = selectedIds.size();
+      }
     }
-    if (selectedIds.isEmpty()) {
-      return 0;
-    }
-    batch.execute();
-    handle
-        .createUpdate(buildStripCertificationFromJsonSql(table, isPostgres))
-        .bindList("ids", selectedIds)
-        .execute();
-    return selectedIds.size();
+    return healed;
   }
 
   private static String buildSelectStuckCertificationSql(String table, boolean isPostgres) {
+    String sql;
     if (isPostgres) {
-      return String.format(
-          "SELECT id, fqnHash, "
-              + "json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' AS tagFQN, "
-              + "json::json -> 'certification' ->> 'expiryDate' AS expiryDate, "
-              + "json::json -> 'certification' ->> 'appliedDate' AS appliedDate "
-              + "FROM %s WHERE json::jsonb ?? 'certification' "
-              + "AND json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' IS NOT NULL "
-              + "LIMIT %d",
-          table, HEAL_BATCH_SIZE);
+      sql =
+          String.format(
+              "SELECT id, fqnHash, "
+                  + "json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' AS tagFQN, "
+                  + "json::json -> 'certification' ->> 'expiryDate' AS expiryDate, "
+                  + "json::json -> 'certification' ->> 'appliedDate' AS appliedDate "
+                  + "FROM %s WHERE json::jsonb ?? 'certification' "
+                  + "AND json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' IS NOT NULL "
+                  + "LIMIT %d",
+              table, HEAL_BATCH_SIZE);
+    } else {
+      sql =
+          String.format(
+              "SELECT id, fqnHash, "
+                  + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) AS tagFQN, "
+                  + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.expiryDate')) AS expiryDate, "
+                  + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.appliedDate')) AS appliedDate "
+                  + "FROM %s WHERE JSON_CONTAINS_PATH(json, 'one', '$.certification') = 1 "
+                  + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) IS NOT NULL "
+                  + "LIMIT %d",
+              table, HEAL_BATCH_SIZE);
     }
-    return String.format(
-        "SELECT id, fqnHash, "
-            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) AS tagFQN, "
-            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.expiryDate')) AS expiryDate, "
-            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.appliedDate')) AS appliedDate "
-            + "FROM %s WHERE JSON_CONTAINS_PATH(json, 'one', '$.certification') = 1 "
-            + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) IS NOT NULL "
-            + "LIMIT %d",
-        table, HEAL_BATCH_SIZE);
+    return sql;
   }
 
   private static String buildInsertTagUsageSql(boolean isPostgres) {
     // PG won't auto-cast varchar -> json on the metadata column; MySQL JSON accepts a string.
+    String sql;
     if (isPostgres) {
-      return "INSERT INTO tag_usage "
-          + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
-          + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata::json) "
-          + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING";
+      sql =
+          "INSERT INTO tag_usage "
+              + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
+              + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata::json) "
+              + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING";
+    } else {
+      sql =
+          "INSERT IGNORE INTO tag_usage "
+              + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
+              + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata)";
     }
-    return "INSERT IGNORE INTO tag_usage "
-        + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
-        + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata)";
+    return sql;
   }
 
   private static String buildStripCertificationFromJsonSql(String table, boolean isPostgres) {
+    String sql;
     if (isPostgres) {
-      return "UPDATE "
-          + table
-          + " SET json = (json::jsonb - 'certification')::json WHERE id IN (<ids>)";
+      sql =
+          "UPDATE "
+              + table
+              + " SET json = (json::jsonb - 'certification')::json WHERE id IN (<ids>)";
+    } else {
+      sql =
+          "UPDATE "
+              + table
+              + " SET json = JSON_REMOVE(json, '$.certification') WHERE id IN (<ids>)";
     }
-    return "UPDATE "
-        + table
-        + " SET json = JSON_REMOVE(json, '$.certification') WHERE id IN (<ids>)";
+    return sql;
   }
 
   private static Timestamp parseEpochMillisToTimestamp(Object val) {
-    if (val == null) {
-      return null;
+    Timestamp result = null;
+    if (val != null) {
+      try {
+        long epochMillis =
+            val instanceof Number num ? num.longValue() : Long.parseLong(val.toString());
+        result = new Timestamp(epochMillis);
+      } catch (NumberFormatException e) {
+        LOG.warn("Unparseable appliedDate '{}' on heal; binding null", val);
+      }
     }
-    try {
-      long epochMillis =
-          val instanceof Number num ? num.longValue() : Long.parseLong(val.toString());
-      return new Timestamp(epochMillis);
-    } catch (NumberFormatException e) {
-      LOG.warn("Unparseable appliedDate '{}' on heal; binding null", val);
-      return null;
-    }
+    return result;
   }
 
   private static String buildCertMetadataJson(Object expiryDateVal) {
