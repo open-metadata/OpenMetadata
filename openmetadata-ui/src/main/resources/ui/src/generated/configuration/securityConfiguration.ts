@@ -81,8 +81,8 @@ export interface AuthenticationConfiguration {
     ldapConfiguration?: LDAPConfiguration;
     /**
      * Maximum number of active authenticated sessions allowed per user. When the limit is
-     * exceeded, the least recently used active sessions are revoked. Values below 1 fall back
-     * to the default of 5.
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
      */
     maxActiveSessionsPerUser?: number;
     /**
@@ -107,9 +107,9 @@ export interface AuthenticationConfiguration {
      */
     samlConfiguration?: SamlSSOClientConfig;
     /**
-     * Validity for the authenticated session across all auth providers. Values below 3600
-     * seconds fall back to the default 604800-second expiry. If unset, OpenMetadata falls back
-     * to the legacy OIDC-specific sessionExpiry when present.
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
      */
     sessionExpiry?: number;
     /**
