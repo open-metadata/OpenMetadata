@@ -1,0 +1,227 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+.csv-jobs-tray-button {
+  box-shadow: @box-shadow-elevated-multi;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: @font-semibold !important;
+  min-height: 38px !important;
+  padding: 8px 14px 8px 8px !important;
+}
+
+.csv-jobs-tray-button-wrap {
+  bottom: 20px;
+  position: fixed;
+  right: 20px;
+  z-index: 1000;
+}
+
+.csv-jobs-tray-count {
+  align-items: center;
+  background: @red-14;
+  border: 2px solid @white;
+  border-radius: 999px;
+  color: @white;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  height: 20px;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 5px;
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  z-index: 1;
+}
+
+.csv-jobs-tray-popover {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  bottom: 20px;
+  box-shadow: @box-shadow-elevated-multi;
+  overflow: hidden;
+  position: fixed;
+  right: 20px;
+  width: 340px;
+  z-index: 1000;
+}
+
+.csv-jobs-tray-header {
+  align-items: center;
+  background: @grey-26;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.csv-jobs-tray-title-wrap {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.csv-jobs-tray-popover h3 {
+  color: @grey-900;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  margin: 0;
+}
+
+.csv-jobs-tray-header-count {
+  background: @primary-50;
+  border-radius: 999px;
+  color: @primary-6;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  line-height: 16px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.csv-jobs-tray-close {
+  border-radius: 6px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 !important;
+  width: 26px !important;
+
+  [data-icon] {
+    height: 14px !important;
+    width: 14px !important;
+  }
+}
+
+.csv-jobs-tray-empty,
+.csv-jobs-tray-message {
+  color: @grey-600;
+  margin: 0;
+}
+
+.csv-jobs-tray-empty {
+  font-size: 12px;
+  padding: 16px 14px;
+}
+
+.csv-jobs-tray-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.csv-jobs-tray-item {
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.csv-jobs-tray-item:last-child {
+  border-bottom: 0;
+}
+
+.csv-jobs-tray-item-header,
+.csv-jobs-tray-meta {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.csv-jobs-tray-item-header {
+  justify-content: flex-start;
+
+  button {
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    min-height: 28px !important;
+    padding: 4px 8px !important;
+
+    [data-icon] {
+      height: 14px !important;
+      width: 14px !important;
+    }
+  }
+}
+
+.csv-jobs-tray-meta {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.csv-jobs-tray-kind-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 8px;
+  color: @primary-6;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.csv-jobs-tray-item-success .csv-jobs-tray-kind-icon {
+  background: @green-9;
+  color: @green-13;
+}
+
+.csv-jobs-tray-item-error .csv-jobs-tray-kind-icon {
+  background: @red-9;
+  color: @red-14;
+}
+
+.csv-jobs-tray-entity {
+  color: @grey-900;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 17px;
+}
+
+.csv-jobs-tray-status {
+  color: @grey-600;
+  font-size: 11.5px;
+}
+
+.csv-jobs-tray-message {
+  color: @grey-500;
+  font-size: 11.5px;
+  line-height: 16px;
+  padding-left: 42px;
+}
+
+.csv-jobs-tray-progress {
+  background: @grey-100;
+  border-radius: 999px;
+  height: 4px;
+  margin-left: 42px;
+  overflow: hidden;
+}
+
+.csv-jobs-tray-progress span {
+  background: @primary-6;
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 220ms ease;
+}

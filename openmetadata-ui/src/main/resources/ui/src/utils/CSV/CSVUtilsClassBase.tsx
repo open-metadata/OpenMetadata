@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
+import { Bold01, Code01, Italic01, List, Type01 } from '@untitledui/icons';
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, toString } from 'lodash';
-import { ReactNode, useRef } from 'react';
+import {
+  FocusEvent,
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { RenderEditCellProps } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -39,6 +48,201 @@ import { removeOuterEscapes } from '../CommonUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getCustomPropertyEntityType } from './CSV.utils';
+
+export interface CSVEditorOptions {
+  usePlainTextEditor?: boolean;
+}
+
+interface InlineDescriptionEditorProps {
+  value: string;
+  onCancel: () => void;
+  onComplete: (value: string) => void;
+}
+
+const InlineDescriptionEditor = ({
+  value,
+  onCancel,
+  onComplete,
+}: InlineDescriptionEditorProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(value.length, value.length);
+  }, [value]);
+
+  const restoreSelection = (
+    nextValue: string,
+    selectionStart: number,
+    selectionEnd = selectionStart
+  ) => {
+    setDraft(nextValue);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(selectionStart, selectionEnd);
+    });
+  };
+
+  const handleToolbarMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
+
+  const applyInlineFormat = (prefix: string, suffix = prefix) => {
+    const textarea = textareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? draft.length;
+    const selectionEnd = textarea?.selectionEnd ?? draft.length;
+    const selectedText = draft.slice(selectionStart, selectionEnd);
+    const nextValue = `${draft.slice(
+      0,
+      selectionStart
+    )}${prefix}${selectedText}${suffix}${draft.slice(selectionEnd)}`;
+    const cursorStart = selectionStart + prefix.length;
+    const cursorEnd = cursorStart + selectedText.length;
+
+    restoreSelection(nextValue, cursorStart, cursorEnd);
+  };
+
+  const applyLineFormat = (formatter: (index: number) => string) => {
+    const textarea = textareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? draft.length;
+    const selectionEnd = textarea?.selectionEnd ?? draft.length;
+    const lineStart = draft.lastIndexOf('\n', selectionStart - 1) + 1;
+    const nextBreakIndex = draft.indexOf('\n', selectionEnd);
+    const lineEnd = nextBreakIndex === -1 ? draft.length : nextBreakIndex;
+    const selectedBlock = draft.slice(lineStart, lineEnd);
+    const nextBlock = selectedBlock
+      .split('\n')
+      .map(
+        (line, index) =>
+          `${formatter(index)}${line.replace(/^(\s*([-*]|\d+\.)\s+)/, '')}`
+      )
+      .join('\n');
+    const nextValue = `${draft.slice(0, lineStart)}${nextBlock}${draft.slice(
+      lineEnd
+    )}`;
+
+    restoreSelection(
+      nextValue,
+      selectionStart,
+      selectionStart + nextBlock.length
+    );
+  };
+
+  const clearFormatting = () => {
+    const nextValue = draft
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '');
+
+    restoreSelection(nextValue, nextValue.length);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const relatedTarget = event.relatedTarget;
+
+    if (
+      relatedTarget instanceof Node &&
+      event.currentTarget.contains(relatedTarget)
+    ) {
+      return;
+    }
+
+    onComplete(draft);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onCancel();
+
+      return;
+    }
+
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      onComplete(draft);
+    }
+  };
+
+  return (
+    <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
+      <div
+        className="bulk-edit-description-editor"
+        data-testid="bulk-edit-description-editor"
+        onBlur={handleBlur}>
+        <div className="bulk-edit-description-editor-toolbar">
+          <button
+            aria-label={t('label.bold')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={() => applyInlineFormat('**')}
+            onMouseDown={handleToolbarMouseDown}>
+            <Bold01 size={16} />
+          </button>
+          <button
+            aria-label={t('label.italic')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={() => applyInlineFormat('_')}
+            onMouseDown={handleToolbarMouseDown}>
+            <Italic01 size={16} />
+          </button>
+          <button
+            aria-label={t('label.bulleted-list')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={() => applyLineFormat(() => '- ')}
+            onMouseDown={handleToolbarMouseDown}>
+            <List size={16} />
+          </button>
+          <button
+            aria-label={t('label.numbered-list')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
+            onMouseDown={handleToolbarMouseDown}>
+            <span className="bulk-edit-description-editor-numbered-icon">
+              1.
+            </span>
+          </button>
+          <button
+            aria-label={t('label.code')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={() => applyInlineFormat('`')}
+            onMouseDown={handleToolbarMouseDown}>
+            <Code01 size={16} />
+          </button>
+          <span className="bulk-edit-description-editor-separator" />
+          <button
+            aria-label={t('label.clear-formatting')}
+            className="bulk-edit-description-editor-button"
+            type="button"
+            onClick={clearFormatting}
+            onMouseDown={handleToolbarMouseDown}>
+            <Type01 size={16} />
+          </button>
+        </div>
+        <textarea
+          className="bulk-edit-description-editor-textarea"
+          ref={textareaRef}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+    </KeyDownStopPropagationWrapper>
+  );
+};
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
@@ -70,7 +274,8 @@ class CSVUtilsClassBase {
     multipleOwner: {
       user: boolean;
       team: boolean;
-    }
+    },
+    options: CSVEditorOptions = {}
   ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
@@ -119,6 +324,35 @@ class CSVUtilsClassBase {
           );
         };
       case 'description':
+        if (options.usePlainTextEditor) {
+          return ({
+            row,
+            onRowChange,
+            onClose,
+            column,
+          }: RenderEditCellProps<any, any>) => {
+            const value = String(row[column.key] ?? '');
+            const handleComplete = (description: string) => {
+              if (description === value) {
+                onClose(false);
+
+                return;
+              }
+
+              onRowChange({ ...row, [column.key]: description }, true);
+              onClose(true);
+            };
+
+            return (
+              <InlineDescriptionEditor
+                value={value}
+                onCancel={() => onClose(false)}
+                onComplete={handleComplete}
+              />
+            );
+          };
+        }
+
         return ({
           row,
           onRowChange,
@@ -495,6 +729,10 @@ class CSVUtilsClassBase {
         };
 
       case 'code':
+        if (options.usePlainTextEditor) {
+          return lazyTextEditor;
+        }
+
         return ({
           row,
           onRowChange,

@@ -45,6 +45,7 @@ export interface EditorProps {
 
 export const COLUMNS_WIDTH: Record<string, number> = {
   description: 300,
+  operation: 160,
   tags: 280,
   glossaryTerms: 280,
   'entityType*': 230,
@@ -58,10 +59,30 @@ export const COLUMNS_WIDTH: Record<string, number> = {
 
 export const CSV_DISABLED_COLUMNS = [
   'name*',
+  'operation',
   'testDefinition*',
   'entityFQN*',
   'testSuite',
 ];
+
+export const METRIC_BULK_EDIT_HIDDEN_COLUMNS = [
+  'sourceHash',
+  'syncStatus',
+  'syncError',
+  'lastSyncedAt',
+];
+
+const getCsvColumnName = (column: string) =>
+  (column.split('.').pop() ?? column).replace(/\*$/, '');
+
+export const isMetricBulkEditHiddenColumn = (
+  column: string,
+  entityType: EntityType,
+  isBulkEdit: boolean
+) =>
+  isBulkEdit &&
+  entityType === EntityType.METRIC &&
+  METRIC_BULK_EDIT_HIDDEN_COLUMNS.includes(getCsvColumnName(column));
 
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
@@ -86,7 +107,8 @@ export const renderColumnDataEditor = (
   recordData: {
     value: string;
     data: { details: string; glossaryStatus: string };
-  }
+  },
+  options: { usePlainTextDescription?: boolean } = {}
 ) => {
   const {
     value,
@@ -98,6 +120,10 @@ export const renderColumnDataEditor = (
     case 'glossaryStatus':
       return <Typography.Text>{glossaryStatus}</Typography.Text>;
     case 'description':
+      if (options.usePlainTextDescription) {
+        return value;
+      }
+
       return (
         <RichTextEditorPreviewerV1
           enableSeeMoreVariant={false}
@@ -135,6 +161,8 @@ export const getColumnConfig = (
   isBulkEdit = false
 ): Column<Record<string, unknown>> => {
   const colType = column.split('.').pop() ?? '';
+  const shouldUsePlainTextEditor =
+    isBulkEdit && entityType === EntityType.METRIC;
   const disabledColumns = isBulkEdit
     ? CSV_DISABLED_COLUMNS.includes(colType)
     : false;
@@ -149,13 +177,22 @@ export const getColumnConfig = (
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
       entityType,
-      multipleOwner
+      multipleOwner,
+      {
+        usePlainTextEditor: shouldUsePlainTextEditor,
+      }
     ),
     renderCell: (data: RenderCellProps<Record<string, unknown>>) =>
-      renderColumnDataEditor(colType, {
-        value: data.row[column] as string | undefined,
-        data: { details: '', glossaryStatus: '' },
-      }),
+      renderColumnDataEditor(
+        colType,
+        {
+          value: String(data.row[column] ?? ''),
+          data: { details: '', glossaryStatus: '' },
+        },
+        {
+          usePlainTextDescription: shouldUsePlainTextEditor,
+        }
+      ),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
   } as Column<Record<string, unknown>>;
 };

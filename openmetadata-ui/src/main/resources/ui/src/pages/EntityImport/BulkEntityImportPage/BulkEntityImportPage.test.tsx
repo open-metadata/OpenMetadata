@@ -18,6 +18,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
@@ -143,6 +145,22 @@ jest.mock('../../../utils/EntityImport/EntityImportUtils');
 // Mock entity bulk edit utils
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
 
+jest.mock('../../../rest/csvAPI', () => ({
+  cancelCsvAsyncJob: jest.fn(),
+  getCsvAsyncJobs: jest.fn().mockResolvedValue([]),
+  getCsvDocumentation: jest.fn().mockResolvedValue({
+    headers: [
+      {
+        name: 'name',
+        required: true,
+      },
+      {
+        name: 'description',
+      },
+    ],
+  }),
+}));
+
 // Mock toast utils
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
@@ -173,16 +191,6 @@ jest.mock(
   () => ({
     ImportStatus: jest.fn(() => (
       <div data-testid="import-status">Import Status</div>
-    )),
-  })
-);
-
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => ({
-    __esModule: true,
-    default: jest.fn(() => (
-      <div data-testid="title-breadcrumb">Breadcrumb</div>
     )),
   })
 );
@@ -241,6 +249,10 @@ const renderComponent = (initialPath = '/table/test.table/import') => {
           element={<BulkEntityImportPage />}
           path="/:entityType/:fqn/import"
         />
+        <Route
+          element={<BulkEntityImportPage />}
+          path="/bulk/edit/:entityType/:fqn"
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -258,6 +270,14 @@ describe('BulkEntityImportPage', () => {
     const EntityUtilClassBase =
       require('../../../utils/EntityUtilClassBase').default;
     mockGetEntityByFqn = EntityUtilClassBase.getEntityByFqn as jest.Mock;
+
+    const FqnHook = require('../../../hooks/useFqn');
+    FqnHook.useFqn.mockReturnValue({ fqn: 'test.table' });
+
+    const RequiredParamsUtils = require('../../../utils/useRequiredParams');
+    RequiredParamsUtils.useRequiredParams.mockReturnValue({
+      entityType: EntityType.TABLE,
+    });
 
     const CSVUtils = require('../../../utils/CSV/CSV.utils');
     mockGetEntityColumnsAndDataSourceFromCSV =
@@ -339,6 +359,51 @@ describe('BulkEntityImportPage', () => {
       await waitFor(() => {
         expect(mockGetEntityByFqn).not.toHaveBeenCalled();
       });
+    });
+
+    it('should render metrics breadcrumb for wildcard metric import', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+
+      renderComponent('/metric/*/import');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+      });
+
+      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+
+      expect(breadcrumbItems).toHaveLength(3);
+      expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
+      expect(breadcrumbItems[1]).toHaveTextContent('label.metric-plural');
+      expect(breadcrumbItems[2]).toHaveTextContent('label.import');
+    });
+
+    it('should render metrics breadcrumb for wildcard metric bulk edit', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockIsBulkEditRoute.mockReturnValue(true);
+
+      renderComponent('/bulk/edit/metric/*');
+
+      await waitFor(() => {
+        expect(BulkEditEntity).toHaveBeenCalled();
+      });
+
+      const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+      const breadcrumbList =
+        bulkEditEntityMock.mock.calls.at(-1)[0].breadcrumbList;
+
+      expect(breadcrumbList).toEqual([
+        {
+          name: 'label.metric-plural',
+          url: ROUTES.METRICS,
+        },
+      ]);
     });
   });
 

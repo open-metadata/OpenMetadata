@@ -28,6 +28,7 @@ import {
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  isMetricBulkEditHiddenColumn,
   renderColumnDataEditor,
   splitCSV,
 } from './CSV.utils';
@@ -1078,6 +1079,20 @@ describe('CSVUtils', () => {
       expect(screen.getByText(description)).toBeInTheDocument();
     });
 
+    it('should render plain text for metric bulk edit description cells', () => {
+      const description = 'This is a test description';
+      const result = renderColumnDataEditor(
+        'description',
+        {
+          value: description,
+          data: { details: '', glossaryStatus: '' },
+        },
+        { usePlainTextDescription: true }
+      );
+
+      expect(result).toBe(description);
+    });
+
     it('should render truncated text with tooltip for parameterValues column', () => {
       const paramValue =
         '{"name":"accepted_values","value":"placed,shipped,completed"}';
@@ -1208,6 +1223,32 @@ describe('CSVUtils', () => {
       });
 
       expect(customColumn.minWidth).toBe(180);
+    });
+  });
+
+  describe('isMetricBulkEditHiddenColumn', () => {
+    it('should hide system-managed metric bulk edit columns', () => {
+      expect(
+        isMetricBulkEditHiddenColumn('sourceHash', EntityType.METRIC, true)
+      ).toBe(true);
+      expect(
+        isMetricBulkEditHiddenColumn('syncStatus', EntityType.METRIC, true)
+      ).toBe(true);
+    });
+
+    it('should not hide operation, editable metric or non-bulk-edit columns', () => {
+      expect(
+        isMetricBulkEditHiddenColumn('operation', EntityType.METRIC, true)
+      ).toBe(false);
+      expect(
+        isMetricBulkEditHiddenColumn('description', EntityType.METRIC, true)
+      ).toBe(false);
+      expect(
+        isMetricBulkEditHiddenColumn('sourceHash', EntityType.METRIC, false)
+      ).toBe(false);
+      expect(
+        isMetricBulkEditHiddenColumn('sourceHash', EntityType.TABLE, true)
+      ).toBe(false);
     });
   });
 

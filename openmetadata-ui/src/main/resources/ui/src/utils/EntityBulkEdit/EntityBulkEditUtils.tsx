@@ -26,6 +26,7 @@ import {
   exportGlossaryInCSVFormat,
   exportGlossaryTermsInCSVFormat,
 } from '../../rest/glossaryAPI';
+import { exportMetricDetailsInCSV } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { exportTestCasesInCSV } from '../../rest/testAPI';
@@ -56,6 +57,9 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
 
     case EntityType.TABLE:
       return exportTableDetailsInCSV;
+
+    case EntityType.METRIC:
+      return exportMetricDetailsInCSV;
 
     case EntityType.TEST_CASE:
       return exportTestCasesInCSV;

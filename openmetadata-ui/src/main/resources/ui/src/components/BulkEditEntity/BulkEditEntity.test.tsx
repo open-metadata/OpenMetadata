@@ -86,18 +86,6 @@ jest.mock('react-data-grid', () => {
   };
 });
 
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
-  return jest.fn(({ titleLinks }) => (
-    <div data-testid="title-breadcrumb">
-      {titleLinks?.map((link: { name: string }, idx: number) => (
-        <span data-testid="breadcrumb-item" key={idx}>
-          {link.name}
-        </span>
-      ))}
-    </div>
-  ));
-});
-
 jest.mock(
   '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
   () => {
@@ -171,9 +159,13 @@ const mockValidateCSVData = {
 
 const defaultProps: BulkEditEntityProps = {
   dataSource: mockDataSource,
+  initialDataSource: mockDataSource,
   columns: mockColumns as unknown as Column<Record<string, string>[]>[],
   breadcrumbList: mockBreadcrumbList,
   activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+  changedCellCount: 0,
+  changedCellKeysByRowId: {},
+  changedRowCount: 0,
   isValidating: false,
   handleBack: jest.fn(),
   handleValidate: jest.fn().mockResolvedValue(undefined),
@@ -218,9 +210,11 @@ describe('BulkEditEntity', () => {
 
       const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
 
-      expect(breadcrumbItems).toHaveLength(2);
-      expect(breadcrumbItems[0]).toHaveTextContent('Home');
-      expect(breadcrumbItems[1]).toHaveTextContent('Entity');
+      expect(breadcrumbItems).toHaveLength(4);
+      expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
+      expect(breadcrumbItems[1]).toHaveTextContent('Home');
+      expect(breadcrumbItems[2]).toHaveTextContent('Entity');
+      expect(breadcrumbItems[3]).toHaveTextContent('label.bulk-edit');
     });
 
     it('should render stepper with correct active step', () => {
@@ -305,6 +299,9 @@ describe('BulkEditEntity', () => {
       const handleValidate = jest.fn().mockResolvedValue(undefined);
       renderComponent({
         activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
         handleValidate,
       });
 
@@ -487,14 +484,14 @@ describe('BulkEditEntity', () => {
       renderComponent({ columns: [] });
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
-      expect(screen.getByTestId('column-count')).toHaveTextContent('0');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('1');
     });
 
     it('should handle empty breadcrumbList', () => {
       renderComponent({ breadcrumbList: [] });
 
       expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.queryByTestId('breadcrumb-item')).not.toBeInTheDocument();
+      expect(screen.getAllByTestId('breadcrumb-item')).toHaveLength(2);
     });
 
     it('should handle undefined validationData at UPDATE step', () => {
@@ -637,11 +634,26 @@ describe('BulkEditEntity', () => {
     it('should pass correct props to DataGrid', () => {
       renderComponent({
         dataSource: mockDataSource,
+        initialDataSource: mockDataSource,
         columns: mockColumns as unknown as Column<Record<string, string>[]>[],
       });
 
       expect(screen.getByTestId('row-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('column-count')).toHaveTextContent('2');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should add an operation column to the edit grid', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedCellCount: 1,
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.getByTestId('bulk-edit-operation-summary')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
     });
   });
 

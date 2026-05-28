@@ -124,6 +124,20 @@ export const createMetric = async (data: CreateMetric) => {
   return response.data;
 };
 
+export const exportMetricDetailsInCSV = async (fqn: string) => {
+  const response = await APIClient.get(
+    `/metrics/name/${getEncodedFqn(fqn)}/exportAsync`
+  );
+
+  return response.data;
+};
+
+export const deleteMetricAsync = async (id: string) => {
+  const response = await APIClient.delete(`/metrics/async/${id}`);
+
+  return response.data;
+};
+
 export const getCustomUnitsOfMeasurement = async () => {
   const response = await APIClient.get<string[]>('/metrics/customUnits');
 

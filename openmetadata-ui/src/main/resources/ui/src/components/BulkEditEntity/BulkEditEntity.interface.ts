@@ -19,6 +19,7 @@ import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
+  initialDataSource: Record<string, string>[];
   columns: Column<Record<string, string>[]>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
@@ -29,6 +30,9 @@ export interface BulkEditEntityProps {
     columns: Column<Record<string, string>>[];
     dataSource: Record<string, string>[];
   };
+  changedCellCount: number;
+  changedCellKeysByRowId: Record<string, string[]>;
+  changedRowCount: number;
   sourceEntityType?: EntityType;
   handleBack: () => void;
   handleValidate: () => Promise<void>;

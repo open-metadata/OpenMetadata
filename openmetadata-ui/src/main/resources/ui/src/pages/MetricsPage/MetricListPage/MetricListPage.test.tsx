@@ -18,10 +18,16 @@ import { METRICS_DOCS } from '../../../constants/docs.constants';
 import MetricListPage from './MetricListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: jest
+    .fn()
+    .mockImplementation(({ initials }) => <span>{initials}</span>),
+  Badge: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
+    .mockImplementation(({ children, onClick, onPress }) => (
+      <button onClick={onPress ?? onClick}>{children}</button>
     )),
   ButtonUtility: jest
     .fn()
@@ -33,9 +39,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Input: jest
+    .fn()
+    .mockImplementation(({ placeholder, value, onChange }) => (
+      <input placeholder={placeholder} value={value} onChange={onChange} />
+    )),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Dropdown: {
+    DotsButton: jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId }) => (
+        <button data-testid={testId}>Actions</button>
+      )),
+    Item: jest.fn().mockImplementation(({ label }) => <div>{label}</div>),
+    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  },
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 
@@ -85,6 +109,13 @@ jest.mock(
     ),
   })
 );
+
+jest.mock('../../../components/common/Table/TableV2', () => ({
+  __esModule: true,
+  default: ({ locale }: { locale: { emptyText: React.ReactNode } }) => (
+    <div>{locale.emptyText}</div>
+  ),
+}));
 
 // Mock PageLayoutV1 to simply render children without layout logic
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({

@@ -70,6 +70,12 @@ public class GenericBackgroundWorker implements Managed {
       jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.RUNNING);
       JobHandler handler = handlerRegistry.getHandler(job);
       handler.runJob(job);
+      if (isTerminal(job)) {
+        if (handler.sendStatusToWebSocket()) {
+          sendJobStatusUpdate(job);
+        }
+        return;
+      }
       markJobAsCompleted(job);
 
       if (handler.sendStatusToWebSocket()) {
@@ -89,6 +95,17 @@ public class GenericBackgroundWorker implements Managed {
         job.getId(),
         job.getJobType(),
         job.getMethodName());
+  }
+
+  private boolean isTerminal(BackgroundJob job) {
+    Optional<BackgroundJob> updatedJob = jobDao.fetchJobById(job.getId());
+    if (updatedJob.isEmpty()) {
+      return false;
+    }
+    BackgroundJob.Status status = updatedJob.get().getStatus();
+    return status == BackgroundJob.Status.COMPLETED
+        || status == BackgroundJob.Status.FAILED
+        || status == BackgroundJob.Status.CANCELLED;
   }
 
   private void markJobAsFailed(BackgroundJob job, Exception e) {

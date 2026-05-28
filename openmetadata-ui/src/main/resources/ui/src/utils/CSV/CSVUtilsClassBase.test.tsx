@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { fireEvent, render, screen } from '@testing-library/react';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { EntityType } from '../../enums/entity.enum';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
@@ -289,6 +290,68 @@ describe('CSV utils ClassBase', () => {
       );
 
       expect(editor).toBeDefined();
+    });
+
+    it('should use inline description editor and plain code editor for metric bulk edit rich fields', () => {
+      const descriptionEditor = csvUtils.getEditor(
+        'description',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const codeEditor = csvUtils.getEditor(
+        'code',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+
+      expect(descriptionEditor).toBeDefined();
+      expect(descriptionEditor).not.toBe(lazyTextEditor);
+      expect(codeEditor).toBe(lazyTextEditor);
+    });
+
+    it('should commit metric bulk edit description changes from the inline editor', () => {
+      const editor = csvUtils.getEditor(
+        'description',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected description editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { description: 'Current description' },
+            column: { key: 'description' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      const textarea = screen.getByRole('textbox');
+
+      expect(
+        screen.getByTestId('bulk-edit-description-editor')
+      ).toBeInTheDocument();
+
+      fireEvent.change(textarea, {
+        target: { value: 'Updated description' },
+      });
+      fireEvent.blur(textarea);
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { description: 'Updated description' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
     });
 
     it('should handle different entity types', () => {

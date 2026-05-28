@@ -12,7 +12,7 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT"],
       "description": "Type of the job."
     },
     "methodName": {
@@ -37,8 +37,36 @@
     },
     "status": {
       "type": "string",
-      "enum": ["COMPLETED", "FAILED", "RUNNING","PENDING"],
+      "enum": ["COMPLETED", "FAILED", "RUNNING", "PENDING", "CANCELLED"],
       "description": "Current status of the job."
+    },
+    "progress": {
+      "type": "integer",
+      "description": "Number of work units completed by the job."
+    },
+    "total": {
+      "type": "integer",
+      "description": "Total number of work units expected for the job."
+    },
+    "result": {
+      "type": "string",
+      "description": "Serialized result summary for the job."
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message for a failed job."
+    },
+    "message": {
+      "type": "string",
+      "description": "Latest human-readable job status message."
+    },
+    "cancelRequested": {
+      "type": "boolean",
+      "description": "Whether cancellation has been requested for the job."
+    },
+    "completedAt": {
+      "description": "Timestamp when the job reached a terminal state in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "createdBy": {
       "type": "string",

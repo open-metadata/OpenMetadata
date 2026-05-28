@@ -1,0 +1,161 @@
+{
+  "summary": "Metric CSV file is used for importing and exporting OpenMetadata metrics.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name that identifies the metric.",
+      "examples": ["net_sales"]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the metric.",
+      "examples": ["Net Sales"]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Metric description in Markdown format.",
+      "examples": ["Net sales after discounts and returns."]
+    },
+    {
+      "name": "metricType",
+      "required": false,
+      "description": "Metric aggregation or business type.",
+      "examples": ["SUM", "RATIO"]
+    },
+    {
+      "name": "unitOfMeasurement",
+      "required": false,
+      "description": "Metric unit of measurement.",
+      "examples": ["DOLLARS", "PERCENTAGE"]
+    },
+    {
+      "name": "customUnitOfMeasurement",
+      "required": false,
+      "description": "Custom unit when unitOfMeasurement is OTHER.",
+      "examples": ["Pairs"]
+    },
+    {
+      "name": "granularity",
+      "required": false,
+      "description": "Metric time granularity.",
+      "examples": ["DAY", "MONTH"]
+    },
+    {
+      "name": "expressionLanguage",
+      "required": false,
+      "description": "Language used by the canonical metric expression.",
+      "examples": ["SQL", "DAX"]
+    },
+    {
+      "name": "expressionCode",
+      "required": false,
+      "description": "Canonical expression used to compute the metric.",
+      "examples": ["SUM(fact_sales[net_sales])"]
+    },
+    {
+      "name": "sourceType",
+      "required": false,
+      "description": "Source system where the metric definition originated.",
+      "examples": ["OPENMETADATA", "POWERBI"]
+    },
+    {
+      "name": "sourceEntityLink",
+      "required": false,
+      "description": "OpenMetadata entity link to the source metric definition.",
+      "examples": ["<#E::dashboardDataModel::service.dataset::columns::net_sales>"]
+    },
+    {
+      "name": "sourceId",
+      "required": false,
+      "description": "Stable source-system identifier for the metric definition.",
+      "examples": ["workspace:dataset:table:measure"]
+    },
+    {
+      "name": "sourceName",
+      "required": false,
+      "description": "Source-system name for the metric definition.",
+      "examples": ["Net Sales"]
+    },
+    {
+      "name": "sourceUrl",
+      "required": false,
+      "description": "URL to the metric definition in the source system.",
+      "examples": ["https://app.powerbi.com/groups/workspace/datasets/dataset"]
+    },
+    {
+      "name": "sourceHash",
+      "required": false,
+      "description": "Hash of the source expression used to detect source drift.",
+      "examples": ["5f4dcc3b5aa765d61d8327deb882cf99"]
+    },
+    {
+      "name": "syncEnabled",
+      "required": false,
+      "description": "Whether source-to-OpenMetadata sync is enabled.",
+      "examples": ["true", "false"]
+    },
+    {
+      "name": "syncStatus",
+      "required": false,
+      "description": "Current source sync status.",
+      "examples": ["SYNCED", "DRIFTED"]
+    },
+    {
+      "name": "relatedMetrics",
+      "required": false,
+      "description": "Related metric fully qualified names separated by ';'.",
+      "examples": ["gross_sales;net_sales"]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Classification tag FQNs separated by ';'.",
+      "examples": ["Business.Critical"]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Glossary term FQNs separated by ';'.",
+      "examples": ["KPI.NetSales"]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners in entityType:entityName format separated by ';'.",
+      "examples": ["user:data.owner"]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers in entityType:entityName format separated by ';'.",
+      "examples": ["team:Finance"]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Domain FQNs separated by ';'.",
+      "examples": ["Marketing"]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "Data product FQNs separated by ';'.",
+      "examples": ["Customer360"]
+    },
+    {
+      "name": "entityStatus",
+      "required": false,
+      "description": "Metric approval status.",
+      "examples": ["Draft", "Approved"]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "Custom property values in key:value format separated by ';'.",
+      "examples": ["externalId:12345"]
+    }
+  ]
+}

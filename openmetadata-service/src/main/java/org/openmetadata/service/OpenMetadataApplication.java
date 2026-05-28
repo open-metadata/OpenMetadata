@@ -92,6 +92,8 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -131,6 +133,8 @@ import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.audit.AuditLogResource;
+import org.openmetadata.service.resources.csv.CsvAsyncJobResource;
+import org.openmetadata.service.resources.csv.CsvDocumentationResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
@@ -267,6 +271,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
+    CsvAsyncJobManager.initialize(jdbi.onDemand(JobDAO.class));
 
     // Initialize bulk operation executor
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
@@ -455,6 +460,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
     JobHandlerRegistry registry = new JobHandlerRegistry();
     registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    registry.register(
+        CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
+        new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     return registry;
   }
 
@@ -1046,6 +1054,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new DiagnosticsResource(authorizer));
+    environment.jersey().register(new CsvAsyncJobResource());
+    environment.jersey().register(new CsvDocumentationResource());
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
