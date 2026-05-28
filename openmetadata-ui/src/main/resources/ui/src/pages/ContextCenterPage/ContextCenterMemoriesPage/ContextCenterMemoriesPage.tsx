@@ -352,7 +352,9 @@ const ContextCenterMemoriesPage: FC = () => {
       handleViewMemory(match);
     } else {
       showErrorToast(
-        `${t('message.no-entity-available-with-name', { entity: t('label.memory') })} "${memoryName}"`
+        `${t('message.no-entity-available-with-name', {
+          entity: t('label.memory'),
+        })} "${memoryName}"`
       );
       setSearchParams((prev) => {
         prev.delete('memory');
