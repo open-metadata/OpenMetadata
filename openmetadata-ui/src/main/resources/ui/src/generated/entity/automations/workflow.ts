@@ -5998,8 +5998,8 @@ export interface TestConnectionResult {
      */
     errorLog?: string;
     /**
-     * The query that was executed, post-transpile but without the guardrail row LIMIT. If
-     * the user supplied their own LIMIT in the original query, it is preserved here.
+     * The query that was executed, post-transpile but without the guardrail row LIMIT. If the
+     * user supplied their own LIMIT in the original query, it is preserved here.
      */
     executedQuery?: string;
     /**
