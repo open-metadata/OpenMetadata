@@ -120,3 +120,44 @@ def test_connection_failure_exhausts_to_transport_error():
     with FlakyServer([], tail="close") as srv, pytest.raises(RestTransportError):
         _rest(srv.port).get("/anything")
     assert srv.attempts >= 2
+
+
+class _HtmlErrorServer(FlakyServer):
+    """
+    Localhost server that returns a 401 HTML error page on every connection —
+    mimics IAP / Cloud Composer rejecting an unauthenticated request.
+
+    Regression: previously the REST client did a substring sniff for "code" in
+    the body and called resp.json() on the HTML, surfacing a JSONDecodeError
+    ("Expecting value: line 2 column 1") instead of the real HTTPError.
+    """
+
+    def __init__(self) -> None:
+        super().__init__([], tail="html-401")
+
+    def _handle(self, conn: socket.socket, behavior: str) -> None:
+        with conn:
+            conn.settimeout(2)
+            with contextlib.suppress(OSError):
+                conn.recv(65535)
+            body = (
+                b"<!DOCTYPE html><html><head><title>Error 401</title></head>"
+                b"<body><h1>Error 401 (Unauthorized)</h1>"
+                b"<p>That's an error. <code>401</code></p></body></html>"
+            )
+            conn.sendall(
+                b"HTTP/1.1 401 Unauthorized\r\n"
+                b"Content-Type: text/html; charset=utf-8\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                b"Connection: close\r\n\r\n" + body
+            )
+
+
+def test_html_error_body_does_not_trigger_json_decode_error():
+    """HTML error response (e.g. IAP login redirect) should surface as HTTPError, not JSONDecodeError."""
+    from requests.exceptions import HTTPError
+
+    with _HtmlErrorServer() as srv, pytest.raises(HTTPError) as exc_info:
+        _rest(srv.port).get("/anything")
+    assert "401" in str(exc_info.value)
+    assert "Expecting value" not in str(exc_info.value)
