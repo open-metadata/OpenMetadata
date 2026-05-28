@@ -41,6 +41,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import {
   deleteContextMemory,
   getListContextMemories,
@@ -72,6 +73,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
+  const { onCopyToClipBoard } = useClipboard('', 1500, () =>
+    showSuccessToast(t('message.link-copy-to-clipboard'))
+  );
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
@@ -333,14 +337,17 @@ const ContextCenterMemoriesPage: FC = () => {
     });
   }, [setSearchParams]);
 
-  const handleShareMemory = useCallback(
-    (memory: ContextMemory) => {
-      const url = `${window.location.origin}${window.location.pathname}?memory=${memory.name}`;
-      navigator.clipboard.writeText(url);
-      showSuccessToast(t('message.link-copy-to-clipboard'));
-    },
-    [t]
-  );
+
+const handleShareMemory = useCallback(
+  (memory: ContextMemory) => {
+     if (!memory.name) {
+      return;
+    }
+    const url = `${window.location.origin}${window.location.pathname}?memory=${encodeURIComponent(memory.name)}`;
+    onCopyToClipBoard(url);
+  },
+  [onCopyToClipBoard]
+);
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');

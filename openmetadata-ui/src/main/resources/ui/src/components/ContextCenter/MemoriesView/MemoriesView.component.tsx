@@ -153,7 +153,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
           <ProfilePicture
-            name={(memory.owners?.[0]?.name ?? memory.updatedBy) as string}
+            name={memory.owners?.[0]?.name || ''}
           />
         </div>
       )}
