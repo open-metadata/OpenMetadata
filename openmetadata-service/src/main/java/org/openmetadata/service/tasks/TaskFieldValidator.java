@@ -14,11 +14,19 @@
 package org.openmetadata.service.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
+import java.util.Map;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
+import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 /**
@@ -66,6 +74,164 @@ public final class TaskFieldValidator {
             binding ->
                 TaskFormSchemaValidator.validatePayload(
                     binding.createFormSchema(), task.getPayload()));
+  }
+
+  /**
+   * Enforce the connector-advertised access-policy capabilities for a Data Access Request.
+   *
+   * <p>For database-family targets (table, databaseSchema, database, storedProcedure) the request's
+   * accessType is checked against the owning service's {@code policyAgentConfig}: if the agent is
+   * enabled, the matching support flag ({@code supportsFullAccess}, {@code supportsColumnAccess},
+   * {@code supportsMaskedAccess}) must be true. Services with no {@code policyAgentConfig}
+   * configured (or {@code enabled=false}) allow every access type so legacy services keep working.
+   *
+   * <p>For Data Product targets the catalog cannot resolve a single backing service, so column-
+   * level access is rejected up front; Full and Masked are accepted and any masking gap surfaces
+   * during ingestion-time policy extraction.
+   *
+   * <p>Non-data assets (dashboard, topic, container, ...) are not validated here.
+   */
+  public static void validateDataAccessCapabilities(Task task) {
+    if (task.getType() != TaskEntityType.DataAccessRequest) {
+      return;
+    }
+    EntityReference about = task.getAbout();
+    if (about == null || nullOrEmpty(about.getType())) {
+      return;
+    }
+    DataAccessRequestPayload payload = readDataAccessPayload(task.getPayload());
+    if (payload == null || payload.getAccessType() == null) {
+      return;
+    }
+    DataAccessType accessType = payload.getAccessType();
+    String aboutType = about.getType();
+
+    if (Entity.DATA_PRODUCT.equals(aboutType)) {
+      rejectColumnLevelForDataProduct(accessType);
+    } else if (isDatabaseFamilyEntity(aboutType)) {
+      enforceConnectorCapability(about, accessType);
+    }
+  }
+
+  private static DataAccessRequestPayload readDataAccessPayload(Object payload) {
+    DataAccessRequestPayload result = null;
+    if (payload != null) {
+      try {
+        result = JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+      } catch (IllegalArgumentException ignored) {
+        result = null;
+      }
+    }
+    return result;
+  }
+
+  private static boolean isDatabaseFamilyEntity(String type) {
+    return Entity.TABLE.equals(type)
+        || Entity.DATABASE_SCHEMA.equals(type)
+        || Entity.DATABASE.equals(type)
+        || Entity.STORED_PROCEDURE.equals(type);
+  }
+
+  private static void rejectColumnLevelForDataProduct(DataAccessType accessType) {
+    if (accessType == DataAccessType.ColumnLevel) {
+      throw new IllegalArgumentException(
+          "Column-level access is not supported for Data Products. "
+              + "Request FullAccess or Masked instead.");
+    }
+  }
+
+  private static void enforceConnectorCapability(EntityReference about, DataAccessType accessType) {
+    Map<String, Object> policyAgent = resolvePolicyAgentConfig(about);
+    if (!isAgentEnabled(policyAgent)) {
+      return;
+    }
+    String capabilityFlag = capabilityFlagFor(accessType);
+    if (capabilityFlag != null && !flagIsTrue(policyAgent, capabilityFlag)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s is not supported by the connector for '%s'.",
+              accessTypeLabel(accessType), about.getName()));
+    }
+  }
+
+  private static boolean isAgentEnabled(Map<String, Object> policyAgent) {
+    return policyAgent != null && flagIsTrue(policyAgent, "enabled");
+  }
+
+  private static boolean flagIsTrue(Map<String, Object> policyAgent, String flag) {
+    Object value = policyAgent.get(flag);
+    return value instanceof Boolean && (Boolean) value;
+  }
+
+  private static String capabilityFlagFor(DataAccessType accessType) {
+    String result = null;
+    switch (accessType) {
+      case FullAccess -> result = "supportsFullAccess";
+      case ColumnLevel -> result = "supportsColumnAccess";
+      case Masked -> result = "supportsMaskedAccess";
+    }
+    return result;
+  }
+
+  private static String accessTypeLabel(DataAccessType accessType) {
+    String result = accessType.value();
+    switch (accessType) {
+      case FullAccess -> result = "Full access";
+      case ColumnLevel -> result = "Column-level access";
+      case Masked -> result = "Masked access";
+    }
+    return result;
+  }
+
+  private static Map<String, Object> resolvePolicyAgentConfig(EntityReference about) {
+    Map<String, Object> result = null;
+    EntityReference serviceRef = resolveDatabaseServiceRef(about);
+    if (serviceRef != null) {
+      DatabaseService service = Entity.getEntity(serviceRef, "", Include.NON_DELETED);
+      if (service != null && service.getConnection() != null) {
+        Object config = service.getConnection().getConfig();
+        if (config != null) {
+          Map<String, Object> configMap = JsonUtils.getMap(config);
+          Object policyConfig = configMap.get("policyAgentConfig");
+          if (policyConfig != null) {
+            result = JsonUtils.getMap(policyConfig);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  private static EntityReference resolveDatabaseServiceRef(EntityReference about) {
+    EntityReference result = null;
+    if (about.getId() != null) {
+      switch (about.getType()) {
+        case Entity.TABLE -> {
+          org.openmetadata.schema.entity.data.Table table =
+              Entity.getEntity(Entity.TABLE, about.getId(), "service", Include.NON_DELETED);
+          result = table.getService();
+        }
+        case Entity.STORED_PROCEDURE -> {
+          org.openmetadata.schema.entity.data.StoredProcedure proc =
+              Entity.getEntity(
+                  Entity.STORED_PROCEDURE, about.getId(), "service", Include.NON_DELETED);
+          result = proc.getService();
+        }
+        case Entity.DATABASE_SCHEMA -> {
+          org.openmetadata.schema.entity.data.DatabaseSchema schema =
+              Entity.getEntity(
+                  Entity.DATABASE_SCHEMA, about.getId(), "service", Include.NON_DELETED);
+          result = schema.getService();
+        }
+        case Entity.DATABASE -> {
+          org.openmetadata.schema.entity.data.Database database =
+              Entity.getEntity(Entity.DATABASE, about.getId(), "service", Include.NON_DELETED);
+          result = database.getService();
+        }
+        default -> result = null;
+      }
+    }
+    return result;
   }
 
   /**
