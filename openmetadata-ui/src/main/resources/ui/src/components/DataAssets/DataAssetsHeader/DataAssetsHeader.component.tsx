@@ -177,7 +177,6 @@ export const DataAssetsHeader = ({
     enabled: entityType === EntityType.TABLE,
   });
 
-
   const fetchDataContract = async (entityId: string) => {
     try {
       const contract = await getContractByEntityId(entityId, entityType);
