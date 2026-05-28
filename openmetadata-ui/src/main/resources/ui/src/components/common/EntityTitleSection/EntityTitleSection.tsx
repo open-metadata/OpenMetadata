@@ -30,7 +30,7 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';

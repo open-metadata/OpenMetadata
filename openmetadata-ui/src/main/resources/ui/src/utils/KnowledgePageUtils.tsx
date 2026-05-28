@@ -43,11 +43,16 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { arraySorterByKey } from './CommonUtils';
 import contextCenterClassBase from './ContextCenterClassBase';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
-import i18n, { t } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
+import { arraySorterByKey } from './RecentActivityUtils';
+
+export const getKnowledgePageName = (
+  knowledgePage: { name?: string; displayName?: string } | undefined,
+  tFn?: (key: string) => string
+): string => getEntityName(knowledgePage) || (tFn ?? t)('label.untitled');
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']
@@ -174,8 +179,7 @@ export const convertToTreeData = (
   const treeData: DataNode[] = pages.map((page) => {
     const isActive = activePage?.fullyQualifiedName === page.fullyQualifiedName;
     const resolvedPage = isActive ? activePage : page;
-    const title =
-      getEntityName(resolvedPage as KnowledgePage) || i18n.t('label.untitled');
+    const title = getKnowledgePageName(resolvedPage as KnowledgePage);
 
     const hasChildren = !isEmpty(page?.children);
     if (!hasChildren) {
@@ -452,7 +456,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
           />
         )}
 
-        <span>{knowledgePage.displayName || t('label.untitled')}</span>
+        <span>{getKnowledgePageName(knowledgePage, t)}</span>
       </Space>
     </Link>
   );

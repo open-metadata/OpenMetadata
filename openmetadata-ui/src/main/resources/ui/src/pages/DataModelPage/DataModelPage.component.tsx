@@ -46,12 +46,10 @@ import {
   dashboardDataModelQueryFn,
   dashboardDataModelQueryKey,
 } from '../../rest/queries/dashboardDataModelQuery';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

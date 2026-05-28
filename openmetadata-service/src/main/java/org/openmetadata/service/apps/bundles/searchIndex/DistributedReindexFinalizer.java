@@ -131,13 +131,15 @@ class DistributedReindexFinalizer {
 
   private boolean computeEntitySuccess(
       String entityType, Map<String, SearchIndexJob.EntityTypeStats> entityStats) {
-    if (entityStats == null || entityStats.isEmpty()) {
-      return false;
+    if (entityStats == null || entityStats.isEmpty() || entityStats.get(entityType) == null) {
+      // No stats recorded for this entity type means the reader did zero work — either
+      // the source had 0 rows, or the entity is driven by a parallel pipeline (e.g.
+      // vectorEmbedding via RecreateWithEmbeddings) that doesn't feed the reader→sink
+      // stats. Treat absent stats as success so the staged index gets promoted rather
+      // than the job rolling up to FAILED on an entity that has nothing to fail on.
+      return true;
     }
     SearchIndexJob.EntityTypeStats stats = entityStats.get(entityType);
-    if (stats == null) {
-      return false;
-    }
     EntityPromotionContext promotionContext =
         new EntityPromotionContext(
             entityType,

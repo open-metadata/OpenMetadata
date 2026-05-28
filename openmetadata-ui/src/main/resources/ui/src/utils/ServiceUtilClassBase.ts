@@ -83,7 +83,7 @@ import {
   getTestConnectionName,
 } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+import { customServiceComparator } from './StringUtils';
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -563,7 +563,8 @@ class ServiceUtilClassBase {
   public getExtraIngestionMenuItems(
     _serviceCategory: ServiceCategory,
     _serviceName?: string,
-    _navigate?: (path: string) => void
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
   ): MenuProps['items'] {
     return [];
   }
