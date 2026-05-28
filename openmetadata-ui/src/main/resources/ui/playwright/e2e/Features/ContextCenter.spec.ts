@@ -500,7 +500,9 @@ test.describe('Context Center', () => {
       // Wait for search results to update
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=page') &&
+          res.status() === 200
       );
 
       // The pre-created article appears in results
@@ -522,7 +524,9 @@ test.describe('Context Center', () => {
 
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=page') &&
+          res.status() === 200
       );
 
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
@@ -541,7 +545,9 @@ test.describe('Context Center', () => {
       await searchInput.fill('zzznomatch');
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=page') &&
+          res.status() === 200
       );
 
       await searchInput.clear();
@@ -564,7 +570,9 @@ test.describe('Context Center', () => {
 
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=contextFile') &&
+          res.status() === 200
       );
 
       const view = page.getByTestId('documents-view');
@@ -594,7 +602,9 @@ test.describe('Context Center', () => {
 
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=contextFile') &&
+          res.status() === 200
       );
 
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
@@ -615,7 +625,9 @@ test.describe('Context Center', () => {
       await searchInput.fill('zzznomatch');
       await page.waitForResponse(
         (res) =>
-          res.url().includes('/api/v1/search/query') && res.status() === 200
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('index=contextFile') &&
+          res.status() === 200
       );
 
       await searchInput.clear();
@@ -747,6 +759,29 @@ test.describe('Context Center', () => {
       await expect(hierarchy).toBeVisible();
 
       const node = hierarchy.getByTestId(`page-node-${ARTICLE_TITLE}`);
+
+      // Ant Design virtual list uses transform instead of scrollTop — trigger
+      // scroll via wheel events on the .ant-tree-list-holder element
+      const holder = hierarchy.locator('.ant-tree-list-holder');
+      await holder.waitFor({ state: 'visible' });
+
+      let previousTranslateY = '';
+      while (!(await node.isVisible())) {
+        await holder.hover();
+        await page.mouse.wheel(0, 400);
+        // Wait for the virtual list transform to update
+        await hierarchy.locator('.ant-tree-treenode').first().waitFor({ state: 'visible' });
+
+        // Stop if the virtual list stopped moving (reached the end)
+        const currentTranslateY = await hierarchy
+          .locator('.ant-tree-list-holder-inner')
+          .getAttribute('style');
+        if (currentTranslateY === previousTranslateY) {
+          break;
+        }
+        previousTranslateY = currentTranslateY ?? '';
+      }
+
       await expect(node).toBeVisible();
     });
 
@@ -987,12 +1022,8 @@ test.describe('Context Center', () => {
       const modal = page.getByRole('dialog', { name: /upload documents/i });
       await expect(modal).toBeVisible();
 
-      // Create a tiny in-memory file via file chooser API
-      const [fileChooser] = await Promise.all([
-        page.waitForEvent('filechooser'),
-        page.locator('input[type="file"]').first().dispatchEvent('click'),
-      ]);
-      await fileChooser.setFiles({
+      // Set file directly on the hidden input
+      await modal.locator('input[type="file"]').first().setInputFiles({
         name: 'test-upload.txt',
         mimeType: 'text/plain',
         buffer: Buffer.from('playwright test file content'),
@@ -1117,11 +1148,7 @@ test.describe('Context Center', () => {
 
       // Create a >5 MB in-memory buffer
       const bigBuffer = Buffer.alloc(6 * 1024 * 1024, 'x');
-      const [fileChooser] = await Promise.all([
-        page.waitForEvent('filechooser'),
-        page.locator('input[type="file"]').first().dispatchEvent('click'),
-      ]);
-      await fileChooser.setFiles({
+      await modal.locator('input[type="file"]').first().setInputFiles({
         name: 'too-large.bin',
         mimeType: 'application/octet-stream',
         buffer: bigBuffer,
