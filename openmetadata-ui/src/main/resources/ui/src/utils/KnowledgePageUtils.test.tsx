@@ -23,10 +23,50 @@ import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
   findPageInTreeData,
+  getKnowledgePageName,
   getLink,
   getUpdatePageHierarchy,
   integrateNodesIntoHierarchy,
 } from './KnowledgePageUtils';
+
+describe('getKnowledgePageName', () => {
+  it('returns displayName when present', () => {
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' })
+    ).toBe('My Page');
+  });
+
+  it('returns name when displayName is absent', () => {
+    expect(getKnowledgePageName({ name: 'my-page' })).toBe('my-page');
+  });
+
+  it('returns fallback via default t when both name and displayName are absent', () => {
+    expect(getKnowledgePageName({})).toBe('label.untitled');
+  });
+
+  it('returns fallback via custom tFn when both name and displayName are absent', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName({}, tFn)).toBe('translated:label.untitled');
+  });
+
+  it('uses custom tFn fallback when knowledgePage is undefined', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName(undefined, tFn)).toBe(
+      'translated:label.untitled'
+    );
+  });
+
+  it('prefers displayName over name even when tFn is provided', () => {
+    const tFn = jest.fn();
+
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' }, tFn)
+    ).toBe('My Page');
+    expect(tFn).not.toHaveBeenCalled();
+  });
+});
 
 describe('KnowledgePageUtils', () => {
   it('findPageAndParentInTreeData should return the correct value', () => {
