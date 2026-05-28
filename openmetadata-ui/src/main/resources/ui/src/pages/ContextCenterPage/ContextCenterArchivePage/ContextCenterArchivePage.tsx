@@ -45,6 +45,7 @@ import {
   restoreKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -89,7 +90,7 @@ const ContextCenterArchivePage: FC = () => {
       const articleItems: ArchiveItem[] = (pagesResponse.data ?? []).map(
         (page) => ({
           id: page.id,
-          name: page.displayName ?? page.name,
+          name: getEntityName(page),
           type: 'article' as const,
           updatedBy: page.updatedBy,
           updatedAt: page.updatedAt,
@@ -98,7 +99,7 @@ const ContextCenterArchivePage: FC = () => {
 
       const documentItems: ArchiveItem[] = files.map((file) => ({
         id: file.id,
-        name: file.displayName ?? file.name,
+        name: getEntityName(file),
         type: 'document' as const,
         updatedBy: file.updatedBy,
         updatedAt: file.updatedAt,
