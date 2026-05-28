@@ -770,7 +770,10 @@ test.describe('Context Center', () => {
         await holder.hover();
         await page.mouse.wheel(0, 400);
         // Wait for the virtual list transform to update
-        await hierarchy.locator('.ant-tree-treenode').first().waitFor({ state: 'visible' });
+        await hierarchy
+          .locator('.ant-tree-treenode')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // Stop if the virtual list stopped moving (reached the end)
         const currentTranslateY = await hierarchy
@@ -1023,11 +1026,14 @@ test.describe('Context Center', () => {
       await expect(modal).toBeVisible();
 
       // Set file directly on the hidden input
-      await modal.locator('input[type="file"]').first().setInputFiles({
-        name: 'test-upload.txt',
-        mimeType: 'text/plain',
-        buffer: Buffer.from('playwright test file content'),
-      });
+      await modal
+        .locator('input[type="file"]')
+        .first()
+        .setInputFiles({
+          name: 'test-upload.txt',
+          mimeType: 'text/plain',
+          buffer: Buffer.from('playwright test file content'),
+        });
 
       // File appears in staged list
       await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
