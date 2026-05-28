@@ -64,9 +64,6 @@ from metadata.workflow.classification import AutoClassificationWorkflow
 
 from ...kafka.conftest import CustomKafkaContainer  # noqa: TID252
 
-# Import root conftest fixtures
-pytest_plugins = ["ingestion.tests.integration.conftest"]
-
 PII_TOPIC_NAME = "test-pii-customers"
 NON_PII_TOPIC_NAME = "test-non-pii-orders"
 
