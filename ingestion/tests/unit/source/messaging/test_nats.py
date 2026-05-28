@@ -119,6 +119,10 @@ class TestDetectSchemaType:
         result = _detect_schema_type("not json at all")
         assert "other" in result.lower()
 
+    def test_text_with_message_word_is_not_protobuf(self):
+        result = _detect_schema_type("This is a system message from service X")
+        assert result != "protobuf"
+
 
 class TestNatsBuildConnectOpts:
     def _mock_connection(self, servers="nats://localhost:4222", **kwargs):
