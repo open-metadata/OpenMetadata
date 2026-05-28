@@ -92,7 +92,7 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
 
   return (
     <Card
-      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(100vh-532px)] tw:min-h-75"
+      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(100vh-532px)] tw:min-h-75 article-list-section"
       data-testid="article-list-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
