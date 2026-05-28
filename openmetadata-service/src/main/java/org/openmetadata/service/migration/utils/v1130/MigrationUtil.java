@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils.v1130;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -428,25 +430,27 @@ public class MigrationUtil {
     LOG.info("v1130 heal: total stuck certification rows healed: {}", totalHealed);
   }
 
+  private record BatchResult(int rowsFetched, int healed) {}
+
   private static int healCertificationForTable(
       Handle handle, ConnectionType connType, String table) {
     int totalHealed = 0;
-    while (true) {
-      int batchHealed = healCertificationBatch(handle, connType, table);
-      totalHealed += batchHealed;
-      if (batchHealed < HEAL_BATCH_SIZE) {
-        break;
-      }
+    boolean morePages = true;
+    while (morePages) {
+      BatchResult batch = healCertificationBatch(handle, connType, table);
+      totalHealed += batch.healed();
+      morePages = batch.rowsFetched() == HEAL_BATCH_SIZE;
     }
     return totalHealed;
   }
 
-  private static int healCertificationBatch(Handle handle, ConnectionType connType, String table) {
+  private static BatchResult healCertificationBatch(
+      Handle handle, ConnectionType connType, String table) {
     boolean isPostgres = connType == ConnectionType.POSTGRES;
     int healed = 0;
     List<Map<String, Object>> rows =
         handle.createQuery(buildSelectStuckCertificationSql(table, isPostgres)).mapToMap().list();
-    if (!rows.isEmpty()) {
+    if (!nullOrEmpty(rows)) {
       List<String> selectedIds = new ArrayList<>();
       PreparedBatch batch = handle.prepareBatch(buildInsertTagUsageSql(isPostgres));
       for (Map<String, Object> row : rows) {
@@ -466,7 +470,7 @@ public class MigrationUtil {
               .add();
         }
       }
-      if (!selectedIds.isEmpty()) {
+      if (!nullOrEmpty(selectedIds)) {
         batch.execute();
         handle
             .createUpdate(buildStripCertificationFromJsonSql(table, isPostgres))
@@ -475,7 +479,7 @@ public class MigrationUtil {
         healed = selectedIds.size();
       }
     }
-    return healed;
+    return new BatchResult(rows.size(), healed);
   }
 
   private static String buildSelectStuckCertificationSql(String table, boolean isPostgres) {
@@ -564,8 +568,8 @@ public class MigrationUtil {
       } else {
         try {
           node.put("expiryDate", Long.parseLong(expiryDateVal.toString()));
-        } catch (NumberFormatException ignored) {
-          // Unparseable expiry stays out of metadata; tag_usage row still inserted.
+        } catch (NumberFormatException e) {
+          LOG.warn("Unparseable expiryDate '{}' on heal; omitting from metadata", expiryDateVal);
         }
       }
     }
