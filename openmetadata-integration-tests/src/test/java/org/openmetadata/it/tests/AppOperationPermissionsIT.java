@@ -15,9 +15,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.it.util.TestUsers;
 
 /**
  * Integration tests for App operational endpoint permissions.
@@ -36,27 +34,14 @@ public class AppOperationPermissionsIT {
 
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String APP_NAME = "SearchIndexingApplication";
-  private static final String DATA_CONSUMER_NAME = "data-consumer";
-  private static final String DATA_CONSUMER_EMAIL = "data-consumer@open-metadata.org";
 
-  // Tests use a JWT for `data-consumer@open-metadata.org`. The authorizer's first step is
-  // SubjectCache.getUserContext(...), which throws EntityNotFoundException (→404) if the user
-  // hasn't been created in this JVM session yet. Whether that's true depends on test suite
-  // ordering, so the asserts here previously accepted both 403 and 404. Force-create the user
-  // up front so we can assert the real expected status (403) deterministically.
+  // dataConsumer JWT tests hit SubjectCache.getUserContext during authorization; if that user
+  // hasn't been created in this JVM session the lookup throws EntityNotFoundException (→404)
+  // and short-circuits the authorizer before it can return the expected 403. Pin the user up
+  // front so the result is deterministic regardless of suite ordering.
   @BeforeAll
   static void ensureDataConsumerUser() {
-    UserService userService = new UserService(SdkClients.adminClient().getHttpClient());
-    try {
-      userService.getByName(DATA_CONSUMER_NAME, null);
-    } catch (OpenMetadataException notFound) {
-      try {
-        userService.create(
-            new CreateUser().withName(DATA_CONSUMER_NAME).withEmail(DATA_CONSUMER_EMAIL));
-      } catch (OpenMetadataException conflict) {
-        // Another test class's @BeforeAll created it between our get and create.
-      }
-    }
+    TestUsers.ensureDataConsumer();
   }
 
   @Test
