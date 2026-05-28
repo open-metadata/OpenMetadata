@@ -16,10 +16,10 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.it.util.TestUsers;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
@@ -62,7 +62,7 @@ public class WorkflowTriggerPermissionsIT {
   // front so the result is deterministic regardless of suite ordering.
   @BeforeAll
   static void ensureDataConsumerUser() {
-    TestUsers.ensureDataConsumer();
+    UserTestFactory.getDataConsumer(null);
   }
 
   @Test
