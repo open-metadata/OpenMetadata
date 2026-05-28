@@ -202,8 +202,6 @@ class NatsSource(MessagingServiceSource):
                 retention_ms = metadata.config.max_age / _NS_TO_MS
 
             partitions = 1
-            if metadata.state and metadata.state.num_consumers:
-                partitions = metadata.state.num_consumers
 
             replication_factor = None
             max_message_size = None
