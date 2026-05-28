@@ -37,7 +37,7 @@ import {
   Plus,
   Share07,
   Trash01,
-  X
+  X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';

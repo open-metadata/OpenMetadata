@@ -121,7 +121,13 @@ const ContextCenterMemoriesPage: FC = () => {
       { name: string; displayName: string; type: string }
     >();
 
-    const addRef = (ref: { fullyQualifiedName?: string; id?: string; name?: string; displayName?: string; type?: string }) => {
+    const addRef = (ref: {
+      fullyQualifiedName?: string;
+      id?: string;
+      name?: string;
+      displayName?: string;
+      type?: string;
+    }) => {
       const fqn = ref.fullyQualifiedName ?? ref.id;
       if (fqn && !seen.has(fqn)) {
         seen.set(fqn, {
@@ -188,7 +194,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
     if (selectedAsset) {
       list = list.filter((m) => {
-        const primaryFqn = m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
+        const primaryFqn =
+          m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
         if (primaryFqn === selectedAsset) {
           return true;
         }
