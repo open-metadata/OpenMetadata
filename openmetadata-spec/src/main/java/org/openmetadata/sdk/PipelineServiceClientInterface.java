@@ -127,6 +127,15 @@ public interface PipelineServiceClientInterface {
   /* Get the all last run logs of a deployed pipeline */
   Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
+  /**
+   * Returns the storage location (e.g. an {@code s3://bucket/key} URI) of a run's logs without
+   * downloading them. When runId is null, the latest run is used. Clients that expose no
+   * addressable location return {@code null}.
+   */
+  default String getLogLocation(IngestionPipeline ingestionPipeline, String runId) {
+    return null;
+  }
+
   /* Get logs for a specific pipeline run identified by runId.
    * When runId is null or blank, falls back to getLastIngestionLogs (latest run). */
   default Map<String, String> getIngestionLogs(

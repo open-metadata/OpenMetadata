@@ -1050,6 +1050,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
+  /**
+   * Resolve the storage location of a run's logs via the configured pipeline service client (e.g.
+   * the Argo artifact's {@code s3://bucket/key}). Returns {@code null} when the client is
+   * unavailable or cannot resolve a static location for this run (e.g. live-only hybrid logs, a
+   * running workflow, or a garbage-collected one). Streamable-S3 locations are derived elsewhere
+   * from {@link #getLogStorageConfiguration()}; this method covers the non-streamable case while
+   * keeping the pipeline service client encapsulated inside the repository.
+   */
+  public String getLogLocationFromPipelineService(IngestionPipeline pipeline, UUID runId) {
+    if (pipelineServiceClient == null || pipeline == null) {
+      return null;
+    }
+    return pipelineServiceClient.getLogLocation(
+        pipeline, runId == null ? null : runId.toString());
+  }
+
   private Map<String, Object> getLogsFromPipelineService(String pipelineFQN, String afterCursor) {
     // Fall back to traditional pipeline service logs (Airflow/Argo)
     IngestionPipeline pipeline =

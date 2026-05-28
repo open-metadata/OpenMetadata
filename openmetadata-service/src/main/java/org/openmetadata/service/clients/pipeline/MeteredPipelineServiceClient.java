@@ -137,6 +137,11 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
+  public String getLogLocation(IngestionPipeline ingestionPipeline, String runId) {
+    return decoratedClient.getLogLocation(ingestionPipeline, runId);
+  }
+
+  @Override
   public Map<String, String> getIngestionLogs(
       IngestionPipeline ingestionPipeline, String after, String runId) {
     return executeWithMetering(
