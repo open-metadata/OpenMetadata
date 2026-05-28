@@ -200,7 +200,8 @@
             }
           },
           "children": {
-            "type": "flattened"
+            "type": "flattened",
+            "ignore_above": 8191
           }
         }
       },
