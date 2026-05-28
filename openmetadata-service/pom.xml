@@ -169,6 +169,18 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-assets</artifactId>
     </dependency>
+    <!--
+      HTTP/2 connector factories. Not used by default (see conf/openmetadata.yaml,
+      applicationConnectors). Operators who run Jetty without an HTTP/2-terminating
+      load balancer in front can flip the connector type to h2c to get multiplexed
+      chunk downloads on first paint. AWS ALB / CloudFront speak HTTP/2 to the
+      browser but use HTTP/1.1 to the origin, so this won't help that path; useful
+      mainly for direct-access deployments (Docker Compose, on-prem, local dev).
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>

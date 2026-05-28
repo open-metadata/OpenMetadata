@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
-import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,16 +83,30 @@ const AppSchedule = ({
     }
   }, [appData]);
 
-  const cronString = useMemo(() => {
+  const [cronString, setCronString] = useState<string>('');
+
+  useEffect(() => {
     const cronExpression = (appData.appSchedule as AppScheduleClass)
       ?.cronExpression;
-    if (cronExpression) {
-      return cronstrue.toString(cronExpression, {
-        throwExceptionOnParseError: false,
-      });
-    }
+    if (!cronExpression) {
+      setCronString('');
 
-    return '';
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue').then((m) => {
+      if (!cancelled) {
+        setCronString(
+          m.default.toString(cronExpression, {
+            throwExceptionOnParseError: false,
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [appData]);
 
   const onDialogCancel = () => {

@@ -333,6 +333,24 @@ public class ActivityStreamRepository {
     return activityStreamDAO.countByDomains(domainJson, domainIdStrings, afterTimestamp);
   }
 
+  /** Get count of activity events for a specific entity. */
+  public int countByEntity(String entityType, UUID entityId, long afterTimestamp) {
+    return activityStreamDAO.countByEntity(entityType, entityId.toString(), afterTimestamp);
+  }
+
+  /** Get count of activity events for a specific entity scoped to specific domains. */
+  public int countByEntity(
+      String entityType, UUID entityId, List<UUID> domainIds, long afterTimestamp) {
+    if (nullOrEmpty(domainIds)) {
+      return countByEntity(entityType, entityId, afterTimestamp);
+    }
+
+    List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
+    String domainJson = JsonUtils.pojoToJson(domainIdStrings);
+    return activityStreamDAO.countByEntityAndDomains(
+        entityType, entityId.toString(), domainJson, domainIdStrings, afterTimestamp);
+  }
+
   /** Delete events older than the cutoff timestamp. */
   public int deleteOlderThan(long cutoffTimestamp) {
     return activityStreamDAO.deleteOlderThan(cutoffTimestamp);

@@ -40,9 +40,9 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { entityChartColor } from '../../utils/CommonUtils';
+import { entityChartColor } from '../../utils/ColorUtils';
+import { CustomTooltip } from '../../utils/DataInsightChartUtils';
 import {
-  CustomTooltip,
   getGraphDataByEntityType,
   sortEntityByValue,
 } from '../../utils/DataInsightUtils';

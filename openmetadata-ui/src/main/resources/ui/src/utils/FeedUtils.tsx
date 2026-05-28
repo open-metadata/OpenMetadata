@@ -17,7 +17,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import { ReactNode } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -50,21 +50,20 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
+import { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
+  getEntityActivityByFqn,
   getFeedById,
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
 import { searchQuery } from '../rest/searchAPI';
-import {
-  getEntityPlaceHolder,
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-  getRandomColor,
-} from './CommonUtils';
+import { getTaskCounts } from '../rest/tasksAPI';
+import { getRandomColor } from './ColorUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
+import { getEntityPlaceHolder } from './EntityDisplayUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
 import {
@@ -73,6 +72,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import Fqn from './Fqn';
+import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t, Transi18next } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
@@ -80,7 +80,7 @@ import {
 } from './ProfilerUtils';
 import { getSanitizeContent } from './sanitize.utils';
 import { getTermQuery } from './SearchUtils';
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -1027,5 +1027,102 @@ export const getActivityEventHeaderText = (
           {t('label.updated-lowercase')}
         </Typography.Text>
       );
+  }
+};
+
+export const getFeedCounts = async (
+  entityType: string,
+  entityFQN: string,
+  domainOrCallback: string | undefined | ((countValue: FeedCounts) => void),
+  callback?: (countValue: FeedCounts) => void
+) => {
+  try {
+    const domain =
+      typeof domainOrCallback === 'string' || domainOrCallback === undefined
+        ? domainOrCallback
+        : undefined;
+    const feedCountCallback =
+      typeof domainOrCallback === 'function' ? domainOrCallback : callback;
+
+    if (!feedCountCallback) {
+      return;
+    }
+
+    const [activityRes, taskCounts] = await Promise.all([
+      getEntityActivityByFqn(entityType, entityFQN, {
+        days: 30,
+        limit: 100,
+        domain,
+      }),
+      getTaskCounts({ aboutEntity: entityFQN, domain }),
+    ]);
+
+    const activityCount = activityRes?.data?.length ?? 0;
+
+    const openTaskCount = taskCounts.open ?? 0;
+    const closedTaskCount = taskCounts.completed ?? 0;
+    const totalTasksCount = taskCounts.total ?? 0;
+
+    feedCountCallback({
+      conversationCount: activityCount,
+      totalTasksCount,
+      openTaskCount,
+      closedTaskCount,
+      totalCount: activityCount + totalTasksCount,
+      mentionCount: 0,
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+export const fetchEntityTaskCountsInto = async (
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const taskCounts = await getTaskCounts({ aboutEntity: entityFqn, domain });
+    setFeedCount((prev) => {
+      const openTaskCount = taskCounts.open ?? 0;
+      const closedTaskCount = taskCounts.completed ?? 0;
+      const totalTasksCount = taskCounts.total ?? 0;
+
+      return {
+        ...prev,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+export const fetchEntityActivityCountInto = async (
+  entityType: string,
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
+      days: 30,
+      limit: 0,
+      domain,
+    });
+    setFeedCount((prev) => {
+      const conversationCount = activityRes?.paging?.total ?? 0;
+
+      return {
+        ...prev,
+        conversationCount,
+        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
 };

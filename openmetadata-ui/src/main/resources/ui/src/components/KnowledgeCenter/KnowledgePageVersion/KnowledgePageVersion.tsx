@@ -40,7 +40,7 @@ import {
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;

@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  ButtonUtility,
   Dot,
   Dropdown,
   Skeleton,
@@ -19,69 +20,61 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Edit01, Trash01 } from '@untitledui/icons';
+import { Clock, Trash01 } from '@untitledui/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   MemoriesViewProps,
   MemoryActionsWithOpenProps,
-  MemoryItem,
 } from './MemoriesView.interface';
 
 const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
   canDelete,
   memory,
   onDeleteMemory,
-  onEditMemory,
   onOpenChange,
 }) => {
   const { t } = useTranslation();
+
+  if (!canDelete) {
+    return null;
+  }
 
   return (
     <Dropdown.Root onOpenChange={onOpenChange}>
       <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
         <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+          <Dropdown.DotsButton className="tw:flex tw:p-1" />
         </TooltipTrigger>
       </Tooltip>
       <Dropdown.Popover className="tw:w-30">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'edit') {
-              onEditMemory?.(memory);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteMemory?.(memory);
             }
           }}>
-          {onEditMemory && (
-            <Dropdown.Item
-              data-testid="edit-btn"
-              icon={Edit01}
-              id="edit"
-              label={t('label.edit')}
-            />
-          )}
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Trash01
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-600"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </div>
-            </Dropdown.Item>
-          )}
+          <Dropdown.Item data-testid="delete-btn" id="delete">
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <Trash01
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+              />
+              <Typography
+                ellipsis
+                className="tw:grow tw:text-error-600"
+                size="text-sm"
+                weight="medium">
+                {t('label.delete')}
+              </Typography>
+            </div>
+          </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -110,25 +103,32 @@ const MemoryRowSkeleton: FC = () => (
 
 interface MemoryRowProps {
   canDelete?: boolean;
-  memory: MemoryItem;
-  onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
-  onViewMemory?: (memory: MemoryItem) => void;
+  currentUserName?: string;
+  isAdminUser?: boolean;
+  memory: ContextMemory;
+  onDeleteMemory?: (memory: ContextMemory) => void;
+  onEditMemory?: (memory: ContextMemory) => void;
+  onViewMemory?: (memory: ContextMemory) => void;
 }
 
 const MemoryRow: FC<MemoryRowProps> = ({
   canDelete,
+  currentUserName,
+  isAdminUser,
   memory,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
+  const isOwner =
+    memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
+  const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <div
-      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary last:tw:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
+      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
       data-testid={`memory-row-${memory.id}`}
       onClick={() => onViewMemory?.(memory)}>
       {memory.updatedBy && (
@@ -136,99 +136,113 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
-
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-          {memory.updatedBy && (
-            <Typography className="tw:text-gray-700" size="text-sm">
-              {memory.updatedBy}
-            </Typography>
-          )}
-          {memory.updatedAt !== undefined && (
-            <>
-              <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
-                &middot;
-              </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
-                {getShortRelativeTime(memory.updatedAt)}
+      <div className="tw:flex tw:items-end tw:justify-between tw:w-full">
+        <div className="tw:flex tw:min-w-0 tw:basis-[75%] tw:flex-col tw:gap-1">
+          <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
+            {memory.updatedBy && (
+              <Typography className="tw:text-gray-700" size="text-sm">
+                {memory.updatedBy}
               </Typography>
-            </>
-          )}
-        </div>
+            )}
+            {memory.updatedAt !== undefined && (
+              <>
+                <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
+                  &middot;
+                </span>
+                <Typography className="tw:text-gray-500" size="text-xs">
+                  {getShortRelativeTime(memory.updatedAt)}
+                </Typography>
+              </>
+            )}
+          </div>
 
-        <Typography className="tw:truncate" weight="medium">
-          {memory.title || memory.name}
-        </Typography>
+          <Typography ellipsis weight="medium">
+            {memory.title || memory.name}
+          </Typography>
 
-        <div className="tw:flex tw:items-end tw:justify-between tw:gap-4">
           <Typography
+            ellipsis
             className="tw:text-gray-600 tw:line-clamp-2"
             size="text-xs">
             {memory.summary ?? memory.answer}
           </Typography>
-          {(memory.usageCount !== undefined ||
-            memory.lastUsedAt !== undefined) && (
-            <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
-              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
-              <Typography
-                className="tw:text-gray-500 tw:whitespace-nowrap"
-                size="text-xs">
-                {memory.usageCount === undefined
-                  ? ''
-                  : t('label.used-n-times', { count: memory.usageCount })}
-                {memory.lastUsedAt
-                  ? ` · ${t('label.last')} ${getShortRelativeTime(
-                      memory.lastUsedAt
-                    )}`
-                  : ''}
-              </Typography>
+
+          {memory.tags && memory.tags.length > 0 && (
+            <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
+              {memory.tags.map((tag) => (
+                <Badge
+                  className="tw:max-w-90 tw:min-w-0"
+                  key={String(tag.tagFQN ?? '')}
+                  size="md"
+                  type="color">
+                  {tag.style?.color && (
+                    <div className="tw:shrink-0">
+                      <Dot
+                        size="sm"
+                        style={{ color: tag.style?.color, marginRight: '6px' }}
+                      />
+                    </div>
+                  )}
+                  <Typography
+                    ellipsis
+                    className="tw:text-gray-700"
+                    size="text-xs">
+                    {tag.tagFQN}
+                  </Typography>
+                </Badge>
+              ))}
             </div>
           )}
         </div>
-
-        {memory.tags && memory.tags.length > 0 && (
-          <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
-            {memory.tags.map((tag) => (
-              <Badge
-                className="tw:max-w-90 tw:min-w-0"
-                key={String(tag.tagFQN ?? '')}
-                size="md"
-                type="color">
-                {tag.style?.color && (
-                  <div className="tw:shrink-0">
-                    <Dot
-                      size="sm"
-                      style={{ color: tag.style?.color, marginRight: '6px' }}
-                    />
-                  </div>
-                )}
-                <Typography
-                  ellipsis
-                  className="tw:text-gray-700"
-                  size="text-xs">
-                  {tag.tagFQN}
-                </Typography>
-              </Badge>
-            ))}
+        {(memory.usageCount !== undefined ||
+          memory.lastUsedAt !== undefined) && (
+          <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
+            <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+            <Typography
+              className="tw:text-gray-500 tw:whitespace-nowrap"
+              size="text-xs">
+              {memory.usageCount === undefined
+                ? ''
+                : t('label.used-n-times', { count: memory.usageCount })}
+              {memory.lastUsedAt
+                ? ` · ${t('label.last')} ${getShortRelativeTime(
+                    memory.lastUsedAt
+                  )}`
+                : ''}
+            </Typography>
           </div>
         )}
       </div>
 
-      {/* 3-dot actions — visible on hover or while menu is open */}
+      {/* Actions — visible on hover or while menu is open */}
       <div
-        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity  ${
+        className={`tw:absolute tw:top-3 tw:right-3 tw:flex tw:items-center tw:gap-1 tw:transition-opacity ${
           isMenuOpen
             ? 'tw:opacity-100'
             : 'tw:opacity-0 tw:group-hover:opacity-100'
         }`}
         onClick={(e) => e.stopPropagation()}>
-        <MemoryActions
-          canDelete={canDelete}
-          memory={memory}
-          onDeleteMemory={onDeleteMemory}
-          onEditMemory={onEditMemory}
-          onOpenChange={setIsMenuOpen}
-        />
+        {canActOnMemory && onEditMemory && (
+          <Tooltip title={t('label.edit')}>
+            <TooltipTrigger>
+              <ButtonUtility
+                color="tertiary"
+                data-testid="edit-memory-btn"
+                icon={<EditNewIcon height={16} width={16} />}
+                size="sm"
+                onClick={() => onEditMemory(memory)}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+        {canActOnMemory && (
+          <MemoryActions
+            canDelete={canDelete}
+            memory={memory}
+            onDeleteMemory={onDeleteMemory}
+            onOpenChange={setIsMenuOpen}
+          />
+        )}
       </div>
     </div>
   );
@@ -236,7 +250,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
 const MemoriesView: FC<MemoriesViewProps> = ({
   canDelete,
+  currentUserName,
   data,
+  isAdminUser,
   isLoading,
   onDeleteMemory,
   onEditMemory,
@@ -265,6 +281,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
       {data.map((memory) => (
         <MemoryRow
           canDelete={canDelete}
+          currentUserName={currentUserName}
+          isAdminUser={isAdminUser}
           key={memory.id}
           memory={memory}
           onDeleteMemory={onDeleteMemory}
