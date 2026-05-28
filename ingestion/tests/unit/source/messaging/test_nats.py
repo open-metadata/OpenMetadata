@@ -136,26 +136,26 @@ class TestNatsBuildConnectOpts:
 
     def test_minimal_single_server(self):
         conn = self._mock_connection()
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts == {"servers": ["nats://localhost:4222"]}
 
     def test_multiple_servers_parsed(self):
         conn = self._mock_connection(servers="nats://a:4222, nats://b:4222 , nats://c:4222")
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["servers"] == ["nats://a:4222", "nats://b:4222", "nats://c:4222"]
 
     def test_basic_auth(self):
         password_mock = MagicMock()
         password_mock.get_secret_value.return_value = "s3cr3t"
         conn = self._mock_connection(username="alice", password=password_mock)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["user"] == "alice"
         assert opts["password"] == "s3cr3t"
         assert "token" not in opts
 
     def test_username_without_password_skips_basic_auth(self):
         conn = self._mock_connection(username="alice", password=None)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert "user" not in opts
         assert "password" not in opts
 
@@ -163,7 +163,7 @@ class TestNatsBuildConnectOpts:
         token_mock = MagicMock()
         token_mock.get_secret_value.return_value = "my-token"
         conn = self._mock_connection(token=token_mock)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["token"] == "my-token"
         assert "user" not in opts
 
@@ -173,7 +173,7 @@ class TestNatsBuildConnectOpts:
         token_mock = MagicMock()
         token_mock.get_secret_value.return_value = "tok"
         conn = self._mock_connection(username="alice", password=password_mock, token=token_mock)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert "user" in opts
         assert "token" not in opts
 
@@ -181,18 +181,18 @@ class TestNatsBuildConnectOpts:
         nkey_mock = MagicMock()
         nkey_mock.get_secret_value.return_value = "SUAM..."
         conn = self._mock_connection(nkeySeed=nkey_mock)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["nkeys_seed_str"] == "SUAM..."
 
     def test_additional_config_merged(self):
         conn = self._mock_connection(additionalConfig={"connect_timeout": 10, "max_reconnect_attempts": 5})
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["connect_timeout"] == 10
         assert opts["max_reconnect_attempts"] == 5
 
     def test_additional_config_can_override_servers(self):
         conn = self._mock_connection(additionalConfig={"pedantic": True})
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert opts["pedantic"] is True
         assert "servers" in opts
 
@@ -207,19 +207,21 @@ class TestNatsBuildConnectOpts:
         tls_mock = MagicMock()
         tls_mock.root = ssl_cfg
         conn = self._mock_connection(tlsConfig=tls_mock)
+        temp_files: list = []
         mock_ctx = MagicMock(spec=ssl.SSLContext)
         with patch(
             "metadata.ingestion.source.messaging.nats.connection.ssl.create_default_context",
             return_value=mock_ctx,
         ):
-            opts = _build_connect_opts(conn)
+            opts = _build_connect_opts(conn, temp_files)
         assert "tls" in opts
         assert opts["tls"] is mock_ctx
         mock_ctx.load_verify_locations.assert_called_once_with(cadata=ca_pem)
+        assert temp_files == []
 
     def test_tls_skipped_when_none(self):
         conn = self._mock_connection(tlsConfig=None)
-        opts = _build_connect_opts(conn)
+        opts = _build_connect_opts(conn, [])
         assert "tls" not in opts
 
 
@@ -269,13 +271,8 @@ class TestNatsYieldTopic:
         results = list(nats_source.yield_topic(details))
         assert results[0].right.retentionTime == 0.0
 
-    def test_partitions_from_num_consumers(self, nats_source):
+    def test_partitions_always_one(self, nats_source):
         details = _make_details("s1", state=NatsStreamState(num_consumers=5))
-        results = list(nats_source.yield_topic(details))
-        assert results[0].right.partitions == 5
-
-    def test_partitions_default_one_when_no_consumers(self, nats_source):
-        details = _make_details("s1", state=NatsStreamState(num_consumers=None))
         results = list(nats_source.yield_topic(details))
         assert results[0].right.partitions == 1
 
