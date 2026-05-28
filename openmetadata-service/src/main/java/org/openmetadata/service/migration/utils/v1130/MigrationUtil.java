@@ -1,8 +1,11 @@
 package org.openmetadata.service.migration.utils.v1130;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -12,11 +15,14 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
@@ -365,5 +371,197 @@ public class MigrationUtil {
       // so the migration step doesn't abort the rest of v1130's reprocessing.
       LOG.error("Error adding tableColumn search settings", e);
     }
+  }
+
+  // Entity tables that v1125 attempted to drain of inline certification into tag_usage.
+  private static final String[] CERTIFIED_ENTITY_TABLES = {
+    "table_entity",
+    "dashboard_entity",
+    "topic_entity",
+    "pipeline_entity",
+    "storage_container_entity",
+    "search_index_entity",
+    "ml_model_entity",
+    "stored_procedure_entity",
+    "dashboard_data_model_entity",
+    "api_endpoint_entity",
+    "api_collection_entity",
+    "database_entity",
+    "database_schema_entity",
+    "data_product_entity",
+    "domain_entity",
+    "chart_entity",
+    "metric_entity",
+    "file_entity",
+    "directory_entity",
+    "spreadsheet_entity",
+    "worksheet_entity",
+    "llm_model_entity",
+    "ai_application_entity"
+  };
+
+  private static final int HEAL_BATCH_SIZE = 500;
+  private static final int CERT_SOURCE = TagLabel.TagSource.CLASSIFICATION.ordinal();
+  private static final int CERT_LABEL_TYPE = TagLabel.LabelType.AUTOMATED.ordinal();
+  private static final int CERT_STATE = TagLabel.State.CONFIRMED.ordinal();
+  private static final ObjectMapper CERT_METADATA_MAPPER = new ObjectMapper();
+
+  /**
+   * Heals installs where certification is still inlined in entity JSON instead of being in
+   * tag_usage. v1125 on PostgreSQL silently failed on a missing varchar->json cast for the
+   * metadata column, leaving any 1.12.5+ PG database stuck. Idempotent: the SELECT filter only
+   * picks rows that still carry certification in JSON, so fresh installs, healthy MySQL, and PG
+   * databases with no certified entities exit at zero rows.
+   */
+  public static void healStuckCertificationOnEntityJson(Handle handle, ConnectionType connType) {
+    int totalHealed = 0;
+    for (String table : CERTIFIED_ENTITY_TABLES) {
+      try {
+        int healed = healCertificationForTable(handle, connType, table);
+        totalHealed += healed;
+        if (healed > 0) {
+          LOG.info("v1130 heal: moved {} stuck certification rows from {}", healed, table);
+        }
+      } catch (Exception e) {
+        // Per-table failure shouldn't stop the rest; logged at ERROR so it isn't lost.
+        LOG.error(
+            "v1130 heal failed for table '{}': {}. Re-run the migration to retry.",
+            table,
+            e.getMessage(),
+            e);
+      }
+    }
+    LOG.info("v1130 heal: total stuck certification rows healed: {}", totalHealed);
+  }
+
+  private static int healCertificationForTable(
+      Handle handle, ConnectionType connType, String table) {
+    int totalHealed = 0;
+    while (true) {
+      int batchHealed = healCertificationBatch(handle, connType, table);
+      totalHealed += batchHealed;
+      if (batchHealed < HEAL_BATCH_SIZE) {
+        break;
+      }
+    }
+    return totalHealed;
+  }
+
+  private static int healCertificationBatch(Handle handle, ConnectionType connType, String table) {
+    boolean isPostgres = connType == ConnectionType.POSTGRES;
+    List<Map<String, Object>> rows =
+        handle.createQuery(buildSelectStuckCertificationSql(table, isPostgres)).mapToMap().list();
+    if (rows.isEmpty()) {
+      return 0;
+    }
+
+    List<String> selectedIds = new ArrayList<>();
+    PreparedBatch batch = handle.prepareBatch(buildInsertTagUsageSql(isPostgres));
+    for (Map<String, Object> row : rows) {
+      String tagFQN = (String) row.get("tagfqn");
+      // SELECT already filters tagFQN NOT NULL, but stay defensive against concurrent edits.
+      if (tagFQN == null) {
+        continue;
+      }
+      selectedIds.add(row.get("id").toString());
+      batch
+          .bind("source", CERT_SOURCE)
+          .bind("tagFQN", tagFQN)
+          .bind("tagFQNHash", FullyQualifiedName.buildHash(tagFQN))
+          .bind("targetFQNHash", row.get("fqnhash").toString())
+          .bind("labelType", CERT_LABEL_TYPE)
+          .bind("state", CERT_STATE)
+          .bind("appliedAt", parseEpochMillisToTimestamp(row.get("applieddate")))
+          .bind("metadata", buildCertMetadataJson(row.get("expirydate")))
+          .add();
+    }
+    if (selectedIds.isEmpty()) {
+      return 0;
+    }
+    batch.execute();
+    handle
+        .createUpdate(buildStripCertificationFromJsonSql(table, isPostgres))
+        .bindList("ids", selectedIds)
+        .execute();
+    return selectedIds.size();
+  }
+
+  private static String buildSelectStuckCertificationSql(String table, boolean isPostgres) {
+    if (isPostgres) {
+      return String.format(
+          "SELECT id, fqnHash, "
+              + "json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' AS tagFQN, "
+              + "json::json -> 'certification' ->> 'expiryDate' AS expiryDate, "
+              + "json::json -> 'certification' ->> 'appliedDate' AS appliedDate "
+              + "FROM %s WHERE json::jsonb ?? 'certification' "
+              + "AND json::json -> 'certification' -> 'tagLabel' ->> 'tagFQN' IS NOT NULL "
+              + "LIMIT %d",
+          table, HEAL_BATCH_SIZE);
+    }
+    return String.format(
+        "SELECT id, fqnHash, "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) AS tagFQN, "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.expiryDate')) AS expiryDate, "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.appliedDate')) AS appliedDate "
+            + "FROM %s WHERE JSON_CONTAINS_PATH(json, 'one', '$.certification') = 1 "
+            + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.certification.tagLabel.tagFQN')) IS NOT NULL "
+            + "LIMIT %d",
+        table, HEAL_BATCH_SIZE);
+  }
+
+  private static String buildInsertTagUsageSql(boolean isPostgres) {
+    // PG won't auto-cast varchar -> json on the metadata column; MySQL JSON accepts a string.
+    if (isPostgres) {
+      return "INSERT INTO tag_usage "
+          + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
+          + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata::json) "
+          + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING";
+    }
+    return "INSERT IGNORE INTO tag_usage "
+        + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
+        + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata)";
+  }
+
+  private static String buildStripCertificationFromJsonSql(String table, boolean isPostgres) {
+    if (isPostgres) {
+      return "UPDATE "
+          + table
+          + " SET json = (json::jsonb - 'certification')::json WHERE id IN (<ids>)";
+    }
+    return "UPDATE "
+        + table
+        + " SET json = JSON_REMOVE(json, '$.certification') WHERE id IN (<ids>)";
+  }
+
+  private static Timestamp parseEpochMillisToTimestamp(Object val) {
+    if (val == null) {
+      return null;
+    }
+    try {
+      long epochMillis =
+          val instanceof Number num ? num.longValue() : Long.parseLong(val.toString());
+      return new Timestamp(epochMillis);
+    } catch (NumberFormatException e) {
+      LOG.warn("Unparseable appliedDate '{}' on heal; binding null", val);
+      return null;
+    }
+  }
+
+  private static String buildCertMetadataJson(Object expiryDateVal) {
+    ObjectNode node = CERT_METADATA_MAPPER.createObjectNode();
+    if (expiryDateVal != null) {
+      if (expiryDateVal instanceof Long longVal) {
+        node.put("expiryDate", longVal);
+      } else if (expiryDateVal instanceof Number numberVal) {
+        node.put("expiryDate", numberVal.longValue());
+      } else {
+        try {
+          node.put("expiryDate", Long.parseLong(expiryDateVal.toString()));
+        } catch (NumberFormatException ignored) {
+          // Unparseable expiry stays out of metadata; tag_usage row still inserted.
+        }
+      }
+    }
+    return node.toString();
   }
 }
