@@ -76,7 +76,7 @@ def _dump_handler(handler: Any, reason: str, incremental: bool) -> Any:
             if incremental:
                 handler.emit_incremental_dump(signal_safe=True)
             else:
-                handler.emit_dump(reason="sigusr1", signal_safe=True)
+                handler.emit_dump(reason=reason, signal_safe=True)
         except Exception as exc:
             sys.stderr.write(f"{DIAG_LOG_PREFIX}.dump.error reason={reason} err={exc!r}\n")
             sys.stderr.flush()

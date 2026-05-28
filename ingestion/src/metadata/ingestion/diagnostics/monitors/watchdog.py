@@ -66,9 +66,10 @@ class Watchdog:
         return verdicts
 
     def _check_hangs(self, now: float) -> list[Verdict]:
-        alive_idents = {t.ident for t in threading.enumerate() if t.ident is not None}
+        threads = threading.enumerate()
+        alive_idents = {t.ident for t in threads if t.ident is not None}
         self._registry.gc_dead_threads(alive_idents)
-        name_by_ident = {t.ident: t.name for t in threading.enumerate() if t.ident}
+        name_by_ident = {t.ident: t.name for t in threads if t.ident}
         verdicts: list[Verdict] = []
         for tid, (op_name, kwargs, age) in self._registry.deepest_per_thread().items():
             verdict = self._judge_thread(tid, op_name, kwargs, age, name_by_ident, now)
