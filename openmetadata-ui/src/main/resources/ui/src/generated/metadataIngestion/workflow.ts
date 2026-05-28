@@ -3905,6 +3905,14 @@ export interface AuthenticationConfiguration {
      */
     credentials?: GcpConfigClass;
     /**
+     * OAuth 2.0 client ID of the IAP-protected backend (Cloud Composer). When omitted,
+     * OpenMetadata auto-detects it by following the IAP redirect. Set this only when
+     * auto-detection is blocked (custom domains, private IAP, restricted egress). Find it in
+     * GCP Console -> Security -> Identity-Aware Proxy -> the Composer backend's OAuth 2.0
+     * Client ID.
+     */
+    iapAudience?: string;
+    /**
      * MWAA credentials and environment configuration.
      */
     mwaaConfig?: MWAAConfiguration;
