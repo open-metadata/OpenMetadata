@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, Radio, Tag, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
@@ -22,10 +21,11 @@ import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona
 import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
-import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -34,59 +34,9 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
-
-type ListMenuItemProps = {
-  listItems: EntityReference[];
-  labelRenderer: (item: EntityReference) => ReactNode;
-  readMoreLabelRenderer: (count: number) => ReactNode;
-  readMoreKey: string;
-  sizeLimit?: number;
-  itemKey: string;
-};
-
-const renderLimitedListMenuItem = ({
-  listItems,
-  labelRenderer,
-  readMoreLabelRenderer,
-  sizeLimit = 2,
-  readMoreKey,
-  itemKey,
-}: ListMenuItemProps) => {
-  const remainingCount =
-    listItems.length ?? 0 > sizeLimit
-      ? (listItems.length ?? sizeLimit) - sizeLimit
-      : 0;
-
-  const items = listItems.slice(0, sizeLimit);
-
-  return isEmpty(items)
-    ? [
-        {
-          label: getEmptyTextFromUserProfileItem(itemKey),
-          key: readMoreKey.replace('more', 'no'),
-          disabled: true,
-        },
-      ]
-    : [
-        ...(items?.map((item) => ({
-          label: labelRenderer(item),
-          key: item.id,
-          disabled: ['roles', 'inheritedRoles'].includes(itemKey),
-        })) ?? []),
-        ...[
-          remainingCount > 0
-            ? {
-                label: readMoreLabelRenderer(remainingCount),
-                key: readMoreKey ?? 'more-item',
-              }
-            : null,
-        ],
-      ];
-};
 
 export const UserProfileIcon = () => {
   const { currentUser, selectedPersona, setSelectedPersona } =
@@ -109,9 +59,12 @@ export const UserProfileIcon = () => {
     return false;
   }, []);
 
-  const handleSelectedPersonaChange = async (persona: EntityReference) => {
-    setSelectedPersona(persona);
-  };
+  const handleSelectedPersonaChange = useCallback(
+    (persona: EntityReference) => {
+      setSelectedPersona(persona);
+    },
+    [setSelectedPersona]
+  );
 
   useEffect(() => {
     if (profilePicture) {
@@ -121,11 +74,8 @@ export const UserProfileIcon = () => {
     }
   }, [profilePicture]);
 
-  const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
-    const userName = getEntityName(currentUser) || TERM_USER;
-
+  const { teams, roles, inheritedRoles, personas } = useMemo(() => {
     return {
-      userName,
       roles: currentUser?.isAdmin
         ? [
             ...(currentUser?.roles ?? []),
@@ -250,12 +200,10 @@ export const UserProfileIcon = () => {
     ];
   }, [personas, defaultPersona?.id, selectedPersona?.id]);
 
-  const items: ItemType[] = useMemo(
-    () => [
-      {
-        key: 'user',
-        icon: '',
-        label: (
+  const items = useMemo(
+    () =>
+      navbarUtilClassBase.getUserProfileIconMenuItems({
+        userLabel: (
           <Link
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
@@ -267,23 +215,7 @@ export const UserProfileIcon = () => {
             </Typography.Paragraph>
           </Link>
         ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'personas',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: sortedPersonas,
-          readMoreKey: 'more-persona',
-          sizeLimit: showAllPersona ? sortedPersonas.length : 2,
-          labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
-          itemKey: 'personas',
-        }),
-        label: (
+        personaLabel: (
           <div className="d-flex items-center gap-2">
             <PersonaIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
@@ -291,22 +223,7 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'roles',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: roles ?? [],
-          labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          readMoreKey: 'more-roles',
-          itemKey: 'roles',
-        }),
-        label: (
+        roleLabel: (
           <div className="text-base-color d-flex items-center gap-2">
             <RoleIcon height={20} width={20} />
             <span className="font-medium text-grey-900">
@@ -314,22 +231,7 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'inheritedRoles',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: inheritedRoles ?? [],
-          labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          readMoreKey: 'more-inherited-roles',
-          itemKey: 'inheritedRoles',
-        }),
-        label: (
+        inheritedRoleLabel: (
           <div className="d-flex items-center gap-2">
             <IconStruct className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
@@ -337,25 +239,7 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'teams',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: teams ?? [],
-          readMoreKey: 'more-teams',
-          labelRenderer: teamLabelRenderer,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          itemKey: 'teams',
-        }),
-        label: (
+        teamLabel: (
           <div className="d-flex items-center gap-2">
             <TeamIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
@@ -363,15 +247,7 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'logout',
-        icon: '',
-        label: (
+        logoutLabel: (
           <Button
             className="text-primary d-flex items-center gap-2 p-0 font-medium"
             type="text"
@@ -380,20 +256,28 @@ export const UserProfileIcon = () => {
             {t('label.logout')}
           </Button>
         ),
-        type: 'group',
-      },
-    ],
+        inheritedRoles: inheritedRoles ?? [],
+        personaLabelRenderer,
+        personas: sortedPersonas,
+        readMoreLabelRenderer: readMoreTeamRenderer,
+        roles: roles ?? [],
+        showAllPersona,
+        teamLabelRenderer,
+        teams: teams ?? [],
+      }),
     [
-      currentUser,
-      userName,
-      selectedPersona,
-      teams,
+      currentUser?.name,
+      handleCloseDropdown,
+      inheritedRoles,
+      onLogoutHandler,
+      personaLabelRenderer,
+      readMoreTeamRenderer,
       roles,
-      personas,
       showAllPersona,
       sortedPersonas,
-      inheritedRoles,
       t,
+      teamLabelRenderer,
+      teams,
     ]
   );
 
@@ -401,7 +285,8 @@ export const UserProfileIcon = () => {
     <Dropdown
       menu={{
         items,
-        defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        defaultOpenKeys:
+          navbarUtilClassBase.getUserProfileIconDefaultOpenKeys(),
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
       open={isDropdownOpen}
