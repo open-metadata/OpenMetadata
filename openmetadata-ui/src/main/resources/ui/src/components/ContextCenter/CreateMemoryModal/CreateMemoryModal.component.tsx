@@ -515,9 +515,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           showUserName
                           className="tw:text-gray-900"
                           profileWidth={16}
-                          userName={
-                            memoryToEdit?.owners?.[0]?.name || ''
-                          }
+                          userName={memoryToEdit?.owners?.[0]?.name || ''}
                         />
                         <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
                           &middot;

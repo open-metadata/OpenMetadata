@@ -337,17 +337,18 @@ const ContextCenterMemoriesPage: FC = () => {
     });
   }, [setSearchParams]);
 
-
-const handleShareMemory = useCallback(
-  (memory: ContextMemory) => {
-     if (!memory.name) {
-      return;
-    }
-    const url = `${window.location.origin}${window.location.pathname}?memory=${encodeURIComponent(memory.name)}`;
-    onCopyToClipBoard(url);
-  },
-  [onCopyToClipBoard]
-);
+  const handleShareMemory = useCallback(
+    (memory: ContextMemory) => {
+      if (!memory.name) {
+        return;
+      }
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?memory=${encodeURIComponent(memory.name)}`;
+      onCopyToClipBoard(url);
+    },
+    [onCopyToClipBoard]
+  );
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');

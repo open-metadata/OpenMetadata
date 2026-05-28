@@ -152,9 +152,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       onClick={() => onViewMemory?.(memory)}>
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture
-            name={memory.owners?.[0]?.name || ''}
-          />
+          <ProfilePicture name={memory.owners?.[0]?.name || ''} />
         </div>
       )}
       <div className="tw:flex tw:items-end tw:justify-between tw:w-full">
