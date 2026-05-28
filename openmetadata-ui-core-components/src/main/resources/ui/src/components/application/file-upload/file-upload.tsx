@@ -38,12 +38,12 @@ import { useId, useRef, useState } from 'react';
 
 type FileIconProps = ComponentProps<typeof FileIconBase>;
 
-const FileIcon = ({ type, ...props }: FileIconProps) => {
+const FileIcon = ({ type, variant: _variant, theme: _theme, ...svgProps }: FileIconProps) => {
   if (type === 'md' || type === 'markdown') {
-    return <MdFileIcon {...props} />;
+    return <MdFileIcon {...svgProps} />;
   }
 
-  return <FileIconBase type={type} {...props} />;
+  return <FileIconBase theme={_theme} type={type} variant={_variant} {...svgProps} />;
 };
 
 export { FileIcon };
