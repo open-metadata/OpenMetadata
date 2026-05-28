@@ -563,7 +563,8 @@ class ServiceUtilClassBase {
   public getExtraIngestionMenuItems(
     _serviceCategory: ServiceCategory,
     _serviceName?: string,
-    _navigate?: (path: string) => void
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
   ): MenuProps['items'] {
     return [];
   }
