@@ -111,7 +111,7 @@ export class StoredProcedureClass extends EntityClass {
     };
 
     this.serviceCategory = SERVICE_TYPE.Database;
-    this.type = 'Stored Procedure';
+    this.type = 'Store Procedure';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 

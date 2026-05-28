@@ -30,6 +30,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
@@ -2225,7 +2226,9 @@ export const checkExploreSearchFilter = async (
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
   if (entity?.type) {
-    const entityTypeId = entity.type.replaceAll(' ', '').toLocaleLowerCase();
+    const entityTypeId =
+      getEntityTypeSearchIndexMapping(entity.type) ??
+      entity.type.toLocaleLowerCase();
     const entitySearchResponse = page.waitForResponse(
       (req) =>
         req.url().includes('/api/v1/search/query') &&
