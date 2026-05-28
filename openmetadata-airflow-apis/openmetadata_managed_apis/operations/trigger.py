@@ -13,7 +13,6 @@ Module containing the logic to trigger a DAG
 """
 
 import inspect
-from typing import Optional  # noqa: UP035
 
 try:
     from airflow.api.common.trigger_dag import trigger_dag
@@ -33,7 +32,9 @@ except ImportError:
 # Returns (payload, status) so the route can call jsonify directly; Snyk Code's
 # XSS rule doesn't trace jsonify through the ApiResponse helper chain.
 def trigger(
-    dag_id: str, run_id: Optional[str], conf: Optional[dict] = None  # noqa: UP045
+    dag_id: str,
+    run_id: str | None,
+    conf: dict | None = None,
 ) -> tuple[dict, int]:
     trigger_params = {
         "dag_id": dag_id,
