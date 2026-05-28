@@ -27,11 +27,11 @@ import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg'
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   MemoriesViewProps,
   MemoryActionsWithOpenProps,
-  MemoryItem,
 } from './MemoriesView.interface';
 
 const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
@@ -105,10 +105,10 @@ interface MemoryRowProps {
   canDelete?: boolean;
   currentUserName?: string;
   isAdminUser?: boolean;
-  memory: MemoryItem;
-  onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
-  onViewMemory?: (memory: MemoryItem) => void;
+  memory: ContextMemory;
+  onDeleteMemory?: (memory: ContextMemory) => void;
+  onEditMemory?: (memory: ContextMemory) => void;
+  onViewMemory?: (memory: ContextMemory) => void;
 }
 
 const MemoryRow: FC<MemoryRowProps> = ({
@@ -156,11 +156,12 @@ const MemoryRow: FC<MemoryRowProps> = ({
             )}
           </div>
 
-          <Typography className="tw:truncate" weight="medium">
+          <Typography ellipsis weight="medium">
             {memory.title || memory.name}
           </Typography>
 
           <Typography
+            ellipsis
             className="tw:text-gray-600 tw:line-clamp-2"
             size="text-xs">
             {memory.summary ?? memory.answer}
