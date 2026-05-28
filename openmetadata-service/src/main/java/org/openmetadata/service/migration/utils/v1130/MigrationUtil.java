@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.utils.v1130;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.sql.Timestamp;
@@ -404,7 +403,6 @@ public class MigrationUtil {
   private static final int CERT_SOURCE = TagLabel.TagSource.CLASSIFICATION.ordinal();
   private static final int CERT_LABEL_TYPE = TagLabel.LabelType.AUTOMATED.ordinal();
   private static final int CERT_STATE = TagLabel.State.CONFIRMED.ordinal();
-  private static final ObjectMapper CERT_METADATA_MAPPER = new ObjectMapper();
 
   /**
    * Heals installs where certification is still inlined in entity JSON instead of being in
@@ -548,7 +546,7 @@ public class MigrationUtil {
   }
 
   private static String buildCertMetadataJson(Object expiryDateVal) {
-    ObjectNode node = CERT_METADATA_MAPPER.createObjectNode();
+    ObjectNode node = JsonUtils.getObjectNode();
     if (expiryDateVal != null) {
       if (expiryDateVal instanceof Long longVal) {
         node.put("expiryDate", longVal);
