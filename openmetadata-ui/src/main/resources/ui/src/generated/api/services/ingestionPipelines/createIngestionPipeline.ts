@@ -555,6 +555,11 @@ export interface Pipeline {
      */
     projectFilterPattern?: FilterPattern;
     /**
+     * Option to turn on/off extracting consumer group metadata for topics. When enabled, active
+     * consumer groups and their member details are populated on each topic.
+     */
+    extractConsumerGroups?: boolean;
+    /**
      * Option to turn on/off generating sample data during metadata extraction.
      */
     generateSampleData?: boolean;
@@ -2432,6 +2437,9 @@ export interface DBTPrefixConfig {
  * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -4912,6 +4920,16 @@ export interface ConfigObject {
      */
     topicFilterPattern?: FilterPattern;
     /**
+     * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+     * connection.
+     */
+    adminApiSSL?: DbtSSLConfigClass;
+    /**
+     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
+     * transform lineage. E.g., http://localhost:9644
+     */
+    redpandaAdminApiUrl?: string;
+    /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
     gcpConfig?: GcpConfigClass;
@@ -6772,6 +6790,9 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+ * connection.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * SSL certificate configuration for validating the server certificate when fetching dbt
@@ -7569,6 +7590,9 @@ export enum SpaceType {
  * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
  * connection.
  *
  * SSL Configuration for OpenMetadata Server

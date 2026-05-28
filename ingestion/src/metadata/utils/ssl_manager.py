@@ -68,6 +68,9 @@ from metadata.generated.schema.entity.services.connections.database.starrocksCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
     MatillionConnection,
 )
@@ -121,6 +124,23 @@ class SSLManager:
             except FileNotFoundError:
                 pass
         self.temp_files = []
+
+    def admin_api_http_kwargs(self) -> dict:
+        """Build requests.Session-compatible kwargs from admin-API SSL paths.
+
+        Returns a dict with ``verify`` set to the CA bundle path (when
+        configured) and ``client_cert`` as a ``(cert, key)`` tuple for mutual
+        TLS. Empty dict if no admin-API SSL material was registered.
+        """
+        ca_path = getattr(self, "ca_admin_api", None)
+        cert_path = getattr(self, "cert_admin_api", None)
+        key_path = getattr(self, "key_admin_api", None)
+        kwargs: dict = {}
+        if ca_path:
+            kwargs["verify"] = ca_path
+        if cert_path and key_path:
+            kwargs["client_cert"] = (cert_path, key_path)
+        return kwargs
 
     @singledispatchmethod
     def setup_ssl(self, connection):
@@ -226,8 +246,9 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(KafkaConnection)
-    def _(self, connection) -> KafkaConnection:
-        connection = cast(KafkaConnection, connection)  # noqa: TC006
+    @setup_ssl.register(RedpandaConnection)
+    def _(self, connection):
+        connection = cast(Union[KafkaConnection, RedpandaConnection], connection)  # noqa: TC006, UP007
         if connection.consumerConfigSSL:
             connection.consumerConfig = {
                 **connection.consumerConfig,
@@ -411,11 +432,13 @@ def _(connection):
 
 
 @check_ssl_and_init.register(KafkaConnection)
+@check_ssl_and_init.register(RedpandaConnection)
 def _(connection, *args, **kwargs):
 
-    service_connection: KafkaConnection = cast(KafkaConnection, connection)  # noqa: TC006
+    service_connection = cast(Union[KafkaConnection, RedpandaConnection], connection)  # noqa: TC006, UP007
     ssl_consumer_config: Optional[verifySSLConfig.SslConfig] = service_connection.consumerConfigSSL  # noqa: UP045
     ssl_schema_registry: Optional[verifySSLConfig.SslConfig] = service_connection.schemaRegistrySSL  # noqa: UP045
+    ssl_admin_api: Optional[verifySSLConfig.SslConfig] = getattr(service_connection, "adminApiSSL", None)  # noqa: UP045
 
     ssl_consumer_config_dict = {}
 
@@ -433,8 +456,19 @@ def _(connection, *args, **kwargs):
             "cert_schema_registry": ssl_schema_registry.root.sslCertificate,
             "key_schema_registry": ssl_schema_registry.root.sslKey,
         }
-    if ssl_consumer_config_dict or ssl_schema_registry_dict:
-        return SSLManager(**ssl_consumer_config_dict, **ssl_schema_registry_dict)
+    ssl_admin_api_dict = {}
+    if ssl_admin_api:
+        ssl_admin_api_dict = {
+            "ca_admin_api": ssl_admin_api.root.caCertificate,
+            "cert_admin_api": ssl_admin_api.root.sslCertificate,
+            "key_admin_api": ssl_admin_api.root.sslKey,
+        }
+    if ssl_consumer_config_dict or ssl_schema_registry_dict or ssl_admin_api_dict:
+        return SSLManager(
+            **ssl_consumer_config_dict,
+            **ssl_schema_registry_dict,
+            **ssl_admin_api_dict,
+        )
     return None
 
 

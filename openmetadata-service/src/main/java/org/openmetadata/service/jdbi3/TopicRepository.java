@@ -672,6 +672,11 @@ public class TopicRepository extends EntityRepository<Topic> {
           () -> recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig()));
       compareAndUpdate("cleanupPolicies", () -> updateCleanupPolicies(original, updated));
       compareAndUpdate(
+          "consumerGroups",
+          () ->
+              recordChange(
+                  "consumerGroups", original.getConsumerGroups(), updated.getConsumerGroups()));
+      compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(

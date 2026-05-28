@@ -17,11 +17,12 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Iterable, Optional  # noqa: UP035
+from collections import defaultdict
+from typing import Any, Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
-from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.admin import ConfigResource
+from confluent_kafka import ConsumerGroupTopicPartitions, KafkaError, KafkaException
+from confluent_kafka.admin import ConfigResource, OffsetSpec
 from confluent_kafka.error import (
     ConsumeError,
     KeyDeserializationError,
@@ -31,8 +32,13 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import (
+    ConsumerGroup,
+    ConsumerGroupMember,
+    ConsumerGroupPartitionOffset,
+    TopicSampleData,
+)
 from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
-from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -58,13 +64,17 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
+ADMIN_CLIENT_TIMEOUT_SECONDS = 10
+END_OFFSET_BATCH_SIZE = 500
+SAMPLE_DATA_MESSAGE_LOOKBACK = 50
 
-def on_partitions_assignment_to_consumer(consumer, partitions):
-    # get offset tuple from the first partition
+
+def on_partitions_assignment_to_consumer(consumer, partitions) -> None:
     for partition in partitions:
         last_offset = consumer.get_watermark_offsets(partition)
-        # get latest 50 messages, if there are no more than 50 messages we try to fetch from beginning of the queue
-        partition.offset = last_offset[1] - 50 if last_offset[1] > 50 else 0
+        partition.offset = (
+            last_offset[1] - SAMPLE_DATA_MESSAGE_LOOKBACK if last_offset[1] > SAMPLE_DATA_MESSAGE_LOOKBACK else 0
+        )
     consumer.assign(partitions)
 
 
@@ -87,6 +97,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
+        self.extract_consumer_groups = getattr(self.config.sourceConfig.config, "extractConsumerGroups", False)
+        self._topic_consumer_groups = None
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -107,21 +119,28 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
-            topic = CreateTopicRequest(
+            topic = CreateTopicRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(topic_details.topic_metadata.partitions.get(0).replicas),
             )
             topic_config_resource = self.admin_client.describe_configs(
-                [ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name)]
+                [
+                    ConfigResource(
+                        confluent_kafka.admin.RESOURCE_TOPIC,  # pyright: ignore[reportAttributeAccessIssue]
+                        topic_details.topic_name,
+                    )
+                ]
             )
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
             if topic_schema is not None:
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
-                    raise InvalidSchemaTypeException(f"Cannot find {schema_type} in parser providers registry.")  # noqa: TRY301
+                    raise InvalidSchemaTypeException(  # noqa: TRY301
+                        f"Cannot find {schema_type} in parser providers registry."
+                    )
                 schema_text = topic_schema.schema_str
 
                 # In protobuf schema, we need to merge all the schema text with references
@@ -133,11 +152,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
-                    schemaType=schema_type_map.get(topic_schema.schema_type.lower(), SchemaType.Other.value),
+                    schemaType=schema_type_map.get(  # pyright: ignore[reportArgumentType]
+                        topic_schema.schema_type.lower(), SchemaType.Other.value
+                    ),
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
                 topic.messageSchema = Topic(schemaText="", schemaType=SchemaType.Other, schemaFields=[])
+            if self.extract_consumer_groups:
+                topic.consumerGroups = self._get_consumer_groups_for_topic(topic_details.topic_name)
             yield Either(right=topic)
             self.register_record(topic_request=topic)
 
@@ -157,7 +180,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         try:
             for resource_value in concurrent.futures.as_completed(iter(topic_config_resource.values())):
-                config_response = resource_value.result(timeout=10)
+                config_response = resource_value.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
                 if "max.message.bytes" in config_response:
                     topic.maximumMessageSize = config_response.get("max.message.bytes", {}).value
 
@@ -308,6 +331,217 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             return ""
         return str(record.decode("utf-8"))
 
+    @staticmethod
+    def _map_consumer_group_state(state: Any) -> str:
+        """Map confluent_kafka ConsumerGroupState to schema enum values."""
+        if state is None:
+            return "Unknown"
+        state_name = state.name if hasattr(state, "name") else str(state)
+        state_mapping = {
+            "STABLE": "Stable",
+            "PREPARING_REBALANCE": "PreparingRebalance",
+            "COMPLETING_REBALANCE": "CompletingRebalance",
+            "EMPTY": "Empty",
+            "DEAD": "Dead",
+        }
+        return state_mapping.get(state_name.upper(), "Unknown")
+
+    def _build_topic_consumer_groups_map(self) -> dict:
+        """
+        Build a mapping of topic_name -> {group_id -> group_info} with
+        members, state, and committed offsets. Calls list_consumer_groups
+        and describe_consumer_groups once per run, then fetches committed
+        offsets per group (confluent_kafka's list_consumer_group_offsets
+        accepts only one group per request).
+        """
+        topic_cg_map = {}
+        try:
+            list_future = self.admin_client.list_consumer_groups()
+            list_result = list_future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+            for error in list_result.errors or []:
+                logger.warning(f"Failed to list some consumer groups: {error}")
+            group_ids = sorted(g.group_id for g in list_result.valid)
+            if not group_ids:
+                return topic_cg_map
+
+            describe_futures = self.admin_client.describe_consumer_groups(group_ids)
+            for group_id in sorted(describe_futures):
+                future = describe_futures[group_id]
+                try:
+                    group_desc = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+                except Exception as exc:
+                    logger.debug(f"Failed to describe consumer group {group_id}: {exc}")
+                    continue
+                self._index_group_by_topic(group_id, group_desc, topic_cg_map)
+
+            self._fetch_consumer_group_offsets(group_ids, topic_cg_map)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to extract consumer groups: {exc}")
+        return topic_cg_map
+
+    def _index_group_by_topic(self, group_id: str, group_desc: Any, topic_cg_map: dict) -> None:
+        """Index a described consumer group into topic_cg_map by topic."""
+        state = self._map_consumer_group_state(group_desc.state)
+        assignor = group_desc.partition_assignor
+        for member in group_desc.members:
+            if not member.assignment or not member.assignment.topic_partitions:
+                continue
+            partitions_by_topic = defaultdict(list)
+            for tp in member.assignment.topic_partitions:
+                partitions_by_topic[tp.topic].append(tp.partition)
+            for topic, partitions in partitions_by_topic.items():
+                cg_entry = topic_cg_map.setdefault(topic, {})
+                if group_id not in cg_entry:
+                    cg_entry[group_id] = {
+                        "state": state,
+                        "partition_assignor": assignor,
+                        "members": {},
+                        "offsets": {},
+                    }
+                cg_entry[group_id]["members"][member.member_id] = {
+                    "client_id": member.client_id,
+                    "host": member.host,
+                    "group_instance_id": getattr(member, "group_instance_id", None),
+                    "partitions": partitions,
+                }
+
+    def _fetch_consumer_group_offsets(self, group_ids: list, topic_cg_map: dict) -> None:
+        """Fetch committed offsets and compute lag for each consumer group."""
+        committed = self._collect_committed_offsets(group_ids, topic_cg_map)
+        end_offsets = self._batch_get_end_offsets(committed)
+        for group_id, partitions in committed.items():
+            for tp_key, current_offset in partitions.items():
+                topic, partition = tp_key
+                end_offset = end_offsets.get(tp_key, -1)
+                lag = max(0, end_offset - current_offset) if end_offset >= 0 else None
+                topic_cg_map[topic][group_id]["offsets"][partition] = {
+                    "current_offset": current_offset,
+                    "end_offset": end_offset if end_offset >= 0 else None,
+                    "lag": lag,
+                }
+
+    def _collect_committed_offsets(self, group_ids: list, topic_cg_map: dict) -> dict:
+        """Collect committed offsets per group.
+
+        Returns {group_id: {(topic, partition): offset}}.
+        """
+        committed = {}
+        for group_id in group_ids:
+            try:
+                offsets = self._fetch_group_committed_offsets(group_id, topic_cg_map)
+            except Exception as exc:
+                logger.debug(f"Failed to fetch offsets for consumer group {group_id}: {exc}")
+                continue
+            if offsets:
+                committed[group_id] = offsets
+        return committed
+
+    def _fetch_group_committed_offsets(self, group_id: str, topic_cg_map: dict) -> dict:
+        """Fetch committed offsets for a single group.
+
+        confluent_kafka's list_consumer_group_offsets accepts only one
+        ConsumerGroupTopicPartitions per call, and returns a dict of
+        futures keyed by group_id with exactly one entry.
+        """
+        request = [ConsumerGroupTopicPartitions(group_id)]
+        offset_futures = self.admin_client.list_consumer_group_offsets(request)
+        future = next(iter(offset_futures.values()))
+        result = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+        group_offsets = {}
+        for tp in result.topic_partitions:
+            if tp.offset < 0:
+                continue
+            if tp.topic not in topic_cg_map:
+                continue
+            if group_id not in topic_cg_map[tp.topic]:
+                continue
+            group_offsets[(tp.topic, tp.partition)] = tp.offset
+        return group_offsets
+
+    def _batch_get_end_offsets(self, committed: dict, batch_size: int = END_OFFSET_BATCH_SIZE) -> dict:
+        """Fetch end offsets for all unique topic-partitions in batched RPCs."""
+        unique_tps = set()
+        for partitions in committed.values():
+            unique_tps.update(partitions.keys())
+
+        if not unique_tps:
+            return {}
+
+        end_offsets = {}
+        tp_list = list(unique_tps)
+        for i in range(0, len(tp_list), batch_size):
+            chunk = tp_list[i : i + batch_size]
+            tp_spec = {
+                confluent_kafka.TopicPartition(topic, partition): OffsetSpec.latest() for topic, partition in chunk
+            }
+            try:
+                result = self.admin_client.list_offsets(tp_spec)
+                for tp, future in result.items():
+                    try:
+                        offset_info = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+                        end_offsets[(tp.topic, tp.partition)] = offset_info.offset
+                    except Exception:
+                        end_offsets[(tp.topic, tp.partition)] = -1
+            except Exception as exc:
+                logger.debug(f"Failed to batch-fetch end offsets: {exc}")
+                for topic, partition in chunk:
+                    end_offsets.setdefault((topic, partition), -1)
+        return end_offsets
+
+    def _get_consumer_groups_for_topic(self, topic_name: str) -> list | None:
+        """
+        Get consumer group details for a specific topic.
+        Lazily builds the mapping on first call.
+        """
+        if self._topic_consumer_groups is None:
+            self._topic_consumer_groups = self._build_topic_consumer_groups_map()
+
+        cg_entries = self._topic_consumer_groups.get(topic_name, {})
+        consumer_groups = []
+        for group_id, info in sorted(cg_entries.items()):
+            members = []
+            for member_id, member_info in sorted(info.get("members", {}).items()):
+                members.append(
+                    ConsumerGroupMember(
+                        memberId=member_id,
+                        clientId=member_info.get("client_id"),
+                        host=member_info.get("host"),
+                        groupInstanceId=member_info.get("group_instance_id"),
+                        assignedPartitions=member_info.get("partitions", []),
+                    )
+                )
+            partition_offsets = []
+            total_lag = 0
+            for partition, offset_info in sorted(info.get("offsets", {}).items()):
+                lag = offset_info.get("lag")
+                partition_offsets.append(
+                    ConsumerGroupPartitionOffset(
+                        partition=partition,
+                        currentOffset=offset_info.get("current_offset"),
+                        endOffset=offset_info.get("end_offset"),
+                        lag=lag,
+                    )
+                )
+                if lag is not None:
+                    total_lag += lag
+            consumer_groups.append(
+                ConsumerGroup(
+                    groupId=group_id,
+                    state=info.get("state", "Unknown"),
+                    partitionAssignor=info.get("partition_assignor"),
+                    memberCount=len(members),
+                    members=members,
+                    partitionOffsets=partition_offsets if partition_offsets else None,
+                    totalLag=total_lag if partition_offsets else None,
+                )
+            )
+        return consumer_groups if consumer_groups else None
+
     def close(self):
         if self.generate_sample_data and self.consumer_client:
             self.consumer_client.close()
+        ssl_manager = getattr(self, "ssl_manager", None)
+        if ssl_manager:
+            ssl_manager.cleanup_temp_files()

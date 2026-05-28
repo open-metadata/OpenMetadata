@@ -27,6 +27,9 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
+import org.openmetadata.schema.type.topic.ConsumerGroup;
+import org.openmetadata.schema.type.topic.ConsumerGroupMember;
+import org.openmetadata.schema.type.topic.ConsumerGroupPartitionOffset;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -603,6 +606,210 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     topic.setDisplayName("Updated Display Name");
     Topic updated = patchEntity(topic.getId().toString(), topic);
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void put_topicWithConsumerGroups_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<ConsumerGroupMember> members =
+        List.of(
+            new ConsumerGroupMember()
+                .withMemberId("member-1")
+                .withClientId("client-app-1")
+                .withHost("/10.0.0.1")
+                .withAssignedPartitions(List.of(0, 1)),
+            new ConsumerGroupMember()
+                .withMemberId("member-2")
+                .withClientId("client-app-2")
+                .withHost("/10.0.0.2")
+                .withAssignedPartitions(List.of(2, 3)));
+
+    List<ConsumerGroupPartitionOffset> offsets =
+        List.of(
+            new ConsumerGroupPartitionOffset()
+                .withPartition(0)
+                .withCurrentOffset(100)
+                .withEndOffset(150)
+                .withLag(50),
+            new ConsumerGroupPartitionOffset()
+                .withPartition(1)
+                .withCurrentOffset(200)
+                .withEndOffset(200)
+                .withLag(0));
+
+    List<ConsumerGroup> consumerGroups =
+        List.of(
+            new ConsumerGroup()
+                .withGroupId("analytics-consumer")
+                .withState(ConsumerGroup.State.STABLE)
+                .withPartitionAssignor("range")
+                .withMemberCount(2)
+                .withMembers(members)
+                .withPartitionOffsets(offsets)
+                .withTotalLag(50));
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_with_cg"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(4);
+    request.setConsumerGroups(consumerGroups);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+
+    // consumerGroups is stored in the JSON blob, returned by default
+    Topic fetched = getEntity(topic.getId().toString());
+    assertNotNull(fetched.getConsumerGroups(), "consumerGroups should be persisted on create");
+    assertEquals(1, fetched.getConsumerGroups().size());
+
+    ConsumerGroup cg = fetched.getConsumerGroups().get(0);
+    assertEquals("analytics-consumer", cg.getGroupId());
+    assertEquals(ConsumerGroup.State.STABLE, cg.getState());
+    assertEquals("range", cg.getPartitionAssignor());
+    assertEquals(2, cg.getMemberCount());
+    assertEquals(2, cg.getMembers().size());
+    assertEquals("member-1", cg.getMembers().get(0).getMemberId());
+    assertEquals("/10.0.0.1", cg.getMembers().get(0).getHost());
+    assertEquals(List.of(0, 1), cg.getMembers().get(0).getAssignedPartitions());
+    assertNotNull(cg.getPartitionOffsets());
+    assertEquals(2, cg.getPartitionOffsets().size());
+    assertEquals(100, cg.getPartitionOffsets().get(0).getCurrentOffset());
+    assertEquals(50, cg.getPartitionOffsets().get(0).getLag());
+    assertEquals(50, cg.getTotalLag());
+  }
+
+  @Test
+  void patch_topicConsumerGroups_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_patch_cg"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(2);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+
+    // Verify initially no consumer groups
+    Topic initial = getEntity(topic.getId().toString());
+    assertTrue(
+        initial.getConsumerGroups() == null || initial.getConsumerGroups().isEmpty(),
+        "New topic should have no consumer groups");
+
+    // Patch to add consumer groups
+    initial.setConsumerGroups(
+        List.of(
+            new ConsumerGroup()
+                .withGroupId("streaming-app")
+                .withState(ConsumerGroup.State.STABLE)
+                .withMemberCount(1)
+                .withMembers(
+                    List.of(
+                        new ConsumerGroupMember()
+                            .withMemberId("m1")
+                            .withClientId("streamer")
+                            .withHost("/10.0.0.5")
+                            .withAssignedPartitions(List.of(0, 1))))
+                .withTotalLag(25)));
+
+    Topic patched = patchEntity(initial.getId().toString(), initial);
+    assertNotNull(patched);
+
+    Topic fetched = getEntity(patched.getId().toString());
+    assertNotNull(fetched.getConsumerGroups(), "consumerGroups should be set after patch");
+    assertEquals(1, fetched.getConsumerGroups().size());
+    assertEquals("streaming-app", fetched.getConsumerGroups().get(0).getGroupId());
+    assertEquals(25, fetched.getConsumerGroups().get(0).getTotalLag());
+  }
+
+  @Test
+  void patch_topicConsumerGroups_update_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    // Create topic with initial consumer group
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_update_cg"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setConsumerGroups(
+        List.of(
+            new ConsumerGroup()
+                .withGroupId("group-v1")
+                .withState(ConsumerGroup.State.STABLE)
+                .withMemberCount(1)
+                .withTotalLag(100)));
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+
+    // Fetch and update consumer groups (simulating re-ingestion)
+    Topic current = getEntity(topic.getId().toString());
+    current.setConsumerGroups(
+        List.of(
+            new ConsumerGroup()
+                .withGroupId("group-v1")
+                .withState(ConsumerGroup.State.STABLE)
+                .withMemberCount(2)
+                .withTotalLag(50),
+            new ConsumerGroup()
+                .withGroupId("group-v2")
+                .withState(ConsumerGroup.State.EMPTY)
+                .withMemberCount(0)
+                .withTotalLag(0)));
+
+    Topic updated = patchEntity(current.getId().toString(), current);
+    assertNotNull(updated);
+
+    Topic fetched = getEntity(updated.getId().toString());
+    assertNotNull(fetched.getConsumerGroups());
+    assertEquals(2, fetched.getConsumerGroups().size());
+
+    ConsumerGroup g1 =
+        fetched.getConsumerGroups().stream()
+            .filter(g -> "group-v1".equals(g.getGroupId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(g1);
+    assertEquals(2, g1.getMemberCount());
+    assertEquals(50, g1.getTotalLag());
+
+    ConsumerGroup g2 =
+        fetched.getConsumerGroups().stream()
+            .filter(g -> "group-v2".equals(g.getGroupId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(g2);
+    assertEquals(ConsumerGroup.State.EMPTY, g2.getState());
+  }
+
+  @Test
+  void patch_topicConsumerGroups_versionHistory(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_cg_version"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+
+    Topic topic = createEntity(request);
+    Double v1 = topic.getVersion();
+
+    // Add consumer groups via patch
+    Topic current = getEntity(topic.getId().toString());
+    current.setConsumerGroups(
+        List.of(
+            new ConsumerGroup()
+                .withGroupId("versioned-group")
+                .withState(ConsumerGroup.State.STABLE)
+                .withMemberCount(1)));
+
+    Topic v2Topic = patchEntity(current.getId().toString(), current);
+    assertTrue(v2Topic.getVersion() > v1, "Version should bump after adding consumer groups");
+
+    EntityHistory history = SdkClients.adminClient().topics().getVersionList(topic.getId());
+    assertNotNull(history);
+    assertTrue(history.getVersions().size() >= 2);
   }
 
   @Test

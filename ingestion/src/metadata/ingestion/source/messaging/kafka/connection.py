@@ -146,9 +146,16 @@ def test_connection(
                 "credentials in case you want topic schema and sample data to be ingested"
             )
 
+    def get_consumer_groups():
+        future = client.admin_client.list_consumer_groups()
+        result = future.result(timeout=TIMEOUT_SECONDS)
+        for error in result.errors or []:
+            logger.warning(f"Consumer group listing partial failure: {error}")
+
     test_fn = {
         "GetTopics": custom_executor,
         "CheckSchemaRegistry": schema_registry_test,
+        "GetConsumerGroups": get_consumer_groups,
     }
 
     return test_connection_steps(

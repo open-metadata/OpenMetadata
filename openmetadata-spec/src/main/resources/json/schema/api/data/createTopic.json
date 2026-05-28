@@ -64,6 +64,14 @@
       "description": "Contains key/value pair of topic configuration.",
       "$ref": "../../entity/data/topic.json#/definitions/topicConfig"
     },
+    "consumerGroups": {
+      "description": "Consumer groups that are actively consuming from this topic.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/topic.json#/definitions/consumerGroup"
+      },
+      "default": null
+    },
     "owners": {
       "description": "Owners of this topic",
       "$ref": "../../type/entityReferenceList.json",

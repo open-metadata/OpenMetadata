@@ -16,6 +16,13 @@
             "errorMessage": "Failed to interact with schema registry API, please validate the schema registry credentials",
             "shortCircuit": false,
             "mandatory": false
+        },
+        {
+            "name": "GetConsumerGroups",
+            "description": "List consumer groups to validate permissions for consumer group extraction",
+            "errorMessage": "Failed to list consumer groups. Consumer group metadata extraction may not work.",
+            "shortCircuit": false,
+            "mandatory": false
         }
     ]
 }

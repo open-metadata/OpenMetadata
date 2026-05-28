@@ -15,6 +15,11 @@
  */
 export interface RedpandaConnection {
     /**
+     * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+     * connection.
+     */
+    adminApiSSL?: Config;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -27,6 +32,16 @@ export interface RedpandaConnection {
      * Confluent Redpanda Consumer Config
      */
     consumerConfig?: { [key: string]: any };
+    /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: Config;
+    /**
+     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
+     * transform lineage. E.g., http://localhost:9644
+     */
+    redpandaAdminApiUrl?: string;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -43,6 +58,11 @@ export interface RedpandaConnection {
      * Confluent Redpanda Schema Registry Config.
      */
     schemaRegistryConfig?: { [key: string]: any };
+    /**
+     * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+     * connection.
+     */
+    schemaRegistrySSL?: Config;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -65,6 +85,35 @@ export interface RedpandaConnection {
      * Service Type
      */
     type?: RedpandaType;
+}
+
+/**
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+ * connection.
+ *
+ * Client SSL configuration
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
 }
 
 /**

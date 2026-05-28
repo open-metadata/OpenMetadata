@@ -334,7 +334,7 @@ export interface OpenMetadataConnection {
     /**
      * SSL Configuration for OpenMetadata Server
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: AdminAPISSLClass;
     /**
      * If set to true, when creating a service during the ingestion we will store its Service
      * Connection. Otherwise, the ingestion will create a bare service without connection
@@ -549,9 +549,12 @@ export interface OpenMetadataJWTClientConfig {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+ * connection.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface ConsumerConfigSSLClass {
+export interface AdminAPISSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -2442,7 +2445,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: ConsumerConfigSSLClass;
+    consumerConfigSSL?: AdminAPISSLClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -2466,7 +2469,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: ConsumerConfigSSLClass;
+    schemaRegistrySSL?: AdminAPISSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -2486,6 +2489,16 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+     * connection.
+     */
+    adminApiSSL?: AdminAPISSLClass;
+    /**
+     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
+     * transform lineage. E.g., http://localhost:9644
+     */
+    redpandaAdminApiUrl?: string;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -3672,7 +3685,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: AdminAPISSLClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -3752,7 +3765,7 @@ export enum KafkaSecurityProtocol {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: AdminAPISSLClass;
     /**
      * Client Certificate
      */
@@ -4503,6 +4516,9 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+ * connection.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4660,7 +4676,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: AdminAPISSLClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -4870,7 +4886,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: AdminAPISSLClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -5215,6 +5231,9 @@ export enum SpaceType {
  * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
  * connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
