@@ -39,10 +39,12 @@ class WebSocketManagerTest {
   private WebSocketManager manager;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     WebSocketManager.WebSocketManagerBuilder.build(EngineIoServerOptions.newFromDefault());
     manager = WebSocketManager.getInstance();
     manager.getActivityFeedEndpoints().clear();
+    clearManagerMap("socketSessionIds");
+    clearManagerMap("socketSessionValidatedAt");
   }
 
   @Test
@@ -177,5 +179,11 @@ class WebSocketManagerTest {
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private void clearManagerMap(String fieldName) throws Exception {
+    java.lang.reflect.Field field = WebSocketManager.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    ((Map<?, ?>) field.get(manager)).clear();
   }
 }

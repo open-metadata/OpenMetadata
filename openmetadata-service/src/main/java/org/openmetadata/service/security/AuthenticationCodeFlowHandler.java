@@ -470,22 +470,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       org.openmetadata.schema.auth.RefreshToken refreshToken =
           TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
-      UserSession activeSession =
-          sessionService
-              .activatePendingSession(
-                  req,
-                  resp,
-                  pendingSession,
-                  user,
-                  refreshToken.getToken().toString(),
-                  credentials.getRefreshToken() != null
-                      ? credentials.getRefreshToken().getValue()
-                      : null)
-              .orElseGet(
-                  () -> {
-                    Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
-                    throw new TechnicalException("Failed to activate OIDC session");
-                  });
+      Optional<UserSession> maybeActiveSession =
+          sessionService.activatePendingSession(
+              req,
+              resp,
+              pendingSession,
+              user,
+              refreshToken.getToken().toString(),
+              credentials.getRefreshToken() != null
+                  ? credentials.getRefreshToken().getValue()
+                  : null);
+      if (maybeActiveSession.isEmpty()) {
+        Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
+        throw new TechnicalException("Failed to activate OIDC session");
+      }
+      UserSession activeSession = maybeActiveSession.get();
 
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
       sendRedirectWithToken(
@@ -838,9 +837,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       throws IOException {
     String targetRedirectUri =
         nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+    String validatedRedirectUri = requireRedirectUri(targetRedirectUri);
     response.sendRedirect(
         org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-            requireRedirectUri(targetRedirectUri), accessToken, user.getEmail(), user.getName()));
+            validatedRedirectUri, accessToken, user.getEmail(), user.getName()));
   }
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
@@ -1039,7 +1039,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
         redirectUri,
         trustedRedirects(
-            authenticationConfiguration.getCallbackUrl(), serverUrl + "/auth/callback"));
+            authenticationConfiguration.getCallbackUrl(),
+            serverUrl + "/auth/callback",
+            serverUrl + "/mcp/callback"));
   }
 
   private User getSessionUser(UserSession session) {

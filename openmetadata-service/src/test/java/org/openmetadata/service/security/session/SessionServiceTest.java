@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -381,6 +382,34 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_rewritesCookieWithRemainingSessionLifetime() {
+    when(authConfig.getSessionExpiry()).thenReturn(3600);
+    String sessionId = validSessionId('m');
+    long now = System.currentTimeMillis();
+    UserSession activeSession =
+        UserSession.builder()
+            .id(sessionId)
+            .status(SessionStatus.ACTIVE)
+            .version(1L)
+            .expiresAt(now + 300_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(activeSession));
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession leased = sessionService.acquireRefreshLease(request, response).orElseThrow();
+
+    assertEquals(activeSession.getExpiresAt(), leased.getIdleExpiresAt());
+    ArgumentCaptor<String> cookieCaptor = ArgumentCaptor.forClass(String.class);
+    verify(response).addHeader(eq("Set-Cookie"), cookieCaptor.capture());
+    int maxAge = cookieMaxAge(cookieCaptor.getValue());
+    assertTrue(maxAge > 240);
+    assertTrue(maxAge <= 300);
+  }
+
+  @Test
   void releaseRefreshLease_revertsRefreshingSessionToActive() {
     long now = System.currentTimeMillis();
     UserSession leased =
@@ -581,7 +610,7 @@ class SessionServiceTest {
     List<UserSession> activeSessions =
         List.of(oldestSession, nextOldestSession, thirdSession, newestSession);
     when(repository.findByUserIdAndStatus(
-            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), eq(3)))
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), eq(8)))
         .thenReturn(activeSessions, List.of(thirdSession, newestSession));
     when(repository.findById(oldestSession.getId())).thenReturn(Optional.of(oldestSession));
     when(repository.findById(nextOldestSession.getId())).thenReturn(Optional.of(nextOldestSession));
@@ -593,6 +622,63 @@ class SessionServiceTest {
     verify(repository).findById(nextOldestSession.getId());
     verify(repository, never()).findById(thirdSession.getId());
     verify(repository, never()).findById(newestSession.getId());
+  }
+
+  @Test
+  void createActiveSession_usesConfiguredSessionExpiryForAbsoluteExpiryAndCookie() {
+    when(authConfig.getSessionExpiry()).thenReturn(3600);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of());
+
+    UserSession session =
+        sessionService.createActiveSession(request, response, "basic", user, "refresh-token");
+
+    ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).create(sessionCaptor.capture());
+    UserSession storedSession = sessionCaptor.getValue();
+    assertEquals(
+        TimeUnit.SECONDS.toMillis(3600),
+        storedSession.getExpiresAt() - storedSession.getCreatedAt());
+    assertEquals(storedSession.getExpiresAt(), storedSession.getIdleExpiresAt());
+    assertEquals(storedSession.getExpiresAt(), session.getExpiresAt());
+    verify(response)
+        .addHeader(eq("Set-Cookie"), org.mockito.ArgumentMatchers.contains("Max-Age=3600"));
+  }
+
+  @Test
+  void createActiveSession_enforcesSessionLimitAcrossMultipleBatches() {
+    when(authConfig.getMaxActiveSessionsPerUser()).thenReturn(5);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    List<UserSession> firstBatch =
+        java.util.stream.IntStream.range(0, 11)
+            .mapToObj(i -> activeSession(validSessionId((char) ('a' + i)), user, i + 1L, i + 1L))
+            .toList();
+    List<UserSession> remaining = firstBatch.stream().skip(6).toList();
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), eq(20)))
+        .thenReturn(firstBatch, remaining);
+    firstBatch
+        .subList(0, 6)
+        .forEach(
+            session -> when(repository.findById(session.getId())).thenReturn(Optional.of(session)));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    sessionService.createActiveSession(request, response, "basic", user, "refresh-token");
+
+    for (UserSession session : firstBatch.subList(0, 6)) {
+      verify(repository).findById(session.getId());
+    }
+    verify(repository, never()).findById(firstBatch.get(6).getId());
   }
 
   @Test
@@ -647,5 +733,15 @@ class SessionServiceTest {
 
   private String validSessionId(char value) {
     return String.valueOf(value).repeat(43);
+  }
+
+  private int cookieMaxAge(String setCookieHeader) {
+    return java.util.Arrays.stream(setCookieHeader.split(";"))
+        .map(String::trim)
+        .filter(value -> value.startsWith("Max-Age="))
+        .map(value -> value.substring("Max-Age=".length()))
+        .mapToInt(Integer::parseInt)
+        .findFirst()
+        .orElseThrow();
   }
 }

@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -109,11 +110,21 @@ public class SocketAddressFilter implements Filter {
       }
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
+    } catch (AuthenticationException ex) {
+      LOG.warn("[SAFilter] Rejected WebSocket handshake", ex);
+      sendHandshakeError(
+          response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     } catch (Exception ex) {
-      LOG.error("[SAFilter] Failed in filtering request: {}", ex.getMessage());
-      response
-          .getWriter()
-          .println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
+      LOG.error("[SAFilter] Failed in filtering request", ex);
+      sendHandshakeError(
+          response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "WebSocket handshake failed");
+    }
+  }
+
+  private void sendHandshakeError(ServletResponse response, int status, String message)
+      throws IOException {
+    if (response instanceof HttpServletResponse httpResponse && !httpResponse.isCommitted()) {
+      httpResponse.sendError(status, message);
     }
   }
 

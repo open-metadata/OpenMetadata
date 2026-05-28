@@ -22,7 +22,6 @@ import org.openmetadata.service.fernet.Fernet;
 
 @Slf4j
 public class SessionService implements Managed {
-  private static final int DEFAULT_ABSOLUTE_TIMEOUT_SECONDS = 30 * 24 * 60 * 60;
   private static final int PENDING_SESSION_TIMEOUT_SECONDS = 10 * 60;
   private static final long REFRESH_LEASE_MILLIS = 15_000L;
   private static final long CLEANUP_INTERVAL_MINUTES = 15L;
@@ -30,6 +29,8 @@ public class SessionService implements Managed {
   private static final int CLEANUP_BATCH_SIZE = 1_000;
   private static final int DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER = 5;
   private static final int SESSION_LIMIT_RETRIES = 3;
+  private static final int SESSION_LIMIT_MAX_ITERATIONS = 20;
+  private static final int SESSION_LIMIT_LOOKUP_MULTIPLIER = 4;
 
   private volatile AuthenticationConfiguration authConfig;
   private final SessionStore repository;
@@ -124,6 +125,8 @@ public class SessionService implements Managed {
       User user,
       String omRefreshToken) {
     long now = System.currentTimeMillis();
+    int sessionExpirySeconds = getSessionExpirySeconds();
+    long expiresAt = now + TimeUnit.SECONDS.toMillis(sessionExpirySeconds);
     UserSession session =
         UserSession.builder()
             .id(SessionIdGenerator.newSessionId())
@@ -138,14 +141,14 @@ public class SessionService implements Managed {
             .createdAt(now)
             .updatedAt(now)
             .lastAccessedAt(now)
-            .expiresAt(now + TimeUnit.SECONDS.toMillis(DEFAULT_ABSOLUTE_TIMEOUT_SECONDS))
-            .idleExpiresAt(now + TimeUnit.SECONDS.toMillis(getIdleTimeoutSeconds()))
+            .expiresAt(expiresAt)
+            .idleExpiresAt(expiresAt)
             .build();
     repository.create(session);
     cache.put(session.getId(), session);
     applySessionLimit(user.getId().toString(), session.getId());
     SessionCookieUtil.writeSessionCookie(
-        request, response, authConfig, session.getId(), getIdleTimeoutSeconds());
+        request, response, authConfig, session.getId(), sessionExpirySeconds);
     return session;
   }
 
@@ -209,8 +212,8 @@ public class SessionService implements Managed {
     }
     cache.invalidate(pendingSession.getId());
 
-    // Issue a brand-new session ID for the authenticated session.
-    // This prevents session fixation: the pre-auth cookie value is discarded.
+    int sessionExpirySeconds = getSessionExpirySeconds();
+    long expiresAt = now + TimeUnit.SECONDS.toMillis(sessionExpirySeconds);
     String newSessionId = SessionIdGenerator.newSessionId();
     UserSession activated =
         UserSession.builder()
@@ -227,15 +230,15 @@ public class SessionService implements Managed {
             .lastAccessedAt(now)
             .createdAt(now)
             .updatedAt(now)
-            .expiresAt(now + TimeUnit.SECONDS.toMillis(DEFAULT_ABSOLUTE_TIMEOUT_SECONDS))
-            .idleExpiresAt(now + TimeUnit.SECONDS.toMillis(getIdleTimeoutSeconds()))
+            .expiresAt(expiresAt)
+            .idleExpiresAt(expiresAt)
             .version(0L)
             .build();
     repository.create(activated);
     cache.put(activated.getId(), activated);
     applySessionLimit(user.getId().toString(), activated.getId());
     SessionCookieUtil.writeSessionCookie(
-        request, response, authConfig, activated.getId(), getIdleTimeoutSeconds());
+        request, response, authConfig, activated.getId(), sessionExpirySeconds);
     return Optional.of(activated);
   }
 
@@ -323,11 +326,13 @@ public class SessionService implements Managed {
               .refreshLeaseUntil(now + REFRESH_LEASE_MILLIS)
               .lastAccessedAt(now)
               .updatedAt(now)
-              .idleExpiresAt(now + TimeUnit.SECONDS.toMillis(getIdleTimeoutSeconds()))
+              .idleExpiresAt(refreshedIdleExpiresAt(now, current))
               .version(expectedVersion + 1)
               .build();
       if (repository.updateIfVersion(leased, expectedVersion)) {
         cache.put(leased.getId(), leased);
+        SessionCookieUtil.writeSessionCookie(
+            request, response, authConfig, leased.getId(), sessionCookieMaxAgeSeconds(leased, now));
         return Optional.of(leased);
       }
 
@@ -356,7 +361,7 @@ public class SessionService implements Managed {
             .refreshLeaseUntil(null)
             .lastAccessedAt(now)
             .updatedAt(now)
-            .idleExpiresAt(now + TimeUnit.SECONDS.toMillis(getIdleTimeoutSeconds()))
+            .idleExpiresAt(refreshedIdleExpiresAt(now, leasedSession))
             .version(expectedVersion + 1)
             .build();
     if (!repository.updateIfVersion(refreshed, expectedVersion)) {
@@ -497,7 +502,7 @@ public class SessionService implements Managed {
   private void applySessionLimit(String userId, String currentSessionId) {
     int maxActiveSessionsPerUser = getMaxActiveSessionsPerUser();
     int sessionLookupLimit = sessionLookupLimit(maxActiveSessionsPerUser);
-    for (int attempt = 0; attempt < SESSION_LIMIT_RETRIES; attempt++) {
+    for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
       List<UserSession> sessions =
           new ArrayList<>(
               repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, sessionLookupLimit));
@@ -535,7 +540,7 @@ public class SessionService implements Managed {
   }
 
   private int sessionLookupLimit(int maxActiveSessionsPerUser) {
-    long lookupLimit = (long) maxActiveSessionsPerUser + 1L;
+    long lookupLimit = (long) maxActiveSessionsPerUser * SESSION_LIMIT_LOOKUP_MULTIPLIER;
     return lookupLimit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) lookupLimit;
   }
 
@@ -639,7 +644,7 @@ public class SessionService implements Managed {
     }
   }
 
-  private int getIdleTimeoutSeconds() {
+  private int getSessionExpirySeconds() {
     Integer configuredSessionExpiry =
         SessionTimeoutResolver.getConfiguredSessionExpirySeconds(authConfig);
     if (configuredSessionExpiry != null) {
@@ -655,6 +660,28 @@ public class SessionService implements Managed {
       }
     }
     return SessionTimeoutResolver.DEFAULT_SESSION_EXPIRY_SECONDS;
+  }
+
+  private long refreshedIdleExpiresAt(long now, UserSession session) {
+    long idleExpiresAt = now + TimeUnit.SECONDS.toMillis(getSessionExpirySeconds());
+    return session.getExpiresAt() == null
+        ? idleExpiresAt
+        : Math.min(idleExpiresAt, session.getExpiresAt());
+  }
+
+  private int sessionCookieMaxAgeSeconds(UserSession session, long now) {
+    long effectiveExpiresAt = Long.MAX_VALUE;
+    if (session.getExpiresAt() != null) {
+      effectiveExpiresAt = Math.min(effectiveExpiresAt, session.getExpiresAt());
+    }
+    if (session.getIdleExpiresAt() != null) {
+      effectiveExpiresAt = Math.min(effectiveExpiresAt, session.getIdleExpiresAt());
+    }
+    if (effectiveExpiresAt == Long.MAX_VALUE) {
+      return getSessionExpirySeconds();
+    }
+    long maxAgeSeconds = TimeUnit.MILLISECONDS.toSeconds(Math.max(0L, effectiveExpiresAt - now));
+    return maxAgeSeconds > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) maxAgeSeconds;
   }
 
   private long safeVersion(UserSession session) {

@@ -197,7 +197,7 @@ Refresh is guarded by an optimistic lease:
 5. The winning node decrypts the stored refresh token.
 6. The provider or OpenMetadata refresh token is rotated as needed.
 7. `completeRefresh` writes the refreshed session back to `ACTIVE`, clears the lease, updates idle
-   expiry, and increments `version`.
+   expiry without extending beyond the absolute session expiry, and increments `version`.
 8. The response contains a new OpenMetadata-signed JWT bound to the same session ID.
 
 Lease duration is currently `15s`.
@@ -233,11 +233,12 @@ on in-process status and expiry checks.
 Default timeouts:
 
 - pending session timeout: `10m`
-- absolute session timeout: `30d`
+- authenticated session expiry: `authenticationConfiguration.sessionExpiry`, default `7d`
 - refresh lease: `15s`
 - cleanup retention: `7d`
 
-Idle timeout comes from authentication configuration through `SessionTimeoutResolver`.
+The `OM_SESSION` cookie max age is rewritten during refresh lease acquisition and is capped at the
+remaining effective session lifetime.
 
 ## 7. Session-Bound JWTs
 

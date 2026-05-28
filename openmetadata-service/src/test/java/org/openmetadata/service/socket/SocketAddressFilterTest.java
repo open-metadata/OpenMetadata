@@ -134,6 +134,18 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  @Test
+  void secureSocketAuthenticationFailureUsesGenericUnauthorizedResponse() throws Exception {
+    mockRequest("userId=" + UUID.randomUUID(), null);
+
+    filter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(response, never()).getWriter();
+    verify(chain, never()).doFilter(any(), any());
+  }
+
   private void mockRequest(String queryString, String authorizationHeader) {
     when(request.getQueryString()).thenReturn(queryString);
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");

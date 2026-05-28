@@ -34,7 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * against a real Redis instance launched in a Testcontainer. Verifies that the Lua CAS, ZSET
  * secondary indexes, and TTL behavior all produce the same observable semantics as the JDBC store.
  */
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class RedisSessionStoreTest extends SessionStoreContractTest {
 
   @Container
@@ -99,5 +99,54 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
     assertTrue(redisStore.updateIfVersion(refreshing, 0L));
     assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
     assertEquals(1L, redisStore.userIndexSize(userId, SessionStatus.REFRESHING));
+  }
+
+  @Test
+  void createUsesEarliestSessionExpiryForRedisTtl() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+    UserSession session =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(5))
+            .build();
+
+    redisStore.create(session);
+
+    Long ttl = commands.ttl("om-test:session:" + session.getId());
+    assertTrue(ttl <= TimeUnit.MINUTES.toSeconds(5));
+    assertTrue(ttl > TimeUnit.MINUTES.toSeconds(4));
+  }
+
+  @Test
+  void findByUserIdAndStatusRemovesIdleExpiredSessionsStillInsideMinimumTtl() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+    UserSession session =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(now - TimeUnit.SECONDS.toMillis(1))
+            .build();
+
+    redisStore.create(session);
+
+    assertTrue(redisStore.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
+    assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
   }
 }

@@ -440,7 +440,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return redisUrl;
   }
 
-  private void configureCache(OpenMetadataApplicationConfig config) {
+  private static void configureCache(OpenMetadataApplicationConfig config) {
     if (!isRedisEnabled()) {
       return;
     }
@@ -1197,6 +1197,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     config.getJwtTokenConfiguration().setRsapublicKeyFilePath(testResourcesPath + "public_key.der");
 
     configurePipelineServiceClient(config);
+    configureCache(config);
     configureRdf(config);
     return config;
   }

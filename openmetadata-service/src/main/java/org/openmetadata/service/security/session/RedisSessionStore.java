@@ -29,10 +29,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Redis-backed {@link SessionStore}. Primary session JSON is stored at
- * {@code {keyspace}:session:{id}} with a TTL equal to the session's absolute expiry — once that
- * elapses Redis removes the row for us, so {@link #findSessionsToExpire} and
- * {@link #findSessionsToPrune} return empty lists (the SessionService cleanup loop becomes a
- * no-op when this store is active).
+ * {@code {keyspace}:session:{id}} with a TTL equal to the session's earliest absolute-or-idle
+ * expiry — once that elapses Redis removes the row for us, so {@link #findSessionsToExpire} and
+ * {@link #findSessionsToPrune} return empty lists (the SessionService cleanup loop becomes a no-op
+ * when this store is active).
  *
  * <p>Per-user session enumeration is supported by a secondary ZSET index per
  * {@code (userId, status)} scored by {@code lastAccessedAt}. Updates that change a session's
@@ -48,8 +48,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class RedisSessionStore implements SessionStore {
 
   // Sessions stored with at least 60s TTL so a session within its idle/refresh window that gets
-  // mutated doesn't immediately become unreadable. The actual absolute expiry is checked in-process
-  // by SessionService — this is just the Redis-side fallback.
+  // mutated doesn't immediately become unreadable. SessionService still enforces expiry on read.
   private static final long MIN_TTL_SECONDS = 60L;
   // findByUserIdAndStatus oversamples by this multiplier so lazy cleanup (ZREM-on-missing-key) has
   // headroom to skip stale index entries before truncating to the caller's limit. 3× is enough for
@@ -110,9 +109,13 @@ public class RedisSessionStore implements SessionStore {
 
   private long ttlSecondsFor(UserSession session) {
     long now = System.currentTimeMillis();
-    long expiresAt = session.getExpiresAt() == null ? now : session.getExpiresAt();
-    long idleExpiresAt = session.getIdleExpiresAt() == null ? now : session.getIdleExpiresAt();
-    long horizon = Math.max(expiresAt, idleExpiresAt);
+    long expiresAt = session.getExpiresAt() == null ? Long.MAX_VALUE : session.getExpiresAt();
+    long idleExpiresAt =
+        session.getIdleExpiresAt() == null ? Long.MAX_VALUE : session.getIdleExpiresAt();
+    long horizon = Math.min(expiresAt, idleExpiresAt);
+    if (horizon == Long.MAX_VALUE) {
+      horizon = now;
+    }
     long millis = horizon - now;
     long seconds = Math.max(Duration.ofMillis(millis).getSeconds(), MIN_TTL_SECONDS);
     return seconds;
@@ -149,6 +152,7 @@ public class RedisSessionStore implements SessionStore {
     }
     List<UserSession> sessions = new ArrayList<>(limit);
     List<String> stale = new ArrayList<>();
+    long now = System.currentTimeMillis();
     for (String id : ids) {
       if (sessions.size() >= limit) {
         break;
@@ -159,10 +163,10 @@ public class RedisSessionStore implements SessionStore {
         continue;
       }
       UserSession session = JsonUtils.readValue(json, UserSession.class);
-      if (session.getStatus() == status) {
+      if (session.getStatus() == status && !session.isExpired(now)) {
         sessions.add(session);
       } else {
-        // Status drifted — entry no longer belongs in this index.
+        // Status drifted or the session expired while Redis keeps the key for its minimum TTL.
         stale.add(id);
       }
     }
