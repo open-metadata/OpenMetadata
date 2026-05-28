@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -53,6 +54,7 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
+  private static final String DATA_INSIGHTS_LOG_PREFIX = "[Data Insights]";
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
@@ -256,37 +258,56 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
+    long runStartedAt = System.currentTimeMillis();
+    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+
     try {
       initializeJob();
+      LOG.info(
+          "{} Lifecycle run started: triggerType={}, batchSize={}, timestamp={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          runType,
+          batchSize,
+          timestamp);
 
-      LOG.info("Executing DataInsights Job with JobData: {}", jobData);
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
-      String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
-
-      if (!runType.equals(ON_DEMAND_JOB)) {
+      if (!ON_DEMAND_JOB.equals(runType)) {
         backfill = Optional.empty();
         recreateDataAssetsIndex = Optional.empty();
       }
 
-      if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
+      LOG.info(
+          "{} Effective run settings: backfill={}, recreateDataAssetsIndex={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          formatBackfill(),
+          Boolean.TRUE.equals(recreateDataAssetsIndex.orElse(false)));
+
+      if (Boolean.TRUE.equals(recreateDataAssetsIndex.orElse(false))) {
+        long recreatePhaseStartedAt = System.currentTimeMillis();
+        LOG.info("{} Phase started: recreateDataAssetsIndex", DATA_INSIGHTS_LOG_PREFIX);
         deleteDataAssetsDataStream();
         createOrUpdateDataAssetsDataStream();
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
+        LOG.info(
+            "{} Phase completed: recreateDataAssetsIndex, elapsedMs={}",
+            DATA_INSIGHTS_LOG_PREFIX,
+            System.currentTimeMillis() - recreatePhaseStartedAt);
       }
 
-      WorkflowStats webAnalyticsStats = processWebAnalytics();
+      WorkflowStats webAnalyticsStats =
+          runWorkflowPhase("webAnalytics", this::processWebAnalytics);
       updateJobStatsWithWorkflowStats(webAnalyticsStats);
 
-      WorkflowStats costAnalysisStats = processCostAnalysis();
+      WorkflowStats costAnalysisStats = runWorkflowPhase("costAnalysis", this::processCostAnalysis);
       updateJobStatsWithWorkflowStats(costAnalysisStats);
 
-      WorkflowStats dataAssetsStats = processDataAssets();
+      WorkflowStats dataAssetsStats = runWorkflowPhase("dataAssets", this::processDataAssets);
       updateJobStatsWithWorkflowStats(dataAssetsStats);
 
-      WorkflowStats dataQualityStats = processDataQuality();
+      WorkflowStats dataQualityStats =
+          runWorkflowPhase("dataQuality", this::processDataQuality);
       updateJobStatsWithWorkflowStats(dataQualityStats);
 
       if (webAnalyticsStats.hasFailed()
@@ -307,13 +328,18 @@ public class DataInsightsApp extends AbstractNativeApplication {
             new IndexingError()
                 .withErrorSource(IndexingError.ErrorSource.JOB)
                 .withMessage(errorMessage);
-        LOG.error(indexingError.getMessage());
+        LOG.error(
+            "{} Lifecycle run detected workflow failures:{}{}",
+            DATA_INSIGHTS_LOG_PREFIX,
+            System.lineSeparator(),
+            indexingError.getMessage());
         jobData.setStatus(EventPublisherJob.Status.FAILED);
         jobData.setFailure(indexingError);
       }
 
       updateJobStatus();
     } catch (Exception ex) {
+      LOG.error("{} Lifecycle run failed during execution", DATA_INSIGHTS_LOG_PREFIX, ex);
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(IndexingError.ErrorSource.JOB)
@@ -325,6 +351,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(indexingError);
     } finally {
+      logFinalRunSummary(runStartedAt);
       sendUpdates(jobExecutionContext);
     }
   }
@@ -349,6 +376,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
+      LOG.error("{} Phase failed: costAnalysis", DATA_INSIGHTS_LOG_PREFIX, ex);
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
     }
@@ -373,6 +401,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
+      LOG.error("{} Phase failed: dataAssets", DATA_INSIGHTS_LOG_PREFIX, ex);
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
     } finally {
@@ -397,6 +426,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
       try {
         workflow.process();
       } catch (SearchIndexException ex) {
+        LOG.error(
+            "{} Phase failed: dataQuality, entityType={}",
+            DATA_INSIGHTS_LOG_PREFIX,
+            entityType,
+            ex);
         jobData.setStatus(EventPublisherJob.Status.FAILED);
         jobData.setFailure(ex.getIndexingError());
       }
@@ -423,6 +457,97 @@ public class DataInsightsApp extends AbstractNativeApplication {
         jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       }
     }
+  }
+
+  private WorkflowStats runWorkflowPhase(
+      String phaseName, Supplier<WorkflowStats> workflowRunner) {
+    long phaseStartedAt = System.currentTimeMillis();
+    LOG.info("{} Phase started: {}", DATA_INSIGHTS_LOG_PREFIX, phaseName);
+    try {
+      WorkflowStats workflowStats = workflowRunner.get();
+      logWorkflowPhaseSummary(phaseName, workflowStats, phaseStartedAt);
+      return workflowStats;
+    } catch (RuntimeException ex) {
+      LOG.error("{} Phase failed: {}", DATA_INSIGHTS_LOG_PREFIX, phaseName, ex);
+      throw ex;
+    }
+  }
+
+  private void logWorkflowPhaseSummary(
+      String phaseName, WorkflowStats workflowStats, long phaseStartedAt) {
+    StepStats workflowSummary = workflowStats.getWorkflowStats();
+    int totalRecords = getStepStatValue(workflowSummary.getTotalRecords());
+    int successRecords = getStepStatValue(workflowSummary.getSuccessRecords());
+    int failedRecords = getStepStatValue(workflowSummary.getFailedRecords());
+    long elapsedMs = System.currentTimeMillis() - phaseStartedAt;
+
+    if (workflowStats.hasFailed()) {
+      LOG.warn(
+          "{} Phase completed with errors: phase={}, elapsedMs={}, total={}, success={}, failed={}, failureCount={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          phaseName,
+          elapsedMs,
+          totalRecords,
+          successRecords,
+          failedRecords,
+          workflowStats.getFailures().size());
+    } else {
+      LOG.info(
+          "{} Phase completed: phase={}, elapsedMs={}, total={}, success={}, failed={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          phaseName,
+          elapsedMs,
+          totalRecords,
+          successRecords,
+          failedRecords);
+    }
+  }
+
+  private void logFinalRunSummary(long runStartedAt) {
+    StepStats jobStats = jobData.getStats() != null ? jobData.getStats().getJobStats() : null;
+    int totalRecords = jobStats != null ? getStepStatValue(jobStats.getTotalRecords()) : 0;
+    int successRecords = jobStats != null ? getStepStatValue(jobStats.getSuccessRecords()) : 0;
+    int failedRecords = jobStats != null ? getStepStatValue(jobStats.getFailedRecords()) : 0;
+    long elapsedMs = System.currentTimeMillis() - runStartedAt;
+
+    if (jobData.getStatus() == EventPublisherJob.Status.FAILED) {
+      LOG.error(
+          "{} Lifecycle run finished with failure: status={}, elapsedMs={}, total={}, success={}, failed={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          jobData.getStatus(),
+          elapsedMs,
+          totalRecords,
+          successRecords,
+          failedRecords);
+    } else if (jobData.getStatus() == EventPublisherJob.Status.STOPPED) {
+      LOG.info(
+          "{} Lifecycle run stopped: status={}, elapsedMs={}, total={}, success={}, failed={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          jobData.getStatus(),
+          elapsedMs,
+          totalRecords,
+          successRecords,
+          failedRecords);
+    } else {
+      LOG.info(
+          "{} Lifecycle run completed: status={}, elapsedMs={}, total={}, success={}, failed={}",
+          DATA_INSIGHTS_LOG_PREFIX,
+          jobData.getStatus(),
+          elapsedMs,
+          totalRecords,
+          successRecords,
+          failedRecords);
+    }
+  }
+
+  private String formatBackfill() {
+    return backfill
+        .map(value -> String.format("%s..%s", value.startDate(), value.endDate()))
+        .orElse("disabled");
+  }
+
+  private int getStepStatValue(Integer value) {
+    return value == null ? 0 : value;
   }
 
   @Override
