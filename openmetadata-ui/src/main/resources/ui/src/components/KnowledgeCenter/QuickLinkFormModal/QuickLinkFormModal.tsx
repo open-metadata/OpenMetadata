@@ -340,7 +340,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const title = isUndefined(quickLink)
     ? t('label.add-entity', { entity: t('label.quick-link') })
     : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
-        quickLink.displayName ?? t('label.untitled')
+        getEntityName(quickLink) || t('label.untitled')
       }`;
 
   return (
