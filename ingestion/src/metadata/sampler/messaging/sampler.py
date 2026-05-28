@@ -15,7 +15,7 @@ Base sampler for messaging services (Kafka, Kinesis, PubSub, etc.)
 from abc import abstractmethod
 from typing import Any, List, Optional  # noqa: UP035
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.messagingService import MessagingConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -79,12 +79,14 @@ class MessagingSampler(SamplerInterface):
         """
 
     def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
-        column_names = [col.name for col in (columns or self.get_columns())]
+        column_objs = columns or self.get_columns()
+        column_names = [col.name for col in column_objs]
         if not column_names:
             return TableData(rows=[], columns=[])
         messages = self._fetch_messages(self.sample_limit)
         rows = [[msg.get(col) for col in column_names] for msg in messages]
-        return TableData(columns=column_names, rows=rows)
+        column_name_objs = [ColumnName(col_name) for col_name in column_names]
+        return TableData(columns=column_name_objs, rows=rows)
 
     def close(self):
         """Nothing to close for messaging samplers by default."""
