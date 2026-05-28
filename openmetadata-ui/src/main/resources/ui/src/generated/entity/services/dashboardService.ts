@@ -228,6 +228,8 @@ export interface DashboardConnection {
  *
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
+ *
+ * SAP S/4HANA Connection Config for Embedded Analytics
  */
 export interface Connection {
     /**
@@ -301,6 +303,8 @@ export interface Connection {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      */
     hostPort?: string;
     /**
@@ -409,8 +413,11 @@ export interface Connection {
     apiVersion?: string;
     /**
      * Types of methods used to authenticate to the tableau instance
+     *
+     * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+     * SAP S/4HANA Cloud.
      */
-    authType?: AuthenticationTypeForTableau;
+    authType?: AuthenticationType;
     /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
@@ -426,12 +433,18 @@ export interface Connection {
     siteName?: string;
     /**
      * SSL Configuration details.
+     *
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
      */
     sslConfig?: CertificatesSSLConfig;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -554,6 +567,11 @@ export interface Connection {
      * Type of token to use for authentication
      */
     tokenType?: TokenType;
+    /**
+     * SAP client number (Mandant), typically a 3-digit string (e.g. '100').
+     */
+    clientNumber?:              string;
+    supportsLineageExtraction?: boolean;
     [property: string]: any;
 }
 
@@ -563,14 +581,25 @@ export interface Connection {
  * Basic Auth Credentials
  *
  * Access Token Auth Credentials
+ *
+ * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+ * SAP S/4HANA Cloud.
+ *
+ * Username and password credentials for SAP S/4HANA.
+ *
+ * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  */
-export interface AuthenticationTypeForTableau {
+export interface AuthenticationType {
     /**
      * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
      */
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Username to authenticate with SAP S/4HANA.
      */
     username?: string;
     /**
@@ -581,6 +610,30 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
+    /**
+     * OAuth 2.0 client ID registered in SAP.
+     */
+    clientId?: string;
+    /**
+     * OAuth 2.0 client secret.
+     */
+    clientSecret?: string;
+    /**
+     * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
+     */
+    tokenEndpoint?: string;
+}
+
+/**
+ * Authentication type identifier.
+ */
+export enum AuthType {
+    Basic = "basic",
+    Oauth2 = "oauth2",
 }
 
 /**
@@ -683,6 +736,9 @@ export interface QlikCertificatesBy {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -800,6 +856,7 @@ export interface SupersetConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
+    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -848,6 +905,12 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1034,6 +1097,28 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * Authentication provider for the Superset service. For basic user/password authentication,
  * the default value `db` can be used. This parameter is used internally to connect to
  * Superset's REST API.
@@ -1142,6 +1227,9 @@ export enum Scheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
  */
 export interface SupersetConnectionSSLConfig {
     /**
@@ -1184,6 +1272,9 @@ export enum SupersetConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -1447,6 +1538,8 @@ export enum TokenType {
  *
  * Service type.
  *
+ * SAP S/4HANA service type
+ *
  * Type of dashboard service such as Looker or Superset...
  *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
@@ -1468,6 +1561,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
     Superset = "Superset",

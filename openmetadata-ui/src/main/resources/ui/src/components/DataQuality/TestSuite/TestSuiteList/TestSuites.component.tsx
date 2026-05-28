@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Col,
-  Form,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+  ButtonGroup,
+  ButtonGroupItem,
+  Table,
+} from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
@@ -57,19 +53,16 @@ import {
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
-import {
-  getDataQualityPagePath,
-  getEntityDetailsPath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
-import { ownerTableObject } from '../../../../utils/TableColumn.util';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
@@ -109,6 +102,9 @@ export const TestSuites = () => {
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
+  const [sortDescriptor, setSortDescriptor] = useState<
+    SortDescriptor | undefined
+  >();
   const {
     currentPage,
     pageSize,
@@ -129,88 +125,35 @@ export const TestSuites = () => {
         }
       : undefined;
   }, [selectedOwner]);
-  const columns = useMemo(() => {
-    const data: ColumnsType<TestSuite> = [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 600,
-        sorter: (a, b) => {
-          if (a.basic) {
-            // Sort for basic test suites
-            return (
-              a.basicEntityReference?.fullyQualifiedName?.localeCompare(
-                b.basicEntityReference?.fullyQualifiedName ?? ''
-              ) ?? 0
-            );
-          } else {
-            // Sort for logical test suites
-            return (
-              a.fullyQualifiedName?.localeCompare(b.fullyQualifiedName ?? '') ??
-              0
-            );
-          }
-        },
-        sortDirections: ['ascend', 'descend'],
-        render: (name, record) => {
-          return (
-            <Typography.Paragraph className="m-0">
-              {record.basic ? (
-                <Link
-                  data-testid={name}
-                  to={getEntityDetailsPath(
-                    EntityType.TABLE,
-                    record.basicEntityReference?.fullyQualifiedName ?? '',
-                    EntityTabs.PROFILER,
-                    ProfilerTabPath.DATA_QUALITY
-                  )}>
-                  {record.basicEntityReference?.fullyQualifiedName ??
-                    record.basicEntityReference?.name}
-                </Link>
-              ) : (
-                <Link
-                  data-testid={name}
-                  to={getTestSuitePath(
-                    record.fullyQualifiedName ?? record.name
-                  )}>
-                  {getEntityName(record)}
-                </Link>
-              )}
-            </Typography.Paragraph>
-          );
-        },
-      },
-      {
-        title: t('label.test-plural'),
-        dataIndex: 'summary',
-        key: 'tests',
-        width: 100,
-        render: (value: TestSummary) => value?.total ?? 0,
-      },
-      {
-        title: `${t('label.success')} %`,
-        dataIndex: 'summary',
-        width: 200,
-        key: 'success',
-        render: (value: TestSuite['summary']) => {
-          const percent =
-            value?.total && value?.success ? value.success / value.total : 0;
 
-          return (
-            <ProfilerProgressWidget
-              direction="right"
-              strokeColor={PROGRESS_BAR_COLOR}
-              value={percent}
-            />
-          );
-        },
-      },
-      ...ownerTableObject<TestSuite>(),
-    ];
+  const columnList = useMemo(
+    () => [
+      { id: 'name', name: t('label.name'), allowsSorting: true },
+      { id: 'tests', name: t('label.test-plural') },
+      { id: 'success', name: `${t('label.success')} %` },
+      { id: 'owners', name: t('label.owner-plural') },
+    ],
+    [t]
+  );
 
-    return data;
-  }, []);
+  const sortedData = useMemo(() => {
+    if (!sortDescriptor?.column || !sortDescriptor?.direction) {
+      return testSuites;
+    }
+
+    return [...testSuites].sort((a, b) => {
+      let cmp = 0;
+      if (sortDescriptor.column === 'name') {
+        const getFqn = (item: TestSuite) =>
+          item.basic
+            ? item.basicEntityReference?.fullyQualifiedName ?? ''
+            : item.fullyQualifiedName ?? '';
+        cmp = getFqn(a).localeCompare(getFqn(b));
+      }
+
+      return sortDescriptor.direction === 'descending' ? -cmp : cmp;
+    });
+  }, [testSuites, sortDescriptor]);
 
   const fetchTestSuites = async (
     currentPage = INITIAL_PAGING_VALUE,
@@ -268,30 +211,78 @@ export const TestSuites = () => {
     );
   };
 
-  const handleSubTabChange = (e: RadioChangeEvent) => {
-    navigate(getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs));
+  const handleSubTabChange = (keys: Set<string | number>) => {
+    const selected = [...keys][0] as DataQualitySubTabs;
+    if (selected) {
+      navigate(
+        observabilityRouterClassBase.getDataQualityPagePath(tab, selected)
+      );
+    }
   };
 
-  const customPaginationProps = useMemo(
-    () => ({
-      currentPage,
-      isLoading,
-      pageSize,
-      isNumberBased: true,
-      paging,
-      pagingHandler: handleTestSuitesPageChange,
-      onShowSizeChange: handlePageSizeChange,
-      showPagination,
-    }),
-    [
-      currentPage,
-      isLoading,
-      pageSize,
-      paging,
-      handleTestSuitesPageChange,
-      handlePageSizeChange,
-      showPagination,
-    ]
+  const renderNameCell = (record: TestSuite) => {
+    if (record.basic) {
+      return (
+        <Link
+          className="break-word"
+          data-testid={record.name}
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            record.basicEntityReference?.fullyQualifiedName ?? '',
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          )}>
+          {record.basicEntityReference?.fullyQualifiedName ??
+            record.basicEntityReference?.name}
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        className="break-word"
+        data-testid={record.name}
+        to={observabilityRouterClassBase.getTestSuitePath(
+          record.fullyQualifiedName ?? record.name
+        )}>
+        {getEntityName(record)}
+      </Link>
+    );
+  };
+
+  const renderSuccessCell = (summary: TestSuite['summary']) => {
+    const percent =
+      summary?.total && summary?.success ? summary.success / summary.total : 0;
+
+    return (
+      <ProfilerProgressWidget
+        direction="right"
+        strokeColor={PROGRESS_BAR_COLOR}
+        value={percent}
+      />
+    );
+  };
+
+  const renderRow = (record: TestSuite) => (
+    <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
+      <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
+        {renderNameCell(record)}
+      </Table.Cell>
+      <Table.Cell>
+        <Typography.Text>
+          {(record.summary as TestSummary)?.total ?? 0}
+        </Typography.Text>
+      </Table.Cell>
+      <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
+      <Table.Cell>
+        <OwnerLabel
+          isCompactView={false}
+          maxVisibleOwners={4}
+          owners={record.owners}
+          showLabel={false}
+        />
+      </Table.Cell>
+    </Table.Row>
   );
 
   const noDataPlaceholder = useMemo(() => {
@@ -375,18 +366,23 @@ export const TestSuites = () => {
           <div className="test-suite-list-header">
             <Row gutter={[16, 16]}>
               <Col data-testid="test-suite-sub-tab-container" span={16}>
-                <Radio.Group value={subTab} onChange={handleSubTabChange}>
-                  <Radio.Button
+                <ButtonGroup
+                  disallowEmptySelection
+                  selectedKeys={[subTab]}
+                  onSelectionChange={handleSubTabChange}>
+                  <ButtonGroupItem
+                    className="tw:font-normal tw:selected:bg-[var(--ant-primary-1)] tw:selected:text-[var(--ant-primary-7)] tw:selected:ring-[var(--ant-primary-7)]"
                     data-testid="table-suite-radio-btn"
-                    value={DataQualitySubTabs.TABLE_SUITES}>
+                    id={DataQualitySubTabs.TABLE_SUITES}>
                     {t('label.table-suite-plural')}
-                  </Radio.Button>
-                  <Radio.Button
+                  </ButtonGroupItem>
+                  <ButtonGroupItem
+                    className="tw:font-normal tw:selected:bg-[var(--ant-primary-1)] tw:selected:text-[var(--ant-primary-7)] tw:selected:ring-[var(--ant-primary-7)]"
                     data-testid="bundle-suite-radio-btn"
-                    value={DataQualitySubTabs.BUNDLE_SUITES}>
+                    id={DataQualitySubTabs.BUNDLE_SUITES}>
                     {t('label.bundle-suite-plural')}
-                  </Radio.Button>
-                </Radio.Group>
+                  </ButtonGroupItem>
+                </ButtonGroup>
               </Col>
               <Col span={8}>
                 <Searchbar
@@ -403,22 +399,40 @@ export const TestSuites = () => {
               </Col>
             </Row>
           </div>
+
           <Table
-            columns={columns}
-            containerClassName="custom-card-with-table"
-            customPaginationProps={customPaginationProps}
+            aria-label={t('label.test-suite-plural')}
             data-testid="test-suite-table"
-            dataSource={testSuites}
-            loading={isLoading}
-            locale={{
-              emptyText: noDataPlaceholder,
-            }}
-            pagination={false}
-            scroll={{
-              x: '100%',
-            }}
-            size="small"
-          />
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}>
+            <Table.Header columns={columnList}>
+              {(col) => (
+                <Table.Head
+                  allowsSorting={col.allowsSorting}
+                  id={col.id}
+                  key={col.id}
+                  label={col.name}
+                />
+              )}
+            </Table.Header>
+            <Table.Body
+              items={isLoading ? [] : sortedData}
+              renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
+              {(record) => renderRow(record as TestSuite)}
+            </Table.Body>
+          </Table>
+
+          {showPagination && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleTestSuitesPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
         </div>
       </Col>
     </Row>

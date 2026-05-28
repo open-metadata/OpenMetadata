@@ -35,10 +35,6 @@
       "description": "Message",
       "type": "string"
     },
-    "from": {
-      "description": "Name of the User (regular user or bot) posting the message",
-      "type": "string"
-    },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
@@ -69,6 +65,6 @@
       "default": null
     }
   },
-  "required": ["message", "from", "about"],
+  "required": ["message", "about"],
   "additionalProperties": false
 }

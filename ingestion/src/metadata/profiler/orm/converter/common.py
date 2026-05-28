@@ -12,7 +12,8 @@
 """
 Common Class For Profiler Converter.
 """
-from typing import Dict, Set
+
+from typing import Dict, Set  # noqa: UP035
 
 import sqlalchemy
 from sqlalchemy.sql.sqltypes import TypeEngine
@@ -27,7 +28,7 @@ class CommonMapTypes:
     Base Class for mapping types
     """
 
-    _TYPE_MAP = {
+    _TYPE_MAP = {  # noqa: RUF012
         DataType.NUMBER: sqlalchemy.NUMERIC,
         DataType.TINYINT: sqlalchemy.SMALLINT,
         DataType.SMALLINT: sqlalchemy.SMALLINT,
@@ -76,16 +77,14 @@ class CommonMapTypes:
         """returns an ORM type"""
 
         if col.arrayDataType:
-            return self._TYPE_MAP.get(col.dataType)(
-                item_type=self._TYPE_MAP.get(col.arrayDataType)
-            )
+            return self._TYPE_MAP.get(col.dataType)(item_type=self._TYPE_MAP.get(col.arrayDataType))
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):
         return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
 
     @staticmethod
-    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
+    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
         """returns an ORM type"""
         return {
             sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},

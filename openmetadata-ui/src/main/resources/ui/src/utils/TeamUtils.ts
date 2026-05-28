@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+import { isEmpty, isUndefined } from 'lodash';
+import { ExtraInfo } from 'Models';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../assets/svg/webhook.svg';
 import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import { TeamType } from '../generated/entity/teams/team';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { t } from './i18next/LocalUtil';
 
 export const getDeleteMessagePostFix = (
@@ -86,3 +89,29 @@ export const isDropRestricted = (
   (dropTeamType === TeamType.Department &&
     dragTeamType === TeamType.BusinessUnit) ||
   (dropTeamType === TeamType.Department && dragTeamType === TeamType.Division);
+
+export const getNonDeletedTeams = (teams: EntityReference[]) => {
+  return teams.filter((t) => !t.deleted);
+};
+
+export const getTeamsUser = (
+  data: ExtraInfo,
+  currentUser: User
+): Record<string, string | undefined> | undefined => {
+  if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
+    const teams = currentUser?.teams;
+
+    const dataFound = teams?.find((team) => {
+      return data.id === team.id;
+    });
+
+    if (dataFound) {
+      return {
+        ownerName: (currentUser?.displayName || currentUser?.name) as string,
+        id: currentUser?.id as string,
+      };
+    }
+  }
+
+  return;
+};

@@ -25,6 +25,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -144,12 +145,8 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (event.getEntityType().equals(THREAD)
-        && (config.getResources().get(0).equals("announcement")
-            || config.getResources().get(0).equals("task")
-            || config.getResources().get(0).equals("conversation"))) {
-      Thread thread = AlertsRuleEvaluator.getThread(event);
-      return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
+    if (event.getEntityType().equals(THREAD)) {
+      return shouldTriggerAlertForThread(event, config.getResources().get(0));
     }
 
     // Test Suite
@@ -163,6 +160,22 @@ public final class AlertUtil {
     }
 
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
+  }
+
+  private static final Set<String> THREAD_TYPE_RESOURCES =
+      Set.of("announcement", "task", "conversation");
+
+  private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    if (thread == null) {
+      return false;
+    }
+    if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
+      return resource.equalsIgnoreCase(thread.getType().value());
+    }
+    // Entity-type resource (e.g., "glossaryTerm"): match threads whose parent entity type matches
+    return thread.getEntityRef() != null
+        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(

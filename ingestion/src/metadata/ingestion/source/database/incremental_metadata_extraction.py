@@ -11,9 +11,10 @@
 """
 Incremental Metadata Extraction related classes
 """
+
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -36,10 +37,10 @@ class IncrementalConfig(BaseModel):
     """Holds the Configuration to extract the Metadata incrementally, if enabled."""
 
     enabled: bool
-    start_timestamp: Optional[int] = None
+    start_timestamp: Optional[int] = None  # noqa: UP045
 
     @property
-    def start_datetime_utc(self) -> Optional[datetime]:
+    def start_datetime_utc(self) -> Optional[datetime]:  # noqa: UP045
         if self.start_timestamp:
             return datetime.fromtimestamp(self.start_timestamp / 1000, timezone.utc)
         return None
@@ -47,8 +48,8 @@ class IncrementalConfig(BaseModel):
     @classmethod
     def create(
         cls,
-        incremental: Optional[bool],
-        pipeline_name: Optional[str],
+        incremental: Optional[bool],  # noqa: UP045
+        pipeline_name: Optional[str],  # noqa: UP045
         metadata: OpenMetadata,
     ) -> "IncrementalConfig":
         """Returns the IncrementalConfig based on the flow defined on the IncrementalConfigCreator."""
@@ -60,65 +61,53 @@ class IncrementalConfigCreator:
 
     def __init__(
         self,
-        incremental: Optional[Incremental],
-        pipeline_name: Optional[str],
+        incremental: Optional[Incremental],  # noqa: UP045
+        pipeline_name: Optional[str],  # noqa: UP045
         metadata: OpenMetadata,
     ):
         self.incremental = incremental
         self.pipeline_name = pipeline_name
         self.metadata = metadata
 
-    def _calculate_pipeline_status_parameters(self) -> Tuple[int, int]:
+    def _calculate_pipeline_status_parameters(self) -> Tuple[int, int]:  # noqa: UP006
         """Calculate the needed 'start' and 'end' parameters based on the 'lookbackDays'."""
         now = datetime.now()
 
         # We multiply the value by 1000 because our backend uses epoch_milliseconds instead of epoch_seconds.
-        start = int(
-            (now - timedelta(days=self.incremental.lookbackDays)).timestamp() * 1000
-        )
+        start = int((now - timedelta(days=self.incremental.lookbackDays)).timestamp() * 1000)
         end = int(now.timestamp() * 1000)
 
         return start, end
 
-    def _get_pipeline_statuses(self) -> Optional[List[PipelineStatus]]:
+    def _get_pipeline_statuses(self) -> Optional[List[PipelineStatus]]:  # noqa: UP006, UP045
         """Retrieve all the pipeline statuses between 'start' and 'end'."""
         if not self.pipeline_name:
             return None
 
         start, end = self._calculate_pipeline_status_parameters()
 
-        return self.metadata.get_pipeline_status_between_ts(
-            self.pipeline_name, start, end
-        )
+        return self.metadata.get_pipeline_status_between_ts(self.pipeline_name, start, end)
 
-    def _get_last_success_timestamp(
-        self, pipeline_statuses: List[PipelineStatus]
-    ) -> Optional[int]:
+    def _get_last_success_timestamp(self, pipeline_statuses: List[PipelineStatus]) -> Optional[int]:  # noqa: UP006, UP045
         """Filter the pipeline statuses to get the last time the pipeline was run succesfully."""
         return max(  # pylint: disable=R1728
             [
                 pipeline.startDate.root
                 for pipeline in pipeline_statuses
-                if pipeline.pipelineState == PipelineState.success
-                and pipeline.startDate
+                if pipeline.pipelineState == PipelineState.success and pipeline.startDate
             ]
         )
 
     def _add_safety_margin(self, last_success_timestamp: int) -> int:
         """Add some safety margin to the last successful run timestamp based on the 'safetyMarginDays'."""
-        return last_success_timestamp - (
-            self.incremental.safetyMarginDays * MILLISECONDS_IN_ONE_DAY
-        )
+        return last_success_timestamp - (self.incremental.safetyMarginDays * MILLISECONDS_IN_ONE_DAY)
 
     def create(self) -> IncrementalConfig:
         """Creates a new IncrementalConfig using the historical runs of the pipeline.
         If no previous successful runs are found within the time period it will disable the incremental ingestion.
         """
         try:
-            if (
-                not (self.incremental and self.pipeline_name)
-                or not self.incremental.enabled
-            ):
+            if not (self.incremental and self.pipeline_name) or not self.incremental.enabled:
                 return IncrementalConfig(enabled=False)
 
             pipeline_statuses = self._get_pipeline_statuses()

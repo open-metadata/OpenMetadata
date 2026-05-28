@@ -233,7 +233,7 @@ public class FilterEntityImpl implements JavaDelegate {
     boolean passesJsonFilter = true;
     if (filterLogic != null && !filterLogic.trim().isEmpty()) {
       passesJsonFilter =
-          !Boolean.TRUE.equals(
+          Boolean.TRUE.equals(
               RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
     }
 

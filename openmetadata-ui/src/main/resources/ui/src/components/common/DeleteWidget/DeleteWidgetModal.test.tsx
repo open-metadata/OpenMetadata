@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
@@ -36,11 +37,6 @@ const mockPropsUser: DeleteWidgetModalProps = {
 
 const mockOnLogoutHandler = jest.fn();
 
-jest.mock('lodash', () => ({
-  ...jest.requireActual('lodash'),
-  startCase: jest.fn(),
-}));
-
 jest.mock('../../../rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -63,6 +59,11 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({ children }: { children: ReactNode }) => children,
+  t: jest.fn().mockImplementation((key: string) => key),
 }));
 
 describe('Test DeleteWidgetV1 Component', () => {

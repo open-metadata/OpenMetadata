@@ -182,6 +182,10 @@ public final class Metrics {
     public MetricDeleter delete() {
       return new MetricDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Metric> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.metrics(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

@@ -27,9 +27,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.web.CspHeaderFactory;
 import org.openmetadata.service.resources.system.IndexResource;
 import org.openmetadata.service.security.CspNonceHandler;
 
@@ -38,7 +40,25 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   private static final Set<String> STATIC_FILE_EXTENSIONS =
       Set.of(
           "js", "css", "map", "json", "txt", "html", "ico", "png", "jpg", "jpeg", "svg", "gif",
-          "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf");
+          "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf", "md");
+
+  // Matches Vite's content-hash filename pattern, e.g. `index-Z3O_FBkA.js`,
+  // `MyComponent.component-a1b2c3d4.css`. The hash chunk is base64url and at
+  // least 8 chars — long enough to make accidental collisions vanishingly
+  // unlikely. Anything matching is safe to mark {@code immutable} because the
+  // filename changes whenever the content does.
+  private static final Pattern HASHED_ASSET =
+      Pattern.compile(".*-[A-Za-z0-9_-]{8,}\\.[a-z0-9]+(\\.br|\\.gz)?$");
+
+  private static final String IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+
+  // The HTML shell points at hash-named JS chunks, so it MUST be re-fetched
+  // (or revalidated) on every load — otherwise a fresh deploy lands but the
+  // browser keeps the stale shell that references chunks that no longer
+  // exist. {@code no-cache} forces revalidation on every load; together
+  // with the ETag emitted by {@link IndexResource} the request settles as
+  // a 304 with ~150 bytes when nothing changed.
+  private static final String REVALIDATE_CACHE = "no-cache, must-revalidate";
 
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
@@ -60,13 +80,13 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
     setSecurityHeader(webConfiguration, resp);
+    applyCacheControl(req, resp);
 
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
       final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
-      resp.setContentType("text/html");
-      resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+      writeIndexHtml(req, resp, cspNonce);
       return;
     }
 
@@ -112,12 +132,104 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       if (isSpaRoute(requestUri)) {
         final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
         resp.setStatus(200);
-        resp.setContentType("text/html");
-        resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+        writeIndexHtml(req, resp, cspNonce);
       } else {
         resp.sendError(404);
       }
     }
+  }
+
+  /**
+   * Write the SPA shell, honouring {@code If-None-Match} with a 304 when possible.
+   *
+   * <p>The earlier draft of this method gated on whether {@link CspNonceHandler} had populated
+   * a {@code cspNonce} request attribute — but that handler always populates the attribute,
+   * even on deployments that never emit a CSP header. The effect was that the ETag path was
+   * never taken in practice. Now we gate on whether CSP is <i>actually</i> enforced in a way
+   * that depends on the per-request body content (i.e. the configured policy contains the
+   * {@code __CSP_NONCE__} placeholder). For everything else — no CSP at all, or a CSP that
+   * uses {@code 'self'} / hash-based directives — the nonce attribute in the body is
+   * decorative and serving a cached body with a stale nonce against a fresh CSP header
+   * cannot cause script execution to fail.
+   *
+   * <p>The ETag itself describes the stable shell (post-basePath substitution, pre-nonce). It
+   * changes when the running JAR's bundled {@code index.html} or {@code basePath} change — i.e.
+   * on every deploy — and stays constant within a process otherwise.
+   */
+  private void writeIndexHtml(HttpServletRequest req, HttpServletResponse resp, String cspNonce)
+      throws IOException {
+    String etag = IndexResource.getIndexEtag(this.basePath);
+    if (!cspRequiresPerRequestBody()) {
+      resp.setHeader("ETag", etag);
+      String ifNoneMatch = req.getHeader("If-None-Match");
+      if (etag.equals(ifNoneMatch)) {
+        resp.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+        return;
+      }
+    }
+    resp.setContentType("text/html");
+    resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+  }
+
+  /**
+   * True when the configured CSP policy contains the {@code __CSP_NONCE__} placeholder, which
+   * {@link CspNonceHandler} replaces with a fresh per-request value. In that mode the response
+   * body's inline scripts must match the header's nonce on every load, so we can't safely 304
+   * (the cached body would carry a stale nonce). False on the default deployment (no CSP
+   * configured) and on deployments that use {@code 'self'} / hash-based policies.
+   */
+  private boolean cspRequiresPerRequestBody() {
+    if (webConfiguration == null) {
+      return false;
+    }
+    CspHeaderFactory csp = webConfiguration.getCspHeaderFactory();
+    if (csp == null) {
+      return false;
+    }
+    return csp.build().values().stream()
+        .anyMatch(v -> v != null && v.contains(CspNonceHandler.CSP_NONCE_PLACEHOLDER));
+  }
+
+  /**
+   * Pick a {@code Cache-Control} policy by path shape.
+   *
+   * <ul>
+   *   <li><b>Hashed assets under {@code /assets/}</b> — names are content-addressed by Vite
+   *       (e.g. {@code index-Z3O_FBkA.js}). The filename changes whenever the body changes, so
+   *       the browser can cache forever and not even ask the server again. Emit
+   *       {@code public, max-age=31536000, immutable}.
+   *   <li><b>SPA HTML / fallback routes</b> — the shell that references the hashed asset names.
+   *       Must NOT be long-cached, else a fresh deploy lands and clients keep a stale shell
+   *       pointing at chunks that no longer exist. Emit {@code no-cache, must-revalidate} so
+   *       the browser revalidates every load; {@link IndexResource} attaches an ETag so the
+   *       revalidate settles as a tiny 304 when nothing changed.
+   *   <li><b>Unhashed static files</b> (e.g. {@code favicon.ico}, {@code manifest.json}) — fall
+   *       through with no explicit Cache-Control so the browser's heuristic kicks in. Adding a
+   *       short {@code max-age} here is possible but low-ROI; revisit if logs show high
+   *       refetch rates.
+   * </ul>
+   */
+  private void applyCacheControl(HttpServletRequest req, HttpServletResponse resp) {
+    String requestUri = req.getRequestURI();
+    String pathToCheck = stripBasePath(requestUri);
+    if (pathToCheck.startsWith("/assets/") && HASHED_ASSET.matcher(pathToCheck).matches()) {
+      resp.setHeader("Cache-Control", IMMUTABLE_CACHE);
+      return;
+    }
+    if (requestUri.endsWith("/") || requestUri.endsWith(".html") || isSpaRoute(requestUri)) {
+      resp.setHeader("Cache-Control", REVALIDATE_CACHE);
+    }
+  }
+
+  private String stripBasePath(String requestUri) {
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      return requestUri.substring(normalizedBasePath.length());
+    }
+    return requestUri;
   }
 
   /**

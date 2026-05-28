@@ -50,6 +50,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
+        "SapSuccessFactors",
         "MongoDB",
         "Cassandra",
         "Couchbase",
@@ -70,7 +71,8 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
-        "Iomete"
+        "Iomete",
+        "QuestDB"
       ],
       "javaEnums": [
         {
@@ -179,6 +181,9 @@
           "name": "SapHana"
         },
         {
+          "name": "SapSuccessFactors"
+        },
+        {
           "name": "MongoDB"
         },
         {
@@ -240,6 +245,9 @@
         },
         {
           "name": "Iomete"
+        },
+        {
+          "name": "QuestDB"
         }
       ]
     },
@@ -324,6 +332,9 @@
             },
             {
               "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapSuccessFactorsConnection.json"
             },
             {
               "$ref": "./connections/database/singleStoreConnection.json"
@@ -414,6 +425,9 @@
             },
             {
               "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
             }
           ]
         }

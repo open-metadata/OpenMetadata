@@ -244,6 +244,7 @@ def analyze_connector(service_type: str, name: str) -> dict:
         "unbounded_caches": [],
         "list_accumulation_in_yields": [],
         "unclosed_resources": [],
+        "streaming_defeated": [],
     }
     if source_dir.is_dir():
         for py_file in source_dir.glob("*.py"):
@@ -305,6 +306,56 @@ def analyze_connector(service_type: str, name: str) -> dict:
                                 f"{py_name}: self.{cache_name}"
                             )
 
+            # Detect streaming primitives collapsed by list()/fetchall()/.all()
+            streaming_patterns = [
+                (
+                    re.compile(r"list\(.*?\.yield_per\("),
+                    "list() around .yield_per() — defeats streaming",
+                ),
+                (
+                    re.compile(r"list\(.*?\.partitions\("),
+                    "list() around .partitions() — defeats streaming",
+                ),
+                (
+                    re.compile(r"list\(.*?\.scalars\("),
+                    "list() around .scalars() — materializes full result",
+                ),
+                (
+                    re.compile(r"list\(.*?\.mappings\("),
+                    "list() around .mappings() — materializes full result",
+                ),
+                (
+                    re.compile(r"list\(\s*conn\.execute\("),
+                    "list(conn.execute(...)) — materializes full result",
+                ),
+                (
+                    re.compile(r"list\(\s*cursor\b"),
+                    "list(cursor) — materializes full cursor",
+                ),
+                (
+                    re.compile(r"\.fetchall\(\)"),
+                    ".fetchall() — materializes full result (use iteration or fetchmany)",
+                ),
+                (
+                    re.compile(r"\bresult\.all\(\)"),
+                    ".all() on SQLAlchemy Result — materializes full result",
+                ),
+                (
+                    re.compile(r"list\(.*?\.iter_pages\("),
+                    "list() around paginator .iter_pages() — materializes all pages",
+                ),
+            ]
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                for pattern, label in streaming_patterns:
+                    if pattern.search(stripped):
+                        report["memory"]["streaming_defeated"].append(
+                            f"{py_name}:{i + 1}: {label} — {stripped}"
+                        )
+                        break
+
             # Detect list accumulation in yield methods
             for i, line in enumerate(lines):
                 yield_match = re.match(r"\s+def (yield_\w+)\(", line)
@@ -350,6 +401,11 @@ def analyze_connector(service_type: str, name: str) -> dict:
         methods = ", ".join(report["memory"]["list_accumulation_in_yields"])
         report["issues"].append(
             f"List accumulation in yield methods (should use generators): {methods}"
+        )
+    if report["memory"]["streaming_defeated"]:
+        hits = "; ".join(report["memory"]["streaming_defeated"][:5])
+        report["issues"].append(
+            f"Streaming primitive collapsed into in-memory list (OOM risk on large results): {hits}"
         )
     if report["memory"]["missing_gc_collect"] and service_type == "storage":
         report["issues"].append(

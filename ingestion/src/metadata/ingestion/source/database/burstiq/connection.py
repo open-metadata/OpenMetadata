@@ -11,8 +11,9 @@
 """
 Source connection handler for BurstIQ
 """
+
 import hashlib
-from typing import Dict, Optional
+from typing import Dict, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -31,7 +32,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_CLIENT_CACHE: Dict[str, BurstIQClient] = {}
+_CLIENT_CACHE: Dict[str, BurstIQClient] = {}  # noqa: UP006
 
 
 def get_connection(connection: BurstIQConnection) -> BurstIQClient:
@@ -55,8 +56,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: BurstIQClient,
     service_connection: BurstIQConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection to BurstIQ. This can be executed either as part

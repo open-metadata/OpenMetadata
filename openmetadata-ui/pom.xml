@@ -152,6 +152,7 @@
               <!--arguments>build</arguments-->
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
+                <APP_VERSION>${project.version}</APP_VERSION>
               </environmentVariables>
             </configuration>
           </execution>

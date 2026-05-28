@@ -12,12 +12,14 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -27,8 +29,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
-  private static final String MCP_APP_NAME = "McpApplication";
-  private static final String DEFAULT_MCP_BOT_NAME = MCP_APP_NAME + "Bot";
+  private static final String DEFAULT_MCP_BOT_NAME = McpAppConstants.MCP_APP_NAME + "Bot";
 
   protected JwtFilter jwtFilter;
   protected Authorizer authorizer;
@@ -221,7 +222,7 @@ public class McpServer implements McpServerProvider {
     if (mcpBotName == null) {
       try {
         AbstractNativeApplication mcpApp =
-            ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
+            ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
         if (mcpApp != null && mcpApp.getApp().getBot() != null) {
           mcpBotName = mcpApp.getApp().getBot().getName();
         }
@@ -237,12 +238,26 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
+          CatalogSecurityContext securityContext =
+              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+          String userName = securityContext.getUserPrincipal().getName();
+          String clientName =
+              (String)
+                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
           try {
-            CatalogSecurityContext securityContext =
-                jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
             ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+            outcome =
+                toolContext.callToolWithMetadata(
+                    authorizer, limits, tool.name(), securityContext, req);
+            return outcome.result();
           } finally {
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
+                outcome != null ? outcome.errorCategory() : null;
+            McpUsageRecorder.record(
+                tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();
           }
         });
