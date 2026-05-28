@@ -50,7 +50,7 @@ import { t } from './i18next/LocalUtil';
 import { arraySorterByKey } from './RecentActivityUtils';
 
 export const getKnowledgePageName = (
-  knowledgePage: KnowledgePage | undefined,
+  knowledgePage: { name?: string; displayName?: string } | undefined,
   tFn?: (key: string) => string
 ): string => getEntityName(knowledgePage) || (tFn ?? t)('label.untitled');
 
