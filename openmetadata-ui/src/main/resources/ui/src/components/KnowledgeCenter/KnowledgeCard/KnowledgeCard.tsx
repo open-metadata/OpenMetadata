@@ -67,6 +67,7 @@ import {
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {
@@ -336,7 +337,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
                 data-testid="entity-header-display-name"
                 ellipsis={{ tooltip: true }}>
-                {knowledgePage?.displayName || t('label.untitled')}
+                {getEntityName(knowledgePage) || t('label.untitled')}
               </Typography.Text>
               {isQuickLink && !readonly && quickLinkActions}
             </div>
@@ -481,7 +482,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         onDelete={async () => {
           setIsDeleting(true);
           try {
-            await deleteKnowledgePage(knowledgePage.id, false);
+            await deleteKnowledgePage(knowledgePage.id, false, true);
             afterDeleteAction(false);
           } catch (error) {
             showErrorToast(error as AxiosError);

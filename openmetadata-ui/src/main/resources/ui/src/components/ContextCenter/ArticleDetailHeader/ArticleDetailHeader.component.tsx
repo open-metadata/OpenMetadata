@@ -85,7 +85,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onToggleRightPanel,
   onVoteChange,
   onFollowChange,
-  onToggleDelete,
   onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
@@ -110,7 +109,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       {
         name: '',
         icon: <Home02 size={14} />,
-        url: '/',
+        url: contextCenterClassBase.getHomePath(),
         activeTitle: true,
       },
       {
@@ -183,19 +182,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       );
       await fetchKnowledgePageHierarchy?.(true);
       setIsDeleteModalOpen(false);
-      onToggleDelete();
       navigate(contextCenterClassBase.getArticlesListPath());
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeleting(false);
     }
-  }, [
-    knowledgePage,
-    recentlyViewed,
-    fetchKnowledgePageHierarchy,
-    onToggleDelete,
-  ]);
+  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));

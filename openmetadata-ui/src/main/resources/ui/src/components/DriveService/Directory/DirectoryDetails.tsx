@@ -38,7 +38,6 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -49,6 +48,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -271,6 +275,22 @@ function DirectoryDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityTaskCountsInto(decodedDirectoryFQN, setFeedCount);
+    }
+  }, [decodedDirectoryFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DIRECTORY,
+        decodedDirectoryFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDirectoryFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -323,7 +343,8 @@ function DirectoryDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [directoryPermissions, decodedDirectoryFQN]);
 
   const tabs = useMemo(() => {

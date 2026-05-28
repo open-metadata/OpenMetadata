@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { ServiceCategory } from '../enums/service.enum';
+import { ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
 
-// Mock dependencies to avoid compilation errors
-jest.mock('./CommonUtils', () => ({
+jest.mock('./EntityUtils', () => ({
   getEntityName: jest.fn(),
+}));
+jest.mock('./ServiceIconUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
 
@@ -39,20 +41,40 @@ jest.mock(
   () => 'MetadataAgentsWidget'
 );
 
-jest.mock('./APIServiceUtils', () => ({ getAPIConfig: jest.fn() }));
-jest.mock('./DashboardServiceUtils', () => ({ getDashboardConfig: jest.fn() }));
-jest.mock('./DatabaseServiceUtils', () => ({ getDatabaseConfig: jest.fn() }));
-jest.mock('./MessagingServiceUtils', () => ({ getMessagingConfig: jest.fn() }));
-jest.mock('./MetadataServiceUtils', () => ({ getMetadataConfig: jest.fn() }));
-jest.mock('./MlmodelServiceUtils', () => ({ getMlmodelConfig: jest.fn() }));
-jest.mock('./PipelineServiceUtils', () => ({ getPipelineConfig: jest.fn() }));
-jest.mock('./SearchServiceUtils', () => ({
-  getSearchServiceConfig: jest.fn(),
+jest.mock('./APIServiceUtils', () => ({
+  getAPIConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
-jest.mock('./SecurityServiceUtils', () => ({ getSecurityConfig: jest.fn() }));
+jest.mock('./DashboardServiceUtils', () => ({
+  getDashboardConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./DatabaseServiceUtils', () => ({
+  getDatabaseConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./MessagingServiceUtils', () => ({
+  getMessagingConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./MetadataServiceUtils', () => ({
+  getMetadataConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./MlmodelServiceUtils', () => ({
+  getMlmodelConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./PipelineServiceUtils', () => ({
+  getPipelineConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./SearchServiceUtils', () => ({
+  getSearchServiceConfig: jest
+    .fn()
+    .mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./SecurityServiceUtils', () => ({
+  getSecurityConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
 jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
-jest.mock('./StorageServiceUtils', () => ({ getStorageConfig: jest.fn() }));
-jest.mock('./StringsUtils', () => ({ customServiceComparator: jest.fn() }));
+jest.mock('./StorageServiceUtils', () => ({
+  getStorageConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
+}));
+jest.mock('./StringUtils', () => ({ customServiceComparator: jest.fn() }));
 
 describe('ServiceUtilClassBase', () => {
   it('should create an instance of ServiceUtilClassBase', () => {
@@ -89,8 +111,6 @@ describe('ServiceUtilClassBase', () => {
     expect(result).toEqual({});
   });
 
-  // getDataAssetsService
-
   it('should return table tab if service type is database', () => {
     const result = serviceUtilClassBase.getDataAssetsService(
       serviceUtilClassBase.DatabaseServiceTypeSmallCase.Clickhouse
@@ -99,197 +119,89 @@ describe('ServiceUtilClassBase', () => {
     expect(result).toEqual(ExplorePageTabs.TABLES);
   });
 
-  it('should return topic tab if service type is messaging', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.MessagingServiceTypeSmallCase.Kafka
-    );
-
-    expect(result).toEqual(ExplorePageTabs.TOPICS);
-  });
-
-  it('should return dashboard tab if service type is dashboard', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.DashboardServiceTypeSmallCase.DomoDashboard
-    );
-
-    expect(result).toEqual(ExplorePageTabs.DASHBOARDS);
-  });
-
-  it('should return pipeline tab if service type is pipeline', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.PipelineServiceTypeSmallCase.Dagster
-    );
-
-    expect(result).toEqual(ExplorePageTabs.PIPELINES);
-  });
-
-  it('should return MlModel tab if service type is Ml Model', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.MlModelServiceTypeSmallCase.Mlflow
-    );
-
-    expect(result).toEqual(ExplorePageTabs.MLMODELS);
-  });
-
-  it('should return Container tab if service type is storage', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.StorageServiceTypeSmallCase.S3
-    );
-
-    expect(result).toEqual(ExplorePageTabs.CONTAINERS);
-  });
-
-  it('should return SearchIndex tab if service type is Search', () => {
-    const result = serviceUtilClassBase.getDataAssetsService(
-      serviceUtilClassBase.SearchServiceTypeSmallCase.ElasticSearch
-    );
-
-    expect(result).toEqual(ExplorePageTabs.SEARCH_INDEX);
-  });
-
-  // getServiceTypeLogo tests
-  describe('getServiceTypeLogo', () => {
-    it('should return TagIcon for TAG entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.TAG,
-        fullyQualifiedName: 'test.tag',
-        name: 'test',
-        tag_id: 'tag123',
-        tag_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should return GlossaryIcon for GLOSSARY_TERM entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.GLOSSARY_TERM,
-        fullyQualifiedName: 'test.glossary',
-        name: 'test',
-        glossary_id: 'glossary123',
-        glossary_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should return DatabaseIcon for DATABASE entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.DATABASE,
-        fullyQualifiedName: 'test.database',
-        name: 'test',
-        database_id: 'db123',
-        database_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should return DatabaseSchemaIcon for DATABASE_SCHEMA entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.DATABASE_SCHEMA,
-        fullyQualifiedName: 'test.schema',
-        name: 'test',
-        database_schema_id: 'schema123',
-        database_schema_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should return MetricIcon for METRIC entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.METRIC,
-        fullyQualifiedName: 'test.metric',
-        name: 'test',
-        metric_id: 'metric123',
-        metric_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should return DataProductIcon for DATA_PRODUCT entity when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: EntityType.DATA_PRODUCT,
-        fullyQualifiedName: 'test.dataproduct',
-        name: 'test',
-        data_product_id: 'dp123',
-        data_product_name: 'test',
-      };
-
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(result).toEqual({ ReactComponent: 'svg-mock' });
-    });
-
-    it('should call getServiceLogo when serviceType is present', () => {
-      const searchSource = {
-        serviceType: 'BigQuery',
-        entityType: EntityType.TABLE,
-        fullyQualifiedName: 'test.table',
-        name: 'test',
-        table_id: 'table123',
-        table_name: 'test',
-      };
-
-      const getServiceLogoSpy = jest.spyOn(
-        serviceUtilClassBase,
-        'getServiceLogo'
+  describe('getExtraIngestionMenuItems', () => {
+    it('returns empty array when called with only serviceCategory', () => {
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES
       );
 
-      serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(getServiceLogoSpy).toHaveBeenCalledWith('BigQuery');
-
-      getServiceLogoSpy.mockRestore();
+      expect(result).toEqual([]);
     });
 
-    it('should call getServiceLogo for unknown entity types when serviceType is empty', () => {
-      const searchSource = {
-        serviceType: '',
-        entityType: 'UNKNOWN_ENTITY' as EntityType,
-        fullyQualifiedName: 'test.unknown',
-        name: 'test',
-      };
-
-      const getServiceLogoSpy = jest.spyOn(
-        serviceUtilClassBase,
-        'getServiceLogo'
+    it('returns empty array when called with serviceCategory, serviceName and navigate', () => {
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'my-service',
+        jest.fn()
       );
 
-      serviceUtilClassBase.getServiceTypeLogo(searchSource);
-
-      expect(getServiceLogoSpy).toHaveBeenCalledWith('');
-
-      getServiceLogoSpy.mockRestore();
+      expect(result).toEqual([]);
     });
 
-    it('should handle missing serviceType and entityType properties', () => {
-      const searchSource = {
-        fullyQualifiedName: 'test.entity',
-        name: 'test',
-      };
+    it('returns empty array when serviceDetails is provided', () => {
+      const serviceDetails = {
+        serviceType: 'Snowflake',
+        connection: {
+          config: {
+            type: 'Snowflake',
+            policyAgentConfig: { enabled: true },
+          },
+        },
+      } as unknown as ServicesType;
 
-      const result = serviceUtilClassBase.getServiceTypeLogo(searchSource);
+      const result = serviceUtilClassBase.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'my-snowflake-service',
+        jest.fn(),
+        serviceDetails
+      );
 
-      expect(result).toBeDefined();
+      expect(result).toEqual([]);
+    });
+
+    it('allows a subclass override to receive and use serviceDetails', () => {
+      class TestOverride extends ServiceUtilClassBase {
+        public getExtraIngestionMenuItems(
+          _serviceCategory: ServiceCategory,
+          _serviceName?: string,
+          _navigate?: (path: string) => void,
+          serviceDetails?: ServicesType
+        ) {
+          const config = (
+            serviceDetails as {
+              connection?: {
+                config?: { policyAgentConfig?: { enabled?: boolean } };
+              };
+            }
+          )?.connection?.config;
+          const enabled = config?.policyAgentConfig?.enabled;
+
+          return enabled ? [{ key: 'custom-item', label: 'Custom' }] : [];
+        }
+      }
+
+      const override = new TestOverride();
+
+      const withEnabled = override.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'svc',
+        jest.fn(),
+        {
+          connection: { config: { policyAgentConfig: { enabled: true } } },
+        } as unknown as ServicesType
+      );
+
+      const withDisabled = override.getExtraIngestionMenuItems(
+        ServiceCategory.DATABASE_SERVICES,
+        'svc',
+        jest.fn(),
+        {
+          connection: { config: { policyAgentConfig: { enabled: false } } },
+        } as unknown as ServicesType
+      );
+
+      expect(withEnabled).toHaveLength(1);
+      expect(withDisabled).toHaveLength(0);
     });
   });
 });

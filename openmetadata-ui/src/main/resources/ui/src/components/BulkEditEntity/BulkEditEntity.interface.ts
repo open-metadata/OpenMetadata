@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Column, CopyEvent, PasteEvent } from 'react-data-grid';
+import type { Column, CopyEvent, PasteEvent } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
