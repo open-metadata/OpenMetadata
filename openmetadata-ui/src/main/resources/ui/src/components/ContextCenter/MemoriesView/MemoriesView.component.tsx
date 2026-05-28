@@ -137,8 +137,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
-      <div className="tw:flex tw:items-end tw:justify-between tw:w-full">
-        <div className="tw:flex tw:min-w-0 tw:basis-[75%] tw:flex-col tw:gap-1">
+      <div className="tw:flex tw:items-end tw:justify-between tw:w-full tw:min-w-0 tw:gap-2">
+        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:max-w-[75%] tw:flex-col tw:gap-1">
           <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
             {memory.updatedBy && (
               <Typography className="tw:text-gray-700" size="text-sm">

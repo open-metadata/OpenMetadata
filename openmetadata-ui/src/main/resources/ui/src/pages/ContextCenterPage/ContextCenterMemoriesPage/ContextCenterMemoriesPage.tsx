@@ -120,18 +120,24 @@ const ContextCenterMemoriesPage: FC = () => {
       string,
       { name: string; displayName: string; type: string }
     >();
-    memories.forEach((m) =>
-      m.relatedEntities?.forEach((ref) => {
-        const fqn = ref.fullyQualifiedName ?? ref.id;
-        if (fqn && !seen.has(fqn)) {
-          seen.set(fqn, {
-            name: ref.name ?? fqn,
-            displayName: ref.displayName ?? ref.name ?? fqn,
-            type: ref.type ?? '',
-          });
-        }
-      })
-    );
+
+    const addRef = (ref: { fullyQualifiedName?: string; id?: string; name?: string; displayName?: string; type?: string }) => {
+      const fqn = ref.fullyQualifiedName ?? ref.id;
+      if (fqn && !seen.has(fqn)) {
+        seen.set(fqn, {
+          name: ref.name ?? fqn,
+          displayName: ref.displayName ?? ref.name ?? fqn,
+          type: ref.type ?? '',
+        });
+      }
+    };
+
+    memories.forEach((m) => {
+      if (m.primaryEntity) {
+        addRef(m.primaryEntity);
+      }
+      m.relatedEntities?.forEach(addRef);
+    });
 
     return [
       {
@@ -181,11 +187,16 @@ const ContextCenterMemoriesPage: FC = () => {
     }
 
     if (selectedAsset) {
-      list = list.filter((m) =>
-        m.relatedEntities?.some(
+      list = list.filter((m) => {
+        const primaryFqn = m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
+        if (primaryFqn === selectedAsset) {
+          return true;
+        }
+
+        return m.relatedEntities?.some(
           (ref) => (ref.fullyQualifiedName ?? ref.id) === selectedAsset
-        )
-      );
+        );
+      });
     }
 
     if (selectedAuthor) {

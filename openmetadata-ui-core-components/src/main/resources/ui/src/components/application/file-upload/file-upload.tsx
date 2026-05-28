@@ -20,7 +20,8 @@ import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { ProgressBar } from '@/components/base/progress-indicators/progress-indicators';
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
-import { FileIcon as FileTypeIcon } from '@untitledui/file-icons';
+import { FileIcon as FileIconBase } from '@untitledui/file-icons';
+import { MdFileIcon } from './icons';
 import {
   CheckCircle,
   Trash01,
@@ -35,7 +36,18 @@ import type {
 } from 'react';
 import { useId, useRef, useState } from 'react';
 
-export { FileIcon } from '@untitledui/file-icons';
+type FileIconProps = ComponentProps<typeof FileIconBase>;
+
+const FileIcon = ({ type, ...props }: FileIconProps) => {
+  if (type === 'md' || type === 'markdown') {
+    return <MdFileIcon {...props} />;
+  }
+
+  return <FileIconBase type={type} {...props} />;
+};
+
+export { FileIcon };
+export type { FileIconProps };
 
 export const getReadableFileSize = (bytes: number): string => {
   if (bytes === 0) {
@@ -267,8 +279,8 @@ export interface FileListItemProps {
   failedLabel?: string;
   tryAgainLabel?: string;
   deleteLabel?: string;
-  type?: ComponentProps<typeof FileTypeIcon>['type'];
-  fileIconVariant?: ComponentProps<typeof FileTypeIcon>['variant'];
+  type?: FileIconProps['type'];
+  fileIconVariant?: FileIconProps['variant'];
   onDelete?: () => void;
   onRetry?: () => void;
 }
@@ -298,13 +310,13 @@ export const FileListItemProgressBar = ({
         failed && 'tw:ring-2 tw:ring-error',
         className
       )}>
-      <FileTypeIcon
+      <FileIcon
         className="tw:size-10 tw:shrink-0 dark:tw:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'default'}
       />
-      <FileTypeIcon
+      <FileIcon
         className="tw:size-10 tw:shrink-0 tw:not-dark:hidden"
         theme="dark"
         type={type ?? 'empty'}
@@ -424,13 +436,13 @@ export const FileListItemProgressFill = ({
           failed && 'tw:ring-2 tw:ring-error'
         )}
       />
-      <FileTypeIcon
+      <FileIcon
         className="tw:relative tw:size-10 tw:shrink-0 dark:tw:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'solid'}
       />
-      <FileTypeIcon
+      <FileIcon
         className="tw:relative tw:size-10 tw:shrink-0 tw:not-dark:hidden"
         theme="dark"
         type={type ?? 'empty'}
