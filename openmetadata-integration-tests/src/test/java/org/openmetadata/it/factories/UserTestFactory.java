@@ -38,18 +38,20 @@ public class UserTestFactory {
   }
 
   /**
-   * Get or create a user by email using fluent API.
+   * Get or create a user by email using fluent API. The User entity's FQN is its name (the
+   * email's local part), not the email itself — so we look up by the derived name. The create
+   * path tolerates a 409 conflict from a parallel caller by re-fetching, since multiple test
+   * classes may invoke this concurrently from their {@code @BeforeAll}.
    */
   public static User getOrCreateUser(String email) {
+    String name = email.split("@")[0];
     try {
-      return Users.findByName(email).fetch().get();
-    } catch (OpenMetadataException e) {
-      // User doesn't exist, create it
-      String name = email.split("@")[0];
+      return Users.findByName(name).fetch().get();
+    } catch (OpenMetadataException notFound) {
       try {
         return Users.create().name(name).withEmail(email).withDescription("Test user").execute();
-      } catch (OpenMetadataException ex) {
-        throw new RuntimeException("Failed to create user: " + email, ex);
+      } catch (OpenMetadataException conflict) {
+        return Users.findByName(name).fetch().get();
       }
     }
   }
