@@ -34,7 +34,14 @@ interface Props {
 
 export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
   (
-    { value, onChange, onKeyDown, autoFocus = false, placeholder, readOnly = false },
+    {
+      value,
+      onChange,
+      onKeyDown,
+      autoFocus = false,
+      placeholder,
+      readOnly = false,
+    },
     ref
   ) => {
     const [titleValue, setTitleValue] = useState<string>(value);

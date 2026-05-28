@@ -579,9 +579,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           <>
             <TitleComponent
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
-              placeholder={
-                getKnowledgePageName(knowledgePage)
-              }
+              placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
               ref={titleRef}
               value={displayName}

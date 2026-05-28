@@ -52,9 +52,7 @@ import { arraySorterByKey } from './RecentActivityUtils';
 export const getKnowledgePageName = (
   knowledgePage: KnowledgePage | undefined,
   tFn?: (key: string) => string
-): string =>
-  getEntityName(knowledgePage) ||
-  (tFn ?? t)('label.untitled');
+): string => getEntityName(knowledgePage) || (tFn ?? t)('label.untitled');
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']

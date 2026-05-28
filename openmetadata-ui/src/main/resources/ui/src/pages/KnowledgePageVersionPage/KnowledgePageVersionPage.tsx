@@ -31,8 +31,8 @@ import { Col, Row, Skeleton, Space } from 'antd';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES } from '../../constants/constants';
 import contextCenterClassBase from '../../utils/ContextCenterClassBase';
-import { getKnowledgePageName } from '../../utils/KnowledgePageUtils';
 import i18n from '../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

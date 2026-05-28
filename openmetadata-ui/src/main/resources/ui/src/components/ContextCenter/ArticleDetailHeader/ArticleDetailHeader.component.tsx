@@ -67,7 +67,10 @@ import {
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import { getKnowledgePageName, updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import {
+  getKnowledgePageName,
+  updateKnowledgeCenterRecentViewed,
+} from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
