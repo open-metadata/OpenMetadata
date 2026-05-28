@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { UseCodeMirrorOptions } from '../../../hooks/useCodeMirror';
 import SchemaEditor from './SchemaEditor';
 
@@ -271,7 +270,11 @@ describe('SchemaEditor component test', () => {
 
     it('top-level readOnly takes precedence over options.readOnly', () => {
       render(
-        <SchemaEditor {...mockProps} readOnly={false} options={{ readOnly: true }} />
+        <SchemaEditor
+          {...mockProps}
+          options={{ readOnly: true }}
+          readOnly={false}
+        />
       );
 
       expect(capturedOpts.readOnly).toBe(false);

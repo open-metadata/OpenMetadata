@@ -12,10 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
-import CodeEditor from './CodeEditor';
 import { UseCodeMirrorOptions } from '../../../hooks/useCodeMirror';
+import CodeEditor from './CodeEditor';
 
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
@@ -245,7 +244,7 @@ describe('CodeEditor Component', () => {
     });
 
     it('top-level readOnly takes precedence over options.readOnly', () => {
-      render(<CodeEditor readOnly={false} options={{ readOnly: true }} />);
+      render(<CodeEditor options={{ readOnly: true }} readOnly={false} />);
 
       expect(capturedOpts.readOnly).toBe(false);
     });

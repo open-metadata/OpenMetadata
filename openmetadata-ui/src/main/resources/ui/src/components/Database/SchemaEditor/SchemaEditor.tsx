@@ -69,7 +69,8 @@ const SchemaEditor = ({
     styleActiveLine: options?.styleActiveLine !== false,
     matchBrackets: options?.matchBrackets !== false,
     autoCloseBrackets: options?.autoCloseBrackets !== false,
-    tabSize: typeof options?.tabSize === 'number' ? options.tabSize : JSON_TAB_SIZE,
+    tabSize:
+      typeof options?.tabSize === 'number' ? options.tabSize : JSON_TAB_SIZE,
     onChange: handleChange,
     onFocus,
   });

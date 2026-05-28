@@ -195,7 +195,9 @@ export function useCodeMirror(opts: UseCodeMirrorOptions): UseCodeMirrorReturn {
               onFocusRef.current?.();
             },
           }),
-          dynamicCompartment.current.of(buildDynamicExtensions(optsRef.current)),
+          dynamicCompartment.current.of(
+            buildDynamicExtensions(optsRef.current)
+          ),
         ],
       }),
     });
