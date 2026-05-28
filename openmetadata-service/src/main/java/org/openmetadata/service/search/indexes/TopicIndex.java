@@ -44,6 +44,15 @@ public class TopicIndex implements DataAssetIndex {
     return topic.getServiceType();
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // TopicRepository.bulkPopulateEntityFieldTags only fires when fields.contains("messageSchema");
+    // without it nested schema-field tags are not hydrated and _source.tags loses the merge.
+    fields.add("messageSchema");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null

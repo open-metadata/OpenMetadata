@@ -43,11 +43,11 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { arraySorterByKey } from './CommonUtils';
 import contextCenterClassBase from './ContextCenterClassBase';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
+import { arraySorterByKey } from './RecentActivityUtils';
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']

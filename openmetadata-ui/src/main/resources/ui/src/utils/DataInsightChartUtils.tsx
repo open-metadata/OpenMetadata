@@ -32,7 +32,7 @@ import {
 import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
 import { axisTickFormatter } from './ChartUtils';
-import { entityChartColor } from './CommonUtils';
+import { entityChartColor } from './ColorUtils';
 import { getEntryFormattedValue, getRandomHexColor } from './DataInsightUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 

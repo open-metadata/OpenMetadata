@@ -43,7 +43,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
     .mockReturnValue('formatDateTimeWithTimezone'),
 }));
 
-jest.mock('../../../../utils/StringsUtils', () => ({
+jest.mock('../../../../utils/StringUtils', () => ({
   formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
