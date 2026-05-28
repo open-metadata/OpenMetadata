@@ -24,12 +24,15 @@ import {
   ModalOverlay,
   Select,
   TextArea,
+  Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
   Edit01,
   FileLock02,
+  InfoCircle,
   Lightbulb03,
   Lock01,
   Plus,
@@ -43,6 +46,11 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
+import {
+  getCustomMarkdownComponents,
+  preprocessMarkdownText,
+} from '../../../components/common/MarkdownEditor/markdownComponents';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
@@ -193,6 +201,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const [title, setTitle] = useState('');
   const [memory, setMemory] = useState('');
+  const [memoryTab, setMemoryTab] = useState<'edit' | 'preview'>('edit');
   const [memoryType, setMemoryType] = useState<MemoryType | ''>('');
   const [visibility, setVisibility] = useState<ShareVisibility>(
     ShareVisibility.Shared
@@ -429,6 +438,43 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const visibilityOption = VISIBILITY_OPTIONS.find((o) => o.id === visibility);
 
+  const renderMemoryContent = () => {
+    if (isViewOnly) {
+      return (
+        <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-50 tw:h-36 tw:overflow-y-auto tw:resize-y">
+          <ReactMarkdown components={getCustomMarkdownComponents()}>
+            {preprocessMarkdownText(memory)}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+    if (memoryTab === 'edit') {
+      return (
+        <TextArea
+          data-testid="memory-content-input"
+          placeholder={t('message.what-should-ask-collate-remember')}
+          rows={5}
+          value={memory}
+          onChange={(value) => setMemory(value)}
+        />
+      );
+    }
+
+    return (
+      <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-100 tw:text-gray-700 tw:h-36 tw:overflow-y-auto tw:resize-y">
+        {memory.trim() ? (
+          <ReactMarkdown components={getCustomMarkdownComponents()}>
+            {preprocessMarkdownText(memory)}
+          </ReactMarkdown>
+        ) : (
+          <Typography className="tw:text-gray-400" size="text-sm">
+            {t('message.nothing-to-preview')}
+          </Typography>
+        )}
+      </div>
+    );
+  };
+
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -438,7 +484,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
           <Dialog.Content className="tw:p-0!">
             <div
-              className="tw:flex tw:flex-col tw:max-h-[80vh]"
+              className="tw:flex tw:flex-col tw:max-h-[92vh]"
               ref={modalContainerRef}>
               <ConfigProvider
                 getPopupContainer={() =>
@@ -539,33 +585,45 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Section 2: Memory */}
                   <div className="tw:flex tw:flex-col tw:gap-1">
                     <div className="tw:flex tw:items-center tw:justify-between">
-                      <Typography
-                        className="tw:text-gray-700"
-                        size="text-sm"
-                        weight="medium">
-                        {t('label.memory')}
-                        {!isViewOnly && (
-                          <span className="tw:text-error-primary tw:ml-0.5">
-                            *
-                          </span>
-                        )}
-                      </Typography>
-                      {!isViewOnly && (
-                        <Typography className="tw:text-gray-400" size="text-xs">
-                          {t('message.what-should-ask-collate-remember')}
+                      <div className="tw:flex tw:items-center tw:gap-1">
+                        <Typography
+                          className="tw:text-gray-700"
+                          size="text-sm"
+                          weight="medium">
+                          {t('label.memory')}
+                          {!isViewOnly && (
+                            <span className="tw:text-error-primary tw:ml-0.5">
+                              *
+                            </span>
+                          )}
                         </Typography>
+                        <Tooltip
+                          title={t('message.what-should-ask-collate-remember')}>
+                          <TooltipTrigger className="tw:leading-0">
+                            <InfoCircle
+                              className="tw:text-gray-400 tw:cursor-pointer"
+                              size={14}
+                              strokeWidth={2}
+                            />
+                          </TooltipTrigger>
+                        </Tooltip>
+                      </div>
+                      {!isViewOnly && (
+                        <Button
+                          color="secondary"
+                          size="sm"
+                          onClick={() =>
+                            setMemoryTab((prev) =>
+                              prev === 'edit' ? 'preview' : 'edit'
+                            )
+                          }>
+                          {memoryTab === 'edit'
+                            ? t('label.preview')
+                            : t('label.edit')}
+                        </Button>
                       )}
                     </div>
-                    <TextArea
-                      data-testid="memory-content-input"
-                      isDisabled={isViewOnly}
-                      placeholder={t(
-                        'message.what-should-ask-collate-remember'
-                      )}
-                      rows={5}
-                      value={memory}
-                      onChange={(value) => setMemory(value)}
-                    />
+                    {renderMemoryContent()}
                   </div>
 
                   {/* Section 3: Type */}
