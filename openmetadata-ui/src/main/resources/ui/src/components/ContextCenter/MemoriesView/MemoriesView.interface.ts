@@ -29,6 +29,7 @@ export interface MemoriesViewProps {
   isAdminUser?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
+  onShareMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
 }
 
@@ -36,6 +37,7 @@ export interface MemoryActionsProps {
   canDelete?: boolean;
   memory: ContextMemory;
   onDeleteMemory?: (memory: ContextMemory) => void;
+  onShareMemory?: (memory: ContextMemory) => void;
 }
 
 export interface MemoryActionsWithOpenProps extends MemoryActionsProps {
