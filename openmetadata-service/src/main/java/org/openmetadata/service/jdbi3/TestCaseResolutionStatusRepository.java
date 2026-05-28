@@ -43,6 +43,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -61,9 +62,27 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
+  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
+  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
+  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+  }
+
+  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource}
+  // and feeds the raw ES hit straight into strict deserialization, so push the same scrub
+  // into the {@code _source.exclude} of the query itself.
+  @Override
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
+    String excludeFields = searchListFilter.getQueryParam("excludeFields");
+    if (nullOrEmpty(excludeFields)) {
+      searchListFilter.addQueryParam("excludeFields", "testSuites");
+    } else if (!excludeFields.contains("testSuites")) {
+      searchListFilter.addQueryParam("excludeFields", excludeFields + ",testSuites");
+    }
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
