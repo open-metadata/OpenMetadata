@@ -30,6 +30,10 @@ import {
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
 
+type AnnouncementsWidgetV2Props = WidgetCommonProps & {
+  type?: EntityType[];
+};
+
 const DISPLAY_COUNT = 4;
 
 const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
@@ -62,7 +66,10 @@ const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
   },
 ];
 
-const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
+const AnnouncementsWidgetV2 = ({
+  isEditView,
+  type,
+}: AnnouncementsWidgetV2Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>(
@@ -79,9 +86,9 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
     try {
       const res = await getActiveAnnouncements();
       const filtered = (res.data ?? []).filter((announcement) => {
-        const type = getEntityType(announcement.entityLink ?? '');
+        const entityType = getEntityType(announcement.entityLink ?? '');
 
-        return type === EntityType.DOMAIN || type === EntityType.DATA_PRODUCT;
+        return type ? type.includes(entityType as EntityType) : true;
       });
       setAnnouncements(filtered);
     } catch {
@@ -89,7 +96,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
     } finally {
       setLoading(false);
     }
-  }, [isEditView]);
+  }, [isEditView, type]);
 
   useEffect(() => {
     fetchAnnouncements();
