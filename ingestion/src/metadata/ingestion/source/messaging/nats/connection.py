@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.services.connections.messaging.natsConnect
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
+    ValidateSslClientConfig,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -40,24 +43,23 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 _JS_STREAM_NAMES = "$JS.API.STREAM.NAMES"
-_tls_temp_files: list[str] = []
 
 
-def _write_temp_cert(secret_value: str) -> str:
+def _write_temp_cert(secret_value: str, temp_files: list[str]) -> str:
     fd, path = tempfile.mkstemp(suffix=".pem")
     try:
         os.write(fd, secret_value.encode())
     finally:
         os.close(fd)
-    _tls_temp_files.append(path)
+    temp_files.append(path)
     return path
 
 
-def _cleanup_temp_certs() -> None:
-    for path in _tls_temp_files:
+def _cleanup_temp_certs(temp_files: list[str]) -> None:
+    for path in temp_files:
         with contextlib.suppress(OSError):
             Path(path).unlink()
-    _tls_temp_files.clear()
+    temp_files.clear()
 
 
 @dataclass
@@ -65,6 +67,7 @@ class NatsClient:
     nc: Any
     is_jetstream_enabled: bool
     _loop: asyncio.AbstractEventLoop = field(repr=False)
+    _temp_cert_files: list[str] = field(default_factory=list)
 
     def request(self, subject: str, payload: bytes = b"{}", timeout: float = 5.0) -> dict:
         async def _req() -> dict:
@@ -85,21 +88,21 @@ class NatsClient:
         finally:
             if not self._loop.is_closed():
                 self._loop.close()
-            _cleanup_temp_certs()
+            _cleanup_temp_certs(self._temp_cert_files)
 
 
-def _build_tls_context(ssl_cfg) -> ssl.SSLContext:
+def _build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) -> ssl.SSLContext:
     ctx = ssl.create_default_context()
     if ssl_cfg.caCertificate:
         ctx.load_verify_locations(cadata=ssl_cfg.caCertificate.get_secret_value())
     if ssl_cfg.sslCertificate and ssl_cfg.sslKey:
-        cert_path = _write_temp_cert(ssl_cfg.sslCertificate.get_secret_value())
-        key_path = _write_temp_cert(ssl_cfg.sslKey.get_secret_value())
+        cert_path = _write_temp_cert(ssl_cfg.sslCertificate.get_secret_value(), temp_files)
+        key_path = _write_temp_cert(ssl_cfg.sslKey.get_secret_value(), temp_files)
         ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
     return ctx
 
 
-def _build_connect_opts(connection: NatsConnection) -> dict:
+def _build_connect_opts(connection: NatsConnection, temp_cert_files: list[str]) -> dict:
     servers = [s.strip() for s in connection.natsServers.split(",")]
     opts: dict = {"servers": servers}
 
@@ -116,14 +119,15 @@ def _build_connect_opts(connection: NatsConnection) -> dict:
         opts["nkeys_seed_str"] = connection.nkeySeed.get_secret_value()
 
     if connection.tlsConfig and connection.tlsConfig.root:
-        opts["tls"] = _build_tls_context(connection.tlsConfig.root)
+        opts["tls"] = _build_tls_context(connection.tlsConfig.root, temp_cert_files)
 
     return opts
 
 
 def get_connection(connection: NatsConnection) -> NatsClient:
     loop = asyncio.new_event_loop()
-    opts = _build_connect_opts(connection)
+    temp_cert_files: list[str] = []
+    opts = _build_connect_opts(connection, temp_cert_files)
 
     async def _connect() -> Any:
         return await nats.connect(**opts)
@@ -133,6 +137,7 @@ def get_connection(connection: NatsConnection) -> NatsClient:
         nc=nc,
         is_jetstream_enabled=bool(connection.jetStreamEnabled),
         _loop=loop,
+        _temp_cert_files=temp_cert_files,
     )
 
 
