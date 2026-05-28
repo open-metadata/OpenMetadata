@@ -209,8 +209,7 @@ public class DataRetention extends AbstractNativeApplication {
         config.getReverseIngestionWorkflowRetentionPeriod();
 
     int resolvedReverseIngestionWorkflowRetentionPeriod =
-        resolveReverseIngestionWorkflowRetentionDays(
-            reverseIngestionWorkflowRetentionPeriod);
+        resolveReverseIngestionWorkflowRetentionDays(reverseIngestionWorkflowRetentionPeriod);
     LOG.info(
         "Starting cleanup for reverse ingestion workflows with retention period: {} days.",
         resolvedReverseIngestionWorkflowRetentionPeriod);
@@ -465,7 +464,9 @@ public class DataRetention extends AbstractNativeApplication {
 
     executePerEntityBatchWithStatsTracking(
         "reverse_ingestion_workflows",
-        () -> workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE),
+        () ->
+            workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(
+                cutoffMillis, BATCH_SIZE),
         workflowId -> workflowRepository.delete(DEFAULT_SYSTEM_USER, workflowId, true, true));
 
     LOG.info("Reverse ingestion workflows cleanup complete.");

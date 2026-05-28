@@ -66,8 +66,7 @@ class DataRetentionAppTest {
 
     int retentionDays = 30;
     long nowBefore = System.currentTimeMillis();
-    long expectedLowerBound =
-        nowBefore - ((long) retentionDays * 24 * 60 * 60 * 1000) - 5000;
+    long expectedLowerBound = nowBefore - ((long) retentionDays * 24 * 60 * 60 * 1000) - 5000;
 
     long actualCutoffMillis = (long) cutoffMethod.invoke(dataRetention, retentionDays);
     long nowAfter = System.currentTimeMillis();
@@ -93,8 +92,7 @@ class DataRetentionAppTest {
 
     verify(workflowDAO)
         .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE);
-    verify(workflowRepository)
-        .delete(eq("admin"), eq(workflowId), eq(true), eq(true));
+    verify(workflowRepository).delete(eq("admin"), eq(workflowId), eq(true), eq(true));
   }
 
   @Test
@@ -136,7 +134,8 @@ class DataRetentionAppTest {
   }
 
   private long invokeCutoffMillis(int retentionDays) throws Exception {
-    Method cutoffMethod = DataRetention.class.getDeclaredMethod("getRetentionCutoffMillis", int.class);
+    Method cutoffMethod =
+        DataRetention.class.getDeclaredMethod("getRetentionCutoffMillis", int.class);
     cutoffMethod.setAccessible(true);
     return (long) cutoffMethod.invoke(dataRetention, retentionDays);
   }
@@ -160,6 +159,4 @@ class DataRetentionAppTest {
     assertNotNull(stepStatsObj);
     return (StepStats) stepStatsObj;
   }
-
 }
-
