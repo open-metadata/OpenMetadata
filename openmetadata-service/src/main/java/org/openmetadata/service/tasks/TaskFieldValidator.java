@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 /**
  * Validation helpers for {@link Task} fields. Centralizes assignee/reviewer type checks and
@@ -35,6 +36,12 @@ import org.openmetadata.service.Entity;
  * on persistence orchestration.
  */
 public final class TaskFieldValidator {
+
+  private static final String POLICY_AGENT_CONFIG_KEY = "policyAgentConfig";
+  private static final String POLICY_AGENT_ENABLED = "enabled";
+  private static final String SUPPORTS_FULL_ACCESS = "supportsFullAccess";
+  private static final String SUPPORTS_COLUMN_ACCESS = "supportsColumnAccess";
+  private static final String SUPPORTS_MASKED_ACCESS = "supportsMaskedAccess";
 
   private TaskFieldValidator() {}
 
@@ -155,7 +162,7 @@ public final class TaskFieldValidator {
   }
 
   private static boolean isAgentEnabled(Map<String, Object> policyAgent) {
-    return policyAgent != null && flagIsTrue(policyAgent, "enabled");
+    return policyAgent != null && flagIsTrue(policyAgent, POLICY_AGENT_ENABLED);
   }
 
   private static boolean flagIsTrue(Map<String, Object> policyAgent, String flag) {
@@ -166,9 +173,9 @@ public final class TaskFieldValidator {
   private static String capabilityFlagFor(DataAccessType accessType) {
     String result = null;
     switch (accessType) {
-      case FullAccess -> result = "supportsFullAccess";
-      case ColumnLevel -> result = "supportsColumnAccess";
-      case Masked -> result = "supportsMaskedAccess";
+      case FullAccess -> result = SUPPORTS_FULL_ACCESS;
+      case ColumnLevel -> result = SUPPORTS_COLUMN_ACCESS;
+      case Masked -> result = SUPPORTS_MASKED_ACCESS;
     }
     return result;
   }
@@ -187,16 +194,37 @@ public final class TaskFieldValidator {
     Map<String, Object> result = null;
     EntityReference serviceRef = resolveDatabaseServiceRef(about);
     if (serviceRef != null) {
-      DatabaseService service = Entity.getEntity(serviceRef, "", Include.NON_DELETED);
-      if (service != null && service.getConnection() != null) {
-        Object config = service.getConnection().getConfig();
-        if (config != null) {
-          Map<String, Object> configMap = JsonUtils.getMap(config);
-          Object policyConfig = configMap.get("policyAgentConfig");
-          if (policyConfig != null) {
-            result = JsonUtils.getMap(policyConfig);
-          }
+      DatabaseService service = loadDatabaseService(serviceRef);
+      result = extractPolicyAgentMap(service);
+    }
+    return result;
+  }
+
+  private static DatabaseService loadDatabaseService(EntityReference serviceRef) {
+    DatabaseService result = null;
+    try {
+      result = Entity.getEntity(serviceRef, "", Include.NON_DELETED);
+    } catch (EntityNotFoundException ignored) {
+      result = null;
+    }
+    return result;
+  }
+
+  private static Map<String, Object> extractPolicyAgentMap(DatabaseService service) {
+    Map<String, Object> result = null;
+    Object config =
+        (service != null && service.getConnection() != null)
+            ? service.getConnection().getConfig()
+            : null;
+    if (config != null) {
+      try {
+        Map<String, Object> configMap = JsonUtils.getMap(config);
+        Object policyConfig = configMap.get(POLICY_AGENT_CONFIG_KEY);
+        if (policyConfig != null) {
+          result = JsonUtils.getMap(policyConfig);
         }
+      } catch (IllegalArgumentException ignored) {
+        result = null;
       }
     }
     return result;
@@ -205,31 +233,40 @@ public final class TaskFieldValidator {
   private static EntityReference resolveDatabaseServiceRef(EntityReference about) {
     EntityReference result = null;
     if (about.getId() != null) {
-      switch (about.getType()) {
-        case Entity.TABLE -> {
-          org.openmetadata.schema.entity.data.Table table =
-              Entity.getEntity(Entity.TABLE, about.getId(), "service", Include.NON_DELETED);
-          result = table.getService();
-        }
-        case Entity.STORED_PROCEDURE -> {
-          org.openmetadata.schema.entity.data.StoredProcedure proc =
-              Entity.getEntity(
-                  Entity.STORED_PROCEDURE, about.getId(), "service", Include.NON_DELETED);
-          result = proc.getService();
-        }
-        case Entity.DATABASE_SCHEMA -> {
-          org.openmetadata.schema.entity.data.DatabaseSchema schema =
-              Entity.getEntity(
-                  Entity.DATABASE_SCHEMA, about.getId(), "service", Include.NON_DELETED);
-          result = schema.getService();
-        }
-        case Entity.DATABASE -> {
-          org.openmetadata.schema.entity.data.Database database =
-              Entity.getEntity(Entity.DATABASE, about.getId(), "service", Include.NON_DELETED);
-          result = database.getService();
-        }
-        default -> result = null;
+      try {
+        result = lookupServiceRefByType(about);
+      } catch (EntityNotFoundException ignored) {
+        result = null;
       }
+    }
+    return result;
+  }
+
+  private static EntityReference lookupServiceRefByType(EntityReference about) {
+    EntityReference result = null;
+    switch (about.getType()) {
+      case Entity.TABLE -> {
+        org.openmetadata.schema.entity.data.Table table =
+            Entity.getEntity(Entity.TABLE, about.getId(), "service", Include.NON_DELETED);
+        result = table.getService();
+      }
+      case Entity.STORED_PROCEDURE -> {
+        org.openmetadata.schema.entity.data.StoredProcedure proc =
+            Entity.getEntity(
+                Entity.STORED_PROCEDURE, about.getId(), "service", Include.NON_DELETED);
+        result = proc.getService();
+      }
+      case Entity.DATABASE_SCHEMA -> {
+        org.openmetadata.schema.entity.data.DatabaseSchema schema =
+            Entity.getEntity(Entity.DATABASE_SCHEMA, about.getId(), "service", Include.NON_DELETED);
+        result = schema.getService();
+      }
+      case Entity.DATABASE -> {
+        org.openmetadata.schema.entity.data.Database database =
+            Entity.getEntity(Entity.DATABASE, about.getId(), "service", Include.NON_DELETED);
+        result = database.getService();
+      }
+      default -> result = null;
     }
     return result;
   }
