@@ -21,6 +21,7 @@ export interface CustomMessagingConnection {
      */
     sourcePythonClass?:          string;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
      */
