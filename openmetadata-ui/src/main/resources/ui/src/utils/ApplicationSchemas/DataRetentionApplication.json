@@ -50,8 +50,7 @@
     "changeEventRetentionPeriod",
     "activityThreadsRetentionPeriod",
     "testCaseResultsRetentionPeriod",
-    "profileDataRetentionPeriod",
-    "auditLogRetentionPeriod"
+    "profileDataRetentionPeriod"
   ],
   "additionalProperties": false
 }

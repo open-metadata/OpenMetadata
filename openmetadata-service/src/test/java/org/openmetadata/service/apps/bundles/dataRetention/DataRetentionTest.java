@@ -71,12 +71,12 @@ class DataRetentionTest {
         .thenReturn(0);
     when(eventSubscriptionDAO.deleteChangeEventsInBatches(anyLong(), anyInt())).thenReturn(0);
     when(eventSubscriptionDAO.deleteConsumersDlqInBatches(anyLong(), anyInt())).thenReturn(0);
-    when(feedDAO.fetchConversationThreadIdsOlderThan(anyLong(), anyInt()))
-        .thenReturn(List.of());
+    when(feedDAO.fetchConversationThreadIdsOlderThan(anyLong(), anyInt())).thenReturn(List.of());
     when(auditLogDAO.deleteInBatches(anyLong(), anyInt())).thenReturn(0);
     when(testCaseResultsDAO.deleteRecordsBeforeCutOff(anyLong(), anyInt())).thenReturn(0);
     when(profileDataDAO.deleteRecordsBeforeCutOff(anyLong(), anyInt())).thenReturn(0);
-    when(relationshipDAO.deleteStaleLineage(anyInt(), anyLong(), anyList())).thenReturn(0);
+    when(relationshipDAO.deleteStaleLineage(anyInt(), anyLong(), anyList(), anyInt()))
+        .thenReturn(0);
 
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -104,7 +104,7 @@ class DataRetentionTest {
 
     dataRetention.executeCleanup(config);
 
-    verify(relationshipDAO, never()).deleteStaleLineage(anyInt(), anyLong(), anyList());
+    verify(relationshipDAO, never()).deleteStaleLineage(anyInt(), anyLong(), anyList(), anyInt());
   }
 
   @Test
@@ -113,7 +113,7 @@ class DataRetentionTest {
 
     dataRetention.executeCleanup(config);
 
-    verify(relationshipDAO).deleteStaleLineage(anyInt(), anyLong(), anyList());
+    verify(relationshipDAO).deleteStaleLineage(anyInt(), anyLong(), anyList(), anyInt());
   }
 
   @Test
@@ -123,8 +123,7 @@ class DataRetentionTest {
     dataRetention.executeCleanup(config);
 
     verify(relationshipDAO)
-        .deleteStaleLineage(
-            eq(Relationship.UPSTREAM.ordinal()), anyLong(), anyList());
+        .deleteStaleLineage(eq(Relationship.UPSTREAM.ordinal()), anyLong(), anyList(), anyInt());
   }
 
   @Test
@@ -136,7 +135,7 @@ class DataRetentionTest {
 
     ArgumentCaptor<Long> cutoffCaptor = ArgumentCaptor.forClass(Long.class);
     verify(relationshipDAO)
-        .deleteStaleLineage(anyInt(), cutoffCaptor.capture(), anyList());
+        .deleteStaleLineage(anyInt(), cutoffCaptor.capture(), anyList(), anyInt());
 
     long capturedCutoff = cutoffCaptor.getValue();
     assertTrue(capturedCutoff < beforeCall, "Cutoff must be in the past relative to call time");
@@ -152,7 +151,7 @@ class DataRetentionTest {
 
     ArgumentCaptor<Long> cutoffCaptor = ArgumentCaptor.forClass(Long.class);
     verify(relationshipDAO)
-        .deleteStaleLineage(anyInt(), cutoffCaptor.capture(), anyList());
+        .deleteStaleLineage(anyInt(), cutoffCaptor.capture(), anyList(), anyInt());
 
     long capturedCutoff = cutoffCaptor.getValue();
     long expectedCutoff = beforeCall - (long) retentionDays * 24 * 60 * 60 * 1000;
@@ -170,7 +169,7 @@ class DataRetentionTest {
 
     ArgumentCaptor<List<String>> sourcesCaptor = ArgumentCaptor.forClass(List.class);
     verify(relationshipDAO)
-        .deleteStaleLineage(anyInt(), anyLong(), sourcesCaptor.capture());
+        .deleteStaleLineage(anyInt(), anyLong(), sourcesCaptor.capture(), anyInt());
 
     List<String> sources = sourcesCaptor.getValue();
     assertFalse(sources.contains("Manual"), "MANUAL lineage must never be included in cleanup");
@@ -184,7 +183,7 @@ class DataRetentionTest {
 
     ArgumentCaptor<List<String>> sourcesCaptor = ArgumentCaptor.forClass(List.class);
     verify(relationshipDAO)
-        .deleteStaleLineage(anyInt(), anyLong(), sourcesCaptor.capture());
+        .deleteStaleLineage(anyInt(), anyLong(), sourcesCaptor.capture(), anyInt());
 
     List<String> sources = sourcesCaptor.getValue();
     assertTrue(sources.contains("QueryLineage"));
@@ -202,7 +201,7 @@ class DataRetentionTest {
   void testExecuteCleanup_NullConfig_DoesNotThrow() {
     dataRetention.executeCleanup(null);
 
-    verify(relationshipDAO, never()).deleteStaleLineage(anyInt(), anyLong(), anyList());
+    verify(relationshipDAO, never()).deleteStaleLineage(anyInt(), anyLong(), anyList(), anyInt());
   }
 
   private DataRetentionConfiguration configWithLineageRetention(int lineageRetentionPeriod) {

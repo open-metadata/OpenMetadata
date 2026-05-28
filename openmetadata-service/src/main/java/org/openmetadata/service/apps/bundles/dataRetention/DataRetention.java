@@ -341,7 +341,8 @@ public class DataRetention extends AbstractNativeApplication {
         () ->
             collectionDAO
                 .relationshipDAO()
-                .deleteStaleLineage(relation, cutoffMillis, AUTO_GENERATED_LINEAGE_SOURCES));
+                .deleteStaleLineage(
+                    relation, cutoffMillis, AUTO_GENERATED_LINEAGE_SOURCES, BATCH_SIZE));
 
     LOG.info("Stale lineage cleanup complete.");
   }
