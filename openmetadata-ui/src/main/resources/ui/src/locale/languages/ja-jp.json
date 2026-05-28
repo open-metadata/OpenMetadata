@@ -3133,6 +3133,7 @@
     "not-followed-anything": "データアセットをフォローすると、変更や活動を一か所で監視できます。",
     "not-following-any-assets-yet": "フォローするアセットを探しましょう",
     "nothing-saved-yet": "まだ何も保存されていません！",
+    "nothing-to-preview": "プレビューするものがありません",
     "notification-description": "通知を設定して、リアルタイムの更新やタイムリーなアラートを受け取りましょう。",
     "notification-template-description": "通知で使用されるアラートテンプレートを管理します。メッセージの編集、プレビュー。",
     "nullness-profile-metric-description": "列内の NULL 値の割合",
