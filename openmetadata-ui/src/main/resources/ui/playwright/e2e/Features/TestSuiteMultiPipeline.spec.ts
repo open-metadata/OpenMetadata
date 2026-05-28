@@ -304,11 +304,9 @@ test(
       /has been updated and deployed successfully/
     );
 
-    await page.getByTestId('view-service-button').click();
-
     const ingestionPipelinesListResponse2 =
       waitForTestSuiteIngestionPipelinesListResponse(page);
-    await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await page.getByTestId('view-service-button').click();
     await ingestionPipelinesListResponse2;
 
     // Verify the pipeline now shows count "1" after unchecking one test case
