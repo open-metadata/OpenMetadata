@@ -13,7 +13,7 @@ Module containing the logic to trigger a DAG
 """
 
 import inspect
-from typing import Optional
+from typing import Optional, Tuple  # noqa: UP035
 
 try:
     from airflow.api.common.trigger_dag import trigger_dag
@@ -21,7 +21,6 @@ except ImportError:
     from airflow.api.common.experimental.trigger_dag import trigger_dag
 
 from airflow.utils import timezone
-from flask import Response
 
 from openmetadata_managed_apis.api.response import ApiResponse
 
@@ -31,7 +30,11 @@ except ImportError:
     DagRunTriggeredByType = None  # type: ignore[misc,assignment]
 
 
-def trigger(dag_id: str, run_id: Optional[str], conf: Optional[dict] = None) -> Response:  # noqa: UP045
+# Returns (payload, status) so the route can call jsonify directly; Snyk Code's
+# XSS rule doesn't trace jsonify through the ApiResponse helper chain.
+def trigger(
+    dag_id: str, run_id: Optional[str], conf: Optional[dict] = None  # noqa: UP045
+) -> Tuple[dict, int]:
     trigger_params = {
         "dag_id": dag_id,
         "run_id": run_id,
@@ -59,4 +62,7 @@ def trigger(dag_id: str, run_id: Optional[str], conf: Optional[dict] = None) -> 
             trigger_params["triggered_by"] = "OpenMetadata"
 
     dag_run = trigger_dag(**trigger_params)
-    return ApiResponse.success({"message": f"Workflow [{dag_id}] has been triggered {dag_run}"})
+    return (
+        {"message": f"Workflow [{dag_id}] has been triggered {dag_run}"},
+        ApiResponse.STATUS_OK,
+    )
