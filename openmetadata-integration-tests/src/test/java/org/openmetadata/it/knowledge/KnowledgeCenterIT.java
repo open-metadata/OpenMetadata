@@ -390,10 +390,7 @@ public class KnowledgeCenterIT {
     User follower =
         adminClient
             .users()
-            .create(
-                new CreateUser()
-                    .withName(followerName)
-                    .withEmail(followerEmail));
+            .create(new CreateUser().withName(followerName).withEmail(followerEmail));
 
     adminClient
         .getHttpClient()
