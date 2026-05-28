@@ -117,13 +117,29 @@ class TagAnalyzer:
     def _column_name(self) -> str:
         return self._column.name.root
 
+    def _normalize_recognizer_language(
+        self, recognizer_obj: EntityRecognizer, effective_language: str
+    ) -> EntityRecognizer:
+        """Clone recognizer with 'any' language replaced by effective_language.
+
+        Presidio's RecognizerRegistry uses strict equality on supported_language,
+        so 'any' will not match specific language codes like 'en'. This method
+        translates 'any' to a concrete language for Presidio's filter to work.
+        """
+        if recognizer_obj.supported_language == ClassificationLanguage.any.value:
+            recognizer_obj.supported_language = effective_language
+        return recognizer_obj
+
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
         nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
+        effective_language: Optional[str] = None,  # noqa: UP045
     ) -> AnalyzerEngine:
-        supported_languages = [rec.supported_language for rec in recognizers]
-        recognizer_registry = RecognizerRegistry(recognizers=recognizers, supported_languages=supported_languages)
+        effective_lang = effective_language or self._language.value
+        normalized_recs = [self._normalize_recognizer_language(rec, effective_lang) for rec in recognizers]
+        supported_languages = [rec.supported_language for rec in normalized_recs]
+        recognizer_registry = RecognizerRegistry(recognizers=normalized_recs, supported_languages=supported_languages)
         effective_nlp = nlp_engine if nlp_engine is not None else self._nlp_engine
         return AnalyzerEngine(
             registry=recognizer_registry,
@@ -156,15 +172,23 @@ class TagAnalyzer:
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
             lang_recognizers = list(group)
+            if lang == ClassificationLanguage.any.value:
+                effective_lang = ClassificationLanguage.en.value
+                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage.en)
+            else:
+                effective_lang = lang
+                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage(lang))
+
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
-                nlp_engine=load_nlp_engine(classification_language=ClassificationLanguage(lang)),
+                nlp_engine=effective_nlp,
+                effective_language=effective_lang,
             )
             for value in values:
                 results.extend(
                     analyzer.analyze(
                         value,
-                        language=lang,
+                        language=effective_lang,
                         context=context,
                         return_decision_process=True,
                     )

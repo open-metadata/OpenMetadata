@@ -182,9 +182,9 @@ class TestAnalyzeWithAnyLanguage:
         build_calls = []
         original_build = analyzer.build_analyzer_with
 
-        def tracking_build(recs, nlp_engine=None):
+        def tracking_build(recs, nlp_engine=None, effective_language=None):
             build_calls.append((recs, nlp_engine))
-            return original_build(recs, nlp_engine=nlp_engine)
+            return original_build(recs, nlp_engine=nlp_engine, effective_language=effective_language)
 
         analyzer.build_analyzer_with = tracking_build
 
@@ -256,3 +256,87 @@ class TestAnalyzeWithAnyLanguage:
         )
         result = analyzer.analyze_column()
         assert result is not None
+
+
+def _make_presidio_nlp_mock():
+    """NLP mock that satisfies AnalyzerEngine without requiring real spaCy models.
+
+    PatternRecognizers are regex-only and don't invoke the NLP engine, so this
+    lightweight mock is sufficient to exercise the real Presidio registry/analysis
+    path end-to-end.
+    """
+    nlp = MagicMock()
+    nlp.is_loaded.return_value = True
+    nlp.get_supported_languages.return_value = ["en"]
+    return nlp
+
+
+class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
+    """Regression tests: any-language pattern recognizers must fire through the real
+    Presidio AnalyzerEngine when the agent is configured with a specific language.
+
+    These tests use a real AnalyzerEngine (not a full mock) to catch the ValueError
+    "No matching recognizers were found" that occurs when build_analyzer_with passes
+    supported_languages=["any"] to Presidio and then calls analyze(language="en").
+    """
+
+    @pytest.fixture
+    def any_language_email_tag(self, pii_classification):
+        email_pattern = PatternFactory.create(
+            name="any-email-pattern",
+            regex=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+            score=0.8,
+        )
+        recognizer_config = PatternRecognizerFactory.create(
+            patterns=[email_pattern],
+            context=[],
+            supportedLanguage=ClassificationLanguage.any,
+        )
+        rec = RecognizerFactory.create(
+            name="any-email",
+            recognizerConfig=recognizer_config,
+            target=recognizer.Target.content,
+        )
+        return TagFactory.create(
+            tag_name="AnyEmail",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=[rec],
+        )
+
+    def test_any_language_recognizer_does_not_raise_with_specific_language_agent(self, any_language_email_tag, column):
+        """When agent language is 'en' and recognizer is 'any', analyze_content must
+        not raise ValueError from Presidio's registry."""
+        nlp = _make_presidio_nlp_mock()
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=nlp,
+            language=ClassificationLanguage.en,
+        )
+        result = analyzer.analyze_content(["user@example.com", "not-an-email"])
+        assert result is not None
+
+    def test_any_language_recognizer_matches_content_with_specific_language_agent(self, any_language_email_tag, column):
+        """An any-language pattern recognizer must actually score > 0 when data matches."""
+        nlp = _make_presidio_nlp_mock()
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=nlp,
+            language=ClassificationLanguage.en,
+        )
+        result = analyzer.analyze_content(["user@example.com"])
+        assert result.score > 0
+
+    def test_any_language_recognizer_no_match_scores_zero(self, any_language_email_tag, column):
+        """When data doesn't match, score must be 0 regardless of language."""
+        nlp = _make_presidio_nlp_mock()
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=nlp,
+            language=ClassificationLanguage.en,
+        )
+        result = analyzer.analyze_content(["no-match-here", "also-not-an-email"])
+        assert result.score == 0
