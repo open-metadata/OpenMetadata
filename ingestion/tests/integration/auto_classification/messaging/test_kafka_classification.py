@@ -40,9 +40,7 @@ class TestKafkaAutoClassification:
         assert topic is not None
         assert topic.name.root == PII_TOPIC_NAME
 
-    @pytest.mark.xfail(
-        reason="Tagging requires sample data retrieval; OpenMetadata API doesn't return sampleData via GET"
-    )
+    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_email_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -52,7 +50,7 @@ class TestKafkaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         assert topic.messageSchema is not None
         fields = topic.messageSchema.schemaFields
@@ -63,9 +61,7 @@ class TestKafkaAutoClassification:
             "email field should be tagged as PII.Sensitive"
         )
 
-    @pytest.mark.xfail(
-        reason="Tagging requires sample data retrieval; OpenMetadata API doesn't return sampleData via GET"
-    )
+    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_ssn_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -75,7 +71,7 @@ class TestKafkaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
         ssn_field = next((f for f in fields if f.name.root == "ssn"), None)
@@ -83,9 +79,7 @@ class TestKafkaAutoClassification:
         assert ssn_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in ssn_field.tags)
 
-    @pytest.mark.xfail(
-        reason="Tagging requires sample data retrieval; OpenMetadata API doesn't return sampleData via GET"
-    )
+    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_credit_card_field_tagged_pii_sensitive(
         self,
         metadata: OpenMetadata,
@@ -95,7 +89,7 @@ class TestKafkaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
         cc_field = next((f for f in fields if f.name.root == "credit_card"), None)
@@ -103,9 +97,7 @@ class TestKafkaAutoClassification:
         assert cc_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in cc_field.tags)
 
-    @pytest.mark.xfail(
-        reason="Tagging requires sample data retrieval; OpenMetadata API doesn't return sampleData via GET"
-    )
+    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_non_pii_field_not_tagged(
         self,
         metadata: OpenMetadata,
@@ -115,16 +107,14 @@ class TestKafkaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
         id_field = next((f for f in fields if f.name.root == "customer_id"), None)
         assert id_field is not None
         assert id_field.tags is None or len(id_field.tags) == 0, "customer_id should not have PII tags"
 
-    @pytest.mark.xfail(
-        reason="Tagging requires sample data retrieval; OpenMetadata API doesn't return sampleData via GET"
-    )
+    @pytest.mark.xfail(reason="Field tags not being populated from auto-classification pipeline")
     def test_non_pii_topic_fields_not_tagged(
         self,
         metadata: OpenMetadata,
@@ -134,7 +124,7 @@ class TestKafkaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{messaging_service.fullyQualifiedName.root}.{NON_PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
         for field in fields:
