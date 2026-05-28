@@ -40,7 +40,7 @@ public class Migration extends MigrationProcessImpl {
     try {
       MigrationUtil.healStuckCertificationOnEntityJson(handle, ConnectionType.MYSQL);
     } catch (Exception e) {
-      LOG.error("v1130 heal of stuck certification on entity json failed; re-run to retry.", e);
+      LOG.error("v1130 heal of stuck certification on entity json failed", e);
     }
   }
 }
