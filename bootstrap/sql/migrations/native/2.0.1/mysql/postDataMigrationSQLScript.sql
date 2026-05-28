@@ -107,9 +107,9 @@ WHERE serviceType = 'Postgres'
 
 -- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
 UPDATE policy_entity
-SET json = JSON_ARRAY_INSERT(
+SET json = JSON_ARRAY_APPEND(
     json,
-    '$.rules[2]',
+    '$.rules',
     JSON_OBJECT(
         'name', 'AutoClassificationBotRule-Allow-Topic',
         'description', 'Allow adding tags and sample data to the topics',
@@ -119,4 +119,4 @@ SET json = JSON_ARRAY_INSERT(
     )
 )
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
-  AND JSON_EXTRACT(json, '$.rules[2].name') != 'AutoClassificationBotRule-Allow-Topic';
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');

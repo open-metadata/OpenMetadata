@@ -952,7 +952,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         import json as _json  # noqa: PLC0415
 
         column_names = sample_data.columns or []
-        messages = [_json.dumps(dict(zip(column_names, row, strict=False))) for row in (sample_data.rows or [])]
+        col_name_strs = [col.root if hasattr(col, "root") else str(col) for col in column_names]
+        messages = [_json.dumps(dict(zip(col_name_strs, row, strict=False))) for row in (sample_data.rows or [])]
         topic_sample_data = TopicSampleData(messages=messages)
         result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
         if result:
