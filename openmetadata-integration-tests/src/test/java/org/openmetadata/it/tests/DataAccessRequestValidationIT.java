@@ -258,4 +258,19 @@ public class DataAccessRequestValidationIT {
     assertNotNull(fullAccessTask.getId());
     assertNotNull(maskedTask.getId());
   }
+
+  @Test
+  void testDarWithInvalidAccessType_rejectedByFormSchema(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createDataAccessRequest(
+                    ns, "table", table.getFullyQualifiedName(), dataAccessPayload("Bogus")));
+    assertTrue(
+        rejection.getMessage().contains("Invalid task payload"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
 }

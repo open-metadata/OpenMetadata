@@ -157,8 +157,14 @@ public final class TaskFieldValidator {
       throw new IllegalArgumentException(
           String.format(
               "%s is not supported by the connector for '%s'.",
-              accessTypeLabel(accessType), about.getName()));
+              accessTypeLabel(accessType), targetLabel(about)));
     }
+  }
+
+  private static String targetLabel(EntityReference about) {
+    return nullOrEmpty(about.getFullyQualifiedName())
+        ? about.getName()
+        : about.getFullyQualifiedName();
   }
 
   private static boolean isAgentEnabled(Map<String, Object> policyAgent) {
