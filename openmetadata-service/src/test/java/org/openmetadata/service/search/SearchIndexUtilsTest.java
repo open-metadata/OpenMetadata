@@ -45,7 +45,7 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(column)));
     doc.put("displayName", "Sales Model");
 
-    SearchIndexUtils.capOversizeValues(doc);
+    SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model");
 
     Map<String, Object> trimmedChild = firstChild(doc);
     String trimmedDesc = (String) trimmedChild.get("description");
@@ -70,7 +70,8 @@ class SearchIndexUtilsTest {
     Map<String, Object> doc = new HashMap<>();
     doc.put("columns", new ArrayList<>(List.of(node)));
 
-    assertDoesNotThrow(() -> SearchIndexUtils.capOversizeValues(doc));
+    assertDoesNotThrow(
+        () -> SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model"));
 
     Map<String, Object> deepest = node;
     while (deepest.get("children") != null) {
@@ -97,7 +98,8 @@ class SearchIndexUtilsTest {
     doc.put("owners", List.of("owner-1"));
     doc.put("columns", new ArrayList<>(List.of(column)));
 
-    assertDoesNotThrow(() -> SearchIndexUtils.capOversizeValues(doc));
+    assertDoesNotThrow(
+        () -> SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model"));
 
     assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
     assertEquals(List.of("owner-1"), doc.get("owners"));

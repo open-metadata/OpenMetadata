@@ -68,49 +68,54 @@ public final class SearchIndexUtils {
    * The full value is preserved on the source entity (database/API); only the indexed copy is
    * trimmed, so entity pages and APIs are unaffected.
    */
-  public static void capOversizeValues(final Object node) {
+  public static void capOversizeValues(final Object node, final String entityContext) {
     if (node instanceof Map<?, ?> rawMap) {
-      capMapValues(rawMap);
+      capMapValues(rawMap, entityContext);
     } else if (node instanceof List<?> rawList) {
-      capListValues(rawList);
+      capListValues(rawList, entityContext);
     }
   }
 
-  private static void capMapValues(final Map<?, ?> rawMap) {
+  private static void capMapValues(final Map<?, ?> rawMap, final String entityContext) {
     @SuppressWarnings("unchecked")
     Map<String, Object> map = (Map<String, Object>) rawMap;
     for (Map.Entry<String, Object> entry : map.entrySet()) {
       Object value = entry.getValue();
-      Object trimmed = trimIfOversized(value);
+      Object trimmed = trimIfOversized(value, entry.getKey(), entityContext);
       if (trimmed != value) {
         entry.setValue(trimmed);
       }
-      capOversizeValues(value);
+      capOversizeValues(value, entityContext);
     }
   }
 
-  private static void capListValues(final List<?> rawList) {
+  private static void capListValues(final List<?> rawList, final String entityContext) {
     @SuppressWarnings("unchecked")
     List<Object> list = (List<Object>) rawList;
     for (int index = 0; index < list.size(); index++) {
       Object value = list.get(index);
-      Object trimmed = trimIfOversized(value);
+      Object trimmed = trimIfOversized(value, "[" + index + "]", entityContext);
       if (trimmed != value) {
         list.set(index, trimmed);
       }
-      capOversizeValues(value);
+      capOversizeValues(value, entityContext);
     }
   }
 
-  private static Object trimIfOversized(final Object value) {
+  private static Object trimIfOversized(
+      final Object value, final String fieldName, final String entityContext) {
     Object result = value;
-    if (value instanceof String text
-        && text.getBytes(StandardCharsets.UTF_8).length > MAX_INDEXED_VALUE_BYTES) {
-      result = trimToByteLimit(text);
-      LOG.warn(
-          "Trimmed an oversize search value from {} to {} bytes to stay under the index term limit",
-          text.getBytes(StandardCharsets.UTF_8).length,
-          MAX_INDEXED_VALUE_BYTES);
+    if (value instanceof String text) {
+      int byteLength = text.getBytes(StandardCharsets.UTF_8).length;
+      if (byteLength > MAX_INDEXED_VALUE_BYTES) {
+        result = trimToByteLimit(text);
+        LOG.warn(
+            "Trimmed oversize search value [entity={}, field={}] from {} to {} bytes to stay under the index term limit",
+            entityContext,
+            fieldName,
+            byteLength,
+            MAX_INDEXED_VALUE_BYTES);
+      }
     }
     return result;
   }
