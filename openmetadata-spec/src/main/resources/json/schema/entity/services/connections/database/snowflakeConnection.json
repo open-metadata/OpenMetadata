@@ -214,12 +214,13 @@
     },
     "policyAgentConfig": {
       "title": "Policy Agent Config",
-      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
-      "default": {
-        "enabled": true,
-        "supportsColumnAccess": false,
-        "supportsFullAccess": true,
-        "supportsMaskedAccess": true
+      "description": "Policy agent configuration for access control extraction.",
+      "allOf": [{"$ref": "../connectionBasicType.json#/definitions/policyAgentConfig"}],
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "supportsColumnAccess": {"type": "boolean", "default": false},
+        "supportsFullAccess": {"type": "boolean", "default": true},
+        "supportsMaskedAccess": {"type": "boolean", "default": true}
       }
     }
   },
