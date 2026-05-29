@@ -352,9 +352,8 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # <3.11 keeps the search/registry surface stable; the MySQL integration test
-    # sets log_bin_trust_function_creators=1 so the 3.8.1+ trigger creation passes.
-    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
+    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
+    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
