@@ -33,7 +33,6 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_TABLE_COMMENTS,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
@@ -95,7 +94,6 @@ def get_multi_columns(self, connection, **kw):
 
 
 # pylint: disable=protected-access
-@calculate_execution_time()
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Return information about columns in `table_name`.
@@ -135,7 +133,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
-@calculate_execution_time()
 def _get_column_info(self, *args, **kwargs):
     """
     Get column info
@@ -168,7 +165,6 @@ def _get_column_info(self, *args, **kwargs):
     return column_info
 
 
-@calculate_execution_time()
 def _get_schema_column_info(
     self, connection, schema=None, **kw
 ):  # pylint: disable=unused-argument
@@ -332,7 +328,6 @@ def _get_charlen(format_type):
     return charlen
 
 
-@calculate_execution_time()
 @reflection.cache
 def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
     self,
@@ -416,7 +411,6 @@ def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, 
     return column_info
 
 
-@calculate_execution_time()
 @reflection.cache
 def get_table_comment(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
@@ -430,7 +424,6 @@ def get_table_comment(
     )
 
 
-@calculate_execution_time()
 def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-argument
     """
     Get all relation info for a schema.

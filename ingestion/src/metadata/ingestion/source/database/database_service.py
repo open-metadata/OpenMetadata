@@ -70,7 +70,6 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
@@ -97,49 +96,49 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
-        TopologyNode(
-            producer="get_services",
-            stages=[
-                NodeStage(
-                    type_=DatabaseService,
-                    context="database_service",
-                    processor="yield_create_request_database_service",
-                    overwrite=False,
-                    must_return=True,
-                    cache_entities=True,
-                ),
-            ],
-            children=["database"],
-            post_process=[
-                "yield_external_table_lineage",
-                "yield_table_constraints",
-            ],
-        )
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=DatabaseService,
+                context="database_service",
+                processor="yield_create_request_database_service",
+                overwrite=False,
+                must_return=True,
+                cache_entities=True,
+            ),
+        ],
+        children=["database"],
+        post_process=[
+            "yield_external_table_lineage",
+            "yield_table_constraints",
+        ],
     )
-    database: Annotated[TopologyNode, Field(description="Database Node")] = (
-        TopologyNode(
-            producer="get_database_names",
-            stages=[
-                NodeStage(
-                    type_=OMetaTagAndClassification,
-                    context="tags",
-                    processor="yield_database_tag_details",
-                    nullable=True,
-                    store_all_in_context=True,
-                ),
-                NodeStage(
-                    type_=Database,
-                    context="database",
-                    processor="yield_database",
-                    consumer=["database_service"],
-                    cache_entities=True,
-                    use_cache=True,
-                ),
-            ],
-            children=["databaseSchema"],
-            post_process=["mark_databases_as_deleted"],
-        )
+    database: Annotated[
+        TopologyNode, Field(description="Database Node")
+    ] = TopologyNode(
+        producer="get_database_names",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_database_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
+                type_=Database,
+                context="database",
+                processor="yield_database",
+                consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
+            ),
+        ],
+        children=["databaseSchema"],
+        post_process=["mark_databases_as_deleted"],
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -171,32 +170,32 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         threads=True,
     )
-    table: Annotated[TopologyNode, Field(description="Main table processing logic")] = (
-        TopologyNode(
-            producer="get_tables_name_and_type",
-            stages=[
-                NodeStage(
-                    type_=OMetaTagAndClassification,
-                    context="tags",
-                    processor="yield_table_tag_details",
-                    nullable=True,
-                    store_all_in_context=True,
-                ),
-                NodeStage(
-                    type_=Table,
-                    context="table",
-                    processor="yield_table",
-                    consumer=["database_service", "database", "database_schema"],
-                    use_cache=True,
-                ),
-                NodeStage(
-                    type_=OMetaLifeCycleData,
-                    processor="yield_life_cycle_data",
-                    nullable=True,
-                ),
-            ],
-            post_process=["clear_schema_tag_scope"],
-        )
+    table: Annotated[
+        TopologyNode, Field(description="Main table processing logic")
+    ] = TopologyNode(
+        producer="get_tables_name_and_type",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_table_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
+                type_=Table,
+                context="table",
+                processor="yield_table",
+                consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
+            ),
+            NodeStage(
+                type_=OMetaLifeCycleData,
+                processor="yield_life_cycle_data",
+                nullable=True,
+            ),
+        ],
+        post_process=["clear_schema_tag_scope"],
     )
     stored_procedure: Annotated[
         TopologyNode, Field(description="Stored Procedure Node")
@@ -489,7 +488,6 @@ class DatabaseServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
-    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
@@ -524,7 +522,6 @@ class DatabaseServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
-    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -741,7 +738,6 @@ class DatabaseServiceSource(
 
         return None
 
-    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
         Get owner for table entity using ownerConfig.

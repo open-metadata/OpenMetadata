@@ -23,8 +23,10 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 
 # Imports must follow `importorskip` so the module is skipped cleanly
 # in environments without SQLAlchemy.
-from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: E402
-from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: E402
+from metadata.ingestion.diagnostics.collectors.operation_registry import (
+    OperationRegistry,
+)
+from metadata.ingestion.diagnostics.seams.db_introspect import DbIntrospector
 
 
 @pytest.fixture()
@@ -101,7 +103,9 @@ def test_sql_kwarg_is_truncated(registry, introspector):
     captured_kwargs: dict = {}
 
     def _spy(conn, cursor, statement, parameters, context, executemany):
-        captured_kwargs.update(registry.deepest_per_thread().get(threading.get_ident())[1])
+        captured_kwargs.update(
+            registry.deepest_per_thread().get(threading.get_ident())[1]
+        )
 
     from sqlalchemy import event
 

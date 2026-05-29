@@ -11,26 +11,29 @@
 """
 Stage backpressure collector.
 
-Tracks the depth and put/processed counts of the inter-stage queues used
-by `TopologyRunnerMixin`, so heartbeats and dumps can show "source
-produced 1000, sink consumed 50, depth 950" — the signal that
-distinguishes a slow source from a slow sink.
+Tracks the depth and put/processed counts of the inter-stage queues used by
+`TopologyRunnerMixin`, so heartbeats and dumps show "source produced 1000, sink
+consumed 50, depth 950" — the signal that distinguishes a slow source from a
+slow sink.
 
-The Queue class (in `models/topology.py`) calls the module-level
-`record_put` / `record_processed` / `register_queue` hooks on every
-operation. When diagnostics is OFF those hooks are no-ops with a single
-attribute load, so the queue stays cheap.
+The `Queue` class (in `models/topology.py`) calls the module-level
+`register_queue` / `record_put` / `record_processed` hooks on every operation.
+Those route through the installed handler's `stage` collector (the same single
+root the rest of the seams use); when diagnostics is OFF they're no-ops with a
+single attribute load, so the queue stays cheap.
 """
 
+import logging
 import threading
 import weakref
-from typing import Any
+from typing import Any, TextIO
 
-_collector: "StageProgressCollector | None" = None
+from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
+from metadata.ingestion.diagnostics.kernel import emit_log, get_handler
 
 
 class StageProgressCollector:
-    """In-memory counters for inter-stage queues."""
+    """In-memory counters for inter-stage queues (a Renderable Collector)."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -57,11 +60,8 @@ class StageProgressCollector:
             counts["processed"] += n
 
     def snapshot(self) -> list[dict[str, Any]]:
-        """Return per-queue snapshot: name, current depth, totals.
-
-        Also garbage-collects weakrefs to queues that have been
-        deallocated.
-        """
+        """Per-queue snapshot: name, current depth, totals. Also drops weakrefs
+        to queues that have been deallocated."""
         out = []
         with self._lock:
             for name, refs in list(self._queues.items()):
@@ -85,6 +85,26 @@ class StageProgressCollector:
                 )
         return out
 
+    def render_instant(self) -> str:
+        """The heartbeat ` stage_queues=name:depth(put->processed)` field."""
+        queues = self.snapshot()
+        if not queues:
+            return ""
+        parts = [
+            f"{q['name']}:{q['depth']}({q['put']}->{q['processed']})" for q in queues
+        ]
+        return " stage_queues=" + ",".join(parts)
+
+    def render_dump(self, out: TextIO) -> None:
+        queues = self.snapshot()
+        if not queues:
+            return
+        out.write(f"{DIAG_LOG_PREFIX}.dump.queues\n")
+        for q in queues:
+            out.write(
+                f"  name={q['name']} depth={q['depth']} put={q['put']} processed={q['processed']}\n"
+            )
+
 
 def _queue_depth(queue_obj: Any) -> int:
     """Best-effort depth read from a topology Queue wrapper or std queue.Queue."""
@@ -95,54 +115,49 @@ def _queue_depth(queue_obj: Any) -> int:
         return 0
 
 
-def install(collector: StageProgressCollector) -> None:
-    """Wire the module-level hook so `Queue` operations are tracked."""
-    global _collector  # noqa: PLW0603  module-level singleton
-    _collector = collector
-
-
-def uninstall() -> None:
-    global _collector  # noqa: PLW0603  module-level singleton
-    _collector = None
-
-
 def register_queue(name: str, queue_obj: Any) -> None:
-    """Called from `Queue.__init__`. No-op when diagnostics is off."""
-    collector = _collector
-    if collector is not None:
-        collector.register(name, queue_obj)
+    """Seam called from `Queue.__init__`. Safe from the hot path."""
+    stage = _stage()
+    if stage is None:
+        return
+    try:
+        stage.register(name, queue_obj)
+    except Exception as exc:
+        _emit_seam_error("stage.register_queue", exc)
 
 
 def record_put(name: str, n: int = 1) -> None:
-    """Called from `Queue.put`. No-op when diagnostics is off."""
-    collector = _collector
-    if collector is not None:
-        collector.record_put(name, n)
+    """Seam called from `Queue.put`. Safe from the hot path."""
+    stage = _stage()
+    if stage is None:
+        return
+    try:
+        stage.record_put(name, n)
+    except Exception as exc:
+        _emit_seam_error("stage.record_put", exc)
 
 
 def record_processed(name: str, n: int = 1) -> None:
-    """Called from `Queue.process` (per item yielded). No-op when off."""
-    collector = _collector
-    if collector is not None:
-        collector.record_processed(name, n)
+    """Seam called from `Queue.process` per item. Safe from the hot path."""
+    stage = _stage()
+    if stage is None:
+        return
+    try:
+        stage.record_processed(name, n)
+    except Exception as exc:
+        _emit_seam_error("stage.record_processed", exc)
 
 
-def snapshot() -> list[dict[str, Any]]:
-    """Used by heartbeat + dump rendering."""
-    collector = _collector
-    if collector is None:
-        return []
-    return collector.snapshot()
+def _stage() -> "StageProgressCollector | None":
+    handler = get_handler()
+    if handler is None:
+        return None
+    try:
+        return handler.aspect(StageProgressCollector)
+    except KeyError:
+        return None
 
 
-def format_for_heartbeat() -> str:
-    """Render `stage_queues=` field for heartbeat lines.
-
-    Returns empty string when there's nothing to report so heartbeats
-    stay clean.
-    """
-    queues = snapshot()
-    if not queues:
-        return ""
-    parts = [f"{q['name']}:{q['depth']}({q['put']}->{q['processed']})" for q in queues]
-    return " stage_queues=" + ",".join(parts)
+def _emit_seam_error(seam: str, exc: BaseException) -> None:
+    """Audit log for seam-side defensive wraps."""
+    emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.{seam}.error err={exc!r}")

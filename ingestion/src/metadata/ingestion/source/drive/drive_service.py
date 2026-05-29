@@ -56,7 +56,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label
@@ -449,7 +448,6 @@ class DriveServiceSource(
 
     # Record registration methods for tracking processed entities
 
-    @calculate_execution_time()
     def register_record_directory(
         self, directory_request: CreateDirectoryRequest
     ) -> None:
@@ -464,7 +462,6 @@ class DriveServiceSource(
         )
         self.directory_source_state.add(directory_fqn)
 
-    @calculate_execution_time()
     def register_record_file(self, file_request: CreateFileRequest) -> None:
         """
         Mark the file record as scanned and update the file_source_state
@@ -478,7 +475,6 @@ class DriveServiceSource(
         )
         self.file_source_state.add(file_fqn)
 
-    @calculate_execution_time()
     def register_record_spreadsheet(
         self, spreadsheet_request: CreateSpreadsheetRequest
     ) -> None:
@@ -493,7 +489,6 @@ class DriveServiceSource(
         )
         self.spreadsheet_source_state.add(spreadsheet_fqn)
 
-    @calculate_execution_time()
     def register_record_worksheet(
         self, worksheet_request: CreateWorksheetRequest
     ) -> None:
@@ -540,7 +535,6 @@ class DriveServiceSource(
 
     # Owner reference methods
 
-    @calculate_execution_time()
     def get_owner_ref(self, entity_name: str) -> Optional[EntityReferenceList]:
         """
         Method to process the entity owners
