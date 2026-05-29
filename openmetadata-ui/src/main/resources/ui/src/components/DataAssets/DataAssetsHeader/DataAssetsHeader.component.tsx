@@ -850,53 +850,55 @@ export const DataAssetsHeader = ({
         {/* Row 2 — Title + actions */}
         <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
-            {serviceLogoUrl && (
-              <div
-                className={classNames(
-                  'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
-                  'tw:justify-center tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}>
-                <img
-                  alt={get(dataAsset, 'service.displayName', '')}
-                  className="tw:size-4.5 tw:object-contain"
-                  src={serviceLogoUrl}
-                />
-              </div>
-            )}
-            <Typography
-              as="h2"
-              className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
-              data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: entityName }}
-              size="text-lg"
-              weight="bold">
-              {entityName}
-            </Typography>
-            <Tooltip
-              placement="top"
-              title={
-                copyTooltip ??
-                t('label.copy-item', { item: t('label.url-uppercase') })
-              }>
-              <TooltipTrigger>
-                <button
-                  aria-label={t('label.copy-item', {
-                    item: t('label.url-uppercase'),
-                  })}
+            <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+              {serviceLogoUrl && (
+                <div
                   className={classNames(
-                    'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
-                    'tw:justify-center tw:rounded-md tw:border',
-                    'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
-                    'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
-                  )}
-                  data-testid="entity-header-copy-button"
-                  type="button"
-                  onClick={handleCopyEntityUrl}>
-                  <ShareIcon className="tw:size-3.5" />
-                </button>
-              </TooltipTrigger>
-            </Tooltip>
+                    'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
+                    'tw:justify-center tw:overflow-hidden tw:rounded-full',
+                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  )}>
+                  <img
+                    alt={get(dataAsset, 'service.displayName', '')}
+                    className="tw:size-4.5 tw:object-contain"
+                    src={serviceLogoUrl}
+                  />
+                </div>
+              )}
+              <Typography
+                as="h2"
+                className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
+                data-testid="entity-header-display-name"
+                ellipsis={{ tooltip: entityName }}
+                size="text-lg"
+                weight="bold">
+                {entityName}
+              </Typography>
+              <Tooltip
+                placement="top"
+                title={
+                  copyTooltip ??
+                  t('label.copy-item', { item: t('label.url-uppercase') })
+                }>
+                <TooltipTrigger>
+                  <button
+                    aria-label={t('label.copy-item', {
+                      item: t('label.url-uppercase'),
+                    })}
+                    className={classNames(
+                      'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
+                      'tw:justify-center tw:rounded-md tw:border',
+                      'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
+                      'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
+                    )}
+                    data-testid="entity-header-copy-button"
+                    type="button"
+                    onClick={handleCopyEntityUrl}>
+                    <ShareIcon className="tw:size-3.5" />
+                  </button>
+                </TooltipTrigger>
+              </Tooltip>
+            </div>
             {badge}
             {statusBadge}
             {dqFailureAlert}
