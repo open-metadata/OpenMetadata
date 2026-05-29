@@ -90,10 +90,20 @@ public final class SearchIndexUtils {
       final Object node,
       final Set<String> flattenedFieldPaths,
       final Supplier<String> entityContext) {
-    if (flattenedFieldPaths.isEmpty()) {
+    if (flattenedFieldPaths == null || flattenedFieldPaths.isEmpty()) {
       return;
     }
-    capOversizeValues(node, "", flattenedFieldPaths, entityContext);
+    try {
+      capOversizeValues(node, "", flattenedFieldPaths, entityContext);
+    } catch (RuntimeException e) {
+      // Best-effort safety net: a defect here must never drop an otherwise-valid document from
+      // search. Log and continue — if the document still holds an oversized leaf the engine will
+      // reject it as before, but capping must never itself be the cause of an indexing failure.
+      LOG.warn(
+          "Skipped oversize-value capping for [{}] due to: {}",
+          entityContext == null ? "unknown" : entityContext.get(),
+          e.toString());
+    }
   }
 
   private static void capOversizeValues(

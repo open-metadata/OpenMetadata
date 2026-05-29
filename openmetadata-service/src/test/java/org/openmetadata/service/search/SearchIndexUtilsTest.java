@@ -161,6 +161,19 @@ class SearchIndexUtilsTest {
     assertNotEquals(huge, trimmed);
   }
 
+  @Test
+  void capOversizeValuesNeverFailsIndexingOnError() {
+    // An oversized value inside an UNMODIFIABLE map (Map.of) would make entry.setValue throw;
+    // the cap is a best-effort safety net and must swallow it rather than fail the whole document.
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("extension", Map.of("customProp", "x".repeat(50_000)));
+
+    assertDoesNotThrow(
+        () ->
+            SearchIndexUtils.capOversizeValues(
+                doc, EXTENSION, () -> "type=table id=test fqn=test.model"));
+  }
+
   private Map<String, Object> firstChild(Map<String, Object> doc) {
     Map<String, Object> column = (Map<String, Object>) ((List<?>) doc.get("columns")).get(0);
     return (Map<String, Object>) ((List<?>) column.get("children")).get(0);
