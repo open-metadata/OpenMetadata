@@ -26,16 +26,17 @@ jest.mock('../../hooks/useClipBoard', () => ({
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest
     .fn()
-    .mockImplementation(({ icon, onClick, className, 'data-testid': testId }) => (
-      <button
-        className={className}
-        data-testid={testId}
-        onClick={onClick}>
-        {icon}
-      </button>
-    )),
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
-  TooltipTrigger: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
 }));
 
 jest.mock('@untitledui/icons', () => ({

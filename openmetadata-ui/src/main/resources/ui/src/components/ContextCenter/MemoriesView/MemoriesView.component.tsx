@@ -36,10 +36,7 @@ import {
   MemoryActionsProps,
 } from './MemoriesView.interface';
 
-const MemoryActions: FC<MemoryActionsProps> = ({
-  memory,
-  onDeleteMemory,
-}) => {
+const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   const { t } = useTranslation();
 
   return (
@@ -56,22 +53,21 @@ const MemoryActions: FC<MemoryActionsProps> = ({
               onDeleteMemory?.(memory);
             }
           }}>
-          
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Trash01
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-600"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </div>
-            </Dropdown.Item>
+          <Dropdown.Item data-testid="delete-btn" id="delete">
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <Trash01
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+              />
+              <Typography
+                ellipsis
+                className="tw:grow tw:text-error-600"
+                size="text-sm"
+                weight="medium">
+                {t('label.delete')}
+              </Typography>
+            </div>
+          </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -122,7 +118,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   const memoryUrl = useMemo(
     () =>
       memory.name
-        ? `${window.location.origin}${window.location.pathname}?memory=${encodeURIComponent(memory.name)}`
+        ? `${window.location.origin}${
+            window.location.pathname
+          }?memory=${encodeURIComponent(memory.name)}`
         : window.location.href,
     [memory.name]
   );
@@ -245,10 +243,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           </Tooltip>
         )}
         {canActOnMemory && (
-          <MemoryActions
-            memory={memory}
-            onDeleteMemory={onDeleteMemory}
-          />
+          <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
         )}
       </div>
     </div>

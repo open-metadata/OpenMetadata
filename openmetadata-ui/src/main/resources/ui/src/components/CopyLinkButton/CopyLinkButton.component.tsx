@@ -26,10 +26,15 @@ interface CopyLinkButtonProps {
   tooltip?: string;
 }
 
-const CopyLinkButton: FC<CopyLinkButtonProps> = ({ children, url, tooltip }) => {
+const CopyLinkButton: FC<CopyLinkButtonProps> = ({
+  children,
+  url,
+  tooltip,
+}) => {
   const { t } = useTranslation();
   const { onCopyToClipBoard, hasCopied } = useClipboard(url, 1200);
-  const resolvedTooltip = tooltip ?? t('label.copy-item', { item: t('label.link') });
+  const resolvedTooltip =
+    tooltip ?? t('label.copy-item', { item: t('label.link') });
 
   return (
     <Tooltip isDisabled={hasCopied} title={resolvedTooltip}>
@@ -40,7 +45,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({ children, url, tooltip }) => 
               ? 'tw:rounded-full tw:bg-success-600 tw:text-white tw:hover:bg-success-600 tw:hover:text-white'
               : 'tw:rounded-full'
           }
-          color='tertiary'
+          color="tertiary"
           data-testid="copy-link-btn"
           icon={
             hasCopied ? (
