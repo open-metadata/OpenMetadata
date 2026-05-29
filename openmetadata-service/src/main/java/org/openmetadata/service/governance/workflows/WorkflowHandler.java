@@ -558,11 +558,13 @@ public class WorkflowHandler {
       // Flowable bulk-inserts process variables into ACT_RU_VARIABLE in its own transaction; under
       // concurrent workflow starts these inserts can lose a deadlock race on InnoDB. The start is a
       // self-contained Flowable command, so DeadlockRetry safely replays it in a fresh transaction.
+      // Each attempt gets a fresh copy of the variables so a retry never inherits in-memory
+      // mutations from a rolled-back attempt.
       ProcessInstance instance =
           DeadlockRetry.execute(
               () ->
                   runtimeService.startProcessInstanceById(
-                      latestDefinition.getId(), businessKey, variables));
+                      latestDefinition.getId(), businessKey, new LinkedHashMap<>(variables)));
       LOG.debug(
           "[WorkflowTrigger] SUCCESS: processKey='{}' version='{}' instanceId='{}' businessKey='{}'",
           processDefinitionKey,
