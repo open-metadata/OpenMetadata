@@ -62,6 +62,7 @@ public class McpServer implements McpServerProvider {
             SecurityConfigurationManager.getCurrentAuthzConfig());
     this.authorizer = authorizer;
     this.limits = limits;
+    McpApplicationContext.setConfig(config);
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     List<McpSchema.Tool> tools = getTools();
@@ -301,9 +302,7 @@ public class McpServer implements McpServerProvider {
     return List.of();
   }
 
-  /**
-   * Get base URL from system settings, with fallback to localhost for development.
-   */
+  /** Get base URL from system settings, with fallback to localhost for development. */
   private String getBaseUrlFromSettings() {
     try {
       org.openmetadata.service.jdbi3.SystemRepository systemRepository =
@@ -328,9 +327,9 @@ public class McpServer implements McpServerProvider {
       LOG.warn("Could not get instance URL from SystemSettings, using fallback", e);
     }
     LOG.error(
-        "No base URL configured in MCP settings or system settings. "
-            + "Falling back to http://localhost:8585 — this is only suitable for local development. "
-            + "Configure a proper base URL for production deployments.");
+        "No base URL configured in MCP settings or system settings. Falling back to"
+            + " http://localhost:8585 — this is only suitable for local development. Configure a"
+            + " proper base URL for production deployments.");
     return "http://localhost:8585";
   }
 }

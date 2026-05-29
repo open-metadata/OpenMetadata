@@ -53,4 +53,22 @@ public class CommonUtils {
     }
     return teamsOrUsers;
   }
+
+  public static int parseLimit(Map<String, Object> params, String key, int defaultValue) {
+    if (!params.containsKey(key)) {
+      return defaultValue;
+    }
+    Object v = params.get(key);
+    if (v instanceof Number n) {
+      return n.intValue();
+    }
+    if (v instanceof String s) {
+      try {
+        return Integer.parseInt(s);
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid value for '{}': '{}', using default {}", key, s, defaultValue);
+      }
+    }
+    return defaultValue;
+  }
 }

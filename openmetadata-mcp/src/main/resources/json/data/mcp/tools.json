@@ -584,6 +584,65 @@
           "entityType"
         ]
       }
+    },
+    {
+      "name": "list_ingestion_pipelines",
+      "description": "List ingestion pipelines configured in OpenMetadata. Optionally filter by service name or pipeline type (metadata, usage, lineage, profiler, dataInsight, etc.). Returns pipeline names, FQNs, types, and enabled/deployed status. Use 'get_pipeline_status' to check the latest run status of a specific pipeline.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Filter pipelines by service name (e.g., 'bigquery_prod', 'snowflake_dw'). Returns only pipelines belonging to this service."
+          },
+          "pipelineType": {
+            "type": "string",
+            "description": "Filter by pipeline type. Values: metadata, usage, lineage, profiler, dataInsight, elasticSearchReindex, dbt, application. Leave empty to return all types."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of pipelines to return. Default: 10. Max recommended: 50.",
+            "default": 10
+          },
+          "after": {
+            "type": "string",
+            "description": "Pagination cursor. Pass the 'after' value from a previous response to retrieve the next page."
+          }
+        }
+      }
+    },
+    {
+      "name": "get_pipeline_status",
+      "description": "Get execution status of a specific ingestion pipeline. Returns the latest run status (success, failed, running, queued) and recent run history. Use 'list_ingestion_pipelines' to find a pipeline's FQN first.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the ingestion pipeline (e.g., 'bigquery_prod.metadata_ingestion'). Use 'list_ingestion_pipelines' or 'search_metadata' to find it."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of recent pipeline runs to return. Default: 5.",
+            "default": 5
+          }
+        },
+        "required": ["fqn"]
+      }
+    },
+    {
+      "name": "trigger_ingestion_pipeline",
+      "description": "Trigger an immediate run of an ingestion pipeline. Use this to kick off metadata, lineage, or profiling ingestion on demand without waiting for the scheduled run. Requires the pipeline to be deployed. Check the pipeline status with 'get_pipeline_status' after triggering to monitor progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the ingestion pipeline to trigger (e.g., 'bigquery_prod.metadata_ingestion'). Use 'list_ingestion_pipelines' to find the FQN."
+          }
+        },
+        "required": ["fqn"]
+      }
     }
   ]
 }

@@ -17,11 +17,15 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public class DefaultToolContext {
+  static final String TOOL_LIST_INGESTION_PIPELINES = "list_ingestion_pipelines";
+  static final String TOOL_GET_PIPELINE_STATUS = "get_pipeline_status";
+  static final String TOOL_TRIGGER_INGESTION_PIPELINE = "trigger_ingestion_pipeline";
+
   public DefaultToolContext() {}
 
   /**
-   * Loads tool definitions from a JSON file located at the specified path.
-   * The JSON file should contain an array of tool definitions under the "tools" key.
+   * Loads tool definitions from a JSON file located at the specified path. The JSON file should
+   * contain an array of tool definitions under the "tools" key.
    *
    * @return List of McpSchema.Tool objects loaded from the JSON file.
    */
@@ -101,6 +105,15 @@ public class DefaultToolContext {
           break;
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case TOOL_LIST_INGESTION_PIPELINES:
+          result = new ListIngestionPipelinesTool().execute(authorizer, securityContext, params);
+          break;
+        case TOOL_GET_PIPELINE_STATUS:
+          result = new GetPipelineStatusTool().execute(authorizer, securityContext, params);
+          break;
+        case TOOL_TRIGGER_INGESTION_PIPELINE:
+          result = new TriggerIngestionPipelineTool().execute(authorizer, securityContext, params);
           break;
         default:
           return new CallToolOutcome(
