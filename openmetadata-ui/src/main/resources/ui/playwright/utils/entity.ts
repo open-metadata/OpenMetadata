@@ -2222,13 +2222,16 @@ export const checkExploreSearchFilter = async (
   filterLabel: string,
   filterKey: string,
   filterValue: string,
-  entity?: EntityClass
+  entity?: EntityClass,
+  searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  if (entity?.type) {
+  if (entity?.type && searchEntityType) {
     const entityTypeId = (
       getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
-    ).toLocaleLowerCase();
+    )
+      .toLocaleLowerCase()
+      .replaceAll(' ', '');
     const entitySearchResponse = page.waitForResponse(
       (req) =>
         req.url().includes('/api/v1/search/query') &&
