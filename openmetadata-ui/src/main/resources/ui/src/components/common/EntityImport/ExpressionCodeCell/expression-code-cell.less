@@ -1,0 +1,176 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+// Zero-size anchor rendered inside the grid cell; used only to measure the
+// cell's viewport position so the portaled editor can be placed over the grid.
+.bulk-edit-code-anchor {
+  display: none;
+}
+
+// Floating inline editor that unifies a metric's expression language + code into
+// one field (language tabs pick the language; CodeMirror highlights the body).
+// Rendered in a portal with fixed positioning so it floats above the grid rows
+// (like the design) instead of being clipped by the grid's scroll container.
+.bulk-edit-code-editor {
+  background: @white;
+  border: 2px solid @primary-6;
+  border-radius: 10px;
+  box-shadow: @box-shadow-base;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  width: 560px;
+  z-index: 1050;
+}
+
+.bulk-edit-code-editor-head {
+  align-items: center;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.bulk-edit-code-editor-tabs {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+}
+
+.bulk-edit-code-editor-tab {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: @grey-600;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  text-transform: uppercase;
+
+  &:hover {
+    background: @grey-26;
+  }
+
+  &.active {
+    background: @primary-50;
+    color: @primary-7;
+  }
+}
+
+.bulk-edit-code-editor-actions {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.bulk-edit-code-editor-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: @grey-600;
+  cursor: pointer;
+  display: inline-flex;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+
+  &:hover {
+    background: @grey-26;
+    color: @grey-900;
+  }
+}
+
+.bulk-edit-code-editor-body {
+  max-height: 320px;
+  overflow: auto;
+
+  .bulk-edit-code-editor-cm,
+  .CodeMirror {
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 12.5px;
+  }
+}
+
+.bulk-edit-code-editor-foot {
+  align-items: center;
+  border-top: 1px solid @grey-15;
+  color: @grey-500;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.bulk-edit-code-editor-hint {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.bulk-edit-code-editor-kbd {
+  background: @grey-26;
+  border: 1px solid @grey-15;
+  border-radius: 4px;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  padding: 1px 5px;
+}
+
+// Read-mode preview pill (language) + code snippet shown in the grid cell.
+.bulk-edit-code-preview {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bulk-edit-code-lang-pill {
+  background: @grey-36;
+  border-radius: 6px;
+  color: @grey-700;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: @font-semibold;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  text-transform: uppercase;
+
+  &.sql {
+    background: @primary-50;
+    color: @primary-7;
+  }
+
+  &.python {
+    background: @green-9;
+    color: @green-10;
+  }
+
+  &.javascript {
+    background: @red-9;
+    color: @red-10;
+  }
+}
+
+.bulk-edit-code-snippet {
+  color: @grey-700;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

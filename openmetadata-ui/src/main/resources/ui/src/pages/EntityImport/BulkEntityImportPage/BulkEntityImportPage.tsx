@@ -32,7 +32,11 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
+import type {
+  Column,
+  ColumnOrColumnGroup,
+  RenderCellProps,
+} from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -42,6 +46,10 @@ import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
 import { CsvJobsTray } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
+import {
+  OperationBadge,
+  OperationSummary,
+} from '../../../components/common/EntityImport/OperationCell/OperationCell.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -67,8 +75,14 @@ import {
   getCsvDocumentation,
 } from '../../../rest/csvAPI';
 import {
+  COLUMNS_WIDTH,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  getImportOperation,
+  getImportOperationRowClass,
+  getImportOperationSummary,
+  IMPORT_OPERATIONS,
+  IMPORT_OPERATION_COLUMN_KEY,
   isMetricBulkEditHiddenColumn,
 } from '../../../utils/CSV/CSV.utils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
@@ -217,12 +231,18 @@ const BulkEntityImportPage = () => {
     const editableColumnKeys = filterColumns
       .filter((column) => column.editable)
       .map((column) => column.key);
+    // Diff against the original row by its stable id, not its array index, so
+    // adding/reordering rows can never misalign the changed-cell diff sent to
+    // the server.
+    const initialRowById = new Map(
+      initialDataSource.map((row) => [row.id, row])
+    );
     const changedCellKeysByRowId: Record<string, string[]> = {};
     const changedDataSource: Record<string, string>[] = [];
     let changedCellCount = 0;
 
     dataSource.forEach((row, index) => {
-      const initialRow = initialDataSource[index] ?? {};
+      const initialRow = initialRowById.get(row.id) ?? {};
       const changedKeys = editableColumnKeys.filter(
         (key) => String(row[key] ?? '') !== String(initialRow[key] ?? '')
       );
@@ -902,6 +922,35 @@ const BulkEntityImportPage = () => {
     setGridContainer,
   ]);
 
+  const importResultColumns = useMemo(() => {
+    if (!validateCSVData) {
+      return [];
+    }
+    const operationColumn: Column<Record<string, string>> = {
+      key: IMPORT_OPERATION_COLUMN_KEY,
+      name: t('label.operation'),
+      sortable: false,
+      resizable: false,
+      frozen: true,
+      minWidth: COLUMNS_WIDTH.operation,
+      width: COLUMNS_WIDTH.operation,
+      cellClass: () => 'rdg-cell-operation',
+      renderCell: ({ row }: RenderCellProps<Record<string, string>>) => (
+        <OperationBadge operation={getImportOperation(row)} />
+      ),
+    };
+
+    return [operationColumn, ...validateCSVData.columns];
+  }, [validateCSVData, t]);
+
+  const importOperationSummary = useMemo(
+    () =>
+      validateCSVData
+        ? getImportOperationSummary(validateCSVData.dataSource)
+        : undefined,
+    [validateCSVData]
+  );
+
   const activeJobProgress = useMemo(() => {
     const total = activeAsyncImportJob?.total ?? activePersistedJob?.total ?? 0;
     const progress =
@@ -1228,16 +1277,23 @@ const BulkEntityImportPage = () => {
                   ) : (
                     <div className="csv-import-card">
                       <div className="csv-import-stack">
-                        <div>
+                        <div className="csv-import-results-header">
+                          {importOperationSummary && (
+                            <OperationSummary
+                              operations={IMPORT_OPERATIONS}
+                              summary={importOperationSummary}
+                            />
+                          )}
                           <ImportStatus csvImportResult={validationData} />
                         </div>
 
                         <div>
                           {validateCSVData && (
-                            <div className="om-rdg">
+                            <div className="om-rdg csv-import-results-rdg">
                               <LazyDataGrid
                                 className="rdg-light"
-                                columns={validateCSVData.columns}
+                                columns={importResultColumns}
+                                rowClass={getImportOperationRowClass}
                                 rows={validateCSVData.dataSource}
                               />
                             </div>

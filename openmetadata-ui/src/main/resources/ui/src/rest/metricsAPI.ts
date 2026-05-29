@@ -132,6 +132,17 @@ export const exportMetricDetailsInCSV = async (fqn: string) => {
   return response.data;
 };
 
+// Synchronous export used only to LOAD rows into the Bulk Edit grid. Unlike the
+// async export it does NOT create a background job (so it never appears in the
+// Jobs tray) and returns the CSV string directly for the wizard to parse.
+export const exportMetricDetailsInCSVSync = async (fqn: string) => {
+  const response = await APIClient.get<string>(
+    `/metrics/name/${getEncodedFqn(fqn)}/export`
+  );
+
+  return response.data;
+};
+
 export const deleteMetricAsync = async (id: string) => {
   const response = await APIClient.delete(`/metrics/async/${id}`);
 

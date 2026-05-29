@@ -174,6 +174,17 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBe(lazyTextEditor);
     });
 
+    it('should return the unified code editor (not plain text) for expressionCode', () => {
+      const editor = csvUtilsClassBase.getEditor(
+        'expressionCode',
+        EntityType.METRIC,
+        multipleOwner
+      );
+
+      expect(editor).toBeDefined();
+      expect(editor).not.toBe(lazyTextEditor);
+    });
+
     it('should return the editor component for the "description" column', () => {
       const column = 'description';
       const editor = csvUtilsClassBase.getEditor(

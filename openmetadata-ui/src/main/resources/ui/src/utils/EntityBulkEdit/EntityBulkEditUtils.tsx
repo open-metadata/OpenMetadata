@@ -26,7 +26,7 @@ import {
   exportGlossaryInCSVFormat,
   exportGlossaryTermsInCSVFormat,
 } from '../../rest/glossaryAPI';
-import { exportMetricDetailsInCSV } from '../../rest/metricsAPI';
+import { exportMetricDetailsInCSVSync } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { exportTestCasesInCSV } from '../../rest/testAPI';
@@ -59,7 +59,9 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
       return exportTableDetailsInCSV;
 
     case EntityType.METRIC:
-      return exportMetricDetailsInCSV;
+      // Sync export so loading the Bulk Edit grid does not spawn a Jobs-tray
+      // export job — it's an internal data fetch, not a user-facing export.
+      return exportMetricDetailsInCSVSync;
 
     case EntityType.TEST_CASE:
       return exportTestCasesInCSV;

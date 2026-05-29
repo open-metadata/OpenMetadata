@@ -357,9 +357,13 @@
 }
 
 .bulk-edit-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
   padding: 20px;
 
-  .csv-import-action-row button {
+  button {
     font-size: 13px !important;
     height: 34px;
     min-height: 34px;
@@ -376,80 +380,74 @@
   }
 }
 
-.bulk-edit-summary {
+.bulk-edit-toolbar-actions {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-left: auto;
+}
 
-  .csv-import-muted-text {
-    font-size: 14px;
-    line-height: 20px;
+.bulk-edit-search {
+  flex: 0 0 260px !important;
+  max-width: 260px !important;
+  width: 260px !important;
+}
+
+.bulk-edit-search-wrapper {
+  height: 34px;
+  min-height: 34px;
+
+  input {
+    font-size: 13px !important;
+    height: 34px !important;
+    line-height: 18px !important;
+  }
+
+  svg {
+    height: 14px !important;
+    width: 14px !important;
   }
 }
 
 .bulk-edit-edited-pill {
+  flex-shrink: 0;
   font-size: 12px !important;
   font-weight: @font-medium !important;
   line-height: 14px !important;
   padding: 2px 8px !important;
 }
 
-.bulk-edit-operation-summary {
-  align-items: stretch;
-  align-self: flex-start;
-  border: 1px solid @grey-15;
-  border-radius: 12px;
-  display: inline-flex;
-  margin: 0 20px 18px;
-  overflow: hidden;
-}
-
-.bulk-edit-operation-summary-item {
-  align-items: center;
-  background: @white;
-  display: inline-flex;
-  gap: 8px;
-  min-height: 38px;
-  padding: 8px 16px;
-
-  &:not(:last-child) {
-    border-right: 1px solid @grey-15;
-  }
-}
-
-.bulk-edit-operation-summary-count {
-  font-size: 18px;
-  font-variant-numeric: tabular-nums;
-  font-weight: @font-semibold;
-  line-height: 22px;
-
-  &-create {
-    color: @primary-6;
-  }
-
-  &-update {
-    color: @green-10;
-  }
-
-  &-no_change {
-    color: @grey-600;
-  }
-
-  &-skip {
-    color: @red-6;
-  }
-}
-
-.bulk-edit-operation-summary-label {
-  color: @grey-700;
-  font-size: 14px;
-  font-weight: @font-medium;
-  line-height: 20px;
-}
-
 .bulk-edit-grid-shell {
   padding: 0 20px;
+}
+
+.bulk-edit-add-row-bar {
+  align-items: center;
+  background: @grey-26;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  margin: 14px 20px 0;
+  padding: 12px 14px;
+
+  .bulk-edit-add-row-btn {
+    font-size: 13px !important;
+    min-height: 34px !important;
+    padding: 7px 12px !important;
+
+    [data-icon] {
+      height: 16px !important;
+      width: 16px !important;
+    }
+  }
+}
+
+.bulk-edit-add-row-hint {
+  color: @grey-600;
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .bulk-edit-empty-state {
@@ -490,16 +488,23 @@
     border-color: @grey-15;
     color: @grey-900;
     display: flex;
-    font-size: 14px;
+    font-family: @font-family;
+    font-size: 13px;
     font-weight: @font-regular;
     line-height: 20px;
     padding: 0 12px;
   }
 
-  .rdg-row .rdg-cell[aria-colindex='1'],
-  .rdg-row .rdg-cell[aria-colindex='4'],
-  .rdg-row .rdg-cell[aria-colindex='5'] {
+  // Identifier + enum cells read as code (monospace); everything else is sans.
+  .rdg-cell-name,
+  .rdg-cell-metricType,
+  .rdg-cell-unitOfMeasurement,
+  .rdg-cell-granularity,
+  .rdg-cell-expressionLanguage,
+  .rdg-cell-sourceType,
+  .rdg-cell-entityStatus {
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 12.5px;
   }
 
   .rdg-row {
@@ -517,9 +522,15 @@
     box-shadow: inset 0 0 0 2px @primary-4;
   }
 
-  .rdg-cell-description {
-    overflow: visible;
+  // Cells clip their content by default so long text (e.g. Description) never
+  // overlaps the neighbouring column. Only the actively-edited cell is allowed
+  // to overflow so its inline editor / dropdown can escape.
+  .rdg-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
+  .rdg-cell-description {
     &[aria-selected='true'],
     &.rdg-cell-selected {
       box-shadow: none;
@@ -528,100 +539,118 @@
     }
   }
 
+  .rdg-cell-locked {
+    background: @grey-26;
+    color: @grey-600;
+    cursor: not-allowed;
+
+    &[aria-selected='true'],
+    &.rdg-cell-selected {
+      box-shadow: none;
+    }
+  }
+
+  // Locked Name cell: value on the left, a lock affordance on the right.
+  .bulk-edit-name-cell {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bulk-edit-name-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bulk-edit-name-lock {
+    color: @grey-500;
+    flex-shrink: 0;
+  }
+
   .rdg-cell-operation {
     align-items: flex-start;
     box-shadow: none;
     flex-direction: column;
     justify-content: center;
   }
-}
 
-.bulk-edit-operation-cell {
-  align-items: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
+  // Row tint reflects the per-row operation (green = update, blue = create,
+  // red = skip). Driven by the grid's rowClass.
+  .rdg-row.bulk-edit-op-row-update .rdg-cell {
+    background: #f6fef9;
+  }
 
-.bulk-edit-operation-badge {
-  align-items: center;
-  border: 1px solid @grey-15;
-  border-radius: 999px;
-  color: @grey-700;
-  display: inline-flex;
-  font-size: 11px;
-  font-weight: @font-semibold;
-  gap: 6px;
-  letter-spacing: 0.04em;
-  line-height: 14px;
-  padding: 3px 10px 3px 8px;
-  text-transform: uppercase;
-  white-space: nowrap;
+  .rdg-row.bulk-edit-op-row-create .rdg-cell {
+    background: #f6fbff;
+  }
 
-  &-create {
+  .rdg-row.bulk-edit-op-row-skip .rdg-cell {
+    background: #fffbfa;
+  }
+
+  // Keep the edit highlight and locked styling visible on tinted rows.
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-edited {
+    box-shadow: inset 0 0 0 2px @primary-4;
+  }
+
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-locked {
+    background: @grey-26;
+  }
+
+  // Flash a freshly added "Add metric" row blue for ~2s, then fade back.
+  .rdg-row.bulk-edit-row-highlight .rdg-cell {
     background: @primary-50;
-    border-color: @primary-2;
-    color: @primary-7;
-  }
-
-  &-update {
-    background: @green-9;
-    border-color: @green-12;
-    color: @green-10;
-  }
-
-  &-skip {
-    background: @red-9;
-    border-color: @red-19;
-    color: @red-10;
+    transition: background 0.5s ease;
   }
 }
 
-.bulk-edit-operation-dot {
-  background: @grey-400;
-  border-radius: 50%;
-  height: 7px;
-  width: 7px;
-
-  .bulk-edit-operation-badge-create & {
-    background: @primary-5;
-  }
-
-  .bulk-edit-operation-badge-update & {
-    background: @green-500;
-  }
-
-  .bulk-edit-operation-badge-skip & {
-    background: @red-14;
-  }
-}
-
-.bulk-edit-operation-rename-hint {
+// "Remove" affordance shown in the Operation cell of an added (new) row.
+.bulk-edit-remove-row {
   align-items: center;
-  color: @grey-500;
+  background: transparent;
+  border: none;
+  color: @red-6;
+  cursor: pointer;
   display: inline-flex;
-  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: @font-medium;
   gap: 4px;
-  line-height: 14px;
-  min-width: 0;
-  white-space: nowrap;
+  padding: 2px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.bulk-edit-operation-old-name {
-  max-width: 104px;
-  overflow: hidden;
-  text-decoration: line-through;
-  text-overflow: ellipsis;
+.csv-import-results-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.bulk-edit-operation-new-name {
-  color: @primary-6;
+// Import dry-run results grid — reuse the operation cell + row tints from the
+// shared OperationCell so the Import preview reads identically to Bulk Edit.
+.csv-import-results-rdg {
+  .rdg-cell-operation {
+    align-items: center;
+    box-shadow: none;
+  }
 
-  &::before {
-    content: '→';
-    margin-right: 4px;
+  .rdg-row.bulk-edit-op-row-update .rdg-cell {
+    background: #f6fef9;
+  }
+
+  .rdg-row.bulk-edit-op-row-create .rdg-cell {
+    background: #f6fbff;
+  }
+
+  .rdg-row.bulk-edit-op-row-skip .rdg-cell {
+    background: #fffbfa;
   }
 }
 

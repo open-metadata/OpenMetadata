@@ -130,7 +130,13 @@ export const EntityExportModalProvider = ({
       });
 
       if (isString(data)) {
-        downloadFile(data, `${fileName}.csv`);
+        // Bulk Edit loads its grid via a synchronous export that returns the CSV
+        // directly — feed it to the wizard instead of downloading a file.
+        if (isBulkEdit) {
+          setCSVExportData(data);
+        } else {
+          downloadFile(data, `${fileName}.csv`);
+        }
         handleCancel();
         setDownloading(false);
       } else {

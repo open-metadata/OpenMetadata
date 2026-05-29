@@ -28,6 +28,10 @@ import {
   getColumnConfig,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
+  getImportOperation,
+  getImportOperationRowClass,
+  getImportOperationSummary,
+  IMPORT_OPERATIONS,
   isMetricBulkEditHiddenColumn,
   renderColumnDataEditor,
   splitCSV,
@@ -1629,6 +1633,116 @@ describe('CSVUtils', () => {
       const result = splitCSV(input);
 
       expect(result).toEqual(['', 'value2', '']);
+    });
+  });
+
+  describe('Import operation classification', () => {
+    it('should classify a failed row as SKIP', () => {
+      expect(
+        getImportOperation({ status: 'failure', details: 'Some error' })
+      ).toBe('SKIP');
+    });
+
+    it('should classify a skipped row as SKIP', () => {
+      expect(getImportOperation({ status: 'skipped', details: '' })).toBe(
+        'SKIP'
+      );
+    });
+
+    it('should classify an updated row as UPDATE', () => {
+      expect(
+        getImportOperation({ status: 'success', details: 'Entity updated' })
+      ).toBe('UPDATE');
+    });
+
+    it('should classify a created row as CREATE', () => {
+      expect(
+        getImportOperation({ status: 'success', details: 'Entity created' })
+      ).toBe('CREATE');
+    });
+
+    it('should default an unknown successful row to CREATE', () => {
+      expect(getImportOperation({ status: 'success' })).toBe('CREATE');
+    });
+
+    it('should build a row class from the operation', () => {
+      expect(
+        getImportOperationRowClass({
+          status: 'success',
+          details: 'Entity updated',
+        })
+      ).toBe('bulk-edit-op-row-update');
+      expect(getImportOperationRowClass({ status: 'failure' })).toBe(
+        'bulk-edit-op-row-skip'
+      );
+    });
+
+    it('should summarise operations across rows', () => {
+      const summary = getImportOperationSummary([
+        { status: 'success', details: 'Entity created' },
+        { status: 'success', details: 'Entity created' },
+        { status: 'success', details: 'Entity updated' },
+        { status: 'failure', details: 'bad' },
+      ]);
+
+      expect(summary).toEqual({ CREATE: 2, UPDATE: 1, NO_CHANGE: 0, SKIP: 1 });
+    });
+
+    it('should expose import operations without NO_CHANGE', () => {
+      expect(IMPORT_OPERATIONS).toEqual(['CREATE', 'UPDATE', 'SKIP']);
+    });
+  });
+
+  describe('isMetricBulkEditHiddenColumn - expression language', () => {
+    it('should hide expressionLanguage for metric in both import and bulk edit', () => {
+      expect(
+        isMetricBulkEditHiddenColumn(
+          'expressionLanguage',
+          EntityType.METRIC,
+          false
+        )
+      ).toBe(true);
+      expect(
+        isMetricBulkEditHiddenColumn(
+          'expressionLanguage',
+          EntityType.METRIC,
+          true
+        )
+      ).toBe(true);
+    });
+
+    it('should not hide expressionLanguage for non-metric entities', () => {
+      expect(
+        isMetricBulkEditHiddenColumn(
+          'expressionLanguage',
+          EntityType.TABLE,
+          true
+        )
+      ).toBe(false);
+    });
+
+    it('should keep editable metric columns visible', () => {
+      expect(
+        isMetricBulkEditHiddenColumn('expressionCode', EntityType.METRIC, true)
+      ).toBe(false);
+    });
+  });
+
+  describe('renderColumnDataEditor - expressionCode preview', () => {
+    it('should render a language pill and code snippet', () => {
+      const result = renderColumnDataEditor('expressionCode', {
+        value: 'SELECT 1\nFROM t',
+        data: {
+          details: '',
+          glossaryStatus: '',
+          row: { expressionLanguage: 'SQL' },
+        },
+      });
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByText('SQL')).toBeInTheDocument();
+      expect(screen.getByText('SELECT 1')).toBeInTheDocument();
     });
   });
 });

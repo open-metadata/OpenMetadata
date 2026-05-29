@@ -195,6 +195,15 @@ jest.mock(
   })
 );
 
+// CsvJobsTray has its own test suite and subscribes to the same socket channels;
+// mock it here so the page is the only csvImportChannel listener under test.
+jest.mock(
+  '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component',
+  () => ({
+    CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
+  })
+);
+
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: jest.fn(({ children }) => (

@@ -18,6 +18,11 @@ import type { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
+import {
+  BulkActionOperation,
+  BULK_ACTION_OPERATIONS,
+} from '../../components/common/EntityImport/OperationCell/OperationCell.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   ExtensionDataProps,
@@ -72,6 +77,26 @@ export const METRIC_BULK_EDIT_HIDDEN_COLUMNS = [
   'lastSyncedAt',
 ];
 
+// Hidden for metric in BOTH import and bulk edit: the expression language is set
+// from the language tabs inside the unified Expression code cell, so a separate
+// language column would be redundant. The value still round-trips in the CSV.
+export const METRIC_HIDDEN_COLUMNS = ['expressionLanguage'];
+
+// Per-row outcome the server writes into the import-result CSV `details` column
+// (EntityCsv.ENTITY_UPDATED). The Import preview uses it to tell create from
+// update without re-implementing matching on the client.
+export const IMPORT_ENTITY_UPDATED_DETAIL = 'Entity updated';
+
+// Per-row `status` the server writes when a row is skipped (EntityCsv.IMPORT_SKIPPED).
+export const IMPORT_SKIPPED_STATUS = 'skipped';
+
+export const IMPORT_OPERATION_COLUMN_KEY = '__importOperation';
+
+// The Import preview never has "no change" rows — every applied row is a create
+// or update, and invalid rows are skipped.
+export const IMPORT_OPERATIONS: BulkActionOperation[] =
+  BULK_ACTION_OPERATIONS.filter((operation) => operation !== 'NO_CHANGE');
+
 const getCsvColumnName = (column: string) =>
   (column.split('.').pop() ?? column).replace(/\*$/, '');
 
@@ -79,10 +104,17 @@ export const isMetricBulkEditHiddenColumn = (
   column: string,
   entityType: EntityType,
   isBulkEdit: boolean
-) =>
-  isBulkEdit &&
-  entityType === EntityType.METRIC &&
-  METRIC_BULK_EDIT_HIDDEN_COLUMNS.includes(getCsvColumnName(column));
+) => {
+  const columnName = getCsvColumnName(column);
+  const isMetric = entityType === EntityType.METRIC;
+
+  return (
+    (isMetric && METRIC_HIDDEN_COLUMNS.includes(columnName)) ||
+    (isBulkEdit &&
+      isMetric &&
+      METRIC_BULK_EDIT_HIDDEN_COLUMNS.includes(columnName))
+  );
+};
 
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
@@ -106,19 +138,43 @@ export const renderColumnDataEditor = (
   column: string,
   recordData: {
     value: string;
-    data: { details: string; glossaryStatus: string };
+    data: {
+      details: string;
+      glossaryStatus: string;
+      row?: Record<string, unknown>;
+    };
   },
   options: { usePlainTextDescription?: boolean } = {}
 ) => {
   const {
     value,
-    data: { glossaryStatus },
+    data: { glossaryStatus, row },
   } = recordData;
   switch (column) {
     case 'status':
       return statusRenderer(value as Status);
     case 'glossaryStatus':
       return <Typography.Text>{glossaryStatus}</Typography.Text>;
+    case 'expressionCode': {
+      const language = String(row?.expressionLanguage ?? '');
+      const firstLine = value.split('\n').find((line) => line.trim()) ?? '';
+      const snippet =
+        firstLine.length > 80 ? `${firstLine.slice(0, 80)}…` : firstLine;
+
+      return value ? (
+        <span className="bulk-edit-code-preview">
+          {language && (
+            <span
+              className={`bulk-edit-code-lang-pill ${language.toLowerCase()}`}>
+              {language}
+            </span>
+          )}
+          <span className="bulk-edit-code-snippet">{snippet}</span>
+        </span>
+      ) : (
+        value
+      );
+    }
     case 'description':
       if (options.usePlainTextDescription) {
         return value;
@@ -145,6 +201,17 @@ export const renderColumnDataEditor = (
         value
       );
 
+    case 'owners':
+    case 'owner':
+    case 'reviewers':
+    case 'tags':
+    case 'glossaryTerms':
+    case 'relatedTerms':
+    case 'domains':
+    case 'dataProducts':
+    case 'relatedMetrics':
+      return <CsvCellPreview column={column} value={value} />;
+
     default:
       return value;
   }
@@ -161,10 +228,13 @@ export const getColumnConfig = (
   isBulkEdit = false
 ): Column<Record<string, unknown>> => {
   const colType = column.split('.').pop() ?? '';
-  const shouldUsePlainTextEditor =
-    isBulkEdit && entityType === EntityType.METRIC;
+  const isMetricBulkEdit = isBulkEdit && entityType === EntityType.METRIC;
+  const shouldUsePlainTextEditor = isMetricBulkEdit;
+  // A metric's name is its identity — it can't be renamed in bulk edit. New
+  // metrics are created via Add row, where the name is editable.
+  const isLockedColumn = isMetricBulkEdit && colType === 'name';
   const disabledColumns = isBulkEdit
-    ? CSV_DISABLED_COLUMNS.includes(colType)
+    ? CSV_DISABLED_COLUMNS.includes(colType) || isLockedColumn
     : false;
 
   return {
@@ -172,7 +242,10 @@ export const getColumnConfig = (
     name: startCase(column),
     sortable: false,
     resizable: true,
-    cellClass: () => `rdg-cell-${column.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`,
+    cellClass: () =>
+      `rdg-cell-${column.replaceAll(/[^a-zA-Z0-9-_]/g, '')}${
+        isLockedColumn ? ' rdg-cell-locked' : ''
+      }`,
     editable: editable ? !disabledColumns : false,
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
@@ -187,7 +260,7 @@ export const getColumnConfig = (
         colType,
         {
           value: String(data.row[column] ?? ''),
-          data: { details: '', glossaryStatus: '' },
+          data: { details: '', glossaryStatus: '', row: data.row },
         },
         {
           usePlainTextDescription: shouldUsePlainTextEditor,
@@ -261,6 +334,45 @@ export const getCSVStringFromColumnsAndDataSource = (
     newline: '\n',
   });
 };
+
+/**
+ * Classify an import-result row into a catalog operation using the server's
+ * authoritative `status` + `details` columns (no client-side name matching).
+ */
+export const getImportOperation = (
+  row: Record<string, string>
+): BulkActionOperation => {
+  const status = String(row.status ?? '').toLowerCase();
+  let operation: BulkActionOperation = 'CREATE';
+
+  if (status === Status.Failure || status === IMPORT_SKIPPED_STATUS) {
+    operation = 'SKIP';
+  } else if (String(row.details ?? '') === IMPORT_ENTITY_UPDATED_DETAIL) {
+    operation = 'UPDATE';
+  }
+
+  return operation;
+};
+
+export const getImportOperationRowClass = (row: Record<string, string>) =>
+  `bulk-edit-op-row-${getImportOperation(row).toLowerCase()}`;
+
+export const getImportOperationSummary = (
+  rows: Record<string, string>[]
+): Record<BulkActionOperation, number> =>
+  rows.reduce(
+    (summary, row) => {
+      summary[getImportOperation(row)] += 1;
+
+      return summary;
+    },
+    {
+      CREATE: 0,
+      UPDATE: 0,
+      NO_CHANGE: 0,
+      SKIP: 0,
+    } as Record<BulkActionOperation, number>
+  );
 
 /**
  *

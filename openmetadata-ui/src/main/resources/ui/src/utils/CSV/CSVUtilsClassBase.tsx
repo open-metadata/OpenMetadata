@@ -13,7 +13,7 @@
 
 import { Bold01, Code01, Italic01, List, Type01 } from '@untitledui/icons';
 import Select, { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty, toString } from 'lodash';
+import { isEmpty, startCase, toString } from 'lodash';
 import {
   FocusEvent,
   KeyboardEvent,
@@ -28,6 +28,7 @@ import Certification from '../../components/Certification/Certification.componen
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
+import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
@@ -41,6 +42,14 @@ import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import {
+  EntityStatus,
+  Language,
+  MetricGranularity,
+  MetricSourceType,
+  MetricType,
+  UnitOfMeasurement,
+} from '../../generated/entity/data/metric';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
@@ -244,9 +253,25 @@ const InlineDescriptionEditor = ({
   );
 };
 
+const toSelectOptions = (values: string[]) =>
+  values.map((value) => ({ label: value, value }));
+
+const METRIC_ENUM_COLUMN_OPTIONS: Record<string, DefaultOptionType[]> = {
+  metricType: toSelectOptions(Object.values(MetricType)),
+  unitOfMeasurement: toSelectOptions(Object.values(UnitOfMeasurement)),
+  granularity: toSelectOptions(Object.values(MetricGranularity)),
+  sourceType: toSelectOptions(Object.values(MetricSourceType)),
+  entityStatus: toSelectOptions(Object.values(EntityStatus)),
+  syncEnabled: toSelectOptions(['true', 'false']),
+};
+
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
     return ['glossaryStatus', 'inspectionQuery'];
+  }
+
+  public metricEnumColumns() {
+    return Object.keys(METRIC_ENUM_COLUMN_OPTIONS);
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
@@ -279,6 +304,7 @@ class CSVUtilsClassBase {
   ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
+      case 'owners':
         return ({
           row,
           onRowChange,
@@ -421,6 +447,7 @@ class CSVUtilsClassBase {
                     dropdownContainerRef={dropdownContainerRef}
                     selectProps={{
                       className: 'react-grid-select-dropdown',
+                      getPopupContainer: () => document.body,
                       size: 'small',
                     }}
                     value={tags}
@@ -721,6 +748,120 @@ class CSVUtilsClassBase {
                   size="small"
                   style={{ width: '155px' }}
                   value={value}
+                  onChange={handleChange}
+                />
+              </InlineEdit>
+            </KeyDownStopPropagationWrapper>
+          );
+        };
+
+      case 'relatedMetrics':
+      case 'dataProducts':
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
+          const selected = value
+            ? String(value).split(';').filter(Boolean)
+            : [];
+          const handleChange = (values: string[]) => {
+            onRowChange({ ...row, [column.key]: values.join(';') }, true);
+          };
+
+          return (
+            <KeyDownStopPropagationWrapper>
+              <InlineEdit
+                onCancel={() => onClose(false)}
+                onSave={() => onClose(true)}>
+                <Select
+                  autoFocus
+                  open
+                  className="react-grid-select-dropdown"
+                  getPopupContainer={() => document.body}
+                  mode="tags"
+                  placeholder={t('label.add-entity', {
+                    entity: startCase(column.key),
+                  })}
+                  size="small"
+                  value={selected}
+                  onChange={handleChange}
+                />
+              </InlineEdit>
+            </KeyDownStopPropagationWrapper>
+          );
+        };
+
+      case 'expressionCode':
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const language = (row.expressionLanguage as Language) || Language.SQL;
+          const handleCommit = (code: string, selectedLanguage: Language) => {
+            onRowChange(
+              {
+                ...row,
+                [column.key]: code,
+                expressionLanguage: selectedLanguage,
+              },
+              true
+            );
+            onClose(true);
+          };
+
+          return (
+            <>
+              <ValueRendererOnEditCell>
+                {row[column.key]}
+              </ValueRendererOnEditCell>
+              <ExpressionCodeCell
+                language={language}
+                value={String(row[column.key] ?? '')}
+                onCancel={() => onClose(false)}
+                onCommit={handleCommit}
+              />
+            </>
+          );
+        };
+
+      case 'metricType':
+      case 'unitOfMeasurement':
+      case 'granularity':
+      case 'sourceType':
+      case 'entityStatus':
+      case 'syncEnabled':
+        return ({
+          row,
+          onRowChange,
+          onClose,
+          column,
+        }: RenderEditCellProps<any, any>) => {
+          const value = row[column.key];
+          const handleChange = (selectedValue: string) => {
+            onRowChange({ ...row, [column.key]: selectedValue }, true);
+          };
+
+          return (
+            <KeyDownStopPropagationWrapper>
+              <InlineEdit
+                onCancel={() => onClose(false)}
+                onSave={() => onClose(true)}>
+                <Select
+                  autoFocus
+                  open
+                  showSearch
+                  className="react-grid-select-dropdown"
+                  data-testid={`${column.key}-select`}
+                  getPopupContainer={() => document.body}
+                  optionFilterProp="label"
+                  options={METRIC_ENUM_COLUMN_OPTIONS[column.key]}
+                  size="small"
+                  value={value || undefined}
                   onChange={handleChange}
                 />
               </InlineEdit>

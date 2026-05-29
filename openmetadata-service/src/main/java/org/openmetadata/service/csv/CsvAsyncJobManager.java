@@ -13,9 +13,11 @@
 
 package org.openmetadata.service.csv;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -189,7 +191,9 @@ public final class CsvAsyncJobManager {
 
   private List<CsvAsyncJobLog> getLogs(long jobId) {
     List<CsvAsyncJobLog> logs =
-        dao.listLogs(jobId, DEFAULT_LOG_LIMIT).stream().map(this::toCsvLog).toList();
+        dao.listLogs(jobId, DEFAULT_LOG_LIMIT).stream()
+            .map(this::toCsvLog)
+            .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(logs);
     return logs;
   }
