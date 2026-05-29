@@ -4452,7 +4452,7 @@ export interface ConfigObject {
     /**
      * Policy agent configuration for access control extraction.
      */
-    policyAgentConfig?: PolicyAgentConfigClass;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
      *
@@ -7408,28 +7408,6 @@ export interface BucketDetails {
      * Path of the folder where the .pbit files are stored
      */
     objectPrefix?: string;
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface PolicyAgentConfigClass {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
