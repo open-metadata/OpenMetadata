@@ -373,7 +373,11 @@ jobs:
           if not blocks:
               push("_No detailed scan output was produced._")
 
-          payload = {"thread_ts": thread_ts, "blocks": blocks}
+          payload = {
+              "thread_ts": thread_ts,
+              "text": "Security scan details (thread reply)",
+              "blocks": blocks,
+          }
           print(json.dumps(payload))
           PY
 

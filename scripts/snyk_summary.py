@@ -231,8 +231,13 @@ def main():
         )
         body = "\n\n".join([header] + slack_parts[1:])
         # Slack section block text limit 3000 chars; leave headroom for shell-added header lines.
+        # Truncate at the last newline before the limit so we don't cut a Slack mrkdwn link
+        # (`<url|text>`) or a multi-codepoint emoji sequence mid-token.
         if len(body) > 2800:
-            body = body[:2750] + "\n…truncated. See Job Summary for full report."
+            cut = body.rfind("\n", 0, 2750)
+            if cut < 0:
+                cut = 2750
+            body = body[:cut].rstrip() + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 

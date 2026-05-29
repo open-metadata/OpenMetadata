@@ -186,7 +186,10 @@ def render_slack(libs, totals, top):
     ]
     body = "\n\n".join([header] + sections)
     if len(body) > 2800:
-        body = body[:2750] + "\n…truncated. See Job Summary for full report."
+        cut = body.rfind("\n", 0, 2750)
+        if cut < 0:
+            cut = 2750
+        body = body[:cut].rstrip() + "\n…truncated. See Job Summary for full report."
     return body
 
 
