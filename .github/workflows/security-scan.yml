@@ -294,7 +294,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           python3 - <<'PY' > header.json
-          import json, os
+          import json, os, pathlib
 
           retire = os.environ["RETIRE_RESULT"]
           snyk = os.environ["SNYK_RESULT"]
@@ -303,6 +303,28 @@ jobs:
 
           def status_icon(s):
               return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
+
+          def load_counts(path):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return None
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return None
+
+          def totals_line(counts):
+              if not counts:
+                  return ""
+              return (
+                  f"\n🚨 {counts.get('critical', 0)} critical  ·  "
+                  f"🔴 {counts.get('high', 0)} high  ·  "
+                  f"🟠 {counts.get('medium', 0)} medium  ·  "
+                  f"🟡 {counts.get('low', 0)} low"
+              )
+
+          retire_counts = load_counts("retire-report/_retire_counts.json")
+          snyk_counts = load_counts("security-report/_counts.json")
 
           if retire == "success" and snyk == "success":
               overall = "🟢"
@@ -314,8 +336,10 @@ jobs:
           header = (
               f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
               f"_branch_ `{ref_name}`  ·  <{run_url}|Open run details>\n"
-              f"• Vulnerability scan (Retire.js): {status_icon(retire)}\n"
+              f"• Vulnerability scan (Retire.js): {status_icon(retire)}"
+              f"{totals_line(retire_counts)}\n"
               f"• Security scan (Snyk): {status_icon(snyk)}"
+              f"{totals_line(snyk_counts)}"
           )
           fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
           payload = {
