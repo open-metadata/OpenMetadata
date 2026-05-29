@@ -480,6 +480,8 @@ describe('ArticleDetailHeader', () => {
   it('does not render the right panel toggle on the activity_feed tab', () => {
     render(<ArticleDetailHeader {...defaultProps} activeTab="activity_feed" />);
 
-    expect(screen.queryByTestId('right-panel-toggle-btn')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('right-panel-toggle-btn')
+    ).not.toBeInTheDocument();
   });
 });
