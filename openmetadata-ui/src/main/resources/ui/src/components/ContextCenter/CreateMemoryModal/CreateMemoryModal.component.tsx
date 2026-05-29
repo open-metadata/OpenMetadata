@@ -30,7 +30,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
-  Edit01,
   FileLock02,
   InfoCircle,
   Lightbulb03,
@@ -47,6 +46,7 @@ import { compare } from 'fast-json-patch';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -505,7 +505,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         {modalTitle}
                       </Typography>
                     </div>
-                    {memoryToEdit?.updatedBy && (
+                    {(memoryToEdit?.owners?.[0]?.name ??
+                      memoryToEdit?.updatedBy) && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography className="tw:text-gray-500" size="text-xs">
                           {t('label.created-by')}
@@ -514,7 +515,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           showUserName
                           className="tw:text-gray-900"
                           profileWidth={16}
-                          userName={memoryToEdit.updatedBy}
+                          userName={memoryToEdit?.owners?.[0]?.name || ''}
                         />
                         <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
                           &middot;
@@ -773,7 +774,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               {!isViewOnly && isOwner && (
                                 <ButtonUtility
                                   color="tertiary"
-                                  icon={<Edit01 size={14} strokeWidth={2} />}
+                                  icon={<EditIcon height={14} width={14} />}
                                   onClick={() => setIsEditingVisibility(true)}
                                 />
                               )}
@@ -957,7 +958,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {isViewOnly && (isOwner || canDelete) ? (
                       <Button
                         color="primary"
-                        iconLeading={Edit01}
+                        iconLeading={EditIcon}
                         size="sm"
                         onClick={handleSwitchToEdit}>
                         {t('label.edit')}
