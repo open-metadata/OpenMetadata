@@ -87,14 +87,6 @@ import { PropertyInput } from './PropertyInput';
 import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
 
-const stripSurroundingQuotes = (value: string): string => {
-  if (value.startsWith('"') && value.endsWith('"') && value.length > 2) {
-    return value.slice(1, -1);
-  }
-
-  return value;
-};
-
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
   versionDataKeys,
@@ -852,37 +844,33 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
   };
 
-  const getEntityRefLinkValue = (item: EntityReference) => {
-    const fqn = stripSurroundingQuotes(
-      item.fullyQualifiedName ?? item.name ?? ''
-    );
-    const name = stripSurroundingQuotes(item.name ?? '');
-
-    return (
-      <Link
-        className="entity-ref-link"
-        to={entityUtilClassBase.getEntityLink(item.type, fqn)}>
-        <div className="entity-icon m-r-xs">
-          {['user', 'team'].includes(item.type) ? (
-            <ProfilePicture
-              className="d-flex"
-              isTeam={item.type === 'team'}
-              name={name}
-              type="circle"
-              width="18"
-            />
-          ) : (
-            searchClassBase.getEntityIcon(item.type)
-          )}
-        </div>
-        <Typography.Text
-          className="text-left text-primary truncate w-max-full"
-          ellipsis={{ tooltip: true }}>
-          {stripSurroundingQuotes(getEntityName(item))}
-        </Typography.Text>
-      </Link>
-    );
-  };
+  const getEntityRefLinkValue = (item: EntityReference) => (
+    <Link
+      className="entity-ref-link"
+      to={entityUtilClassBase.getEntityLink(
+        item.type,
+        item.fullyQualifiedName ?? item.name ?? ''
+      )}>
+      <div className="entity-icon m-r-xs">
+        {['user', 'team'].includes(item.type) ? (
+          <ProfilePicture
+            className="d-flex"
+            isTeam={item.type === 'team'}
+            name={item.name ?? ''}
+            type="circle"
+            width="18"
+          />
+        ) : (
+          searchClassBase.getEntityIcon(item.type)
+        )}
+      </div>
+      <Typography.Text
+        className="text-left text-primary truncate w-max-full"
+        ellipsis={{ tooltip: true }}>
+        {getEntityName(item)}
+      </Typography.Text>
+    </Link>
+  );
 
   const getPropertyValue = () => {
     if (isVersionView) {
