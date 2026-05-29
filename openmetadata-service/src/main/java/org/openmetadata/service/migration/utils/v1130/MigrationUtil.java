@@ -342,48 +342,6 @@ public class MigrationUtil {
    * <p>Idempotent: each helper returns false when the entry is already present, and the DB write
    * is skipped if neither addition was needed. Safe to call on every reprocessing pass.
    */
-  public static void removeFlattenedChildrenHighlightFields() {
-    try {
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-      if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database; skipping flattened-children highlight scrub");
-        return;
-      }
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      if (stripFlattenedChildrenHighlightFields(currentSettings)) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info("Removed stale flattened children highlight fields from search settings");
-      } else {
-        LOG.info("No stale flattened children highlight fields found in search settings");
-      }
-    } catch (Exception e) {
-      LOG.error("Error removing stale flattened children highlight fields from search settings", e);
-    }
-  }
-
-  public static boolean stripFlattenedChildrenHighlightFields(SearchSettings settings) {
-    boolean changed = false;
-    if (settings != null) {
-      if (settings.getGlobalSettings() != null) {
-        changed = removeStaleHighlightFields(settings.getGlobalSettings().getHighlightFields());
-      }
-      for (AssetTypeConfiguration assetConfig :
-          listOrEmpty(settings.getAssetTypeConfigurations())) {
-        changed |= removeStaleHighlightFields(assetConfig.getHighlightFields());
-      }
-    }
-    return changed;
-  }
-
-  private static boolean removeStaleHighlightFields(List<String> highlightFields) {
-    boolean removed = false;
-    if (!nullOrEmpty(highlightFields)) {
-      removed = highlightFields.removeIf(STALE_FLATTENED_CHILDREN_HIGHLIGHT_FIELDS::contains);
-    }
-    return removed;
-  }
-
   public static void addTableColumnSearchSettings() {
     try {
       LOG.info("Adding tableColumn search settings configuration for column search support");
@@ -425,6 +383,56 @@ public class MigrationUtil {
       // so the migration step doesn't abort the rest of v1130's reprocessing.
       LOG.error("Error adding tableColumn search settings", e);
     }
+  }
+
+  /**
+   * Removes the stale {@code dataModel.columns.children.name} highlight field from the DB-stored
+   * SearchSettings on upgraded clusters. PR #28214 flattened container
+   * {@code dataModel.columns.children} and dropped that entry from the searchSettings.json seed,
+   * but the additive settings merge preserves a cluster's stored config, so the now-unhighlightable
+   * field survives and breaks container search on OpenSearch ("no associated analyzer"). Idempotent;
+   * safe to call on every reprocessing pass.
+   */
+  public static void removeFlattenedChildrenHighlightFields() {
+    try {
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn(
+            "Search settings not found in database; skipping flattened-children highlight scrub");
+        return;
+      }
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      if (stripFlattenedChildrenHighlightFields(currentSettings)) {
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Removed stale flattened children highlight fields from search settings");
+      } else {
+        LOG.info("No stale flattened children highlight fields found in search settings");
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing stale flattened children highlight fields from search settings", e);
+    }
+  }
+
+  public static boolean stripFlattenedChildrenHighlightFields(SearchSettings settings) {
+    boolean changed = false;
+    if (settings != null) {
+      if (settings.getGlobalSettings() != null) {
+        changed = removeStaleHighlightFields(settings.getGlobalSettings().getHighlightFields());
+      }
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(settings.getAssetTypeConfigurations())) {
+        changed |= removeStaleHighlightFields(assetConfig.getHighlightFields());
+      }
+    }
+    return changed;
+  }
+
+  private static boolean removeStaleHighlightFields(List<String> highlightFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(highlightFields)) {
+      removed = highlightFields.removeIf(STALE_FLATTENED_CHILDREN_HIGHLIGHT_FIELDS::contains);
+    }
+    return removed;
   }
 
   // Entity tables that v1125 attempted to drain of inline certification into tag_usage.
