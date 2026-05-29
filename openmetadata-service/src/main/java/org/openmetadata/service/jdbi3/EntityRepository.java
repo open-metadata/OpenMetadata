@@ -4205,19 +4205,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
               queryString,
               subjectContext);
       total = results.getTotal();
+      // Entity-specific fields stripped from DB storage (e.g. testSuite, testDefinition,
+      // testCaseResult for TestCase) are stored in ES in the correct EntityReference shape.
+      // Augment the caller's fields with putFields so setFieldsInBulk populates them from DB
+      // and clearFields preserves them — keeping the response shape backward-compatible with
+      // the pre-fix ES path that returned these fields regardless of the 'fields' parameter.
+      Fields rehydrateFields = buildSearchRehydrateFields(fields);
       for (Map<String, Object> json : results.getResults()) {
         // The search index stores relationship-shaped fields in shapes that don't match the
         // entity schema — `followers` in particular is a flat List<String> of UUIDs (see
         // SearchIndexUtils.parseFollowers), but the schema types it as List<EntityReference>.
         // Strip those fields here so Jackson sees the same JSON shape the DB-backed list
-        // produces (FIELDS_STORED_AS_RELATIONSHIPS is the same set stripped on write by
-        // storageJsonNode). setFieldsInBulk below repopulates only what the caller requested,
-        // using the same 2-query batched fetch the DB path uses.
+        // produces. setFieldsInBulk below repopulates what the caller requested (plus the
+        // entity-specific relationship fields always populated by the search path).
         FIELDS_STORED_AS_RELATIONSHIPS.forEach(json::remove);
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
         entityList.add(entity);
       }
-      setFieldsInBulk(fields, entityList);
+      setFieldsInBulk(rehydrateFields, entityList);
       entityList.forEach(entity -> withHref(uriInfo, entity));
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
@@ -4611,6 +4616,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<String> getFieldsStrippedFromStorageJson() {
     return Collections.emptyList();
+  }
+
+  private Fields buildSearchRehydrateFields(Fields callerFields) {
+    Set<String> combined = new HashSet<>(callerFields.getFieldList());
+    combined.addAll(putFields.getFieldList());
+    return new Fields(combined);
   }
 
   protected ObjectNode storageJsonNode(T entity) {
