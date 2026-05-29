@@ -174,6 +174,35 @@ class SearchIndexUtilsTest {
                 doc, EXTENSION, () -> "type=table id=test fqn=test.model"));
   }
 
+  @Test
+  void capOversizeValuesTrimsTopicSchemaFieldsChildren() {
+    // Mirrors Topic/APIEndpoint: messageSchema (object Map) -> schemaFields (list) -> field ->
+    // children (flattened). messageSchema must be a Map (not a re-put POJO) for the cap to descend.
+    Map<String, Object> child = new HashMap<>();
+    child.put("name", "calc");
+    child.put("description", "Expression : " + "a".repeat(50_000));
+    Map<String, Object> field = new HashMap<>();
+    field.put("name", "rec");
+    field.put("children", new ArrayList<>(List.of(child)));
+    Map<String, Object> messageSchema = new HashMap<>();
+    messageSchema.put("schemaFields", new ArrayList<>(List.of(field)));
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("messageSchema", messageSchema);
+
+    SearchIndexUtils.capOversizeValues(
+        doc, Set.of("messageSchema.schemaFields.children"), () -> "type=topic id=t fqn=t");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> ms = (Map<String, Object>) doc.get("messageSchema");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> f = (Map<String, Object>) ((List<?>) ms.get("schemaFields")).get(0);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> trimmedChild = (Map<String, Object>) ((List<?>) f.get("children")).get(0);
+    String desc = (String) trimmedChild.get("description");
+    assertTrue(desc.getBytes(StandardCharsets.UTF_8).length <= MAX_VALUE_BUDGET);
+    assertTrue(desc.startsWith("Expression : "));
+  }
+
   private Map<String, Object> firstChild(Map<String, Object> doc) {
     Map<String, Object> column = (Map<String, Object>) ((List<?>) doc.get("columns")).get(0);
     return (Map<String, Object>) ((List<?>) column.get("children")).get(0);
