@@ -450,7 +450,7 @@ linkify-it-py==2.0.3
 # litellm removed: only pulled in by unused apache-airflow-providers-openai chain (CVE-2026-35030).
 lockfile==0.12.2
 looker_sdk==26.0.0
-lxml==6.0.2
+lxml==6.1.0
 lz4==4.4.5
 markdown-it-py==4.0.0
 marshmallow-sqlalchemy==1.4.2
