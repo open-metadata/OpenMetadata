@@ -47,7 +47,6 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
-from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
 from metadata.utils.progress_tracker import ProgressTrackerState
@@ -253,7 +252,6 @@ class TopologyRunnerMixin(Generic[C]):
         """Multithread processing of a Node Entity with progress tracking"""
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
-        ExecutionTimeTrackerContextMap().copy_from_parent(parent_thread_id)
 
         progress_tracker = ProgressTrackerState()
         operation_metrics = OperationMetricsState()
