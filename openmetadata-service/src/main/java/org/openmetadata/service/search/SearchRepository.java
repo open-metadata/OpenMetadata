@@ -158,6 +158,9 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
+  /** Dot-paths of {@code flattened}/{@code flat_object} fields, derived from the loaded mappings. */
+  @Getter private Set<String> flattenedFieldPaths = Set.of();
+
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
    * the alias normally points at (e.g. {@code openmetadata_table_search_index}). While an entry
@@ -279,6 +282,7 @@ public class SearchRepository {
   private void loadIndexMappings() {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
+    flattenedFieldPaths = mappingLoader.getFlattenedFieldPaths();
   }
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {

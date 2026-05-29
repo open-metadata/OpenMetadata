@@ -73,65 +73,54 @@ public final class SearchIndexUtils {
    */
   private static final int MAX_UTF8_BYTES_PER_CHAR = 3;
 
-  private static final String EXTENSION_FIELD = "extension";
-  private static final String CHILDREN_FIELD = "children";
-
-  /**
-   * Parent fields under which a recursive {@code children} sub-field is mapped as {@code flattened}
-   * / {@code flat_object} (e.g. {@code columns.children}, {@code schemaFields.children},
-   * {@code fields.children}). A {@code children} under any other parent — top-level {@code children}
-   * on glossaryTerm / knowledgePage / container — is a normal {@code object} with {@code text}
-   * leaves and must be left untouched. {@code extension} is {@code flattened} everywhere, so it is
-   * matched by name regardless of parent.
-   */
-  private static final Set<String> FLATTENED_CHILDREN_PARENTS =
-      Set.of("columns", "schemaFields", "fields");
-
   /**
    * Caps oversize string values inside the {@code flat_object} fields of a search document so a
-   * single leaf cannot exceed Lucene's per-term byte limit and reject the entire document. Only
-   * {@code flat_object} subtrees are trimmed (recursively) — {@code extension}, and {@code children}
-   * only when it sits under a {@link #FLATTENED_CHILDREN_PARENTS} field; {@code text}/{@code keyword}
-   * fields (including {@code object}-mapped {@code children}) are left as-is. Trimming is in place,
-   * on a character boundary; the full value is preserved on the source entity (database/API), so
-   * entity pages and APIs are unaffected.
+   * single leaf cannot exceed Lucene's per-term byte limit and reject the entire document. Only the
+   * subtrees whose dot-path is in {@code flattenedFieldPaths} are trimmed (recursively) — that set
+   * is derived from the index mappings ({@code "type": "flattened"}), so it covers exactly the
+   * fields at risk and stays in sync with the mappings. {@code text}/{@code keyword} fields
+   * (including {@code object}-mapped {@code children}) are left as-is. Trimming is in place, on a
+   * character boundary; the full value is preserved on the source entity (database/API), so entity
+   * pages and APIs are unaffected.
    *
    * <p>{@code entityContext} is resolved lazily and only when a value is actually trimmed, so the
    * common (no-trim) bulk-reindex path never builds the context string.
    */
-  public static void capOversizeValues(final Object node, final Supplier<String> entityContext) {
-    capOversizeValues(node, null, entityContext);
+  public static void capOversizeValues(
+      final Object node,
+      final Set<String> flattenedFieldPaths,
+      final Supplier<String> entityContext) {
+    if (flattenedFieldPaths.isEmpty()) {
+      return;
+    }
+    capOversizeValues(node, "", flattenedFieldPaths, entityContext);
   }
 
   private static void capOversizeValues(
-      final Object node, final String parentKey, final Supplier<String> entityContext) {
+      final Object node,
+      final String path,
+      final Set<String> flattenedFieldPaths,
+      final Supplier<String> entityContext) {
     if (node instanceof Map<?, ?> rawMap) {
       @SuppressWarnings("unchecked")
       Map<String, Object> map = (Map<String, Object>) rawMap;
       for (Map.Entry<String, Object> entry : map.entrySet()) {
-        String key = entry.getKey();
-        if (isFlattenedField(key, parentKey)) {
+        String childPath = path.isEmpty() ? entry.getKey() : path + "." + entry.getKey();
+        if (flattenedFieldPaths.contains(childPath)) {
           trimAllStrings(
               entry.getValue(),
-              new StringBuilder(key),
-              key.getBytes(StandardCharsets.UTF_8).length,
+              new StringBuilder(childPath),
+              childPath.getBytes(StandardCharsets.UTF_8).length,
               entityContext);
         } else {
-          capOversizeValues(entry.getValue(), key, entityContext);
+          capOversizeValues(entry.getValue(), childPath, flattenedFieldPaths, entityContext);
         }
       }
     } else if (node instanceof List<?> rawList) {
       for (Object item : rawList) {
-        capOversizeValues(item, parentKey, entityContext);
+        capOversizeValues(item, path, flattenedFieldPaths, entityContext);
       }
     }
-  }
-
-  private static boolean isFlattenedField(final String key, final String parentKey) {
-    return EXTENSION_FIELD.equals(key)
-        || (CHILDREN_FIELD.equals(key)
-            && parentKey != null
-            && FLATTENED_CHILDREN_PARENTS.contains(parentKey));
   }
 
   private static void trimAllStrings(

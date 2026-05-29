@@ -128,7 +128,8 @@ public interface SearchIndex {
                     "type=%s id=%s fqn=%s",
                     getEntityTypeName(), ei.getId(), ei.getFullyQualifiedName())
             : this::getEntityTypeName;
-    SearchIndexUtils.capOversizeValues(esDoc, entityContext);
+    SearchIndexUtils.capOversizeValues(
+        esDoc, Entity.getSearchRepository().getFlattenedFieldPaths(), entityContext);
 
     return esDoc;
   }

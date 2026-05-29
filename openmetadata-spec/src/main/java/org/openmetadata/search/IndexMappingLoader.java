@@ -4,6 +4,7 @@ import jakarta.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
@@ -28,6 +29,14 @@ public class IndexMappingLoader {
   @Getter Map<String, IndexMapping> indexMapping = new HashMap<>();
   @Getter Map<String, Map<String, Object>> entityIndexMapping = new HashMap<>();
 
+  /**
+   * Dot-paths of every field mapped as {@code "type": "flattened"} across all entity mappings (e.g.
+   * {@code columns.children}, {@code extension}). These index leaves as single keyword terms with
+   * no length cap, so they are the only fields that can trip Lucene's per-term limit. Derived from
+   * the loaded mappings so it never drifts from the source of truth.
+   */
+  @Getter final Set<String> flattenedFieldPaths = new HashSet<>();
+
   private IndexMappingLoader(ElasticSearchConfiguration elasticSearchConfiguration)
       throws IOException {
     this.elasticSearchConfiguration = elasticSearchConfiguration;
@@ -39,12 +48,14 @@ public class IndexMappingLoader {
     }
     loadIndexMapping();
     loadEntityIndexMapping();
+    loadFlattenedFieldPaths();
   }
 
   private IndexMappingLoader() throws IOException {
     this.searchIndexMappingLanguage = "en";
     loadIndexMapping();
     loadEntityIndexMapping();
+    loadFlattenedFieldPaths();
   }
 
   public static void init(ElasticSearchConfiguration elasticSearchConfiguration)
@@ -133,6 +144,29 @@ public class IndexMappingLoader {
         entityIndexMapping.put(entityName, jsonMap);
       } catch (Exception e) {
         throw new JsonParsingException("Failed to load index mapping for " + entityName, e);
+      }
+    }
+  }
+
+  private void loadFlattenedFieldPaths() {
+    for (Map<String, Object> mapping : entityIndexMapping.values()) {
+      if (mapping.get("mappings") instanceof Map<?, ?> mappings
+          && mappings.get("properties") instanceof Map<?, ?> properties) {
+        collectFlattenedPaths(properties, "", flattenedFieldPaths);
+      }
+    }
+  }
+
+  private static void collectFlattenedPaths(Map<?, ?> properties, String prefix, Set<String> out) {
+    for (Map.Entry<?, ?> entry : properties.entrySet()) {
+      if (!(entry.getValue() instanceof Map<?, ?> field)) {
+        continue;
+      }
+      String path = prefix.isEmpty() ? entry.getKey().toString() : prefix + "." + entry.getKey();
+      if ("flattened".equals(field.get("type"))) {
+        out.add(path);
+      } else if (field.get("properties") instanceof Map<?, ?> nested) {
+        collectFlattenedPaths(nested, path, out);
       }
     }
   }

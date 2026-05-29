@@ -32,6 +32,8 @@ class SearchIndexUtilsTest {
 
   private static final int LUCENE_MAX_TERM_BYTES = 32766;
   private static final int MAX_VALUE_BUDGET = LUCENE_MAX_TERM_BYTES - 512;
+  private static final Set<String> COLUMNS_CHILDREN = Set.of("columns.children");
+  private static final Set<String> EXTENSION = Set.of("extension");
 
   @Test
   void capOversizeValuesTrimsLongLeafButKeepsShortOnes() {
@@ -46,7 +48,8 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(column)));
     doc.put("displayName", "Sales Model");
 
-    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
+    SearchIndexUtils.capOversizeValues(
+        doc, COLUMNS_CHILDREN, () -> "type=table id=test fqn=test.model");
 
     Map<String, Object> trimmedChild = firstChild(doc);
     String trimmedDesc = (String) trimmedChild.get("description");
@@ -72,7 +75,9 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(node)));
 
     assertDoesNotThrow(
-        () -> SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model"));
+        () ->
+            SearchIndexUtils.capOversizeValues(
+                doc, COLUMNS_CHILDREN, () -> "type=table id=test fqn=test.model"));
 
     Map<String, Object> deepest = node;
     while (deepest.get("children") != null) {
@@ -100,7 +105,9 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(column)));
 
     assertDoesNotThrow(
-        () -> SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model"));
+        () ->
+            SearchIndexUtils.capOversizeValues(
+                doc, COLUMNS_CHILDREN, () -> "type=table id=test fqn=test.model"));
 
     assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
     assertEquals(List.of("owner-1"), doc.get("owners"));
@@ -118,7 +125,7 @@ class SearchIndexUtilsTest {
     doc.put("schemaDefinition", huge); // text field — must NOT be trimmed
     doc.put("extension", extension); // flat_object — MUST be trimmed
 
-    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
+    SearchIndexUtils.capOversizeValues(doc, EXTENSION, () -> "type=table id=test fqn=test.model");
 
     assertEquals(huge, doc.get("description"));
     assertEquals(huge, doc.get("schemaDefinition"));
@@ -142,7 +149,8 @@ class SearchIndexUtilsTest {
     doc.put("children", new ArrayList<>(List.of(objectChild)));
     doc.put("columns", new ArrayList<>(List.of(column)));
 
-    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
+    SearchIndexUtils.capOversizeValues(
+        doc, COLUMNS_CHILDREN, () -> "type=table id=test fqn=test.model");
 
     @SuppressWarnings("unchecked")
     String objectDesc =

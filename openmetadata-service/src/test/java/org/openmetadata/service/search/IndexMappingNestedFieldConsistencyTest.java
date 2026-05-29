@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -66,6 +68,20 @@ class IndexMappingNestedFieldConsistencyTest {
             + "Using 'keyword' or 'object' will cause reindex failures when custom properties "
             + "(entityExtension) contain object/map values. Violations: "
             + violations);
+  }
+
+  @Test
+  void flattenedFieldPathsAreDerivedFromMappings() {
+    Set<String> paths = IndexMappingLoader.getInstance().getFlattenedFieldPaths();
+    // extension is flattened in every index
+    assertTrue(paths.contains("extension"), "extension should be derived as a flattened path");
+    // recursive children mapped as flattened under columns
+    assertTrue(
+        paths.contains("columns.children"), "columns.children should be derived as flattened");
+    // object-mapped top-level children (glossaryTerm / knowledgePage) must NOT be treated as
+    // flattened — otherwise their text leaves would be wrongly trimmed
+    assertFalse(
+        paths.contains("children"), "top-level object 'children' must not be derived as flattened");
   }
 
   @Test
