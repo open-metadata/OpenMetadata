@@ -888,8 +888,9 @@ class TestComposerProbe:
             original_error=Exception("boom"),
         )
         assert hint is not None
-        assert "console.cloud.google.com" in hint.lower() or "console" in hint.lower()
-        assert "airflow web ui" in hint.lower()
+        # Assert on semantic phrases the hint emits, not URL substrings (CodeQL: py/incomplete-url-substring-sanitization).
+        assert "GCP Console" in hint
+        assert "Airflow web UI" in hint
 
     def test_wrong_auth_type_for_composer_host(self):
         auth = BasicAuth(username="u", password="p")
@@ -905,8 +906,12 @@ class TestComposerProbe:
     @patch("metadata.ingestion.source.pipeline.airflow.api.diagnostics._token_audience")
     @patch("metadata.ingestion.source.pipeline.airflow.api.diagnostics._probe_iap_audience")
     def test_audience_mismatch_produces_specific_hint(self, mock_probe, mock_token_aud):
-        mock_probe.return_value = "expected.apps.googleusercontent.com"
-        mock_token_aud.return_value = "wrong.apps.googleusercontent.com"
+        # Non-URL-looking sentinels so the assertions don't trigger
+        # CodeQL py/incomplete-url-substring-sanitization on test data.
+        expected_aud = "sentinel-expected-aud-7f3a"
+        wrong_aud = "sentinel-wrong-aud-9c1b"
+        mock_probe.return_value = expected_aud
+        mock_token_aud.return_value = wrong_aud
 
         auth = GcpServiceAccount.model_construct(credentials=MagicMock(), iapAudience=None)
         hint = diagnose(
@@ -916,8 +921,8 @@ class TestComposerProbe:
             original_error=Exception("401"),
         )
         assert hint is not None
-        assert "expected.apps.googleusercontent.com" in hint
-        assert "wrong.apps.googleusercontent.com" in hint
+        assert expected_aud in hint
+        assert wrong_aud in hint
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.diagnostics._token_audience")
     @patch("metadata.ingestion.source.pipeline.airflow.api.diagnostics._probe_iap_audience")
@@ -980,16 +985,20 @@ class TestComposerProbe:
         )
         assert hint is not None
         assert "composer 2/3" in hint.lower() or "composer environments describe" in hint
-        assert "_signin" in hint or "composer.cloud.google.com" in hint
+        # `_signin` is a path segment of the managed-IAP redirect; the alternative
+        # URL substring check was dropped to avoid CodeQL py/incomplete-url-substring-sanitization.
+        assert "_signin" in hint
         assert "roles/composer.environmentAndStorageObjectViewer" in hint
 
     @patch(
         "metadata.ingestion.source.pipeline.airflow.api.diagnostics._probe_composer_management_api",
+        # Sentinel iapClientId chosen to avoid a URL-looking literal that
+        # trips CodeQL py/incomplete-url-substring-sanitization in test assertions.
         return_value={
             "name": "prod-airflow",
             "region": "us-east4",
             "version": "composer-2.5.2-airflow-2.6.3",
-            "iapClientId": "9876543210-foo.apps.googleusercontent.com",
+            "iapClientId": "sentinel-iap-client-id-12ab34",
             "byoidAudiences": [],
         },
     )
@@ -1007,7 +1016,7 @@ class TestComposerProbe:
             original_error=Exception("boom"),
         )
         assert hint is not None
-        assert "9876543210-foo.apps.googleusercontent.com" in hint
+        assert "sentinel-iap-client-id-12ab34" in hint
         assert "prod-airflow" in hint
         assert "composer-2.5.2-airflow-2.6.3" in hint
 
