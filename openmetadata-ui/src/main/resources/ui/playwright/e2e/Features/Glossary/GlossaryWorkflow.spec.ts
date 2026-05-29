@@ -170,6 +170,37 @@ test.describe('Term Status Transitions', () => {
     await expect(termRow.locator('.status-badge')).toHaveText('Draft');
   });
 
+  test('should settle term at In Review when glossary has reviewers and description is filled', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
+
+    await openAddGlossaryTermModal(page);
+
+    const termName = `InReviewTerm${Date.now()}`;
+    await page.fill('[data-testid="name"]', termName);
+    await page.locator(descriptionBox).fill('Test description for in review');
+
+    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+    await page.click('[data-testid="save-glossary-term"]');
+    await createResponse;
+
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
+    await expect(termRow).toBeVisible();
+    await expect(async () => {
+      await page.reload();
+      await expect(termRow.locator('.status-badge')).toHaveText('In Review', {
+        timeout: 2000,
+      });
+    }).toPass({ timeout: 20000 });
+  });
+
   // T-C18: Create term - inherits glossary reviewers
   test('should inherit reviewers from glossary when term is created', async ({
     page,
