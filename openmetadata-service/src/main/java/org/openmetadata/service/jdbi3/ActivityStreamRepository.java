@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -144,10 +145,12 @@ public class ActivityStreamRepository {
       domainsJson = JsonUtils.pojoToJson(domainIds);
     }
 
-    String aboutFqnHash = null;
-    if (event.getAbout() != null) {
-      aboutFqnHash = FullyQualifiedName.buildHash(event.getAbout());
-    }
+    // about is an EntityLink, not an FQN — parse first, then hash the FQN portion.
+    String aboutFqnHash =
+        nullOrEmpty(event.getAbout())
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
 
     activityStreamDAO.insert(
         event.getId().toString(),
@@ -296,7 +299,11 @@ public class ActivityStreamRepository {
 
   /** List activity events by EntityLink (about field). */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> jsonList = activityStreamDAO.listByAbout(aboutFqnHash, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
@@ -308,7 +315,11 @@ public class ActivityStreamRepository {
       return listByAbout(entityLink, afterTimestamp, limit);
     }
 
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
     String domainJson = JsonUtils.pojoToJson(domainIdStrings);
     List<String> jsonList =
