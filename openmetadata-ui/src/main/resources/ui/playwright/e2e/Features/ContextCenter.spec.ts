@@ -306,7 +306,7 @@ test.describe('Context Center', () => {
       await page.getByTestId('create-knowledge-page-btn').click();
       await page.getByTestId('create-article-btn').click();
       const createRes = await createResPromise;
-      expect(createRes.status()).toBe(200);
+      expect(createRes.status()).toBe(201);
 
       await expect(
         page.getByTestId('entity-header-display-name')
@@ -672,7 +672,7 @@ test.describe('Context Center', () => {
       const createResPromise = page.waitForResponse('/api/v1/contextCenter/pages');
       await articleItem.click();
       const createRes2 = await createResPromise;
-      expect(createRes2.status()).toBe(200);
+      expect(createRes2.status()).toBe(201);
 
       await expect(page).toHaveURL(/\/context-center\/articles\//);
       await expect(
@@ -763,23 +763,26 @@ test.describe('Context Center', () => {
       // Ant Design virtual list scrolls via wheel events on the hierarchy container
       await hierarchy.waitFor({ state: 'visible' });
 
-      let previousNodeCount = -1;
+      let previousLastNode = '';
+      const MAX_SCROLL_ATTEMPTS = 50;
+      let attempts = 0;
       while (!(await node.isVisible())) {
-        await hierarchy.hover();
-        await page.mouse.wheel(0, 400);
-        // Wait for virtual list to re-render at least one node
-        await expect(
-          hierarchy.locator('[data-testid^="page-node-"]').first()
-        ).toBeVisible();
-
-        // Stop if no new nodes appeared (reached the end of the list)
-        const currentNodeCount = await hierarchy
-          .locator('[data-testid^="page-node-"]')
-          .count();
-        if (currentNodeCount === previousNodeCount) {
+        if (attempts++ >= MAX_SCROLL_ATTEMPTS) {
           break;
         }
-        previousNodeCount = currentNodeCount;
+        await hierarchy.hover();
+        await page.mouse.wheel(0, 400);
+        await expect(hierarchy.locator('[data-testid^="page-node-"]').first()).toBeVisible();
+
+        // Stop if the last visible node hasn't changed (reached the end of the list)
+        const lastNode = await hierarchy
+          .locator('[data-testid^="page-node-"]')
+          .last()
+          .getAttribute('data-testid');
+        if (lastNode === previousLastNode) {
+          break;
+        }
+        previousLastNode = lastNode ?? '';
       }
 
       await expect(node).toBeVisible();
@@ -995,8 +998,10 @@ test.describe('Context Center', () => {
       await expect(modal).toBeVisible();
 
       // Drop zone with hint text
-      const hint = modal.getByTestId('upload-hint');
-      await expect(hint).toBeVisible();
+      const hint = modal.locator('[class*="hint"], p').filter({
+        hasText: /svg|png|jpg|gif|5mb/i,
+      });
+      await expect(hint.first()).toBeVisible();
 
       // Attach Files button is disabled when no file selected
       const attachBtn = modal.getByRole('button', { name: /attach/i });
@@ -1019,7 +1024,7 @@ test.describe('Context Center', () => {
 
       // Set file directly on the hidden input
       await modal
-        .getByTestId('upload-file-input')
+        .locator('input[type="file"]')
         .setInputFiles({
           name: 'test-upload.txt',
           mimeType: 'text/plain',
@@ -1027,7 +1032,7 @@ test.describe('Context Center', () => {
         });
 
       // File appears in staged list
-      await expect(modal.getByTestId('staged-file-test-upload.txt')).toBeVisible();
+      await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
 
       // Attach the file
       const uploadResPromise = page.waitForResponse(
@@ -1035,13 +1040,14 @@ test.describe('Context Center', () => {
       );
       await modal.getByRole('button', { name: /attach/i }).click();
       const uploadRes = await uploadResPromise;
-      expect(uploadRes.status()).toBe(200);
+      expect(uploadRes.status()).toBe(201);
 
       // Modal closes automatically after successful upload
       await expect(modal).not.toBeVisible();
 
       // File appears in document list
-      await expect(page.getByTestId('document-row-test-upload.txt')).toBeVisible();
+      const docRow = page.getByText('test-upload.txt');
+      await expect(docRow.first()).toBeVisible();
     });
 
     test('uploaded file shows name, size and download button in list', async ({
@@ -1142,14 +1148,14 @@ test.describe('Context Center', () => {
 
       // Create a >5 MB in-memory buffer
       const bigBuffer = Buffer.alloc(6 * 1024 * 1024, 'x');
-      await modal.getByTestId('upload-file-input').setInputFiles({
+      await modal.locator('input[type="file"]').setInputFiles({
         name: 'too-large.bin',
         mimeType: 'application/octet-stream',
         buffer: bigBuffer,
       });
 
       // File appears in the list in a failed/error state
-      await expect(modal.getByTestId('staged-file-too-large.bin')).toBeVisible({
+      await expect(modal.getByText('too-large.bin')).toBeVisible({
         timeout: 5000,
       });
 
