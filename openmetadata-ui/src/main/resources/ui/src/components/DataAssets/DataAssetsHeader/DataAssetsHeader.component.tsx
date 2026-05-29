@@ -25,11 +25,12 @@ import QueryString from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/link-icon-with-bg.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -99,7 +100,6 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
@@ -752,7 +752,7 @@ export const DataAssetsHeader = ({
             color="secondary"
             data-testid="source-url-button"
             href={sourceUrl}
-            iconLeading={LinkIcon}
+            iconLeading={IconExternalLink}
             size="sm"
             target="_blank">
             {t('label.view-in-service-type', {
@@ -848,60 +848,62 @@ export const DataAssetsHeader = ({
         </div>
 
         {/* Row 2 — Title + actions */}
-        <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap">
-          {serviceLogoUrl && (
-            <div
-              className={classNames(
-                'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
-                'tw:justify-center tw:overflow-hidden tw:rounded-full',
-                'tw:bg-primary tw:border tw:border-primary tw:shadow-xs-skeumorphic'
-              )}>
-              <img
-                alt={get(dataAsset, 'service.displayName', '')}
-                className="tw:size-4.5 tw:object-contain"
-                src={serviceLogoUrl}
-              />
-            </div>
-          )}
-          <Typography
-            as="h2"
-            className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: entityName }}
-            size="text-lg"
-            weight="bold">
-            {entityName}
-          </Typography>
-          <Tooltip
-            placement="top"
-            title={
-              copyTooltip ??
-              t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <TooltipTrigger>
-              <button
-                aria-label={t('label.copy-item', {
-                  item: t('label.url-uppercase'),
-                })}
+        <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
+          <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
+            {serviceLogoUrl && (
+              <div
                 className={classNames(
-                  'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
-                  'tw:justify-center tw:rounded-md tw:border',
-                  'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
-                  'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
-                )}
-                data-testid="entity-header-copy-button"
-                type="button"
-                onClick={handleCopyEntityUrl}>
-                <LinkIcon className="tw:size-3.5" />
-              </button>
-            </TooltipTrigger>
-          </Tooltip>
-          {badge}
-          {statusBadge}
-          {dqFailureAlert}
-          <LearningIcon pageId={entityType} />
+                  'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
+                  'tw:justify-center tw:overflow-hidden tw:rounded-full',
+                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                )}>
+                <img
+                  alt={get(dataAsset, 'service.displayName', '')}
+                  className="tw:size-4.5 tw:object-contain"
+                  src={serviceLogoUrl}
+                />
+              </div>
+            )}
+            <Typography
+              as="h2"
+              className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
+              data-testid="entity-header-display-name"
+              ellipsis={{ tooltip: entityName }}
+              size="text-lg"
+              weight="bold">
+              {entityName}
+            </Typography>
+            <Tooltip
+              placement="top"
+              title={
+                copyTooltip ??
+                t('label.copy-item', { item: t('label.url-uppercase') })
+              }>
+              <TooltipTrigger>
+                <button
+                  aria-label={t('label.copy-item', {
+                    item: t('label.url-uppercase'),
+                  })}
+                  className={classNames(
+                    'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
+                    'tw:justify-center tw:rounded-md tw:border',
+                    'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
+                    'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
+                  )}
+                  data-testid="entity-header-copy-button"
+                  type="button"
+                  onClick={handleCopyEntityUrl}>
+                  <ShareIcon className="tw:size-3.5" />
+                </button>
+              </TooltipTrigger>
+            </Tooltip>
+            {badge}
+            {statusBadge}
+            {dqFailureAlert}
+            <LearningIcon pageId={entityType} />
+          </div>
 
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-2">
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
             {triggerAutoPilotApplicationButton}
             {dataContractLatestResultButton}
             {sourceUrlButton}
@@ -926,7 +928,7 @@ export const DataAssetsHeader = ({
                         'tw:transition-colors tw:hover:bg-primary_hover',
                         'tw:disabled:cursor-not-allowed tw:disabled:opacity-60',
                         isFollowing
-                          ? 'tw:text-warning-primary'
+                          ? 'tw:text-text-brand-secondary'
                           : 'tw:text-fg-quaternary'
                       )}
                       data-testid="entity-follow-button"
@@ -1016,50 +1018,102 @@ export const DataAssetsHeader = ({
             <div
               className="tw:flex tw:flex-col tw:gap-1.5"
               data-testid="header-tier-container">
-              <div className="tw:flex tw:items-center tw:gap-1">
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                size="text-xs"
+                weight="medium">
+                {t('label.tier')}
+              </Typography>
+              {(() => {
+                const tierValue = tier ? (
+                  <TagsV1
+                    hideIcon
+                    startWith={TAG_START_WITH.SOURCE_ICON}
+                    tag={tier}
+                    tagProps={{
+                      'data-testid': 'Tier',
+                    }}
+                  />
+                ) : (
+                  <Typography
+                    as="span"
+                    className="tw:cursor-pointer tw:text-primary"
+                    data-testid="Tier"
+                    size="text-sm"
+                    weight="medium">
+                    {NO_DATA_PLACEHOLDER}
+                  </Typography>
+                );
+
+                return editTierPermission ? (
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    footerActionButtonsClassName="p-x-md"
+                    updateTier={onTierUpdate}>
+                    <span
+                      className="tw:inline-flex tw:cursor-pointer"
+                      data-testid="edit-tier">
+                      {tierValue}
+                    </span>
+                  </TierCard>
+                ) : (
+                  tierValue
+                );
+              })()}
+            </div>
+          )}
+
+          {isUndefined(serviceCategory) && (
+            <>
+              <HeaderDotSeparator />
+              <div
+                className="tw:flex tw:flex-col tw:gap-1.5"
+                data-testid="certification-label">
                 <Typography
                   as="span"
                   className="tw:text-secondary"
                   size="text-xs"
                   weight="medium">
-                  {t('label.tier')}
+                  {t('label.certification')}
                 </Typography>
-                {editTierPermission && (
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    footerActionButtonsClassName="p-x-md"
-                    updateTier={onTierUpdate}>
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-tier"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.tier'),
-                      })}
-                    />
-                  </TierCard>
-                )}
+                {(() => {
+                  const certValue = (
+                    <div
+                      className="tw:text-sm tw:font-medium tw:text-primary"
+                      data-testid="certification-value">
+                      {(dataAsset as Table).certification ? (
+                        <CertificationTag
+                          showName
+                          certification={(dataAsset as Table).certification!}
+                        />
+                      ) : (
+                        NO_DATA_PLACEHOLDER
+                      )}
+                    </div>
+                  );
+
+                  return editCertificationPermission ? (
+                    <Certification
+                      currentCertificate={
+                        'certification' in dataAsset
+                          ? dataAsset.certification?.tagLabel?.tagFQN
+                          : undefined
+                      }
+                      permission={editCertificationPermission}
+                      onCertificationUpdate={onCertificationUpdate}>
+                      <span
+                        className="tw:inline-flex tw:cursor-pointer"
+                        data-testid="edit-certification">
+                        {certValue}
+                      </span>
+                    </Certification>
+                  ) : (
+                    certValue
+                  );
+                })()}
               </div>
-              {tier ? (
-                <TagsV1
-                  hideIcon
-                  startWith={TAG_START_WITH.SOURCE_ICON}
-                  tag={tier}
-                  tagProps={{
-                    'data-testid': 'Tier',
-                  }}
-                />
-              ) : (
-                <Typography
-                  as="span"
-                  className="tw:text-primary"
-                  data-testid="Tier"
-                  size="text-sm"
-                  weight="medium">
-                  {NO_DATA_PLACEHOLDER}
-                </Typography>
-              )}
-            </div>
+            </>
           )}
 
           {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
@@ -1079,56 +1133,6 @@ export const DataAssetsHeader = ({
               metricPermissions={permissions}
               onUpdateMetricDetails={onMetricUpdate}
             />
-          )}
-
-          {isUndefined(serviceCategory) && (
-            <>
-              <HeaderDotSeparator />
-              <div
-                className="tw:flex tw:flex-col tw:gap-1.5"
-                data-testid="certification-label">
-                <div className="tw:flex tw:items-center tw:gap-1">
-                  <Typography
-                    as="span"
-                    className="tw:text-secondary"
-                    size="text-xs"
-                    weight="medium">
-                    {t('label.certification')}
-                  </Typography>
-                  {editCertificationPermission && (
-                    <Certification
-                      currentCertificate={
-                        'certification' in dataAsset
-                          ? dataAsset.certification?.tagLabel?.tagFQN
-                          : undefined
-                      }
-                      permission={editCertificationPermission}
-                      onCertificationUpdate={onCertificationUpdate}>
-                      <EditIconButton
-                        newLook
-                        data-testid="edit-certification"
-                        size="small"
-                        title={t('label.edit-entity', {
-                          entity: t('label.certification'),
-                        })}
-                      />
-                    </Certification>
-                  )}
-                </div>
-                <div
-                  className="tw:text-sm tw:font-medium tw:text-primary"
-                  data-testid="certification-value">
-                  {(dataAsset as Table).certification ? (
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
-                  ) : (
-                    NO_DATA_PLACEHOLDER
-                  )}
-                </div>
-              </div>
-            </>
           )}
 
           {extraInfo}
