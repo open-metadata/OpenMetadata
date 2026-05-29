@@ -36,6 +36,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.lineage import (
     ACCESS_HISTORY_CHUNK_DAYS,
+    ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY,
     USE_ACCESS_HISTORY_OPTION_KEY,
     SnowflakeLineageSource,
 )
@@ -112,6 +113,7 @@ def _make_lineage_source(
     src.end = datetime(2025, 1, 2)
     src._table_cache = {}
     src._use_access_history = False
+    src._access_history_chunk_days = ACCESS_HISTORY_CHUNK_DAYS
     return src
 
 
@@ -349,6 +351,95 @@ def test_pop_runs_before_super_init():
         SnowflakeLineageSource.__init__(src, config, MagicMock(), get_engine=False)
 
     assert USE_ACCESS_HISTORY_OPTION_KEY not in captured["options_at_super_init"]
+
+
+def test_chunk_days_default_when_unset():
+    config = _make_fake_workflow_config({})
+    assert (
+        SnowflakeLineageSource._pop_access_history_chunk_days(config)
+        == ACCESS_HISTORY_CHUNK_DAYS
+    )
+
+
+def test_chunk_days_parses_positive_int():
+    config = _make_fake_workflow_config({ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY: "7"})
+    assert SnowflakeLineageSource._pop_access_history_chunk_days(config) == 7
+
+
+def test_chunk_days_invalid_value_falls_back_to_default():
+    config = _make_fake_workflow_config(
+        {ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY: "not-a-number"}
+    )
+    assert (
+        SnowflakeLineageSource._pop_access_history_chunk_days(config)
+        == ACCESS_HISTORY_CHUNK_DAYS
+    )
+
+
+def test_chunk_days_non_positive_falls_back_to_default():
+    config = _make_fake_workflow_config({ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY: "0"})
+    assert (
+        SnowflakeLineageSource._pop_access_history_chunk_days(config)
+        == ACCESS_HISTORY_CHUNK_DAYS
+    )
+
+
+def test_chunk_days_key_is_popped_from_options():
+    """The OM-specific key must be removed so the Snowflake driver never sees it."""
+    options = {ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY: "5", "OTHER": "keep"}
+    config = _make_fake_workflow_config(options)
+    SnowflakeLineageSource._pop_access_history_chunk_days(config)
+    assert ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY not in options
+    assert "OTHER" in options
+
+
+def test_configured_chunk_days_drives_window_slicing():
+    """A custom accessHistoryChunkDays controls the size of each lineage window."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    src._access_history_chunk_days = 5
+    chunk = timedelta(days=5)
+    src.start = datetime(2025, 1, 1)
+    src.end = src.start + chunk * 3
+
+    edges = list(src._yield_combined_access_history())
+
+    assert len(edges) == 3
+    conn = src.engine.connect.return_value
+    executed = [str(call.args[0]) for call in conn.execute.call_args_list]
+    assert len(executed) == 3
+    for slice_index in range(3):
+        window_start = src.start + chunk * slice_index
+        window_end = src.start + chunk * (slice_index + 1)
+        assert any(
+            str(window_start) in sql and str(window_end) in sql for sql in executed
+        )
 
 
 # ---------------------------------------------------------------------------
