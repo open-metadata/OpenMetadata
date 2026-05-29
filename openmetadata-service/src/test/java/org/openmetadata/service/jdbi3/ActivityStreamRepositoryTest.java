@@ -14,21 +14,105 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 class ActivityStreamRepositoryTest {
+
+  private SimpleMeterRegistry meterRegistry;
+
+  @BeforeEach
+  void registerMeters() {
+    meterRegistry = new SimpleMeterRegistry();
+    Metrics.addRegistry(meterRegistry);
+  }
+
+  @AfterEach
+  void unregisterMeters() {
+    Metrics.removeRegistry(meterRegistry);
+    meterRegistry.close();
+  }
+
+  @Test
+  void buildActorReferenceCountsSystemEventWhenUserNameMissing() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    ChangeEvent changeEvent = changeEventWith(/* userName */ null);
+    EntityInterface entity = tableEntity();
+
+    repository.createFromChangeEvent(changeEvent, entity);
+
+    Counter counter =
+        meterRegistry
+            .find("activity_stream.unresolved_actor")
+            .tag("kind", "system_event")
+            .counter();
+    assertEquals(1.0, counter.count());
+  }
+
+  @Test
+  void buildActorReferenceCountsHardDeletedWhenUserNotFound() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    ChangeEvent changeEvent = changeEventWith("ghost-user");
+    EntityInterface entity = tableEntity();
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "ghost-user", Include.ALL))
+          .thenThrow(new EntityNotFoundException("ghost"));
+
+      repository.createFromChangeEvent(changeEvent, entity);
+    }
+
+    Counter counter =
+        meterRegistry
+            .find("activity_stream.unresolved_actor")
+            .tag("kind", "hard_deleted")
+            .counter();
+    assertEquals(1.0, counter.count());
+  }
+
+  private static ChangeEvent changeEventWith(String userName) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(EventType.ENTITY_CREATED)
+        .withEntityType(Entity.TABLE)
+        .withEntityId(UUID.randomUUID())
+        .withTimestamp(System.currentTimeMillis())
+        .withUserName(userName);
+  }
+
+  private static EntityInterface tableEntity() {
+    return new Table().withId(UUID.randomUUID()).withFullyQualifiedName("svc.db.schema.table");
+  }
 
   @Test
   void insertBindsNullActorIdWhenActorIsAbsent() {

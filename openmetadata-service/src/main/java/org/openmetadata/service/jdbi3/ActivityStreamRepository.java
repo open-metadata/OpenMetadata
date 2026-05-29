@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import io.micrometer.core.instrument.Metrics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +45,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ActivityStreamRepository {
   private static final int MAX_STORED_SUMMARY_LENGTH = 500;
+  private static final String UNRESOLVED_ACTOR_METRIC = "activity_stream.unresolved_actor";
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -473,12 +475,15 @@ public class ActivityStreamRepository {
 
   private EntityReference buildActorReference(String userName) {
     EntityReference result = null;
-    if (!nullOrEmpty(userName)) {
+    if (nullOrEmpty(userName)) {
+      Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "system_event").increment();
+    } else {
       try {
         // Include.ALL keeps soft-deleted users resolvable with their real id.
         result = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
       } catch (EntityNotFoundException ignored) {
         // Hard-deleted: keep the name for display, actorId stays null (no FK target).
+        Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "hard_deleted").increment();
         result = new EntityReference().withType(Entity.USER).withName(userName);
       }
     }
