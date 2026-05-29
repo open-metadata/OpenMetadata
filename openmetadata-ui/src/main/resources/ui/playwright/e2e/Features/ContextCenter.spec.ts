@@ -302,7 +302,9 @@ test.describe('Context Center', () => {
     }) => {
       await navigateToDashboard(page);
 
-      const createResPromise = page.waitForResponse('/api/v1/contextCenter/pages');
+      const createResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/pages'
+      );
       await page.getByTestId('create-knowledge-page-btn').click();
       await page.getByTestId('create-article-btn').click();
       const createRes = await createResPromise;
@@ -669,7 +671,9 @@ test.describe('Context Center', () => {
       const articleItem = page.getByTestId('create-article-btn');
       await expect(articleItem).toBeVisible();
 
-      const createResPromise = page.waitForResponse('/api/v1/contextCenter/pages');
+      const createResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/pages'
+      );
       await articleItem.click();
       const createRes2 = await createResPromise;
       expect(createRes2.status()).toBe(201);
@@ -717,7 +721,9 @@ test.describe('Context Center', () => {
       await modal.getByTestId('displayName').fill(testQuickLinkTitle);
       await modal.getByTestId('url').fill(QUICK_LINK_URL);
 
-      const createResPromise = page.waitForResponse('/api/v1/contextCenter/pages');
+      const createResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/pages'
+      );
       await modal.getByRole('button', { name: /save/i }).click();
       const created = await createResPromise;
       const createdData = await created.json();
@@ -772,7 +778,9 @@ test.describe('Context Center', () => {
         }
         await hierarchy.hover();
         await page.mouse.wheel(0, 400);
-        await expect(hierarchy.locator('[data-testid^="page-node-"]').first()).toBeVisible();
+        await expect(
+          hierarchy.locator('[data-testid^="page-node-"]').first()
+        ).toBeVisible();
 
         // Stop if the last visible node hasn't changed (reached the end of the list)
         const lastNode = await hierarchy
@@ -1023,13 +1031,11 @@ test.describe('Context Center', () => {
       await expect(modal).toBeVisible();
 
       // Set file directly on the hidden input
-      await modal
-        .locator('input[type="file"]')
-        .setInputFiles({
-          name: 'test-upload.txt',
-          mimeType: 'text/plain',
-          buffer: Buffer.from('playwright test file content'),
-        });
+      await modal.locator('input[type="file"]').setInputFiles({
+        name: 'test-upload.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('playwright test file content'),
+      });
 
       // File appears in staged list
       await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
