@@ -86,12 +86,9 @@ public class APIEndpointIndex implements DataAssetIndex {
 
     mergeChildTags(doc, childTags);
 
-    doc.put(
-        "requestSchema",
-        apiEndpoint.getRequestSchema() != null ? apiEndpoint.getRequestSchema() : null);
-    doc.put(
-        "responseSchema",
-        apiEndpoint.getResponseSchema() != null ? apiEndpoint.getResponseSchema() : null);
+    // request/responseSchema are already present as nested Maps via JsonUtils.getMap(entity). Do
+    // NOT re-put them as raw POJOs: that would stop the oversize-value cap (which walks Map/List)
+    // from descending into the flattened *.schemaFields.children.
     return doc;
   }
 

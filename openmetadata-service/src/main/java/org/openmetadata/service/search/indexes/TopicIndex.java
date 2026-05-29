@@ -73,7 +73,9 @@ public class TopicIndex implements DataAssetIndex {
       mergeChildTags(doc, childTags);
     }
 
-    doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
+    // messageSchema is already present as a nested Map via JsonUtils.getMap(entity). Do NOT re-put
+    // it as a raw POJO: that would stop the oversize-value cap (which walks Map/List) from
+    // descending into the flattened messageSchema.schemaFields.children.
     return doc;
   }
 
