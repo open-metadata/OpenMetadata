@@ -31,6 +31,7 @@ import org.openmetadata.service.TypeRegistry;
 class SearchIndexUtilsTest {
 
   private static final int LUCENE_MAX_TERM_BYTES = 32766;
+  private static final int MAX_VALUE_BUDGET = LUCENE_MAX_TERM_BYTES - 512;
 
   @Test
   void capOversizeValuesTrimsLongLeafButKeepsShortOnes() {
@@ -49,7 +50,7 @@ class SearchIndexUtilsTest {
 
     Map<String, Object> trimmedChild = firstChild(doc);
     String trimmedDesc = (String) trimmedChild.get("description");
-    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_VALUE_BUDGET);
     assertTrue(trimmedDesc.startsWith("Expression : "));
     assertEquals("Total Sales", trimmedChild.get("name"));
     assertEquals("Sales Model", doc.get("displayName"));
@@ -79,7 +80,7 @@ class SearchIndexUtilsTest {
     }
     String trimmed = (String) deepest.get("description");
     byte[] trimmedBytes = trimmed.getBytes(StandardCharsets.UTF_8);
-    assertTrue(trimmedBytes.length <= LUCENE_MAX_TERM_BYTES);
+    assertTrue(trimmedBytes.length < MAX_VALUE_BUDGET);
     assertEquals(trimmed, new String(trimmedBytes, StandardCharsets.UTF_8));
   }
 
@@ -104,7 +105,7 @@ class SearchIndexUtilsTest {
     assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
     assertEquals(List.of("owner-1"), doc.get("owners"));
     String trimmedDesc = (String) firstChild(doc).get("description");
-    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_VALUE_BUDGET);
   }
 
   @Test
@@ -123,7 +124,7 @@ class SearchIndexUtilsTest {
     assertEquals(huge, doc.get("schemaDefinition"));
     @SuppressWarnings("unchecked")
     String trimmedExt = (String) ((Map<String, Object>) doc.get("extension")).get("customProp");
-    assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+    assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= MAX_VALUE_BUDGET);
   }
 
   @Test
@@ -148,7 +149,7 @@ class SearchIndexUtilsTest {
         (String) ((Map<String, Object>) ((List<?>) doc.get("children")).get(0)).get("description");
     assertEquals(huge, objectDesc);
     String trimmed = (String) firstChild(doc).get("description");
-    assertTrue(trimmed.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+    assertTrue(trimmed.getBytes(StandardCharsets.UTF_8).length <= MAX_VALUE_BUDGET);
     assertNotEquals(huge, trimmed);
   }
 
