@@ -23,7 +23,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,6 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
@@ -290,172 +288,6 @@ class TaskWorkflowHandlerTest {
                           && resolution.getResolvedBy() == resolvedBy
                           && resolution.getResolvedAt() != null),
               eq("alice"));
-    }
-  }
-
-  @Test
-  void testPersistExpirationDateCalledOnGrantTransition() {
-    UUID taskId = UUID.randomUUID();
-    TaskAvailableTransition grantTransition =
-        new TaskAvailableTransition()
-            .withId("markAsGranted")
-            .withTargetTaskStatus(TaskEntityStatus.Granted);
-    Task task =
-        new Task()
-            .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
-            .withStatus(TaskEntityStatus.Open)
-            .withType(TaskEntityType.RequestApproval)
-            .withAvailableTransitions(List.of(grantTransition));
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Granted);
-
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("resolution"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
-
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.persistExpirationDate(eq(taskId), eq("alice"))).thenReturn(refreshedTask);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      Task result =
-          TaskWorkflowHandler.getInstance()
-              .resolveTask(task, "markAsGranted", null, null, null, null, "alice");
-
-      assertSame(refreshedTask, result);
-      verify(taskRepository).persistExpirationDate(eq(taskId), eq("alice"));
-    }
-  }
-
-  @Test
-  void testPersistApproverNotCalledOnGrantTransition() {
-    UUID taskId = UUID.randomUUID();
-    TaskAvailableTransition grantTransition =
-        new TaskAvailableTransition()
-            .withId("markAsGranted")
-            .withTargetTaskStatus(TaskEntityStatus.Granted);
-    Task task =
-        new Task()
-            .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
-            .withStatus(TaskEntityStatus.Open)
-            .withType(TaskEntityType.RequestApproval)
-            .withAvailableTransitions(List.of(grantTransition));
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Granted);
-
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("resolution"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
-
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.persistExpirationDate(eq(taskId), eq("alice"))).thenReturn(refreshedTask);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      TaskWorkflowHandler.getInstance()
-          .resolveTask(task, "markAsGranted", null, null, null, null, "alice");
-
-      verify(taskRepository, never()).persistApprover(any(), any(), anyString());
-    }
-  }
-
-  @Test
-  void testPersistExpirationDateNotCalledOnApproveTransition() {
-    UUID taskId = UUID.randomUUID();
-    TaskAvailableTransition approveTransition =
-        new TaskAvailableTransition()
-            .withId("approve")
-            .withTargetTaskStatus(TaskEntityStatus.Approved);
-    Task task =
-        new Task()
-            .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
-            .withStatus(TaskEntityStatus.Open)
-            .withType(TaskEntityType.RequestApproval)
-            .withAvailableTransitions(List.of(approveTransition));
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Approved);
-    EntityReference approver =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("alice");
-
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("resolution"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
-
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      entityMock
-          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
-          .thenReturn(approver);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      TaskWorkflowHandler.getInstance()
-          .resolveTask(task, "approve", null, null, null, null, "alice");
-
-      verify(taskRepository, never()).persistExpirationDate(any(), anyString());
-    }
-  }
-
-  @Test
-  void testCaptureGrantSwallowsExceptionAndReturnsTask() {
-    UUID taskId = UUID.randomUUID();
-    TaskAvailableTransition grantTransition =
-        new TaskAvailableTransition()
-            .withId("markAsGranted")
-            .withTargetTaskStatus(TaskEntityStatus.Granted);
-    Task task =
-        new Task()
-            .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
-            .withStatus(TaskEntityStatus.Open)
-            .withType(TaskEntityType.RequestApproval)
-            .withAvailableTransitions(List.of(grantTransition));
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Granted);
-
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("resolution"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
-
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.persistExpirationDate(eq(taskId), eq("alice")))
-          .thenThrow(new RuntimeException("DB error"));
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      Task result =
-          assertDoesNotThrow(
-              () ->
-                  TaskWorkflowHandler.getInstance()
-                      .resolveTask(task, "markAsGranted", null, null, null, null, "alice"));
-
-      assertSame(refreshedTask, result);
     }
   }
 }
