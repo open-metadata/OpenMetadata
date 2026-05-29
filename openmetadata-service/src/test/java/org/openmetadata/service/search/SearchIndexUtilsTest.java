@@ -107,6 +107,25 @@ class SearchIndexUtilsTest {
     assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
   }
 
+  @Test
+  void capOversizeValuesOnlyTouchesFlatObjectFields() {
+    String huge = "x".repeat(50_000);
+    Map<String, Object> extension = new HashMap<>();
+    extension.put("customProp", huge);
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("description", huge); // top-level text field — must NOT be trimmed
+    doc.put("schemaDefinition", huge); // text field — must NOT be trimmed
+    doc.put("extension", extension); // flat_object — MUST be trimmed
+
+    SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model");
+
+    assertEquals(huge, doc.get("description"));
+    assertEquals(huge, doc.get("schemaDefinition"));
+    @SuppressWarnings("unchecked")
+    String trimmedExt = (String) ((Map<String, Object>) doc.get("extension")).get("customProp");
+    assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+  }
+
   private Map<String, Object> firstChild(Map<String, Object> doc) {
     Map<String, Object> column = (Map<String, Object>) ((List<?>) doc.get("columns")).get(0);
     return (Map<String, Object>) ((List<?>) column.get("children")).get(0);

@@ -62,43 +62,63 @@ public final class SearchIndexUtils {
   private static final int MAX_INDEXED_VALUE_BYTES = 32000;
 
   /**
-   * Caps oversize string values in a search document so a single leaf cannot exceed Lucene's
-   * per-term byte limit and reject the entire document. Walks the document in place and trims any
-   * string whose UTF-8 length exceeds {@link #MAX_INDEXED_VALUE_BYTES}, on a character boundary.
-   * The full value is preserved on the source entity (database/API); only the indexed copy is
-   * trimmed, so entity pages and APIs are unaffected.
+   * Fields mapped as {@code flattened} (ES) / {@code flat_object} (OpenSearch). Their leaves are
+   * indexed as single un-tokenized keyword terms with no length cap, so they are the only fields
+   * that can trip Lucene's per-term limit. {@code text} and capped {@code keyword} fields are safe
+   * and are intentionally left untouched.
+   */
+  private static final Set<String> FLAT_OBJECT_FIELDS = Set.of("children", "extension");
+
+  /**
+   * Caps oversize string values inside the {@code flat_object} fields of a search document so a
+   * single leaf cannot exceed Lucene's per-term byte limit and reject the entire document. Only the
+   * {@link #FLAT_OBJECT_FIELDS} subtrees are trimmed (recursively); {@code text}/{@code keyword}
+   * fields elsewhere are left as-is. Trimming is in place, on a character boundary; the full value
+   * is preserved on the source entity (database/API), so entity pages and APIs are unaffected.
    */
   public static void capOversizeValues(final Object node, final String entityContext) {
     if (node instanceof Map<?, ?> rawMap) {
-      capMapValues(rawMap, entityContext);
+      @SuppressWarnings("unchecked")
+      Map<String, Object> map = (Map<String, Object>) rawMap;
+      for (Map.Entry<String, Object> entry : map.entrySet()) {
+        if (FLAT_OBJECT_FIELDS.contains(entry.getKey())) {
+          trimAllStrings(entry.getValue(), entry.getKey(), entityContext);
+        } else {
+          capOversizeValues(entry.getValue(), entityContext);
+        }
+      }
     } else if (node instanceof List<?> rawList) {
-      capListValues(rawList, entityContext);
+      for (Object item : rawList) {
+        capOversizeValues(item, entityContext);
+      }
     }
   }
 
-  private static void capMapValues(final Map<?, ?> rawMap, final String entityContext) {
-    @SuppressWarnings("unchecked")
-    Map<String, Object> map = (Map<String, Object>) rawMap;
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      Object value = entry.getValue();
-      Object trimmed = trimIfOversized(value, entry.getKey(), entityContext);
-      if (trimmed != value) {
-        entry.setValue(trimmed);
+  private static void trimAllStrings(
+      final Object node, final String fieldPath, final String entityContext) {
+    if (node instanceof Map<?, ?> rawMap) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> map = (Map<String, Object>) rawMap;
+      for (Map.Entry<String, Object> entry : map.entrySet()) {
+        Object value = entry.getValue();
+        String childPath = fieldPath + "." + entry.getKey();
+        Object trimmed = trimIfOversized(value, childPath, entityContext);
+        if (trimmed != value) {
+          entry.setValue(trimmed);
+        }
+        trimAllStrings(value, childPath, entityContext);
       }
-      capOversizeValues(value, entityContext);
-    }
-  }
-
-  private static void capListValues(final List<?> rawList, final String entityContext) {
-    @SuppressWarnings("unchecked")
-    List<Object> list = (List<Object>) rawList;
-    for (int index = 0; index < list.size(); index++) {
-      Object value = list.get(index);
-      Object trimmed = trimIfOversized(value, "[" + index + "]", entityContext);
-      if (trimmed != value) {
-        list.set(index, trimmed);
+    } else if (node instanceof List<?> rawList) {
+      @SuppressWarnings("unchecked")
+      List<Object> list = (List<Object>) rawList;
+      for (int index = 0; index < list.size(); index++) {
+        Object value = list.get(index);
+        Object trimmed = trimIfOversized(value, fieldPath, entityContext);
+        if (trimmed != value) {
+          list.set(index, trimmed);
+        }
+        trimAllStrings(value, fieldPath, entityContext);
       }
-      capOversizeValues(value, entityContext);
     }
   }
 
