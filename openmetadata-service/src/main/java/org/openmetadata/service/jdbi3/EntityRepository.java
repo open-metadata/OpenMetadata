@@ -9976,23 +9976,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetFields(List<T> entities, Fields fields) {
+    fetchAndSetFieldsExcept(entities, fields, Collections.emptySet());
+  }
+
+  /**
+   * Same as {@link #fetchAndSetFields} but skips the fetchers for {@code excludedFields}, letting
+   * the caller populate those fields itself (e.g. with a filtered query). Excluded fields are
+   * expected to be per-field fetchers, not relationship-bulk fields, so the batched relationship
+   * fetch still runs to keep fields like {@code domains}/{@code owners} populated and to avoid N+1.
+   */
+  protected void fetchAndSetFieldsExcept(
+      List<T> entities, Fields fields, Set<String> excludedFields) {
     Set<String> relationshipFieldsHandled = fetchAndSetRelationshipFieldsInBulk(entities, fields);
     for (Entry<String, BiConsumer<List<T>, Fields>> entry : fieldFetchers.entrySet()) {
-      if (relationshipFieldsHandled.contains(entry.getKey())) {
+      if (excludedFields.contains(entry.getKey())
+          || relationshipFieldsHandled.contains(entry.getKey())) {
         continue;
       }
       entry.getValue().accept(entities, fields);
     }
-  }
-
-  protected void fetchAndSetFieldsExcept(
-      List<T> entities, Fields fields, Set<String> excludedFields) {
-    fieldFetchers.forEach(
-        (fieldName, fetcher) -> {
-          if (!excludedFields.contains(fieldName)) {
-            fetcher.accept(entities, fields);
-          }
-        });
   }
 
   private Set<String> fetchAndSetRelationshipFieldsInBulk(List<T> entities, Fields fields) {
