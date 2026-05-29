@@ -4620,7 +4620,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private Fields buildSearchRehydrateFields(Fields callerFields) {
     Set<String> combined = new HashSet<>(callerFields.getFieldList());
-    combined.addAll(putFields.getFieldList());
+    combined.addAll(getFieldsStrippedFromStorageJson());
     return new Fields(combined);
   }
 
