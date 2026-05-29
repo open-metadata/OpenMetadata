@@ -73,9 +73,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
-  const { onCopyToClipBoard } = useClipboard('', 1500, () =>
-    showSuccessToast(t('message.link-copy-to-clipboard'))
-  );
+  const { onCopyToClipBoard } = useClipboard('', 1500);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
