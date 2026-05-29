@@ -30,7 +30,7 @@ import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
 
-  private static final int MAX_INDEXED_VALUE_BYTES = 32000;
+  private static final int LUCENE_MAX_TERM_BYTES = 32766;
 
   @Test
   void capOversizeValuesTrimsLongLeafButKeepsShortOnes() {
@@ -49,7 +49,7 @@ class SearchIndexUtilsTest {
 
     Map<String, Object> trimmedChild = firstChild(doc);
     String trimmedDesc = (String) trimmedChild.get("description");
-    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
     assertTrue(trimmedDesc.startsWith("Expression : "));
     assertEquals("Total Sales", trimmedChild.get("name"));
     assertEquals("Sales Model", doc.get("displayName"));
@@ -79,7 +79,7 @@ class SearchIndexUtilsTest {
     }
     String trimmed = (String) deepest.get("description");
     byte[] trimmedBytes = trimmed.getBytes(StandardCharsets.UTF_8);
-    assertTrue(trimmedBytes.length <= MAX_INDEXED_VALUE_BYTES);
+    assertTrue(trimmedBytes.length <= LUCENE_MAX_TERM_BYTES);
     assertEquals(trimmed, new String(trimmedBytes, StandardCharsets.UTF_8));
   }
 
@@ -104,7 +104,7 @@ class SearchIndexUtilsTest {
     assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
     assertEquals(List.of("owner-1"), doc.get("owners"));
     String trimmedDesc = (String) firstChild(doc).get("description");
-    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
   }
 
   @Test
@@ -123,7 +123,7 @@ class SearchIndexUtilsTest {
     assertEquals(huge, doc.get("schemaDefinition"));
     @SuppressWarnings("unchecked")
     String trimmedExt = (String) ((Map<String, Object>) doc.get("extension")).get("customProp");
-    assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+    assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
   }
 
   private Map<String, Object> firstChild(Map<String, Object> doc) {

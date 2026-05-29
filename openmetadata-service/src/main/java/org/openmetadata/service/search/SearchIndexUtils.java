@@ -57,9 +57,17 @@ public final class SearchIndexUtils {
    * {@code flattened} / {@code flat_object} field (e.g. the recursive {@code columns.children}
    * subtree) are indexed as single un-tokenized keyword terms, so one oversized leaf — such as a
    * long PowerBI DAX expression stored in a column description — fails the whole document with an
-   * "immense term" error. Kept under the limit with margin for the {@code _valueAndPath} subfield.
+   * "immense term" error.
    */
-  private static final int MAX_INDEXED_VALUE_BYTES = 32000;
+  private static final int LUCENE_MAX_TERM_BYTES = 32766;
+
+  /**
+   * Headroom reserved below the Lucene limit. A {@code flat_object} also indexes a
+   * {@code _valueAndPath} term (the leaf path prefixed to the value), so the value budget is the
+   * limit minus this margin minus the path length; the margin covers delimiters and engine
+   * overhead beyond the path we compute.
+   */
+  private static final int TERM_SAFETY_MARGIN_BYTES = 512;
 
   /**
    * Fields mapped as {@code flattened} (ES) / {@code flat_object} (OpenSearch). Their leaves are
@@ -123,24 +131,35 @@ public final class SearchIndexUtils {
   }
 
   private static Object trimIfOversized(
-      final Object value, final String fieldName, final String entityContext) {
+      final Object value, final String fieldPath, final String entityContext) {
     Object result = value;
     if (value instanceof String text) {
       byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-      if (bytes.length > MAX_INDEXED_VALUE_BYTES) {
-        result = trimToByteLimit(bytes);
+      int budget = valueByteBudget(fieldPath);
+      if (bytes.length > budget) {
+        result = trimToByteLimit(bytes, budget);
         LOG.warn(
             "Trimmed oversize search value [entity={}, field={}] from {} to {} bytes to stay under the index term limit",
             entityContext,
-            fieldName,
+            fieldPath,
             bytes.length,
-            MAX_INDEXED_VALUE_BYTES);
+            budget);
       }
     }
     return result;
   }
 
-  private static String trimToByteLimit(final byte[] bytes) {
+  /**
+   * Budget for a single value so that both the {@code _value} term and the path-prefixed
+   * {@code _valueAndPath} term stay under {@link #LUCENE_MAX_TERM_BYTES}, accounting for the leaf
+   * path which grows with nesting depth.
+   */
+  private static int valueByteBudget(final String fieldPath) {
+    int pathBytes = fieldPath == null ? 0 : fieldPath.getBytes(StandardCharsets.UTF_8).length;
+    return Math.max(0, LUCENE_MAX_TERM_BYTES - TERM_SAFETY_MARGIN_BYTES - pathBytes);
+  }
+
+  private static String trimToByteLimit(final byte[] bytes, final int limit) {
     final CharsetDecoder decoder =
         StandardCharsets.UTF_8
             .newDecoder()
@@ -148,9 +167,9 @@ public final class SearchIndexUtils {
             .onUnmappableCharacter(CodingErrorAction.IGNORE);
     String trimmed;
     try {
-      trimmed = decoder.decode(ByteBuffer.wrap(bytes, 0, MAX_INDEXED_VALUE_BYTES)).toString();
+      trimmed = decoder.decode(ByteBuffer.wrap(bytes, 0, limit)).toString();
     } catch (CharacterCodingException e) {
-      trimmed = new String(bytes, 0, MAX_INDEXED_VALUE_BYTES, StandardCharsets.UTF_8);
+      trimmed = new String(bytes, 0, limit, StandardCharsets.UTF_8);
     }
     return trimmed;
   }
