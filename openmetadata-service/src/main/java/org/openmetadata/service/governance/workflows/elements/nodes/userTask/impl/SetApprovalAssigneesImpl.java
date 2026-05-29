@@ -25,18 +25,24 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
+  private static final int ADMIN_PAGE_SIZE = 50;
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
   private Expression inputNamespaceMapExpr;
@@ -143,6 +149,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         }
       }
 
+      boolean addAdminsWhenEmpty =
+          Boolean.TRUE.equals(assigneesConfig.getOrDefault("addAdminsWhenEmpty", false));
+      if (assignees.isEmpty() && addAdminsWhenEmpty) {
+        assignees.addAll(resolveAdminAssignees());
+      }
+
       boolean workflowManagedTask =
           Boolean.TRUE.equals(execution.getVariable("taskWorkflowManaged"))
               || execution.getVariable("taskEntityId") != null;
@@ -233,6 +245,27 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
     // No recognised source found: return empty list, which causes the task to be auto-approved.
     return List.of();
+  }
+
+  private List<String> resolveAdminAssignees() {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    ListFilter listFilter = new ListFilter(Include.NON_DELETED);
+    listFilter.addQueryParam("isAdmin", "true");
+    List<String> admins = new ArrayList<>();
+    String after = null;
+    do {
+      ResultList<User> page =
+          userRepository.listAfter(
+              null, EntityUtil.Fields.EMPTY_FIELDS, listFilter, ADMIN_PAGE_SIZE, after);
+      page.getData()
+          .forEach(
+              user ->
+                  admins.add(
+                      new MessageParser.EntityLink(Entity.USER, user.getFullyQualifiedName())
+                          .getLinkString()));
+      after = page.getPaging().getAfter();
+    } while (after != null);
+    return admins;
   }
 
   private List<String> getEntityLinkStringFromEntityReference(List<EntityReference> assignees) {

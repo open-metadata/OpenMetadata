@@ -58,6 +58,11 @@
                 "$ref": "../../../../../type/entityReference.json"
               },
               "default": []
+            },
+            "addAdminsWhenEmpty": {
+              "description": "When no reviewers or owners resolve, fall back to assigning all platform admins so the task is never left unassigned. Defaults to false.",
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false

@@ -345,6 +345,7 @@ public class UserApprovalTask implements NodeInterface {
     if (config != null) {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
+      result.put("addAdminsWhenEmpty", config.getOrDefault("addAdminsWhenEmpty", false));
 
       Set<String> users = new HashSet<>();
       Set<String> teams = new HashSet<>();
