@@ -37,6 +37,32 @@ export const BOT_DETAILS = {
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
 
+export const searchBotFromSearchInput = async (
+  page: Page,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse((response) => {
+    const url = response.url();
+    const decodedUrl = decodeURIComponent(url);
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=user') &&
+      decodedUrl.includes('"isBot":true') &&
+      response.request().method() === 'GET'
+    );
+  });
+
+  const searchInput = page.getByTestId('searchbar');
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+
+  expect(searchResponse.status()).toBe(200);
+};
+
 export const getCreatedBot = async (
   page: Page,
   {

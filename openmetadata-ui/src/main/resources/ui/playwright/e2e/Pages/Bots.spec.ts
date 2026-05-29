@@ -16,12 +16,12 @@ import {
   createBot,
   deleteBot,
   redirectToBotPage,
+  searchBotFromSearchInput,
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
 } from '../../utils/bot';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { searchFromSearchInput } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
@@ -37,6 +37,8 @@ test.describe(
       await redirectToBotPage(page);
 
       await test.step('Verify ingestion bot delete button is always disabled', async () => {
+        await searchBotFromSearchInput(page, 'ingestion');
+
         await expect(
           page.getByTestId('bot-delete-ingestion-bot')
         ).toBeDisabled();
@@ -58,31 +60,26 @@ test.describe(
       );
 
       await test.step('Search bot by display name', async () => {
-        await searchFromSearchInput(
-          page,
-          searchInput,
-          BOT_DETAILS.updatedBotName
-        );
+        await searchBotFromSearchInput(page, BOT_DETAILS.updatedBotName);
 
         await expect(createdBotLink).toBeVisible();
       });
 
       await test.step('Search bot by bot name', async () => {
-        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botName);
+        await searchBotFromSearchInput(page, BOT_DETAILS.botName);
 
         await expect(createdBotLink).toBeVisible();
       });
 
       await test.step('Search bot by email', async () => {
-        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail);
+        await searchBotFromSearchInput(page, BOT_DETAILS.botEmail);
 
         await expect(createdBotLink).toBeVisible();
       });
 
       await test.step('Search with no match shows empty state', async () => {
-        await searchFromSearchInput(
+        await searchBotFromSearchInput(
           page,
-          searchInput,
           `${BOT_DETAILS.updatedBotName}-no-match`
         );
 
