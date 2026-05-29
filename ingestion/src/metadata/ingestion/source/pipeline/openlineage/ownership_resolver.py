@@ -42,19 +42,20 @@ class OpenLineageOwnerResolver:
     def __init__(
         self,
         metadata: OpenMetadata,
-        include_owners: bool = True,
-        ownership_update_mode: OwnershipUpdateMode = OwnershipUpdateMode.replace,
+        include_owners: bool | None,
+        ownership_update_mode: OwnershipUpdateMode | str | None,
     ):
         self.metadata = metadata
-        self.include_owners = include_owners
-        self.ownership_update_mode = (
-            ownership_update_mode
+        self.include_owners = bool(include_owners)
+        self.ownership_update_mode = OwnershipUpdateMode(
+            ownership_update_mode.value
             if isinstance(ownership_update_mode, OwnershipUpdateMode)
-            else OwnershipUpdateMode(ownership_update_mode)
+            else ownership_update_mode or OwnershipUpdateMode.replace.value
         )
-        self._team_owner_ref_by_name: Optional[Dict[str, EntityReference]] = None  # noqa: UP006, UP045
-        self._user_owner_ref_by_name: Optional[Dict[str, EntityReference]] = None  # noqa: UP006, UP045
-        self._owner_refs_by_pipeline_fqn: Optional[Dict[str, List[EntityReference]]] = None  # noqa: UP006, UP045
+        self._owner_cache_loaded = False
+        self._team_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
+        self._user_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
+        self._owner_refs_by_pipeline_fqn: Dict[str, List[EntityReference]] = {}  # noqa: UP006
 
     def get_pipeline_job_owners(
         self,
@@ -154,11 +155,7 @@ class OpenLineageOwnerResolver:
         """
         Load OpenMetadata Group teams, users, and pipeline ownership references.
         """
-        if (
-            self._team_owner_ref_by_name is not None
-            and self._user_owner_ref_by_name is not None
-            and self._owner_refs_by_pipeline_fqn is not None
-        ):
+        if self._owner_cache_loaded:
             return
 
         team_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
@@ -179,7 +176,7 @@ class OpenLineageOwnerResolver:
                 if team_name:
                     team_ref = team_owner_ref_by_name.setdefault(
                         team_name,
-                        EntityReference(
+                        EntityReference(  # pyright: ignore[reportCallIssue]
                             id=model_str(team.id),
                             type=OWNER_TEAM_ENTITY,
                             name=model_str(team.name),
@@ -214,7 +211,7 @@ class OpenLineageOwnerResolver:
                 if user_name:
                     user_ref = user_owner_ref_by_name.setdefault(
                         user_name,
-                        EntityReference(
+                        EntityReference(  # pyright: ignore[reportCallIssue]
                             id=model_str(user.id),
                             type=OWNER_USER_ENTITY,
                             name=model_str(user.name),
@@ -237,3 +234,4 @@ class OpenLineageOwnerResolver:
         self._team_owner_ref_by_name = team_owner_ref_by_name
         self._user_owner_ref_by_name = user_owner_ref_by_name
         self._owner_refs_by_pipeline_fqn = owner_refs_by_pipeline_fqn
+        self._owner_cache_loaded = True

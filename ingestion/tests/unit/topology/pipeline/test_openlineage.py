@@ -36,8 +36,6 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.api.models import Either
-from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,

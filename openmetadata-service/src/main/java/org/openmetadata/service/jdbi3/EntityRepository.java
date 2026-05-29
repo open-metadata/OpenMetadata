@@ -2227,7 +2227,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
-      entities = listInternal(jsons, fields, uriInfo);
+      entities = listInternal(jsons, fields, uriInfo, filter);
 
       String beforeCursor;
       String afterCursor = null;
@@ -2249,18 +2249,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
     List<String> jsons = dao.listAfter(filter, limit, offset);
 
-    List<T> entities = listInternal(jsons, fields, uriInfo);
+    List<T> entities = listInternal(jsons, fields, uriInfo, filter);
 
     return new ResultList<>(entities, offset, limit, total);
   }
 
-  private List<T> listInternal(List<String> jsons, Fields fields, UriInfo uriInfo) {
+  private List<T> listInternal(
+      List<String> jsons, Fields fields, UriInfo uriInfo, ListFilter filter) {
     List<T> entities;
     try (var ignored = phase("jsonDeserialize")) {
       entities = JsonUtils.readObjects(jsons, entityClass);
     }
     try (var ignored = phase("setFieldsBulk")) {
-      setFieldsInBulk(fields, entities);
+      setFieldsInBulk(fields, entities, filter);
     }
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
@@ -2284,7 +2285,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean hasMoreData = jsons.size() > limitParam;
       List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
 
-      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsonsToProcess, fields, null);
+      Iterator<Either<T, EntityError>> iterator =
+          serializeJsons(jsonsToProcess, fields, null, filter);
       while (iterator.hasNext()) {
         Either<T, EntityError> either = iterator.next();
         if (either.right().isPresent()) {
@@ -2343,7 +2345,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<String> jsons = dao.listBefore(filter, limitParam + 1, beforeName, beforeId);
 
     List<T> entities = JsonUtils.readObjects(jsons, entityClass);
-    setFieldsInBulk(fields, entities);
+    setFieldsInBulk(fields, entities, filter);
     entities.forEach(entity -> withHref(uriInfo, entity));
 
     String beforeCursor = null;
@@ -2443,7 +2445,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
       List<String> jsons = callable.apply(filter, limitParam, offsetInt);
-      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsons, fields, uriInfo);
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsons, fields, uriInfo, filter);
       while (iterator.hasNext()) {
         Either<T, EntityError> either = iterator.next();
         if (either.right().isPresent()) {
@@ -10926,7 +10928,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Iterator<Either<T, EntityError>> serializeJsons(
-      List<String> jsons, Fields fields, UriInfo uriInfo) {
+      List<String> jsons, Fields fields, UriInfo uriInfo, ListFilter filter) {
     List<Either<T, EntityError>> results = new ArrayList<>();
     List<T> entities = new ArrayList<>();
 
@@ -10945,7 +10947,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!entities.isEmpty()) {
       try {
-        setFieldsInBulk(fields, entities);
+        setFieldsInBulk(fields, entities, filter);
         if (!nullOrEmpty(uriInfo)) {
           entities.forEach(entity -> withHref(uriInfo, entity));
         }

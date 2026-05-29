@@ -136,6 +136,19 @@ def test_does_not_build_cache_when_include_owners_is_disabled():
     metadata.list_all_entities.assert_not_called()
 
 
+def test_does_not_build_cache_when_include_owners_is_none():
+    resolver, metadata = build_resolver(
+        users=[build_user("jdoe")],
+        teams=[build_team("data-platform")],
+        include_owners=None,
+    )
+
+    owners = resolver.get_pipeline_job_owners(build_job(["user:jdoe", "team:data-platform"]))
+
+    assert owners is None
+    metadata.list_all_entities.assert_not_called()
+
+
 def test_builds_pipeline_owner_cache_with_filtered_owns_api():
     pipeline_ref = EntityReference(
         id=uuid4(),
@@ -178,6 +191,30 @@ def test_replace_mode_does_not_carry_existing_pipeline_owners():
         users=[new_user],
         teams=[existing_team],
         ownership_update_mode="replace",
+    )
+
+    owners = resolver.get_pipeline_job_owners(
+        build_job(["user:jdoe"]),
+        pipeline_fqn="airflow.daily_orders",
+    )
+
+    assert owners is not None
+    assert [(owner.type, owner.name) for owner in owners.root] == [("user", "jdoe")]
+
+
+def test_none_ownership_update_mode_defaults_to_replace():
+    pipeline_ref = EntityReference(
+        id=uuid4(),
+        type="pipeline",
+        name="daily_orders",
+        fullyQualifiedName="airflow.daily_orders",
+    )
+    existing_team = build_team("data-platform", owns=[pipeline_ref])
+    new_user = build_user("jdoe")
+    resolver, _ = build_resolver(
+        users=[new_user],
+        teams=[existing_team],
+        ownership_update_mode=None,
     )
 
     owners = resolver.get_pipeline_job_owners(

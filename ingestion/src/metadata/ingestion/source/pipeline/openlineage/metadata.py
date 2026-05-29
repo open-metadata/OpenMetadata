@@ -817,7 +817,7 @@ class OpenlineageSource(PipelineServiceSource):
             )
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
-            request = CreatePipelineRequest(
+            request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=pipeline_name,
                 service=self._current_pipeline_service,
                 description=description,
