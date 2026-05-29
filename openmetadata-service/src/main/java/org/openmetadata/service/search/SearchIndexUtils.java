@@ -106,22 +106,21 @@ public final class SearchIndexUtils {
       final Object value, final String fieldName, final String entityContext) {
     Object result = value;
     if (value instanceof String text) {
-      int byteLength = text.getBytes(StandardCharsets.UTF_8).length;
-      if (byteLength > MAX_INDEXED_VALUE_BYTES) {
-        result = trimToByteLimit(text);
+      byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+      if (bytes.length > MAX_INDEXED_VALUE_BYTES) {
+        result = trimToByteLimit(bytes);
         LOG.warn(
             "Trimmed oversize search value [entity={}, field={}] from {} to {} bytes to stay under the index term limit",
             entityContext,
             fieldName,
-            byteLength,
+            bytes.length,
             MAX_INDEXED_VALUE_BYTES);
       }
     }
     return result;
   }
 
-  private static String trimToByteLimit(final String value) {
-    final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+  private static String trimToByteLimit(final byte[] bytes) {
     final CharsetDecoder decoder =
         StandardCharsets.UTF_8
             .newDecoder()
