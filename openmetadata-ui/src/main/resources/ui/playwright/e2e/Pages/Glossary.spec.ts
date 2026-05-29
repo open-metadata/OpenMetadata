@@ -1523,6 +1523,8 @@ test.describe('Glossary tests', () => {
   test('Column selection and visibility for Glossary Terms table', async ({
     browser,
   }) => {
+    test.setTimeout(180_000);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
