@@ -57,6 +57,7 @@ import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -553,9 +554,15 @@ public class WorkflowHandler {
           latestDefinition.getVersion(),
           processDefinitionKey);
 
-      // Start process instance using the specific process definition ID (ensures latest version)
+      // Start process instance using the specific process definition ID (ensures latest version).
+      // Flowable bulk-inserts process variables into ACT_RU_VARIABLE in its own transaction; under
+      // concurrent workflow starts these inserts can lose a deadlock race on InnoDB. The start is a
+      // self-contained Flowable command, so DeadlockRetry safely replays it in a fresh transaction.
       ProcessInstance instance =
-          runtimeService.startProcessInstanceById(latestDefinition.getId(), businessKey, variables);
+          DeadlockRetry.execute(
+              () ->
+                  runtimeService.startProcessInstanceById(
+                      latestDefinition.getId(), businessKey, variables));
       LOG.debug(
           "[WorkflowTrigger] SUCCESS: processKey='{}' version='{}' instanceId='{}' businessKey='{}'",
           processDefinitionKey,
