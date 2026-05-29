@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -162,8 +163,10 @@ public class ActivityStreamRepository {
             : null,
         event.getAbout(),
         aboutFqnHash,
-        event.getActor().getId().toString(),
-        event.getActor().getName(),
+        event.getActor() != null && event.getActor().getId() != null
+            ? event.getActor().getId().toString()
+            : null,
+        event.getActor() != null ? event.getActor().getName() : null,
         event.getTimestamp(),
         truncateSummaryForStorage(event.getSummary()),
         event.getFieldName(),
@@ -469,15 +472,17 @@ public class ActivityStreamRepository {
   }
 
   private EntityReference buildActorReference(String userName) {
-    if (nullOrEmpty(userName)) {
-      return new EntityReference().withType(Entity.USER).withName("system");
+    EntityReference result = null;
+    if (!nullOrEmpty(userName)) {
+      try {
+        // Include.ALL keeps soft-deleted users resolvable with their real id.
+        result = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (EntityNotFoundException ignored) {
+        // Hard-deleted: keep the name for display, actorId stays null (no FK target).
+        result = new EntityReference().withType(Entity.USER).withName(userName);
+      }
     }
-    try {
-      return Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    } catch (Exception e) {
-      // User might not exist (e.g., system operations)
-      return new EntityReference().withType(Entity.USER).withName(userName);
-    }
+    return result;
   }
 
   private String buildSummary(
