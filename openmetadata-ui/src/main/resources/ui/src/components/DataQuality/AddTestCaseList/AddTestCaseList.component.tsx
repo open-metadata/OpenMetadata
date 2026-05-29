@@ -296,7 +296,9 @@ export const AddTestCaseList = ({
           testCaseStatus: filterStatus,
           testCaseType:
             filterTestType === TestCaseType.all ? undefined : filterTestType,
-          ...(entityLink && { entityLink }),
+          // includeAllTests=true: prefix-match entityFQN so column tests
+          // under the selected table are included.
+          ...(entityLink && { entityLink, includeAllTests: true }),
           ...(columnName && { columnName }),
         };
         const mergedParams = { ...testCaseParams, ...requestParams };

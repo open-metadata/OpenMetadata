@@ -627,11 +627,34 @@ describe('AddTestCaseList', () => {
         fireEvent.click(screen.getByTestId('filter-table'));
       });
 
+      // Must pass includeAllTests=true so column-level tests under the
+      // table are not dropped by the backend's exact-match entityFQN filter.
       expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           entityLink: '<#E::table::sample.table>',
+          includeAllTests: true,
         })
       );
+    });
+
+    it('does not set includeAllTests when no table filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+
+      const lastCallParams = mockGetListTestCaseBySearch.mock.calls.at(-1)?.[0];
+
+      expect(lastCallParams?.entityLink).toBeUndefined();
+      expect(lastCallParams?.includeAllTests).toBeUndefined();
     });
 
     it('filters list by column selection (server-side)', async () => {
@@ -850,14 +873,8 @@ describe('AddTestCaseList', () => {
       });
     });
 
-    // Regression test for issue #28400.
-    //
-    // Test Suite pages used to pass only the currently visible page of suite
-    // tests as `selectedTest` (paginated), which meant any suite test beyond
-    // the first page rendered unchecked in the modal. The fix relies on
-    // `existingTest` (the full EntityReference[] from `testSuite.tests`) so
-    // every already-added test case shows up as pre-selected regardless of
-    // pagination.
+    // Regression for #28400: existingTest must seed pre-selection by id,
+    // independent of the (paginated) selectedTest name list.
     it('pre-selects every test case in existingTest by id, even when selectedTest is empty', async () => {
       mockGetListTestCaseBySearch.mockResolvedValue({
         data: mockTestCases,

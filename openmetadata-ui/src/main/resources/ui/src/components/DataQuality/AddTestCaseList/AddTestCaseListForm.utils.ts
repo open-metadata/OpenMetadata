@@ -44,14 +44,9 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
 }
 
 /**
- * Builds the initial `selectedItems` map for `AddTestCaseList` from the
- * `existingTest` prop (test cases already attached to the parent test suite).
- *
- * Entries are stored keyed by `id` so the modal can show pre-checked
- * checkboxes for any existing test case as soon as it is rendered, regardless
- * of whether the full `TestCase` payload has loaded yet. The hydration in
- * `fetchTestCases` later upgrades these partial entries to full `TestCase`
- * objects when the underlying records appear in the search results.
+ * Seeds the modal's `selectedItems` map from `existingTest` (tests already in
+ * the parent suite), keyed by id. Entries start as partial TestCases and are
+ * upgraded with the full payload when the matching record loads.
  */
 export function seedSelectedFromExistingTest(
   existingTest?: EntityReference[]
