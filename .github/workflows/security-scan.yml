@@ -351,10 +351,9 @@ jobs:
 
       - name: Send Slack — header
         id: send-header
-        # TODO: revert channel-id to ${{ secrets.SLACK_CHANNEL_IDS }} after #vuln-testing validation.
         uses: slackapi/slack-github-action@v1.27.1
         with:
-          channel-id: C0B6Q6KDMJN
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload-file-path: header.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -407,10 +406,9 @@ jobs:
 
       - name: Send Slack — thread reply
         if: always() && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
-        # TODO: revert channel-id to ${{ secrets.SLACK_CHANNEL_IDS }} after #vuln-testing validation.
         uses: slackapi/slack-github-action@v1.27.1
         with:
-          channel-id: C0B6Q6KDMJN
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload-file-path: thread.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
