@@ -68,6 +68,8 @@ logger = ingestion_logger()
 
 USE_ACCESS_HISTORY_OPTION_KEY = "useAccessHistory"
 
+ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY = "accessHistoryChunkDays"
+
 TABLE_CACHE_MAX_SIZE = 100
 
 ACCESS_HISTORY_CHUNK_DAYS = 2
@@ -116,6 +118,7 @@ class SnowflakeLineageSource(
         # every connectionOptions entry into the URL query string, so the
         # driver would otherwise receive an unknown `useAccessHistory` param.
         self._use_access_history = self._pop_access_history_flag(config)
+        self._access_history_chunk_days = self._pop_access_history_chunk_days(config)
         super().__init__(config, metadata, get_engine=get_engine)
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
         if self._use_access_history and self.engine is not None:
@@ -150,6 +153,44 @@ class SnowflakeLineageSource(
         if raw is None:
             return False
         return str(raw).strip().lower() == "true"
+
+    @staticmethod
+    def _pop_access_history_chunk_days(config: WorkflowSource) -> int:
+        """
+        Read and remove the OM-specific `accessHistoryChunkDays` key from
+        connectionOptions, mirroring `_pop_access_history_flag` so the popped
+        key never reaches the Snowflake driver URL. Controls the size of the
+        date windows the [start, end] lineage span is split into. Falls back to
+        ACCESS_HISTORY_CHUNK_DAYS when unset or invalid (non-int / non-positive).
+        """
+        service_connection = (
+            config.serviceConnection.root.config
+        )  # pyright: ignore[reportOptionalMemberAccess]
+        options = get_connection_options_dict(service_connection)
+        if not options:
+            return ACCESS_HISTORY_CHUNK_DAYS
+        raw = options.pop(ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY, None)
+        if raw is None:
+            return ACCESS_HISTORY_CHUNK_DAYS
+        try:
+            chunk_days = int(str(raw).strip())
+        except (ValueError, TypeError):
+            logger.warning(
+                "Invalid %s=%r in connectionOptions; falling back to %d days.",
+                ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY,
+                raw,
+                ACCESS_HISTORY_CHUNK_DAYS,
+            )
+            return ACCESS_HISTORY_CHUNK_DAYS
+        if chunk_days <= 0:
+            logger.warning(
+                "%s must be a positive integer (got %d); falling back to %d days.",
+                ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY,
+                chunk_days,
+                ACCESS_HISTORY_CHUNK_DAYS,
+            )
+            return ACCESS_HISTORY_CHUNK_DAYS
+        return chunk_days
 
     def _build_filter_condition_clause(self) -> str:
         """
@@ -258,16 +299,18 @@ class SnowflakeLineageSource(
         self,
     ) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
         """
-        Split the configured [start, end] window into ACCESS_HISTORY_CHUNK_DAYS
-        chunks. A single query over a large window (e.g. queryLogDuration=180)
-        builds a FLATTEN-heavy plan that Snowflake cancels on a client/server
-        timeout; per-chunk queries keep each scan bounded and let one slow
-        window fail without aborting the run.
+        Split the configured [start, end] window into
+        `accessHistoryChunkDays`-sized chunks (default ACCESS_HISTORY_CHUNK_DAYS).
+        A single query over a large window (e.g. queryLogDuration=180) builds a
+        FLATTEN-heavy plan that Snowflake cancels on a client/server timeout;
+        per-chunk queries keep each scan bounded and let one slow window fail
+        without aborting the run.
         """
         window_start = self.start
         while window_start < self.end:
             window_end = min(
-                window_start + timedelta(days=ACCESS_HISTORY_CHUNK_DAYS), self.end
+                window_start + timedelta(days=self._access_history_chunk_days),
+                self.end,
             )
             yield window_start, window_end
             window_start = window_end
