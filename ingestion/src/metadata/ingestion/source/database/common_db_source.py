@@ -69,10 +69,6 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
-from metadata.utils.execution_time_tracker import (
-    calculate_execution_time,
-    calculate_execution_time_generator,
-)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -216,7 +212,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         by default there will be no stored procedure description
         """
 
-    @calculate_execution_time_generator()
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
@@ -266,7 +261,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         yield from self._get_filtered_schema_names()
 
-    @calculate_execution_time_generator()
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
@@ -313,7 +307,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
-    @calculate_execution_time()
     def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
@@ -431,7 +424,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     continue
                 yield view_name, view_and_type.type_
 
-    @calculate_execution_time()
     def get_schema_definition(
         self,
         table_type: TableType,
@@ -516,7 +508,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Method to fetch the extensions of the table
         """
 
-    @calculate_execution_time_generator()
     def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
@@ -696,7 +687,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         return foreign_constraints
 
-    @calculate_execution_time()
     def update_table_constraints(
         self,
         table_name,

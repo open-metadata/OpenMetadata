@@ -20,8 +20,8 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Trash01 } from '@untitledui/icons';
-import { FC, useState } from 'react';
+import { Clock, Link04, Trash01 } from '@untitledui/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -30,22 +30,17 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
-  MemoryActionsWithOpenProps,
+  MemoryActionsProps,
 } from './MemoriesView.interface';
 
-const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
-  canDelete,
-  memory,
-  onDeleteMemory,
-  onOpenChange,
-  onShareMemory,
-}) => {
+const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   const { t } = useTranslation();
 
   return (
-    <Dropdown.Root onOpenChange={onOpenChange}>
+    <Dropdown.Root>
       <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
         <TooltipTrigger>
           <Dropdown.DotsButton className="tw:flex tw:p-1" />
@@ -54,44 +49,25 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'share') {
-              onShareMemory?.(memory);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteMemory?.(memory);
             }
           }}>
-          <Dropdown.Item data-testid="share-btn" id="share">
+          <Dropdown.Item data-testid="delete-btn" id="delete">
             <div className="tw:flex tw:items-center tw:gap-2">
-              <Copy06
+              <Trash01
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-gray-600"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
               />
               <Typography
                 ellipsis
-                className="tw:grow tw:text-gray-700"
+                className="tw:grow tw:text-error-600"
                 size="text-sm"
                 weight="medium">
-                {t('label.copy-item', { item: t('label.link') })}
+                {t('label.delete')}
               </Typography>
             </div>
           </Dropdown.Item>
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Trash01
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-600"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </div>
-            </Dropdown.Item>
-          )}
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -119,31 +95,35 @@ const MemoryRowSkeleton: FC = () => (
 );
 
 interface MemoryRowProps {
-  canDelete?: boolean;
   currentUserName?: string;
   isAdminUser?: boolean;
   memory: ContextMemory;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
-  onShareMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
 }
 
 const MemoryRow: FC<MemoryRowProps> = ({
-  canDelete,
   currentUserName,
   isAdminUser,
   memory,
   onDeleteMemory,
   onEditMemory,
-  onShareMemory,
   onViewMemory,
 }) => {
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const memoryUrl = useMemo(
+    () =>
+      memory.name
+        ? `${window.location.origin}${
+            window.location.pathname
+          }?memory=${encodeURIComponent(memory.name)}`
+        : window.location.href,
+    [memory.name]
+  );
 
   return (
     <div
@@ -237,14 +217,18 @@ const MemoryRow: FC<MemoryRowProps> = ({
         )}
       </div>
 
-      {/* Actions — visible on hover or while menu is open */}
+      {/* Actions — always visible */}
       <div
-        className={`tw:absolute tw:top-3 tw:right-3 tw:flex tw:items-center tw:gap-1 tw:transition-opacity ${
-          isMenuOpen
-            ? 'tw:opacity-100'
-            : 'tw:opacity-0 tw:group-hover:opacity-100'
-        }`}
+        className="tw:absolute tw:top-3 tw:right-3 tw:flex tw:items-center tw:gap-1"
         onClick={(e) => e.stopPropagation()}>
+        <CopyLinkButton url={memoryUrl}>
+          <Link04
+            aria-hidden="true"
+            className="tw:-rotate-45"
+            size={17}
+            strokeWidth={1.8}
+          />
+        </CopyLinkButton>
         {canActOnMemory && onEditMemory && (
           <Tooltip title={t('label.edit')}>
             <TooltipTrigger>
@@ -258,27 +242,21 @@ const MemoryRow: FC<MemoryRowProps> = ({
             </TooltipTrigger>
           </Tooltip>
         )}
-        <MemoryActions
-          canDelete={canActOnMemory && canDelete}
-          memory={memory}
-          onDeleteMemory={onDeleteMemory}
-          onOpenChange={setIsMenuOpen}
-          onShareMemory={onShareMemory}
-        />
+        {canActOnMemory && (
+          <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
+        )}
       </div>
     </div>
   );
 };
 
 const MemoriesView: FC<MemoriesViewProps> = ({
-  canDelete,
   currentUserName,
   data,
   isAdminUser,
   isLoading,
   onDeleteMemory,
   onEditMemory,
-  onShareMemory,
   onViewMemory,
 }) => {
   if (isLoading) {
@@ -303,14 +281,12 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
-          canDelete={canDelete}
           currentUserName={currentUserName}
           isAdminUser={isAdminUser}
           key={memory.id}
           memory={memory}
           onDeleteMemory={onDeleteMemory}
           onEditMemory={onEditMemory}
-          onShareMemory={onShareMemory}
           onViewMemory={onViewMemory}
         />
       ))}
