@@ -56,6 +56,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [rejectionThreshold, setRejectionThreshold] = useState(1);
   const [addReviewers, setAddReviewers] = useState(true);
   const [addOwners, setAddOwners] = useState(false);
+  const [addAdminsWhenEmpty, setAddAdminsWhenEmpty] = useState(false);
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
@@ -66,6 +67,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
       const assignees = (nodeConfig.assignees || {}) as {
         addReviewers?: boolean;
         addOwners?: boolean;
+        addAdminsWhenEmpty?: boolean;
         candidates?: AssigneeCandidate[];
       };
       setDisplayName(node.data.displayName || node.data.label || '');
@@ -74,6 +76,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
       setRejectionThreshold(nodeConfig.rejectionThreshold ?? 1);
       setAddReviewers(assignees.addReviewers ?? true);
       setAddOwners(assignees.addOwners ?? false);
+      setAddAdminsWhenEmpty(assignees.addAdminsWhenEmpty ?? false);
       setCandidates(
         Array.isArray(assignees.candidates) ? assignees.candidates : []
       );
@@ -98,6 +101,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         assignees: {
           addReviewers,
           addOwners,
+          addAdminsWhenEmpty,
           candidates: candidatesPayload,
         },
       },
