@@ -94,6 +94,7 @@ import {
   findPageAndParentInTreeData,
   findPageInTreeData,
   getExpandedNodeKeys,
+  getKnowledgePageName,
   getPageAllChildren,
   getUpdatePageHierarchy,
   getUpdatePageHierarchyForDelete,
@@ -800,10 +801,10 @@ const KnowledgePagesHierarchy = forwardRef<
         {paginationState.paginationLoading && <Loader size="x-small" />}
 
         <DeleteModal
-          entityTitle={deletePage?.displayName || t('label.untitled')}
+          entityTitle={getKnowledgePageName(deletePage, t)}
           isDeleting={isDeleting}
           message={t('message.soft-delete-message-for-entity', {
-            entity: deletePage?.displayName || t('label.untitled'),
+            entity: getKnowledgePageName(deletePage, t),
           })}
           open={!isUndefined(deletePage)}
           onCancel={() => setDeletePage(undefined)}

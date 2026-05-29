@@ -23,18 +23,26 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
 
+jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
+  jest.fn(() => <button data-testid="copy-link-btn" />)
+);
+
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
+  ReactComponent: jest.fn(() => <svg />),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  Card: jest.fn(
+  ButtonUtility: jest.fn(
     ({
-      children,
-      'data-testid': testId,
+      onClick,
+      'data-testid': testId = 'button-utility',
     }: {
-      children: React.ReactNode;
+      onClick?: () => void;
       'data-testid'?: string;
-    }) => <div data-testid={testId}>{children}</div>
+    }) => <button data-testid={testId} onClick={onClick} />
   ),
   Dot: jest.fn(() => <span />),
   Dropdown: {

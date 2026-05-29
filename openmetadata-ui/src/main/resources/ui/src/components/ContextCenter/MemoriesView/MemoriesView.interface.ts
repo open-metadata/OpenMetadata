@@ -24,7 +24,6 @@ export type MemorySortBy = 'updated' | 'created' | 'usage' | 'author';
 export interface MemoriesViewProps {
   data: ContextMemory[];
   isLoading: boolean;
-  canDelete?: boolean;
   currentUserName?: string;
   isAdminUser?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
@@ -33,11 +32,6 @@ export interface MemoriesViewProps {
 }
 
 export interface MemoryActionsProps {
-  canDelete?: boolean;
   memory: ContextMemory;
   onDeleteMemory?: (memory: ContextMemory) => void;
-}
-
-export interface MemoryActionsWithOpenProps extends MemoryActionsProps {
-  onOpenChange: (isOpen: boolean) => void;
 }
