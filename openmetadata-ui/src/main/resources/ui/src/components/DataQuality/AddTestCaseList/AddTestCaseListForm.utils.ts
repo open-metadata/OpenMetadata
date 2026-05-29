@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../../generated/tests/testCase';
+import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { AddTestCaseListChangePayload } from './AddTestCaseList.interface';
 
 /**
@@ -41,4 +41,27 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   }
 
   return [];
+}
+
+/**
+ * Builds the initial `selectedItems` map for `AddTestCaseList` from the
+ * `existingTest` prop (test cases already attached to the parent test suite).
+ *
+ * Entries are stored keyed by `id` so the modal can show pre-checked
+ * checkboxes for any existing test case as soon as it is rendered, regardless
+ * of whether the full `TestCase` payload has loaded yet. The hydration in
+ * `fetchTestCases` later upgrades these partial entries to full `TestCase`
+ * objects when the underlying records appear in the search results.
+ */
+export function seedSelectedFromExistingTest(
+  existingTest?: EntityReference[]
+): Map<string, TestCase> {
+  const seed = new Map<string, TestCase>();
+  (existingTest ?? []).forEach((ref) => {
+    if (ref.id) {
+      seed.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+    }
+  });
+
+  return seed;
 }

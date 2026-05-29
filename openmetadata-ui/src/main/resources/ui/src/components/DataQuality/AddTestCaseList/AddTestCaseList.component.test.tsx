@@ -850,6 +850,109 @@ describe('AddTestCaseList', () => {
       });
     });
 
+    // Regression test for issue #28400.
+    //
+    // Test Suite pages used to pass only the currently visible page of suite
+    // tests as `selectedTest` (paginated), which meant any suite test beyond
+    // the first page rendered unchecked in the modal. The fix relies on
+    // `existingTest` (the full EntityReference[] from `testSuite.tests`) so
+    // every already-added test case shows up as pre-selected regardless of
+    // pagination.
+    it('pre-selects every test case in existingTest by id, even when selectedTest is empty', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: {
+          total: 3,
+        },
+      });
+
+      const existingTest: EntityReference[] = mockTestCases.map((tc) => ({
+        id: tc.id ?? '',
+        name: tc.name,
+        type: 'testCase',
+      }));
+
+      await act(async () => {
+        renderWithRouter({
+          ...mockProps,
+          existingTest,
+          selectedTest: [],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+          'checked',
+          true
+        );
+      });
+    });
+
+    it('keeps existingTest entries selected after user picks an extra test case', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: {
+          total: 3,
+        },
+      });
+
+      const existingTest: EntityReference[] = [
+        {
+          id: mockTestCases[0].id ?? '',
+          name: mockTestCases[0].name,
+          type: 'testCase',
+        },
+      ];
+      const onChange = jest.fn();
+
+      await act(async () => {
+        renderWithRouter({
+          ...mockProps,
+          existingTest,
+          onChange,
+          selectedTest: [],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+          'checked',
+          true
+        );
+      });
+
+      const testCaseCard = screen
+        .getByTestId('test_case_2')
+        .closest('.cursor-pointer');
+
+      await act(async () => {
+        fireEvent.click(testCaseCard as Element);
+      });
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(
+          payloadPartial([mockTestCases[0], mockTestCases[1]])
+        );
+      });
+
+      expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+        'checked',
+        true
+      );
+      expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+        'checked',
+        true
+      );
+    });
+
     it('handles test cases without id gracefully', async () => {
       const testCasesWithoutId = [{ ...mockTestCases[0], id: undefined }];
 
