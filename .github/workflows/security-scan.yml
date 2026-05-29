@@ -63,6 +63,26 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/retire-report.json
           retention-days: 30
 
+      - name: Generate Retire.js Slack summary
+        if: always()
+        run: |
+          mkdir -p retire-report
+          python3 scripts/retire_slack_summary.py \
+            openmetadata-ui/src/main/resources/ui/retire-report.json \
+            --counts-file retire-report/_retire_counts.json \
+            --slack-file retire-report/_retire_slack.txt \
+            > /dev/null
+
+      - name: Upload Retire.js Slack artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retire-slack
+          path: |
+            retire-report/_retire_slack.txt
+            retire-report/_retire_counts.json
+          retention-days: 30
+
       - name: Publish Retire.js Summary
         if: success()
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -275,15 +295,23 @@ jobs:
           path: security-report
         continue-on-error: true
 
-      - name: Build Slack payload
-        id: slack-payload
+      - name: Download Retire.js Slack artifact
+        if: needs.vulnerability-scan.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          name: retire-slack
+          path: retire-report
+        continue-on-error: true
+
+      - name: Build Slack header payload
+        id: build-header
         env:
           RETIRE_RESULT: ${{ needs.vulnerability-scan.result }}
           SNYK_RESULT: ${{ needs.security-scan.result }}
           REF_NAME: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python3 - <<'PY' > payload.json
+          python3 - <<'PY' > header.json
           import json, os, pathlib
 
           retire = os.environ["RETIRE_RESULT"]
@@ -293,6 +321,28 @@ jobs:
 
           def status_icon(s):
               return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
+
+          def load_counts(path):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return None
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return None
+
+          def totals_line(counts):
+              if not counts:
+                  return ""
+              return (
+                  f"\n🚨 {counts.get('critical', 0)} critical  ·  "
+                  f"🔴 {counts.get('high', 0)} high  ·  "
+                  f"🟠 {counts.get('medium', 0)} medium  ·  "
+                  f"🟡 {counts.get('low', 0)} low"
+              )
+
+          retire_counts = load_counts("retire-report/_retire_counts.json")
+          snyk_counts = load_counts("security-report/_counts.json")
 
           if retire == "success" and snyk == "success":
               overall = "🟢"
@@ -304,33 +354,79 @@ jobs:
           header = (
               f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
               f"_branch_ `{ref_name}`  ·  <{run_url}|Open run details>\n"
-              f"• Vulnerability scan (Retire.js): {status_icon(retire)}\n"
+              f"• Vulnerability scan (Retire.js): {status_icon(retire)}"
+              f"{totals_line(retire_counts)}\n"
               f"• Security scan (Snyk): {status_icon(snyk)}"
+              f"{totals_line(snyk_counts)}"
           )
-
-          blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": header}}]
-
-          slack_path = pathlib.Path("security-report/_slack.txt")
-          if slack_path.exists():
-              text = slack_path.read_text().strip()
-              sections = [s.strip() for s in text.split("\n\n") if s.strip()]
-              if sections:
-                  blocks.append({"type": "divider"})
-                  # Slack: max 50 blocks per message; each section text ≤ 3000 chars.
-                  for section in sections[:48]:
-                      if len(section) > 2900:
-                          section = section[:2850].rstrip() + "\n_…truncated, see Job Summary_"
-                      blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": section}})
-
           fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
-          print(json.dumps({"text": fallback, "blocks": blocks}))
+          payload = {
+              "text": fallback,
+              "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": header}}],
+          }
+          print(json.dumps(payload))
           PY
 
-      - name: Send Slack Notification
-        if: always() && steps.slack-payload.outcome == 'success'
+      - name: Send Slack — header
+        id: send-header
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload-file-path: payload.json
+          payload-file-path: header.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Build Slack thread payload
+        id: build-thread
+        if: always() && steps.send-header.outputs.ts != ''
+        env:
+          THREAD_TS: ${{ steps.send-header.outputs.ts }}
+        run: |
+          python3 - <<'PY' > thread.json
+          import json, os, pathlib
+
+          thread_ts = os.environ["THREAD_TS"]
+
+          def read_sections(path):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return []
+              text = p.read_text().strip()
+              return [s.strip() for s in text.split("\n\n") if s.strip()]
+
+          retire_sections = read_sections("retire-report/_retire_slack.txt")
+          snyk_sections = read_sections("security-report/_slack.txt")
+
+          blocks = []
+          MAX_TEXT = 2850
+
+          def push(section):
+              text = section if len(section) <= MAX_TEXT else section[:MAX_TEXT].rstrip() + "\n_…truncated, see Job Summary_"
+              blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
+
+          for section in retire_sections[:24]:
+              push(section)
+          if retire_sections and snyk_sections:
+              blocks.append({"type": "divider"})
+          for section in snyk_sections[:23]:
+              push(section)
+
+          if not blocks:
+              push("_No detailed scan output was produced._")
+
+          payload = {
+              "thread_ts": thread_ts,
+              "text": "Security scan details (thread reply)",
+              "blocks": blocks,
+          }
+          print(json.dumps(payload))
+          PY
+
+      - name: Send Slack — thread reply
+        if: always() && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload-file-path: thread.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
