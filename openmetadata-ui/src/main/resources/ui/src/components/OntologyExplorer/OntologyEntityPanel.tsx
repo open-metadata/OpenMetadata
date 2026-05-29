@@ -15,9 +15,11 @@ import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import { ReactNode, useEffect, useLayoutEffect, useState } from 'react';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { EntityData } from '../../pages/TasksPage/TasksPage.interface';
+import { getGlossaryTermByFQN } from '../../rest/glossaryAPI';
 import AlertBar from '../AlertBar/AlertBar';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
+import { isValidUUID } from './utils/graphBuilders';
 
 const PANEL_WIDTH = 576;
 
@@ -46,6 +48,8 @@ export const OntologyEntityPanel = ({
     message: string | JSX.Element;
     type: 'success' | 'error';
   }>({ message: '', open: false, type: 'success' });
+  const [resolvedDetails, setResolvedDetails] =
+    useState<EntityDetailsObjectInterface>(entityDetails);
 
   // Intercept global alerts when the panel is open so they show inside
   // the slideout instead of on the background page via PageLayoutV1.
@@ -72,6 +76,29 @@ export const OntologyEntityPanel = ({
 
     return () => clearTimeout(timer);
   }, [localToast]);
+
+  // Data-mode nodes built by buildGraphFromCounts use the FQN as the graph id
+  // instead of a real UUID. Fetch the term by FQN to get the actual UUID so
+  // PATCH operations in EntitySummaryPanel receive a valid id.
+  useEffect(() => {
+    const id = entityDetails.details?.id ?? '';
+    const fqn = entityDetails.details?.fullyQualifiedName ?? '';
+
+    if (isValidUUID(id) || !fqn) {
+      setResolvedDetails(entityDetails);
+
+      return;
+    }
+
+    getGlossaryTermByFQN(fqn)
+      .then((term) => {
+        setResolvedDetails({
+          ...entityDetails,
+          details: { ...entityDetails.details, id: term.id ?? id },
+        });
+      })
+      .catch(() => setResolvedDetails(entityDetails));
+  }, [entityDetails]);
 
   return (
     <SlideoutMenu
@@ -100,7 +127,7 @@ export const OntologyEntityPanel = ({
           <EntitySummaryPanel
             isSideDrawer
             afterEntityUpdate={afterEntityUpdate}
-            entityDetails={entityDetails}
+            entityDetails={resolvedDetails}
             handleClosePanel={onClose}
             ontologyExplorerRelationsSlot={ontologyRelationsSlot}
             panelPath={panelPath}

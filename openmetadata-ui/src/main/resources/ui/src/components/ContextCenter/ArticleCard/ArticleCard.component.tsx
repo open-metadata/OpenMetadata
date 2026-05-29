@@ -14,9 +14,8 @@
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { ArticleCardProps } from './ArticleCard.interface';
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
@@ -36,7 +35,7 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
   return (
     <Card
       isClickable
-      className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:max-w-86 tw:h-40 tw:justify-between tw:hover:shadow-xl"
+      className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:h-40 tw:justify-between tw:hover:shadow-xl tw:gap-2"
       data-testid="article-card"
       role="button"
       tabIndex={0}
@@ -47,19 +46,22 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
           onClick?.(article);
         }
       }}>
-      <div>
-        <Typography ellipsis weight="bold">
+      <div className="tw:flex tw:flex-col tw:gap-2">
+        <Typography ellipsis className="tw:text-gray-700" weight="semibold">
           {title}
         </Typography>
-
-        <RichTextEditorPreviewerV1
-          showReadMoreBtn
-          className="max-two-lines tw:text-gray-500 tw:text-xs"
-          markdown={getFrontEndFormat(description)}
-        />
+        {description ? (
+          <Typography className="tw:text-gray-500 tw:line-clamp-2">
+            {stripMarkdown(description)}
+          </Typography>
+        ) : (
+          <Typography className="text-grey-muted">
+            {t('label.no-description')}
+          </Typography>
+        )}
 
         {tagsToShow.length > 0 && (
-          <div className="tw:flex tw:flex-wrap tw:gap-1 tw:mt-3">
+          <div className="tw:flex tw:flex-wrap tw:gap-1">
             {tagsToShow.map((tag) => (
               <Badge
                 className="tw:bg-gray-200 tw:ring-0 tw:max-w-30 tw:min-w-0"

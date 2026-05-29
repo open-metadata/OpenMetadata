@@ -2089,4 +2089,154 @@ public class ColumnGridResourceIT {
               }
             });
   }
+
+  // ==================== displayName-aware filter tests ====================
+  // Regression coverage for the bug where the UI dropdown emits displayName values but the
+  // backend filter compared against *.name.keyword — services/databases/schemas with a custom
+  // displayName that differed from their name returned zero results. The fix matches either
+  // field, so both lookups must work.
+
+  @Test
+  void test_getColumnGrid_serviceFilterMatchesByDisplayNameAndName(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    String serviceDisplayName = ns.prefix("svc display");
+    DatabaseService fetched = client.databaseServices().get(service.getId().toString(), "");
+    fetched.setDisplayName(serviceDisplayName);
+    client.databaseServices().update(fetched.getId().toString(), fetched);
+
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    createTableWithColumns(ns, schema, "svc_displayname_filter_test");
+    waitForSearchIndexRefresh();
+    waitForColumnToBeIndexed(client, "id", service.getName());
+
+    ColumnGridResponse byName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(service.getName(), StandardCharsets.UTF_8));
+    assertNotNull(byName);
+    assertFalse(
+        byName.getColumns().isEmpty(),
+        "Filtering by service.name must return columns (regression: previously the only path)");
+
+    ColumnGridResponse byDisplayName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(serviceDisplayName, StandardCharsets.UTF_8));
+    assertNotNull(byDisplayName);
+    assertFalse(
+        byDisplayName.getColumns().isEmpty(),
+        "Filtering by service.displayName must return columns (this was the bug — empty before fix)");
+
+    assertEquals(
+        byName.getTotalUniqueColumns(),
+        byDisplayName.getTotalUniqueColumns(),
+        "name and displayName filters must produce identical totals for the same service");
+  }
+
+  @Test
+  void test_getColumnGrid_databaseFilterMatchesByDisplayNameAndName(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    String databaseName = ns.prefix("db_filter");
+    String databaseDisplayName = ns.prefix("db display");
+    org.openmetadata.schema.entity.data.Database database =
+        org.openmetadata.sdk.fluent.Databases.create()
+            .name(databaseName)
+            .withDisplayName(databaseDisplayName)
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema =
+        org.openmetadata.sdk.fluent.DatabaseSchemas.create()
+            .name(ns.prefix("schema"))
+            .in(database.getFullyQualifiedName())
+            .execute();
+    createTableWithColumns(ns, schema, "db_displayname_filter_test");
+    waitForSearchIndexRefresh();
+    waitForColumnToBeIndexed(client, "id", service.getName());
+
+    ColumnGridResponse byName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(service.getName(), StandardCharsets.UTF_8)
+                + "&databaseName="
+                + URLEncoder.encode(databaseName, StandardCharsets.UTF_8));
+    assertNotNull(byName);
+    assertFalse(byName.getColumns().isEmpty(), "Filtering by database.name must return columns");
+
+    ColumnGridResponse byDisplayName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(service.getName(), StandardCharsets.UTF_8)
+                + "&databaseName="
+                + URLEncoder.encode(databaseDisplayName, StandardCharsets.UTF_8));
+    assertNotNull(byDisplayName);
+    assertFalse(
+        byDisplayName.getColumns().isEmpty(),
+        "Filtering by database.displayName must return columns (regression check)");
+
+    assertEquals(
+        byName.getTotalUniqueColumns(),
+        byDisplayName.getTotalUniqueColumns(),
+        "name and displayName filters must produce identical totals for the same database");
+  }
+
+  @Test
+  void test_getColumnGrid_schemaFilterMatchesByDisplayNameAndName(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    org.openmetadata.schema.entity.data.Database database =
+        org.openmetadata.sdk.fluent.Databases.create()
+            .name(ns.prefix("db"))
+            .in(service.getFullyQualifiedName())
+            .execute();
+
+    String schemaName = ns.prefix("sch_filter");
+    String schemaDisplayName = ns.prefix("sch display");
+    DatabaseSchema schema =
+        org.openmetadata.sdk.fluent.DatabaseSchemas.create()
+            .name(schemaName)
+            .withDisplayName(schemaDisplayName)
+            .in(database.getFullyQualifiedName())
+            .execute();
+    createTableWithColumns(ns, schema, "schema_displayname_filter_test");
+    waitForSearchIndexRefresh();
+    waitForColumnToBeIndexed(client, "id", service.getName());
+
+    ColumnGridResponse byName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(service.getName(), StandardCharsets.UTF_8)
+                + "&schemaName="
+                + URLEncoder.encode(schemaName, StandardCharsets.UTF_8));
+    assertNotNull(byName);
+    assertFalse(byName.getColumns().isEmpty(), "Filtering by schema.name must return columns");
+
+    ColumnGridResponse byDisplayName =
+        getColumnGrid(
+            client,
+            "entityTypes=table&serviceName="
+                + URLEncoder.encode(service.getName(), StandardCharsets.UTF_8)
+                + "&schemaName="
+                + URLEncoder.encode(schemaDisplayName, StandardCharsets.UTF_8));
+    assertNotNull(byDisplayName);
+    assertFalse(
+        byDisplayName.getColumns().isEmpty(),
+        "Filtering by schema.displayName must return columns (regression check)");
+
+    assertEquals(
+        byName.getTotalUniqueColumns(),
+        byDisplayName.getTotalUniqueColumns(),
+        "name and displayName filters must produce identical totals for the same schema");
+  }
 }

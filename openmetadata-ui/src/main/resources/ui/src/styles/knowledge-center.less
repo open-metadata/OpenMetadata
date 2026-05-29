@@ -10,6 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.quick-link-form-modal {
+  .block-editor-wrapper {
+    max-height: 200px;
+
+    .tiptap.ProseMirror {
+      max-height: 150px;
+    }
+  }
+
+  .ant-input,
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 38px;
+  }
+
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.quick-link-modal-footer {
+  > div:last-child {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    grid-template-columns: none;
+    flex-direction: row;
+
+    > * {
+      width: auto;
+    }
+  }
+}
+
+.article-detail-owner-label {
+  svg:has(+ .avatar-group),
+  svg:has(+ .owner-team-name-wrapper) {
+    display: none;
+  }
+
+  .owner-team-name {
+    font-size: var(--text-sm);
+    font-weight: 400;
+  }
+}
+
 .knowledge-center-filter-page {
   margin: 0px auto;
   max-width: 850px;

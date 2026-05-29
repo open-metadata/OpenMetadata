@@ -39,7 +39,7 @@ import {
   createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';

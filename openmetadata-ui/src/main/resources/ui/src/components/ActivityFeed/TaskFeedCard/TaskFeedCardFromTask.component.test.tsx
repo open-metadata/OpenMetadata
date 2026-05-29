@@ -141,7 +141,7 @@ jest.mock('../../../rest/tasksAPI', () => ({
   closeTask: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
