@@ -16,7 +16,8 @@ Kestra (`/api/v1/{tenantId}/...`, 0.18+). When `tenantId` is empty or None
 the client uses the non-tenant path, matching older deployments.
 """
 
-from typing import Iterator, Optional
+from collections.abc import Iterator
+from urllib.parse import quote
 
 import requests
 
@@ -51,9 +52,7 @@ class KestraClient:
         self.tenant_id = tenant if tenant else None
         self.timeout = DEFAULT_TIMEOUT
         self._session = requests.Session()
-        self._session.verify = (
-            bool(config.verifySSL) if config.verifySSL is not None else True
-        )
+        self._session.verify = bool(config.verifySSL) if config.verifySSL is not None else True
         token_val = self._secret(config.token)
         password_val = self._secret(config.password)
         if token_val:
@@ -83,7 +82,7 @@ class KestraClient:
 
     def search_flows(
         self,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> Iterator[KestraFlow]:
         page = 1
@@ -102,19 +101,19 @@ class KestraClient:
             page += 1
 
     def get_flow(self, namespace: str, flow_id: str) -> KestraFlow:
-        data = self._get_json(f"/flows/{namespace}/{flow_id}")
+        data = self._get_json(f"/flows/{quote(namespace, safe='')}/{quote(flow_id, safe='')}")
         return KestraFlow.model_validate(data)
 
     def get_flow_graph(self, namespace: str, flow_id: str) -> KestraGraph:
-        data = self._get_json(f"/flows/{namespace}/{flow_id}/graph")
+        data = self._get_json(f"/flows/{quote(namespace, safe='')}/{quote(flow_id, safe='')}/graph")
         return KestraGraph.model_validate(data)
 
     # --- executions ---
 
     def search_executions(
         self,
-        namespace: Optional[str] = None,
-        flow_id: Optional[str] = None,
+        namespace: str | None = None,
+        flow_id: str | None = None,
         page_size: int = 50,
         max_pages: int = 5,
     ) -> Iterator[KestraExecution]:
@@ -136,7 +135,7 @@ class KestraClient:
             page += 1
 
     def get_execution(self, execution_id: str) -> KestraExecution:
-        data = self._get_json(f"/executions/{execution_id}")
+        data = self._get_json(f"/executions/{quote(execution_id, safe='')}")
         return KestraExecution.model_validate(data)
 
     def ping(self) -> bool:

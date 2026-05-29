@@ -12,8 +12,10 @@
 Kestra source module — ingests Kestra flows, executions, and lineage
 into OpenMetadata.
 """
+
 import traceback
-from typing import Any, Iterable, Iterator, List, Optional
+from collections import deque
+from collections.abc import Iterable, Iterator
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,17 +41,13 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Timestamp,
 )
-from metadata.generated.schema.type.entityLineage import (
-    EntitiesEdge,
-    LineageDetails,
-    Source as LineageSource,
-)
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.kestra.client import KestraClient
 from metadata.ingestion.source.pipeline.kestra.models import (
     KestraExecution,
     KestraFlow,
@@ -73,7 +71,7 @@ STATE_MAP = {
 }
 
 
-def _map_state(state_current: Optional[str]) -> StatusType:
+def _map_state(state_current: str | None) -> StatusType:
     if not state_current:
         return StatusType.Pending
     return STATE_MAP.get(state_current.upper(), StatusType.Pending)
@@ -83,7 +81,7 @@ def _flow_fqn(flow: KestraFlow) -> str:
     return f"{flow.namespace}.{flow.id}"
 
 
-def _ms(dt) -> Optional[int]:
+def _ms(dt) -> int | None:
     if dt is None:
         return None
     return int(dt.timestamp() * 1000)
@@ -99,31 +97,32 @@ class KestraSource(PipelineServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: str | None = None,
     ) -> "KestraSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: KestraConnection = config.serviceConnection.root.config
+        connection: KestraConnection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
         if not isinstance(connection, KestraConnection):
-            raise InvalidSourceException(
-                f"Expected KestraConnection, got {type(connection).__name__}"
-            )
+            raise InvalidSourceException(f"Expected KestraConnection, got {type(connection).__name__}")
         return cls(config, metadata)
+
+    def close(self):
+        if getattr(self, "client", None) is not None:
+            self.client.close()
+        super().close()
 
     # ---------- required: list pipeline_details ----------
 
-    def get_pipelines_list(self) -> Iterable[KestraFlow]:
+    def get_pipelines_list(self) -> Iterable[KestraFlow]:  # pyright: ignore[reportIncompatibleMethodOverride]
         try:
             for flow in self.client.search_flows():
                 if flow.disabled:
                     logger.debug("Skipping disabled flow %s", _flow_fqn(flow))
                     continue
-                if filter_by_pipeline(
-                    self.source_config.pipelineFilterPattern, _flow_fqn(flow)
-                ):
+                if filter_by_pipeline(self.source_config.pipelineFilterPattern, _flow_fqn(flow)):
                     self.status.filter(_flow_fqn(flow), "Filtered out")
                     continue
                 yield flow
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Kestra list flows failed: %s", exc)
             logger.debug(traceback.format_exc())
 
@@ -132,47 +131,28 @@ class KestraSource(PipelineServiceSource):
 
     # ---------- required: emit Pipeline + Status + Lineage ----------
 
-    def yield_pipeline(
-        self, pipeline_details: KestraFlow
-    ) -> Iterator[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: KestraFlow) -> Iterator[Either[CreatePipelineRequest]]:
         try:
-            graph = self.client.get_flow_graph(
-                pipeline_details.namespace, pipeline_details.id
-            )
+            graph = self.client.get_flow_graph(pipeline_details.namespace, pipeline_details.id)
             tasks = self._tasks_from_graph(graph)
             service_name = self.context.get().pipeline_service
             host_port = str(self.service_connection.hostPort).rstrip("/")
-            source_url = (
-                f"{host_port}/ui/flows/edit/"
-                f"{pipeline_details.namespace}/{pipeline_details.id}"
-            )
+            source_url = f"{host_port}/ui/flows/edit/{pipeline_details.namespace}/{pipeline_details.id}"
 
             request = CreatePipelineRequest(
                 name=EntityName(_flow_fqn(pipeline_details)),
                 displayName=pipeline_details.id,
-                description=(
-                    Markdown(pipeline_details.description)
-                    if pipeline_details.description
-                    else None
-                ),
+                description=(Markdown(pipeline_details.description) if pipeline_details.description else None),
                 sourceUrl=SourceUrl(source_url),
                 tasks=tasks,
-                scheduleInterval=self._schedule_from_triggers(
-                    pipeline_details.triggers
-                ),
+                scheduleInterval=self._schedule_from_triggers(pipeline_details.triggers),
                 service=service_name,
             )
             yield Either(right=request)
-        except Exception as exc:  # noqa: BLE001
-            yield Either(
-                left=self._error(
-                    f"Error ingesting Kestra flow {_flow_fqn(pipeline_details)}", exc
-                )
-            )
+        except Exception as exc:
+            yield Either(left=self._error(f"Error ingesting Kestra flow {_flow_fqn(pipeline_details)}", exc))
 
-    def yield_pipeline_status(
-        self, pipeline_details: KestraFlow
-    ) -> Iterator[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: KestraFlow) -> Iterator[Either[OMetaPipelineStatus]]:
         try:
             summaries = list(
                 self.client.search_executions(
@@ -182,39 +162,24 @@ class KestraSource(PipelineServiceSource):
                     max_pages=1,
                 )
             )
-        except Exception as exc:  # noqa: BLE001
-            yield Either(
-                left=self._error(
-                    f"List executions failed for {_flow_fqn(pipeline_details)}", exc
-                )
-            )
+        except Exception as exc:
+            yield Either(left=self._error(f"List executions failed for {_flow_fqn(pipeline_details)}", exc))
             return
 
         pipeline_fqn = self._pipeline_fqn(pipeline_details)
         for summary in summaries:
             try:
-                detail = self.client.get_execution(summary.id)
-                ts = _ms(detail.state.startDate or detail.state.endDate)
+                ts = _ms(summary.state.startDate or summary.state.endDate)
                 pipeline_status = PipelineStatus(
                     timestamp=Timestamp(ts) if ts else None,
-                    executionStatus=_map_state(detail.state.current),
-                    taskStatus=self._task_statuses(detail),
+                    executionStatus=_map_state(summary.state.current),
+                    taskStatus=self._task_statuses(summary),
                 )
-                yield Either(
-                    right=OMetaPipelineStatus(
-                        pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
-                    )
-                )
-            except Exception as exc:  # noqa: BLE001
-                yield Either(
-                    left=self._error(
-                        f"Status for execution {summary.id} failed", exc
-                    )
-                )
+                yield Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status))
+            except Exception as exc:
+                yield Either(left=self._error(f"Status for execution {summary.id} failed", exc))
 
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: KestraFlow
-    ) -> Iterator[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: KestraFlow) -> Iterator[Either[AddLineageRequest]]:
         triggers = pipeline_details.triggers or []
         if not triggers:
             return
@@ -259,17 +224,13 @@ class KestraSource(PipelineServiceSource):
                             )
                         )
                     )
-                except Exception as exc:  # noqa: BLE001
-                    yield Either(
-                        left=self._error(
-                            f"Lineage edge {up_fqn} -> {this_fqn} failed", exc
-                        )
-                    )
+                except Exception as exc:
+                    yield Either(left=self._error(f"Lineage edge {up_fqn} -> {this_fqn} failed", exc))
 
     # ---------- helpers ----------
 
     @staticmethod
-    def _tasks_from_graph(graph: KestraGraph) -> List[Task]:
+    def _tasks_from_graph(graph: KestraGraph) -> list[Task]:
         """
         Convert a Kestra /graph response (nodes + edges, including synthetic
         cluster wrapper nodes) to a flat list of OM `Task` entities with
@@ -290,13 +251,13 @@ class KestraSource(PipelineServiceSource):
             if n.task and n.task.id:
                 uid_to_taskid[n.uid] = n.task.id
 
-        def downstream_tasks(start_uid: str) -> List[str]:
+        def downstream_tasks(start_uid: str) -> list[str]:
             """BFS through synthetic nodes; stop at each real task encountered."""
             seen: set[str] = set()
-            out: List[str] = []
-            queue = list(adj.get(start_uid, []))
+            out: list[str] = []
+            queue: deque[str] = deque(adj.get(start_uid, []))
             while queue:
-                uid = queue.pop(0)
+                uid = queue.popleft()
                 if uid in seen:
                     continue
                 seen.add(uid)
@@ -309,7 +270,7 @@ class KestraSource(PipelineServiceSource):
                 queue.extend(adj.get(uid, []))
             return out
 
-        tasks: List[Task] = []
+        tasks: list[Task] = []
         emitted: set[str] = set()
         for node in graph.nodes:
             task_id = uid_to_taskid.get(node.uid)
@@ -327,7 +288,7 @@ class KestraSource(PipelineServiceSource):
         return tasks
 
     @staticmethod
-    def _schedule_from_triggers(triggers: Optional[list]) -> Optional[str]:
+    def _schedule_from_triggers(triggers: list | None) -> str | None:
         if not triggers:
             return None
         for trig in triggers:
@@ -335,8 +296,8 @@ class KestraSource(PipelineServiceSource):
                 return str(trig.cron)
         return None
 
-    def _task_statuses(self, detail: KestraExecution) -> List[TaskStatus]:
-        rows: List[TaskStatus] = []
+    def _task_statuses(self, detail: KestraExecution) -> list[TaskStatus]:
+        rows: list[TaskStatus] = []
         for tr in detail.taskRunList or []:
             ts = _ms(tr.state.startDate or tr.timestamp)
             rows.append(
@@ -358,6 +319,4 @@ class KestraSource(PipelineServiceSource):
     def _error(self, msg: str, exc: Exception) -> StackTraceError:
         logger.warning("%s: %s", msg, exc)
         logger.debug(traceback.format_exc())
-        return StackTraceError(
-            name=msg, error=str(exc), stackTrace=traceback.format_exc()
-        )
+        return StackTraceError(name=msg, error=str(exc), stackTrace=traceback.format_exc())

@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest  # noqa: TC001
 from metadata.generated.schema.entity.data.pipeline import StatusType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -34,14 +34,7 @@ from metadata.ingestion.source.pipeline.kestra.models import (
     KestraSearchResult,
 )
 
-
-FIXTURE = (
-    pathlib.Path(__file__).resolve().parents[3]
-    / "unit"
-    / "resources"
-    / "datasets"
-    / "kestra_dataset.json"
-)
+FIXTURE = pathlib.Path(__file__).resolve().parents[3] / "unit" / "resources" / "datasets" / "kestra_dataset.json"
 DATA = json.loads(FIXTURE.read_text())
 
 
@@ -73,10 +66,7 @@ MOCK_CONFIG = {
 def source() -> KestraSource:
     """Build a KestraSource via .create() with base test_connection patched."""
     config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
-    with patch(
-        "metadata.ingestion.source.pipeline.pipeline_service."
-        "PipelineServiceSource.test_connection"
-    ):
+    with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
         src = KestraSource.create(
             MOCK_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,
@@ -112,12 +102,8 @@ def test_yield_pipeline_builds_tasks_from_graph(source):
 def test_yield_pipeline_status_emits_successful_runs(source):
     flow = KestraFlow.model_validate(DATA["cronFlow"])
     exec_list = KestraSearchResult.model_validate(DATA["executions"])
-    exec_detail = KestraExecution.model_validate(DATA["executionDetail"])
 
-    source.client.search_executions.return_value = iter(
-        KestraExecution.model_validate(x) for x in exec_list.results
-    )
-    source.client.get_execution.return_value = exec_detail
+    source.client.search_executions.return_value = iter(KestraExecution.model_validate(x) for x in exec_list.results)
 
     statuses = list(source.yield_pipeline_status(flow))
     rights = [s.right for s in statuses if s.right is not None]
@@ -129,19 +115,16 @@ def test_yield_pipeline_status_emits_successful_runs(source):
 
 def test_yield_pipeline_lineage_for_flow_trigger(source):
     import uuid
+
     flow = KestraFlow.model_validate(DATA["downstreamFlow"])
 
     upstream_pipeline = SimpleNamespace(
         id=uuid.uuid4(),
-        fullyQualifiedName=SimpleNamespace(
-            root="kestra_test.hackathon.demo.cron_etl"
-        ),
+        fullyQualifiedName=SimpleNamespace(root="kestra_test.hackathon.demo.cron_etl"),
     )
     this_pipeline = SimpleNamespace(
         id=uuid.uuid4(),
-        fullyQualifiedName=SimpleNamespace(
-            root="kestra_test.hackathon.demo.downstream_consumer"
-        ),
+        fullyQualifiedName=SimpleNamespace(root="kestra_test.hackathon.demo.downstream_consumer"),
     )
     source.metadata.get_by_name.side_effect = [this_pipeline, upstream_pipeline]
 
@@ -155,9 +138,7 @@ def test_yield_pipeline_handles_parallel_flowable(source):
     graph = KestraGraph.model_validate(DATA["parallelGraph"])
     source.client.get_flow_graph.return_value = graph
 
-    req = next(
-        r.right for r in source.yield_pipeline(flow) if r.right is not None
-    )
+    req = next(r.right for r in source.yield_pipeline(flow) if r.right is not None)
     names = {model_str(t.name) for t in req.tasks}
     # All three task IDs from the YAML are surfaced (fanout, branch_a, branch_b, join)
     # plus possibly a synthetic "root" or container node
@@ -165,12 +146,8 @@ def test_yield_pipeline_handles_parallel_flowable(source):
 
 
 def test_get_pipelines_list_skips_disabled(source):
-    enabled = KestraFlow.model_validate(
-        {"id": "ok", "namespace": "p", "tasks": [], "disabled": False}
-    )
-    disabled = KestraFlow.model_validate(
-        {"id": "skipme", "namespace": "p", "tasks": [], "disabled": True}
-    )
+    enabled = KestraFlow.model_validate({"id": "ok", "namespace": "p", "tasks": [], "disabled": False})
+    disabled = KestraFlow.model_validate({"id": "skipme", "namespace": "p", "tasks": [], "disabled": True})
     source.client.search_flows.return_value = iter([enabled, disabled])
     source.source_config = SimpleNamespace(pipelineFilterPattern=None)
 
