@@ -556,6 +556,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
+                  data-testid="share-btn"
                   icon={<Copy06 height={20} width={20} />}
                   onClick={handleShare}
                 />
