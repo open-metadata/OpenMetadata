@@ -888,6 +888,9 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
     def compute(self):
         """Compute table metrics for Exasol using SYS.EXA_ALL_TABLES and
         SYS.EXA_ALL_OBJECT_SIZES for row count and size respectively."""
+        schema_name = self.schema_name.upper()
+        table_name = self.table_name.upper()
+
         row_data = cte(
             self._build_query(
                 [
@@ -897,8 +900,8 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
                 ],
                 self._build_table("EXA_ALL_TABLES", "SYS"),
                 [
-                    Column("TABLE_SCHEMA") == self.schema_name,
-                    Column("TABLE_NAME") == self.table_name,
+                    Column("TABLE_SCHEMA") == schema_name,
+                    Column("TABLE_NAME") == table_name,
                 ],
             )
         )
@@ -912,8 +915,8 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
                 ],
                 self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
                 [
-                    Column("ROOT_NAME") == self.schema_name,
-                    Column("OBJECT_NAME") == self.table_name,
+                    Column("ROOT_NAME") == schema_name,
+                    Column("OBJECT_NAME") == table_name,
                 ],
             )
         )
