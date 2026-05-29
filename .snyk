@@ -12,8 +12,6 @@ exclude:
     - tests/**
     - src/metadata/sdk/examples/**
     - src/_openmetadata_testutils/**
-    # UI / server exclusions — these scans run from the repo root, so
-    # paths here are repo-root-relative.
     - openmetadata-ui/src/main/resources/ui/src/pages/service/mocks/**
     - openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/TestConnection.mock.ts
     - openmetadata-service/src/test/**
