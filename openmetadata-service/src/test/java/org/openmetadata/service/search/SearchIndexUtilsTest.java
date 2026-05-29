@@ -82,6 +82,29 @@ class SearchIndexUtilsTest {
     assertEquals(trimmed, new String(trimmedBytes, StandardCharsets.UTF_8));
   }
 
+  @Test
+  void capOversizeValuesHandlesUnmodifiableListsFromDocBuilder() {
+    // parseFollowers/parseOwners return unmodifiable lists (Stream.toList()/List.of); the doc
+    // builder also yields List.of(...) collections. These must not break the in-place walk.
+    Map<String, Object> child = new HashMap<>();
+    child.put("name", "Total Sales");
+    child.put("description", "Expression : " + "a".repeat(50_000));
+    Map<String, Object> column = new HashMap<>();
+    column.put("name", "Measures");
+    column.put("children", new ArrayList<>(List.of(child)));
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("followers", List.of("id-1", "id-2"));
+    doc.put("owners", List.of("owner-1"));
+    doc.put("columns", new ArrayList<>(List.of(column)));
+
+    assertDoesNotThrow(() -> SearchIndexUtils.capOversizeValues(doc));
+
+    assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
+    assertEquals(List.of("owner-1"), doc.get("owners"));
+    String trimmedDesc = (String) firstChild(doc).get("description");
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+  }
+
   private Map<String, Object> firstChild(Map<String, Object> doc) {
     Map<String, Object> column = (Map<String, Object>) ((List<?>) doc.get("columns")).get(0);
     return (Map<String, Object>) ((List<?>) column.get("children")).get(0);

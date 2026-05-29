@@ -70,15 +70,35 @@ public final class SearchIndexUtils {
    */
   public static void capOversizeValues(final Object node) {
     if (node instanceof Map<?, ?> rawMap) {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> map = (Map<String, Object>) rawMap;
-      map.replaceAll((key, value) -> trimIfOversized(value));
-      map.values().forEach(SearchIndexUtils::capOversizeValues);
+      capMapValues(rawMap);
     } else if (node instanceof List<?> rawList) {
-      @SuppressWarnings("unchecked")
-      List<Object> list = (List<Object>) rawList;
-      list.replaceAll(SearchIndexUtils::trimIfOversized);
-      list.forEach(SearchIndexUtils::capOversizeValues);
+      capListValues(rawList);
+    }
+  }
+
+  private static void capMapValues(final Map<?, ?> rawMap) {
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = (Map<String, Object>) rawMap;
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      Object value = entry.getValue();
+      Object trimmed = trimIfOversized(value);
+      if (trimmed != value) {
+        entry.setValue(trimmed);
+      }
+      capOversizeValues(value);
+    }
+  }
+
+  private static void capListValues(final List<?> rawList) {
+    @SuppressWarnings("unchecked")
+    List<Object> list = (List<Object>) rawList;
+    for (int index = 0; index < list.size(); index++) {
+      Object value = list.get(index);
+      Object trimmed = trimIfOversized(value);
+      if (trimmed != value) {
+        list.set(index, trimmed);
+      }
+      capOversizeValues(value);
     }
   }
 
