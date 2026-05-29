@@ -54,16 +54,6 @@
     color: @grey-700;
   }
 
-  // Figma shows the edit pencil only next to Domain. Suppress pencils that
-  // OwnerLabel / RetentionPeriod / MetricHeaderInfo render — the value
-  // (avatar group / retention text / metric value) remains clickable and opens
-  // the same popover, preserving editability without the visual chrome.
-  [data-testid='edit-owner'],
-  [data-testid='edit-retention-period-button'],
-  .edit-metrics {
-    display: none;
-  }
-
   .data-contract-latest-result-button {
     &.failed {
       color: @red-14;

@@ -100,6 +100,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
@@ -1020,13 +1021,30 @@ export const DataAssetsHeader = ({
             <div
               className="tw:flex tw:flex-col tw:gap-1.5"
               data-testid="header-tier-container">
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                size="text-xs"
-                weight="medium">
-                {t('label.tier')}
-              </Typography>
+              <div className="tw:flex tw:items-center tw:gap-1">
+                <Typography
+                  as="span"
+                  className="tw:text-secondary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tier')}
+                </Typography>
+                {editTierPermission && (
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    footerActionButtonsClassName="p-x-md"
+                    updateTier={onTierUpdate}>
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-tier"
+                      size="small"
+                      title={t('label.edit-entity', {
+                        entity: t('label.tier'),
+                      })}
+                    />
+                  </TierCard>
+                )}
+              </div>
               {(() => {
                 const tierValue = tier ? (
                   <TagsV1
@@ -1053,9 +1071,7 @@ export const DataAssetsHeader = ({
                     currentTier={tier?.tagFQN}
                     footerActionButtonsClassName="p-x-md"
                     updateTier={onTierUpdate}>
-                    <span
-                      className="tw:inline-flex tw:cursor-pointer"
-                      data-testid="edit-tier">
+                    <span className="tw:inline-flex tw:cursor-pointer">
                       {tierValue}
                     </span>
                   </TierCard>
@@ -1072,13 +1088,34 @@ export const DataAssetsHeader = ({
               <div
                 className="tw:flex tw:flex-col tw:gap-1.5"
                 data-testid="certification-label">
-                <Typography
-                  as="span"
-                  className="tw:text-secondary"
-                  size="text-xs"
-                  weight="medium">
-                  {t('label.certification')}
-                </Typography>
+                <div className="tw:flex tw:items-center tw:gap-1">
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    size="text-xs"
+                    weight="medium">
+                    {t('label.certification')}
+                  </Typography>
+                  {editCertificationPermission && (
+                    <Certification
+                      currentCertificate={
+                        'certification' in dataAsset
+                          ? dataAsset.certification?.tagLabel?.tagFQN
+                          : undefined
+                      }
+                      permission={editCertificationPermission}
+                      onCertificationUpdate={onCertificationUpdate}>
+                      <EditIconButton
+                        newLook
+                        data-testid="edit-certification"
+                        size="small"
+                        title={t('label.edit-entity', {
+                          entity: t('label.certification'),
+                        })}
+                      />
+                    </Certification>
+                  )}
+                </div>
                 {(() => {
                   const certValue = (
                     <div
@@ -1104,9 +1141,7 @@ export const DataAssetsHeader = ({
                       }
                       permission={editCertificationPermission}
                       onCertificationUpdate={onCertificationUpdate}>
-                      <span
-                        className="tw:inline-flex tw:cursor-pointer"
-                        data-testid="edit-certification">
+                      <span className="tw:inline-flex tw:cursor-pointer">
                         {certValue}
                       </span>
                     </Certification>
