@@ -9,10 +9,6 @@ import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -70,81 +67,159 @@ public final class SearchIndexUtils {
   private static final int TERM_SAFETY_MARGIN_BYTES = 512;
 
   /**
-   * Fields mapped as {@code flattened} (ES) / {@code flat_object} (OpenSearch). Their leaves are
-   * indexed as single un-tokenized keyword terms with no length cap, so they are the only fields
-   * that can trip Lucene's per-term limit. {@code text} and capped {@code keyword} fields are safe
-   * and are intentionally left untouched.
+   * A Java {@code char} encodes to at most 3 UTF-8 bytes (supplementary code points use a surrogate
+   * pair — 2 chars — for 4 bytes, i.e. 2 bytes/char), so {@code length() * 3} is a safe upper bound
+   * on a string's UTF-8 size. Used as an allocation-free pre-check before encoding a value.
    */
-  private static final Set<String> FLAT_OBJECT_FIELDS = Set.of("children", "extension");
+  private static final int MAX_UTF8_BYTES_PER_CHAR = 3;
+
+  private static final String EXTENSION_FIELD = "extension";
+  private static final String CHILDREN_FIELD = "children";
+
+  /**
+   * Parent fields under which a recursive {@code children} sub-field is mapped as {@code flattened}
+   * / {@code flat_object} (e.g. {@code columns.children}, {@code schemaFields.children},
+   * {@code fields.children}). A {@code children} under any other parent — top-level {@code children}
+   * on glossaryTerm / knowledgePage / container — is a normal {@code object} with {@code text}
+   * leaves and must be left untouched. {@code extension} is {@code flattened} everywhere, so it is
+   * matched by name regardless of parent.
+   */
+  private static final Set<String> FLATTENED_CHILDREN_PARENTS =
+      Set.of("columns", "schemaFields", "fields");
 
   /**
    * Caps oversize string values inside the {@code flat_object} fields of a search document so a
-   * single leaf cannot exceed Lucene's per-term byte limit and reject the entire document. Only the
-   * {@link #FLAT_OBJECT_FIELDS} subtrees are trimmed (recursively); {@code text}/{@code keyword}
-   * fields elsewhere are left as-is. Trimming is in place, on a character boundary; the full value
-   * is preserved on the source entity (database/API), so entity pages and APIs are unaffected.
+   * single leaf cannot exceed Lucene's per-term byte limit and reject the entire document. Only
+   * {@code flat_object} subtrees are trimmed (recursively) — {@code extension}, and {@code children}
+   * only when it sits under a {@link #FLATTENED_CHILDREN_PARENTS} field; {@code text}/{@code keyword}
+   * fields (including {@code object}-mapped {@code children}) are left as-is. Trimming is in place,
+   * on a character boundary; the full value is preserved on the source entity (database/API), so
+   * entity pages and APIs are unaffected.
+   *
+   * <p>{@code entityContext} is resolved lazily and only when a value is actually trimmed, so the
+   * common (no-trim) bulk-reindex path never builds the context string.
    */
-  public static void capOversizeValues(final Object node, final String entityContext) {
+  public static void capOversizeValues(final Object node, final Supplier<String> entityContext) {
+    capOversizeValues(node, null, entityContext);
+  }
+
+  private static void capOversizeValues(
+      final Object node, final String parentKey, final Supplier<String> entityContext) {
     if (node instanceof Map<?, ?> rawMap) {
       @SuppressWarnings("unchecked")
       Map<String, Object> map = (Map<String, Object>) rawMap;
       for (Map.Entry<String, Object> entry : map.entrySet()) {
-        if (FLAT_OBJECT_FIELDS.contains(entry.getKey())) {
-          trimAllStrings(entry.getValue(), entry.getKey(), entityContext);
+        String key = entry.getKey();
+        if (isFlattenedField(key, parentKey)) {
+          trimAllStrings(
+              entry.getValue(),
+              new StringBuilder(key),
+              key.getBytes(StandardCharsets.UTF_8).length,
+              entityContext);
         } else {
-          capOversizeValues(entry.getValue(), entityContext);
+          capOversizeValues(entry.getValue(), key, entityContext);
         }
       }
     } else if (node instanceof List<?> rawList) {
       for (Object item : rawList) {
-        capOversizeValues(item, entityContext);
+        capOversizeValues(item, parentKey, entityContext);
       }
     }
+  }
+
+  private static boolean isFlattenedField(final String key, final String parentKey) {
+    return EXTENSION_FIELD.equals(key)
+        || (CHILDREN_FIELD.equals(key)
+            && parentKey != null
+            && FLATTENED_CHILDREN_PARENTS.contains(parentKey));
   }
 
   private static void trimAllStrings(
-      final Object node, final String fieldPath, final String entityContext) {
+      final Object node,
+      final StringBuilder path,
+      final int pathBytes,
+      final Supplier<String> entityContext) {
     if (node instanceof Map<?, ?> rawMap) {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> map = (Map<String, Object>) rawMap;
-      for (Map.Entry<String, Object> entry : map.entrySet()) {
-        Object value = entry.getValue();
-        String childPath = fieldPath + "." + entry.getKey();
-        Object trimmed = trimIfOversized(value, childPath, entityContext);
-        if (trimmed != value) {
-          entry.setValue(trimmed);
-        }
-        trimAllStrings(value, childPath, entityContext);
-      }
+      trimMapStrings(rawMap, path, pathBytes, entityContext);
     } else if (node instanceof List<?> rawList) {
-      @SuppressWarnings("unchecked")
-      List<Object> list = (List<Object>) rawList;
-      for (int index = 0; index < list.size(); index++) {
-        Object value = list.get(index);
-        Object trimmed = trimIfOversized(value, fieldPath, entityContext);
-        if (trimmed != value) {
-          list.set(index, trimmed);
-        }
-        trimAllStrings(value, fieldPath, entityContext);
-      }
+      trimListStrings(rawList, path, pathBytes, entityContext);
     }
   }
 
+  private static void trimMapStrings(
+      final Map<?, ?> rawMap,
+      final StringBuilder path,
+      final int pathBytes,
+      final Supplier<String> entityContext) {
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = (Map<String, Object>) rawMap;
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      String key = entry.getKey();
+      int mark = path.length();
+      path.append('.').append(key);
+      int childBytes = pathBytes + 1 + key.getBytes(StandardCharsets.UTF_8).length;
+      Object value = entry.getValue();
+      Object trimmed = trimIfOversized(value, path, childBytes, entityContext);
+      if (trimmed != value) {
+        entry.setValue(trimmed);
+      }
+      trimAllStrings(value, path, childBytes, entityContext);
+      path.setLength(mark);
+    }
+  }
+
+  private static void trimListStrings(
+      final List<?> rawList,
+      final StringBuilder path,
+      final int pathBytes,
+      final Supplier<String> entityContext) {
+    @SuppressWarnings("unchecked")
+    List<Object> list = (List<Object>) rawList;
+    for (int index = 0; index < list.size(); index++) {
+      Object value = list.get(index);
+      Object trimmed = trimIfOversized(value, path, pathBytes, entityContext);
+      if (trimmed != value) {
+        list.set(index, trimmed);
+      }
+      trimAllStrings(value, path, pathBytes, entityContext);
+    }
+  }
+
+  /**
+   * Pre-checks by char count before encoding: a {@code String} is at most {@code 3} UTF-8 bytes per
+   * char, so a value short enough by {@code length()} cannot exceed the budget and is skipped
+   * without allocating a {@code byte[]}. Only candidates that might be oversize are encoded.
+   */
   private static Object trimIfOversized(
-      final Object value, final String fieldPath, final String entityContext) {
+      final Object value,
+      final CharSequence fieldPath,
+      final int pathBytes,
+      final Supplier<String> entityContext) {
     Object result = value;
     if (value instanceof String text) {
-      byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-      int budget = valueByteBudget(fieldPath);
-      if (bytes.length > budget) {
-        result = trimToByteLimit(bytes, budget);
-        LOG.warn(
-            "Trimmed oversize search value [entity={}, field={}] from {} to {} bytes to stay under the index term limit",
-            entityContext,
-            fieldPath,
-            bytes.length,
-            budget);
+      int budget = valueByteBudget(pathBytes);
+      if ((long) text.length() * MAX_UTF8_BYTES_PER_CHAR > budget) {
+        result = encodeAndTrim(text, budget, fieldPath, entityContext);
       }
+    }
+    return result;
+  }
+
+  private static Object encodeAndTrim(
+      final String text,
+      final int budget,
+      final CharSequence fieldPath,
+      final Supplier<String> entityContext) {
+    byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+    Object result = text;
+    if (bytes.length > budget) {
+      result = trimToByteLimit(bytes, budget);
+      LOG.warn(
+          "Trimmed oversize search value [entity={}, field={}] from {} to {} bytes to stay under the index term limit",
+          entityContext.get(),
+          fieldPath.toString(),
+          bytes.length,
+          budget);
     }
     return result;
   }
@@ -152,26 +227,23 @@ public final class SearchIndexUtils {
   /**
    * Budget for a single value so that both the {@code _value} term and the path-prefixed
    * {@code _valueAndPath} term stay under {@link #LUCENE_MAX_TERM_BYTES}, accounting for the leaf
-   * path which grows with nesting depth.
+   * path (UTF-8 bytes) which grows with nesting depth.
    */
-  private static int valueByteBudget(final String fieldPath) {
-    int pathBytes = fieldPath == null ? 0 : fieldPath.getBytes(StandardCharsets.UTF_8).length;
+  private static int valueByteBudget(final int pathBytes) {
     return Math.max(0, LUCENE_MAX_TERM_BYTES - TERM_SAFETY_MARGIN_BYTES - pathBytes);
   }
 
+  /**
+   * Truncates UTF-8 {@code bytes} to at most {@code limit} bytes, backing off any trailing
+   * continuation byte ({@code 10xxxxxx}) so a multi-byte character is never split. The source string
+   * is always valid UTF-8, so the retained prefix re-decodes without loss or replacement characters.
+   */
   private static String trimToByteLimit(final byte[] bytes, final int limit) {
-    final CharsetDecoder decoder =
-        StandardCharsets.UTF_8
-            .newDecoder()
-            .onMalformedInput(CodingErrorAction.IGNORE)
-            .onUnmappableCharacter(CodingErrorAction.IGNORE);
-    String trimmed;
-    try {
-      trimmed = decoder.decode(ByteBuffer.wrap(bytes, 0, limit)).toString();
-    } catch (CharacterCodingException e) {
-      trimmed = new String(bytes, 0, limit, StandardCharsets.UTF_8);
+    int cut = Math.min(limit, bytes.length);
+    while (cut > 0 && cut < bytes.length && (bytes[cut] & 0xC0) == 0x80) {
+      cut--;
     }
-    return trimmed;
+    return new String(bytes, 0, cut, StandardCharsets.UTF_8);
   }
 
   /**

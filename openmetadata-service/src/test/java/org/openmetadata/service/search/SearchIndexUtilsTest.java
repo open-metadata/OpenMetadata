@@ -45,7 +45,7 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(column)));
     doc.put("displayName", "Sales Model");
 
-    SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model");
+    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
 
     Map<String, Object> trimmedChild = firstChild(doc);
     String trimmedDesc = (String) trimmedChild.get("description");
@@ -71,7 +71,7 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(node)));
 
     assertDoesNotThrow(
-        () -> SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model"));
+        () -> SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model"));
 
     Map<String, Object> deepest = node;
     while (deepest.get("children") != null) {
@@ -99,7 +99,7 @@ class SearchIndexUtilsTest {
     doc.put("columns", new ArrayList<>(List.of(column)));
 
     assertDoesNotThrow(
-        () -> SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model"));
+        () -> SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model"));
 
     assertEquals(List.of("id-1", "id-2"), doc.get("followers"));
     assertEquals(List.of("owner-1"), doc.get("owners"));
@@ -117,13 +117,39 @@ class SearchIndexUtilsTest {
     doc.put("schemaDefinition", huge); // text field — must NOT be trimmed
     doc.put("extension", extension); // flat_object — MUST be trimmed
 
-    SearchIndexUtils.capOversizeValues(doc, "type=table id=test fqn=test.model");
+    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
 
     assertEquals(huge, doc.get("description"));
     assertEquals(huge, doc.get("schemaDefinition"));
     @SuppressWarnings("unchecked")
     String trimmedExt = (String) ((Map<String, Object>) doc.get("extension")).get("customProp");
     assertTrue(trimmedExt.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+  }
+
+  @Test
+  void capOversizeValuesSkipsObjectChildrenButTrimsColumnsChildren() {
+    String huge = "x".repeat(50_000);
+    // top-level object children (knowledgePage/glossaryTerm/container style) — must NOT be trimmed
+    Map<String, Object> objectChild = new HashMap<>();
+    objectChild.put("description", huge);
+    // columns.children (flat_object) — MUST be trimmed
+    Map<String, Object> colChild = new HashMap<>();
+    colChild.put("description", huge);
+    Map<String, Object> column = new HashMap<>();
+    column.put("children", new ArrayList<>(List.of(colChild)));
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("children", new ArrayList<>(List.of(objectChild)));
+    doc.put("columns", new ArrayList<>(List.of(column)));
+
+    SearchIndexUtils.capOversizeValues(doc, () -> "type=table id=test fqn=test.model");
+
+    @SuppressWarnings("unchecked")
+    String objectDesc =
+        (String) ((Map<String, Object>) ((List<?>) doc.get("children")).get(0)).get("description");
+    assertEquals(huge, objectDesc);
+    String trimmed = (String) firstChild(doc).get("description");
+    assertTrue(trimmed.getBytes(StandardCharsets.UTF_8).length <= LUCENE_MAX_TERM_BYTES);
+    assertNotEquals(huge, trimmed);
   }
 
   private Map<String, Object> firstChild(Map<String, Object> doc) {

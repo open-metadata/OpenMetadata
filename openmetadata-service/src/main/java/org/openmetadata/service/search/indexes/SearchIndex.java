@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -120,11 +121,13 @@ public interface SearchIndex {
     removeNonIndexableFields(esDoc);
 
     // Phase 6: cap oversize values so a single leaf cannot exceed Lucene's per-term limit
-    String entityContext =
+    Supplier<String> entityContext =
         entity instanceof EntityInterface ei
-            ? String.format(
-                "type=%s id=%s fqn=%s", getEntityTypeName(), ei.getId(), ei.getFullyQualifiedName())
-            : getEntityTypeName();
+            ? () ->
+                String.format(
+                    "type=%s id=%s fqn=%s",
+                    getEntityTypeName(), ei.getId(), ei.getFullyQualifiedName())
+            : this::getEntityTypeName;
     SearchIndexUtils.capOversizeValues(esDoc, entityContext);
 
     return esDoc;
