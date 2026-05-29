@@ -348,6 +348,68 @@ class SetApprovalAssigneesImplTest {
     assertEquals("[]", assigneesJson, "Without the flag, an empty resolution stays unassigned");
   }
 
+  @Test
+  void testAdminFallbackWhenSoleAssigneeIsRequesterAndFlagEnabled() {
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("alice")));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    User adminUser = new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(List.of(adminUser));
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(
+        assigneesJson.contains("platform_admin"),
+        "When the only assignee was the requester, admins must be assigned after self-approval removal");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Requester must not be assigned to their own task");
+  }
+
+  @Test
+  void testAdminFallbackExcludesRequesterEvenWhenRequesterIsAdmin() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    User requesterAdmin = new User().withName("alice").withFullyQualifiedName("alice");
+    User otherAdmin =
+        new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(List.of(requesterAdmin, otherAdmin));
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("platform_admin"), "Other admins must be assigned");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Requester who is also an admin must be excluded so self-approval can never happen");
+  }
+
   private static void injectField(Object target, String fieldName, Object value) throws Exception {
     Field field = target.getClass().getDeclaredField(fieldName);
     field.setAccessible(true);

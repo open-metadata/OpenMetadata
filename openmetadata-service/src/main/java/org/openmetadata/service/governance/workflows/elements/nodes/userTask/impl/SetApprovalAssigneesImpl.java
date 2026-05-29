@@ -149,51 +149,33 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         }
       }
 
-      boolean addAdminsWhenEmpty =
-          Boolean.TRUE.equals(assigneesConfig.getOrDefault("addAdminsWhenEmpty", false));
-      if (assignees.isEmpty() && addAdminsWhenEmpty) {
-        assignees.addAll(resolveAdminAssignees());
-      }
-
       boolean workflowManagedTask =
           Boolean.TRUE.equals(execution.getVariable("taskWorkflowManaged"))
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: Remove updatedBy user from assignees list, but only when
-      // other assignees are present to avoid creating an unassigned task that nobody can act on.
-      try {
-        String updatedBy =
-            (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
-        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
-          String updatedByEntityLink =
-              new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
-                  .getLinkString();
-          boolean removed = assigneeList.remove(updatedByEntityLink);
-          if (removed) {
-            if (assigneeList.isEmpty() && !workflowManagedTask) {
-              assigneeList.add(updatedByEntityLink);
-              LOG.debug(
-                  "[Process: {}] Self-approval prevention skipped for updatedBy user '{}': no other assignees available",
-                  execution.getProcessInstanceId(),
-                  updatedBy);
-            } else if (!assigneeList.isEmpty()) {
-              LOG.debug(
-                  "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
-                  execution.getProcessInstanceId(),
-                  updatedBy);
-            } else {
-              LOG.debug(
-                  "[Process: {}] Prevented self-approval for workflow-managed task: updatedBy user '{}' removed, task left unassigned",
-                  execution.getProcessInstanceId(),
-                  updatedBy);
-            }
-          }
+      // Prevent self-approval: remove the requester from the assignees. For
+      // non-workflow-managed tasks only, keep them when no one else is available so the
+      // task stays actionable; workflow-managed tasks (e.g. Data Access Requests) rely on
+      // the admin fallback below instead.
+      String updatedByEntityLink = resolveUpdatedByEntityLink(varHandler);
+      if (updatedByEntityLink != null) {
+        boolean removed = assigneeList.remove(updatedByEntityLink);
+        if (removed && assigneeList.isEmpty() && !workflowManagedTask) {
+          assigneeList.add(updatedByEntityLink);
         }
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to retrieve updatedBy variable for self-approval prevention: {}",
-            e.getMessage());
+      }
+
+      // Last-resort routing: when the task would otherwise be unassigned (no
+      // reviewers/owners, or the only assignee was the requester and was stripped above),
+      // assign all platform admins. The requester is excluded so self-approval can never
+      // happen. Opt-in via addAdminsWhenEmpty.
+      boolean addAdminsWhenEmpty =
+          Boolean.TRUE.equals(assigneesConfig.getOrDefault("addAdminsWhenEmpty", false));
+      if (assigneeList.isEmpty() && addAdminsWhenEmpty) {
+        List<String> admins = resolveAdminAssignees();
+        admins.remove(updatedByEntityLink);
+        assigneeList.addAll(admins);
       }
 
       // Persist the list as JSON array so TaskListener can read it.
@@ -245,6 +227,23 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
     // No recognised source found: return empty list, which causes the task to be auto-approved.
     return List.of();
+  }
+
+  private String resolveUpdatedByEntityLink(WorkflowVariableHandler varHandler) {
+    String result = null;
+    try {
+      String updatedBy =
+          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+        result =
+            new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+                .getLinkString();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to retrieve updatedBy variable for self-approval prevention: {}", e.getMessage());
+    }
+    return result;
   }
 
   private List<String> resolveAdminAssignees() {
