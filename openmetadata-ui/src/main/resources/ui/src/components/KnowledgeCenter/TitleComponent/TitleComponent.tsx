@@ -26,6 +26,7 @@ import './title-component.less';
 interface Props {
   value: string;
   autoFocus?: boolean;
+  placeholder?: string;
   readOnly?: boolean;
   onChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent) => void;
@@ -33,7 +34,14 @@ interface Props {
 
 export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
   (
-    { value, onChange, onKeyDown, autoFocus = false, readOnly = false },
+    {
+      value,
+      onChange,
+      onKeyDown,
+      autoFocus = false,
+      placeholder,
+      readOnly = false,
+    },
     ref
   ) => {
     const [titleValue, setTitleValue] = useState<string>(value);
@@ -73,7 +81,7 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
         className="knowledge-page-title-input"
         data-testid="entity-header-display-name"
         id="title-input"
-        placeholder={i18n.t('label.untitled')}
+        placeholder={placeholder || i18n.t('label.untitled')}
         readOnly={readOnly}
         ref={setRef}
         rows={1}
