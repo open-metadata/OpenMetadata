@@ -223,6 +223,12 @@ def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, ve
     Returns a dict {name, region, version, iapClientId, byoidAudiences} or None
     when the API can't be reached, the SA lacks permission, the env is missing,
     or any other failure. Diagnostics must never raise.
+
+    Note: the `verify` parameter (user-controlled Airflow verifySSL) is
+    intentionally NOT forwarded to the Google Management API call. A user who
+    disables certificate verification for an internal Airflow endpoint should
+    not have that opt-out leak into bearer-token requests against
+    composer.googleapis.com, which always presents a Google-signed cert.
     """
     info = None
     try:
@@ -240,7 +246,7 @@ def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, ve
             url,
             headers={"Authorization": f"Bearer {token}"},
             timeout=15,
-            verify=verify,
+            verify=True,
         )
         if resp.status_code != 200:
             logger.debug("Composer management API returned %s: %s", resp.status_code, resp.text[:200])
@@ -398,12 +404,17 @@ def _probe_astronomer(host: Optional[str], auth_config, verify: bool, original_e
             "Astronomer Cloud expects a Workspace API token. Switch the auth configuration to "
             "'Access Token' and paste the token issued in Astronomer Cloud UI -> Settings -> API Tokens."
         )
-    elif host and "cloud.astronomer.io" in _hostname(host):
+    elif host and _is_astronomer_control_plane(_hostname(host)):
         hint = (
             "hostPort looks like the Astronomer Cloud control plane (cloud.astronomer.io), not a deployment URL. "
             "Copy the deployment's Airflow URL from Deployment -> Details (it ends in .astronomer.run)."
         )
     return hint
+
+
+def _is_astronomer_control_plane(netloc: str) -> bool:
+    """Match cloud.astronomer.io exactly or as a strict DNS suffix; substring matches are unsafe."""
+    return netloc == "cloud.astronomer.io" or netloc.endswith(".cloud.astronomer.io")
 
 
 def _probe_self_hosted(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045

@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.utils.common.mwaaAuthConfig import (
     MwaaAuthentication,
 )
 from metadata.ingestion.source.pipeline.airflow.api.auth import (
-    _AUDIENCE_CACHE,
     _BASIC_AUTH_TTL_SECONDS,
     _JWT_REFRESH_INTERVAL_SECONDS,
     build_access_token_callback,
@@ -555,9 +554,9 @@ class TestGcpTokenRefreshIntegration:
 @pytest.fixture(autouse=True)
 def _reset_audience_cache():
     """The auth module caches IAP audiences per host; clear it between tests."""
-    _AUDIENCE_CACHE.clear()
+    resolve_iap_audience.cache_clear()
     yield
-    _AUDIENCE_CACHE.clear()
+    resolve_iap_audience.cache_clear()
 
 
 def _make_jwt(aud: str, exp_offset_seconds: int = 3600) -> str:

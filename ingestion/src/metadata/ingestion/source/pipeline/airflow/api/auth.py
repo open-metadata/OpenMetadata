@@ -13,6 +13,7 @@ Auth helper functions for the Airflow REST API client.
 """
 
 import base64
+import functools
 import json
 import os
 import re
@@ -42,7 +43,11 @@ _BASIC_AUTH_TTL_SECONDS = 7 * 24 * 3600  # basic auth doesn't expire; skip retry
 # is not classified as Composer.
 _COMPOSER_HOST_SUFFIXES = (".composer.googleusercontent.com",)
 
-_AUDIENCE_CACHE: dict[str, Optional[str]] = {}  # noqa: UP045
+# IAP audience lookup is per-host and effectively never invalidates within a
+# process. Cap the cache at 128 distinct hosts to satisfy the bounded-cache
+# guideline; in practice a single OpenMetadata instance never services that
+# many Composer pipelines simultaneously.
+_AUDIENCE_CACHE_MAX = 128
 
 
 def try_exchange_jwt(host: str, username: str, password: str, verify: bool) -> Optional[str]:  # noqa: UP045
@@ -98,17 +103,16 @@ def is_composer_host(host: Optional[str]) -> bool:  # noqa: UP045
     return result
 
 
+@functools.lru_cache(maxsize=_AUDIENCE_CACHE_MAX)
 def resolve_iap_audience(host: str, verify: bool = True) -> Optional[str]:  # noqa: UP045
     """
     Probe the host without credentials and extract the IAP OAuth client ID from
-    the Google login redirect. Cached per host so we only do one probe per process.
+    the Google login redirect. Cached per (host, verify) so we only do one probe
+    per process for any given pair. Cache is bounded at _AUDIENCE_CACHE_MAX.
 
     Returns None when the host is not behind IAP, the redirect cannot be parsed,
     or the probe itself failed (network error, custom domain that hides client_id).
     """
-    if host in _AUDIENCE_CACHE:
-        return _AUDIENCE_CACHE[host]
-
     audience = None
     try:
         resp = requests.get(host, allow_redirects=False, timeout=10, verify=verify)
@@ -119,8 +123,6 @@ def resolve_iap_audience(host: str, verify: bool = True) -> Optional[str]:  # no
                 audience = urllib.parse.unquote(match.group(1))
     except Exception:
         logger.debug("IAP audience auto-detect failed for %s: %s", host, traceback.format_exc())
-
-    _AUDIENCE_CACHE[host] = audience
     return audience
 
 
@@ -249,7 +251,9 @@ def _mint_access_token(gcp_credentials) -> Tuple[str, datetime]:  # noqa: UP006
     else:
         credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
     credentials.refresh(AuthRequest())  # type: ignore
-    expiry = getattr(credentials, "expiry", None) or (datetime.now(timezone.utc) + timedelta(minutes=55))
+    expiry = _normalize_expiry(getattr(credentials, "expiry", None)) or (
+        datetime.now(timezone.utc) + timedelta(minutes=55)
+    )
     return credentials.token, expiry  # type: ignore
 
 

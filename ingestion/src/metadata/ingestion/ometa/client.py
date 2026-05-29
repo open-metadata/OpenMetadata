@@ -321,22 +321,12 @@ class REST:
                 raise RetryException() from http_error
             if resp.status_code in limit_codes:
                 raise LimitsException() from http_error
-            # Only attempt to parse the body as JSON when the server actually
-            # advertises it. The previous heuristic — sniffing for "code" in
-            # the response body — false-positively matched HTML error pages
-            # (e.g. IAP/Composer login redirects) and surfaced confusing
-            # "Expecting value: line 2 column 1" JSONDecodeErrors to users.
-            content_type = resp.headers.get("Content-Type", "").lower()  # pyright: ignore[reportPossiblyUnboundVariable]
-            if "application/json" in content_type and resp.text:  # pyright: ignore[reportPossiblyUnboundVariable]
-                try:
-                    error = resp.json()  # pyright: ignore[reportPossiblyUnboundVariable]
-                except JSONDecodeError:
-                    logger.debug("Server advertised JSON content-type but body was not valid JSON")
-                    raise http_error  # noqa: B904
-                if isinstance(error, dict) and "code" in error:
+            if "code" in resp.text:
+                error = resp.json()
+                if "code" in error:
                     raise APIError(error, http_error) from http_error
+            else:
                 raise
-            raise
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
