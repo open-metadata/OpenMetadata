@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.utils.common.mwaaAuthConfig import (
     MwaaAuthentication,
 )
 from metadata.ingestion.source.pipeline.airflow.api.auth import (
+    _AUDIENCE_CACHE,
     _BASIC_AUTH_TTL_SECONDS,
     _JWT_REFRESH_INTERVAL_SECONDS,
     build_access_token_callback,
@@ -553,10 +554,10 @@ class TestGcpTokenRefreshIntegration:
 
 @pytest.fixture(autouse=True)
 def _reset_audience_cache():
-    """The auth module caches IAP audiences per host; clear it between tests."""
-    resolve_iap_audience.cache_clear()
+    """The auth module caches successful IAP audience resolutions; clear it between tests."""
+    _AUDIENCE_CACHE.clear()
     yield
-    resolve_iap_audience.cache_clear()
+    _AUDIENCE_CACHE.clear()
 
 
 def _make_jwt(aud: str, exp_offset_seconds: int = 3600) -> str:
@@ -631,14 +632,30 @@ class TestResolveIapAudience:
     def test_result_is_cached_per_host(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=302,
-            headers={
-                "Location": "https://accounts.google.com/o/oauth2/auth?client_id=cached.apps.googleusercontent.com"
-            },
+            headers={"Location": "https://accounts.google.com/o/oauth2/auth?client_id=cached-sentinel-aud-001"},
         )
         a = resolve_iap_audience("https://x.composer.googleusercontent.com")
         b = resolve_iap_audience("https://x.composer.googleusercontent.com")
-        assert a == b == "cached.apps.googleusercontent.com"
+        assert a == b == "cached-sentinel-aud-001"
         assert mock_get.call_count == 1
+
+    @patch("requests.get")
+    def test_failed_lookups_are_not_cached(self, mock_get):
+        """A transient probe failure must not poison the cache. The next call should re-probe."""
+        # First call: transient failure (e.g. blocked egress)
+        mock_get.side_effect = requests.exceptions.ConnectionError("transient")
+        first = resolve_iap_audience("https://x.composer.googleusercontent.com")
+        assert first is None
+
+        # Second call: probe recovers, real redirect arrives
+        mock_get.side_effect = None
+        mock_get.return_value = MagicMock(
+            status_code=302,
+            headers={"Location": "https://accounts.google.com/o/oauth2/auth?client_id=recovered-sentinel-aud-002"},
+        )
+        second = resolve_iap_audience("https://x.composer.googleusercontent.com")
+        assert second == "recovered-sentinel-aud-002"
+        assert mock_get.call_count == 2  # both attempts hit the network
 
 
 class TestBuildGcpTokenCallbackIapPath:

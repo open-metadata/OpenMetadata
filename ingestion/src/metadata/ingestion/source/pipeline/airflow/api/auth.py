@@ -13,12 +13,12 @@ Auth helper functions for the Airflow REST API client.
 """
 
 import base64
-import functools
 import json
 import os
 import re
 import traceback
 import urllib.parse
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Optional, Tuple  # noqa: UP035
@@ -43,11 +43,12 @@ _BASIC_AUTH_TTL_SECONDS = 7 * 24 * 3600  # basic auth doesn't expire; skip retry
 # is not classified as Composer.
 _COMPOSER_HOST_SUFFIXES = (".composer.googleusercontent.com",)
 
-# IAP audience lookup is per-host and effectively never invalidates within a
-# process. Cap the cache at 128 distinct hosts to satisfy the bounded-cache
-# guideline; in practice a single OpenMetadata instance never services that
-# many Composer pipelines simultaneously.
+# IAP audience lookup is per-(host, verify) and effectively never invalidates
+# within a process. The cache is bounded at _AUDIENCE_CACHE_MAX and only stores
+# *successful* resolutions — caching None would let a single transient probe
+# failure poison every later token callback for the same host until restart.
 _AUDIENCE_CACHE_MAX = 128
+_AUDIENCE_CACHE: "OrderedDict[Tuple[str, bool], str]" = OrderedDict()  # noqa: UP006
 
 
 def try_exchange_jwt(host: str, username: str, password: str, verify: bool) -> Optional[str]:  # noqa: UP045
@@ -103,16 +104,34 @@ def is_composer_host(host: Optional[str]) -> bool:  # noqa: UP045
     return result
 
 
-@functools.lru_cache(maxsize=_AUDIENCE_CACHE_MAX)
 def resolve_iap_audience(host: str, verify: bool = True) -> Optional[str]:  # noqa: UP045
     """
     Probe the host without credentials and extract the IAP OAuth client ID from
-    the Google login redirect. Cached per (host, verify) so we only do one probe
-    per process for any given pair. Cache is bounded at _AUDIENCE_CACHE_MAX.
+    the Google login redirect. Returns None when the host is not behind IAP, the
+    redirect cannot be parsed, or the probe itself failed (network error, custom
+    domain that hides client_id).
 
-    Returns None when the host is not behind IAP, the redirect cannot be parsed,
-    or the probe itself failed (network error, custom domain that hides client_id).
+    Successful resolutions are cached per (host, verify); failures are never
+    cached so a transient network blip doesn't poison the cache for the lifetime
+    of the process. The cache is a manual OrderedDict bounded at
+    _AUDIENCE_CACHE_MAX entries with LRU eviction.
     """
+    key = (host, verify)
+    cached = _AUDIENCE_CACHE.get(key)
+    if cached is not None:
+        _AUDIENCE_CACHE.move_to_end(key)
+        return cached
+
+    audience = _probe_iap_redirect_for_audience(host, verify)
+    if audience is not None:
+        _AUDIENCE_CACHE[key] = audience
+        if len(_AUDIENCE_CACHE) > _AUDIENCE_CACHE_MAX:
+            _AUDIENCE_CACHE.popitem(last=False)
+    return audience
+
+
+def _probe_iap_redirect_for_audience(host: str, verify: bool) -> Optional[str]:  # noqa: UP045
+    """One-shot HTTP probe that returns the client_id from IAP's login redirect, or None."""
     audience = None
     try:
         resp = requests.get(host, allow_redirects=False, timeout=10, verify=verify)

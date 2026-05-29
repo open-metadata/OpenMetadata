@@ -165,6 +165,55 @@ You can also optionally configure **service account impersonation** via `gcpImpe
 
 $$
 
+$$section
+### IAP Audience $(id="iapAudience")
+
+OIDC ID-token audience used to authenticate against IAP-protected Cloud Composer. **Leave this blank in almost every case** — OpenMetadata will auto-resolve the audience for you. Set it explicitly only when both auto-detection paths are blocked.
+
+#### When to leave it blank
+
+OpenMetadata tries two auto-detection strategies before falling back to this field:
+
+1. **Classic IAP redirect** — for older Composer environments where the unauthenticated Airflow URL redirects directly to `accounts.google.com/o/oauth2/auth?client_id=...`, the client ID is read from that redirect.
+2. **Composer Admin API** — for Composer 2 and Composer 3 environments using the managed IAP model (the redirect goes through `composer.cloud.google.com/_signin` and never exposes a client ID), OpenMetadata calls the Composer Admin API and reads `webServerConfig.iapClientId` or `airflowByoidConfig.audiences` from the environment config.
+
+For path 2 to work, the service account configured above needs `roles/composer.environmentAndStorageObjectViewer` (or any role that grants `composer.environments.get`) on the GCP project. If you already grant `roles/composer.user`, that includes this permission.
+
+#### When to set it explicitly
+
+- The Airflow URL is fronted by a **custom domain** that hides the original IAP redirect.
+- The OpenMetadata host has **restricted egress** and cannot reach `composer.googleapis.com`.
+- The service account is locked down and cannot read Composer environment metadata.
+- You want to **pin** a specific BYOID audience when the environment has multiple configured.
+
+#### What to paste
+
+Accepts either a classic IAP OAuth 2.0 Client ID or a BYOID audience string:
+
+| Composer flavor | Source of the audience |
+|---|---|
+| Classic IAP (Composer 1, older Composer 2) | The OAuth 2.0 Client ID of the IAP backend — visible in GCP Console under **Security → Identity-Aware Proxy** for the Composer backend service, or via the redirect. Format: `<digits>-<random>.apps.googleusercontent.com`. |
+| Composer 2 / 3 with BYOID | Any audience listed in `airflowByoidConfig.audiences` for your environment. |
+| Composer 2 managed IAP (no BYOID) | `webServerConfig.iapClientId` from the environment config. |
+
+Retrieve it with:
+
+```bash
+gcloud composer environments describe <ENV_NAME> --location <REGION> --format=json \
+  | jq '.config | {webServerConfig, airflowByoidConfig}'
+```
+
+If both `webServerConfig.iapClientId` and `airflowByoidConfig.audiences` are empty (Composer 3 without BYOID configured), enable BYOID before testing the connection:
+
+```bash
+gcloud composer environments update <ENV_NAME> --location <REGION> \
+  --airflow-byoid-audiences=<your-chosen-audience>
+```
+
+Then paste that audience here.
+
+$$
+
 ### Finding Your Cloud Composer Airflow URL
 
 In GCP Console, go to **Composer → Environments**, select your environment, and click **Open Airflow UI**. Copy the base URL (e.g. `https://<hash>-dot-<region>.composer.googleusercontent.com`) — this is what you enter in the **Host and Port** field above.
