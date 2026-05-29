@@ -981,7 +981,7 @@ export const DataAssetsHeader = ({
 
         {/* Row 3 — Metadata strip */}
         <div
-          className="tw:flex tw:flex-wrap tw:items-end tw:gap-x-1 tw:gap-y-3"
+          className="tw:flex tw:flex-wrap tw:items-start tw:gap-6"
           data-testid="data-asset-header-metadata">
           {showDomain && (
             <DomainLabel
