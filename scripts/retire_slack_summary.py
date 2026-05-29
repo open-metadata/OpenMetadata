@@ -173,8 +173,9 @@ def render_lib_slack(component, version, info, top):
 
 def render_slack(libs, totals, top):
     header = (
-        f"*🛡️ Vulnerability JS Scan* — 🚨 {totals['critical']} · "
-        f"🔴 {totals['high']} · 🟠 {totals['medium']} · 🟡 {totals['low']}"
+        f"*🛡️ Vulnerability JS Scan*\n"
+        f"🚨 {totals['critical']} critical  ·  🔴 {totals['high']} high  ·  "
+        f"🟠 {totals['medium']} medium  ·  🟡 {totals['low']} low"
     )
     if not libs:
         return f"{header}\n> ✅ No vulnerable libraries found."
