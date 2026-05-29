@@ -211,7 +211,8 @@ export class EntityClass {
         'Tier',
         'tier.tagFQN',
         tier2Fqn,
-        entity
+        entity,
+        true
       );
     }
     await removeTier(page, this.endpoint);
