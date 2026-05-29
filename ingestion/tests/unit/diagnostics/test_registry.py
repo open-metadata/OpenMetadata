@@ -13,7 +13,9 @@
 import threading
 import time
 
-from metadata.ingestion.diagnostics.registry import (
+from metadata.ingestion.diagnostics.collectors import operation_registry
+from metadata.ingestion.diagnostics.collectors.operation_registry import (
+    SLOW_OPS_CAP,
     OperationRegistry,
     _truncate_kwargs,
     format_op_frame,
@@ -123,3 +125,61 @@ def test_gc_dead_threads_clears_entries():
     assert t.ident in registry.snapshot()
     registry.gc_dead_threads({threading.get_ident()})
     assert t.ident not in registry.snapshot()
+
+
+def test_counts_are_exact_per_op():
+    registry = OperationRegistry()
+    for _ in range(5):
+        registry.pop(registry.push("db.query", {}))
+    registry.pop(registry.push("ometa.http", {"url": "/api/v1/tables"}))
+
+    assert registry.counts() == {"db.query": 5, "ometa.http": 1}
+
+
+def test_slow_ops_keeps_slowest_first_with_method(monkeypatch):
+    clock = {"now": 0.0}
+    monkeypatch.setattr(operation_registry.time, "monotonic", lambda: clock["now"])
+    registry = OperationRegistry()
+
+    for name, duration in [("a.query", 1.0), ("b.query", 5.0), ("c.query", 0.1)]:
+        clock["now"] = 0.0
+        token = registry.push(name, {})
+        clock["now"] = duration
+        registry.pop(token)
+
+    slow = registry.slow_ops()
+    assert [op_name for _duration, op_name, _method in slow] == ["b.query", "a.query", "c.query"]
+    assert slow[0][0] == 5.0
+    assert all(method for _d, _n, method in slow)  # issuing method attributed
+
+
+def test_slow_ops_is_bounded(monkeypatch):
+    clock = {"now": 0.0}
+    monkeypatch.setattr(operation_registry.time, "monotonic", lambda: clock["now"])
+    registry = OperationRegistry()
+
+    for i in range(SLOW_OPS_CAP * 3):
+        clock["now"] = 0.0
+        token = registry.push("q", {})
+        clock["now"] = float(i)
+        registry.pop(token)
+
+    slow = registry.slow_ops()
+    assert len(slow) == SLOW_OPS_CAP
+    assert slow[0][0] == float(SLOW_OPS_CAP * 3 - 1)  # the single slowest is retained
+
+
+def test_slow_ops_excludes_wrapper_ops(monkeypatch):
+    clock = {"now": 0.0}
+    monkeypatch.setattr(operation_registry.time, "monotonic", lambda: clock["now"])
+    registry = OperationRegistry()
+
+    # wrapper ops span whole phases and are the "slowest", but must not appear
+    for name in ("workflow.execute", "source.iter", "db.query"):
+        clock["now"] = 0.0
+        token = registry.push(name, {})
+        clock["now"] = 100.0
+        registry.pop(token)
+
+    op_names = {op_name for _duration, op_name, _method in registry.slow_ops()}
+    assert op_names == {"db.query"}
