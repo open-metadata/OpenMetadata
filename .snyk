@@ -4,10 +4,16 @@ ignore: {}
 patch: {}
 exclude:
   global:
-    - ingestion/examples/**
+    # Ingestion exclusions. Paths drop the `ingestion/` prefix because the
+    # Makefile runs this scan as `cd ingestion; snyk code test ...`, so
+    # Snyk emits SARIF paths relative to ingestion/, not the repo root.
+    # A pattern of `ingestion/src/...` would never match `src/...`.
+    - examples/**
+    - tests/**
     - src/metadata/sdk/examples/**
-    - ingestion/tests/**
+    - src/_openmetadata_testutils/**
+    # UI / server exclusions — these scans run from the repo root, so
+    # paths here are repo-root-relative.
     - openmetadata-ui/src/main/resources/ui/src/pages/service/mocks/**
     - openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/TestConnection.mock.ts
     - openmetadata-service/src/test/**
-    - src/_openmetadata_testutils/**
