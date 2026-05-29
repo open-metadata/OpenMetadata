@@ -43,7 +43,7 @@ test(
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
-    await table.visitEntityPage(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.displayName);
     const testCaseName = `multi-pipeline-test-${uuid()}`;
     const pipelineName = `test suite pipeline 2`;
 
@@ -149,7 +149,9 @@ test(
         )
         .click();
 
-      await expect(page.getByRole('checkbox').first()).toBeVisible();
+      await expect(
+        page.getByTestId('week-segment-day-option-container')
+      ).toBeVisible();
 
       await page
         .getByTestId('week-segment-day-option-container')
@@ -249,7 +251,7 @@ test(
       apiContext,
       testCaseNames
     );
-    await table.visitEntityPage(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.displayName);
     await page.getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
