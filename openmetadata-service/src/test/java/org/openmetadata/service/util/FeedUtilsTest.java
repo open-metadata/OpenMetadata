@@ -30,6 +30,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.EntityInfo;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -115,6 +116,41 @@ class FeedUtilsTest {
       assertEquals(
           "Added Logical Test Cases to **table**: `service.sales.orders`",
           logicalTestCaseThread.getMessage());
+    }
+  }
+
+  @Test
+  void getThreadWithMessageIncludesTestCaseNamesForLogicalTestCaseAdded() {
+    TestSuite testSuite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("Test_TS_1")
+            .withFullyQualifiedName("Test_TS_1")
+            .withTests(
+                List.of(
+                    new EntityReference()
+                        .withType(Entity.TEST_CASE)
+                        .withName("TC1")
+                        .withDisplayName("TC1"),
+                    new EntityReference().withType(Entity.TEST_CASE).withName("TC2")));
+
+    ChangeEvent logicalTestCaseAdded =
+        new ChangeEvent()
+            .withEntityType(Entity.TEST_SUITE)
+            .withEntity(testSuite)
+            .withEventType(EventType.LOGICAL_TEST_CASE_ADDED)
+            .withUserName("alice");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class)) {
+      entity.when(Entity::getEntityList).thenReturn(Set.of(Entity.TEST_SUITE));
+      alerts.when(() -> AlertsRuleEvaluator.getEntity(logicalTestCaseAdded)).thenReturn(testSuite);
+
+      Thread thread = FeedUtils.getThreadWithMessage(decorator, logicalTestCaseAdded).getFirst();
+
+      assertEquals(Thread.CardStyle.LOGICAL_TEST_CASE_ADDED, thread.getCardStyle());
+      assertEquals(
+          "Added Logical Test Cases: TC1, TC2 to **testSuite**: `Test_TS_1`", thread.getMessage());
     }
   }
 

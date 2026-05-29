@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
@@ -24,6 +25,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.EntityInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ThreadType;
@@ -100,10 +102,7 @@ public final class FeedUtils {
         yield List.of(thread.withMessage(message));
       }
       case LOGICAL_TEST_CASE_ADDED -> {
-        message =
-            String.format(
-                "Added Logical Test Cases to **%s**: `%s`",
-                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+        message = formatLogicalTestCaseAddedMessage(changeEvent, entityInterface);
         addEntityInfoToThread(
             thread, Thread.CardStyle.LOGICAL_TEST_CASE_ADDED, message, entityInterface);
         yield List.of(thread.withMessage(message));
@@ -115,6 +114,35 @@ public final class FeedUtils {
         yield getFormattedMessages(messageDecorator, thread, changeEvent.getChangeDescription());
       }
     };
+  }
+
+  private static String formatLogicalTestCaseAddedMessage(
+      ChangeEvent changeEvent, EntityInterface entityInterface) {
+    List<String> testCaseNames = extractAddedTestCaseNames(entityInterface);
+    if (!nullOrEmpty(testCaseNames)) {
+      return String.format(
+          "Added Logical Test Cases: %s to **%s**: `%s`",
+          String.join(", ", testCaseNames),
+          changeEvent.getEntityType(),
+          entityInterface.getFullyQualifiedName());
+    }
+    return String.format(
+        "Added Logical Test Cases to **%s**: `%s`",
+        changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+  }
+
+  private static List<String> extractAddedTestCaseNames(EntityInterface entityInterface) {
+    if (!(entityInterface instanceof TestSuite testSuite)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> tests = testSuite.getTests();
+    if (nullOrEmpty(tests)) {
+      return Collections.emptyList();
+    }
+    return tests.stream()
+        .map(ref -> !nullOrEmpty(ref.getDisplayName()) ? ref.getDisplayName() : ref.getName())
+        .filter(name -> !nullOrEmpty(name))
+        .toList();
   }
 
   private static void addEntityInfoToThread(

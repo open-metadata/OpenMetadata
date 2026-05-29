@@ -1113,6 +1113,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
     postLogicalSuiteRelationshipUpdate(updatedTestCases);
     updateLogicalTestSuite(testSuite.getId());
+    testSuite.withTests(testCaseReferences);
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
@@ -1174,6 +1175,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       postLogicalSuiteRelationshipUpdate(updatedTestCases);
     }
     updateLogicalTestSuite(testSuite.getId());
+    testSuite.withTests(newTestCaseReferences);
 
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
