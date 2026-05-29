@@ -119,6 +119,9 @@ public interface SearchIndex {
     // Phase 5: Cleanup
     removeNonIndexableFields(esDoc);
 
+    // Phase 6: cap oversize values so a single leaf cannot exceed Lucene's per-term limit
+    SearchIndexUtils.capOversizeValues(esDoc);
+
     return esDoc;
   }
 

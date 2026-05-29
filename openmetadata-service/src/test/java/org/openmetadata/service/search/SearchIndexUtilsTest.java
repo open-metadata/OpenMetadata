@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,63 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
+
+  private static final int MAX_INDEXED_VALUE_BYTES = 32000;
+
+  @Test
+  void capOversizeValuesTrimsLongLeafButKeepsShortOnes() {
+    String hugeDax = "Expression : " + "a".repeat(50_000);
+    Map<String, Object> child = new HashMap<>();
+    child.put("name", "Total Sales");
+    child.put("description", hugeDax);
+    Map<String, Object> column = new HashMap<>();
+    column.put("name", "Measures");
+    column.put("children", new ArrayList<>(List.of(child)));
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("columns", new ArrayList<>(List.of(column)));
+    doc.put("displayName", "Sales Model");
+
+    SearchIndexUtils.capOversizeValues(doc);
+
+    Map<String, Object> trimmedChild = firstChild(doc);
+    String trimmedDesc = (String) trimmedChild.get("description");
+    assertTrue(trimmedDesc.getBytes(StandardCharsets.UTF_8).length <= MAX_INDEXED_VALUE_BYTES);
+    assertTrue(trimmedDesc.startsWith("Expression : "));
+    assertEquals("Total Sales", trimmedChild.get("name"));
+    assertEquals("Sales Model", doc.get("displayName"));
+  }
+
+  @Test
+  void capOversizeValuesIsMultiByteSafeAndHandlesDeepNesting() {
+    String multiByte = "和".repeat(20_000);
+    Map<String, Object> node = new HashMap<>();
+    node.put("name", "leaf");
+    node.put("description", multiByte);
+    for (int level = 0; level < 30; level++) {
+      Map<String, Object> parent = new HashMap<>();
+      parent.put("name", "c" + level);
+      parent.put("children", new ArrayList<>(List.of(node)));
+      node = parent;
+    }
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("columns", new ArrayList<>(List.of(node)));
+
+    assertDoesNotThrow(() -> SearchIndexUtils.capOversizeValues(doc));
+
+    Map<String, Object> deepest = node;
+    while (deepest.get("children") != null) {
+      deepest = (Map<String, Object>) ((List<?>) deepest.get("children")).get(0);
+    }
+    String trimmed = (String) deepest.get("description");
+    byte[] trimmedBytes = trimmed.getBytes(StandardCharsets.UTF_8);
+    assertTrue(trimmedBytes.length <= MAX_INDEXED_VALUE_BYTES);
+    assertEquals(trimmed, new String(trimmedBytes, StandardCharsets.UTF_8));
+  }
+
+  private Map<String, Object> firstChild(Map<String, Object> doc) {
+    Map<String, Object> column = (Map<String, Object>) ((List<?>) doc.get("columns")).get(0);
+    return (Map<String, Object>) ((List<?>) column.get("children")).get(0);
+  }
 
   @Test
   void testParseHelpersAndRemoveFieldByPathSupportsNestedLists() {

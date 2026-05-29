@@ -9,6 +9,10 @@ import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +51,65 @@ public final class SearchIndexUtils {
       List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
+
+  /**
+   * Lucene rejects any indexed term whose UTF-8 encoding exceeds 32766 bytes. Values inside a
+   * {@code flattened} / {@code flat_object} field (e.g. the recursive {@code columns.children}
+   * subtree) are indexed as single un-tokenized keyword terms, so one oversized leaf — such as a
+   * long PowerBI DAX expression stored in a column description — fails the whole document with an
+   * "immense term" error. Kept under the limit with margin for the {@code _valueAndPath} subfield.
+   */
+  private static final int MAX_INDEXED_VALUE_BYTES = 32000;
+
+  /**
+   * Caps oversize string values in a search document so a single leaf cannot exceed Lucene's
+   * per-term byte limit and reject the entire document. Walks the document in place and trims any
+   * string whose UTF-8 length exceeds {@link #MAX_INDEXED_VALUE_BYTES}, on a character boundary.
+   * The full value is preserved on the source entity (database/API); only the indexed copy is
+   * trimmed, so entity pages and APIs are unaffected.
+   */
+  public static void capOversizeValues(final Object node) {
+    if (node instanceof Map<?, ?> rawMap) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> map = (Map<String, Object>) rawMap;
+      map.replaceAll((key, value) -> trimIfOversized(value));
+      map.values().forEach(SearchIndexUtils::capOversizeValues);
+    } else if (node instanceof List<?> rawList) {
+      @SuppressWarnings("unchecked")
+      List<Object> list = (List<Object>) rawList;
+      list.replaceAll(SearchIndexUtils::trimIfOversized);
+      list.forEach(SearchIndexUtils::capOversizeValues);
+    }
+  }
+
+  private static Object trimIfOversized(final Object value) {
+    Object result = value;
+    if (value instanceof String text
+        && text.getBytes(StandardCharsets.UTF_8).length > MAX_INDEXED_VALUE_BYTES) {
+      result = trimToByteLimit(text);
+      LOG.warn(
+          "Trimmed an oversize search value from {} to {} bytes to stay under the index term limit",
+          text.getBytes(StandardCharsets.UTF_8).length,
+          MAX_INDEXED_VALUE_BYTES);
+    }
+    return result;
+  }
+
+  private static String trimToByteLimit(final String value) {
+    final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+    final CharsetDecoder decoder =
+        StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.IGNORE)
+            .onUnmappableCharacter(CodingErrorAction.IGNORE);
+    String trimmed;
+    try {
+      trimmed = decoder.decode(ByteBuffer.wrap(bytes, 0, MAX_INDEXED_VALUE_BYTES)).toString();
+    } catch (CharacterCodingException e) {
+      trimmed = new String(bytes, 0, MAX_INDEXED_VALUE_BYTES, StandardCharsets.UTF_8);
+    }
+    return trimmed;
+  }
 
   /**
    * Deduplicates identical SQL queries across lineage edges in-place.
