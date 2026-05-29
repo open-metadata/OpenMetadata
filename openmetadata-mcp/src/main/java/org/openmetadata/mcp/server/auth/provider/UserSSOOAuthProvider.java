@@ -452,12 +452,18 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       // Initiate the SAML AuthnRequest with RelayState carrying the MCP authorization request id.
       // Keep all OneLogin/SAML code in the service module (mirrors how OIDC calls handleLogin).
+      HttpServletRequest request = currentRequest.get();
+      HttpServletResponse response = currentResponse.get();
+      if (request == null || response == null) {
+        throw new AuthorizeException(
+            "server_error", "HTTP context not available for SAML redirect");
+      }
       String relayState = "mcp:" + authRequestId;
       SamlAuthServletHandler samlHandler =
           SamlAuthServletHandler.getInstance(
               SecurityConfigurationManager.getCurrentAuthConfig(),
               SecurityConfigurationManager.getCurrentAuthzConfig());
-      samlHandler.initiateMcpLogin(currentRequest.get(), currentResponse.get(), relayState);
+      samlHandler.initiateMcpLogin(request, response, relayState);
 
       LOG.info("SAML redirect initiated for MCP OAuth (auth request: {})", authRequestId);
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
