@@ -72,17 +72,21 @@ public class TestCaseResolutionStatusRepository
     return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
   }
 
-  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource}
-  // and feeds the raw ES hit straight into strict deserialization, so push the same scrub
-  // into the {@code _source.exclude} of the query itself.
+  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
+  // feeds the raw ES hit straight into strict deserialization, so the full set of non-schema
+  // search fields must be pushed into the {@code _source.exclude} of the query itself — matching
+  // exactly what the {@code latest=true} path strips client-side. Excluding only {@code testSuites}
+  // leaves {@code @timestamp}, {@code domains}, {@code testCase}, and {@code testSuite} in the
+  // source, each of which 400s strict Jackson in turn.
   @Override
   protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
-    String excludeFields = searchListFilter.getQueryParam("excludeFields");
-    if (nullOrEmpty(excludeFields)) {
-      searchListFilter.addQueryParam("excludeFields", "testSuites");
-    } else if (!excludeFields.contains("testSuites")) {
-      searchListFilter.addQueryParam("excludeFields", excludeFields + ",testSuites");
-    }
+    String existingExcludeFields = searchListFilter.getQueryParam("excludeFields");
+    String scrubFields = String.join(",", getExcludeSearchFields());
+    String mergedExcludeFields =
+        nullOrEmpty(existingExcludeFields)
+            ? scrubFields
+            : existingExcludeFields + "," + scrubFields;
+    searchListFilter.addQueryParam("excludeFields", mergedExcludeFields);
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
