@@ -68,6 +68,9 @@ install_antlr_cli:  ## Install antlr CLI locally
 ## SNYK
 SNYK_ARGS := --severity-threshold=high
 
+# Drop pip's build/lib tree before scanning so `snyk code test` does not
+# double-report findings (once under src/, once under build/lib/). Same
+# applies to snyk-airflow-apis-report below.
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
@@ -76,6 +79,7 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
+		rm -rf build; \
 		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) --json > ../security-report/ingestion-dep-scan.json | true; \
 		snyk code test $(SNYK_ARGS) --json > ../security-report/ingestion-code-scan.json | true;
 
@@ -83,7 +87,8 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
+		rm -rf build; \
+		snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
 
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
