@@ -176,6 +176,11 @@ export interface NodeConfiguration {
  */
 export interface Assignees {
     /**
+     * When no reviewers or owners resolve, fall back to assigning all platform admins so the
+     * task is never left unassigned. Defaults to false.
+     */
+    addAdminsWhenEmpty?: boolean;
+    /**
      * Add the Owners to the assignees List.
      */
     addOwners?: boolean;
