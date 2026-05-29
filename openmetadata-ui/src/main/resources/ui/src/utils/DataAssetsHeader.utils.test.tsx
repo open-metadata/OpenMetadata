@@ -750,17 +750,14 @@ describe('ExtraInfoLabel', () => {
       </Tooltip>
     );
 
-    const { container } = render(
+    const { container, getByText } = render(
       <ExtraInfoLabel label="MIME Type" value={nodeValue} />
     );
 
-    // Check that the component renders without error
     expect(
       container.querySelector('.extra-info-container')
     ).toBeInTheDocument();
-    expect(
-      container.querySelector('.extra-info-label-heading')
-    ).toHaveTextContent('MIME Type');
+    expect(getByText('MIME Type')).toBeInTheDocument();
   });
 });
 

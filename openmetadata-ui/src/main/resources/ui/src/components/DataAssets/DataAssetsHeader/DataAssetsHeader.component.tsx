@@ -10,28 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Alert } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Alert,
+  Button,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/link-icon-with-bg.svg';
+import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
-import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
@@ -56,6 +60,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -69,7 +74,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
-  isDataAssetsWithServiceField,
+  HeaderDotSeparator,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
@@ -97,8 +102,8 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
-import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
@@ -112,6 +117,67 @@ import {
   DataAssetsWithFollowersField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
+
+type StatItemProps = {
+  icon: FC<{ className?: string }>;
+  count: string | number;
+  tooltip: string;
+  testId: string;
+  onClick?: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  isActive?: boolean;
+};
+
+const StatItem = ({
+  icon: Icon,
+  count,
+  tooltip,
+  testId,
+  onClick,
+  loading,
+  disabled,
+  isActive,
+}: StatItemProps) => {
+  const content = (
+    <span
+      className={classNames(
+        'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
+        isActive ? 'tw:text-brand-secondary' : 'tw:text-tertiary',
+        onClick && !disabled
+          ? 'tw:cursor-pointer tw:hover:text-secondary'
+          : 'tw:cursor-default'
+      )}
+      data-testid={testId}>
+      <Icon className="tw:size-4 tw:text-current" />
+      <span className="tw:text-quaternary">{count}</span>
+    </span>
+  );
+
+  const interactive =
+    onClick && !disabled ? (
+      <button
+        aria-busy={loading || undefined}
+        className="tw:cursor-pointer tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
+        disabled={disabled}
+        type="button"
+        onClick={onClick}>
+        {content}
+      </button>
+    ) : (
+      content
+    );
+
+  return (
+    <Tooltip placement="top" title={tooltip}>
+      <TooltipTrigger>{interactive}</TooltipTrigger>
+    </Tooltip>
+  );
+};
+
+const ThumbsDownOutline: FC<{ className?: string }> = ({ className }) => (
+  <ThumbsUpOutline className={classNames('tw:rotate-180', className)} />
+);
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -162,6 +228,10 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [upVoteLoading, setUpVoteLoading] = useState(false);
+  const [downVoteLoading, setDownVoteLoading] = useState(false);
+  const [copyTooltip, setCopyTooltip] = useState<string>();
+  const { onCopyToClipBoard } = useClipboard(globalThis.location.href);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
@@ -186,19 +256,15 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const icon = useMemo(() => {
+  const serviceLogoUrl = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
-    return serviceType ? (
-      <img
-        alt={get(dataAsset, 'service.displayName', '')}
-        className="header-icon"
-        src={serviceUtilClassBase.getServiceTypeLogo({
+    return serviceType
+      ? serviceUtilClassBase.getServiceTypeLogo({
           ...dataAsset,
           entityType,
-        })}
-      />
-    ) : null;
+        })
+      : null;
   }, [dataAsset, entityType]);
 
   const excludeEntityService = useMemo(() => {
@@ -270,7 +336,7 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const alertBadge = useMemo(() => {
+  const statusBadge = useMemo(() => {
     const shouldShowStatus =
       entityUtilClassBase.shouldShowEntityStatus(entityType);
     const entityStatus =
@@ -278,16 +344,24 @@ export const DataAssetsHeader = ({
         ? dataAsset.entityStatus
         : EntityStatus.Unprocessed;
 
-    const statusBadge =
-      shouldShowStatus && entityStatus ? (
-        <EntityStatusBadge showDivider={false} status={entityStatus} />
-      ) : null;
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [entityType, dataAsset]);
 
-    const renderAlertBadgeWithDq = () => (
-      <Space size={8}>
-        {badge}
-        {statusBadge}
-        <Tooltip placement="right" title={t('label.check-upstream-failure')}>
+  const dqFailureAlert = useMemo(() => {
+    const shouldRender =
+      isDqAlertSupported &&
+      tableClassBase.getAlertEnableStatus() &&
+      dqFailureCount > 0;
+
+    if (!shouldRender) {
+      return null;
+    }
+
+    return (
+      <Tooltip placement="right" title={t('label.check-upstream-failure')}>
+        <TooltipTrigger>
           <Link
             to={{
               pathname: getEntityDetailsPath(
@@ -295,46 +369,20 @@ export const DataAssetsHeader = ({
                 dataAsset?.fullyQualifiedName ?? '',
                 EntityTabs.LINEAGE
               ),
-
               search: QueryString.stringify({
                 layers: [LineageLayer.DataObservability],
               }),
             }}>
-            <RedAlertIcon className="text-red-3" height={24} width={24} />
+            <RedAlertIcon
+              className="tw:text-fg-error-primary"
+              height={24}
+              width={24}
+            />
           </Link>
-        </Tooltip>
-      </Space>
+        </TooltipTrigger>
+      </Tooltip>
     );
-
-    const renderDefaultBadge = () => {
-      if (!badge && !statusBadge) {
-        return null;
-      }
-
-      return (
-        <Space size={8}>
-          {badge}
-          {statusBadge}
-        </Space>
-      );
-    };
-
-    if (
-      isDqAlertSupported &&
-      tableClassBase.getAlertEnableStatus() &&
-      dqFailureCount > 0
-    ) {
-      return renderAlertBadgeWithDq();
-    }
-
-    return renderDefaultBadge();
-  }, [
-    dqFailureCount,
-    dataAsset?.fullyQualifiedName,
-    entityType,
-    badge,
-    dataAsset,
-  ]);
+  }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, t]);
 
   const fetchActiveAnnouncement = async () => {
     try {
@@ -401,17 +449,44 @@ export const DataAssetsHeader = ({
     );
   };
 
-  const dataAssetServiceName = useMemo(() => {
-    if (isDataAssetsWithServiceField(dataAsset)) {
-      return dataAsset.service?.name ?? '';
-    } else {
-      return 'service';
-    }
-  }, [isDataAssetsWithServiceField, dataAsset]);
+  const handleVoteChange = useCallback(
+    async (data: VotingDataProps) => {
+      await onUpdateVote?.(data, dataAsset.id ?? '');
+    },
+    [onUpdateVote, dataAsset.id]
+  );
 
-  const handleVoteChange = async (data: VotingDataProps) => {
-    await onUpdateVote?.(data, dataAsset.id ?? '');
-  };
+  const handleUpVote = useCallback(async () => {
+    if (!onUpdateVote) {
+      return;
+    }
+    setUpVoteLoading(true);
+    const updatedVoteType =
+      voteStatus === QueryVoteType.votedUp
+        ? QueryVoteType.unVoted
+        : QueryVoteType.votedUp;
+    try {
+      await handleVoteChange({ updatedVoteType });
+    } finally {
+      setUpVoteLoading(false);
+    }
+  }, [onUpdateVote, voteStatus, handleVoteChange]);
+
+  const handleDownVote = useCallback(async () => {
+    if (!onUpdateVote) {
+      return;
+    }
+    setDownVoteLoading(true);
+    const updatedVoteType =
+      voteStatus === QueryVoteType.votedDown
+        ? QueryVoteType.unVoted
+        : QueryVoteType.votedDown;
+    try {
+      await handleVoteChange({ updatedVoteType });
+    } finally {
+      setDownVoteLoading(false);
+    }
+  }, [onUpdateVote, voteStatus, handleVoteChange]);
 
   const handleOpenAnnouncementDrawer = useCallback(
     () => setIsAnnouncementDrawerOpen(true),
@@ -428,6 +503,12 @@ export const DataAssetsHeader = ({
     await onFollowClick?.();
     setIsFollowingLoading(false);
   }, [onFollowClick]);
+
+  const handleCopyEntityUrl = useCallback(async () => {
+    await onCopyToClipBoard();
+    setCopyTooltip(t('message.link-copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
+  }, [onCopyToClipBoard, t]);
 
   const {
     editDomainPermission,
@@ -466,7 +547,7 @@ export const DataAssetsHeader = ({
 
       if (activeSuggestion) {
         return (
-          <div className="w-auto" data-testid="tier-suggestion-container">
+          <div className="tw:w-auto" data-testid="tier-suggestion-container">
             <SuggestionsAlert
               showInlineCard
               hasEditAccess={editTierPermission}
@@ -502,19 +583,21 @@ export const DataAssetsHeader = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract?.latestResult?.status)
     ) {
-      const icon = getDataContractStatusIcon(
+      const IconComponent = getDataContractStatusIcon(
         dataContract?.latestResult?.status
       );
 
       return (
         <Button
           className={classNames(
-            `data-contract-latest-result-button
-                     ${toLower(dataContract?.latestResult?.status)}`
+            'data-contract-latest-result-button',
+            toLower(dataContract?.latestResult?.status)
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
-          onClick={() => {
+          iconLeading={IconComponent}
+          size="sm"
+          onPress={() => {
             navigate(
               getEntityDetailsPath(
                 entityType,
@@ -531,7 +614,7 @@ export const DataAssetsHeader = ({
     }
 
     return null;
-  }, [dataContract, customizedPage?.tabs]);
+  }, [dataContract, customizedPage?.tabs, entityType, dataAsset, navigate, t]);
 
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
@@ -569,20 +652,23 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip
+        placement="top"
         title={
           disableRunAgentsButtonMessage ??
           t('message.trigger-auto-pilot-application')
         }>
-        <Button
-          className="font-semibold"
-          data-testid="trigger-auto-pilot-application-button"
-          disabled={disableRunAgentsButton}
-          icon={<Icon className="flex-center" component={TriggerIcon} />}
-          loading={isLoading}
-          type="primary"
-          onClick={triggerTheAutoPilotApplication}>
-          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
-        </Button>
+        <TooltipTrigger>
+          <Button
+            color="primary"
+            data-testid="trigger-auto-pilot-application-button"
+            iconLeading={TriggerIcon}
+            isDisabled={disableRunAgentsButton}
+            isLoading={isLoading}
+            size="sm"
+            onPress={triggerTheAutoPilotApplication}>
+            {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
+          </Button>
+        </TooltipTrigger>
       </Tooltip>
     );
   }, [
@@ -592,6 +678,8 @@ export const DataAssetsHeader = ({
     triggerTheAutoPilotApplication,
     disableRunAgentsButtonMessage,
     permissions.Trigger,
+    entityType,
+    t,
   ]);
 
   const isOwner = useMemo(
@@ -625,14 +713,17 @@ export const DataAssetsHeader = ({
     );
 
     return (
-      <Tooltip title={tooltipTitle}>
-        <Button
-          className="source-url-button font-semibold"
-          data-testid="request-data-access-button"
-          disabled={isDarDisabled}
-          onClick={() => setIsRequestDataAccessOpen(true)}>
-          {t('label.request-data-access')}
-        </Button>
+      <Tooltip placement="top" title={tooltipTitle}>
+        <TooltipTrigger>
+          <Button
+            color="secondary"
+            data-testid="request-data-access-button"
+            isDisabled={isDarDisabled}
+            size="sm"
+            onPress={() => setIsRequestDataAccessOpen(true)}>
+            {t('label.request-data-access')}
+          </Button>
+        </TooltipTrigger>
       </Tooltip>
     );
   }, [
@@ -643,8 +734,35 @@ export const DataAssetsHeader = ({
     isDarAwaitingGrant,
     isDarGranted,
     canCreateTask,
+    currentUser,
     t,
   ]);
+
+  const sourceUrlButton = useMemo(() => {
+    const sourceUrl = (dataAsset as Table).sourceUrl;
+
+    if (!sourceUrl) {
+      return null;
+    }
+
+    return (
+      <Tooltip placement="bottom" title={t('label.source-url')}>
+        <TooltipTrigger>
+          <Button
+            color="secondary"
+            data-testid="source-url-button"
+            href={sourceUrl}
+            iconLeading={LinkIcon}
+            size="sm"
+            target="_blank">
+            {t('label.view-in-service-type', {
+              serviceType: (dataAsset as Table).serviceType,
+            })}
+          </Button>
+        </TooltipTrigger>
+      </Tooltip>
+    );
+  }, [dataAsset, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -654,308 +772,368 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row
-        className="data-assets-header-container"
-        data-testid="data-assets-header"
-        gutter={[0, 20]}>
-        {isDarAwaitingGrant && (
-          <Col span={24}>
-            <Alert
-              data-testid="dar-awaiting-grant-banner"
-              title={t('label.data-access-request-awaiting-grant')}
-              variant="brand">
-              {t('message.data-access-request-awaiting-grant-message')}
-            </Alert>
-          </Col>
+      <div
+        className={classNames(
+          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5',
+          'data-assets-header-container'
         )}
-        <Col
-          className={classNames('d-flex flex-col gap-3 ', {
-            'p-l-xs': isCustomizedView,
-          })}
-          span={24}>
-          <TitleBreadcrumb
-            loading={isBreadcrumbLoading}
-            titleLinks={breadcrumbs.map((link) =>
-              isCustomizedView ? { ...link, url: '', noLink: true } : link
-            )}
-          />
-          <Row gutter={[20, 0]}>
-            <Col className="w-min-0" flex="1">
-              <EntityHeaderTitle
-                badge={alertBadge}
-                deleted={dataAsset?.deleted}
-                displayName={dataAsset.displayName}
-                entityType={entityType}
-                excludeEntityService={excludeEntityService}
-                followers={followers}
-                handleFollowingClick={handleFollowingClick}
-                icon={icon}
-                isCustomizedView={isCustomizedView}
-                isFollowing={isFollowing}
-                isFollowingLoading={isFollowingLoading}
-                name={dataAsset?.name}
-                serviceName={dataAssetServiceName}
-                suffix={<LearningIcon pageId={entityType} />}
-              />
-            </Col>
-            <Col className="flex items-center">
-              <Space>
-                <ButtonGroup
-                  className="data-asset-button-group spaced"
-                  data-testid="asset-header-btn-group"
-                  size="small">
-                  {triggerAutoPilotApplicationButton}
-                  {dataContractLatestResultButton}
+        data-testid="data-assets-header">
+        {isDarAwaitingGrant && (
+          <Alert
+            data-testid="dar-awaiting-grant-banner"
+            title={t('label.data-access-request-awaiting-grant')}
+            variant="brand">
+            {t('message.data-access-request-awaiting-grant-message')}
+          </Alert>
+        )}
 
-                  {onUpdateVote && (
-                    <Voting
-                      disabled={deleted}
-                      voteStatus={voteStatus}
-                      votes={votes}
-                      onUpdateVote={handleVoteChange}
-                    />
-                  )}
-                  {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
-                    <Tooltip title={t('label.open-task-plural')}>
-                      <Button
-                        icon={<Icon component={TaskOpenIcon} />}
-                        onClick={handleOpenTaskClick}>
-                        <Typography.Text>{openTaskCount}</Typography.Text>
-                      </Button>
-                    </Tooltip>
-                  )}
-
-                  <Tooltip title={t('label.version-plural-history')}>
-                    <Button
-                      className="version-button"
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
-                      <Typography.Text>{version}</Typography.Text>
-                    </Button>
-                  </Tooltip>
-
-                  {(dataAsset as Table).sourceUrl && (
-                    <Tooltip placement="bottom" title={t('label.source-url')}>
-                      <Typography.Link
-                        className="cursor-pointer source-url-link"
-                        href={(dataAsset as Table).sourceUrl}
-                        target="_blank">
-                        <Button
-                          className="source-url-button cursor-pointer font-semibold"
-                          data-testid="source-url-button"
-                          icon={
-                            <Icon
-                              className="flex-center"
-                              component={LinkIcon}
-                            />
-                          }>
-                          {t('label.view-in-service-type', {
-                            serviceType: (dataAsset as Table).serviceType,
-                          })}
-                        </Button>
-                      </Typography.Link>
-                    </Tooltip>
-                  )}
-                  {requestDataAccessButton}
-                  <ManageButton
-                    isAsyncDelete
-                    afterDeleteAction={afterDeleteAction}
-                    allowRename={allowRename}
-                    allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
-                    canDelete={permissions.Delete}
-                    deleted={dataAsset.deleted}
-                    displayName={getEntityName(dataAsset)}
-                    editDisplayNamePermission={
-                      permissions?.EditAll || permissions?.EditDisplayName
-                    }
-                    entityFQN={dataAsset.fullyQualifiedName}
-                    entityId={dataAsset.id}
-                    entityName={dataAsset.name}
-                    entityType={entityType}
-                    extraDropdownContent={extraDropdownContent}
-                    isRecursiveDelete={isRecursiveDelete}
-                    onAnnouncementClick={
-                      permissions?.EditAll
-                        ? handleOpenAnnouncementDrawer
-                        : undefined
-                    }
-                    onEditDisplayName={onDisplayNameUpdate}
-                    onProfilerSettingUpdate={onProfilerSettingUpdate}
-                    onRestoreEntity={onRestoreDataAsset}
-                  />
-                </ButtonGroup>
-
-                {activeAnnouncement && (
-                  <AnnouncementCard
-                    announcement={activeAnnouncement}
-                    onClick={handleOpenAnnouncementDrawer}
-                  />
-                )}
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-
-        <Col span={24}>
-          <div
-            className="data-asset-header-metadata"
-            data-testid="data-asset-header-metadata">
-            {showDomain && (
+        {/* Row 1 — Breadcrumb + stat bar */}
+        <div
+          className={classNames(
+            'tw:flex tw:items-center tw:justify-between tw:gap-4 tw:flex-wrap',
+            { 'tw:pl-1': isCustomizedView }
+          )}>
+          <div className="tw:min-w-0 tw:flex-1">
+            <TitleBreadcrumb
+              loading={isBreadcrumbLoading}
+              titleLinks={breadcrumbs.map((link) =>
+                isCustomizedView ? { ...link, url: '', noLink: true } : link
+              )}
+            />
+          </div>
+          <div className="tw:flex tw:items-center tw:gap-4">
+            {onUpdateVote && (
               <>
-                <DomainLabel
-                  headerLayout
-                  showDashPlaceholder
-                  afterDomainUpdateAction={afterDomainUpdateAction}
-                  domains={(dataAsset as EntitiesWithDomainField).domains}
-                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
-                  entityId={dataAsset.id ?? ''}
-                  entityType={entityType}
-                  hasPermission={editDomainPermission}
-                  multiple={entityRules.canAddMultipleDomains}
-                  textClassName="render-domain-lebel-style"
+                <StatItem
+                  count={votes?.upVotes ?? 0}
+                  disabled={deleted}
+                  icon={ThumbsUpOutline}
+                  isActive={voteStatus === QueryVoteType.votedUp}
+                  loading={upVoteLoading}
+                  testId="up-vote-btn"
+                  tooltip={t('label.up-vote')}
+                  onClick={handleUpVote}
                 />
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
+                <StatItem
+                  count={votes?.downVotes ?? 0}
+                  disabled={deleted}
+                  icon={ThumbsDownOutline}
+                  isActive={voteStatus === QueryVoteType.votedDown}
+                  loading={downVoteLoading}
+                  testId="down-vote-btn"
+                  tooltip={t('label.down-vote')}
+                  onClick={handleDownVote}
                 />
               </>
             )}
-            <OwnerLabel
-              showDashPlaceholder
-              avatarSize={24}
-              hasPermission={editOwnerPermission}
-              isCompactView={false}
-              maxVisibleOwners={4}
-              multiple={{
-                user: entityRules.canAddMultipleUserOwners,
-                team: entityRules.canAddMultipleTeamOwner,
-              }}
-              owners={dataAsset?.owners}
-              onUpdate={onOwnerUpdate}
+            {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
+              <StatItem
+                count={openTaskCount ?? 0}
+                icon={TaskOpenIcon}
+                testId="open-task-stat"
+                tooltip={t('label.open-task-plural')}
+                onClick={handleOpenTaskClick}
+              />
+            )}
+            {version !== undefined && (
+              <StatItem
+                count={version}
+                icon={VersionIcon}
+                testId="version-button"
+                tooltip={t('label.version-plural-history')}
+                onClick={onVersionClick}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Row 2 — Title + actions */}
+        <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap">
+          {serviceLogoUrl && (
+            <div
+              className={classNames(
+                'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
+                'tw:justify-center tw:overflow-hidden tw:rounded-full',
+                'tw:bg-primary tw:border tw:border-primary tw:shadow-xs-skeumorphic'
+              )}>
+              <img
+                alt={get(dataAsset, 'service.displayName', '')}
+                className="tw:size-4.5 tw:object-contain"
+                src={serviceLogoUrl}
+              />
+            </div>
+          )}
+          <Typography
+            as="h2"
+            className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
+            data-testid="entity-header-display-name"
+            ellipsis={{ tooltip: entityName }}
+            size="text-lg"
+            weight="bold">
+            {entityName}
+          </Typography>
+          <Tooltip
+            placement="top"
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
+            <TooltipTrigger>
+              <button
+                aria-label={t('label.copy-item', {
+                  item: t('label.url-uppercase'),
+                })}
+                className={classNames(
+                  'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
+                  'tw:justify-center tw:rounded-md tw:border',
+                  'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
+                  'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
+                )}
+                data-testid="entity-header-copy-button"
+                type="button"
+                onClick={handleCopyEntityUrl}>
+                <LinkIcon className="tw:size-3.5" />
+              </button>
+            </TooltipTrigger>
+          </Tooltip>
+          {badge}
+          {statusBadge}
+          {dqFailureAlert}
+          <LearningIcon pageId={entityType} />
+
+          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-2">
+            {triggerAutoPilotApplicationButton}
+            {dataContractLatestResultButton}
+            {sourceUrlButton}
+            {requestDataAccessButton}
+            {!excludeEntityService &&
+              !deleted &&
+              !isCustomizedView &&
+              onFollowClick && (
+                <Tooltip
+                  placement="top"
+                  title={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}>
+                  <TooltipTrigger>
+                    <button
+                      aria-label={t(
+                        `label.${isFollowing ? 'un-follow' : 'follow'}`
+                      )}
+                      aria-pressed={isFollowing}
+                      className={classNames(
+                        'tw:inline-flex tw:h-9 tw:w-9 tw:shrink-0 tw:items-center',
+                        'tw:justify-center tw:rounded-lg tw:border',
+                        'tw:border-border-secondary tw:bg-primary tw:shadow-xs',
+                        'tw:transition-colors tw:hover:bg-primary_hover',
+                        'tw:disabled:cursor-not-allowed tw:disabled:opacity-60',
+                        isFollowing
+                          ? 'tw:text-warning-primary'
+                          : 'tw:text-fg-quaternary'
+                      )}
+                      data-testid="entity-follow-button"
+                      disabled={deleted || isFollowingLoading}
+                      type="button"
+                      onClick={handleFollowingClick}>
+                      <StarFilledIcon className="tw:size-4" />
+                      {(followers ?? 0) > 0 && (
+                        <span className="tw:sr-only">{followers}</span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                </Tooltip>
+              )}
+            <ManageButton
+              isAsyncDelete
+              afterDeleteAction={afterDeleteAction}
+              allowRename={allowRename}
+              allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
+              canDelete={permissions.Delete}
+              deleted={dataAsset.deleted}
+              displayName={getEntityName(dataAsset)}
+              editDisplayNamePermission={
+                permissions?.EditAll || permissions?.EditDisplayName
+              }
+              entityFQN={dataAsset.fullyQualifiedName}
+              entityId={dataAsset.id}
+              entityName={dataAsset.name}
+              entityType={entityType}
+              extraDropdownContent={extraDropdownContent}
+              isRecursiveDelete={isRecursiveDelete}
+              onAnnouncementClick={
+                permissions?.EditAll ? handleOpenAnnouncementDrawer : undefined
+              }
+              onEditDisplayName={onDisplayNameUpdate}
+              onProfilerSettingUpdate={onProfilerSettingUpdate}
+              onRestoreEntity={onRestoreDataAsset}
             />
-            <Divider className="self-center vertical-divider" type="vertical" />
-            {tierSuggestionRender ?? (
-              <Space
-                className="d-flex align-start"
-                data-testid="header-tier-container">
-                <div className="d-flex flex-col gap-2">
-                  <div className="tier-heading-container d-flex items-center gap-1">
-                    <span className="entity-no-tier">{t('label.tier')}</span>
-                    {editTierPermission && (
-                      <TierCard
-                        currentTier={tier?.tagFQN}
-                        footerActionButtonsClassName="p-x-md"
-                        updateTier={onTierUpdate}>
-                        <EditIconButton
-                          newLook
-                          data-testid="edit-tier"
-                          size="small"
-                          title={t('label.edit-entity', {
-                            entity: t('label.tier'),
-                          })}
-                        />
-                      </TierCard>
-                    )}
-                  </div>
-                  {tier ? (
-                    <TagsV1
-                      hideIcon
-                      startWith={TAG_START_WITH.SOURCE_ICON}
-                      tag={tier}
-                      tagProps={{
-                        'data-testid': 'Tier',
-                      }}
+          </div>
+        </div>
+
+        {activeAnnouncement && (
+          <AnnouncementCard
+            announcement={activeAnnouncement}
+            onClick={handleOpenAnnouncementDrawer}
+          />
+        )}
+
+        {/* Row 3 — Metadata strip */}
+        <div
+          className="tw:flex tw:flex-wrap tw:items-end tw:gap-x-1 tw:gap-y-3"
+          data-testid="data-asset-header-metadata">
+          {showDomain && (
+            <DomainLabel
+              headerLayout
+              showDashPlaceholder
+              afterDomainUpdateAction={afterDomainUpdateAction}
+              domains={(dataAsset as EntitiesWithDomainField).domains}
+              entityFqn={dataAsset.fullyQualifiedName ?? ''}
+              entityId={dataAsset.id ?? ''}
+              entityType={entityType}
+              hasPermission={editDomainPermission}
+              multiple={entityRules.canAddMultipleDomains}
+              textClassName="render-domain-lebel-style"
+            />
+          )}
+
+          {showDomain && <HeaderDotSeparator />}
+
+          <OwnerLabel
+            showDashPlaceholder
+            avatarSize={24}
+            hasPermission={editOwnerPermission}
+            isCompactView={false}
+            maxVisibleOwners={4}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owners={dataAsset?.owners}
+            onUpdate={onOwnerUpdate}
+          />
+
+          <HeaderDotSeparator />
+
+          {tierSuggestionRender ?? (
+            <div
+              className="tw:flex tw:flex-col tw:gap-1.5"
+              data-testid="header-tier-container">
+              <div className="tw:flex tw:items-center tw:gap-1">
+                <Typography
+                  as="span"
+                  className="tw:text-secondary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tier')}
+                </Typography>
+                {editTierPermission && (
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    footerActionButtonsClassName="p-x-md"
+                    updateTier={onTierUpdate}>
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-tier"
+                      size="small"
+                      title={t('label.edit-entity', {
+                        entity: t('label.tier'),
+                      })}
+                    />
+                  </TierCard>
+                )}
+              </div>
+              {tier ? (
+                <TagsV1
+                  hideIcon
+                  startWith={TAG_START_WITH.SOURCE_ICON}
+                  tag={tier}
+                  tagProps={{
+                    'data-testid': 'Tier',
+                  }}
+                />
+              ) : (
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  data-testid="Tier"
+                  size="text-sm"
+                  weight="medium">
+                  {NO_DATA_PLACEHOLDER}
+                </Typography>
+              )}
+            </div>
+          )}
+
+          {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
+            <>
+              <HeaderDotSeparator />
+              <RetentionPeriod
+                hasPermission={permissions.EditAll && !dataAsset.deleted}
+                retentionPeriod={dataAsset.retentionPeriod}
+                onUpdate={onUpdateRetentionPeriod}
+              />
+            </>
+          )}
+
+          {entityType === EntityType.METRIC && onMetricUpdate && (
+            <MetricHeaderInfo
+              metricDetails={dataAsset}
+              metricPermissions={permissions}
+              onUpdateMetricDetails={onMetricUpdate}
+            />
+          )}
+
+          {isUndefined(serviceCategory) && (
+            <>
+              <HeaderDotSeparator />
+              <div
+                className="tw:flex tw:flex-col tw:gap-1.5"
+                data-testid="certification-label">
+                <div className="tw:flex tw:items-center tw:gap-1">
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    size="text-xs"
+                    weight="medium">
+                    {t('label.certification')}
+                  </Typography>
+                  {editCertificationPermission && (
+                    <Certification
+                      currentCertificate={
+                        'certification' in dataAsset
+                          ? dataAsset.certification?.tagLabel?.tagFQN
+                          : undefined
+                      }
+                      permission={editCertificationPermission}
+                      onCertificationUpdate={onCertificationUpdate}>
+                      <EditIconButton
+                        newLook
+                        data-testid="edit-certification"
+                        size="small"
+                        title={t('label.edit-entity', {
+                          entity: t('label.certification'),
+                        })}
+                      />
+                    </Certification>
+                  )}
+                </div>
+                <div
+                  className="tw:text-sm tw:font-medium tw:text-primary"
+                  data-testid="certification-value">
+                  {(dataAsset as Table).certification ? (
+                    <CertificationTag
+                      showName
+                      certification={(dataAsset as Table).certification!}
                     />
                   ) : (
-                    <span
-                      className="font-medium no-tier-text text-sm"
-                      data-testid="Tier">
-                      {NO_DATA_PLACEHOLDER}
-                    </span>
+                    NO_DATA_PLACEHOLDER
                   )}
                 </div>
-              </Space>
-            )}
+              </div>
+            </>
+          )}
 
-            {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <RetentionPeriod
-                  hasPermission={permissions.EditAll && !dataAsset.deleted}
-                  retentionPeriod={dataAsset.retentionPeriod}
-                  onUpdate={onUpdateRetentionPeriod}
-                />
-              </>
-            )}
-
-            {entityType === EntityType.METRIC && onMetricUpdate && (
-              <MetricHeaderInfo
-                metricDetails={dataAsset}
-                metricPermissions={permissions}
-                onUpdateMetricDetails={onMetricUpdate}
-              />
-            )}
-
-            {isUndefined(serviceCategory) && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <div className="d-flex align-start extra-info-container">
-                  <Typography.Text
-                    className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                    data-testid="certification-label">
-                    <div className="flex gap-2">
-                      <span className="extra-info-label-heading">
-                        {t('label.certification')}
-                      </span>
-
-                      {editCertificationPermission && (
-                        <Certification
-                          currentCertificate={
-                            'certification' in dataAsset
-                              ? dataAsset.certification?.tagLabel?.tagFQN
-                              : undefined
-                          }
-                          permission={editCertificationPermission}
-                          onCertificationUpdate={onCertificationUpdate}>
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-certification"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.certification'),
-                            })}
-                          />
-                        </Certification>
-                      )}
-                    </div>
-                    <div
-                      className="font-medium certification-value"
-                      data-testid="certification-value">
-                      {(dataAsset as Table).certification ? (
-                        <CertificationTag
-                          showName
-                          certification={(dataAsset as Table).certification!}
-                        />
-                      ) : (
-                        NO_DATA_PLACEHOLDER
-                      )}
-                    </div>
-                  </Typography.Text>
-                </div>
-              </>
-            )}
-
-            {extraInfo}
-          </div>
-        </Col>
-      </Row>
+          {extraInfo}
+        </div>
+      </div>
 
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer

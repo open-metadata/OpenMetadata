@@ -113,6 +113,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  HeaderDotSeparator: jest
+    .fn()
+    .mockImplementation(() => <span data-testid="header-dot-separator" />),
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
@@ -1228,7 +1231,10 @@ describe('DataAssetsHeader component', () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
-      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+      const TestIcon = (props: { className?: string }) => (
+        <svg {...props} data-testid="contract-status-icon" />
+      );
+      mockGetDataContractStatusIcon.mockReturnValue(TestIcon);
 
       (getContractByEntityId as jest.Mock).mockImplementation(() =>
         Promise.resolve({
@@ -1243,7 +1249,7 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('.anticon')).toBeInTheDocument();
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {
