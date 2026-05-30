@@ -124,6 +124,15 @@ const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   updatedAt: 'label.last-updated',
 };
 
+// The Status filter shows the distinct metric statuses (the design's
+// Approved / In review / Draft) — not every EntityStatus enum value, several
+// of which collapse to the same "Draft" label and render as duplicates.
+const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
+  EntityStatus.Approved,
+  EntityStatus.InReview,
+  EntityStatus.Draft,
+];
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -789,7 +798,7 @@ const MetricListPage = () => {
                           )
                         }>
                         <Dropdown.Item id="all" label={t('label.all')} />
-                        {Object.values(EntityStatus).map((status) => (
+                        {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
                           <Dropdown.Item
                             id={status}
                             key={status}
