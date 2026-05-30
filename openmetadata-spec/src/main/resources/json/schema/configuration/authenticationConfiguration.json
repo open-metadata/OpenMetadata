@@ -123,8 +123,7 @@
       "title": "Session Expiry",
       "description": "Validity for the authenticated session across all auth providers. Minimum is 3600 seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when present, then to the default 604800-second expiry.",
       "type": "integer",
-      "minimum": 3600,
-      "default": 604800
+      "minimum": 3600
     },
     "maxActiveSessionsPerUser": {
       "title": "Max Active Sessions Per User",

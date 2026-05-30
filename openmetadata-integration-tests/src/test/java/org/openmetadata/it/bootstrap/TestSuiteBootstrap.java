@@ -156,6 +156,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static String fusekiEndpoint;
   private static String kubeConfigYaml;
   private static String redisUrl;
+  private static String redisKeyspace;
 
   private static final String DEFAULT_REDIS_IMAGE = "redis:7-alpine";
   private static final int REDIS_PORT = 6379;
@@ -429,6 +430,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     redisUrl =
         String.format(
             "redis://%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(REDIS_PORT));
+    redisKeyspace = "om:it:" + System.currentTimeMillis();
     LOG.info("Redis started: {}", redisUrl);
   }
 
@@ -448,7 +450,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     cacheConfig.provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
     cacheConfig.redis.url = redisUrl;
     cacheConfig.redis.authType = org.openmetadata.service.cache.CacheConfig.AuthType.NONE;
-    cacheConfig.redis.keyspace = "om:it:" + System.currentTimeMillis();
+    cacheConfig.redis.keyspace = redisKeyspace;
     cacheConfig.redis.commandTimeoutMs = 1000;
     cacheConfig.entityTtlSeconds = 3600;
     cacheConfig.relationshipTtlSeconds = 3600;
