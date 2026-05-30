@@ -346,8 +346,8 @@
                 }
               },
               "children": {
-                "type": "flattened",
-                "ignore_above": 8191
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -401,8 +401,8 @@
                 }
               },
               "children": {
-                "type": "flattened",
-                "ignore_above": 8191
+                "type": "object",
+                "enabled": false
               }
             }
           }

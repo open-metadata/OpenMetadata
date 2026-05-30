@@ -33636,6 +33636,266 @@
         "appliedDate": 1767799745051,
         "expiryDate": 1799335745051
       }
+    },
+    {
+      "name": "dim_deeply_nested_struct",
+      "description": "Edge-case sample: a struct column nested 22 levels deep, past the default Elasticsearch/OpenSearch index.mapping.depth.limit of 20.",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Primary key.",
+          "tags": []
+        },
+        {
+          "name": "level_1",
+          "dataType": "STRUCT",
+          "dataTypeDisplay": "struct<...>",
+          "description": "Struct nesting level 1.",
+          "tags": [],
+          "children": [
+            {
+              "name": "level_2",
+              "dataType": "STRUCT",
+              "dataTypeDisplay": "struct<...>",
+              "description": "Struct nesting level 2.",
+              "tags": [],
+              "children": [
+                {
+                  "name": "level_3",
+                  "dataType": "STRUCT",
+                  "dataTypeDisplay": "struct<...>",
+                  "description": "Struct nesting level 3.",
+                  "tags": [],
+                  "children": [
+                    {
+                      "name": "level_4",
+                      "dataType": "STRUCT",
+                      "dataTypeDisplay": "struct<...>",
+                      "description": "Struct nesting level 4.",
+                      "tags": [],
+                      "children": [
+                        {
+                          "name": "level_5",
+                          "dataType": "STRUCT",
+                          "dataTypeDisplay": "struct<...>",
+                          "description": "Struct nesting level 5.",
+                          "tags": [],
+                          "children": [
+                            {
+                              "name": "level_6",
+                              "dataType": "STRUCT",
+                              "dataTypeDisplay": "struct<...>",
+                              "description": "Struct nesting level 6.",
+                              "tags": [],
+                              "children": [
+                                {
+                                  "name": "level_7",
+                                  "dataType": "STRUCT",
+                                  "dataTypeDisplay": "struct<...>",
+                                  "description": "Struct nesting level 7.",
+                                  "tags": [],
+                                  "children": [
+                                    {
+                                      "name": "level_8",
+                                      "dataType": "STRUCT",
+                                      "dataTypeDisplay": "struct<...>",
+                                      "description": "Struct nesting level 8.",
+                                      "tags": [],
+                                      "children": [
+                                        {
+                                          "name": "level_9",
+                                          "dataType": "STRUCT",
+                                          "dataTypeDisplay": "struct<...>",
+                                          "description": "Struct nesting level 9.",
+                                          "tags": [],
+                                          "children": [
+                                            {
+                                              "name": "level_10",
+                                              "dataType": "STRUCT",
+                                              "dataTypeDisplay": "struct<...>",
+                                              "description": "Struct nesting level 10.",
+                                              "tags": [],
+                                              "children": [
+                                                {
+                                                  "name": "level_11",
+                                                  "dataType": "STRUCT",
+                                                  "dataTypeDisplay": "struct<...>",
+                                                  "description": "Struct nesting level 11.",
+                                                  "tags": [],
+                                                  "children": [
+                                                    {
+                                                      "name": "level_12",
+                                                      "dataType": "STRUCT",
+                                                      "dataTypeDisplay": "struct<...>",
+                                                      "description": "Struct nesting level 12.",
+                                                      "tags": [],
+                                                      "children": [
+                                                        {
+                                                          "name": "level_13",
+                                                          "dataType": "STRUCT",
+                                                          "dataTypeDisplay": "struct<...>",
+                                                          "description": "Struct nesting level 13.",
+                                                          "tags": [],
+                                                          "children": [
+                                                            {
+                                                              "name": "level_14",
+                                                              "dataType": "STRUCT",
+                                                              "dataTypeDisplay": "struct<...>",
+                                                              "description": "Struct nesting level 14.",
+                                                              "tags": [],
+                                                              "children": [
+                                                                {
+                                                                  "name": "level_15",
+                                                                  "dataType": "STRUCT",
+                                                                  "dataTypeDisplay": "struct<...>",
+                                                                  "description": "Struct nesting level 15.",
+                                                                  "tags": [],
+                                                                  "children": [
+                                                                    {
+                                                                      "name": "level_16",
+                                                                      "dataType": "STRUCT",
+                                                                      "dataTypeDisplay": "struct<...>",
+                                                                      "description": "Struct nesting level 16.",
+                                                                      "tags": [],
+                                                                      "children": [
+                                                                        {
+                                                                          "name": "level_17",
+                                                                          "dataType": "STRUCT",
+                                                                          "dataTypeDisplay": "struct<...>",
+                                                                          "description": "Struct nesting level 17.",
+                                                                          "tags": [],
+                                                                          "children": [
+                                                                            {
+                                                                              "name": "level_18",
+                                                                              "dataType": "STRUCT",
+                                                                              "dataTypeDisplay": "struct<...>",
+                                                                              "description": "Struct nesting level 18.",
+                                                                              "tags": [],
+                                                                              "children": [
+                                                                                {
+                                                                                  "name": "level_19",
+                                                                                  "dataType": "STRUCT",
+                                                                                  "dataTypeDisplay": "struct<...>",
+                                                                                  "description": "Struct nesting level 19.",
+                                                                                  "tags": [],
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "name": "level_20",
+                                                                                      "dataType": "STRUCT",
+                                                                                      "dataTypeDisplay": "struct<...>",
+                                                                                      "description": "Struct nesting level 20.",
+                                                                                      "tags": [],
+                                                                                      "children": [
+                                                                                        {
+                                                                                          "name": "level_21",
+                                                                                          "dataType": "STRUCT",
+                                                                                          "dataTypeDisplay": "struct<...>",
+                                                                                          "description": "Struct nesting level 21.",
+                                                                                          "tags": [],
+                                                                                          "children": [
+                                                                                            {
+                                                                                              "name": "level_22",
+                                                                                              "dataType": "STRUCT",
+                                                                                              "dataTypeDisplay": "struct<...>",
+                                                                                              "description": "Struct nesting level 22.",
+                                                                                              "tags": [],
+                                                                                              "children": [
+                                                                                                {
+                                                                                                  "name": "leaf_metric",
+                                                                                                  "dataType": "VARCHAR",
+                                                                                                  "dataLength": 256,
+                                                                                                  "dataTypeDisplay": "varchar(256)",
+                                                                                                  "description": "Deepest leaf of a 22-level struct; reproduces the mapping depth limit.",
+                                                                                                  "tags": []
+                                                                                                }
+                                                                                              ]
+                                                                                            }
+                                                                                          ]
+                                                                                        }
+                                                                                      ]
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dim_oversized_struct_field",
+      "description": "Edge-case sample: a nested struct whose leaf description exceeds Lucene's 32,766-byte per-term limit, reproducing the search reindex 'immense term' failure.",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Primary key.",
+          "tags": []
+        },
+        {
+          "name": "measures",
+          "dataType": "STRUCT",
+          "dataTypeDisplay": "struct<revenue_measure:struct<derived_expression:varchar>>",
+          "description": "Computed measures for the data model.",
+          "tags": [],
+          "children": [
+            {
+              "name": "revenue_measure",
+              "dataType": "STRUCT",
+              "dataTypeDisplay": "struct<derived_expression:varchar>",
+              "description": "Revenue measure with a large derived expression.",
+              "tags": [],
+              "children": [
+                {
+                  "name": "derived_expression",
+                  "dataType": "VARCHAR",
+                  "dataLength": 256,
+                  "dataTypeDisplay": "varchar(256)",
+                  "description": "Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / Expression : SUM(CASE WHEN revenue > 0 THEN revenue END) 収益 / ",
+                  "tags": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
