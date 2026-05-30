@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
-import { MemoryItem } from './MemoriesView.interface';
 
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -23,18 +23,26 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
 
+jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
+  jest.fn(() => <button data-testid="copy-link-btn" />)
+);
+
+jest.mock('../../../assets/svg/edit-new.svg', () => ({
+  ReactComponent: jest.fn(() => <svg />),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  Card: jest.fn(
+  ButtonUtility: jest.fn(
     ({
-      children,
-      'data-testid': testId,
+      onClick,
+      'data-testid': testId = 'button-utility',
     }: {
-      children: React.ReactNode;
+      onClick?: () => void;
       'data-testid'?: string;
-    }) => <div data-testid={testId}>{children}</div>
+    }) => <button data-testid={testId} onClick={onClick} />
   ),
   Dot: jest.fn(() => <span />),
   Dropdown: {
@@ -66,7 +74,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
 }));
 
-const mockMemories: MemoryItem[] = [
+const mockMemories: ContextMemory[] = [
   {
     id: 'mem-1',
     name: 'my-first-memory',

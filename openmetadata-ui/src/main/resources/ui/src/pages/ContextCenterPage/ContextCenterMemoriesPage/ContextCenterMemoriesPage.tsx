@@ -24,6 +24,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -32,10 +33,12 @@ import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryMod
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
 import {
   MemoryFilterTab,
-  MemoryItem,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  MemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -47,7 +50,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,relatedEntities';
+const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
@@ -69,13 +72,14 @@ const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
-  const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
-  const [memoryToDelete, setMemoryToDelete] = useState<MemoryItem>();
-  const [memoryToEdit, setMemoryToEdit] = useState<MemoryItem>();
-  const [memoryToView, setMemoryToView] = useState<MemoryItem>();
+  const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
+  const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
+  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -101,25 +105,7 @@ const ContextCenterMemoriesPage: FC = () => {
         limit: 1000,
         fields: MEMORY_FIELDS,
       });
-      const items: MemoryItem[] = (response.data ?? []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        title: m.title,
-        summary: m.summary,
-        question: m.question ?? '',
-        answer: m.answer ?? '',
-        memoryType: m.memoryType,
-        status: m.status,
-        updatedBy: m.updatedBy,
-        updatedAt: m.updatedAt,
-        tags: m.tags,
-        usageCount: m.usageCount,
-        lastUsedAt: m.lastUsedAt,
-        relatedEntities: m.relatedEntities,
-        visibility: m.shareConfig?.visibility,
-        owners: m.owners,
-      }));
-      setMemories(items);
+      setMemories(response.data ?? []);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -136,18 +122,30 @@ const ContextCenterMemoriesPage: FC = () => {
       string,
       { name: string; displayName: string; type: string }
     >();
-    memories.forEach((m) =>
-      m.relatedEntities?.forEach((ref) => {
-        const fqn = ref.fullyQualifiedName ?? ref.id;
-        if (fqn && !seen.has(fqn)) {
-          seen.set(fqn, {
-            name: ref.name ?? fqn,
-            displayName: ref.displayName ?? ref.name ?? fqn,
-            type: ref.type ?? '',
-          });
-        }
-      })
-    );
+
+    const addRef = (ref: {
+      fullyQualifiedName?: string;
+      id?: string;
+      name?: string;
+      displayName?: string;
+      type?: string;
+    }) => {
+      const fqn = ref.fullyQualifiedName ?? ref.id;
+      if (fqn && !seen.has(fqn)) {
+        seen.set(fqn, {
+          name: ref.name ?? fqn,
+          displayName: ref.displayName ?? ref.name ?? fqn,
+          type: ref.type ?? '',
+        });
+      }
+    };
+
+    memories.forEach((m) => {
+      if (m.primaryEntity) {
+        addRef(m.primaryEntity);
+      }
+      m.relatedEntities?.forEach(addRef);
+    });
 
     return [
       {
@@ -168,18 +166,19 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [memories, t]);
 
   const authorOptions = useMemo(() => {
-    const authors = new Set<string>();
+    const seen = new Map<string, string>();
     memories.forEach((m) => {
-      if (m.updatedBy) {
-        authors.add(m.updatedBy);
+      const owner = m.owners?.[0];
+      if (owner?.name) {
+        seen.set(owner.name, owner.displayName ?? owner.name);
       }
     });
 
     return [
       { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
-      ...Array.from(authors)
-        .sort()
-        .map((name) => ({ id: name, label: name })),
+      ...Array.from(seen.entries())
+        .sort(([, a], [, b]) => a.localeCompare(b))
+        .map(([name, displayName]) => ({ id: name, label: displayName })),
     ];
   }, [memories, t]);
 
@@ -187,7 +186,9 @@ const ContextCenterMemoriesPage: FC = () => {
     let list = memories;
 
     if (activeFilter === 'created-by-me') {
-      list = list.filter((m) => m.updatedBy === currentUser?.name);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === currentUser?.name)
+      );
     } else if (activeFilter === 'pinned') {
       list = list.filter(
         (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
@@ -197,15 +198,23 @@ const ContextCenterMemoriesPage: FC = () => {
     }
 
     if (selectedAsset) {
-      list = list.filter((m) =>
-        m.relatedEntities?.some(
+      list = list.filter((m) => {
+        const primaryFqn =
+          m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
+        if (primaryFqn === selectedAsset) {
+          return true;
+        }
+
+        return m.relatedEntities?.some(
           (ref) => (ref.fullyQualifiedName ?? ref.id) === selectedAsset
-        )
-      );
+        );
+      });
     }
 
     if (selectedAuthor) {
-      list = list.filter((m) => m.updatedBy === selectedAuthor);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === selectedAuthor)
+      );
     }
 
     if (searchValue.trim()) {
@@ -214,8 +223,8 @@ const ContextCenterMemoriesPage: FC = () => {
         (m) =>
           m.title?.toLowerCase().includes(q) ||
           m.summary?.toLowerCase().includes(q) ||
-          m.question.toLowerCase().includes(q) ||
-          m.answer.toLowerCase().includes(q)
+          m.question?.toLowerCase().includes(q) ||
+          m.answer?.toLowerCase().includes(q)
       );
     }
 
@@ -227,7 +236,9 @@ const ContextCenterMemoriesPage: FC = () => {
       sorted.sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0));
     } else if (sortBy === 'author') {
       sorted.sort((a, b) =>
-        (a.updatedBy ?? '').localeCompare(b.updatedBy ?? '')
+        (a.owners?.[0]?.displayName ?? a.owners?.[0]?.name ?? '').localeCompare(
+          b.owners?.[0]?.displayName ?? b.owners?.[0]?.name ?? ''
+        )
       );
     }
 
@@ -276,7 +287,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleDeleteMemory = useCallback((memory: MemoryItem) => {
+  const handleDeleteMemory = useCallback((memory: ContextMemory) => {
     setMemoryToDelete(memory);
   }, []);
 
@@ -303,17 +314,27 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, t]);
 
-  const handleEditMemory = useCallback((memory: MemoryItem) => {
+  const handleEditMemory = useCallback((memory: ContextMemory) => {
     setMemoryToEdit(memory);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
     setIsCreateModalOpen(true);
   }, []);
 
-  const handleViewMemory = useCallback((memory: MemoryItem) => {
-    setMemoryToView(memory);
-    setIsViewModalOpen(true);
-  }, []);
+  const handleViewMemory = useCallback(
+    (memory: ContextMemory) => {
+      setMemoryToView(memory);
+      setIsViewModalOpen(true);
+      setSearchParams((prev) => {
+        if (memory.name) {
+          prev.set('memory', memory.name);
+        }
+
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -323,7 +344,42 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-  }, []);
+    setSearchParams((prev) => {
+      prev.delete('memory');
+
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const memoryName = searchParams.get('memory');
+    if (!memoryName || isMemoriesLoading || isViewModalOpen) {
+      return;
+    }
+    const match = memories.find((m) => m.name === memoryName);
+    if (match) {
+      handleViewMemory(match);
+    } else {
+      showErrorToast(
+        `${t('message.no-entity-available-with-name', {
+          entity: t('label.memory'),
+        })} "${memoryName}"`
+      );
+      setSearchParams((prev) => {
+        prev.delete('memory');
+
+        return prev;
+      });
+    }
+  }, [
+    memories,
+    isMemoriesLoading,
+    isViewModalOpen,
+    searchParams,
+    handleViewMemory,
+    t,
+    setSearchParams,
+  ]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -333,8 +389,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const sharedCount = memories.filter(
     (m) => m.status === MemoryStatus.Active
   ).length;
-  const createdByMeCount = memories.filter(
-    (m) => m.updatedBy === currentUser?.name
+  const createdByMeCount = memories.filter((m) =>
+    m.owners?.some((o) => o.name === currentUser?.name)
   ).length;
   const totalUsageCount = memories.reduce(
     (sum, m) => sum + (m.usageCount ?? 0),
@@ -618,7 +674,6 @@ const ContextCenterMemoriesPage: FC = () => {
 
         <div>
           <MemoriesView
-            canDelete
             currentUserName={currentUser?.name}
             data={pagedMemories}
             isAdminUser={currentUser?.isAdmin}
@@ -674,10 +729,10 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {memoryToDelete && (
         <DeleteModal
-          entityTitle={memoryToDelete.title ?? memoryToDelete.question}
+          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
           message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question,
+            entity: memoryToDelete.title ?? memoryToDelete.question ?? '',
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}

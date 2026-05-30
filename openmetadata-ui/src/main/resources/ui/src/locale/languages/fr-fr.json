@@ -3140,6 +3140,7 @@
     "not-followed-anything": "Vous pouvez suivre des assets de données pour surveiller leurs changements et activités au même endroit.",
     "not-following-any-assets-yet": "Trouvez des assets à suivre",
     "nothing-saved-yet": "Rien n'a encore été sauvegardé !",
+    "nothing-to-preview": "Rien à prévisualiser",
     "notification-description": "Paramétrez les notifications pour recevoir des mises à jour en temps réel ansi que des alertes.",
     "notification-template-description": "Gérer les modèles d'alerte utilisés dans les notifications. Modifier, prévisualiser les messages.",
     "nullness-profile-metric-description": "Pourcentage de valeurs nulles dans la colonne",

@@ -199,6 +199,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
       open
       className="versions-list-container"
       closable={false}
+      data-testid="versions-list-container"
       getContainer={false}
       mask={false}
       maskClosable={false}

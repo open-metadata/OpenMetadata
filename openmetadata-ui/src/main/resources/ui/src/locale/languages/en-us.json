@@ -3140,6 +3140,7 @@
     "not-followed-anything": "You can follow data assets to monitor their changes and activity in one place.",
     "not-following-any-assets-yet": "Find Assets to Follow",
     "nothing-saved-yet": "Nothing saved yet!",
+    "nothing-to-preview": "Nothing to preview",
     "notification-description": "Set up notifications to received real-time updates and timely alerts.",
     "notification-template-description": "Manage alert templates used across notifications. Edit, preview messages.",
     "nullness-profile-metric-description": "Percentage of null values in the column",
