@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.dataRetention;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -81,17 +82,16 @@ class DataRetentionAppTest {
     invokeInitializeStatsDefaults();
 
     int retentionDays = 10;
-    long cutoffMillis = invokeCutoffMillis(retentionDays);
     UUID workflowId = UUID.randomUUID();
 
-    when(workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE))
+    when(workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE)))
         .thenReturn(List.of(workflowId))
         .thenReturn(List.of());
 
     invokeCleanReverseIngestionWorkflows(retentionDays);
 
     verify(workflowDAO)
-        .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE);
+        .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE));
     verify(workflowRepository).delete(eq("admin"), eq(workflowId), eq(true), eq(true));
   }
 
@@ -100,7 +100,6 @@ class DataRetentionAppTest {
     invokeInitializeStatsDefaults();
 
     int retentionDays = 5;
-    long cutoffMillis = invokeCutoffMillis(retentionDays);
 
     List<UUID> firstBatch = new ArrayList<>(BATCH_SIZE);
     for (int i = 0; i < BATCH_SIZE; i++) {
@@ -108,7 +107,7 @@ class DataRetentionAppTest {
     }
     List<UUID> secondBatch = List.of(UUID.randomUUID(), UUID.randomUUID());
 
-    when(workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE))
+    when(workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE)))
         .thenReturn(firstBatch)
         .thenReturn(secondBatch)
         .thenReturn(List.of());
@@ -116,7 +115,7 @@ class DataRetentionAppTest {
     invokeCleanReverseIngestionWorkflows(retentionDays);
 
     verify(workflowDAO, times(2))
-        .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(cutoffMillis, BATCH_SIZE);
+        .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE));
     int expectedDeleted = BATCH_SIZE + secondBatch.size();
     verify(workflowRepository, times(expectedDeleted))
         .delete(eq("admin"), any(UUID.class), eq(true), eq(true));
@@ -131,13 +130,6 @@ class DataRetentionAppTest {
     Method initMethod = DataRetention.class.getDeclaredMethod("initializeStatsDefaults");
     initMethod.setAccessible(true);
     initMethod.invoke(dataRetention);
-  }
-
-  private long invokeCutoffMillis(int retentionDays) throws Exception {
-    Method cutoffMethod =
-        DataRetention.class.getDeclaredMethod("getRetentionCutoffMillis", int.class);
-    cutoffMethod.setAccessible(true);
-    return (long) cutoffMethod.invoke(dataRetention, retentionDays);
   }
 
   private void invokeCleanReverseIngestionWorkflows(int retentionDays) throws Exception {
