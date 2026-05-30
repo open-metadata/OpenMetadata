@@ -304,7 +304,7 @@ class Queue:
 
     Inter-stage buffer used by `TopologyRunnerMixin`. When the diagnostics
     subsystem is installed, every put/process call is reported to
-    `metadata.ingestion.diagnostics.stage_progress` so heartbeats can
+    `metadata.ingestion.diagnostics.collectors.stage_progress` so heartbeats can
     render queue depth and source-vs-sink throughput. The hook calls are
     no-ops with a single attribute load when diagnostics is off.
     """
@@ -315,7 +315,7 @@ class Queue:
         # Lazy import — keeps the topology module importable even if the
         # diagnostics package is not on the path (rare, but defensive).
         try:
-            from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+            from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
 
             stage_progress.register_queue(name, self)
             self._stage_progress = stage_progress

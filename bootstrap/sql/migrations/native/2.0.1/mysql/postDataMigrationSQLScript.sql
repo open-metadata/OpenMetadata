@@ -27,3 +27,105 @@ WHERE name = 'RdfIndexApp';
 UPDATE apps_marketplace
 SET json = JSON_SET(json, '$.appConfiguration.recreateIndex', CAST('true' AS JSON))
 WHERE name = 'RdfIndexApp';
+
+-- Backfill policyAgentConfig defaults on existing Snowflake services. The schema-level
+-- defaults in snowflakeConnection.json only apply at create-time deserialization; rows
+-- already persisted carry the previous all-false shape and won't pick up the new defaults
+-- without this rewrite. Only fields that are currently false are flipped — any operator-set
+-- true value is preserved.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.enabled', true)
+WHERE serviceType = 'Snowflake'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.enabled') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsFullAccess', true)
+WHERE serviceType = 'Snowflake'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsFullAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess', true)
+WHERE serviceType = 'Snowflake'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess') = false;
+
+-- Services that pre-date the policyAgentConfig field entirely (older rows where the whole
+-- object is missing) — write the full block in one shot. JSON_SET creates the key path.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.policyAgentConfig',
+    JSON_OBJECT(
+        'enabled', true,
+        'supportsColumnAccess', false,
+        'supportsFullAccess', true,
+        'supportsMaskedAccess', true
+    )
+)
+WHERE serviceType = 'Snowflake'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NULL;
+
+-- Databricks: same target shape as Snowflake — enabled/Full/Masked default to true,
+-- Column stays false. Three guarded flips + one full-object write for legacy rows.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.enabled', true)
+WHERE serviceType = 'Databricks'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.enabled') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsFullAccess', true)
+WHERE serviceType = 'Databricks'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsFullAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess', true)
+WHERE serviceType = 'Databricks'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.policyAgentConfig',
+    JSON_OBJECT(
+        'enabled', true,
+        'supportsColumnAccess', false,
+        'supportsFullAccess', true,
+        'supportsMaskedAccess', true
+    )
+)
+WHERE serviceType = 'Databricks'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NULL;
+
+-- Postgres: all four flags default to true. Four guarded flips + one full-object write.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.enabled', true)
+WHERE serviceType = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.enabled') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsColumnAccess', true)
+WHERE serviceType = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsColumnAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsFullAccess', true)
+WHERE serviceType = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsFullAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess', true)
+WHERE serviceType = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess') = false;
+
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.policyAgentConfig',
+    JSON_OBJECT(
+        'enabled', true,
+        'supportsColumnAccess', true,
+        'supportsFullAccess', true,
+        'supportsMaskedAccess', true
+    )
+)
+WHERE serviceType = 'Postgres'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NULL;
