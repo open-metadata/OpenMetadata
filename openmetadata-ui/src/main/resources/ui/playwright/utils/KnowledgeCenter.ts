@@ -309,10 +309,12 @@ export const updateQuickLink = async (
   await modal
     .locator('[data-testid="url"]')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await modal.locator(descriptionBox).fill('');
+  await modal.locator(descriptionBox).click();
+  await modal.locator(descriptionBox).press('ControlOrMeta+a');
+  await modal.locator(descriptionBox).press('Delete');
   await modal
     .locator(descriptionBox)
-    .fill(knowledgePageQuickLink.updatedDescription);
+    .pressSequentially(knowledgePageQuickLink.updatedDescription);
 
   await modal.locator('[data-testid="tag-selector"] input').first().click();
   await modal
