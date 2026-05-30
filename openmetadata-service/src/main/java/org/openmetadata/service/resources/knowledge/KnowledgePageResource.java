@@ -85,13 +85,6 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
       "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
-
-  // Search index stores `followers` as a flat List<String> of UUIDs (see
-  // SearchIndexUtils.parseFollowers), while the Page entity schema types it as
-  // List<EntityReference>. Excluding the field from `_source` on search-backed
-  // list calls prevents Jackson from failing to deserialize the search hit.
-  private static final String SEARCH_FIELDS_EXCLUDE = "followers";
-
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
 
   public KnowledgePageResource(Authorizer authorizer, Limits limits) {
@@ -281,7 +274,6 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           "Query Param Entity Id and Entity Type both needs to be provided.");
     }
     SearchListFilter searchListFilter = new SearchListFilter(include);
-    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     if (!CommonUtil.nullOrEmpty(entityType)) {
       searchListFilter.addQueryParam("entityType", entityType);
     }

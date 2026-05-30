@@ -2,6 +2,7 @@ package org.openmetadata.it.knowledge;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
@@ -405,7 +406,7 @@ public class KnowledgeCenterIT {
               ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
               boolean found =
                   result.getData().stream().anyMatch(p -> page.getId().equals(p.getId()));
-              assertEquals(true, found, "Followed page should appear in sorted list");
+              assertTrue(found, "Followed page should appear in sorted list");
             });
   }
 }
