@@ -236,7 +236,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTopics,
+                recursive=self.source_config.markDeletedTopics,
                 params={"service": self.context.get().messaging_service},
             )
 

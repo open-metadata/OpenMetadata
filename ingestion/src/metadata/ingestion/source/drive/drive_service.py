@@ -513,7 +513,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Directory,
                 entity_source_state=self.directory_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDirectories,
+                recursive=self.source_config.markDeletedDirectories,
                 params={"service": self.context.get().drive_service},
             )
 
@@ -533,7 +533,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=File,
                 entity_source_state=self.file_source_state,
-                mark_deleted_entity=self.source_config.markDeletedFiles,
+                recursive=self.source_config.markDeletedFiles,
                 params=params,
             )
 
@@ -549,7 +549,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Spreadsheet,
                 entity_source_state=self.spreadsheet_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSpreadsheets,
+                recursive=self.source_config.markDeletedSpreadsheets,
                 params={"service": self.context.get().drive_service},
             )
 
@@ -578,7 +578,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Worksheet,
                 entity_source_state=self.worksheet_source_state,
-                mark_deleted_entity=self.source_config.markDeletedWorksheets,
+                recursive=self.source_config.markDeletedWorksheets,
                 params={"spreadsheet": spreadsheet_fqn},
             )
 

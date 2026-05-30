@@ -605,7 +605,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         entity_obj: Any = record.entity
         entity_id = entity_obj.id
         fqn = entity_obj.fullyQualifiedName.root
-        recursive = bool(record.mark_deleted_entities)
+        recursive = bool(record.recursive)
         if record.dispatch_async:
             # Server-side async cascade — returns 202 + jobId immediately so ingestion
             # doesn't block on large subtrees (issue #4003). The actual work runs on the

@@ -227,6 +227,7 @@ import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -11957,6 +11958,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         uriInfo, entities, userName, existingByFqn, overrideMetadata);
   }
 
+  private static final String SCOPE_NOT_FOUND_ERROR_TYPE = "SCOPE_NOT_FOUND";
+
   /**
    * Deletes entities of this type within {@code request.scopeFqn} that the ingestion connector did
    * not report in the current run. The connector sends the set of FQNs it saw ({@code
@@ -12014,16 +12017,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(scopeEntityType)) {
       throw BadRequestException.of("scopeEntityType is required for deleteStale");
     }
-    if (!Entity.hasEntityRepository(scopeEntityType)) {
+    String resolvedScopeType = resolveScopeEntityType(scopeEntityType);
+    if (!Entity.hasEntityRepository(resolvedScopeType)) {
       throw BadRequestException.of(
           String.format("Unsupported scopeEntityType '%s' for deleteStale", scopeEntityType));
     }
     EntityRepository<? extends EntityInterface> scopeRepository =
-        Entity.getEntityRepository(scopeEntityType);
+        Entity.getEntityRepository(resolvedScopeType);
     if (scopeRepository.findByNameOrNull(scopeFqn, Include.NON_DELETED) == null) {
-      throw BadRequestException.of(
+      throw new CustomExceptionMessage(
+          Status.NOT_FOUND,
+          SCOPE_NOT_FOUND_ERROR_TYPE,
           String.format("Scope %s '%s' not found for deleteStale", scopeEntityType, scopeFqn));
     }
+  }
+
+  /**
+   * Resolves a generic {@code service} scope to the concrete service type that owns this entity
+   * type (for example {@code pipeline} -> {@code pipelineService}), mirroring how {@link
+   * org.openmetadata.service.jdbi3.ListFilter} interprets the {@code service} query param.
+   * Connectors scope service-level stale deletion with the generic {@code service} key, so without
+   * this the request would be rejected as an unknown entity type. Any concrete scope type is
+   * returned unchanged.
+   */
+  private String resolveScopeEntityType(String scopeEntityType) {
+    return Entity.FIELD_SERVICE.equals(scopeEntityType)
+        ? Entity.getServiceType(entityType)
+        : scopeEntityType;
   }
 
   /**

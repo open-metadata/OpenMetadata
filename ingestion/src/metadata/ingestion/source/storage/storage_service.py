@@ -349,7 +349,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                mark_deleted_entity=self.source_config.markDeletedContainers,
+                recursive=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 

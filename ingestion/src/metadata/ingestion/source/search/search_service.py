@@ -227,7 +227,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
+                recursive=self.source_config.markDeletedSearchIndexes,
                 params={"service": self.context.get().search_service},
             )
 

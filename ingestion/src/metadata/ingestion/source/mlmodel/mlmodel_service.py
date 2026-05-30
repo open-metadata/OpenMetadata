@@ -183,7 +183,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedMlModels,
+                recursive=self.source_config.markDeletedMlModels,
                 params={"service": self.context.get().mlmodel_service},
             )
 

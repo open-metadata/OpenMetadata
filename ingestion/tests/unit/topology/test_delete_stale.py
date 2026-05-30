@@ -21,8 +21,12 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.ometa_api import (
+    SCOPE_NOT_FOUND_ERROR_TYPE,
+    OpenMetadata,
+)
 
 
 class MockEntity:
@@ -61,7 +65,7 @@ class TestDeleteStaleEntitiesMixin:
             entity=MockEntity,
             scope_params={"databaseSchema": "svc.db.sch"},
             live_fqns={"svc.db.sch.t1", "svc.db.sch.t2"},
-            mark_deleted=True,
+            recursive=True,
         )
 
         assert isinstance(result, BulkOperationResult)
@@ -90,7 +94,7 @@ class TestDeleteStaleEntitiesMixin:
             entity=MockEntity,
             scope_params={"database": "svc.db"},
             live_fqns=[],
-            mark_deleted=True,
+            recursive=True,
         )
 
         assert result is None
@@ -109,6 +113,28 @@ class TestDeleteStaleEntitiesMixin:
                 scope_params={"database": "svc.db"},
                 live_fqns=[],
             )
+
+    def test_scope_not_found_returns_empty_not_none(self):
+        """A 404 with errorType SCOPE_NOT_FOUND is a benign no-op, not an endpoint-missing
+        fallback: return an empty result (non-None) so the caller skips the legacy path."""
+        metadata = MagicMock()
+        metadata.get_suffix.return_value = "/tables"
+        http_error = MagicMock()
+        http_error.response.status_code = 404
+        metadata.client.put.side_effect = APIError(
+            {"message": "scope not found", "errorType": SCOPE_NOT_FOUND_ERROR_TYPE},
+            http_error,
+        )
+
+        result = OpenMetadata.delete_stale_entities(
+            metadata,
+            entity=MockEntity,
+            scope_params={"databaseSchema": "svc.db.sch"},
+            live_fqns=[],
+        )
+
+        assert isinstance(result, BulkOperationResult)
+        assert result.numberOfRowsProcessed.root == 0
 
     def test_requires_scope(self):
         metadata = MagicMock()
@@ -136,17 +162,20 @@ class TestDeleteEntityFromSource:
                 metadata=metadata,
                 entity_type=MockEntity,
                 entity_source_state={"svc.db.sch.t1"},
-                mark_deleted_entity=True,
+                recursive=True,
                 params={"databaseSchema": "svc.db.sch"},
             )
         )
 
-        assert results == []
+        barriers = [r for r in results if isinstance(r.right, Barrier)]
+        deletes = [r for r in results if not isinstance(r.right, Barrier)]
+        assert len(barriers) == 1
+        assert deletes == []
         metadata.delete_stale_entities.assert_called_once_with(
             entity=MockEntity,
             scope_params={"databaseSchema": "svc.db.sch"},
             live_fqns={"svc.db.sch.t1"},
-            mark_deleted=True,
+            recursive=True,
         )
         # The connector must not paginate the API itself when the server handled it.
         metadata.list_all_entities.assert_not_called()
@@ -166,11 +195,15 @@ class TestDeleteEntityFromSource:
                 metadata=metadata,
                 entity_type=MockEntity,
                 entity_source_state={"svc.db.sch.t1"},
-                mark_deleted_entity=True,
+                recursive=True,
                 params={"databaseSchema": "svc.db.sch"},
             )
         )
 
         metadata.list_all_entities.assert_called_once()
-        deleted_fqns = {r.right.entity.fullyQualifiedName.root for r in results}
+        deleted_fqns = {
+            r.right.entity.fullyQualifiedName.root
+            for r in results
+            if not isinstance(r.right, Barrier)
+        }
         assert deleted_fqns == {"svc.db.sch.t2", "svc.db.sch.t3"}

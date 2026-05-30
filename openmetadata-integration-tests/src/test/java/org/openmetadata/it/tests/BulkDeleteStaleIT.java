@@ -163,6 +163,31 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_serviceScope_resolvesGenericServiceType(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    List<String> tableFqns = createTables(ns, schema.getFullyQualifiedName(), 3);
+
+    // Connectors scope service-level deletion with the generic "service" key. The server must
+    // resolve it to the concrete service type that owns tables (databaseService) rather than
+    // rejecting it as an unknown entity type.
+    List<String> seen = tableFqns.subList(0, 1);
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(service.getFullyQualifiedName())
+                .withScopeEntityType("service")
+                .withSeenFqns(seen));
+
+    assertEquals(
+        2, result.getNumberOfRowsPassed().intValue(), "two unseen tables under the service");
+    assertFalse(isDeleted(tableFqns.get(0)), "seen table stays live");
+    assertTrue(isDeleted(tableFqns.get(1)), "unseen table is soft-deleted");
+    assertTrue(isDeleted(tableFqns.get(2)), "unseen table is soft-deleted");
+  }
+
+  @Test
   void test_unauthorizedUser_isForbidden(TestNamespace ns) throws Exception {
     String schemaFqn = setupSchema(ns);
     createTables(ns, schemaFqn, 2);

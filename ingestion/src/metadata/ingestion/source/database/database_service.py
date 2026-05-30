@@ -727,8 +727,8 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=Table,
                     entity_source_state=self.database_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
-                    params={"database": schema_fqn},
+                    recursive=self.source_config.markDeletedTables,
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def mark_stored_procedures_as_deleted(self):
@@ -745,7 +745,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=StoredProcedure,
                     entity_source_state=self.stored_procedure_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    recursive=self.source_config.markDeletedStoredProcedures,
                     params={"databaseSchema": schema_fqn},
                 )
 
@@ -781,7 +781,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=Database,
                 entity_source_state=complete_db_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDatabases,
+                recursive=self.source_config.markDeletedDatabases,
                 params={"service": self.context.get().database_service},
             )
 
@@ -818,7 +818,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=DatabaseSchema,
                 entity_source_state=complete_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSchemas,
+                recursive=self.source_config.markDeletedSchemas,
                 params={"database": database_fqn},
             )
 

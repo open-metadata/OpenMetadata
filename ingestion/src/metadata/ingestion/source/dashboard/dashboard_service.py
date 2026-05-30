@@ -438,7 +438,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDashboards,
+                recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -452,7 +452,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -466,7 +466,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Chart,
                 entity_source_state=self.chart_source_state,
-                mark_deleted_entity=self.source_config.markDeletedCharts,
+                recursive=self.source_config.markDeletedCharts,
                 params={"service": self.context.get().dashboard_service},
             )
 

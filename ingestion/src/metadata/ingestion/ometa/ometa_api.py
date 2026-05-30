@@ -113,6 +113,9 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
 
+# Server errorType returned by the deleteStale endpoint when the scope entity is not found.
+SCOPE_NOT_FOUND_ERROR_TYPE = "SCOPE_NOT_FOUND"
+
 
 class MissingEntityTypeException(Exception):  # noqa: N818
     """
@@ -765,7 +768,7 @@ class OpenMetadata(
         entity: Type[T],  # noqa: UP006
         scope_params: Optional[Dict[str, str]],  # noqa: UP006, UP045
         live_fqns: Iterable[str],
-        mark_deleted: bool = True,
+        recursive: bool = True,
     ) -> Optional[BulkOperationResult]:  # noqa: UP045
         """
         Ask the server to soft-delete entities of `entity` within a scope that were not reported
@@ -787,12 +790,20 @@ class OpenMetadata(
             "scopeFqn": scope_fqn,
             "scopeEntityType": scope_entity_type,
             "seenFqns": list(live_fqns),
-            "recursive": mark_deleted,
+            "recursive": recursive,
         }
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
             resp = self.client.put(url, json=request)
         except APIError as err:
+            if err.status_code == 404 and err.error_type == SCOPE_NOT_FOUND_ERROR_TYPE:
+                logger.warning(
+                    "deleteStale scope %s '%s' not found; skipping stale deletion this run "
+                    "(scope not yet persisted or already removed)",
+                    scope_entity_type,
+                    scope_fqn,
+                )
+                return BulkOperationResult(numberOfRowsProcessed=0)
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",

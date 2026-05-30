@@ -169,7 +169,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=APICollection,
                 entity_source_state=self.api_collection_source_state,
-                mark_deleted_entity=self.source_config.markDeletedApiCollections,
+                recursive=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
 
