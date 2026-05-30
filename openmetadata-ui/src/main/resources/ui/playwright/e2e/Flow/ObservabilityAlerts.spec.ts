@@ -187,6 +187,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Pipeline Alert', async ({ page }) => {
+  test.slow();
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {
@@ -277,6 +278,7 @@ const observabilityDetailsBySource = new Map<
 
 for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
+    test.slow();
     const alertDetails = observabilityDetailsBySource.get(source);
     if (!alertDetails) {
       throw new Error(

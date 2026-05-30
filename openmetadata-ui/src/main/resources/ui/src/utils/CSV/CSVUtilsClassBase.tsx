@@ -53,9 +53,9 @@ import {
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
-import { removeOuterEscapes } from '../CommonUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { removeOuterEscapes } from '../StringUtils';
 import { getCustomPropertyEntityType } from './CSV.utils';
 
 export interface CSVEditorOptions {

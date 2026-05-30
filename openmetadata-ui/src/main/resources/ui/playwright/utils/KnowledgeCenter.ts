@@ -41,7 +41,7 @@ export const deletePage = async (
   await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -309,10 +309,12 @@ export const updateQuickLink = async (
   await modal
     .locator('[data-testid="url"]')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await modal.locator(descriptionBox).fill('');
+  await modal.locator(descriptionBox).click();
+  await modal.locator(descriptionBox).press('ControlOrMeta+a');
+  await modal.locator(descriptionBox).press('Delete');
   await modal
     .locator(descriptionBox)
-    .fill(knowledgePageQuickLink.updatedDescription);
+    .pressSequentially(knowledgePageQuickLink.updatedDescription);
 
   await modal.locator('[data-testid="tag-selector"] input').first().click();
   await modal
