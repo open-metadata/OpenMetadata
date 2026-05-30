@@ -30,7 +30,7 @@ thread-locals or cursor-id maps.
 
 from typing import Any
 
-from metadata.ingestion.diagnostics.registry import OperationRegistry
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 
 _TOKEN_ATTR = "_diag_op_token"
 _KWARGS_SQL_MAX_CHARS = 2000

@@ -1728,7 +1728,10 @@ export interface ConfigObject {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:          string;
+    httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
     policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
@@ -4161,7 +4164,10 @@ export interface ConfigConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -4850,7 +4856,10 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,

@@ -119,7 +119,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -181,7 +180,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch

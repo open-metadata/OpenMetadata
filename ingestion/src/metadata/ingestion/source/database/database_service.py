@@ -70,7 +70,6 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
@@ -451,7 +450,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
-    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         This will only get executed if the tags context
@@ -484,7 +482,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
-    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -671,7 +668,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         return None
 
-    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for table entity using ownerConfig.
