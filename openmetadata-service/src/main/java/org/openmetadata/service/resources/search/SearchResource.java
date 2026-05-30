@@ -160,9 +160,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
-                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2. Each value carried as its own "
+                      + "parameter so values containing ',' (e.g. a glossary term FQN) are safe.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(
               description =
                   "Sort the search results by field, available fields to "
@@ -518,9 +520,12 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values")
+      @Parameter(
+              description =
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(description = "Sort the search results by field")
           @DefaultValue("_score")
           @QueryParam("sort_field")
@@ -853,12 +858,6 @@ public class SearchResource {
   public Response reindexEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
-          @DefaultValue("false")
-          @QueryParam("recreate")
-          boolean recreate,
       @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
           @DefaultValue("5")
           @QueryParam("timeoutMinutes")
@@ -905,9 +904,8 @@ public class SearchResource {
                   long startTime = System.currentTimeMillis();
 
                   LOG.info(
-                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      "Starting reindex job for {} entities. Timeout: {} minutes",
                       totalEntities,
-                      recreate,
                       timeoutMinutes);
 
                   for (EntityReference ref : entities) {
@@ -976,27 +974,18 @@ public class SearchResource {
                             reducedSize);
                       }
 
-                      if (recreate) {
-                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
-                        LOG.debug(
-                            "Deleted entity {} ({}) from index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
-                        LOG.debug(
-                            "Recreated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      } else {
-                        searchRepository.updateEntityIndex(entity);
-                        LOG.debug(
-                            "Updated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      }
+                      searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                      LOG.debug(
+                          "Deleted entity {} ({}) from index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
+                      searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                      LOG.debug(
+                          "Recreated entity {} ({}) in index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
 
                       successCount++;
 

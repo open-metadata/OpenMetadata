@@ -53,7 +53,9 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
+import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -217,6 +219,16 @@ export const AuthProvider = ({
 
     // Clear tokens properly during logout
     await clearOidcToken();
+
+    // Drop the ETag interceptor's response cache so a freshly-authenticated user can't
+    // pick up another principal's cached body via If-None-Match → 304 mid-session.
+    clearEtagCache();
+
+    // Same correctness story for the React Query cache — every cached entity / list response
+    // is keyed without the principal in the key (the request gets the principal from the
+    // Authorization header), so without an explicit clear the next user would see the
+    // previous user's cached bodies until staleTime + gcTime elapse.
+    queryClient.clear();
 
     setApplicationLoading(false);
 

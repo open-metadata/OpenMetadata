@@ -15,22 +15,16 @@ import {
   Button,
   Card,
   Dropdown,
-  Input,
   PaginationCardMinimal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  FilterLines,
-  Home02,
-  Plus,
-  SearchLg,
-} from '@untitledui/icons';
+import { ChevronDown, FilterLines, Home02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -39,10 +33,12 @@ import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryMod
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
 import {
   MemoryFilterTab,
-  MemoryItem,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  MemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -50,12 +46,11 @@ import {
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,relatedEntities';
+const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
@@ -76,15 +71,15 @@ const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ri
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const currentUserName = getEntityName(currentUser);
   const { alert } = useAlertStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
-  const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
-  const [memoryToDelete, setMemoryToDelete] = useState<MemoryItem>();
-  const [memoryToEdit, setMemoryToEdit] = useState<MemoryItem>();
-  const [memoryToView, setMemoryToView] = useState<MemoryItem>();
+  const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
+  const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
+  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -110,23 +105,7 @@ const ContextCenterMemoriesPage: FC = () => {
         limit: 1000,
         fields: MEMORY_FIELDS,
       });
-      const items: MemoryItem[] = (response.data ?? []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        title: m.title,
-        summary: m.summary,
-        question: m.question ?? '',
-        answer: m.answer ?? '',
-        memoryType: m.memoryType,
-        status: m.status,
-        updatedBy: m.updatedBy,
-        updatedAt: m.updatedAt,
-        tags: m.tags,
-        usageCount: m.usageCount,
-        lastUsedAt: m.lastUsedAt,
-        relatedEntities: m.relatedEntities,
-      }));
-      setMemories(items);
+      setMemories(response.data ?? []);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -143,18 +122,30 @@ const ContextCenterMemoriesPage: FC = () => {
       string,
       { name: string; displayName: string; type: string }
     >();
-    memories.forEach((m) =>
-      m.relatedEntities?.forEach((ref) => {
-        const fqn = ref.fullyQualifiedName ?? ref.id;
-        if (fqn && !seen.has(fqn)) {
-          seen.set(fqn, {
-            name: ref.name ?? fqn,
-            displayName: ref.displayName ?? ref.name ?? fqn,
-            type: ref.type ?? '',
-          });
-        }
-      })
-    );
+
+    const addRef = (ref: {
+      fullyQualifiedName?: string;
+      id?: string;
+      name?: string;
+      displayName?: string;
+      type?: string;
+    }) => {
+      const fqn = ref.fullyQualifiedName ?? ref.id;
+      if (fqn && !seen.has(fqn)) {
+        seen.set(fqn, {
+          name: ref.name ?? fqn,
+          displayName: ref.displayName ?? ref.name ?? fqn,
+          type: ref.type ?? '',
+        });
+      }
+    };
+
+    memories.forEach((m) => {
+      if (m.primaryEntity) {
+        addRef(m.primaryEntity);
+      }
+      m.relatedEntities?.forEach(addRef);
+    });
 
     return [
       {
@@ -175,18 +166,19 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [memories, t]);
 
   const authorOptions = useMemo(() => {
-    const authors = new Set<string>();
+    const seen = new Map<string, string>();
     memories.forEach((m) => {
-      if (m.updatedBy) {
-        authors.add(m.updatedBy);
+      const owner = m.owners?.[0];
+      if (owner?.name) {
+        seen.set(owner.name, owner.displayName ?? owner.name);
       }
     });
 
     return [
       { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
-      ...Array.from(authors)
-        .sort()
-        .map((name) => ({ id: name, label: name })),
+      ...Array.from(seen.entries())
+        .sort(([, a], [, b]) => a.localeCompare(b))
+        .map(([name, displayName]) => ({ id: name, label: displayName })),
     ];
   }, [memories, t]);
 
@@ -194,7 +186,9 @@ const ContextCenterMemoriesPage: FC = () => {
     let list = memories;
 
     if (activeFilter === 'created-by-me') {
-      list = list.filter((m) => m.updatedBy === currentUser?.name);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === currentUser?.name)
+      );
     } else if (activeFilter === 'pinned') {
       list = list.filter(
         (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
@@ -204,15 +198,23 @@ const ContextCenterMemoriesPage: FC = () => {
     }
 
     if (selectedAsset) {
-      list = list.filter((m) =>
-        m.relatedEntities?.some(
+      list = list.filter((m) => {
+        const primaryFqn =
+          m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
+        if (primaryFqn === selectedAsset) {
+          return true;
+        }
+
+        return m.relatedEntities?.some(
           (ref) => (ref.fullyQualifiedName ?? ref.id) === selectedAsset
-        )
-      );
+        );
+      });
     }
 
     if (selectedAuthor) {
-      list = list.filter((m) => m.updatedBy === selectedAuthor);
+      list = list.filter((m) =>
+        m.owners?.some((o) => o.name === selectedAuthor)
+      );
     }
 
     if (searchValue.trim()) {
@@ -221,8 +223,8 @@ const ContextCenterMemoriesPage: FC = () => {
         (m) =>
           m.title?.toLowerCase().includes(q) ||
           m.summary?.toLowerCase().includes(q) ||
-          m.question.toLowerCase().includes(q) ||
-          m.answer.toLowerCase().includes(q)
+          m.question?.toLowerCase().includes(q) ||
+          m.answer?.toLowerCase().includes(q)
       );
     }
 
@@ -234,7 +236,9 @@ const ContextCenterMemoriesPage: FC = () => {
       sorted.sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0));
     } else if (sortBy === 'author') {
       sorted.sort((a, b) =>
-        (a.updatedBy ?? '').localeCompare(b.updatedBy ?? '')
+        (a.owners?.[0]?.displayName ?? a.owners?.[0]?.name ?? '').localeCompare(
+          b.owners?.[0]?.displayName ?? b.owners?.[0]?.name ?? ''
+        )
       );
     }
 
@@ -283,7 +287,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleDeleteMemory = useCallback((memory: MemoryItem) => {
+  const handleDeleteMemory = useCallback((memory: ContextMemory) => {
     setMemoryToDelete(memory);
   }, []);
 
@@ -299,7 +303,7 @@ const ContextCenterMemoriesPage: FC = () => {
     try {
       await deleteContextMemory(memoryToDelete.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
       fetchMemories();
@@ -310,17 +314,27 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, t]);
 
-  const handleEditMemory = useCallback((memory: MemoryItem) => {
+  const handleEditMemory = useCallback((memory: ContextMemory) => {
     setMemoryToEdit(memory);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
     setIsCreateModalOpen(true);
   }, []);
 
-  const handleViewMemory = useCallback((memory: MemoryItem) => {
-    setMemoryToView(memory);
-    setIsViewModalOpen(true);
-  }, []);
+  const handleViewMemory = useCallback(
+    (memory: ContextMemory) => {
+      setMemoryToView(memory);
+      setIsViewModalOpen(true);
+      setSearchParams((prev) => {
+        if (memory.name) {
+          prev.set('memory', memory.name);
+        }
+
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -330,7 +344,42 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-  }, []);
+    setSearchParams((prev) => {
+      prev.delete('memory');
+
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const memoryName = searchParams.get('memory');
+    if (!memoryName || isMemoriesLoading || isViewModalOpen) {
+      return;
+    }
+    const match = memories.find((m) => m.name === memoryName);
+    if (match) {
+      handleViewMemory(match);
+    } else {
+      showErrorToast(
+        `${t('message.no-entity-available-with-name', {
+          entity: t('label.memory'),
+        })} "${memoryName}"`
+      );
+      setSearchParams((prev) => {
+        prev.delete('memory');
+
+        return prev;
+      });
+    }
+  }, [
+    memories,
+    isMemoriesLoading,
+    isViewModalOpen,
+    searchParams,
+    handleViewMemory,
+    t,
+    setSearchParams,
+  ]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -340,8 +389,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const sharedCount = memories.filter(
     (m) => m.status === MemoryStatus.Active
   ).length;
-  const createdByMeCount = memories.filter(
-    (m) => m.updatedBy === currentUser?.name
+  const createdByMeCount = memories.filter((m) =>
+    m.owners?.some((o) => o.name === currentUser?.name)
   ).length;
   const totalUsageCount = memories.reduce(
     (sum, m) => sum + (m.usageCount ?? 0),
@@ -349,29 +398,19 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const headerActions = (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      <Input
-        className="tw:w-75"
-        data-testid="memories-search-input"
-        icon={SearchLg}
-        placeholder={t('label.search-memories')}
-        value={searchValue}
-        onChange={handleSearchChange}
-      />
-      <Button
-        color="primary"
-        data-testid="add-memory-btn"
-        iconLeading={Plus}
-        size="sm"
-        onClick={() => setIsCreateModalOpen(true)}>
-        {t('label.add-entity', { entity: t('label.memory') })}
-      </Button>
-    </div>
+    <Button
+      color="primary"
+      data-testid="add-memory-btn"
+      iconLeading={Plus}
+      size="sm"
+      onClick={() => setIsCreateModalOpen(true)}>
+      {t('label.add-entity', { entity: t('label.memory') })}
+    </Button>
   );
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
@@ -380,7 +419,7 @@ const ContextCenterMemoriesPage: FC = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -393,67 +432,58 @@ const ContextCenterMemoriesPage: FC = () => {
             url: '',
           },
         ]}
+        className="tw:mb-3"
+        searchPlaceholder={t('label.search-memories')}
+        searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
         title={t('label.memory-plural')}
+        onSearch={handleSearchChange}
       />
 
       {/* Stats cards */}
-      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-5">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-3">
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.total-memory-plural')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {memories.length}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.created-by-me')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {createdByMeCount}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.shared-with-workspace')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {sharedCount}
           </Typography>
         </Card>
 
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('label.times-used-in-chats')}
           </Typography>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="display-xs" weight="semibold">
             {totalUsageCount}
           </Typography>
         </Card>
       </div>
 
       {/* Memories card with tabs */}
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:overflow-hidden">
-        <div className="tw:px-6 tw:py-5">
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Typography size="text-md" weight="medium">
-              {t('label.memory-plural')}
-            </Typography>
-            <Badge color="brand" type="pill-color">
-              {filteredMemories.length}
-            </Badge>
-          </div>
-          <Typography className="tw:text-gray-600" size="text-sm">
-            {t('label.signed-in-as')} <strong>{currentUserName}</strong>.{' '}
-            {t('message.you-can-edit-memories-you-created')}.
-          </Typography>
-        </div>
-
-        <div className="tw:px-5 tw:py-3 tw:bg-tertiary tw:flex tw:items-center tw:gap-3 tw:flex-wrap">
+      <Card
+        className="tw:flex tw:flex-col tw:h-auto"
+        style={{ overflow: 'unset' }}>
+        <div className="tw:px-5 tw:py-3 tw:border-b tw:border-gray-blue-100 tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:sticky tw:top-0 tw:z-10 tw:bg-white tw:rounded-tl-xl tw:rounded-tr-xl">
           <Tabs
             className="tw:w-max"
             selectedKey={activeFilter}
@@ -642,10 +672,11 @@ const ContextCenterMemoriesPage: FC = () => {
           </div>
         </div>
 
-        <div className="tw:flex-1 tw:overflow-y-auto">
+        <div>
           <MemoriesView
-            canDelete
+            currentUserName={currentUser?.name}
             data={pagedMemories}
+            isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
@@ -662,6 +693,12 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
+        canDelete={
+          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
+            false) ||
+          Boolean(currentUser?.isAdmin)
+        }
+        currentUserName={currentUser?.name}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -674,19 +711,28 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
+          canDelete={
+            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
+              false) ||
+            Boolean(currentUser?.isAdmin)
+          }
+          currentUserName={currentUser?.name}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
           onCreated={handleViewModalClose}
+          onDeleted={handleModalSuccess}
+          onEditMemory={handleEditMemory}
+          onUpdated={handleModalSuccess}
         />
       )}
 
       {memoryToDelete && (
         <DeleteModal
-          entityTitle={memoryToDelete.title ?? memoryToDelete.question}
+          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
           message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question,
+            entity: memoryToDelete.title ?? memoryToDelete.question ?? '',
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}

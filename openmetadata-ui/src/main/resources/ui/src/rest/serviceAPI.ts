@@ -29,7 +29,7 @@ import {
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 

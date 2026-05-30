@@ -76,7 +76,7 @@ import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
-import { getRandomColor } from '../../../utils/CommonUtils';
+import { getRandomColor } from '../../../utils/ColorUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
@@ -1199,7 +1199,7 @@ const AddDomainForm = ({
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
               className="add-domain-form-description new-form-style"
-              initialValue={typeof field.value === 'string' ? field.value : ''}
+              initialValue=""
               key={descriptionEditorKey}
               onTextChange={field.onChange}
             />

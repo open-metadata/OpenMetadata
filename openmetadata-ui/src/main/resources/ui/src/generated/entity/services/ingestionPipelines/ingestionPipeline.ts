@@ -3436,21 +3436,31 @@ export interface Policy {
  * Policy config for database service connectors (snowflake, postgres, etc.).
  */
 export interface DatabasePolicyConfig {
+    accessType: AccessType;
     /**
      * Column on which the grant is applied. Requires tableName. Supported only by connectors
      * that allow column-level grants; ignored otherwise.
      */
     columnName?: string;
     /**
+     * List of column names requested when accessType is ColumnLevel.
+     */
+    columns?: string[];
+    /**
      * Database on which the grant is applied.
      */
     databaseName: string;
     /**
+     * ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support
+     * time-limited grants may use this; others ignore it.
+     */
+    duration?: string;
+    /**
      * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
      */
-    principal:      string;
-    principalType?: PrincipalType;
-    privilege:      Privilege;
+    principal:       string;
+    principalType?:  PrincipalType;
+    requestedAccess: RequestedAccess;
     /**
      * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
      */
@@ -3462,6 +3472,15 @@ export interface DatabasePolicyConfig {
 }
 
 /**
+ * Pattern of access being requested.
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+}
+
+/**
  * Type of principal the grant is issued to.
  */
 export enum PrincipalType {
@@ -3470,15 +3489,12 @@ export enum PrincipalType {
 }
 
 /**
- * Privilege to grant.
+ * Permission level being requested.
  */
-export enum Privilege {
-    All = "ALL",
-    Delete = "DELETE",
-    Insert = "INSERT",
-    Select = "SELECT",
-    Update = "UPDATE",
-    Usage = "USAGE",
+export enum RequestedAccess {
+    Admin = "Admin",
+    Read = "Read",
+    Write = "Write",
 }
 
 /**
@@ -4966,6 +4982,10 @@ export interface ConfigObject {
      */
     httpPath?: string;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Table name to fetch the query history.
      *
      * Table name to fetch the query history. When set, this overrides the default
@@ -5161,6 +5181,13 @@ export interface ConfigObject {
      */
     tokenUrl?: string;
     /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -5213,6 +5240,13 @@ export interface ConfigObject {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -6874,6 +6908,10 @@ export interface ConfigConnection {
      */
     ingestAllDatabases?: boolean;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
@@ -7086,6 +7124,28 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GcpConfigClass;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -7593,6 +7653,10 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
