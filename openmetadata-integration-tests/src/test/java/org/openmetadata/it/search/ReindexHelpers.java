@@ -124,8 +124,28 @@ public final class ReindexHelpers {
       final ServerHandle server, final Duration timeout) {
     waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
     final long triggeredAtMillis = System.currentTimeMillis();
-    triggerApp(server, SEARCH_INDEX_APP);
+    triggerWhenAccepted(server, Duration.ofSeconds(60));
     return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+  }
+
+  /**
+   * Fires the plain trigger, retrying until the server accepts it. OM's app-execution lock can
+   * linger briefly after the previous run flips to terminal (notably the {@code beforeEach}
+   * recreate at class transitions in the serial search-it suite), so a one-shot trigger races
+   * the release and gets a 500 "Job is already running". The first accepting call starts exactly
+   * one run, so the retry never double-triggers.
+   */
+  private static void triggerWhenAccepted(
+      final ServerHandle server, final Duration acceptanceTimeout) {
+    Awaitility.await("trigger SearchIndexApp")
+        .atMost(acceptanceTimeout)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              triggerApp(server, SEARCH_INDEX_APP);
+              return true;
+            });
   }
 
   /**
