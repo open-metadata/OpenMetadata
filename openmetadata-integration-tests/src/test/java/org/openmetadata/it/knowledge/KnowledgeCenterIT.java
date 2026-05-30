@@ -14,16 +14,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -372,5 +376,49 @@ public class KnowledgeCenterIT {
           response.getStatus(),
           "sortBy combined with cursor should be 400, got " + response.getStatus());
     }
+  }
+
+  @Test
+  void testListPagesSortByDeserializesFollowers(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+
+    Page page = createPage(rest, buildCreateRequest(ns.prefix("followed-page"), orgRef));
+    String followerName = ns.prefix("follower");
+    String followerEmail = ns.shortPrefix("follower") + "@test.openmetadata.org";
+    User follower =
+        adminClient
+            .users()
+            .create(new CreateUser().withName(followerName).withEmail(followerEmail));
+
+    adminClient
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/contextCenter/pages/" + page.getId() + "/followers",
+            follower.getId(),
+            ChangeEvent.class);
+
+    awaitPageIndexed(rest, page.getId());
+
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
+              Page found =
+                  result.getData().stream()
+                      .filter(p -> p.getId().equals(page.getId()))
+                      .findFirst()
+                      .orElseThrow(() -> new AssertionError("page not in result yet"));
+              List<EntityReference> followers = found.getFollowers();
+              assertEquals(
+                  1,
+                  followers == null ? 0 : followers.size(),
+                  "expected follower to round-trip through search-backed list");
+              assertEquals(follower.getId(), followers.get(0).getId());
+            });
   }
 }
