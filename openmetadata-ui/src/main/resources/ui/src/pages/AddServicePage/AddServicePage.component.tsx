@@ -15,7 +15,7 @@ import { ChevronLeft } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -79,6 +79,20 @@ const AddServicePage = () => {
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
 
+  const handleConnectorChangeClick = useCallback(() => {
+    setNameError('');
+    setActiveField('');
+    setActiveServiceStep(1);
+    setServiceConfig({
+      name: '',
+      description: '',
+      serviceType: '',
+      connection: {
+        config: {} as ConfigData,
+      },
+    });
+  }, []);
+
   const slashedBreadcrumb = useMemo(
     () => getAddServiceEntityBreadcrumb(serviceCategory),
     [serviceCategory]
@@ -95,6 +109,7 @@ const AddServicePage = () => {
               url: connectionsRouterClassBase.getAddServicePath(
                 serviceCategory
               ),
+              onClick: handleConnectorChangeClick,
             },
             {
               name: serviceConfig.serviceType,
@@ -103,7 +118,13 @@ const AddServicePage = () => {
             },
           ]
         : slashedBreadcrumb,
-    [serviceCategory, serviceConfig.serviceType, slashedBreadcrumb, t]
+    [
+      handleConnectorChangeClick,
+      serviceCategory,
+      serviceConfig.serviceType,
+      slashedBreadcrumb,
+      t,
+    ]
   );
 
   const translatedSteps = useMemo(
@@ -137,19 +158,6 @@ const AddServicePage = () => {
   };
 
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
-  const handleConnectorChangeClick = () => {
-    setNameError('');
-    setActiveField('');
-    setActiveServiceStep(1);
-    setServiceConfig({
-      name: '',
-      description: '',
-      serviceType: '',
-      connection: {
-        config: {} as ConfigData,
-      },
-    });
-  };
   const handleConfigUpdate = (newConfigData: ConfigData) => {
     if (!serviceConfig.name.trim()) {
       setNameError(

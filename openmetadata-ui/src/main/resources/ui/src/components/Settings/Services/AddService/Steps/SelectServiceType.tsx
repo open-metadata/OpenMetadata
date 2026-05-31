@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {
   BETA_SERVICES,
   excludedService,
@@ -139,19 +137,12 @@ const SelectServiceType = ({
               data-testid={type}
               key={type}
               onClick={() => handleServiceTypeClick(type)}>
-              <div className="service-icon" data-testid="service-icon">
-                {getServiceLogo(type || '', 'service-logo')}
+              <div className="service-icon-avatar" data-testid="service-icon">
+                <div className="service-icon">
+                  {getServiceLogo(type || '', 'service-logo')}
+                </div>
               </div>
-              <div className="absolute" style={{ right: '4px', top: '0px' }}>
-                {type === selectServiceType && (
-                  <Icon
-                    className="align-middle"
-                    component={IconCheckboxPrimary}
-                    style={{ fontSize: '14px' }}
-                  />
-                )}
-              </div>
-              <p className="w-full text-center m-t-md">
+              <p className="service-box-title w-full text-center">
                 {getServiceName(type)}
                 {BETA_SERVICES.includes(
                   type as DatabaseServiceType | PipelineServiceType

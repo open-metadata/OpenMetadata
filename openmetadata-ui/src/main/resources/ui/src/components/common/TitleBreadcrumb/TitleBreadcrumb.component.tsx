@@ -65,7 +65,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           style={{
             maxWidth,
           }}
-          to={link.url}>
+          to={link.url}
+          onClick={link.onClick}>
           {link.icon}
           {link.name}
         </Link>
@@ -127,7 +128,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     <Link
                       className={classes}
                       style={{ maxWidth }}
-                      to={link.url}>
+                      to={link.url}
+                      onClick={link.onClick}>
                       {link.icon}
                       {link.name}
                     </Link>

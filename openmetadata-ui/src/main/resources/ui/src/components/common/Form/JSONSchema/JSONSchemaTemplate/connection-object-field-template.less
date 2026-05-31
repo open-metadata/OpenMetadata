@@ -45,6 +45,36 @@
     }
   }
 
+  .connection-section-card-scope {
+    .connection-section-boolean-grid {
+      gap: 28px 48px !important;
+    }
+
+    .connection-section-boolean-grid .design-boolean-field {
+      min-height: 0 !important;
+      gap: 18px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .connection-section-boolean-grid .design-boolean-field label {
+      color: #181d27 !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      line-height: 18px !important;
+    }
+
+    .connection-section-boolean-grid .design-boolean-field label + div {
+      margin-top: 2px !important;
+      color: #535862 !important;
+      font-size: 12.5px !important;
+      line-height: 16px !important;
+    }
+  }
+
   .connection-section-card-advanced {
     padding: 0 !important;
     overflow: hidden;
@@ -243,7 +273,14 @@
     .core-object-field-template-sample-data-config
       > .core-object-field-template-body
       > .core-object-field-template-property-storageConfig
-      .core-one-of-field-select {
+      .core-one-of-field-select,
+    .core-one-of-field[data-field-id$='/sampleDataStorageConfig/config']
+      > .core-one-of-field-select,
+    .core-one-of-field[data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-one-of-field-select,
+    [data-testid^='select-widget-root/sampleDataStorageConfig/config__'],
+    [data-testid^='select-widget-root/sampleDataStorageConfig/config/storageConfig__'] {
+      align-self: flex-start !important;
       width: min(520px, 100%) !important;
       max-width: 100% !important;
     }

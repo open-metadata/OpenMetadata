@@ -83,8 +83,8 @@
 .service-list-container {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  margin-top: 24px;
-  gap: 16px;
+  margin-top: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 
   .ant-btn.ant-btn-default.selected-service {
@@ -93,17 +93,20 @@
 
   .service-box {
     position: relative;
-    height: 128px;
+    height: 100px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 24px 12px;
+    gap: 12px;
+    padding: 16px 10px 14px;
     background: var(--tw-color-bg-primary);
     border: 1px solid var(--tw-color-border-secondary);
-    border-radius: 12px;
+    border-radius: 8px;
     box-shadow: var(--tw-shadow-xs);
     font-family: Inter, sans-serif;
+    line-height: normal;
+    white-space: normal;
     transition: 120ms ease;
 
     &:hover,
@@ -113,11 +116,22 @@
       box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.1);
     }
 
-    .service-icon {
-      width: 48px;
-      height: 48px;
+    .service-icon-avatar {
+      width: 40px;
+      height: 40px;
       display: flex;
       flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      background: var(--tw-color-bg-secondary);
+      border: 1px solid var(--tw-color-border-secondary);
+      border-radius: 50%;
+    }
+
+    .service-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
       align-items: center;
       justify-content: center;
     }
@@ -127,16 +141,16 @@
     .service-icon svg {
       width: auto;
       height: auto;
-      max-width: 48px;
-      max-height: 48px;
+      max-width: 24px;
+      max-height: 24px;
       object-fit: contain;
     }
 
-    p {
+    .service-box-title {
       margin-bottom: 0;
-      font-size: 14px;
-      font-weight: 500;
-      line-height: normal;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 16px;
       color: var(--tw-color-text-primary);
       white-space: pre-wrap;
       word-break: break-word;

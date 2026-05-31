@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
+import { ServiceCategory } from '../../../../../enums/service.enum';
+import { loadConnectionSchema } from '../../../../../utils/ServiceConnectionUtils';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ConnectionObjectFieldTemplate from './ConnectionObjectFieldTemplate';
 
 jest.mock('@untitledui/icons', () => ({
@@ -120,6 +130,22 @@ const getSalesforceProps = (
       field('salesforceDomain'),
     ],
   } as unknown as ObjectFieldTemplateProps);
+
+const getDatabaseConnectorProps = (
+  serviceType: string,
+  schema: Record<string, unknown>
+): ObjectFieldTemplateProps => {
+  const propertyNames = Object.keys(
+    (schema.properties ?? {}) as Record<string, unknown>
+  );
+
+  return {
+    idSchema: { $id: 'root' },
+    title: serviceType,
+    schema,
+    properties: propertyNames.map(field),
+  } as unknown as ObjectFieldTemplateProps;
+};
 
 describe('ConnectionObjectFieldTemplate', () => {
   it('renders the grouped section cards at the connection root', () => {
@@ -279,5 +305,78 @@ describe('ConnectionObjectFieldTemplate', () => {
     expect(
       screen.queryByTestId('connection-grouped-form')
     ).not.toBeInTheDocument();
+  });
+
+  it('renders grouped sections for every supported database connector schema', async () => {
+    const connectorTypes =
+      serviceUtilClassBase.getSupportedServiceFromList().databaseServices;
+    let renderedConnectorCount = 0;
+    let scopeConnectorCount = 0;
+    let advancedConnectorCount = 0;
+
+    expect(connectorTypes.length).toBeGreaterThan(20);
+
+    for (const connectorType of connectorTypes) {
+      const { schema } = await loadConnectionSchema(
+        ServiceCategory.DATABASE_SERVICES,
+        connectorType
+      );
+      const properties = (schema.properties ?? {}) as Record<string, unknown>;
+      const propertyNames = Object.keys(properties);
+
+      if (propertyNames.length === 0) {
+        continue;
+      }
+
+      cleanup();
+      renderedConnectorCount += 1;
+      render(
+        <ConnectionObjectFieldTemplate
+          {...getDatabaseConnectorProps(connectorType, schema)}
+        />
+      );
+
+      expect(screen.getByTestId('connection-grouped-form')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('connection-section-connection')
+      ).toBeInTheDocument();
+
+      const scope = screen.queryByTestId('connection-section-scope');
+
+      if (scope) {
+        scopeConnectorCount += 1;
+        fireEvent.click(within(scope).getByRole('button'));
+
+        expect(scope).toHaveClass('connection-section-card-active');
+        expect(
+          scope.querySelector(
+            '.connection-section-field-grid, .connection-section-boolean-grid, .connection-section-fields'
+          )
+        ).not.toBeNull();
+      }
+
+      const advanced = screen.queryByTestId('connection-section-advanced');
+
+      if (advanced) {
+        advancedConnectorCount += 1;
+        fireEvent.click(within(advanced).getByRole('button'));
+
+        expect(
+          advanced.querySelector('.connection-advanced-section-fields')
+        ).not.toBeNull();
+
+        propertyNames
+          .filter((name) => ADVANCED_PROPERTIES.includes(name))
+          .forEach((name) => {
+            expect(
+              within(advanced).getByTestId(`field-${name}`)
+            ).toBeInTheDocument();
+          });
+      }
+    }
+
+    expect(renderedConnectorCount).toBeGreaterThan(40);
+    expect(scopeConnectorCount).toBeGreaterThan(30);
+    expect(advancedConnectorCount).toBeGreaterThan(30);
   });
 });

@@ -98,15 +98,93 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
   await sampleStorageSelect.waitFor({ state: 'visible' });
 };
 
+const openAddDatabaseServicePage = async (page: Page) => {
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('select-service').waitFor({ state: 'visible' });
+};
+
 test.describe('Connection config layout', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test('should render compact connector cards with avatar icons', async ({
+    page,
+  }) => {
+    await openAddDatabaseServicePage(page);
+
+    const serviceGrid = page.getByTestId('select-service');
+    const firstCard = serviceGrid.locator('.service-box').first();
+    const iconAvatar = firstCard.locator('.service-icon-avatar');
+    const logo = firstCard.locator('.service-logo, img, svg').first();
+    const label = firstCard.locator('.service-box-title');
+
+    await expect(serviceGrid).toHaveCSS('display', 'grid');
+    expect(await getGridColumnCount(serviceGrid)).toBe(5);
+
+    const cardBox = await getBox(firstCard);
+    const avatarBox = await getBox(iconAvatar);
+    const logoBox = await getBox(logo);
+
+    expect(cardBox.height).toBeLessThanOrEqual(104);
+    expect(Math.round(avatarBox.width)).toBe(40);
+    expect(Math.round(avatarBox.height)).toBe(40);
+    expect(logoBox.width).toBeLessThanOrEqual(24);
+    expect(logoBox.height).toBeLessThanOrEqual(24);
+
+    await expect(label).toHaveCSS('font-size', '12px');
+    await expect(label).toHaveCSS('font-weight', '600');
   });
 
   test('should align nested sample data storage config fields without overlap', async ({
     page,
   }) => {
     await openSnowflakeConnectionConfig(page);
+
+    const scopeSection = page.getByTestId('connection-section-scope');
+    await scopeSection.getByRole('button').click();
+
+    const scopeBooleanGrid = scopeSection.locator(
+      '.connection-section-boolean-grid'
+    );
+    const includeTransientTables = scopeSection.locator(
+      '[data-field-name="includeTransientTables"]'
+    );
+    const includeStreams = scopeSection.locator(
+      '[data-field-name="includeStreams"]'
+    );
+    const includeStages = scopeSection.locator(
+      '[data-field-name="includeStages"]'
+    );
+    const clientSessionKeepAlive = scopeSection.locator(
+      '[data-field-name="clientSessionKeepAlive"]'
+    );
+
+    await expect(scopeBooleanGrid).toHaveCSS('display', 'grid');
+    expect(await getGridColumnCount(scopeBooleanGrid)).toBe(2);
+    await expect(
+      includeTransientTables.locator('.design-boolean-field')
+    ).toHaveCSS('border-top-width', '0px');
+    await expect(
+      includeTransientTables.locator('.design-boolean-field label + div')
+    ).toHaveText('Ingest transient tables alongside permanent ones.');
+    await expect(
+      includeStreams.locator('.design-boolean-field label + div')
+    ).toHaveText('Ingest Snowflake streams as data assets.');
+    await expect(
+      includeStages.locator('.design-boolean-field label + div')
+    ).toHaveText('Ingest external and internal stages.');
+    await expect(
+      clientSessionKeepAlive.locator('.design-boolean-field label + div')
+    ).toHaveText('Keep the session alive for long-running scans.');
+    await expectNoOverlap(
+      includeTransientTables,
+      includeStreams,
+      'Include transient tables and streams controls overlap'
+    );
 
     const advancedSection = page.getByTestId('connection-section-advanced');
     const primaryGrid = advancedSection.locator(

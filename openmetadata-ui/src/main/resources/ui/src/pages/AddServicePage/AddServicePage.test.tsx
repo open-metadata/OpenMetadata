@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import type { TitleLink } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -72,7 +73,23 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () => {
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
-    return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
+    return jest
+      .fn()
+      .mockImplementation(({ titleLinks }: { titleLinks: TitleLink[] }) => (
+        <div>
+          {titleLinks.map((link) => (
+            <a
+              href={typeof link.url === 'string' && link.url ? link.url : '/'}
+              key={link.name}
+              onClick={(event) => {
+                event.preventDefault();
+                link.onClick?.(event);
+              }}>
+              {link.name}
+            </a>
+          ))}
+        </div>
+      ));
   }
 );
 
@@ -218,6 +235,30 @@ describe('AddServicePage', () => {
       'mysql',
       'add-service-page-title-logo'
     );
+  });
+
+  it('should reset selected connector from add service breadcrumb', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    expect(screen.getByTestId('header')).toHaveTextContent(
+      'mysql label.service'
+    );
+    expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.add-new-entity'));
+    });
+
+    expect(screen.getByTestId('header')).toHaveTextContent(
+      'label.add-new-entity'
+    );
+    expect(screen.getByText('Select MySQL')).toBeInTheDocument();
   });
 
   it('should handle connection configuration', async () => {
