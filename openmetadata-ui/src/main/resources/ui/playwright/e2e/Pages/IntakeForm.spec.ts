@@ -305,15 +305,23 @@ test.describe(
       });
 
       await test.step('Type field is rendered and marked required by intake form', async () => {
-        await expect(page.getByTestId('dataProductType')).toBeVisible();
+        const typeSelect = page.getByTestId('dataProductType');
+        await expect(typeSelect).toBeVisible();
 
-        // core-components Select renders the required marker as a
-        // react-aria `aria-required="true"` on the combobox button. We assert
-        // on the field by data-testid (the wrapper Select renders this on
-        // the button when the field is required via rules).
+        // core-components renders each field as a Box: a FormItemLabel
+        // followed by the field element. When the intake form marks the
+        // field required, FormItemLabel appends a "*" span next to the
+        // label (the Select itself doesn't carry aria-required). Scope to
+        // the field group wrapping the Type select so the asterisk we assert
+        // on belongs to this field and not another required one.
+        const typeFieldGroup = page
+          .locator('div')
+          .filter({ has: typeSelect })
+          .filter({ has: page.getByTestId('form-item-label') })
+          .last();
         await expect(
-          page.getByTestId('dataProductType').locator('[aria-required="true"]')
-        ).toBeAttached();
+          typeFieldGroup.getByText('*', { exact: true })
+        ).toBeVisible();
       });
 
       await test.step('Client blocks submit without Type; backend ALSO blocks via API', async () => {
