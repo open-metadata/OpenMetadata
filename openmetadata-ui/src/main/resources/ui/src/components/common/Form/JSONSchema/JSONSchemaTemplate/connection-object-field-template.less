@@ -50,6 +50,10 @@
     }
   }
 
+  .connection-section-field-grid {
+    grid-auto-flow: row dense;
+  }
+
   .connection-nested-object {
     width: 100%;
     min-width: 0;
@@ -307,7 +311,8 @@
     .connection-advanced-primary-grid,
     .connection-advanced-secondary-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-flow: row dense;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 20px;
       align-items: start;
     }

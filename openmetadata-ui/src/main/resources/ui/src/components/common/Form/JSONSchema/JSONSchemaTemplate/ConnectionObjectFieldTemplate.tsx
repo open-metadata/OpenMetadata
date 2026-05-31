@@ -82,6 +82,10 @@ const ADVANCED_PRIMARY_PROPERTY_ORDER = [
   'useAccessHistory',
   'accessHistoryChunkSize',
 ];
+const OPTIONAL_CONNECTION_PROPERTIES = new Set([
+  'billingProjectId',
+  'hostPort',
+]);
 
 interface SectionConfig {
   key: string;
@@ -310,7 +314,7 @@ const SectionFields = ({
         renderProperty(element, index, 'tw:hidden')
       )}
       {standardProperties.length > 0 && (
-        <div className="connection-section-field-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(3,minmax(0,1fr))]">
+        <div className="connection-section-field-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]">
           {standardProperties.map((element, index) =>
             renderProperty(element, index)
           )}
@@ -579,6 +583,13 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       (p) =>
         !isAuth(p.name) && !isAdvanced(p.name) && requiredKeys.includes(p.name)
     );
+    const optionalConnectionProperties = properties.filter(
+      (p) =>
+        !isAuth(p.name) &&
+        !isAdvanced(p.name) &&
+        !requiredKeys.includes(p.name) &&
+        OPTIONAL_CONNECTION_PROPERTIES.has(p.name)
+    );
     const fallbackConnectionProperties = properties.filter(
       (p) =>
         !isAuth(p.name) &&
@@ -587,7 +598,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     );
     const connectionProperties =
       explicitConnectionProperties.length > 0
-        ? explicitConnectionProperties
+        ? [...explicitConnectionProperties, ...optionalConnectionProperties]
         : fallbackConnectionProperties;
     const connectionPropertyNames = new Set(
       connectionProperties.map((property) => property.name)

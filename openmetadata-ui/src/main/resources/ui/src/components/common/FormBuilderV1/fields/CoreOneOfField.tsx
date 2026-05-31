@@ -22,6 +22,9 @@ import { startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 
 const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
+const MAX_SEGMENTED_OPTION_COUNT = 3;
+const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
+const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
 
 const getSafeOptionIndex = (option: number, optionCount: number) => {
   if (optionCount === 0) {
@@ -40,13 +43,22 @@ const getOptionTitle = (option: RJSFSchema, index: number): string =>
 const shouldRenderSegmentedOptions = (
   id: string,
   options: RJSFSchema[]
-): boolean =>
-  options.length > 1 &&
-  options.length <= 5 &&
-  !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
-  options.every(
-    (option) => option.type === 'object' || Boolean(option.properties)
+): boolean => {
+  const optionLabels = options.map(getOptionTitle);
+
+  return (
+    options.length > 1 &&
+    options.length <= MAX_SEGMENTED_OPTION_COUNT &&
+    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
+    !COMPACT_SELECTOR_ID_PATTERN.test(id) &&
+    optionLabels.every(
+      (label) => label.length <= MAX_SEGMENTED_OPTION_LABEL_LENGTH
+    ) &&
+    options.every(
+      (option) => option.type === 'object' || Boolean(option.properties)
+    )
   );
+};
 
 const CoreOneOfField = (props: FieldProps) => {
   const {

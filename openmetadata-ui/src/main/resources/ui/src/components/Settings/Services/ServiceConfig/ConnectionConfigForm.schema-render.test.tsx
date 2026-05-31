@@ -297,10 +297,102 @@ describe('ConnectionConfigForm schema rendering', () => {
 
   it('keeps DeltaLake configuration source as a full-width schema choice', async () => {
     const { container } = await renderConnectionSchema('DeltaLake');
+    const field = getRequiredElement(
+      container,
+      '[data-field-name="configSource"]'
+    );
+
+    expect(field).toHaveClass('connection-section-wide-property');
+    expect(
+      field.querySelector(
+        ':scope > .core-one-of-field > .core-one-of-field-select'
+      )
+    ).toBeInTheDocument();
+    expect(
+      field.querySelector(
+        ':scope > .core-one-of-field > .core-one-of-field-tabs'
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('organizes BigQuery GCP credentials without dumping default plumbing fields', async () => {
+    const { container } = await renderConnectionSchema('BigQuery');
+    const connectionSection = getRequiredElement(
+      container,
+      '[data-testid="connection-section-connection"]'
+    );
+    const gcpCredentialsBlock = getRequiredElement(
+      connectionSection,
+      '[data-field-id="root/credentials"]'
+    );
+    const selectedCredentialBranch = getRequiredElement(
+      gcpCredentialsBlock,
+      '.core-object-field-template[data-field-id="root/credentials/gcpConfig"]'
+    );
 
     expect(
-      getRequiredElement(container, '[data-field-name="configSource"]')
-    ).toHaveClass('connection-section-wide-property');
+      getRequiredElement(connectionSection, '[data-field-name="hostPort"]')
+    ).toBeInTheDocument();
+    expect(
+      getRequiredElement(
+        connectionSection,
+        '[data-field-name="billingProjectId"]'
+      )
+    ).toBeInTheDocument();
+    expect(gcpCredentialsBlock).toHaveClass(
+      'core-object-field-template-credential-block'
+    );
+    expect(
+      Array.from(
+        selectedCredentialBranch.querySelectorAll(
+          ':scope > .core-object-field-template-body-grid > .core-object-field-template-property'
+        )
+      ).map((element) => element.getAttribute('data-field-name'))
+    ).toEqual([
+      'projectId',
+      'privateKeyId',
+      'privateKey',
+      'clientEmail',
+      'clientId',
+    ]);
+    expect(
+      getRequiredElement(
+        selectedCredentialBranch,
+        '.core-object-field-template-property-projectId'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      getRequiredElement(
+        selectedCredentialBranch,
+        '.core-object-field-template-property-privateKey'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      selectedCredentialBranch.querySelector(
+        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-type'
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      selectedCredentialBranch.querySelector(
+        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-authUri'
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      selectedCredentialBranch.querySelector(
+        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-tokenUri'
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      getRequiredElement(
+        gcpCredentialsBlock,
+        '.core-object-field-template-property-gcpImpersonateServiceAccount'
+      )
+    ).toBeInTheDocument();
+    expect(
+      gcpCredentialsBlock.querySelector(
+        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-gcpImpersonateServiceAccount'
+      )
+    ).not.toBeInTheDocument();
   });
 
   it('keeps Hive metastore connection details as a full-width schema choice', async () => {
@@ -319,11 +411,6 @@ describe('ConnectionConfigForm schema rendering', () => {
   });
 
   it.each([
-    {
-      connectorType: 'Airflow',
-      fieldName: 'connection',
-      serviceCategory: ServiceCategory.PIPELINE_SERVICES,
-    },
     {
       connectorType: 'Nifi',
       fieldName: 'nifiConfig',
@@ -359,4 +446,23 @@ describe('ConnectionConfigForm schema rendering', () => {
       ).not.toBeInTheDocument();
     }
   );
+
+  it('keeps Airflow five-way connection choices as a compact select', async () => {
+    const { container } = await renderConnectionSchema(
+      'Airflow',
+      ServiceCategory.PIPELINE_SERVICES
+    );
+    const field = getRequiredElement(
+      container,
+      '[data-field-name="connection"]'
+    );
+
+    expect(field).toHaveClass('connection-section-wide-property');
+    expect(
+      field.querySelector('.core-one-of-field-select')
+    ).toBeInTheDocument();
+    expect(
+      field.querySelector('.core-one-of-field-tabs')
+    ).not.toBeInTheDocument();
+  });
 });

@@ -175,6 +175,55 @@ describe('CoreOneOfField', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
+  it('keeps selectors with four or more branches as a compact select', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          {
+            oneOf: [
+              { title: 'First', type: 'object' },
+              { title: 'Second', type: 'object' },
+              { title: 'Third', type: 'object' },
+              { title: 'Fourth', type: 'object' },
+            ],
+            title: 'Type',
+          }
+        )}
+      />
+    );
+
+    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
+  it('keeps source selectors as a compact select', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps({}, DEFAULT_SCHEMA, {}, 'root/configSource')}
+      />
+    );
+
+    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
+  it('keeps nested project ID selectors as a compact select', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          DEFAULT_SCHEMA,
+          {},
+          'root/credentials/gcpConfig/projectId'
+        )}
+      />
+    );
+
+    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
   it('renders a single branch without an option select', () => {
     render(
       <CoreOneOfField

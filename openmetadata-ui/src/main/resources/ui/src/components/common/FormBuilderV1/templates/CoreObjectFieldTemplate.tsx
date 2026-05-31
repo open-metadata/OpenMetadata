@@ -86,10 +86,19 @@ const STATIC_AWS_CREDENTIAL_PROPERTIES = new Set([
   'awsSecretAccessKey',
   'awsSessionToken',
 ]);
+const DEFAULT_ADVANCED_PROPERTY_NAMES = new Set([
+  'authProviderX509CertUrl',
+  'authUri',
+  'clientX509CertUrl',
+  'lifetime',
+  'tokenUri',
+]);
 
 type DisableableFieldElement = ReactElement<{ disabled?: boolean }>;
 type SchemaPropertyLayout = {
   anyOf?: unknown[];
+  const?: unknown;
+  default?: unknown;
   description?: string;
   format?: string;
   oneOf?: unknown[];
@@ -315,6 +324,20 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     isGatedCredentialConfig &&
     !GATED_CREDENTIAL_VISIBLE_PROPERTIES.has(name) &&
     !isRequiredSchemaProperty(schema, name);
+  const isDefaultAdvancedProperty = (name: string) => {
+    const schemaProperty = getSchemaProperty(schema, name);
+
+    return (
+      !isRoot &&
+      !isRequiredSchemaProperty(schema, name) &&
+      (DEFAULT_ADVANCED_PROPERTY_NAMES.has(name) ||
+        (name.toLowerCase().includes('impersonate') &&
+          hasSchemaType(schemaProperty, 'object')) ||
+        (name === 'type' &&
+          (schemaProperty?.const !== undefined ||
+            schemaProperty?.default !== undefined)))
+    );
+  };
   const { normalProperties, advancedProperties } = properties.reduce(
     (acc, prop) => {
       if (prop.hidden) {
@@ -322,7 +345,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
       }
       if (
         ADVANCED_PROPERTIES.has(prop.name) ||
-        isGatedCredentialAdvancedProperty(prop.name)
+        isGatedCredentialAdvancedProperty(prop.name) ||
+        isDefaultAdvancedProperty(prop.name)
       ) {
         acc.advancedProperties.push(prop);
       } else {
