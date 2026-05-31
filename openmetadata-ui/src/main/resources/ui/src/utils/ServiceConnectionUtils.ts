@@ -226,6 +226,7 @@ export const getUISchemaWithAuthFieldsAsSelect = (
       acc[key] = {
         ...(uiSchema[key] as Record<string, unknown> | undefined),
         'ui:field': AUTH_SELECT_FIELD,
+        'ui:fieldReplacesAnyOrOneOf': true,
       };
 
       return acc;

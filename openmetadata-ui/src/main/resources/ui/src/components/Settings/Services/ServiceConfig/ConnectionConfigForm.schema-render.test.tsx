@@ -118,6 +118,9 @@ describe('ConnectionConfigForm schema rendering', () => {
       expect(
         screen.getByTestId('connection-section-connection')
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Unsupported field schema/)
+      ).not.toBeInTheDocument();
     }
   );
 
@@ -137,6 +140,9 @@ describe('ConnectionConfigForm schema rendering', () => {
       expect(
         screen.getByTestId('connection-section-connection')
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Unsupported field schema/)
+      ).not.toBeInTheDocument();
     }
 
     expect(renderedConnectorCount).toBe(connectorTypes.length);

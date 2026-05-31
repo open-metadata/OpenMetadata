@@ -141,6 +141,7 @@ const CoreOneOfField = (props: FieldProps) => {
     const childUiSchema = { ...(uiSchema ?? {}) };
 
     delete childUiSchema['ui:field'];
+    delete childUiSchema['ui:fieldReplacesAnyOrOneOf'];
 
     return childUiSchema;
   }, [uiSchema]);

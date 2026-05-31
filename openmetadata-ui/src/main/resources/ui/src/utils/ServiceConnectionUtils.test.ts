@@ -14,6 +14,7 @@ import { reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import { ServiceNestedConnectionFields } from '../enums/service.enum';
 import {
+  getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
 } from './ServiceConnectionUtils';
@@ -77,6 +78,31 @@ describe('getUISchemaWithNestedDefaultFilterFieldsHidden', () => {
         preserveProperty: 'value',
         ...mockExpectedHiddenFields,
       },
+    });
+  });
+});
+
+describe('getUISchemaWithAuthFieldsAsSelect', () => {
+  it('marks auth oneOf fields as fully handled by the custom auth selector', () => {
+    const result = getUISchemaWithAuthFieldsAsSelect(
+      {
+        properties: {
+          authType: {
+            oneOf: [
+              {
+                title: 'Basic Auth',
+                type: 'object',
+              },
+            ],
+          },
+        },
+      },
+      {}
+    );
+
+    expect(result.authType).toEqual({
+      'ui:field': 'authSelect',
+      'ui:fieldReplacesAnyOrOneOf': true,
     });
   });
 });
