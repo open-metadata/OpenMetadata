@@ -1,13 +1,48 @@
-# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+# Snyk policy file for the OpenMetadata repo root.
+#
+# This file is read by Snyk scans that run FROM REPO ROOT. Currently
+# that means the snyk-server-report target (see Makefile):
+#   snyk test --all-projects ...        (Snyk Open Source / SCA)
+#   snyk code test --all-projects ...   (Snyk Code / SAST)
+# and the snyk-ui-report target which scans the UI yarn.lock.
+#
+# Paths in `exclude.global` below are relative to THIS file's directory
+# (the repo root). So an ingestion path looks like `ingestion/foo/**`.
+#
+# IMPORTANT: there is a SECOND policy file at `ingestion/.snyk`. It is
+# read by the snyk-ingestion-report target, which runs
+# `cd ingestion; snyk code test ...`. Snyk Code only reads a .snyk
+# file from its own CWD, with no `--policy-path` and no `--exclude`
+# flag available on the Code subcommand. So a pattern added here that
+# lives under `ingestion/` will NOT be applied by that scan unless it
+# is also added (without the `ingestion/` prefix) to `ingestion/.snyk`.
+# Keep the two files in sync for any path under `ingestion/`.
+#
+# The same dual-file rule would apply to `openmetadata-airflow-apis/`
+# if that scan ever needs path exclusions. The dedicated airflow scan
+# also runs from a subdirectory and would need its own .snyk there.
+#
+# Snyk docs on .snyk policy lookup and Snyk Code excludes:
+#   https://docs.snyk.io/manage-risk/policies/the-.snyk-file
+#   https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-snyk-code/exclude-directories-and-files-from-snyk-code-cli-tests
+
 version: v1.25.0
 ignore: {}
 patch: {}
 exclude:
   global:
+    # Ingestion (Python). When you add or change anything in this block,
+    # MIRROR THE CHANGE IN `ingestion/.snyk` with the same pattern minus
+    # the `ingestion/` prefix. Both files must list the exclusion for
+    # both Snyk Code scans to honour it.
     - ingestion/examples/**
-    - ingestion/src/metadata/sdk/examples/**
     - ingestion/tests/**
+    - ingestion/src/_openmetadata_testutils/**
+    - ingestion/src/metadata/sdk/examples/**
+
+    # UI (TypeScript) test mocks.
     - openmetadata-ui/src/main/resources/ui/src/pages/service/mocks/**
     - openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/TestConnection.mock.ts
+
+    # Server (Java) test fixtures.
     - openmetadata-service/src/test/**
-    - ingestion/src/_openmetadata_testutils/**
