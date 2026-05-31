@@ -101,7 +101,9 @@ interface SectionConfig {
 }
 
 interface SchemaProperty {
+  anyOf?: unknown[];
   format?: string;
+  oneOf?: unknown[];
   type?: string | string[];
 }
 
@@ -317,7 +319,7 @@ const SectionFields = ({
       {wideProperties.length > 0 && (
         <div className="tw:flex tw:flex-col tw:gap-3">
           {wideProperties.map((element, index) =>
-            renderProperty(element, index)
+            renderProperty(element, index, 'connection-section-wide-property')
           )}
         </div>
       )}
@@ -557,9 +559,15 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     // Object/array fields (additionalProperties maps, storage config, …) render
     // wide controls — span the full row so they don't ragged-wrap the grid.
     const isWide = (name: string) => {
-      const propType = schemaProperties[name]?.type;
+      const property = schemaProperties[name];
+      const propType = property?.type;
 
-      return propType === 'object' || propType === 'array';
+      return (
+        propType === 'object' ||
+        propType === 'array' ||
+        Boolean(property?.oneOf?.length) ||
+        Boolean(property?.anyOf?.length)
+      );
     };
     const wideNames = new Set(
       properties.filter((p) => isWide(p.name)).map((p) => p.name)

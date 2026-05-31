@@ -357,13 +357,20 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER
       )
     : advancedProperties;
+  const gatedCredentialToggleProperties = isGatedCredentialConfig
+    ? orderedNormalProperties.filter((property) => property.name === 'enabled')
+    : [];
+  const gatedCredentialFieldProperties = isGatedCredentialConfig
+    ? orderedNormalProperties.filter((property) => property.name !== 'enabled')
+    : [];
   const getIsFullWidthProperty = (name: string) =>
-    (isGatedCredentialConfig && name === 'enabled') ||
-    shouldSpanFullWidth({
-      name,
-      schema,
-      uiSchema,
-    });
+    isGatedCredentialConfig
+      ? name === 'enabled'
+      : shouldSpanFullWidth({
+          name,
+          schema,
+          uiSchema,
+        });
   const getIsToggleBannerProperty = (name: string) =>
     isGatedCredentialConfig && name === 'enabled';
   const getAdvancedHeaderLabel = () => {
@@ -403,7 +410,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
       <div
         className={classNames(
           'core-object-field-template-body',
-          isNestedConfigGrid
+          isGatedCredentialConfig
+            ? 'core-object-field-template-body-gated'
+            : isNestedConfigGrid
             ? 'core-object-field-template-body-grid'
             : 'tw:flex tw:flex-col tw:gap-4'
         )}>
@@ -419,7 +428,18 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             {addButton}
           </div>
         )}
-        {orderedNormalProperties.map(renderProperty)}
+        {isGatedCredentialConfig ? (
+          <>
+            {gatedCredentialToggleProperties.map(renderProperty)}
+            {gatedCredentialFieldProperties.length > 0 && (
+              <div className="core-object-field-template-credential-field-grid">
+                {gatedCredentialFieldProperties.map(renderProperty)}
+              </div>
+            )}
+          </>
+        ) : (
+          orderedNormalProperties.map(renderProperty)
+        )}
         {!isRoot &&
           schema.additionalProperties &&
           normalProperties.length === 0 && (

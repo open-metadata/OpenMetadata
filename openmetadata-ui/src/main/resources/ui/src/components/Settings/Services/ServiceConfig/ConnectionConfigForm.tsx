@@ -52,6 +52,7 @@ import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemp
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import CoreOneOfField from '../../../common/FormBuilderV1/fields/CoreOneOfField';
 import { CoreFieldTemplate } from '../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from '../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
 import CoreSelectWidget from '../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -147,8 +148,10 @@ const ConnectionConfigForm = ({
   };
 
   const customFields: RegistryFieldsType = {
+    AnyOfField: CoreOneOfField,
     BooleanField: BooleanFieldTemplate,
     ArrayField: WorkflowArrayFieldTemplate,
+    OneOfField: CoreOneOfField,
     authSelect: AuthSelectField,
   };
 

@@ -470,10 +470,17 @@ describe('FormBuilderV1 templates', () => {
     expect(
       Array.from(
         container.querySelectorAll(
-          '.core-object-field-template-storage-config > .core-object-field-template-body > .core-object-field-template-property'
+          '.core-object-field-template-storage-config > .core-object-field-template-body-gated > .core-object-field-template-property'
         )
       ).map((element) => element.getAttribute('data-field-name'))
-    ).toEqual(['enabled', 'awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
+    ).toEqual(['enabled']);
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '.core-object-field-template-storage-config .core-object-field-template-credential-field-grid > .core-object-field-template-property'
+        )
+      ).map((element) => element.getAttribute('data-field-name'))
+    ).toEqual(['awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
     expect(screen.getByTestId('field-awsAccessKeyId')).toBeDisabled();
     expect(screen.getByTestId('field-awsSecretAccessKey')).toBeDisabled();
     expect(
@@ -496,6 +503,11 @@ describe('FormBuilderV1 templates', () => {
     expect(
       container.querySelector('.core-object-field-template-advanced-grid')
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-assumeRoleArn'
+      )
+    ).not.toHaveClass('core-object-field-template-property-full-width');
   });
 
   it('uses a generic two-column layout for nested credential configs', () => {

@@ -37,6 +37,7 @@ import {
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+import CoreOneOfField from '../../../common/FormBuilderV1/fields/CoreOneOfField';
 import { CoreFieldTemplate } from '../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from '../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
 import CoreSelectWidget from '../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -61,16 +62,18 @@ jest.mock('../../../../utils/i18next/LocalUtil', () => ({
 }));
 
 const customFields: RegistryFieldsType = {
+  AnyOfField: CoreOneOfField,
   BooleanField: BooleanFieldTemplate,
   ArrayField: WorkflowArrayFieldTemplate,
+  OneOfField: CoreOneOfField,
   authSelect: AuthSelectField,
 };
 
-const renderConnectionSchema = async (connectorType: string) => {
-  const connSch = await loadConnectionSchema(
-    ServiceCategory.DATABASE_SERVICES,
-    connectorType
-  );
+const renderConnectionSchema = async (
+  connectorType: string,
+  serviceCategory = ServiceCategory.DATABASE_SERVICES
+) => {
+  const connSch = await loadConnectionSchema(serviceCategory, connectorType);
   const connectionSchema = connSch.schema as RJSFSchema;
   const propertiesWithoutDefaultFilterPatternFields = getFilteredSchema(
     connectionSchema.properties as Record<string, unknown> | undefined
@@ -111,6 +114,64 @@ const renderConnectionSchema = async (connectorType: string) => {
         UpDownWidget: DesignTextWidget,
       }}
     />
+  );
+};
+
+const getRequiredElement = (container: HTMLElement, selector: string) => {
+  const element = container.querySelector<HTMLElement>(selector);
+
+  expect(element).toBeInTheDocument();
+
+  return element as HTMLElement;
+};
+
+const expectAwsCredentialLayout = (
+  container: HTMLElement,
+  selector = '[data-field-id="root/awsConfig"]'
+) => {
+  const awsConfigBlock = getRequiredElement(container, selector);
+
+  expect(awsConfigBlock).toHaveClass(
+    'core-object-field-template-gated-credential-block'
+  );
+  expect(
+    awsConfigBlock.querySelector('.core-object-field-template-body-gated')
+  ).toBeInTheDocument();
+  expect(
+    awsConfigBlock.querySelector('.core-object-field-template-property-enabled')
+  ).toHaveClass('core-object-field-template-property-toggle-banner');
+  expect(
+    Array.from(
+      awsConfigBlock.querySelectorAll(
+        ':scope > .core-object-field-template-body-gated > .core-object-field-template-property'
+      )
+    ).map((element) => element.getAttribute('data-field-name'))
+  ).toEqual(['enabled']);
+  expect(
+    Array.from(
+      awsConfigBlock.querySelectorAll(
+        '.core-object-field-template-credential-field-grid > .core-object-field-template-property'
+      )
+    ).map((element) => element.getAttribute('data-field-name'))
+  ).toEqual(['awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
+
+  const advancedConfigButton = within(awsConfigBlock).getByRole('button', {
+    name: 'label.show label.advanced-config (6)',
+  });
+
+  expect(advancedConfigButton).toBeInTheDocument();
+
+  fireEvent.click(advancedConfigButton);
+
+  ['endPointURL', 'assumeRoleArn', 'assumeRoleSourceIdentity'].forEach(
+    (fieldName) => {
+      expect(
+        getRequiredElement(
+          awsConfigBlock,
+          `.core-object-field-template-property-${fieldName}`
+        )
+      ).not.toHaveClass('core-object-field-template-property-full-width');
+    }
   );
 };
 
@@ -190,31 +251,112 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toHaveClass('core-object-field-template-property-full-width');
   });
 
-  it('organizes Athena AWS credentials into visible essentials and collapsed advanced fields', async () => {
-    const { container } = await renderConnectionSchema('Athena');
-    const awsConfigBlock = container.querySelector(
-      '[data-field-id="root/awsConfig"]'
-    );
+  it.each([
+    {
+      connectorType: 'Athena',
+      serviceCategory: ServiceCategory.DATABASE_SERVICES,
+    },
+    {
+      connectorType: 'DynamoDB',
+      serviceCategory: ServiceCategory.DATABASE_SERVICES,
+    },
+    {
+      connectorType: 'Glue',
+      serviceCategory: ServiceCategory.DATABASE_SERVICES,
+    },
+    {
+      connectorType: 'Kinesis',
+      serviceCategory: ServiceCategory.MESSAGING_SERVICES,
+    },
+    {
+      connectorType: 'QuickSight',
+      serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+    },
+  ])(
+    'organizes $connectorType AWS credentials into visible essentials and collapsed advanced fields',
+    async ({ connectorType, serviceCategory }) => {
+      const { container } = await renderConnectionSchema(
+        connectorType,
+        serviceCategory
+      );
 
-    expect(awsConfigBlock).toHaveClass(
-      'core-object-field-template-gated-credential-block'
-    );
+      expectAwsCredentialLayout(container);
+    }
+  );
+
+  it.each(['Mysql', 'Postgres', 'Redshift'])(
+    'organizes selected %s IAM credentials without compressing fields',
+    async (connectorType) => {
+      const { container } = await renderConnectionSchema(connectorType);
+
+      fireEvent.click(screen.getByTestId('auth-method-1'));
+
+      expectAwsCredentialLayout(container, '[data-field-id$="/awsConfig"]');
+    }
+  );
+
+  it('keeps DeltaLake configuration source as a full-width schema choice', async () => {
+    const { container } = await renderConnectionSchema('DeltaLake');
+
     expect(
-      awsConfigBlock?.querySelector(
-        '.core-object-field-template-property-enabled'
-      )
-    ).toHaveClass('core-object-field-template-property-toggle-banner');
-    expect(
-      Array.from(
-        awsConfigBlock?.querySelectorAll(
-          ':scope > .core-object-field-template-body > .core-object-field-template-property'
-        ) ?? []
-      ).map((element) => element.getAttribute('data-field-name'))
-    ).toEqual(['enabled', 'awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
-    expect(
-      within(awsConfigBlock as HTMLElement).getByRole('button', {
-        name: 'label.show label.advanced-config (6)',
-      })
-    ).toBeInTheDocument();
+      getRequiredElement(container, '[data-field-name="configSource"]')
+    ).toHaveClass('connection-section-wide-property');
   });
+
+  it('keeps Hive metastore connection details as a full-width schema choice', async () => {
+    const { container } = await renderConnectionSchema('Hive');
+    const scopeSection = getRequiredElement(
+      container,
+      '[data-testid="connection-section-scope"]'
+    );
+    const scopeButton = getRequiredElement(scopeSection, 'button');
+
+    fireEvent.click(scopeButton);
+
+    expect(
+      getRequiredElement(container, '[data-field-name="metastoreConnection"]')
+    ).toHaveClass('connection-section-wide-property');
+  });
+
+  it.each([
+    {
+      connectorType: 'Airflow',
+      fieldName: 'connection',
+      serviceCategory: ServiceCategory.PIPELINE_SERVICES,
+    },
+    {
+      connectorType: 'Nifi',
+      fieldName: 'nifiConfig',
+      serviceCategory: ServiceCategory.PIPELINE_SERVICES,
+    },
+    {
+      connectorType: 'Rest',
+      fieldName: 'openAPISchemaConnection',
+      serviceCategory: ServiceCategory.API_SERVICES,
+    },
+  ])(
+    'renders $connectorType oneOf connection choices as segmented tabs',
+    async ({ connectorType, fieldName, serviceCategory }) => {
+      const { container } = await renderConnectionSchema(
+        connectorType,
+        serviceCategory
+      );
+
+      const field = getRequiredElement(
+        container,
+        `[data-field-name="${fieldName}"]`
+      );
+      const tabs = getRequiredElement(
+        field,
+        ':scope > .core-one-of-field > .core-one-of-field-tabs'
+      );
+
+      expect(field).toHaveClass('connection-section-wide-property');
+      expect(within(tabs).getByTestId('oneof-option-0')).toBeInTheDocument();
+      expect(within(tabs).getByTestId('oneof-option-1')).toBeInTheDocument();
+      expect(
+        container.querySelector(`[data-testid$="${fieldName}__oneof_select"]`)
+      ).not.toBeInTheDocument();
+    }
+  );
 });

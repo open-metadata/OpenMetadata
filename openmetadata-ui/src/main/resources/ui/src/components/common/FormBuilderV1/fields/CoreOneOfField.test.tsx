@@ -76,11 +76,12 @@ const DEFAULT_SCHEMA = {
 const getBaseProps = (
   formData: Record<string, unknown>,
   schema: Record<string, unknown> = DEFAULT_SCHEMA,
-  uiSchema: Record<string, unknown> = {}
+  uiSchema: Record<string, unknown> = {},
+  id = 'root/type'
 ) =>
   ({
     formData,
-    idSchema: { $id: 'root/type' },
+    idSchema: { $id: id },
     name: 'type',
     onBlur: jest.fn(),
     onChange: jest.fn(),
@@ -130,16 +131,16 @@ describe('CoreOneOfField', () => {
     const props = getBaseProps(formData);
     const { rerender } = render(<CoreOneOfField {...props} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Second' }));
 
-    expect(screen.getByRole('button', { name: 'Second' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Second' })).toHaveAttribute(
       'data-selected',
       'true'
     );
 
     rerender(<CoreOneOfField {...getBaseProps(formData)} />);
 
-    expect(screen.getByRole('button', { name: 'Second' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Second' })).toHaveAttribute(
       'data-selected',
       'true'
     );
@@ -156,6 +157,22 @@ describe('CoreOneOfField', () => {
       'data-ui-field',
       ''
     );
+  });
+
+  it('keeps sample data storage oneOf choices as a compact select', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          DEFAULT_SCHEMA,
+          {},
+          'root/sampleDataStorageConfig/config/storageConfig'
+        )}
+      />
+    );
+
+    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
   it('renders a single branch without an option select', () => {

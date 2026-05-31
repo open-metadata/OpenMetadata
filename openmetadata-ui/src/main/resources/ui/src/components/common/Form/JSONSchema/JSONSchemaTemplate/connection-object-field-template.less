@@ -25,6 +25,11 @@
     min-width: 0;
   }
 
+  .connection-section-wide-property {
+    width: 100%;
+    min-width: 0;
+  }
+
   .connection-section-field-grid > .property-wrapper .design-field-label {
     min-height: 34px;
     align-items: flex-start;
@@ -93,9 +98,42 @@
     }
 
     .core-object-field-template-gated-credential-block {
+      > .core-object-field-template-body-gated {
+        display: flex !important;
+        flex-direction: column;
+        gap: 16px !important;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .core-object-field-template-credential-field-grid {
+        display: grid !important;
+        grid-auto-flow: row dense;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 18px 20px !important;
+        align-items: start;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .core-object-field-template-credential-field-grid
+        > .core-object-field-template-property {
+        min-width: 0;
+        padding: 0;
+        border-radius: 0;
+        background-color: transparent !important;
+      }
+
+      .core-object-field-template-credential-field-grid
+        > .core-object-field-template-property-full-width {
+        grid-column: 1 / -1;
+      }
+
       .core-object-field-template-property-toggle-banner {
-        padding-bottom: 14px;
+        padding: 0 0 14px !important;
         border-bottom: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+        border-radius: 0 !important;
+        background: transparent !important;
       }
 
       .core-object-field-template-property-toggle-banner .design-boolean-field {
@@ -112,7 +150,7 @@
         .design-boolean-field
         label {
         color: #181d27 !important;
-        font-size: 13.5px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         line-height: 18px !important;
       }
@@ -172,6 +210,33 @@
       .core-object-field-template-advanced-grid
         > .core-object-field-template-property-full-width {
         grid-column: 1 / -1;
+      }
+
+      .core-object-field-template-credential-field-grid .design-field-label,
+      .core-object-field-template-advanced-grid .design-field-label {
+        min-height: 18px !important;
+        flex-wrap: nowrap;
+        gap: 6px;
+        margin-bottom: 6px !important;
+      }
+
+      .core-object-field-template-credential-field-grid
+        .design-field-label
+        label,
+      .core-object-field-template-advanced-grid .design-field-label label {
+        overflow-wrap: normal;
+        white-space: nowrap;
+        word-break: normal;
+      }
+
+      .core-object-field-template-credential-field-grid
+        .design-field-label
+        .tw\:text-gray-400,
+      .core-object-field-template-advanced-grid
+        .design-field-label
+        .tw\:text-gray-400 {
+        flex-shrink: 0;
+        white-space: nowrap;
       }
     }
   }

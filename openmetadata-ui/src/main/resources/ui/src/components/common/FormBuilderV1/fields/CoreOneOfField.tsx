@@ -17,8 +17,11 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+
+const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
 
 const getSafeOptionIndex = (option: number, optionCount: number) => {
   if (optionCount === 0) {
@@ -27,6 +30,23 @@ const getSafeOptionIndex = (option: number, optionCount: number) => {
 
   return option >= 0 && option < optionCount ? option : 0;
 };
+
+const getOptionTitle = (option: RJSFSchema, index: number): string =>
+  startCase(
+    option.title ??
+      (typeof option.type === 'string' ? option.type : `Option ${index + 1}`)
+  );
+
+const shouldRenderSegmentedOptions = (
+  id: string,
+  options: RJSFSchema[]
+): boolean =>
+  options.length > 1 &&
+  options.length <= 5 &&
+  !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
+  options.every(
+    (option) => option.type === 'object' || Boolean(option.properties)
+  );
 
 const CoreOneOfField = (props: FieldProps) => {
   const {
@@ -110,17 +130,15 @@ const CoreOneOfField = (props: FieldProps) => {
   const hasMultipleOptions = resolvedOptions.length > 1;
   const selectedSchema =
     safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
+  const shouldRenderAsTabs = shouldRenderSegmentedOptions(
+    idSchema.$id,
+    resolvedOptions
+  );
   const optionItems = useMemo(
     () =>
       resolvedOptions.map((option, index) => ({
         id: String(index),
-        label:
-          option.title ??
-          startCase(
-            typeof option.type === 'string'
-              ? option.type
-              : `Option ${index + 1}`
-          ),
+        label: getOptionTitle(option, index),
       })),
     [resolvedOptions]
   );
@@ -143,8 +161,10 @@ const CoreOneOfField = (props: FieldProps) => {
     delete childUiSchema['ui:field'];
     delete childUiSchema['ui:fieldReplacesAnyOrOneOf'];
 
-    return childUiSchema;
-  }, [uiSchema]);
+    return shouldRenderAsTabs
+      ? { ...childUiSchema, 'ui:label': false }
+      : childUiSchema;
+  }, [shouldRenderAsTabs, uiSchema]);
 
   const handleOptionChange = (newIndex: number) => {
     if (newIndex === safeSelectedOption) {
@@ -185,7 +205,49 @@ const CoreOneOfField = (props: FieldProps) => {
     <div
       className="core-one-of-field tw:flex tw:flex-col tw:gap-3"
       data-field-id={idSchema.$id}>
-      {hasMultipleOptions && (
+      {hasMultipleOptions && shouldRenderAsTabs && (
+        <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
+          {!hideLabel && fieldLabel && (
+            <span
+              className="core-one-of-field-tabs-label tw:text-sm tw:font-semibold tw:text-secondary"
+              id={`${idSchema.$id}__title`}>
+              {fieldLabel}
+            </span>
+          )}
+          <div
+            aria-label={fieldLabel}
+            className="tw:grid tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1"
+            role="tablist"
+            style={{
+              gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
+            }}>
+            {optionItems.map((item) => {
+              const isSelected = selectedKey === item.id;
+
+              return (
+                <button
+                  aria-selected={isSelected}
+                  className={classNames(
+                    'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                    isSelected
+                      ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                      : 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                  )}
+                  data-selected={isSelected}
+                  data-testid={`oneof-option-${item.id}`}
+                  key={item.id}
+                  role="tab"
+                  type="button"
+                  onClick={() => handleOptionChange(Number(item.id))}>
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasMultipleOptions && !shouldRenderAsTabs && (
         <Select
           className="core-one-of-field-select"
           data-testid={`select-widget-${idSchema.$id}${
@@ -229,7 +291,11 @@ const CoreOneOfField = (props: FieldProps) => {
           readonly={readonly}
           registry={registry}
           required={required}
-          schema={selectedSchema}
+          schema={
+            shouldRenderAsTabs
+              ? { ...selectedSchema, title: undefined }
+              : selectedSchema
+          }
           uiSchema={selectedFieldUiSchema}
           onBlur={onBlur}
           onChange={onChange}
