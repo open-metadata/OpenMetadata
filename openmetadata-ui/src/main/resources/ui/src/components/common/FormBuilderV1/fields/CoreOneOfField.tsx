@@ -26,6 +26,9 @@ const MAX_SEGMENTED_OPTION_COUNT = 3;
 const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
 const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
 
+const isObjectLikeSchema = (option: RJSFSchema): boolean =>
+  option.type === 'object' || Boolean(option.properties);
+
 const getSafeOptionIndex = (option: number, optionCount: number) => {
   if (optionCount === 0) {
     return -1;
@@ -54,9 +57,7 @@ const shouldRenderSegmentedOptions = (
     optionLabels.every(
       (label) => label.length <= MAX_SEGMENTED_OPTION_LABEL_LENGTH
     ) &&
-    options.every(
-      (option) => option.type === 'object' || Boolean(option.properties)
-    )
+    options.every(isObjectLikeSchema)
   );
 };
 
@@ -146,6 +147,11 @@ const CoreOneOfField = (props: FieldProps) => {
     idSchema.$id,
     resolvedOptions
   );
+  const selectedBranchIsObjectLike = isObjectLikeSchema(selectedSchema);
+  const shouldRenderInlineSelectedBranch =
+    hasMultipleOptions && !selectedBranchIsObjectLike && !shouldRenderAsTabs;
+  const shouldSuppressSelectedBranchLabel =
+    hasMultipleOptions && selectedBranchIsObjectLike;
   const optionItems = useMemo(
     () =>
       resolvedOptions.map((option, index) => ({
@@ -173,10 +179,10 @@ const CoreOneOfField = (props: FieldProps) => {
     delete childUiSchema['ui:field'];
     delete childUiSchema['ui:fieldReplacesAnyOrOneOf'];
 
-    return hasMultipleOptions
+    return shouldSuppressSelectedBranchLabel
       ? { ...childUiSchema, 'ui:label': false }
       : childUiSchema;
-  }, [hasMultipleOptions, uiSchema]);
+  }, [shouldSuppressSelectedBranchLabel, uiSchema]);
 
   const handleOptionChange = (newIndex: number) => {
     if (newIndex === safeSelectedOption) {
@@ -214,7 +220,11 @@ const CoreOneOfField = (props: FieldProps) => {
       : null;
   const selectedSchemaForRender =
     hasMultipleOptions && selectedSchema
-      ? { ...selectedSchema, description: undefined, title: undefined }
+      ? {
+          ...selectedSchema,
+          description: undefined,
+          ...(shouldSuppressSelectedBranchLabel ? { title: undefined } : {}),
+        }
       : selectedSchema;
   const selectedDescription =
     hasMultipleOptions && typeof selectedSchema.description === 'string'
@@ -223,7 +233,10 @@ const CoreOneOfField = (props: FieldProps) => {
 
   return (
     <div
-      className="core-one-of-field tw:flex tw:flex-col tw:gap-3"
+      className={classNames(
+        'core-one-of-field tw:flex tw:flex-col tw:gap-3',
+        shouldRenderInlineSelectedBranch && 'core-one-of-field-inline-selected'
+      )}
       data-field-id={idSchema.$id}>
       {hasMultipleOptions && shouldRenderAsTabs && (
         <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">

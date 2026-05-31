@@ -78,6 +78,13 @@ const GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER = [
   'assumeRoleSessionName',
   'assumeRoleSourceIdentity',
 ];
+const CREDENTIAL_VALUE_PROPERTY_ORDER = [
+  'projectId',
+  'privateKeyId',
+  'clientEmail',
+  'privateKey',
+  'clientId',
+];
 const GATED_CREDENTIAL_VISIBLE_PROPERTIES = new Set(
   GATED_CREDENTIAL_PROPERTY_ORDER
 );
@@ -372,6 +379,10 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
     if (isGatedCredentialConfig) {
       return orderProperties(normalProperties, GATED_CREDENTIAL_PROPERTY_ORDER);
+    }
+
+    if (isGenericNestedConfig) {
+      return orderProperties(normalProperties, CREDENTIAL_VALUE_PROPERTY_ORDER);
     }
 
     return normalProperties;

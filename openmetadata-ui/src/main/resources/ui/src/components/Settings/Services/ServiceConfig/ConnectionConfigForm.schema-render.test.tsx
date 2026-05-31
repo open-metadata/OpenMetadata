@@ -325,6 +325,18 @@ describe('ConnectionConfigForm schema rendering', () => {
       connectionSection,
       '[data-field-id="root/credentials"]'
     );
+    const credentialsWrapper = getRequiredElement(
+      connectionSection,
+      '[data-field-name="credentials"]'
+    );
+    const hostPortWrapper = getRequiredElement(
+      connectionSection,
+      '[data-field-name="hostPort"]'
+    );
+    const gcpConfigProperty = getRequiredElement(
+      gcpCredentialsBlock,
+      ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-gcpConfig'
+    );
     const gcpConfigField = getRequiredElement(
       gcpCredentialsBlock,
       '.core-one-of-field[data-field-id="root/credentials/gcpConfig"]'
@@ -347,6 +359,13 @@ describe('ConnectionConfigForm schema rendering', () => {
       'core-object-field-template-credential-block'
     );
     expect(
+      credentialsWrapper.compareDocumentPosition(hostPortWrapper) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(gcpConfigProperty).toHaveClass(
+      'core-object-field-template-property-full-width'
+    );
+    expect(
       gcpConfigField.querySelector('.core-object-field-template-title')
     ).not.toBeInTheDocument();
     expect(
@@ -358,8 +377,8 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toEqual([
       'projectId',
       'privateKeyId',
-      'privateKey',
       'clientEmail',
+      'privateKey',
       'clientId',
     ]);
     expect(
@@ -368,6 +387,20 @@ describe('ConnectionConfigForm schema rendering', () => {
         '.core-object-field-template-property-projectId'
       )
     ).toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      getRequiredElement(
+        selectedCredentialBranch,
+        '.core-object-field-template-property-projectId .core-one-of-field'
+      )
+    ).toHaveClass('core-one-of-field-inline-selected');
+    expect(
+      within(
+        getRequiredElement(
+          selectedCredentialBranch,
+          '.core-object-field-template-property-projectId'
+        )
+      ).getAllByText('Single Project ID').length
+    ).toBeGreaterThan(0);
     expect(
       getRequiredElement(
         selectedCredentialBranch,

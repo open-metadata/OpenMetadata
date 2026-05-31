@@ -89,15 +89,19 @@ const getBaseProps = (
     registry: {
       fields: {
         SchemaField: ({
+          hideLabel,
           schema,
           uiSchema,
         }: {
+          hideLabel?: boolean;
           schema: { title?: string };
           uiSchema?: Record<string, unknown>;
         }) => (
           <div
+            data-hide-label={String(Boolean(hideLabel))}
             data-testid="schema-field"
-            data-ui-field={String(uiSchema?.['ui:field'] ?? '')}>
+            data-ui-field={String(uiSchema?.['ui:field'] ?? '')}
+            data-ui-label={String(uiSchema?.['ui:label'] ?? '')}>
             {schema.title}
           </div>
         ),
@@ -209,11 +213,21 @@ describe('CoreOneOfField', () => {
   });
 
   it('keeps nested project ID selectors as a compact select', () => {
-    render(
+    const { container } = render(
       <CoreOneOfField
         {...getBaseProps(
           {},
-          DEFAULT_SCHEMA,
+          {
+            oneOf: [
+              { title: 'Single Project ID', type: 'string' },
+              {
+                items: { type: 'string' },
+                title: 'Multiple Project ID',
+                type: 'array',
+              },
+            ],
+            title: 'Project ID',
+          },
           {},
           'root/credentials/gcpConfig/projectId'
         )}
@@ -222,6 +236,16 @@ describe('CoreOneOfField', () => {
 
     expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(container.querySelector('.core-one-of-field')).toHaveClass(
+      'core-one-of-field-inline-selected'
+    );
+    expect(screen.getByTestId('schema-field')).toHaveTextContent(
+      'Single Project ID'
+    );
+    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+      'data-ui-label',
+      ''
+    );
   });
 
   it('renders a single branch without an option select', () => {

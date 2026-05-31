@@ -217,16 +217,36 @@ const SectionFields = ({
   const booleanProperties = inlineBooleans
     ? []
     : visibleProperties.filter((element) => isBoolean(element.name));
-  const wideProperties = visibleProperties.filter(
-    (element) => wideNames?.has(element.name) && !isBoolean(element.name)
-  );
-  const standardProperties = visibleProperties.filter((element) => {
-    if (wideNames?.has(element.name)) {
-      return false;
-    }
+  const orderedFieldGroups = visibleProperties
+    .filter((element) => inlineBooleans || !isBoolean(element.name))
+    .reduce<
+      Array<
+        | {
+            properties: ObjectFieldTemplatePropertyType[];
+            type: 'grid';
+          }
+        | {
+            property: ObjectFieldTemplatePropertyType;
+            type: 'wide';
+          }
+      >
+    >((groups, element) => {
+      if (isWideProperty(element.name)) {
+        groups.push({ property: element, type: 'wide' });
 
-    return inlineBooleans || !isBoolean(element.name);
-  });
+        return groups;
+      }
+
+      const lastGroup = groups[groups.length - 1];
+
+      if (lastGroup?.type === 'grid') {
+        lastGroup.properties.push(element);
+      } else {
+        groups.push({ properties: [element], type: 'grid' });
+      }
+
+      return groups;
+    }, []);
 
   const renderProperty = (
     element: ObjectFieldTemplatePropertyType,
@@ -313,23 +333,26 @@ const SectionFields = ({
       {hiddenProperties.map((element, index) =>
         renderProperty(element, index, 'tw:hidden')
       )}
-      {standardProperties.length > 0 && (
-        <div className="connection-section-field-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]">
-          {standardProperties.map((element, index) =>
-            renderProperty(element, index)
-          )}
-        </div>
-      )}
-      {wideProperties.length > 0 && (
-        <div className="tw:flex tw:flex-col tw:gap-3">
-          {wideProperties.map((element, index) =>
-            renderProperty(element, index, 'connection-section-wide-property')
-          )}
-        </div>
+      {orderedFieldGroups.map((group, groupIndex) =>
+        group.type === 'grid' ? (
+          <div
+            className="connection-section-field-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]"
+            key={`grid-${groupIndex}`}>
+            {group.properties.map((element, index) =>
+              renderProperty(element, index)
+            )}
+          </div>
+        ) : (
+          renderProperty(
+            group.property,
+            groupIndex,
+            'connection-section-wide-property'
+          )
+        )
       )}
       {booleanProperties.length > 0 && (
         <>
-          {(standardProperties.length > 0 || wideProperties.length > 0) && (
+          {orderedFieldGroups.length > 0 && (
             <div className="tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
           )}
           <div className="connection-section-boolean-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]">
