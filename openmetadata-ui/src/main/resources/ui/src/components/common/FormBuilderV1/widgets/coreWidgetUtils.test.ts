@@ -88,4 +88,27 @@ describe('coreWidgetUtils', () => {
       } as never)
     ).toBe('Sample data storage config');
   });
+
+  it('preserves connector acronyms in raw camelCase labels', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 's3Config',
+      } as never)
+    ).toBe('S3 Config');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'awsSecretAccessKey',
+      } as never)
+    ).toBe('AWS Secret Access Key');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'apiUrl',
+      } as never)
+    ).toBe('API URL');
+  });
 });

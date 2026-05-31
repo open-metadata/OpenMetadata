@@ -18,8 +18,8 @@ import {
   RJSFSchema,
 } from '@rjsf/utils';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
 const MAX_SEGMENTED_OPTION_COUNT = 3;
@@ -38,7 +38,7 @@ const getSafeOptionIndex = (option: number, optionCount: number) => {
 };
 
 const getOptionTitle = (option: RJSFSchema, index: number): string =>
-  startCase(
+  getFormDisplayLabel(
     option.title ??
       (typeof option.type === 'string' ? option.type : `Option ${index + 1}`)
   );
@@ -213,7 +213,7 @@ const CoreOneOfField = (props: FieldProps) => {
     );
   };
 
-  const fieldLabel = label ?? schema.title ?? startCase(name);
+  const fieldLabel = label ?? schema.title ?? getFormDisplayLabel(name);
   const selectedKey =
     hasMultipleOptions && safeSelectedOption >= 0
       ? String(safeSelectedOption)

@@ -212,6 +212,33 @@ describe('CoreOneOfField', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
+  it('preserves connector acronyms in option labels', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          {
+            oneOf: [
+              { title: 'S3Config', type: 'object' },
+              { title: 'gcsConfig', type: 'object' },
+            ],
+            title: 'Storage Config',
+          },
+          {},
+          'root/sampleDataStorageConfig/config/storageConfig'
+        )}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'S3 Config' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'GCS Config' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('S 3 Config')).not.toBeInTheDocument();
+  });
+
   it('keeps nested project ID selectors as a compact select', () => {
     const { container } = render(
       <CoreOneOfField
