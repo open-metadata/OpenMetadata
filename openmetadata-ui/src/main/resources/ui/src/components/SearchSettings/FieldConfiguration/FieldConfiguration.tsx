@@ -178,6 +178,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             <Slider
               max={100}
               min={0}
+              step={0.1}
               tooltip={{ open: false }}
               value={fieldWeight}
               onChange={handleWeightChange}

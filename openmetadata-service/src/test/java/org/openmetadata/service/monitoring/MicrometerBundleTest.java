@@ -10,6 +10,7 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import jakarta.servlet.ServletRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -84,7 +85,8 @@ public class MicrometerBundleTest {
 
     // Add some test metrics
     registry.counter("test_counter", "type", "test").increment();
-    registry.gauge("test_gauge", 42.0);
+    AtomicReference<Double> testGauge = new AtomicReference<>(42.0);
+    registry.gauge("test_gauge", testGauge, AtomicReference::get);
 
     // Scrape metrics
     String metrics = registry.scrape();

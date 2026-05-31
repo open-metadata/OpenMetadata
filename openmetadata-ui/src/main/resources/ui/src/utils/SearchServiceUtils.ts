@@ -12,31 +12,43 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
-import customSearchConnection from '../jsons/connectionSchemas/connections/search/customSearchConnection.json';
-import elasticSearchConnection from '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
-import openSearchConnection from '../jsons/connectionSchemas/connections/search/openSearchConnection.json';
 
-export const getSearchServiceConfig = (type: SearchServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const searchSchemaLoaders: Partial<Record<SearchServiceType, SchemaLoader>> = {
+  [SearchServiceType.ElasticSearch]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json'
+    ),
+  [SearchServiceType.OpenSearch]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/search/openSearchConnection.json'
+    ),
+  [SearchServiceType.CustomSearch]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/search/customSearchConnection.json'
+    ),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getSearchServiceConfig = async (type: SearchServiceType) => {
+  const loader = searchSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type) {
-    case SearchServiceType.ElasticSearch: {
-      schema = elasticSearchConnection;
 
-      break;
-    }
-    case SearchServiceType.OpenSearch: {
-      schema = openSearchConnection;
-
-      break;
-    }
-    case SearchServiceType.CustomSearch: {
-      schema = customSearchConnection;
-
-      break;
-    }
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

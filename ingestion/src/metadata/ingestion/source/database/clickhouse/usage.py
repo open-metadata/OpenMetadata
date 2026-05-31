@@ -11,6 +11,7 @@
 """
 Clickhouse usage module
 """
+
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT,
 )

@@ -17,7 +17,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import { ReactNode } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -40,6 +40,7 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
+import { ActivityEventType } from '../generated/entity/activity/activityEvent';
 import {
   CardStyle,
   EntityTestResultSummaryObject,
@@ -49,22 +50,20 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
+import { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
+  getEntityActivityByFqn,
   getFeedById,
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
 import { searchQuery } from '../rest/searchAPI';
-import {
-  getEntityPlaceHolder,
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-  getRandomColor,
-  Transi18next,
-} from './CommonUtils';
+import { getTaskCounts } from '../rest/tasksAPI';
+import { getRandomColor } from './ColorUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
+import { getEntityPlaceHolder } from './EntityDisplayUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
 import {
@@ -73,14 +72,15 @@ import {
   getEntityName,
 } from './EntityUtils';
 import Fqn from './Fqn';
-import { t } from './i18next/LocalUtil';
+import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
+import { t, Transi18next } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
 import { getSanitizeContent } from './sanitize.utils';
 import { getTermQuery } from './SearchUtils';
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -96,6 +96,54 @@ export const getEntityField = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
 
   return match?.[3];
+};
+
+/**
+ * Helper to check if about field is an EntityReference object (Task entity)
+ * vs a string entity link (Thread entity).
+ * Task entities have about as EntityReference: { id, type, fullyQualifiedName }
+ * Thread entities have about as string: <#E::table::fqn>
+ */
+export const isEntityReferenceAbout = (
+  about: string | { type?: string; fullyQualifiedName?: string } | undefined
+): about is { type?: string; fullyQualifiedName?: string } => {
+  return typeof about === 'object' && about !== null;
+};
+
+/**
+ * Get entity type from about field, handling both Thread (string) and Task (EntityReference).
+ * @param about - Either a string entity link or an EntityReference object
+ * @returns The entity type
+ */
+export const getEntityTypeFromAbout = (
+  about: string | { type?: string; fullyQualifiedName?: string } | undefined
+): string | undefined => {
+  if (!about) {
+    return undefined;
+  }
+  if (isEntityReferenceAbout(about)) {
+    return about.type;
+  }
+
+  return EntityLink.getEntityType(about);
+};
+
+/**
+ * Get entity FQN from about field, handling both Thread (string) and Task (EntityReference).
+ * @param about - Either a string entity link or an EntityReference object
+ * @returns The entity fully qualified name
+ */
+export const getEntityFQNFromAbout = (
+  about: string | { type?: string; fullyQualifiedName?: string } | undefined
+): string | undefined => {
+  if (!about) {
+    return undefined;
+  }
+  if (isEntityReferenceAbout(about)) {
+    return about.fullyQualifiedName;
+  }
+
+  return EntityLink.getEntityFqn(about);
 };
 
 export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
@@ -830,5 +878,251 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.Default:
     default:
       return t('label.posted-on-lowercase');
+  }
+};
+
+export const getActivityEventHeaderText = (
+  eventType?: ActivityEventType,
+  fieldName?: string,
+  _entityType?: EntityType
+): ReactNode => {
+  if (!eventType) {
+    return t('label.posted-on-lowercase');
+  }
+
+  switch (eventType) {
+    case ActivityEventType.EntityCreated:
+      return (
+        <Typography.Text className="font-bold">
+          {t('label.created-lowercase')}
+        </Typography.Text>
+      );
+    case ActivityEventType.EntityDeleted:
+    case ActivityEventType.EntitySoftDeleted:
+      return (
+        <Typography.Text className="font-bold">
+          {t('label.deleted-lowercase')}
+        </Typography.Text>
+      );
+    case ActivityEventType.EntityRestored:
+      return (
+        <Typography.Text className="font-bold">
+          {t('label.restored-lowercase')}
+        </Typography.Text>
+      );
+    case ActivityEventType.DescriptionUpdated:
+    case ActivityEventType.ColumnDescriptionUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
+          values={{
+            field: t('label.description'),
+            action: t('label.updated-lowercase'),
+          }}
+        />
+      );
+    case ActivityEventType.TagsUpdated:
+    case ActivityEventType.ColumnTagsUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
+          values={{
+            field: t('label.tag-plural'),
+            action: t('label.added-lowercase'),
+          }}
+        />
+      );
+    case ActivityEventType.OwnerUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
+          values={{
+            field: t('label.owner'),
+            action: t('label.updated-lowercase'),
+          }}
+        />
+      );
+    case ActivityEventType.DomainUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
+          values={{
+            field: t('label.domain'),
+            action: t('label.updated-lowercase'),
+          }}
+        />
+      );
+    case ActivityEventType.TierUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
+          values={{
+            field: t('label.tier'),
+            action: t('label.updated-lowercase'),
+          }}
+        />
+      );
+    case ActivityEventType.CustomPropertyUpdated:
+      return (
+        <Transi18next
+          i18nKey="message.feed-custom-property-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case ActivityEventType.TestCaseStatusChanged:
+      return (
+        <Transi18next
+          i18nKey="message.feed-test-case-header"
+          renderElement={<Typography.Text className="font-bold" />}
+        />
+      );
+    case ActivityEventType.PipelineStatusChanged:
+      return (
+        <Typography.Text className="font-bold">
+          {t('label.pipeline-status-changed')}
+        </Typography.Text>
+      );
+    case ActivityEventType.EntityUpdated:
+    default:
+      if (fieldName) {
+        return (
+          <Typography.Text className="font-bold">
+            {t('label.updated-field-for-lowercase', { field: fieldName })}
+          </Typography.Text>
+        );
+      }
+
+      return (
+        <Typography.Text className="font-bold">
+          {t('label.updated-lowercase')}
+        </Typography.Text>
+      );
+  }
+};
+
+export const getFeedCounts = async (
+  entityType: string,
+  entityFQN: string,
+  domainOrCallback: string | undefined | ((countValue: FeedCounts) => void),
+  callback?: (countValue: FeedCounts) => void
+) => {
+  try {
+    const domain =
+      typeof domainOrCallback === 'string' || domainOrCallback === undefined
+        ? domainOrCallback
+        : undefined;
+    const feedCountCallback =
+      typeof domainOrCallback === 'function' ? domainOrCallback : callback;
+
+    if (!feedCountCallback) {
+      return;
+    }
+
+    const [activityRes, taskCounts] = await Promise.all([
+      getEntityActivityByFqn(entityType, entityFQN, {
+        days: 30,
+        limit: 100,
+        domain,
+      }),
+      getTaskCounts({ aboutEntity: entityFQN, domain }),
+    ]);
+
+    const activityCount = activityRes?.data?.length ?? 0;
+
+    const openTaskCount = taskCounts.open ?? 0;
+    const closedTaskCount = taskCounts.completed ?? 0;
+    const totalTasksCount = taskCounts.total ?? 0;
+
+    feedCountCallback({
+      conversationCount: activityCount,
+      totalTasksCount,
+      openTaskCount,
+      closedTaskCount,
+      totalCount: activityCount + totalTasksCount,
+      mentionCount: 0,
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+export const fetchEntityTaskCountsInto = async (
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const taskCounts = await getTaskCounts({ aboutEntity: entityFqn, domain });
+    setFeedCount((prev) => {
+      const openTaskCount = taskCounts.open ?? 0;
+      const closedTaskCount = taskCounts.completed ?? 0;
+      const totalTasksCount = taskCounts.total ?? 0;
+
+      return {
+        ...prev,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+export const fetchEntityActivityCountInto = async (
+  entityType: string,
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
+      days: 30,
+      limit: 0,
+      domain,
+    });
+    setFeedCount((prev) => {
+      const conversationCount = activityRes?.paging?.total ?? 0;
+
+      return {
+        ...prev,
+        conversationCount,
+        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
 };

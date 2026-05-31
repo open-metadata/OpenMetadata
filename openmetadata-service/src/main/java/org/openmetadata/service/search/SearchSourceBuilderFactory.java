@@ -1,10 +1,10 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
-import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
-import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
-import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
-import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNames;
+import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
+import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
+import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
+import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 
 import java.util.List;
 import java.util.Map;

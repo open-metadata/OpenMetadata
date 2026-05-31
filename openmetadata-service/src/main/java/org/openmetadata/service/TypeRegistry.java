@@ -154,7 +154,11 @@ public class TypeRegistry {
   }
 
   public static String getPropertyName(String propertyFQN) {
-    return FullyQualifiedName.split(propertyFQN)[2];
+    CustomProperty property = CUSTOM_PROPERTIES.get(propertyFQN);
+    if (property != null) {
+      return property.getName();
+    }
+    return FullyQualifiedName.unquoteName(FullyQualifiedName.split(propertyFQN)[2]);
   }
 
   public static String getCustomPropertyType(String entityType, String propertyName) {

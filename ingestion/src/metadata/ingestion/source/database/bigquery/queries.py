@@ -14,7 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import text
@@ -65,7 +65,7 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
     select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
     WHERE TRUE {view_filter}
-    """
+    """  # noqa: W291
 )
 
 BIGQUERY_CONSTRAINTS = textwrap.dedent(
@@ -101,7 +101,7 @@ SELECT
   routine_definition as definition,
   external_language as language
 FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
-WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
     """
@@ -114,7 +114,7 @@ SELECT
   routine_definition as definition,
   external_language as language
 FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES
-WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
     """
@@ -237,9 +237,9 @@ class BigQueryQueryResult(BaseModel):
     project_id: str
     dataset_id: str
     table_name: str
-    inserted_row_count: Optional[int] = None
-    deleted_row_count: Optional[int] = None
-    updated_row_count: Optional[int] = None
+    inserted_row_count: Optional[int] = None  # noqa: UP045
+    deleted_row_count: Optional[int] = None  # noqa: UP045
+    updated_row_count: Optional[int] = None  # noqa: UP045
     start_time: datetime
     statement_type: str
 
@@ -249,7 +249,7 @@ class BigQueryQueryResult(BaseModel):
         usage_location: str,
         dataset_id: str,
         project_id: str,
-        billing_project_id: Optional[str] = None,
+        billing_project_id: Optional[str] = None,  # noqa: UP045
     ):
         # Use billing project for the INFORMATION_SCHEMA query if provided
         query_project_id = billing_project_id or project_id
@@ -269,9 +269,7 @@ class BigQueryQueryResult(BaseModel):
             )
         )
 
-        return TypeAdapter(List[BigQueryQueryResult]).validate_python(
-            [r._asdict() for r in rows]
-        )
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])  # noqa: UP006
 
 
 JOBS = """

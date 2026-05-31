@@ -15,16 +15,23 @@ Number of entities to process in each batch.
 $$
 
 $$section
-### Consumer Threads $(id="consumerThreads")
+### Warm Read Bundles $(id="warmBundles")
 
-Number of parallel threads for processing entities and warming cache.
+Pre-warm the per-entity bundle cache (tags + certification) so the first read after deploy doesn't fan out to the DB. Disable for very large installs.
 
 $$
 
 $$section
-### Queue Size $(id="queueSize")
+### Warm Relationships $(id="warmRelationships")
 
-Internal queue size for entity processing pipeline.
+Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.
+
+$$
+
+$$section
+### Enable Distributed Claim $(id="enableDistributedClaim")
+
+In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).
 
 $$
 

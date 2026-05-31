@@ -27,9 +27,7 @@ class PinotProfilerSource(ProfilerSource):
         Returns:
             DatabaseService.__config__
         """
-        service_config: pinotDBConnection.PinotDBConnection = (
-            super()._copy_service_config(config, database)
-        )
+        service_config: pinotDBConnection.PinotDBConnection = super()._copy_service_config(config, database)
         conn_args = service_config.connectionArguments
         if isinstance(conn_args, ConnectionArguments):
             args_dict = conn_args.root or {}

@@ -30,7 +30,7 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -138,7 +138,7 @@ export const EntityTitleSection = ({
           placement={tooltipPlacement}
           title={getTextFromHtmlString(entityName)}
           trigger="hover">
-          <TooltipTrigger>
+          <TooltipTrigger className="tw:max-w-[75%]">
             <Link
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}

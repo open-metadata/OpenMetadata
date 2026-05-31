@@ -1,11 +1,13 @@
 """
 OpenMetadata SDK Entities - Plural naming convention to avoid conflicts with generated entities
 """
+
 from metadata.sdk.entities.apicollections import APICollections
 from metadata.sdk.entities.apiendpoints import APIEndpoints
 from metadata.sdk.entities.charts import Charts
 from metadata.sdk.entities.classifications import Classifications
 from metadata.sdk.entities.containers import Containers
+from metadata.sdk.entities.contextfiles import ContextFiles
 from metadata.sdk.entities.dashboard_services import DashboardServices
 from metadata.sdk.entities.dashboarddatamodels import DashboardDataModels
 from metadata.sdk.entities.dashboards import Dashboards
@@ -15,10 +17,12 @@ from metadata.sdk.entities.databaseschemas import DatabaseSchemas
 from metadata.sdk.entities.datacontracts import DataContracts
 from metadata.sdk.entities.dataproducts import DataProducts
 from metadata.sdk.entities.domains import Domains
+from metadata.sdk.entities.folders import Folders
 from metadata.sdk.entities.glossaries import Glossaries
 from metadata.sdk.entities.glossaryterms import GlossaryTerms
 from metadata.sdk.entities.metrics import Metrics
 from metadata.sdk.entities.mlmodels import MLModels
+from metadata.sdk.entities.pages import Pages
 from metadata.sdk.entities.pipelines import Pipelines
 from metadata.sdk.entities.queries import Queries
 from metadata.sdk.entities.searchindexes import SearchIndexes
@@ -38,6 +42,7 @@ __all__ = [
     "Charts",
     "Classifications",
     "Containers",
+    "ContextFiles",
     "DashboardDataModels",
     "Dashboards",
     "DatabaseServices",
@@ -47,10 +52,12 @@ __all__ = [
     "DataContracts",
     "DataProducts",
     "Domains",
+    "Folders",
     "Glossaries",
     "GlossaryTerms",
     "Metrics",
     "MLModels",
+    "Pages",
     "Pipelines",
     "Queries",
     "SearchIndexes",

@@ -95,9 +95,7 @@ class TestHexQueryFetcher(TestCase):
         self.assertIsNone(self.query_fetcher._extract_hex_metadata(malformed))
 
         # Missing required fields
-        missing_id = (
-            '-- Hex query metadata: {"project_url": "https://hex.tech/ws/hex/proj"}'
-        )
+        missing_id = '-- Hex query metadata: {"project_url": "https://hex.tech/ws/hex/proj"}'
         self.assertIsNone(self.query_fetcher._extract_hex_metadata(missing_id))
 
     @patch.object(HexQueryFetcher, "_create_engine_for_service")
@@ -119,14 +117,10 @@ class TestHexQueryFetcher(TestCase):
             ("INSERT INTO another_table VALUES (1, 2, 3)",),
         ]
         mock_connection.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = MagicMock(
-            return_value=mock_connection
-        )
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_connection)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=None)
 
-        result = self.query_fetcher.fetch_hex_queries_from_service_prefix(
-            "test_snowflake"
-        )
+        result = self.query_fetcher.fetch_hex_queries_from_service_prefix("test_snowflake")
 
         # Should return empty dict when no Hex queries found
         self.assertEqual(len(result), 0)
@@ -141,9 +135,7 @@ class TestHexQueryFetcher(TestCase):
         result = self.query_fetcher._find_matching_service("test_service")
 
         self.assertEqual(result, mock_service)
-        self.metadata.get_by_name.assert_called_once_with(
-            entity=DatabaseService, fqn="test_service"
-        )
+        self.metadata.get_by_name.assert_called_once_with(entity=DatabaseService, fqn="test_service")
 
     def test_find_matching_service_not_found(self):
         """Test when service is not found"""
@@ -192,9 +184,7 @@ class TestHexQueryFetcher(TestCase):
             ),
         ]
         mock_connection.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = MagicMock(
-            return_value=mock_connection
-        )
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_connection)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=None)
 
         config = SnowflakeConnection(
@@ -206,9 +196,7 @@ class TestHexQueryFetcher(TestCase):
             warehouse="test_warehouse",
         )
 
-        results = self.query_fetcher._execute_hex_query(
-            mock_engine, "snowflake", config
-        )
+        results = self.query_fetcher._execute_hex_query(mock_engine, "snowflake", config)
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["project_id"], "proj_123")
@@ -225,9 +213,7 @@ class TestHexQueryFetcher(TestCase):
             ),
         ]
         mock_connection.execute.return_value = mock_result
-        mock_engine.connect.return_value.__enter__ = MagicMock(
-            return_value=mock_connection
-        )
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_connection)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=None)
 
         credentials = GCPCredentials(
@@ -255,9 +241,7 @@ class TestHexQueryFetcher(TestCase):
         self.assertEqual(results[0]["project_id"], "proj_456")
 
     @patch("metadata.ingestion.source.dashboard.hex.query_fetcher.LineageParser")
-    @patch(
-        "metadata.ingestion.source.dashboard.hex.query_fetcher.get_table_entities_from_query"
-    )
+    @patch("metadata.ingestion.source.dashboard.hex.query_fetcher.get_table_entities_from_query")
     def test_extract_tables_from_query(self, mock_get_tables, mock_parser_class):
         """Test extracting table references from SQL query"""
         # Mock LineageParser
@@ -272,17 +256,13 @@ class TestHexQueryFetcher(TestCase):
         mock_table1 = Table(
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="sales_data",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                "snowflake.sales_db.public.sales_data"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName("snowflake.sales_db.public.sales_data"),
             columns=[],
         )
         mock_table2 = Table(
             id="d3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="customer_data",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                "snowflake.sales_db.public.customer_data"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName("snowflake.sales_db.public.customer_data"),
             columns=[],
         )
 
@@ -297,9 +277,7 @@ class TestHexQueryFetcher(TestCase):
         # The method might return duplicates or multiple calls, just check we got tables
         self.assertGreaterEqual(len(result), 2)
         table_names = [
-            str(t.name.root) if hasattr(t.name, "root") else str(t.name)
-            for t in result
-            if hasattr(t, "name")
+            str(t.name.root) if hasattr(t.name, "root") else str(t.name) for t in result if hasattr(t, "name")
         ]
         self.assertIn("sales_data", table_names)
         self.assertIn("customer_data", table_names)
@@ -309,33 +287,21 @@ class TestHexQueryFetcher(TestCase):
         table = Table(
             id="e3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="orders",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                "snowflake.PROD_DB.sales.orders"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName("snowflake.PROD_DB.sales.orders"),
             columns=[],
         )
 
         # Test exact match
-        self.assertTrue(
-            self.query_fetcher._matches_prefix_constraints(table, "snowflake.PROD_DB")
-        )
+        self.assertTrue(self.query_fetcher._matches_prefix_constraints(table, "snowflake.PROD_DB"))
 
         # Test no match
-        self.assertFalse(
-            self.query_fetcher._matches_prefix_constraints(table, "snowflake.DEV_DB")
-        )
+        self.assertFalse(self.query_fetcher._matches_prefix_constraints(table, "snowflake.DEV_DB"))
 
         # Test partial match
-        self.assertTrue(
-            self.query_fetcher._matches_prefix_constraints(table, "snowflake")
-        )
+        self.assertTrue(self.query_fetcher._matches_prefix_constraints(table, "snowflake"))
 
         # Test full path match
-        self.assertTrue(
-            self.query_fetcher._matches_prefix_constraints(
-                table, "snowflake.PROD_DB.sales"
-            )
-        )
+        self.assertTrue(self.query_fetcher._matches_prefix_constraints(table, "snowflake.PROD_DB.sales"))
 
         # Test no prefix (should match all)
         self.assertTrue(self.query_fetcher._matches_prefix_constraints(table, None))
@@ -350,23 +316,15 @@ class TestHexQueryFetcher(TestCase):
         )
 
         # Empty prefix parts
-        self.assertTrue(
-            self.query_fetcher._matches_prefix_constraints(table, "service..")
-        )
+        self.assertTrue(self.query_fetcher._matches_prefix_constraints(table, "service.."))
 
         # More prefix parts than table FQN
-        self.assertFalse(
-            self.query_fetcher._matches_prefix_constraints(
-                table, "service.db.schema.table.column"
-            )
-        )
+        self.assertFalse(self.query_fetcher._matches_prefix_constraints(table, "service.db.schema.table.column"))
 
         # Invalid table FQN
         table_invalid = MagicMock()
         table_invalid.fullyQualifiedName = None
-        self.assertTrue(
-            self.query_fetcher._matches_prefix_constraints(table_invalid, "prefix")
-        )
+        self.assertTrue(self.query_fetcher._matches_prefix_constraints(table_invalid, "prefix"))
 
 
 class TestHexProjectLineage(TestCase):
@@ -441,9 +399,7 @@ class TestHexProjectLineage(TestCase):
             table = Table(
                 id=f"{i:08x}-5445-4ad3-ba5e-797d3a3071bb",
                 name=f"table_{i}",
-                fullyQualifiedName=FullyQualifiedEntityName(
-                    f"service.db.schema.table_{i}"
-                ),
+                fullyQualifiedName=FullyQualifiedEntityName(f"service.db.schema.table_{i}"),
                 columns=[],
             )
             tables.append(table)
@@ -453,9 +409,7 @@ class TestHexProjectLineage(TestCase):
         self.assertEqual(len(lineage.upstream_tables), 5)
         for i, table in enumerate(lineage.upstream_tables):
             expected_id = f"{i:08x}-5445-4ad3-ba5e-797d3a3071bb"
-            actual_id = (
-                str(table.id.root) if hasattr(table.id, "root") else str(table.id)
-            )
+            actual_id = str(table.id.root) if hasattr(table.id, "root") else str(table.id)
             self.assertEqual(actual_id, expected_id)
 
     def test_add_tables_with_duplicates(self):

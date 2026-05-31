@@ -19,7 +19,9 @@ import { generatePalette } from '../../styles/colorPallet';
 
 const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
-  const { applicationConfig } = useApplicationStore();
+  const applicationConfig = useApplicationStore(
+    (state) => state.applicationConfig
+  );
 
   useEffect(() => {
     const palette = generatePalette(

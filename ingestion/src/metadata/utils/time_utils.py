@@ -28,9 +28,7 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def datetime_to_timestamp(
-    datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC"
-) -> int:
+def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC") -> int:
     """Convert a datetime object to timestamp integer.
 
     Args:
@@ -43,9 +41,7 @@ def datetime_to_timestamp(
     """
     tz = timezone(timezone_str)
     if not getattr(datetime_value, "timestamp", None):
-        raise TypeError(
-            f"Object of type {type(datetime_value).__name__} has not method `timestamp()`"
-        )
+        raise TypeError(f"Object of type {type(datetime_value).__name__} has not method `timestamp()`")
 
     if datetime_value.tzinfo is None:
         datetime_value = tz.localize(datetime_value)
@@ -79,7 +75,7 @@ def get_beginning_of_day_timestamp_mill(
     hours=0,
     weeks=0,
     timezone_str: str = "UTC",
-) -> Optional[int]:
+) -> Optional[int]:  # noqa: UP045
     """Get the beginning of day timestamp
 
     Args:
@@ -120,7 +116,7 @@ def get_end_of_day_timestamp_mill(
     hours=0,
     weeks=0,
     timezone_str: str = "UTC",
-) -> Optional[int]:
+) -> Optional[int]:  # noqa: UP045
     """Get the end of day timestamp
 
     Args:
@@ -152,7 +148,7 @@ def get_end_of_day_timestamp_mill(
     return datetime_to_ts(tz.localize(datetime_value))
 
 
-def convert_timestamp(timestamp: str) -> Union[int, float]:
+def convert_timestamp(timestamp: str) -> Union[int, float]:  # noqa: UP007
     """convert timestamp to int
     Args:
         timestamp (str):
@@ -164,7 +160,7 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     return float(timestamp) / 1000
 
 
-def utc_from_timestamp(ts: Union[int, float]) -> datetime:
+def utc_from_timestamp(ts: Union[int, float]) -> datetime:  # noqa: UP007
     """Convert a Unix timestamp to a naive UTC datetime.
 
     Returns a timezone-naive datetime in UTC. This is safe across
@@ -176,7 +172,7 @@ def utc_from_timestamp(ts: Union[int, float]) -> datetime:
 
 
 @deprecated("Use `datetime_to_timestamp` instead", "1.7.0")
-def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
+def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:  # noqa: UP007
     """convert timestamp to milliseconds
     Args:
         timestamp (int):

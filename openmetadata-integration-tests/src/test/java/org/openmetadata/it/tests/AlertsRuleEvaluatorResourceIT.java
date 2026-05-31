@@ -11,25 +11,33 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.springframework.expression.EvaluationContext;
@@ -112,6 +120,297 @@ public class AlertsRuleEvaluatorResourceIT {
     assertFalse(evaluateExpression("matchAnyEntityFqn({'nonExistentFqn'})", evaluationContext));
   }
 
+  /**
+   * Regression: matchAnyEntityFqn must compare FQNs literally, not as Java regex. FQNs in
+   * OpenMetadata can contain characters that are regex metacharacters (e.g. test suites named like
+   * "[TML] Fraud Mart Test Suite"). Customer-reported via openmetadata-collate#4019.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[TML] Fraud Mart Test Suite",
+        "service.db.schema.name+plus",
+        "service.db.schema.name?question",
+        "service.db.schema.name|pipe",
+        "service.db.schema.name*star",
+        "service.db.schema.[bracketed].table",
+        "AENG - CSP work item bug checks (duration exceeded)",
+      })
+  void test_matchAnyEntityFqn_treatsRegexMetacharsAsLiteral(String fqn) {
+    Table table = new Table().withName("t").withFullyQualifiedName(fqn);
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    // Single-element list: matching FQN returns true.
+    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + fqn + "'})", evaluationContext));
+    // Multi-element list with the matching FQN at the tail: ensures SpEL passes the full
+    // comma-separated list and the matcher iterates past the first element.
+    assertTrue(
+        evaluateExpression(
+            "matchAnyEntityFqn({'irrelevant.first', '" + fqn + "', 'irrelevant.last'})",
+            evaluationContext));
+    // Multi-element list without the matching FQN: returns false (no false positives).
+    assertFalse(
+        evaluateExpression(
+            "matchAnyEntityFqn({'unrelated.first', 'unrelated.second'})", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyEntityFqn_testSuiteFallback_treatsInputAsLiteral() {
+    String testSuiteFqn = "[TML] Fraud Mart Test Suite";
+    TestSuite testSuite = new TestSuite().withFullyQualifiedName(testSuiteFqn);
+    TestCase testCase =
+        new TestCase()
+            .withName("tc")
+            .withFullyQualifiedName("table.tc")
+            .withTestSuites(List.of(testSuite));
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyEntityFqn({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_happyPath() {
+    String tableFqn = "service.db.schema.orders";
+    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_rejectsPrefixCollision() {
+    TestCase testCase =
+        new TestCase().withName("tc").withEntityFQN("service.db.schema.customer_archive");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'service.db.schema.customer'})",
+            evaluationContext));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "service.db.schema.[bracketed].t",
+        "service.db.schema.t+plus",
+        "service.db.schema.t?question",
+        "service.db.schema.t|pipe",
+        "service.db.schema.t*star",
+        "service.db.schema.t(paren)",
+      })
+  void test_filterByTableNameTestCaseBelongsTo_treatsRegexMetacharsAsLiteral(String tableFqn) {
+    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_fallbackToEntityLink() {
+    String tableFqn = "service.db.schema.fallback";
+    TestCase testCase =
+        new TestCase().withName("tc").withEntityLink("<#E::table::" + tableFqn + ">");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityPassesThrough() {
+    Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_happyPath() {
+    String entityFqn = "service.db.schema.orders";
+    ChangeEvent changeEvent = dataContractChangeEvent(entityFqn);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'" + entityFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  /**
+   * Regression: previous implementation used String.contains, so a filter on a substring of the
+   * target entity's FQN would return true (false positive). The fix uses literal equality.
+   */
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_rejectsSubstring() {
+    ChangeEvent changeEvent = dataContractChangeEvent("service.db.schema.customer");
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'service.db.schema'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'customer'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_rejectsPrefixCollision() {
+    ChangeEvent changeEvent = dataContractChangeEvent("service.db.schema.customer_archive");
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'service.db.schema.customer'})",
+            evaluationContext));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "service.db.schema.[bracketed]",
+        "service.db.schema.t+plus",
+        "service.db.schema.t?question",
+        "service.db.schema.t|pipe",
+        "service.db.schema.t*star",
+      })
+  void test_filterByEntityNameDataContractBelongsTo_treatsRegexMetacharsAsLiteral(
+      String entityFqn) {
+    ChangeEvent changeEvent = dataContractChangeEvent(entityFqn);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'" + entityFqn + "'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_nonDataContractEntityReturnsFalse() {
+    Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  private ChangeEvent dataContractChangeEvent(String targetEntityFqn) {
+    DataContract dataContract = new DataContract();
+    dataContract.setEntity(new EntityReference().withFullyQualifiedName(targetEntityFqn));
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.DATA_CONTRACT);
+    changeEvent.setEntity(JsonUtils.pojoToJson(dataContract));
+    return changeEvent;
+  }
+
   @Test
   void test_matchAnyEntityId(TestNamespace ns) {
     Table createdTable = createTable(ns);
@@ -188,6 +487,31 @@ public class AlertsRuleEvaluatorResourceIT {
 
     assertTrue(evaluateExpression("matchUpdatedBy('testUser')", evaluationContext));
     assertFalse(evaluateExpression("matchUpdatedBy('otherUser')", evaluationContext));
+  }
+
+  @Test
+  void test_isBot_returnsFalseWhenActorUserDeleted(TestNamespace ns) {
+    String userName = ns.uniqueShortId();
+    CreateUser createUser =
+        new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+    User createdUser = SdkClients.adminClient().users().create(createUser);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setUserName(createdUser.getName());
+
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(evaluateExpression("isBot()", evaluationContext));
+
+    SdkClients.adminClient().users().delete(createdUser.getId());
+
+    assertFalse(evaluateExpression("isBot()", evaluationContext));
   }
 
   @Test

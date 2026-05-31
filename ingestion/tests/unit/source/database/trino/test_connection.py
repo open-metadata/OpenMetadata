@@ -127,9 +127,7 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_build_connection_args_preserves_http_scheme(self, basic_connection_config):
-        basic_connection_config.connectionArguments = ConnectionArguments(
-            root={"http_scheme": "http"}
-        )
+        basic_connection_config.connectionArguments = ConnectionArguments(root={"http_scheme": "http"})
 
         result = TrinoConnection.build_connection_args(basic_connection_config)
 

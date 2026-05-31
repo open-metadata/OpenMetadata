@@ -14,7 +14,7 @@ Helper submodule for partitioned tables
 
 from __future__ import annotations
 
-from typing import List
+from typing import List  # noqa: UP035
 
 from sqlalchemy import Column, text
 
@@ -38,7 +38,7 @@ logger = profiler_logger()
 
 def build_partition_predicate(
     partition_details: PartitionProfilerConfig,
-    columns: List[Column],
+    columns: List[Column],  # noqa: UP006
 ):
     """_summary_
 

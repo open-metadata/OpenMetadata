@@ -39,12 +39,8 @@ class TestFilterInvalidConstraints:
     def test_keeps_valid_constraints(self):
         columns = [_column("col1"), _column("col2")]
         constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]
-            ),
-            TableConstraint(
-                constraintType=ConstraintType.UNIQUE, columns=["col1", "col2"]
-            ),
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]),
+            TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["col1", "col2"]),
         ]
 
         result = SqlColumnHandlerMixin._filter_invalid_constraints(columns, constraints)
@@ -56,9 +52,7 @@ class TestFilterInvalidConstraints:
     def test_removes_constraint_with_missing_column(self):
         columns = [_column("col1"), _column("col2")]
         constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]
-            ),
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]),
             TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=["a_oid"]),
         ]
 
@@ -115,9 +109,7 @@ class TestFilterInvalidConstraints:
         """
         columns = [_column("col1"), _column("col2"), _column("col3")]
         constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]
-            ),
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]),
             TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=["a_oid"]),
             TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=["b_oid"]),
             TableConstraint(constraintType=ConstraintType.SORT_KEY, columns=["col2"]),
@@ -140,9 +132,7 @@ class TestFilterInvalidConstraints:
 
     def test_none_table_columns_returns_empty(self):
         constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]
-            ),
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]),
         ]
 
         result = SqlColumnHandlerMixin._filter_invalid_constraints(None, constraints)
@@ -152,9 +142,7 @@ class TestFilterInvalidConstraints:
     def test_none_constraint_in_list_is_skipped(self):
         columns = [_column("col1")]
         constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]
-            ),
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["col1"]),
             None,
         ]
 

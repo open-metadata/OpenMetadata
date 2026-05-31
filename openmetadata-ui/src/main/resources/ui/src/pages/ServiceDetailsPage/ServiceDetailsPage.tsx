@@ -124,12 +124,12 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
@@ -163,7 +163,7 @@ import {
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../utils/StringsUtils';
+} from '../../utils/StringUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

@@ -70,7 +70,7 @@ jobs:
     steps:
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -99,6 +99,11 @@ jobs:
           install-server: 'false'
 
       - name: Run Static Checks
+        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
+        # supported version) so type-checking results are identical across the
+        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
+        # redundant work and keep the baseline file deterministic.
+        if: matrix.py-version == '3.10'
         run: |
           source env/bin/activate
           cd ingestion
@@ -158,7 +163,7 @@ jobs:
           docker-images: false
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

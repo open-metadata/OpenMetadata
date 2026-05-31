@@ -67,7 +67,7 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 
 const { Text } = Typography;
 

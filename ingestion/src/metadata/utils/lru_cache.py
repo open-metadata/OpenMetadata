@@ -15,7 +15,7 @@ LRU cache
 
 import threading
 from collections import OrderedDict
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar  # noqa: UP035
 
 LRU_CACHE_SIZE = 4096
 

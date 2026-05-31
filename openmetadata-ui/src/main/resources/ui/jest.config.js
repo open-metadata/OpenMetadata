@@ -75,6 +75,16 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
     '^.*/Lineage/Layout/ELKUtil/ELKUtil$':
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
+    // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
+    // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
+    // (for its own dev/test) — without these mappings the CJS bundle loaded from
+    // `dist/*.cjs.js` resolves React from the core-components tree, producing a second React
+    // instance with a null hooks dispatcher and the classic "Invalid hook call ... reading
+    // 'useContext'" TypeError.
+    '^react$': '<rootDir>/node_modules/react',
+    '^react-dom$': '<rootDir>/node_modules/react-dom',
+    '^react/(.*)$': '<rootDir>/node_modules/react/$1',
+    '^react-dom/(.*)$': '<rootDir>/node_modules/react-dom/$1',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@material/material-color-utilities|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',

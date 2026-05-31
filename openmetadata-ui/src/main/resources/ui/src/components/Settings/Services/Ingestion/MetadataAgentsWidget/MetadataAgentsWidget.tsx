@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -24,6 +25,7 @@ import {
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
 } from '../../../../../rest/ingestionPipelineAPI';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   showErrorToast,
   showSuccessToast,
@@ -49,6 +51,7 @@ function MetadataAgentsWidget({
   searchText,
 }: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
@@ -70,6 +73,17 @@ function MetadataAgentsWidget({
   const showAddIngestionButton = useMemo(
     () => ingestionPermissions.Create && platform !== DISABLED,
     [ingestionPermissions, platform]
+  );
+
+  const extraMenuItems = useMemo(
+    () =>
+      serviceUtilClassBase.getExtraIngestionMenuItems(
+        serviceCategory as ServiceCategory,
+        serviceName,
+        navigate,
+        serviceDetails
+      ),
+    [navigate, serviceCategory, serviceDetails, serviceName]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
@@ -151,9 +165,10 @@ function MetadataAgentsWidget({
       return <ButtonSkeleton size="default" />;
     }
 
-    if (showAddIngestionButton) {
+    if (showAddIngestionButton || !isEmpty(extraMenuItems)) {
       return (
         <AddIngestionButton
+          extraMenuItems={extraMenuItems}
           ingestionList={ingestionPipelineList}
           pipelineType={pipelineType}
           serviceCategory={serviceCategory}
@@ -167,6 +182,7 @@ function MetadataAgentsWidget({
   }, [
     isFetchingStatus,
     showAddIngestionButton,
+    extraMenuItems,
     ingestionPipelineList,
     pipelineType,
     serviceCategory,

@@ -30,9 +30,7 @@ class TestGrafanaComponents(TestCase):
         source = MagicMock(spec=GrafanaSource)
 
         # Add the method we want to test
-        source._map_panel_type_to_chart_type = (
-            GrafanaSource._map_panel_type_to_chart_type.__get__(source)
-        )
+        source._map_panel_type_to_chart_type = GrafanaSource._map_panel_type_to_chart_type.__get__(source)
 
         test_cases = {
             "graph": "Line",
@@ -58,9 +56,7 @@ class TestGrafanaComponents(TestCase):
     def test_extract_datasource_name(self):
         """Test datasource name extraction"""
         source = MagicMock(spec=GrafanaSource)
-        source._extract_datasource_name = (
-            GrafanaSource._extract_datasource_name.__get__(source)
-        )
+        source._extract_datasource_name = GrafanaSource._extract_datasource_name.__get__(source)
 
         # Test with string datasource in target
         target = MagicMock()

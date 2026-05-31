@@ -47,8 +47,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
-import { Transi18next } from './CommonUtils';
-import i18n from './i18next/LocalUtil';
+import i18n, { Transi18next } from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
 import {
   getServiceDetailsPath,
@@ -157,7 +156,10 @@ export const getBreadCrumbsArray = (
   return breadCrumbsArray;
 };
 
-export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
+export const getSupportedPipelineTypes = (
+  serviceDetails: ServicesType,
+  serviceCategory?: ServiceCategory
+) => {
   const pipelineType: PipelineType[] = [];
   const config = serviceDetails?.connection?.config as Connection;
 
@@ -180,7 +182,16 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
 
   Object.keys(pipelineMapping).forEach((key) => {
     if (config[key as keyof Connection]) {
-      pipelineType.push(...pipelineMapping[key]);
+      let types = pipelineMapping[key];
+
+      if (
+        key === 'supportsProfiler' &&
+        serviceCategory === ServiceCategory.STORAGE_SERVICES
+      ) {
+        types = [PipelineType.AutoClassification];
+      }
+
+      pipelineType.push(...types);
     }
   });
 
@@ -436,7 +447,7 @@ export const getDefaultFilterPropertyValues = ({
       }
 
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, unknown>);
   }
 };
 

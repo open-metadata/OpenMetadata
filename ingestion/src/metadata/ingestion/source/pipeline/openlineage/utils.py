@@ -3,12 +3,12 @@ Utils used by OpenlineageSource connector.
 """
 
 from functools import reduce
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
 
 
-def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
+def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:  # noqa: UP006
     """
     Method that takes raw Open Lineage event and parses is to shape into OpenLineageEvent.
 
@@ -30,7 +30,7 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
         try:
             reduce(lambda x, y: x[y], field.split("."), incoming_event)
         except KeyError:
-            raise ValueError("Event malformed!")
+            raise ValueError("Event malformed!")  # noqa: B904
 
     run_facet = incoming_event["run"]
     inputs = incoming_event["inputs"]
@@ -46,21 +46,21 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
         outputs=outputs,
     )
 
-    return result
+    return result  # noqa: RET504
 
 
-class FQNNotFoundException(Exception):
+class FQNNotFoundException(Exception):  # noqa: N818
     """
     Error raised when, while searching for an entity (Table, DatabaseSchema) there is no match in OM.
     """
 
-    pass
+    pass  # noqa: PIE790
 
 
-class AmbiguousServiceException(Exception):
+class AmbiguousServiceException(Exception):  # noqa: N818
     """
     Raised when a dataset namespace matches multiple DB services of the same
     type and cannot be unambiguously resolved.
     """
 
-    pass
+    pass  # noqa: PIE790

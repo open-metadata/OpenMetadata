@@ -112,13 +112,13 @@ class ProtobufParserTests:
         We'll read the files under ./ingestion/tests/unit/resources/protobuf_parser and parse them
         This will be similar in way to how we get the data from kafka source
         """
-        resource_path = f"{os.path.dirname(__file__)}/resources/protobuf_parser/"
+        resource_path = f"{os.path.dirname(__file__)}/resources/protobuf_parser/"  # noqa: PTH120
         schema_name = "employee"
-        file_list = os.listdir(resource_path)
+        file_list = os.listdir(resource_path)  # noqa: PTH208
         schema_text = ""
         for file_name in file_list:
-            file_path = os.path.join(resource_path, file_name)
-            with open(file_path, "r") as file:
+            file_path = os.path.join(resource_path, file_name)  # noqa: PTH118
+            with open(file_path, "r") as file:  # noqa: PTH123
                 schema_text = schema_text + file.read()
         schema_text = merge_and_clean_protobuf_schema(schema_text)
         protobuf_parser = ProtobufParser(

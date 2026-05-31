@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,9 +12,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 
 public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
-  private static final Set<String> excludeFields = Set.of("summary", "testCaseResultSummary");
+  private static final Set<String> excludeFields =
+      Set.of(TestSuiteRepository.SUMMARY_FIELD, "testCaseResultSummary");
 
   @Override
   public Object getEntity() {
@@ -27,6 +31,14 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add(TestSuiteRepository.SUMMARY_FIELD);
+    fields.add("tests");
+    return Collections.unmodifiableSet(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
@@ -47,14 +59,17 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   private void setParentRelationships(Map<String, Object> doc, TestSuite testSuite) {
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference == null) return;
-    addTestSuiteParentEntityRelations(entityReference, doc);
+    Table linkedTable = addTestSuiteParentEntityRelations(entityReference, doc);
+    if (linkedTable != null && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
   }
 
   static Table addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       try {
-        Table table = Entity.getEntity(testSuiteRef, "domains", Include.ALL);
+        Table table = Entity.getEntity(testSuiteRef, "domains,certification", Include.ALL);
         doc.put("table", table.getEntityReference());
         doc.put("database", table.getDatabase());
         doc.put("databaseSchema", table.getDatabaseSchema());

@@ -12,12 +12,13 @@
 """
 Abstract class for AWS based secrets manager implementations
 """
+
 import os
 import traceback
 from abc import ABC
 from typing import Optional
 
-from azure.keyvault.secrets import KeyVaultSecret
+from azure.keyvault.secrets import KeyVaultSecret  # noqa: TC002
 
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
@@ -46,26 +47,20 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional["AzureCredentials"]:
-    from airflow.configuration import conf
+def _() -> Optional["AzureCredentials"]:  # noqa: F821
+    from airflow.configuration import conf  # noqa: PLC0415
 
-    from metadata.generated.schema.security.credentials.azureCredentials import (
+    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
         AzureCredentials,
     )
 
-    key_vault_name = conf.get(
-        SECRET_MANAGER_AIRFLOW_CONF, "azure_key_vault_name", fallback=None
-    )
+    key_vault_name = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "azure_key_vault_name", fallback=None)
     if not key_vault_name:
-        raise ValueError(
-            "Missing `azure_key_vault_name` config for Azure Key Vault Secrets Manager Provider."
-        )
+        raise ValueError("Missing `azure_key_vault_name` config for Azure Key Vault Secrets Manager Provider.")
 
     tenant_id = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "azure_tenant_id", fallback=None)
     client_id = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "azure_client_id", fallback=None)
-    client_secret = conf.get(
-        SECRET_MANAGER_AIRFLOW_CONF, "azure_client_secret", fallback=None
-    )
+    client_secret = conf.get(SECRET_MANAGER_AIRFLOW_CONF, "azure_client_secret", fallback=None)
 
     return AzureCredentials(
         clientId=client_id,
@@ -76,8 +71,8 @@ def _() -> Optional["AzureCredentials"]:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional["AzureCredentials"]:
-    from metadata.generated.schema.security.credentials.azureCredentials import (
+def _() -> Optional["AzureCredentials"]:  # noqa: F821
+    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
         AzureCredentials,
     )
 
@@ -87,9 +82,7 @@ def _() -> Optional["AzureCredentials"]:
     key_vault_name = os.getenv("AZURE_KEY_VAULT_NAME")
 
     if not key_vault_name:
-        raise ValueError(
-            "Missing `azure_key_vault_name` config for Azure Key Vault Secrets Manager Provider."
-        )
+        raise ValueError("Missing `azure_key_vault_name` config for Azure Key Vault Secrets Manager Provider.")
 
     return AzureCredentials(vaultName=key_vault_name)
 
@@ -115,18 +108,16 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
         try:
             secret: KeyVaultSecret = self.client.get_secret(secret_id)
             logger.debug(f"Got value for secret {secret_id}")
-            return secret.value
+            return secret.value  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Could not get the secret value of {secret_id} due to [{exc}]"
-            )
-            raise exc
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
+            raise exc  # noqa: TRY201
 
-    def load_credentials(self) -> Optional["AzureCredentials"]:
+    def load_credentials(self) -> Optional["AzureCredentials"]:  # noqa: F821
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904
