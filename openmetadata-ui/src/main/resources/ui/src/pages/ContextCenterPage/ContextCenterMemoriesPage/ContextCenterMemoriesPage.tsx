@@ -41,7 +41,6 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import {
   deleteContextMemory,
   getListContextMemories,
@@ -73,9 +72,6 @@ const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
-  const { onCopyToClipBoard } = useClipboard('', 1500, () =>
-    showSuccessToast(t('message.link-copy-to-clipboard'))
-  );
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
@@ -354,19 +350,6 @@ const ContextCenterMemoriesPage: FC = () => {
       return prev;
     });
   }, [setSearchParams]);
-
-  const handleShareMemory = useCallback(
-    (memory: ContextMemory) => {
-      if (!memory.name) {
-        return;
-      }
-      const url = `${window.location.origin}${
-        window.location.pathname
-      }?memory=${encodeURIComponent(memory.name)}`;
-      onCopyToClipBoard(url);
-    },
-    [onCopyToClipBoard]
-  );
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');
@@ -691,14 +674,12 @@ const ContextCenterMemoriesPage: FC = () => {
 
         <div>
           <MemoriesView
-            canDelete
             currentUserName={currentUser?.name}
             data={pagedMemories}
             isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
-            onShareMemory={handleShareMemory}
             onViewMemory={handleViewMemory}
           />
         </div>
