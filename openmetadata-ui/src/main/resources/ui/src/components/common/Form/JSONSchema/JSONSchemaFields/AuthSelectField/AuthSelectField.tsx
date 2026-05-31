@@ -38,6 +38,14 @@ const getOptionTitle = (option: RJSFSchema, index: number): string =>
     typeof option.type === 'string' ? option.type : `option ${index + 1}`
   );
 
+const getSafeOptionIndex = (option: number, optionCount: number) => {
+  if (optionCount === 0) {
+    return -1;
+  }
+
+  return option >= 0 && option < optionCount ? option : 0;
+};
+
 /**
  * Generic RJSF field that renders a `oneOf` of credential branches (e.g. an
  * `authType` property) as a segmented control where exactly one method's fields
@@ -95,22 +103,38 @@ const AuthSelectField = (props: FieldProps) => {
   );
 
   const [selectedOption, setSelectedOption] = useState(() =>
-    getMatchingOption(0, formData, resolvedOptions)
+    getSafeOptionIndex(
+      getMatchingOption(0, formData, resolvedOptions),
+      resolvedOptions.length
+    )
   );
 
   useEffect(() => {
     setSelectedOption((currentOption) => {
+      if (resolvedOptions.length <= 1) {
+        return getSafeOptionIndex(currentOption, resolvedOptions.length);
+      }
+
       const matchingOption = getMatchingOption(
         currentOption,
         formData,
         resolvedOptions
       );
 
-      return matchingOption !== currentOption ? matchingOption : currentOption;
+      return getSafeOptionIndex(
+        matchingOption !== currentOption ? matchingOption : currentOption,
+        resolvedOptions.length
+      );
     });
   }, [formData, getMatchingOption, resolvedOptions]);
 
-  const selectedSchema = resolvedOptions[selectedOption] ?? {};
+  const safeSelectedOption = getSafeOptionIndex(
+    selectedOption,
+    resolvedOptions.length
+  );
+  const hasMultipleOptions = resolvedOptions.length > 1;
+  const selectedSchema =
+    safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
 
   const selectedIdSchema = useMemo(
     () =>
@@ -127,11 +151,21 @@ const AuthSelectField = (props: FieldProps) => {
   const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
     undefined) as string | undefined;
 
+  const selectedFieldUiSchema = useMemo(() => {
+    const childUiSchema = { ...(uiSchema ?? {}) };
+
+    delete childUiSchema['ui:field'];
+
+    return { ...childUiSchema, 'ui:label': false };
+  }, [uiSchema]);
+
   const handleOptionChange = (newIndex: number) => {
-    if (newIndex !== selectedOption) {
+    if (newIndex !== safeSelectedOption) {
       const newSchema = resolvedOptions[newIndex];
       const currentSchema =
-        selectedOption >= 0 ? resolvedOptions[selectedOption] : undefined;
+        safeSelectedOption >= 0
+          ? resolvedOptions[safeSelectedOption]
+          : undefined;
       const sanitizedFormData = schemaUtils.sanitizeDataForNewSchema(
         newSchema,
         currentSchema,
@@ -145,7 +179,7 @@ const AuthSelectField = (props: FieldProps) => {
           )
         : sanitizedFormData;
 
-      setSelectedOption(newIndex);
+      setSelectedOption(getSafeOptionIndex(newIndex, resolvedOptions.length));
       onChange(
         newFormData ?? undefined,
         undefined,
@@ -155,7 +189,10 @@ const AuthSelectField = (props: FieldProps) => {
   };
 
   const fieldLabel = label ?? schema.title ?? startCase(name);
-  const activeTitle = getOptionTitle(selectedSchema, selectedOption);
+  const activeTitle = getOptionTitle(
+    selectedSchema,
+    Math.max(safeSelectedOption, 0)
+  );
 
   return (
     <div
@@ -183,64 +220,66 @@ const AuthSelectField = (props: FieldProps) => {
         </div>
       )}
 
-      <AriaRadioGroup
-        aria-label={fieldLabel}
-        className="tw:grid tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1"
-        isDisabled={disabled || readonly}
-        style={{
-          gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
-        }}
-        value={String(selectedOption)}
-        onChange={(val) => handleOptionChange(Number(val))}>
-        {resolvedOptions.map((option, index) => {
-          const optTitle = getOptionTitle(option, index);
-          const MethodIcon = getMethodIcon(optTitle);
-          const isRecommended = recommendedTitle === optTitle;
+      {hasMultipleOptions && (
+        <AriaRadioGroup
+          aria-label={fieldLabel}
+          className="tw:grid tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1"
+          isDisabled={disabled || readonly}
+          style={{
+            gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
+          }}
+          value={String(safeSelectedOption)}
+          onChange={(val) => handleOptionChange(Number(val))}>
+          {resolvedOptions.map((option, index) => {
+            const optTitle = getOptionTitle(option, index);
+            const MethodIcon = getMethodIcon(optTitle);
+            const isRecommended = recommendedTitle === optTitle;
 
-          return (
-            <AriaRadio
-              className={({ isSelected }) =>
-                classNames(
-                  'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:py-2.5 tw:transition-colors',
-                  isSelected
-                    ? 'tw:border-primary tw:bg-primary tw:shadow-xs'
-                    : 'tw:border-transparent'
-                )
-              }
-              data-testid={`auth-method-${index}`}
-              key={index}
-              value={String(index)}>
-              {({ isSelected }) => (
-                <>
-                  <MethodIcon
-                    className={
-                      isSelected
-                        ? 'tw:text-brand-secondary'
-                        : 'tw:text-fg-quaternary'
-                    }
-                    size={16}
-                  />
-                  <Typography
-                    as="span"
-                    className={
-                      isSelected ? 'tw:text-primary' : 'tw:text-tertiary'
-                    }
-                    size="text-sm"
-                    weight={isSelected ? 'semibold' : 'medium'}>
-                    {optTitle}
-                  </Typography>
-                  {isRecommended && isSelected && (
-                    <span
-                      className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
-                      data-testid="recommended-indicator"
+            return (
+              <AriaRadio
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:py-2.5 tw:transition-colors',
+                    isSelected
+                      ? 'tw:border-primary tw:bg-primary tw:shadow-xs'
+                      : 'tw:border-transparent'
+                  )
+                }
+                data-testid={`auth-method-${index}`}
+                key={index}
+                value={String(index)}>
+                {({ isSelected }) => (
+                  <>
+                    <MethodIcon
+                      className={
+                        isSelected
+                          ? 'tw:text-brand-secondary'
+                          : 'tw:text-fg-quaternary'
+                      }
+                      size={16}
                     />
-                  )}
-                </>
-              )}
-            </AriaRadio>
-          );
-        })}
-      </AriaRadioGroup>
+                    <Typography
+                      as="span"
+                      className={
+                        isSelected ? 'tw:text-primary' : 'tw:text-tertiary'
+                      }
+                      size="text-sm"
+                      weight={isSelected ? 'semibold' : 'medium'}>
+                      {optTitle}
+                    </Typography>
+                    {isRecommended && isSelected && (
+                      <span
+                        className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
+                        data-testid="recommended-indicator"
+                      />
+                    )}
+                  </>
+                )}
+              </AriaRadio>
+            );
+          })}
+        </AriaRadioGroup>
+      )}
 
       <div className="tw:flex tw:flex-col tw:gap-4">
         <SchemaField
@@ -260,7 +299,7 @@ const AuthSelectField = (props: FieldProps) => {
           registry={registry}
           required={required}
           schema={{ ...selectedSchema, title: undefined }}
-          uiSchema={{ ...uiSchema, 'ui:label': false }}
+          uiSchema={selectedFieldUiSchema}
           onBlur={onBlur}
           onChange={onChange}
           onFocus={onFocus}

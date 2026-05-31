@@ -106,6 +106,20 @@ const openAddDatabaseServicePage = async (page: Page) => {
   await page.getByTestId('select-service').waitFor({ state: 'visible' });
 };
 
+const expectConnectorConnectionForm = async (
+  page: Page,
+  connectorName: string
+) => {
+  await openAddDatabaseServicePage(page);
+  await page.getByTestId(connectorName).click();
+  await page.getByTestId('service-name').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
+    timeout: 10000,
+  });
+  await expect(page.getByTestId('connection-grouped-form')).toBeVisible();
+  await expect(page.getByTestId('connection-section-connection')).toBeVisible();
+};
+
 test.describe('Connection config layout', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
@@ -137,6 +151,20 @@ test.describe('Connection config layout', () => {
 
     await expect(label).toHaveCSS('font-size', '12px');
     await expect(label).toHaveCSS('font-weight', '600');
+  });
+
+  test('should render connector forms that previously stalled at loading', async ({
+    page,
+  }) => {
+    for (const connectorName of [
+      'Cassandra',
+      'Cockroach',
+      'Databricks',
+      'Glue',
+      'Greenplum',
+    ]) {
+      await expectConnectorConnectionForm(page, connectorName);
+    }
   });
 
   test('should align nested sample data storage config fields without overlap', async ({

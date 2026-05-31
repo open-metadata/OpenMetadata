@@ -118,7 +118,11 @@ const onChangeSpy = jest.fn();
 
 const getProps = (
   formData: Record<string, unknown>,
-  uiSchema: Record<string, unknown> = {}
+  uiSchema: Record<string, unknown> = {},
+  schema: Record<string, unknown> = {
+    title: 'Authentication',
+    oneOf: [PASSWORD_BRANCH, KEY_PAIR_BRANCH],
+  }
 ) =>
   ({
     formData,
@@ -130,8 +134,16 @@ const getProps = (
     onFocus: jest.fn(),
     registry: {
       fields: {
-        SchemaField: ({ schema }: { schema: { properties?: object } }) => (
-          <div data-testid="schema-field">
+        SchemaField: ({
+          schema,
+          uiSchema,
+        }: {
+          schema: { properties?: object };
+          uiSchema?: Record<string, unknown>;
+        }) => (
+          <div
+            data-testid="schema-field"
+            data-ui-field={String(uiSchema?.['ui:field'] ?? '')}>
             {Object.keys(schema.properties ?? {}).join(',')}
           </div>
         ),
@@ -151,10 +163,7 @@ const getProps = (
         toIdSchema: () => ({ $id: 'root/authType' }),
       },
     },
-    schema: {
-      title: 'Authentication',
-      oneOf: [PASSWORD_BRANCH, KEY_PAIR_BRANCH],
-    },
+    schema,
   } as unknown as FieldProps);
 
 describe('AuthSelectField', () => {
@@ -205,5 +214,32 @@ describe('AuthSelectField', () => {
     );
 
     expect(screen.getByTestId('recommended-indicator')).toBeInTheDocument();
+  });
+
+  it('does not pass its authSelect ui field to the selected schema branch', () => {
+    render(<AuthSelectField {...getProps({}, { 'ui:field': 'authSelect' })} />);
+
+    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+      'data-ui-field',
+      ''
+    );
+  });
+
+  it('renders a single auth branch without the segmented method selector', () => {
+    render(
+      <AuthSelectField
+        {...getProps(
+          {},
+          {},
+          {
+            title: 'Authentication',
+            oneOf: [PASSWORD_BRANCH],
+          }
+        )}
+      />
+    );
+
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.getByTestId('schema-field')).toHaveTextContent('password');
   });
 });

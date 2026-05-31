@@ -20,6 +20,14 @@ import {
 import { startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 
+const getSafeOptionIndex = (option: number, optionCount: number) => {
+  if (optionCount === 0) {
+    return -1;
+  }
+
+  return option >= 0 && option < optionCount ? option : 0;
+};
+
 const CoreOneOfField = (props: FieldProps) => {
   const {
     schema,
@@ -70,22 +78,38 @@ const CoreOneOfField = (props: FieldProps) => {
   );
 
   const [selectedOption, setSelectedOption] = useState(() =>
-    getMatchingOption(0, formData, resolvedOptions)
+    getSafeOptionIndex(
+      getMatchingOption(0, formData, resolvedOptions),
+      resolvedOptions.length
+    )
   );
 
   useEffect(() => {
     setSelectedOption((currentOption) => {
+      if (resolvedOptions.length <= 1) {
+        return getSafeOptionIndex(currentOption, resolvedOptions.length);
+      }
+
       const matchingOption = getMatchingOption(
         currentOption,
         formData,
         resolvedOptions
       );
 
-      return matchingOption !== currentOption ? matchingOption : currentOption;
+      return getSafeOptionIndex(
+        matchingOption !== currentOption ? matchingOption : currentOption,
+        resolvedOptions.length
+      );
     });
   }, [formData, getMatchingOption, resolvedOptions]);
 
-  const selectedSchema = resolvedOptions[selectedOption] ?? {};
+  const safeSelectedOption = getSafeOptionIndex(
+    selectedOption,
+    resolvedOptions.length
+  );
+  const hasMultipleOptions = resolvedOptions.length > 1;
+  const selectedSchema =
+    safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
   const optionItems = useMemo(
     () =>
       resolvedOptions.map((option, index) => ({
@@ -113,14 +137,22 @@ const CoreOneOfField = (props: FieldProps) => {
     [selectedSchema, idSchema.$id, formData, idPrefix, idSeparator, schemaUtils]
   );
 
+  const selectedFieldUiSchema = useMemo(() => {
+    const childUiSchema = { ...(uiSchema ?? {}) };
+
+    delete childUiSchema['ui:field'];
+
+    return childUiSchema;
+  }, [uiSchema]);
+
   const handleOptionChange = (newIndex: number) => {
-    if (newIndex === selectedOption) {
+    if (newIndex === safeSelectedOption) {
       return;
     }
 
     const newSchema = resolvedOptions[newIndex];
     const currentSchema =
-      selectedOption >= 0 ? resolvedOptions[selectedOption] : undefined;
+      safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] : undefined;
     const sanitizedFormData = schemaUtils.sanitizeDataForNewSchema(
       newSchema,
       currentSchema,
@@ -134,7 +166,7 @@ const CoreOneOfField = (props: FieldProps) => {
         )
       : sanitizedFormData;
 
-    setSelectedOption(newIndex);
+    setSelectedOption(getSafeOptionIndex(newIndex, resolvedOptions.length));
     onChange(
       newFormData ?? undefined,
       undefined,
@@ -143,36 +175,41 @@ const CoreOneOfField = (props: FieldProps) => {
   };
 
   const fieldLabel = label ?? schema.title ?? startCase(name);
-  const selectedKey = selectedOption >= 0 ? String(selectedOption) : null;
+  const selectedKey =
+    hasMultipleOptions && safeSelectedOption >= 0
+      ? String(safeSelectedOption)
+      : null;
 
   return (
     <div
       className="core-one-of-field tw:flex tw:flex-col tw:gap-3"
       data-field-id={idSchema.$id}>
-      <Select
-        className="core-one-of-field-select"
-        data-testid={`select-widget-${idSchema.$id}${
-          schema.oneOf ? '__oneof_select' : '__anyof_select'
-        }`}
-        fontSize="sm"
-        isDisabled={disabled || readonly}
-        isRequired={required}
-        items={optionItems}
-        label={hideLabel ? undefined : fieldLabel}
-        popoverClassName="core-one-of-field-select-popover"
-        selectedKey={selectedKey}
-        size="sm"
-        onSelectionChange={(key: Key | null) => {
-          if (key !== null) {
-            handleOptionChange(Number(key));
-          }
-        }}>
-        {(item) => (
-          <Select.Item id={item.id} key={item.id} textValue={item.label}>
-            {item.label}
-          </Select.Item>
-        )}
-      </Select>
+      {hasMultipleOptions && (
+        <Select
+          className="core-one-of-field-select"
+          data-testid={`select-widget-${idSchema.$id}${
+            schema.oneOf ? '__oneof_select' : '__anyof_select'
+          }`}
+          fontSize="sm"
+          isDisabled={disabled || readonly}
+          isRequired={required}
+          items={optionItems}
+          label={hideLabel ? undefined : fieldLabel}
+          popoverClassName="core-one-of-field-select-popover"
+          selectedKey={selectedKey}
+          size="sm"
+          onSelectionChange={(key: Key | null) => {
+            if (key !== null) {
+              handleOptionChange(Number(key));
+            }
+          }}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} textValue={item.label}>
+              {item.label}
+            </Select.Item>
+          )}
+        </Select>
+      )}
 
       <div className="core-one-of-field-selected">
         <SchemaField
@@ -192,7 +229,7 @@ const CoreOneOfField = (props: FieldProps) => {
           registry={registry}
           required={required}
           schema={selectedSchema}
-          uiSchema={uiSchema}
+          uiSchema={selectedFieldUiSchema}
           onBlur={onBlur}
           onChange={onChange}
           onFocus={onFocus}

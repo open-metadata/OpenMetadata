@@ -65,7 +65,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-const getBaseProps = (formData: Record<string, unknown>) =>
+const DEFAULT_SCHEMA = {
+  oneOf: [
+    { title: 'First', type: 'object' },
+    { title: 'Second', type: 'object' },
+  ],
+  title: 'Type',
+};
+
+const getBaseProps = (
+  formData: Record<string, unknown>,
+  schema: Record<string, unknown> = DEFAULT_SCHEMA,
+  uiSchema: Record<string, unknown> = {}
+) =>
   ({
     formData,
     idSchema: { $id: 'root/type' },
@@ -75,8 +87,18 @@ const getBaseProps = (formData: Record<string, unknown>) =>
     onFocus: jest.fn(),
     registry: {
       fields: {
-        SchemaField: ({ schema }: { schema: { title?: string } }) => (
-          <div data-testid="schema-field">{schema.title}</div>
+        SchemaField: ({
+          schema,
+          uiSchema,
+        }: {
+          schema: { title?: string };
+          uiSchema?: Record<string, unknown>;
+        }) => (
+          <div
+            data-testid="schema-field"
+            data-ui-field={String(uiSchema?.['ui:field'] ?? '')}>
+            {schema.title}
+          </div>
         ),
       },
       schemaUtils: {
@@ -98,13 +120,8 @@ const getBaseProps = (formData: Record<string, unknown>) =>
         toIdSchema: () => ({ $id: 'root/type' }),
       },
     },
-    schema: {
-      oneOf: [
-        { title: 'First', type: 'object' },
-        { title: 'Second', type: 'object' },
-      ],
-      title: 'Type',
-    },
+    schema,
+    uiSchema,
   } as unknown as FieldProps);
 
 describe('CoreOneOfField', () => {
@@ -126,5 +143,32 @@ describe('CoreOneOfField', () => {
       'data-selected',
       'true'
     );
+  });
+
+  it('does not pass a parent ui field to the selected schema branch', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps({}, DEFAULT_SCHEMA, { 'ui:field': 'customOneOf' })}
+      />
+    );
+
+    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+      'data-ui-field',
+      ''
+    );
+  });
+
+  it('renders a single branch without an option select', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          { oneOf: [{ title: 'Only Option', type: 'object' }], title: 'Type' }
+        )}
+      />
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('schema-field')).toHaveTextContent('Only Option');
   });
 });
