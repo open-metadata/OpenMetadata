@@ -19,6 +19,7 @@ import { ChevronDown, Key01, Lock01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
+  Children,
   cloneElement,
   FocusEvent,
   FunctionComponent,
@@ -194,6 +195,47 @@ const SectionHeader = ({
   </button>
 );
 
+const hasHiddenClassName = (className?: unknown): boolean =>
+  typeof className === 'string' &&
+  /(^|\s)(tw:hidden|hidden)(\s|$)/.test(className);
+
+const hasHiddenContent = (node: ReactNode): boolean => {
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  const props = node.props as {
+    children?: ReactNode;
+    className?: unknown;
+    hidden?: boolean;
+    style?: {
+      display?: string;
+      visibility?: string;
+    };
+  };
+
+  if (
+    props.hidden ||
+    hasHiddenClassName(props.className) ||
+    props.style?.display === 'none' ||
+    props.style?.visibility === 'hidden'
+  ) {
+    return true;
+  }
+
+  const children = Children.toArray(props.children);
+
+  return children.length > 0 && children.every(hasHiddenContent);
+};
+
+const isVisibleProperty = (
+  property: ObjectFieldTemplatePropertyType
+): boolean => !property.hidden && !hasHiddenContent(property.content);
+
+const hasVisibleProperties = (
+  properties: ObjectFieldTemplatePropertyType[]
+): boolean => properties.some(isVisibleProperty);
+
 const SectionFields = ({
   properties,
   layout,
@@ -212,8 +254,10 @@ const SectionFields = ({
   const isBoolean = (name: string) =>
     schemaProperties[name]?.type === 'boolean';
   const isWideProperty = (name: string) => wideNames?.has(name) ?? false;
-  const hiddenProperties = properties.filter((element) => element.hidden);
-  const visibleProperties = properties.filter((element) => !element.hidden);
+  const hiddenProperties = properties.filter(
+    (element) => !isVisibleProperty(element)
+  );
+  const visibleProperties = properties.filter(isVisibleProperty);
   const booleanProperties = inlineBooleans
     ? []
     : visibleProperties.filter((element) => isBoolean(element.name));
@@ -395,7 +439,7 @@ const getFirstVisibleFieldName = (
   properties: ObjectFieldTemplatePropertyType[],
   fallback: string
 ): string =>
-  properties.find((property) => !property.hidden)?.name ??
+  properties.find((property) => isVisibleProperty(property))?.name ??
   properties[0]?.name ??
   fallback;
 
@@ -485,6 +529,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
   const showBody = !section.collapsible || open;
+  const hasVisibleFields = hasVisibleProperties(section.properties);
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusedElement = event.relatedTarget as Node | null;
 
@@ -495,6 +540,10 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
       setActive(false);
     }
   };
+
+  if (section.collapsible && !hasVisibleFields) {
+    return <HiddenFields properties={section.properties} />;
+  }
 
   return (
     <div
@@ -519,7 +568,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
         }}
         onToggle={() => setOpen((value) => !value)}
       />
-      {showBody && !isEmpty(section.properties) && (
+      {showBody && (
         <>
           <div className="connection-section-divider tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
           {section.key === 'authentication' &&
@@ -538,7 +587,11 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
         </>
       )}
       {!showBody && (
-        <HiddenFields properties={section.properties.filter((p) => p.hidden)} />
+        <HiddenFields
+          properties={section.properties.filter(
+            (property) => !isVisibleProperty(property)
+          )}
+        />
       )}
     </div>
   );
@@ -632,6 +685,10 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
         !isAdvanced(p.name) &&
         !connectionPropertyNames.has(p.name)
     );
+    const shouldRenderScopeSection = hasVisibleProperties(scopeProperties);
+    const hiddenUnsectionedProperties = [
+      ...(!shouldRenderScopeSection ? scopeProperties : []),
+    ].filter((property) => !isVisibleProperty(property));
     const connectionRequiredCount = explicitConnectionProperties.filter(
       (property) => !property.hidden && property.name !== SERVICE_TYPE_PROPERTY
     ).length;
@@ -687,7 +744,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
             } as SectionConfig,
           ]
         : []),
-      ...(scopeProperties.length
+      ...(shouldRenderScopeSection
         ? [
             {
               key: 'scope',
@@ -736,6 +793,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       <div
         className="connection-grouped-form tw:flex tw:flex-col tw:gap-3"
         data-testid="connection-grouped-form">
+        <HiddenFields properties={hiddenUnsectionedProperties} />
         {sections.map((section) => (
           <SectionCard key={section.key} section={section} />
         ))}

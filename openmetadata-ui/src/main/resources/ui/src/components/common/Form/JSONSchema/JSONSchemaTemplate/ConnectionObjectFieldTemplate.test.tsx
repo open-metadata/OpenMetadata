@@ -258,6 +258,27 @@ describe('ConnectionObjectFieldTemplate', () => {
     expect(screen.getByTestId('field-queryTag')).toBeInTheDocument();
   });
 
+  it('does not render Scope & options when it only has hidden fields', () => {
+    const props = getProps('root');
+
+    render(
+      <ConnectionObjectFieldTemplate
+        {...props}
+        properties={props.properties.map((property) =>
+          ['database', 'queryTag'].includes(property.name)
+            ? { ...property, hidden: true }
+            : property
+        )}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-section-scope')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('field-database')).toBeInTheDocument();
+    expect(screen.getByTestId('field-queryTag')).toBeInTheDocument();
+  });
+
   it('renders Advanced Config with compact primary fields before object rows', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
