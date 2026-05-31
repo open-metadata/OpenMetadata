@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Hexagon01, Plus } from '@untitledui/icons';
+import { ChevronDown, Hexagon01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import {
   cloneElement,
@@ -28,6 +28,7 @@ import {
   FunctionComponent,
   isValidElement,
   ReactElement,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -251,6 +252,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   uiSchema,
 }) => {
   const { t } = useTranslation();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const isRoot = idSchema.$id === 'root';
   const isSampleDataSection = idSchema.$id.endsWith(
@@ -280,6 +282,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     !isAwsS3StorageConfig;
   const isNestedConfigGrid =
     isSampleDataConfig || isAwsS3StorageConfig || isGenericNestedConfig;
+  const isCredentialAdvancedDisclosure =
+    isGatedCredentialConfig || isGenericNestedConfig;
   const isIamAuthEnabled =
     hasIamAuthToggle &&
     typeof formData === 'object' &&
@@ -409,11 +413,22 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         });
   const getIsToggleBannerProperty = (name: string) =>
     isGatedCredentialConfig && name === 'enabled';
-  const getAdvancedHeaderLabel = () => {
+  const getAdvancedHeaderLabel = (isOpen: boolean) => {
     if (isGatedCredentialConfig) {
-      return `${t('label.show')} ${t('label.advanced-config')} (${
-        orderedAdvancedProperties.length
-      })`;
+      return `${t(isOpen ? 'label.hide' : 'label.show')} ${t(
+        'label.advanced-config'
+      )} (${orderedAdvancedProperties.length})`;
+    }
+
+    if (isGenericNestedConfig) {
+      return t(
+        isOpen
+          ? 'label.hide-advanced-credential-settings'
+          : 'label.show-advanced-credential-settings',
+        {
+          count: orderedAdvancedProperties.length,
+        }
+      );
     }
 
     return title
@@ -440,6 +455,54 @@ export const CoreObjectFieldTemplate: FunctionComponent<
       </div>
     );
   };
+  const advancedPropertiesContent = orderedAdvancedProperties.length > 0 && (
+    <>
+      {isCredentialAdvancedDisclosure ? (
+        <div
+          className={classNames(
+            'core-object-field-template-credential-advanced',
+            isGatedCredentialConfig &&
+              'core-object-field-template-gated-credential-advanced',
+            isGenericNestedConfig &&
+              'core-object-field-template-generic-credential-advanced'
+          )}>
+          <button
+            aria-expanded={advancedOpen}
+            className="core-object-field-template-credential-advanced-toggle"
+            type="button"
+            onClick={() => setAdvancedOpen((value) => !value)}>
+            <ChevronDown
+              className={classNames(
+                'core-object-field-template-credential-advanced-toggle-icon',
+                advancedOpen &&
+                  'core-object-field-template-credential-advanced-toggle-icon-open'
+              )}
+              size={16}
+            />
+            <span>{getAdvancedHeaderLabel(advancedOpen)}</span>
+          </button>
+          {advancedOpen && (
+            <div className="core-object-field-template-credential-advanced-panel core-object-field-template-advanced-grid">
+              {orderedAdvancedProperties.map(renderProperty)}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="tw:my-3">
+          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
+            <AccordionItem id={`${idSchema.$id}-advanced`}>
+              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50">
+                {getAdvancedHeaderLabel(false)}
+              </AccordionHeader>
+              <AccordionPanel className="tw:bg-utility-gray-blue-50 tw:border-t-0 tw:flex tw:flex-col tw:gap-4">
+                {orderedAdvancedProperties.map(renderProperty)}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      )}
+    </>
+  );
 
   const propertiesContent = (
     <>
@@ -488,31 +551,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           )}
       </div>
 
-      {orderedAdvancedProperties.length > 0 && (
-        <div className="tw:my-3">
-          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
-            <AccordionItem id={`${idSchema.$id}-advanced`}>
-              <AccordionHeader
-                className={classNames(
-                  'tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50',
-                  isGatedCredentialConfig &&
-                    'core-object-field-template-credential-advanced-header'
-                )}>
-                {getAdvancedHeaderLabel()}
-              </AccordionHeader>
-              <AccordionPanel
-                className={classNames(
-                  'tw:bg-utility-gray-blue-50 tw:border-t-0',
-                  isGatedCredentialConfig
-                    ? 'core-object-field-template-credential-advanced-panel core-object-field-template-advanced-grid'
-                    : 'tw:flex tw:flex-col tw:gap-4'
-                )}>
-                {orderedAdvancedProperties.map(renderProperty)}
-              </AccordionPanel>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      )}
+      {advancedPropertiesContent}
     </>
   );
 

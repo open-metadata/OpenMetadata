@@ -45,8 +45,16 @@ import CoreTextAreaWidget from '../../../common/FormBuilderV1/widgets/CoreTextAr
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, params?: { count?: number }) =>
-      params?.count ? `${params.count} required` : key,
+    t: (key: string, params?: { count?: number }) => {
+      if (key === 'label.show-advanced-credential-settings') {
+        return `Show advanced credential settings (${params?.count})`;
+      }
+      if (key === 'label.hide-advanced-credential-settings') {
+        return `Hide advanced credential settings (${params?.count})`;
+      }
+
+      return params?.count ? `${params.count} required` : key;
+    },
   }),
 }));
 
@@ -422,6 +430,51 @@ describe('ConnectionConfigForm schema rendering', () => {
         ':scope > .core-object-field-template-property-tokenUri'
       )
     ).not.toBeInTheDocument();
+
+    const advancedCredentialButton = within(gcpConfigField).getByRole(
+      'button',
+      {
+        name: 'Show advanced credential settings (5)',
+      }
+    );
+
+    fireEvent.click(advancedCredentialButton);
+
+    expect(
+      getRequiredElement(
+        gcpConfigField,
+        '.core-object-field-template-property-type'
+      )
+    ).toBeInTheDocument();
+    expect(
+      getRequiredElement(
+        gcpConfigField,
+        '.core-object-field-template-property-authUri'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      getRequiredElement(
+        gcpConfigField,
+        '.core-object-field-template-property-tokenUri'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      within(gcpConfigField).getByRole('button', {
+        name: 'Hide advanced credential settings (5)',
+      })
+    ).toBeInTheDocument();
+    expect(
+      gcpCredentialsBlock.querySelector(
+        '.core-object-field-template-property-gcpImpersonateServiceAccount'
+      )
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(gcpCredentialsBlock).getByRole('button', {
+        name: 'Show advanced credential settings (1)',
+      })
+    );
+
     expect(
       getRequiredElement(
         gcpCredentialsBlock,

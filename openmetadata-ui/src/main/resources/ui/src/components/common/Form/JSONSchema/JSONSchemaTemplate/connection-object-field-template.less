@@ -83,6 +83,7 @@
       padding: 0;
       border-radius: 0;
       background-color: transparent !important;
+      justify-self: stretch;
     }
 
     .core-object-field-template-credential-block
@@ -112,6 +113,10 @@
     .core-object-field-template-body-grid
       > .core-object-field-template-property-full-width,
     .core-object-field-template-body-grid
+      > .core-object-field-template-property-gcpConfig,
+    .core-object-field-template-body-grid
+      > .core-object-field-template-property-projectId,
+    .core-object-field-template-body-grid
       > .core-object-field-template-property:has(> .core-one-of-field) {
       grid-column: 1 / -1;
       justify-self: stretch;
@@ -137,7 +142,7 @@
     .core-one-of-field-select,
     .core-select-widget {
       align-self: flex-start;
-      width: min(640px, 100%);
+      width: min(680px, 100%);
       max-width: 100%;
     }
 
@@ -164,6 +169,72 @@
     .core-one-of-field-inline-selected > .core-one-of-field-selected {
       grid-column: 2;
       grid-row: 1 / span 2;
+    }
+
+    .core-object-field-template-credential-advanced {
+      width: 100%;
+      min-width: 0;
+      margin-top: 4px;
+    }
+
+    .core-object-field-template-credential-advanced-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #155eef;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+
+    .core-object-field-template-credential-advanced-toggle:focus-visible {
+      border-radius: 6px;
+      outline: 2px solid #1570ef;
+      outline-offset: 2px;
+    }
+
+    .core-object-field-template-credential-advanced-toggle-icon {
+      flex-shrink: 0;
+      transition: transform 120ms ease;
+      transform: rotate(-90deg);
+    }
+
+    .core-object-field-template-credential-advanced-toggle-icon-open {
+      transform: rotate(0);
+    }
+
+    .core-object-field-template-credential-advanced-panel {
+      margin-top: 16px;
+      padding: 0 !important;
+      background: transparent !important;
+    }
+
+    .core-object-field-template-advanced-grid {
+      display: grid !important;
+      grid-auto-flow: row dense;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 18px 20px !important;
+      align-items: start;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .core-object-field-template-advanced-grid
+      > .core-object-field-template-property {
+      min-width: 0;
+      padding: 0;
+      border-radius: 0;
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-advanced-grid
+      > .core-object-field-template-property-full-width {
+      grid-column: 1 / -1;
     }
 
     .core-object-field-template-gated-credential-block {
