@@ -348,7 +348,7 @@ test.describe(
           }
         };
         page.on('response', postListener);
-        await page.getByTestId('save-domain').click();
+        await page.getByTestId('save-btn').click();
 
         // Poll for up to 3s and confirm no POST ever fires. We intentionally
         // avoid `page.waitForTimeout` (linted as flaky) and instead use
@@ -715,7 +715,7 @@ test.describe(
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
         );
-        await page.getByTestId('save-domain').click();
+        await page.getByTestId('save-btn').click();
         const response = await createResponse;
         expect(response.status()).toBe(201);
 
