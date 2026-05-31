@@ -213,6 +213,18 @@ describe('FormBuilderV1', () => {
     );
   });
 
+  it('disables submit when requested', () => {
+    render(
+      <FormBuilderV1
+        isSubmitDisabled
+        formData={{ name: 'value' }}
+        schema={schema}
+      />
+    );
+
+    expect(screen.getByTestId('submit-btn')).toBeDisabled();
+  });
+
   it('syncs localFormData when the formData prop changes', async () => {
     const { rerender } = render(
       <FormBuilderV1 formData={{ name: 'initial' }} schema={schema} />

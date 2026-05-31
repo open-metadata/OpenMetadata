@@ -13,7 +13,10 @@
 import { reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import { ServiceNestedConnectionFields } from '../enums/service.enum';
-import { getUISchemaWithNestedDefaultFilterFieldsHidden } from './ServiceConnectionUtils';
+import {
+  getUISchemaWithNestedDefaultFilterFieldsHidden,
+  hasMissingRequiredFlatCredential,
+} from './ServiceConnectionUtils';
 
 // The function adds all filter pattern fields to each nested connection field
 const mockExpectedHiddenFields = reduce(
@@ -75,5 +78,59 @@ describe('getUISchemaWithNestedDefaultFilterFieldsHidden', () => {
         ...mockExpectedHiddenFields,
       },
     });
+  });
+});
+
+describe('hasMissingRequiredFlatCredential', () => {
+  const schema = {
+    properties: {
+      password: {
+        format: 'password',
+      },
+      privateKey: {
+        format: 'password',
+      },
+      snowflakePrivatekeyPassphrase: {
+        format: 'password',
+      },
+    },
+  };
+
+  it('returns true when flat credential fields are empty', () => {
+    expect(hasMissingRequiredFlatCredential(schema, {})).toBe(true);
+  });
+
+  it('returns false when one credential method has a value', () => {
+    expect(
+      hasMissingRequiredFlatCredential(schema, {
+        privateKey: 'private-key-value',
+      })
+    ).toBe(false);
+  });
+
+  it('does not treat a passphrase-only value as the credential method', () => {
+    expect(
+      hasMissingRequiredFlatCredential(schema, {
+        snowflakePrivatekeyPassphrase: 'passphrase',
+      })
+    ).toBe(true);
+  });
+
+  it('lets authType schemas rely on JSON schema validation', () => {
+    expect(
+      hasMissingRequiredFlatCredential(
+        {
+          properties: {
+            authType: {
+              oneOf: [],
+            },
+            password: {
+              format: 'password',
+            },
+          },
+        },
+        {}
+      )
+    ).toBe(false);
   });
 });

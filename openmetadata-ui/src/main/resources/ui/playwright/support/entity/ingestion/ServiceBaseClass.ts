@@ -24,8 +24,6 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -157,30 +155,15 @@ class ServiceBaseClass {
   }
 
   async serviceStep1(serviceType: string, page: Page) {
-    // Storing the created service name and the type of service
-    // Select Service in step 1
+    // Selecting a connector advances straight to the Configure & Connect step
     await page.click(`[data-testid="${serviceType}"]`);
-    await page.click('[data-testid="next-button"]');
+    await page.getByTestId('service-name').waitFor();
   }
 
   async serviceStep2(serviceName: string, page: Page) {
-    // validation should work
-    await page.click('[data-testid="next-button"]');
-
-    await page.locator('#name_help').waitFor();
-
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
-
-    // invalid name validation should work
-    await page
-      .locator('[data-testid="service-name"]')
-      .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-
+    // Service name + connection details now share the Configure & Connect step;
+    // the connection form's submit button advances to the next step.
     await page.fill('[data-testid="service-name"]', serviceName);
-
-    await page.click('[data-testid="next-button"]');
   }
 
   async fillConnectionDetails(_page: Page) {

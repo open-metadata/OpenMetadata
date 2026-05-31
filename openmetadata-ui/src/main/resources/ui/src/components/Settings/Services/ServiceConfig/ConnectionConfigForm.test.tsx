@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act, forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -18,7 +18,11 @@ import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
+import {
+  getFilteredSchema,
+  hasMissingRequiredFlatCredential,
+  loadConnectionSchema,
+} from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -122,10 +126,15 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
   buildValidConfig: jest.fn().mockReturnValue({}),
   loadConnectionSchema: jest
     .fn()
-    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
+    .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
+  getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
+  hasMissingRequiredFlatCredential: jest.fn().mockReturnValue(false),
+  getSchemaWithSynthesizedAuthType: jest.fn((schema) => schema),
+  wrapFlatCredentialsIntoAuthType: jest.fn((config) => config),
+  flattenAuthTypeIntoConfig: jest.fn((config) => config),
 }));
 
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
@@ -145,17 +154,27 @@ jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
-    jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (
-      <div data-testid="form-builder">
-        {children}
-        <button
-          data-testid="submit-button"
-          onClick={() => onSubmit({ formData })}>
-          Submit FormBuilder
-        </button>
-        <button onClick={onCancel}>Cancel FormBuilder</button>
-      </div>
-    ))
+    jest
+      .fn()
+      .mockImplementation(
+        ({ children, isSubmitDisabled, onChange, onSubmit, onCancel }) => (
+          <div data-testid="form-builder">
+            {children}
+            <button
+              data-testid="change-valid-form"
+              onClick={() => onChange({ formData })}>
+              Change FormBuilder
+            </button>
+            <button
+              data-testid="submit-button"
+              disabled={isSubmitDisabled}
+              onClick={() => onSubmit({ formData })}>
+              Submit FormBuilder
+            </button>
+            <button onClick={onCancel}>Cancel FormBuilder</button>
+          </div>
+        )
+      )
   )
 );
 
@@ -272,6 +291,48 @@ describe('ServiceConfig', () => {
     fireEvent.click(submitButton);
 
     expect(mockSubmit).toHaveBeenCalledWith(formData);
+  });
+
+  it('should disable next until required schema fields are filled', async () => {
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {
+        type: 'object',
+        required: ['username'],
+        properties: {
+          username: {
+            type: 'string',
+          },
+        },
+      },
+      uiSchema: {},
+    });
+    (getFilteredSchema as jest.Mock).mockReturnValueOnce({
+      username: {
+        type: 'string',
+      },
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should disable next until a flat credential method is filled', async () => {
+    (hasMissingRequiredFlatCredential as jest.Mock).mockReturnValueOnce(true);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
   });
 
   it('should not display host ip if unable to fetch', async () => {

@@ -12,7 +12,6 @@
  */
 
 import { ServiceCategory } from '../../../../../enums/service.enum';
-import { ServiceConfig } from '../../../../../pages/AddServicePage/AddServicePage.interface';
 
 export type SelectServiceTypeProps = {
   showError: boolean;
@@ -20,12 +19,4 @@ export type SelectServiceTypeProps = {
   serviceCategoryHandler: (category: ServiceCategory) => void;
   selectServiceType: string;
   handleServiceTypeClick: (type: string) => void;
-  onCancel: () => void;
-  onNext: () => void;
-};
-
-export type ConfigureServiceProps = {
-  serviceName: string;
-  onBack: () => void;
-  onNext: (data: Pick<ServiceConfig, 'name' | 'description'>) => void;
 };

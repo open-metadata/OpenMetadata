@@ -144,6 +144,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
+  Hexagon01: (props: React.HTMLAttributes<HTMLSpanElement>) => (
+    <span {...props}>hexagon-icon</span>
+  ),
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,
 }));
@@ -329,6 +332,201 @@ describe('FormBuilderV1 templates', () => {
     expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('adds stable layout classes for sample data storage nested configs', () => {
+    const { container, rerender } = render(
+      <CoreObjectFieldTemplate
+        {...({
+          idSchema: { $id: 'root/sampleDataStorageConfig/config' },
+          registry: {} as ObjectFieldTemplateProps['registry'],
+          schema: {},
+          title: 'Sample Data Storage Config',
+          onAddClick: jest.fn(),
+          properties: [
+            {
+              content: <div>file path field</div>,
+              hidden: false,
+              name: 'filePathPattern',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>bucket field</div>,
+              hidden: false,
+              name: 'bucketName',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>prefix field</div>,
+              hidden: false,
+              name: 'prefix',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>overwrite field</div>,
+              hidden: false,
+              name: 'overwriteData',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>storage field</div>,
+              hidden: false,
+              name: 'storageConfig',
+            } as ObjectFieldTemplatePropertyType,
+          ],
+        } as unknown as ObjectFieldTemplateProps)}
+      />
+    );
+
+    expect(
+      container.querySelector('.core-object-field-template-sample-data-config')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.core-object-field-template-body-grid')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-filePathPattern'
+      )
+    ).toHaveTextContent('file path field');
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-storageConfig'
+      )
+    ).toHaveTextContent('storage field');
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '.core-object-field-template-sample-data-config > .core-object-field-template-body > .core-object-field-template-property'
+        )
+      ).map((element) => element.getAttribute('data-field-name'))
+    ).toEqual([
+      'bucketName',
+      'prefix',
+      'filePathPattern',
+      'overwriteData',
+      'storageConfig',
+    ]);
+
+    rerender(
+      <CoreObjectFieldTemplate
+        {...({
+          idSchema: {
+            $id: 'root/sampleDataStorageConfig/config/storageConfig',
+          },
+          formData: { enabled: true },
+          registry: {} as ObjectFieldTemplateProps['registry'],
+          schema: {},
+          title: 'AWS S3 Storage Config',
+          onAddClick: jest.fn(),
+          properties: [
+            {
+              content: <div>assume role field</div>,
+              hidden: false,
+              name: 'assumeRoleArn',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>region field</div>,
+              hidden: false,
+              name: 'awsRegion',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>enabled field</div>,
+              hidden: false,
+              name: 'enabled',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <input data-testid="field-awsSecretAccessKey" />,
+              hidden: false,
+              name: 'awsSecretAccessKey',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <input data-testid="field-awsAccessKeyId" />,
+              hidden: false,
+              name: 'awsAccessKeyId',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <input data-testid="field-awsSessionToken" />,
+              hidden: false,
+              name: 'awsSessionToken',
+            } as ObjectFieldTemplatePropertyType,
+          ],
+        } as unknown as ObjectFieldTemplateProps)}
+      />
+    );
+
+    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
+    expect(
+      container.querySelector('.core-object-field-template-storage-config')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.core-object-field-template-property-enabled')
+    ).toHaveTextContent('enabled field');
+    expect(
+      container.querySelector('.core-object-field-template-property-awsRegion')
+    ).toHaveTextContent('region field');
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '.core-object-field-template-storage-config > .core-object-field-template-body > .core-object-field-template-property'
+        )
+      ).map((element) => element.getAttribute('data-field-name'))
+    ).toEqual([
+      'enabled',
+      'awsAccessKeyId',
+      'awsSecretAccessKey',
+      'awsRegion',
+      'awsSessionToken',
+      'assumeRoleArn',
+    ]);
+    expect(screen.getByTestId('field-awsAccessKeyId')).toBeDisabled();
+    expect(screen.getByTestId('field-awsSecretAccessKey')).toBeDisabled();
+    expect(screen.getByTestId('field-awsSessionToken')).toBeDisabled();
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-awsAccessKeyId'
+      )
+    ).toHaveClass('core-object-field-template-property-disabled');
+  });
+
+  it('disables static AWS credentials for AWS S3 configs with IAM auth', () => {
+    const { container } = render(
+      <CoreObjectFieldTemplate
+        {...({
+          idSchema: { $id: 'root/securityConfig' },
+          formData: { enabled: true },
+          registry: {} as ObjectFieldTemplateProps['registry'],
+          schema: {},
+          title: 'AWS S3 Storage Config',
+          onAddClick: jest.fn(),
+          properties: [
+            {
+              content: <div>enabled field</div>,
+              hidden: false,
+              name: 'enabled',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <input data-testid="generic-awsAccessKeyId" />,
+              hidden: false,
+              name: 'awsAccessKeyId',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <input data-testid="generic-awsSecretAccessKey" />,
+              hidden: false,
+              name: 'awsSecretAccessKey',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>region field</div>,
+              hidden: false,
+              name: 'awsRegion',
+            } as ObjectFieldTemplatePropertyType,
+          ],
+        } as unknown as ObjectFieldTemplateProps)}
+      />
+    );
+
+    expect(
+      container.querySelector('.core-object-field-template-storage-config')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('generic-awsAccessKeyId')).toBeDisabled();
+    expect(screen.getByTestId('generic-awsSecretAccessKey')).toBeDisabled();
+  });
+
   it('renders wrap-if-additional as plain children when not an additional property', () => {
     render(
       <CoreWrapIfAdditionalTemplate
@@ -372,6 +570,8 @@ describe('FormBuilderV1 templates', () => {
     );
 
     expect(screen.getByText('value child')).toBeInTheDocument();
+    expect(screen.getByText('=')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('label.option')).toHaveValue('myKey');
 
     const keyInput = screen.getByDisplayValue('myKey');
 

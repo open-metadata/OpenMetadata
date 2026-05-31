@@ -17,46 +17,41 @@ import React from 'react';
 import CoreOneOfField from './CoreOneOfField';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  RadioButton: jest.fn(
-    ({
-      label,
-      onSelect,
-      selectedValue,
-      value,
-    }: {
-      label: string;
-      onSelect?: (value: string) => void;
-      selectedValue?: string;
-      value: string;
-    }) => (
-      <button
-        aria-checked={selectedValue === value}
-        role="radio"
-        type="button"
-        onClick={() => onSelect?.(value)}>
-        {label}
-      </button>
-    )
-  ),
-  RadioGroup: jest.fn(
-    ({
-      children,
-      onChange,
-      value,
-    }: {
-      children: React.ReactElement[];
-      onChange: (value: string) => void;
-      value: string;
-    }) => (
-      <div role="radiogroup">
-        {children.map((child) =>
-          React.cloneElement(child, {
-            onSelect: onChange,
-            selectedValue: value,
-          })
-        )}
-      </div>
-    )
+  Select: Object.assign(
+    jest.fn(
+      ({
+        children,
+        items,
+        label,
+        onSelectionChange,
+        selectedKey,
+      }: {
+        children: (item: { id: string; label: string }) => React.ReactNode;
+        items: Array<{ id: string; label: string }>;
+        label?: string;
+        onSelectionChange: (value: string) => void;
+        selectedKey?: string;
+      }) => (
+        <div>
+          {label && <label>{label}</label>}
+          <div data-testid="selected-key">{selectedKey}</div>
+          {items.map((item) => (
+            <button
+              data-selected={selectedKey === item.id}
+              key={item.id}
+              type="button"
+              onClick={() => onSelectionChange(item.id)}>
+              {children(item)}
+            </button>
+          ))}
+        </div>
+      )
+    ),
+    {
+      Item: ({ children }: { children: React.ReactNode }) => (
+        <span>{children}</span>
+      ),
+    }
   ),
   Typography: jest.fn(
     ({
@@ -118,17 +113,17 @@ describe('CoreOneOfField', () => {
     const props = getBaseProps(formData);
     const { rerender } = render(<CoreOneOfField {...props} />);
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Second' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
 
-    expect(screen.getByRole('radio', { name: 'Second' })).toHaveAttribute(
-      'aria-checked',
+    expect(screen.getByRole('button', { name: 'Second' })).toHaveAttribute(
+      'data-selected',
       'true'
     );
 
     rerender(<CoreOneOfField {...getBaseProps(formData)} />);
 
-    expect(screen.getByRole('radio', { name: 'Second' })).toHaveAttribute(
-      'aria-checked',
+    expect(screen.getByRole('button', { name: 'Second' })).toHaveAttribute(
+      'data-selected',
       'true'
     );
   });

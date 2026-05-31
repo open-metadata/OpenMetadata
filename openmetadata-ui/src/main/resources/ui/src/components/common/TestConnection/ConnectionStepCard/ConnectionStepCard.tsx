@@ -34,12 +34,16 @@ interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
   testConnectionStepResult?: TestConnectionStepResult;
   isTestingConnection: boolean;
+  // When the connection gate failed, capability steps never ran. We surface an
+  // honest "Didn't run" instead of a stuck "Awaiting"/"Skipped" state.
+  connectionFailed?: boolean;
 }
 
 const ConnectionStepCard = ({
   testConnectionStep,
   testConnectionStepResult,
   isTestingConnection,
+  connectionFailed = false,
 }: ConnectionStepCardProp) => {
   const { t } = useTranslation();
   const isSkipped =
@@ -134,9 +138,11 @@ const ConnectionStepCard = ({
             </div>
           )}
           {isSkipped && (
-            <Typography.Text className="skipped-status">{`${t(
-              'label.skipped'
-            )}`}</Typography.Text>
+            <Typography.Text className="skipped-status">
+              {connectionFailed
+                ? t('message.connection-not-established')
+                : t('label.skipped')}
+            </Typography.Text>
           )}
         </Space>
       </div>

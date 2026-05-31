@@ -46,8 +46,6 @@ const SelectServiceType = ({
   showError,
   serviceCategoryHandler,
   handleServiceTypeClick,
-  onCancel,
-  onNext,
 }: SelectServiceTypeProps) => {
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
@@ -100,7 +98,7 @@ const SelectServiceType = ({
     <Row>
       <Col span={24}>
         <Select
-          className="w-full"
+          className="service-category-select w-full"
           data-testid="service-category"
           id="serviceCategory"
           options={SERVICE_CATEGORY_OPTIONS}
@@ -111,12 +109,11 @@ const SelectServiceType = ({
           }}
         />
       </Col>
-      <Col className="m-t-lg" span={24}>
+      <Col className="service-search-container" span={24}>
         <Searchbar
           removeMargin
-          placeholder={t('label.search-for-type', {
-            type: t('label.connector'),
-          })}
+          containerClassName="service-connector-search"
+          placeholder={t('label.search-for-a-connector')}
           searchValue={connectorSearchTerm}
           typingInterval={500}
           onSearch={handleConnectorSearchTerm}
@@ -142,8 +139,8 @@ const SelectServiceType = ({
               data-testid={type}
               key={type}
               onClick={() => handleServiceTypeClick(type)}>
-              <div data-testid="service-icon">
-                {getServiceLogo(type || '', 'h-9')}
+              <div className="service-icon" data-testid="service-icon">
+                {getServiceLogo(type || '', 'service-logo')}
               </div>
               <div className="absolute" style={{ right: '4px', top: '0px' }}>
                 {type === selectServiceType && (
@@ -172,24 +169,6 @@ const SelectServiceType = ({
               fieldText: t('label.service'),
             })
           )}
-      </Col>
-
-      <Col className="d-flex justify-end mt-12" span={24}>
-        <Button
-          className="m-r-xs"
-          data-testid="previous-button"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="next-button"
-          type="primary"
-          onClick={onNext}>
-          {t('label.next')}
-        </Button>
       </Col>
     </Row>
   );

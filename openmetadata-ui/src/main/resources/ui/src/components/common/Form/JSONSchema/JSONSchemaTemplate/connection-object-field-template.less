@@ -1,0 +1,587 @@
+.connection-grouped-form {
+  color: var(--color-text-primary, #181d27);
+
+  .connection-section-card {
+    transition: border-color 120ms ease;
+  }
+
+  .connection-section-card-active {
+    border-color: #1570ef !important;
+  }
+
+  .connection-section-header {
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+
+    &:focus,
+    &:focus-visible {
+      outline: 0;
+    }
+  }
+
+  .connection-section-field-grid > .property-wrapper,
+  .connection-section-boolean-grid > .property-wrapper {
+    min-width: 0;
+  }
+
+  .connection-section-field-grid > .property-wrapper .design-field-label {
+    min-height: 34px;
+    align-items: flex-start;
+    line-height: 16px;
+  }
+
+  .connection-section-field-grid > .property-wrapper .design-field-label label {
+    line-height: 16px;
+  }
+
+  .connection-section-fields,
+  .connection-section-field-grid {
+    input,
+    textarea {
+      color: var(--color-text-primary, #181d27) !important;
+      font-size: 13px;
+      -webkit-text-fill-color: var(--color-text-primary, #181d27);
+    }
+  }
+
+  .connection-section-card-advanced {
+    padding: 0 !important;
+    overflow: hidden;
+
+    .connection-section-header {
+      min-height: 68px;
+      padding: 16px 18px;
+    }
+
+    .connection-section-header-title {
+      color: #181d27 !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      line-height: 20px !important;
+    }
+
+    .connection-section-header-description {
+      color: #535862 !important;
+      font-size: 12.5px !important;
+      line-height: 18px !important;
+    }
+
+    .connection-section-divider {
+      margin: 0 !important;
+    }
+
+    .connection-advanced-section-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .connection-advanced-primary-grid,
+    .connection-advanced-secondary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+
+    .connection-advanced-full-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .connection-advanced-full-row {
+      padding-top: 18px;
+      border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+    }
+
+    .property-wrapper {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .design-field-label {
+      min-height: 0;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 6px !important;
+      line-height: 17px;
+    }
+
+    .design-field-label label,
+    [data-label='true'] {
+      color: #181d27 !important;
+      font-size: 13.5px !important;
+      font-weight: 600 !important;
+      line-height: 17px !important;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
+    }
+
+    .design-field-label .tw\:text-gray-400 {
+      color: #a4a7ae !important;
+      font-size: 12px !important;
+      line-height: 16px !important;
+      white-space: nowrap;
+    }
+
+    .design-field-label + div {
+      min-height: 40px !important;
+    }
+
+    [data-label='true'] + button {
+      min-height: 40px;
+      border-radius: 8px;
+    }
+
+    [slot='description'],
+    .design-field-label + div + div {
+      color: #535862 !important;
+      font-size: 12.5px !important;
+      line-height: 18px !important;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+
+    .design-control-input,
+    input,
+    textarea {
+      color: #181d27 !important;
+      font-size: 13px !important;
+      line-height: 18px !important;
+      -webkit-text-fill-color: #181d27;
+    }
+
+    .design-boolean-field {
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .design-boolean-field label {
+      color: #181d27 !important;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 17px;
+      overflow-wrap: break-word;
+      white-space: normal;
+    }
+
+    .design-boolean-field label + div,
+    .design-boolean-field .tw\:text-tertiary {
+      color: #535862 !important;
+      font-size: 12.5px;
+      line-height: 18px;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+
+    .design-boolean-field > div {
+      min-width: 0;
+    }
+
+    .connection-nested-object {
+      width: 100%;
+      min-width: 0;
+      padding-top: 0;
+    }
+
+    .core-object-field-template {
+      width: 100%;
+      min-width: 0;
+      gap: 10px;
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-body,
+    .core-object-field-template-property,
+    .core-one-of-field {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .core-one-of-field {
+      gap: 12px !important;
+    }
+
+    .core-one-of-field-select,
+    .core-select-widget {
+      width: 100%;
+    }
+
+    [data-field-id$='/sampleDataStorageConfig']
+      > .core-object-field-template-body
+      > [data-field-name='config']
+      .core-one-of-field-select,
+    [data-field-id='root/sampleDataStorageConfig']
+      > .core-object-field-template-body
+      > .core-object-field-template-property[data-field-name='config']
+      .core-one-of-field-select,
+    .core-object-field-template-sample-data-section
+      > .core-object-field-template-body
+      > .core-object-field-template-property-config
+      .core-one-of-field-select,
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='storageConfig']
+      .core-one-of-field-select,
+    [data-field-id='root/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > .core-object-field-template-property[data-field-name='storageConfig']
+      .core-one-of-field-select,
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-storageConfig
+      .core-one-of-field-select {
+      width: min(520px, 100%) !important;
+      max-width: 100% !important;
+    }
+
+    .core-one-of-field-select button,
+    .core-select-widget button {
+      min-height: 40px !important;
+      border-radius: 8px !important;
+    }
+
+    .core-one-of-field-select button p,
+    .core-select-widget button p {
+      color: #181d27 !important;
+      font-size: 13.5px !important;
+      font-weight: 500 !important;
+      line-height: 18px !important;
+    }
+
+    .core-one-of-field-select-popover [slot='label'],
+    .core-select-widget-popover [slot='label'] {
+      color: #181d27 !important;
+      font-size: 13.5px !important;
+      font-weight: 500 !important;
+      line-height: 18px !important;
+    }
+
+    .core-one-of-field-selected:empty {
+      display: none;
+    }
+
+    .core-object-field-template-property,
+    .tw\:bg-utility-gray-blue-50 {
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-header-description {
+      display: none;
+    }
+
+    .core-object-field-template-title {
+      color: #181d27 !important;
+      font-size: 13.5px !important;
+      font-weight: 600 !important;
+      line-height: 18px !important;
+    }
+
+    .core-object-field-template-title-icon {
+      flex-shrink: 0;
+      color: #1570ef;
+      stroke-width: 2;
+    }
+
+    .core-object-field-template-body {
+      gap: 8px;
+    }
+
+    .core-object-field-template-sample-data-config,
+    .core-object-field-template-storage-config {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 18px;
+      border: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+      border-radius: 12px;
+      background-color: #fff !important;
+    }
+
+    .core-object-field-template-sample-data-config {
+      margin-top: 18px;
+      border-color: #eaecf5;
+    }
+
+    .core-object-field-template-storage-config {
+      margin-top: 16px;
+      gap: 16px;
+    }
+
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-header {
+      display: none;
+    }
+
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body,
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body,
+    .core-object-field-template-body-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 20px 18px !important;
+    }
+
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > .core-object-field-template-property,
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body
+      > .core-object-field-template-property,
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property,
+    .core-object-field-template-storage-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property {
+      min-width: 0;
+      padding: 0;
+      border-radius: 0;
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-sample-data-config .design-field-label,
+    .core-object-field-template-storage-config .design-field-label {
+      min-height: 0;
+    }
+
+    .core-object-field-template-sample-data-config .design-control-input,
+    .core-object-field-template-sample-data-config .design-control-textarea,
+    .core-object-field-template-storage-config .design-control-input,
+    .core-object-field-template-storage-config .design-control-textarea {
+      min-width: 0;
+    }
+
+    .core-object-field-template-property-disabled {
+      opacity: 0.58;
+
+      &,
+      * {
+        cursor: not-allowed !important;
+      }
+    }
+
+    .core-object-field-template-sample-data-config .design-field-label label,
+    .core-object-field-template-storage-config .design-field-label label {
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='filePathPattern'],
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='overwriteData'],
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='storageConfig'],
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body
+      > [data-field-name='enabled'],
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body
+      > [data-field-name='assumeRoleArn'],
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body
+      > [data-field-name='assumeRoleSessionName'],
+    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
+      > .core-object-field-template-body
+      > [data-field-name='assumeRoleSourceIdentity'],
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-filePathPattern,
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-overwriteData,
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-storageConfig,
+    .core-object-field-template-storage-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-enabled,
+    .core-object-field-template-storage-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-assumeRoleArn,
+    .core-object-field-template-storage-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-assumeRoleSessionName,
+    .core-object-field-template-storage-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-assumeRoleSourceIdentity {
+      grid-column-start: 1 !important;
+      grid-column-end: -1 !important;
+    }
+
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='overwriteData'],
+    [data-field-id$='/sampleDataStorageConfig/config']
+      > .core-object-field-template-body
+      > [data-field-name='storageConfig'],
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-overwriteData,
+    .core-object-field-template-sample-data-config
+      > .core-object-field-template-body
+      > .core-object-field-template-property-storageConfig {
+      padding-top: 18px;
+      border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+    }
+
+    .core-object-field-template-additional-header {
+      min-height: 24px;
+      align-items: center;
+    }
+
+    .core-object-field-template-additional-label {
+      color: #414651 !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      line-height: 17px !important;
+    }
+
+    .core-object-field-template-empty {
+      color: #717680 !important;
+      font-size: 12.5px !important;
+      line-height: 18px !important;
+    }
+
+    .core-object-field-template-add-button {
+      min-width: 28px !important;
+      width: 28px !important;
+      height: 28px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      border-radius: 6px !important;
+      line-height: 0 !important;
+    }
+
+    .core-object-field-template-add-button [data-icon],
+    .core-wrap-if-additional-remove-button [data-icon] {
+      width: 16px !important;
+      height: 16px !important;
+      margin: 0 !important;
+      display: block !important;
+      flex-shrink: 0;
+    }
+
+    .core-wrap-if-additional-template {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .core-wrap-if-additional-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 40px;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .core-wrap-if-additional-key,
+    .core-wrap-if-additional-value {
+      min-width: 0;
+    }
+
+    .core-wrap-if-additional-key [data-input-wrapper],
+    .core-wrap-if-additional-value [data-input-wrapper] {
+      gap: 0 !important;
+    }
+
+    .core-wrap-if-additional-key [data-label='true'],
+    .core-wrap-if-additional-value [data-label='true'],
+    .core-wrap-if-additional-value .design-field-label {
+      display: none !important;
+    }
+
+    .core-wrap-if-additional-separator {
+      color: #535862;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 38px;
+    }
+
+    .core-wrap-if-additional-remove-button {
+      min-width: 38px !important;
+      width: 38px !important;
+      height: 38px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      border-radius: 8px !important;
+      line-height: 0 !important;
+    }
+
+    .design-boolean-field .ant-switch {
+      min-width: 42px !important;
+      width: 42px !important;
+      height: 24px !important;
+      background: #f2f4f7 !important;
+      border: 1px solid #d0d5dd !important;
+      box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.02) !important;
+    }
+
+    .design-boolean-field .ant-switch .ant-switch-handle {
+      top: 2px !important;
+      left: 2px !important;
+      width: 18px !important;
+      height: 18px !important;
+    }
+
+    .design-boolean-field .ant-switch .ant-switch-handle::before {
+      border-radius: 999px !important;
+      background: #fff !important;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18),
+        0 1px 3px rgba(16, 24, 40, 0.1) !important;
+    }
+
+    .design-boolean-field .ant-switch.ant-switch-checked {
+      background: #1570ef !important;
+      border-color: #1570ef !important;
+    }
+
+    .design-boolean-field .ant-switch.ant-switch-checked .ant-switch-handle {
+      left: calc(100% - 20px) !important;
+    }
+  }
+
+  .connection-additional-object {
+    padding-top: 2px;
+
+    label[id$='__title'] {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 20px;
+    }
+
+    .tw\:bg-utility-gray-blue-50 {
+      background-color: transparent !important;
+    }
+  }
+}
+
+.core-one-of-field-select-popover [slot='label'],
+.core-select-widget-popover [slot='label'] {
+  color: #181d27 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  line-height: 18px !important;
+}

@@ -443,9 +443,12 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <Space className="w-full justify-between bg-white border border-main tw:rounded-lg p-sm mt-4">
+        <div
+          className="test-connection-card"
+          data-testid="test-connection-card">
           <Space
             align={testStatus ? 'start' : 'center'}
+            className="test-connection-card-message"
             data-testid="message-container"
             size={8}>
             {isTestingConnection && <Loader size="small" />}
@@ -503,7 +506,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           </Space>
           <Tooltip title={buttonTooltipTitle}>
             <Button
-              className={classNames({
+              className={classNames('test-connection-card-button', {
                 'text-primary': !isTestConnectionDisabled,
               })}
               data-testid="test-connection-btn"
@@ -515,7 +518,7 @@ const TestConnection: FC<TestConnectionProps> = ({
               {t('label.test-entity', { entity: t('label.connection') })}
             </Button>
           </Tooltip>
-        </Space>
+        </div>
       ) : (
         <Tooltip title={buttonTooltipTitle}>
           <Button

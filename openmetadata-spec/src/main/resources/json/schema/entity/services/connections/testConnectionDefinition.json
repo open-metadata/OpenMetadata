@@ -33,6 +33,12 @@
           "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
           "type": "boolean",
           "default": false
+        },
+        "category": {
+          "description": "Phase of the connection test this step belongs to. `ConnectionGate` establishes connectivity (resolve host, open socket, authenticate, open session) and always emits a diagnostic log even on failure; `Capability` steps (listing schemas, tables, lineage, ...) run only after the gate passes.",
+          "type": "string",
+          "enum": ["ConnectionGate", "Capability"],
+          "default": "Capability"
         }
       },
       "additionalProperties": false,

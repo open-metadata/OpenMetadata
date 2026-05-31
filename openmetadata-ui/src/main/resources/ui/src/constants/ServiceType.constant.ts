@@ -99,18 +99,12 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.service' },
+    name: 'label.connect',
     step: 2,
   },
   {
-    name: 'label.connection-entity',
-    nameData: { entity: 'label.detail-plural' },
+    name: 'label.what-to-ingest',
     step: 3,
-  },
-  {
-    name: 'label.set-default-filters',
-    step: 4,
   },
 ];
 

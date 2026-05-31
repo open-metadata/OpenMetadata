@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { ChevronLeft } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
@@ -21,9 +21,9 @@ import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ConfigureService from '../../components/Settings/Services/AddService/Steps/ConfigureService';
+import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
+import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
-import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
@@ -51,6 +51,7 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import './add-service-page.less';
 import { ServiceConfig } from './AddServicePage.interface';
 
 const AddServicePage = () => {
@@ -65,6 +66,7 @@ const AddServicePage = () => {
     SERVICE_DEFAULT_ERROR_MAP
   );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [nameError, setNameError] = useState<string>('');
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
     name: '',
     description: '',
@@ -82,6 +84,28 @@ const AddServicePage = () => {
     [serviceCategory]
   );
 
+  const serviceBreadcrumb = useMemo(
+    () =>
+      serviceConfig.serviceType
+        ? [
+            {
+              name: t('label.add-new-entity', {
+                entity: t('label.service'),
+              }),
+              url: connectionsRouterClassBase.getAddServicePath(
+                serviceCategory
+              ),
+            },
+            {
+              name: serviceConfig.serviceType,
+              url: '',
+              activeTitle: true,
+            },
+          ]
+        : slashedBreadcrumb,
+    [serviceCategory, serviceConfig.serviceType, slashedBreadcrumb, t]
+  );
+
   const translatedSteps = useMemo(
     () =>
       STEPS_FOR_ADD_SERVICE.map((step) => ({
@@ -92,7 +116,6 @@ const AddServicePage = () => {
   );
 
   const handleServiceTypeClick = (type: string) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setServiceConfig({
       name: '',
       description: '',
@@ -101,6 +124,7 @@ const AddServicePage = () => {
         config: {} as ConfigData,
       },
     });
+    setActiveServiceStep(2);
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
@@ -112,36 +136,31 @@ const AddServicePage = () => {
     navigate(connectionsRouterClassBase.getAddServicePath(category));
   };
 
-  // Select service
-  const handleSelectServiceCancel = () => {
-    navigate(
-      connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
-    );
+  const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
+  const handleConnectorChangeClick = () => {
+    setNameError('');
+    setActiveField('');
+    setActiveServiceStep(1);
+    setServiceConfig({
+      name: '',
+      description: '',
+      serviceType: '',
+      connection: {
+        config: {} as ConfigData,
+      },
+    });
   };
-
-  const handleSelectServiceNextClick = () => {
-    if (serviceConfig.serviceType) {
-      setActiveServiceStep(2);
-    } else {
-      setShowErrorMessage({ ...showErrorMessage, serviceType: true });
-    }
-  };
-
-  // Configure service name
-  const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
-  const handleConfigureServiceNextClick = (
-    value: Pick<ServiceConfig, 'name' | 'description'>
-  ) => {
-    setServiceConfig((prev) => ({
-      ...prev,
-      ...value,
-    }));
-    setActiveServiceStep(3);
-  };
-
-  // Service connection
-  const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = (newConfigData: ConfigData) => {
+    if (!serviceConfig.name.trim()) {
+      setNameError(
+        t('message.field-text-is-required', {
+          fieldText: t('label.service-name'),
+        })
+      );
+
+      return;
+    }
+
     const data = serviceUtilClassBase.getServiceConfigData({
       serviceName: serviceConfig.name,
       serviceType: serviceConfig.serviceType,
@@ -154,7 +173,7 @@ const AddServicePage = () => {
       ...prev,
       ...data,
     }));
-    setActiveServiceStep(4);
+    setActiveServiceStep(3);
   };
 
   const triggerTheAutoPilotApplication = async (
@@ -175,8 +194,7 @@ const AddServicePage = () => {
     }
   };
 
-  // Filters Input step
-  const handleFiltersInputBackClick = () => setActiveServiceStep(3);
+  const handleFiltersInputBackClick = () => setActiveServiceStep(2);
   const handleFiltersInputNextClick = async (config: ConfigData) => {
     const configData = {
       ...serviceConfig,
@@ -219,7 +237,6 @@ const AddServicePage = () => {
     }
   };
 
-  // Service focused field
   const handleFieldFocus = (fieldName: string) => {
     if (isEmpty(fieldName)) {
       return;
@@ -237,34 +254,48 @@ const AddServicePage = () => {
     () =>
       !(
         serviceConfig.serviceType &&
-        (activeServiceStep === 3 || activeServiceStep === 4)
+        (activeServiceStep === 2 || activeServiceStep === 3)
       ),
     [activeServiceStep, serviceConfig.serviceType]
   );
 
   const firstPanelChildren = (
     <>
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <div className="m-t-md">
+      <TitleBreadcrumb
+        className="service-flow-breadcrumb"
+        titleLinks={serviceBreadcrumb}
+      />
+      <div className="add-service-page-header">
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
-            <Space className="p-b-xs">
-              {getServiceLogo(serviceConfig.serviceType || '', 'h-6')}{' '}
-              <Typography className="text-base" data-testid="header">
+            <div className="add-service-page-title-row">
+              {getServiceLogo(
+                serviceConfig.serviceType || '',
+                'add-service-page-title-logo'
+              )}
+              <h1 className="add-service-page-title" data-testid="header">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
-              </Typography>
-            </Space>
+              </h1>
+              <button
+                className="add-service-page-change-button"
+                type="button"
+                onClick={handleConnectorChangeClick}>
+                <ChevronLeft size={14} />
+                {t('label.change')}
+              </button>
+            </div>
           ) : (
-            <Typography className="text-base p-b-xs" data-testid="header">
+            <h1 className="add-service-page-title" data-testid="header">
               {t('label.add-new-entity', { entity: t('label.service') })}
-            </Typography>
+            </h1>
           )}
 
-          <IngestionStepper
+          <ServiceFlowStepper
             activeStep={activeServiceStep}
+            className="add-service-page-stepper"
             steps={translatedSteps}
           />
-          <div className="m-t-lg">
+          <div className="add-service-page-step-body">
             {activeServiceStep === 1 && (
               <SelectServiceType
                 handleServiceTypeClick={handleServiceTypeClick}
@@ -272,36 +303,42 @@ const AddServicePage = () => {
                 serviceCategory={serviceCategory}
                 serviceCategoryHandler={handleServiceCategoryChange}
                 showError={showErrorMessage.serviceType}
-                onCancel={handleSelectServiceCancel}
-                onNext={handleSelectServiceNextClick}
               />
             )}
 
             {activeServiceStep === 2 && (
-              <ConfigureService
-                serviceName={serviceConfig.name}
-                onBack={handleConfigureServiceBackClick}
-                onNext={handleConfigureServiceNextClick}
-              />
+              <div className="tw:flex tw:flex-col tw:gap-4">
+                <ServiceNameCard
+                  description={serviceConfig.description}
+                  name={serviceConfig.name}
+                  nameError={nameError}
+                  serviceType={serviceConfig.serviceType}
+                  onDescriptionChange={(description) =>
+                    setServiceConfig((prev) => ({ ...prev, description }))
+                  }
+                  onFocus={handleFieldFocus}
+                  onNameChange={(name) => {
+                    setNameError('');
+                    setServiceConfig((prev) => ({ ...prev, name }));
+                  }}
+                />
+                <ConnectionConfigForm
+                  cancelText={t('label.back')}
+                  data={serviceConfig as ServicesType}
+                  okText={t('label.next-what-to-ingest')}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceConfig.serviceType}
+                  status={saveServiceState}
+                  onCancel={handleConnectionDetailsBackClick}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && handleConfigUpdate(e.formData);
+                  }}
+                />
+              </div>
             )}
 
             {activeServiceStep === 3 && (
-              <ConnectionConfigForm
-                cancelText={t('label.back')}
-                data={serviceConfig as ServicesType}
-                okText={t('label.next')}
-                serviceCategory={serviceCategory}
-                serviceType={serviceConfig.serviceType}
-                status={saveServiceState}
-                onCancel={handleConnectionDetailsBackClick}
-                onFocus={handleFieldFocus}
-                onSave={async (e) => {
-                  e.formData && handleConfigUpdate(e.formData);
-                }}
-              />
-            )}
-
-            {activeServiceStep === 4 && (
               <FiltersConfigForm
                 cancelText={t('label.back')}
                 serviceCategory={serviceCategory}
@@ -326,13 +363,13 @@ const AddServicePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="add-service-page content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
+        cardClassName: 'add-service-page-card max-width-md m-x-auto',
         allowScroll: true,
       }}
       hideSecondPanel={hideSecondPanel}
@@ -340,6 +377,7 @@ const AddServicePage = () => {
       secondPanel={{
         children: (
           <ServiceDocPanel
+            focusedMode
             activeField={activeField}
             serviceName={serviceConfig.serviceType}
             serviceType={getServiceType(serviceCategory)}

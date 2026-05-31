@@ -160,4 +160,44 @@ describe('TestConnectionModal', () => {
 
     expect(errorComponent).toBeInTheDocument();
   });
+
+  it('should split steps into a connection gate and capability checks', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    expect(screen.getByTestId('connection-gate-phase')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-checks-phase')).toBeInTheDocument();
+    expect(screen.getByText('label.establish-connection')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.capability-check-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should mark capability checks as "Didn\'t run" when the gate fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: false, mandatory: true },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getAllByText('message.connection-not-established', {
+        exact: false,
+      }).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('label.skipped')).not.toBeInTheDocument();
+  });
+
+  it('should render the raw connection log with a copy action', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    expect(screen.getByText('label.raw-connection-log')).toBeInTheDocument();
+    expect(screen.getByTestId('copy-raw-log-button')).toBeInTheDocument();
+  });
 });

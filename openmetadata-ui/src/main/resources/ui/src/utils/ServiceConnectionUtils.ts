@@ -188,3 +188,214 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
     ...uiSchemaWithNestedDefaultFilterFieldsHidden,
   };
 };
+
+export const AUTH_SELECT_FIELD = 'authSelect';
+const AUTH_PROPERTY_KEY = 'authType';
+const AUTH_CONFIGURATION_TITLE = 'Auth Configuration Type';
+
+const isAuthSelectorProperty = (
+  key: string,
+  property?: Record<string, unknown>
+): boolean =>
+  Array.isArray(property?.oneOf) &&
+  (key === AUTH_PROPERTY_KEY || property?.title === AUTH_CONFIGURATION_TITLE);
+
+/**
+ * Routes every mutually-exclusive credential property (a `oneOf` named `authType`
+ * or titled "Auth Configuration Type") through the generic {@code authSelect}
+ * field, which renders the design's segmented method selector. This keys off
+ * schema structure alone, so it lights up for every connector that models auth
+ * as a `oneOf` without any per-connector code.
+ * @param schema - The connection JSON schema being rendered
+ * @param uiSchema - The UI Schema to augment
+ * @returns The UI Schema with `ui:field: authSelect` on each auth property
+ */
+export const getUISchemaWithAuthFieldsAsSelect = (
+  schema: Record<string, unknown> | undefined,
+  uiSchema: Record<string, unknown>
+): Record<string, unknown> => {
+  const properties = (schema?.properties ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const authFieldUiSchema = reduce(
+    Object.keys(properties).filter((key) =>
+      isAuthSelectorProperty(key, properties[key])
+    ),
+    (acc, key) => {
+      acc[key] = {
+        ...(uiSchema[key] as Record<string, unknown> | undefined),
+        'ui:field': AUTH_SELECT_FIELD,
+      };
+
+      return acc;
+    },
+    {} as Record<string, unknown>
+  );
+
+  return {
+    ...uiSchema,
+    ...authFieldUiSchema,
+  };
+};
+
+const PASSWORD_FORMAT = 'password';
+const PASSWORD_KEY = 'password';
+const PRIVATE_KEY_RE = /privatekey/i;
+const PASSPHRASE_RE = /passphrase/i;
+
+type JsonObject = Record<string, Record<string, unknown>>;
+
+const getFlatSecretKeys = (
+  schema?: Record<string, unknown>
+): { secretKeys: string[]; hasPassword: boolean; hasPrivateKey: boolean } => {
+  const properties = (schema?.properties ?? {}) as JsonObject;
+  const secretKeys = Object.keys(properties).filter(
+    (key) => properties[key]?.format === PASSWORD_FORMAT
+  );
+
+  return {
+    secretKeys,
+    hasPassword: secretKeys.includes(PASSWORD_KEY),
+    hasPrivateKey: secretKeys.some(
+      (key) => PRIVATE_KEY_RE.test(key) && !PASSPHRASE_RE.test(key)
+    ),
+  };
+};
+
+const isFilledValue = (value: unknown): boolean => {
+  if (isNil(value)) {
+    return false;
+  }
+  if (typeof value === 'string') {
+    return value.trim() !== '';
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  return true;
+};
+
+export const hasMissingRequiredFlatCredential = (
+  schema: Record<string, unknown>,
+  formData: ConfigData
+): boolean => {
+  const properties = schema?.properties as JsonObject | undefined;
+  if (!properties || properties[AUTH_PROPERTY_KEY]) {
+    return false;
+  }
+
+  const credentialKeys = getFlatSecretKeys(schema).secretKeys.filter(
+    (key) => !PASSPHRASE_RE.test(key)
+  );
+
+  return (
+    credentialKeys.length > 0 &&
+    credentialKeys.every(
+      (key) =>
+        !isFilledValue((formData as Record<string, unknown> | undefined)?.[key])
+    )
+  );
+};
+
+/**
+ * Connectors that predate the `authType` oneOf convention expose mutually
+ * exclusive credentials as flat sibling secrets (e.g. Snowflake's `password`
+ * vs `privateKey` + passphrase). To render the design's Password / Key pair
+ * tabs without a schema migration, we synthesize an `authType` oneOf on the
+ * client (Password branch = `password`; Key pair branch = the key + passphrase
+ * secrets) and remove the flat fields. The stored config stays flat — see
+ * {@link wrapFlatCredentialsIntoAuthType} / {@link flattenAuthTypeIntoConfig}.
+ */
+export const getSchemaWithSynthesizedAuthType = (
+  schema: Record<string, unknown>,
+  t: (key: string) => string
+): Record<string, unknown> => {
+  const properties = schema?.properties as JsonObject | undefined;
+  const { secretKeys, hasPassword, hasPrivateKey } = getFlatSecretKeys(schema);
+  let result = schema;
+  if (
+    properties &&
+    !properties[AUTH_PROPERTY_KEY] &&
+    hasPassword &&
+    hasPrivateKey
+  ) {
+    const nextProperties: JsonObject = { ...properties };
+    const keyPairKeys = secretKeys.filter((key) => key !== PASSWORD_KEY);
+    const passwordBranch = {
+      title: t('label.password'),
+      type: 'object',
+      properties: { [PASSWORD_KEY]: properties[PASSWORD_KEY] },
+      required: [PASSWORD_KEY],
+      additionalProperties: false,
+    };
+    const keyPairBranch = {
+      title: t('label.key-pair'),
+      type: 'object',
+      properties: reduce(
+        keyPairKeys,
+        (acc, key) => ({ ...acc, [key]: properties[key] }),
+        {} as Record<string, unknown>
+      ),
+      required: keyPairKeys.filter(
+        (key) => PRIVATE_KEY_RE.test(key) && !PASSPHRASE_RE.test(key)
+      ),
+      additionalProperties: false,
+    };
+    secretKeys.forEach((key) => delete nextProperties[key]);
+    nextProperties[AUTH_PROPERTY_KEY] = {
+      title: AUTH_CONFIGURATION_TITLE,
+      description: t('message.authentication-section-description'),
+      oneOf: [passwordBranch, keyPairBranch],
+    };
+    result = { ...schema, properties: nextProperties };
+  }
+
+  return result;
+};
+
+/**
+ * Moves flat secret values from a stored config into a nested `authType` object
+ * so the synthesized oneOf field selects the right tab. No-op unless the schema
+ * is a synthesized (flat password + privateKey) connector.
+ */
+export const wrapFlatCredentialsIntoAuthType = (
+  config: ConfigData,
+  schema: Record<string, unknown>
+): ConfigData => {
+  const { secretKeys, hasPassword, hasPrivateKey } = getFlatSecretKeys(schema);
+  let result = config;
+  if (hasPassword && hasPrivateKey) {
+    const next = { ...config } as Record<string, unknown>;
+    const authType: Record<string, unknown> = {};
+    secretKeys.forEach((key) => {
+      if (next[key] !== undefined && next[key] !== '') {
+        authType[key] = next[key];
+      }
+      delete next[key];
+    });
+    next[AUTH_PROPERTY_KEY] = authType;
+    result = next as ConfigData;
+  }
+
+  return result;
+};
+
+/** Flattens a synthesized `authType` object back to top-level flat secrets. */
+export const flattenAuthTypeIntoConfig = (config: ConfigData): ConfigData => {
+  const authType = (config as Record<string, unknown>)?.[AUTH_PROPERTY_KEY];
+  let result = config;
+  if (authType && typeof authType === 'object' && !Array.isArray(authType)) {
+    const { [AUTH_PROPERTY_KEY]: _omit, ...rest } = config as Record<
+      string,
+      unknown
+    >;
+    result = {
+      ...rest,
+      ...(authType as Record<string, unknown>),
+    } as ConfigData;
+  }
+
+  return result;
+};

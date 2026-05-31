@@ -16,6 +16,38 @@
   }
 }
 
+.test-connection-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--tw-color-border-secondary);
+  border-radius: 12px;
+  background: var(--tw-color-bg-primary);
+  color: var(--tw-color-text-primary);
+  font-family: Inter, sans-serif;
+  box-shadow: var(--tw-shadow-xs);
+
+  .test-connection-card-message {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  .test-connection-card-button {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+
 .test-connection-progress-bar {
   .ant-progress-bg,
   .ant-progress-success-bg {

@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  RadioButton,
-  RadioGroup,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Select } from '@openmetadata/ui-core-components';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
 import { startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 
 const CoreOneOfField = (props: FieldProps) => {
   const {
@@ -90,6 +86,20 @@ const CoreOneOfField = (props: FieldProps) => {
   }, [formData, getMatchingOption, resolvedOptions]);
 
   const selectedSchema = resolvedOptions[selectedOption] ?? {};
+  const optionItems = useMemo(
+    () =>
+      resolvedOptions.map((option, index) => ({
+        id: String(index),
+        label:
+          option.title ??
+          startCase(
+            typeof option.type === 'string'
+              ? option.type
+              : `Option ${index + 1}`
+          ),
+      })),
+    [resolvedOptions]
+  );
 
   const selectedIdSchema = useMemo(
     () =>
@@ -133,82 +143,61 @@ const CoreOneOfField = (props: FieldProps) => {
   };
 
   const fieldLabel = label ?? schema.title ?? startCase(name);
+  const selectedKey = selectedOption >= 0 ? String(selectedOption) : null;
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-6">
-      {!hideLabel && fieldLabel && (
-        <div className="tw:flex tw:items-center tw:gap-0.5">
-          <Typography
-            as="label"
-            className="tw:text-primary"
-            id={`${idSchema.$id}__title`}
-            size="text-sm"
-            weight="semibold">
-            {fieldLabel}
-          </Typography>
-          {required && (
-            <Typography
-              as="span"
-              className="tw:text-error-primary"
-              size="text-sm">
-              *
-            </Typography>
-          )}
-        </div>
-      )}
-      <RadioGroup
-        className="tw:flex tw:flex-row tw:flex-wrap tw:gap-3"
+    <div
+      className="core-one-of-field tw:flex tw:flex-col tw:gap-3"
+      data-field-id={idSchema.$id}>
+      <Select
+        className="core-one-of-field-select"
+        data-testid={`select-widget-${idSchema.$id}${
+          schema.oneOf ? '__oneof_select' : '__anyof_select'
+        }`}
+        fontSize="sm"
         isDisabled={disabled || readonly}
-        value={String(selectedOption)}
-        onChange={(val) => handleOptionChange(Number(val))}>
-        {resolvedOptions.map((option, index) => {
-          const optTitle =
-            option.title ??
-            startCase(
-              typeof option.type === 'string'
-                ? option.type
-                : `Option ${index + 1}`
-            );
+        isRequired={required}
+        items={optionItems}
+        label={hideLabel ? undefined : fieldLabel}
+        popoverClassName="core-one-of-field-select-popover"
+        selectedKey={selectedKey}
+        size="sm"
+        onSelectionChange={(key: Key | null) => {
+          if (key !== null) {
+            handleOptionChange(Number(key));
+          }
+        }}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select>
 
-          return (
-            <RadioButton
-              className={(renderProps) =>
-                `tw:flex-1 tw:min-w-[140px] tw:bg-white tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
-                  renderProps.isSelected
-                    ? 'tw:border-primary'
-                    : 'tw:border-secondary hover:tw:border-brand-300'
-                }`
-              }
-              key={index}
-              label={optTitle}
-              value={String(index)}
-            />
-          );
-        })}
-      </RadioGroup>
-
-      <SchemaField
-        autofocus={autofocus}
-        disabled={disabled}
-        errorSchema={errorSchema}
-        formContext={formContext}
-        formData={formData}
-        hideError={hideError}
-        hideLabel={hideLabel}
-        idPrefix={idPrefix}
-        idSchema={selectedIdSchema}
-        idSeparator={idSeparator}
-        name={name}
-        rawErrors={rawErrors}
-        readonly={readonly}
-        registry={registry}
-        required={required}
-        schema={selectedSchema}
-        uiSchema={uiSchema}
-        onBlur={onBlur}
-        onChange={onChange}
-        onFocus={onFocus}
-      />
+      <div className="core-one-of-field-selected">
+        <SchemaField
+          autofocus={autofocus}
+          disabled={disabled}
+          errorSchema={errorSchema}
+          formContext={formContext}
+          formData={formData}
+          hideError={hideError}
+          hideLabel={hideLabel}
+          idPrefix={idPrefix}
+          idSchema={selectedIdSchema}
+          idSeparator={idSeparator}
+          name={name}
+          rawErrors={rawErrors}
+          readonly={readonly}
+          registry={registry}
+          required={required}
+          schema={selectedSchema}
+          uiSchema={uiSchema}
+          onBlur={onBlur}
+          onChange={onChange}
+          onFocus={onFocus}
+        />
+      </div>
     </div>
   );
 };

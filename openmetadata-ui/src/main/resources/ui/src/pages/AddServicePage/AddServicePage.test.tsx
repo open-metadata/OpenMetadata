@@ -15,16 +15,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import {
-  getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
-} from '../../utils/ServiceUtils';
+import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
@@ -82,15 +77,12 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Settings/Services/AddService/Steps/ConfigureService',
+  '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard',
   () => {
-    return jest.fn().mockImplementation(({ onNext }) => (
+    return jest.fn().mockImplementation(({ onNameChange }) => (
       <div>
-        <button
-          onClick={() =>
-            onNext({ name: 'test-service', description: 'test description' })
-          }>
-          Configure Service
+        <button onClick={() => onNameChange('test-service')}>
+          Set Service Name
         </button>
       </div>
     ));
@@ -100,17 +92,13 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Services/AddService/Steps/SelectServiceType',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ handleServiceTypeClick, onNext, onCancel }) => (
-        <div>
-          <button onClick={() => handleServiceTypeClick('mysql')}>
-            Select MySQL
-          </button>
-          <button onClick={onNext}>Next</button>
-          <button onClick={onCancel}>Cancel</button>
-        </div>
-      ));
+    return jest.fn().mockImplementation(({ handleServiceTypeClick }) => (
+      <div>
+        <button onClick={() => handleServiceTypeClick('mysql')}>
+          Select MySQL
+        </button>
+      </div>
+    ));
   }
 );
 
@@ -226,37 +214,10 @@ describe('AddServicePage', () => {
     expect(screen.getByTestId('header')).toHaveTextContent(
       'mysql label.service'
     );
-    expect(getServiceLogo).toHaveBeenCalledWith('mysql', 'h-6');
-  });
-
-  it('should handle service type selection cancel', async () => {
-    await act(async () => {
-      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
-    });
-
-    const cancelButton = screen.getByText('Cancel');
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
-
-    expect(getSettingPath).toHaveBeenCalled();
-    expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
-      ServiceCategory.DATABASE_SERVICES
+    expect(getServiceLogo).toHaveBeenCalledWith(
+      'mysql',
+      'add-service-page-title-logo'
     );
-    expect(mockNavigate).toHaveBeenCalled();
-  });
-
-  it('should show error when trying to proceed without selecting service type', async () => {
-    await act(async () => {
-      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
-    });
-
-    const nextButton = screen.getByText('Next');
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-
-    expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
   });
 
   it('should handle connection configuration', async () => {
@@ -264,25 +225,16 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    // First select a service type
     const selectMySQLButton = screen.getByText('Select MySQL');
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    // Move to next step
-    const nextButton = screen.getByText('Next');
+    const setNameButton = screen.getByText('Set Service Name');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(setNameButton);
     });
 
-    // Configure service
-    const configureButton = screen.getByText('Configure Service');
-    await act(async () => {
-      fireEvent.click(configureButton);
-    });
-
-    // Save connection
     const saveConnectionButton = screen.getByText('Save Connection');
     await act(async () => {
       fireEvent.click(saveConnectionButton);
@@ -296,31 +248,21 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    // Select service type
     const selectMySQLButton = screen.getByText('Select MySQL');
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    // Move through the steps
-    const nextButton = screen.getByText('Next');
+    const setNameButton = screen.getByText('Set Service Name');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(setNameButton);
     });
 
-    // Configure service
-    const configureButton = screen.getByText('Configure Service');
-    await act(async () => {
-      fireEvent.click(configureButton);
-    });
-
-    // Save connection
     const saveConnectionButton = screen.getByText('Save Connection');
     await act(async () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    // Save filters
     const saveFiltersButton = screen.getByText('Save Filters');
     await act(async () => {
       fireEvent.click(saveFiltersButton);
@@ -336,31 +278,17 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    // Select service type
     const selectMySQLButton = screen.getByText('Select MySQL');
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    // Move to next step
-    const nextButton = screen.getByText('Next');
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-
-    // Configure service
-    const configureButton = screen.getByText('Configure Service');
-    await act(async () => {
-      fireEvent.click(configureButton);
-    });
-
-    // Click back in connection config
     const backButton = screen.getByText('Back');
     await act(async () => {
       fireEvent.click(backButton);
     });
 
-    expect(screen.getByText('Configure Service')).toBeInTheDocument();
+    expect(screen.getByText('Select MySQL')).toBeInTheDocument();
   });
 
   it('should not trigger auto pilot application for security service', async () => {
@@ -371,31 +299,21 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    // Select service type
     const selectMySQLButton = screen.getByText('Select MySQL');
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    // Move through the steps
-    const nextButton = screen.getByText('Next');
+    const setNameButton = screen.getByText('Set Service Name');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(setNameButton);
     });
 
-    // Configure service
-    const configureButton = screen.getByText('Configure Service');
-    await act(async () => {
-      fireEvent.click(configureButton);
-    });
-
-    // Save connection
     const saveConnectionButton = screen.getByText('Save Connection');
     await act(async () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    // Save filters
     const saveFiltersButton = screen.getByText('Save Filters');
     await act(async () => {
       fireEvent.click(saveFiltersButton);

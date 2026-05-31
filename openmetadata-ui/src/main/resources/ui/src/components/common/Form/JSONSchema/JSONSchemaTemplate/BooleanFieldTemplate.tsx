@@ -15,18 +15,30 @@ import { Form, Switch } from 'antd';
 import { startCase } from 'lodash';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
+  const title = props.schema.title ?? startCase(props.name);
+
   return (
-    <Form.Item className="m-t-md" colon={false}>
-      <div className="flex items-center gap-2">
+    <Form.Item className="tw:!mb-0" colon={false}>
+      <div className="design-boolean-field tw:flex tw:min-h-[72px] tw:items-start tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3">
         <Switch
           checked={props.formData}
+          className="tw:mt-0.5 tw:flex-shrink-0"
           id={props.idSchema.$id}
           onChange={(value) => props.onChange(value)}
           onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
         />
-        <label className="cursor-pointer" htmlFor={props.idSchema.$id}>
-          {props.schema.title ?? startCase(props.name)}
-        </label>
+        <div className="tw:min-w-0 tw:flex-1">
+          <label
+            className="tw:block tw:cursor-pointer tw:text-[12.5px] tw:font-semibold tw:leading-5 tw:text-primary"
+            htmlFor={props.idSchema.$id}>
+            {title}
+          </label>
+          {props.schema.description && (
+            <div className="tw:mt-1 tw:text-[12px] tw:leading-[1.4] tw:text-tertiary">
+              {props.schema.description}
+            </div>
+          )}
+        </div>
       </div>
     </Form.Item>
   );

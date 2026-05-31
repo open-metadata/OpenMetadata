@@ -29,3 +29,17 @@
     }
   }
 }
+
+// Service-flow breadcrumb: render the clickable (non-current) crumb as a blue
+// link so it reads as navigable, matching the connector-flow design. Uses
+// !important to beat the global `.link-title` color rule, which is !important.
+.breadcrumb-container.service-flow-breadcrumb {
+  .link-title:not(.inactive-link) {
+    color: var(--tw-color-text-brand-secondary) !important;
+
+    &:hover {
+      color: var(--tw-color-text-brand-secondary) !important;
+      text-decoration: underline !important;
+    }
+  }
+}

@@ -41,22 +41,26 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
   }
 
   return (
-    <div className="tw:rounded-xl tw:bg-utility-gray-blue-50">
-      <div className="tw:flex tw:w-full tw:items-end tw:gap-2">
-        <div className="tw:w-2/5 tw:shrink-0">
+    <div className="core-wrap-if-additional-template tw:rounded-lg">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:items-center tw:gap-2 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+        <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
             id={`${id}-key`}
-            label={t('label.key')}
-            placeholder={t('label.key')}
+            placeholder={t('label.option').toLowerCase()}
             value={keyValue}
             onBlur={() => onKeyChange(keyValue)}
             onChange={setKeyValue}
           />
         </div>
-        <div className="tw:flex-1">{children}</div>
+        <span className="core-wrap-if-additional-separator tw:text-sm tw:font-semibold tw:text-tertiary">
+          =
+        </span>
+        <div className="core-wrap-if-additional-value tw:min-w-0">
+          {children}
+        </div>
         <Button
           aria-label={t('label.remove')}
-          className="tw:shrink-0"
+          className="core-wrap-if-additional-remove-button tw:shrink-0"
           color="secondary"
           isDisabled={disabled || readonly}
           size="sm"

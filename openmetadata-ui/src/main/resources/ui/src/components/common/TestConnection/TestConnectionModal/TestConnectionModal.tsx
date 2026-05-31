@@ -12,22 +12,31 @@
  */
 import {
   Button,
+  Collapse,
   Modal,
   Progress,
   ProgressProps,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
-import { FC, useEffect, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
+import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
+import { useClipboard } from '../../../../hooks/useClipBoard';
+import { partitionConnectionSteps } from '../../../../utils/TestConnectionUtils';
 import InlineAlert from '../../InlineAlert/InlineAlert';
 import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
 import './test-connection-modal.less';
+
+const { Panel } = Collapse;
+
 interface TestConnectionModalProps {
   isOpen: boolean;
   isTestingConnection: boolean;
@@ -65,15 +74,42 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   const { t } = useTranslation();
 
   const [message, setMessage] = useState<string>();
-  const getConnectionStepResult = (step: TestConnectionStep) => {
-    return testConnectionStepResult.find(
+
+  const getConnectionStepResult = (step: TestConnectionStep) =>
+    testConnectionStepResult.find(
       (resultStep) => resultStep.name === step.name
     );
-  };
 
-  const getProgressFormat: ProgressProps['format'] = (progress) => {
-    return <span data-testid="progress-bar-value">{`${progress}%`}</span>;
-  };
+  // The connection "gate" establishes connectivity; capability checks only run
+  // once it passes. Splitting them lets us show a real "Didn't run" state for the
+  // capability checks when the handshake fails, instead of a stuck "Awaiting".
+  const { gateStep, capabilitySteps } = useMemo(
+    () => partitionConnectionSteps(testConnectionStep),
+    [testConnectionStep]
+  );
+
+  const gateResult = gateStep ? getConnectionStepResult(gateStep) : undefined;
+  const connectionFailed =
+    !isTestingConnection && !isUndefined(gateResult) && !gateResult.passed;
+
+  const rawLog = useMemo(
+    () =>
+      testConnectionStepResult
+        .map((result) =>
+          [`> ${result.name}`, result.message, result.errorLog]
+            .filter(Boolean)
+            .join('\n')
+        )
+        .join('\n\n')
+        .trim(),
+    [testConnectionStepResult]
+  );
+
+  const { onCopyToClipBoard } = useClipboard(rawLog);
+
+  const getProgressFormat: ProgressProps['format'] = (progress) => (
+    <span data-testid="progress-bar-value">{`${progress}%`}</span>
+  );
 
   useEffect(() => {
     const msg = t('message.test-connection-taking-too-long.default', {
@@ -146,18 +182,63 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           </Space>
         ) : (
           <>
-            {testConnectionStep.map((step) => {
-              const currentStepResult = getConnectionStepResult(step);
-
-              return (
+            {gateStep && (
+              <div data-testid="connection-gate-phase">
+                <Typography.Text className="text-xss text-grey-muted m-b-xss d-block">
+                  {t('label.establish-connection')}
+                </Typography.Text>
                 <ConnectionStepCard
                   isTestingConnection={isTestingConnection}
-                  key={step.name}
-                  testConnectionStep={step}
-                  testConnectionStepResult={currentStepResult}
+                  testConnectionStep={gateStep}
+                  testConnectionStepResult={gateResult}
                 />
-              );
-            })}
+              </div>
+            )}
+
+            {capabilitySteps.length > 0 && (
+              <div data-testid="capability-checks-phase">
+                <Typography.Text className="text-xss text-grey-muted m-b-xss d-block">
+                  {t('label.capability-check-plural')}
+                  {connectionFailed &&
+                    ` · ${t('message.connection-not-established')}`}
+                </Typography.Text>
+                <Space className="w-full" direction="vertical" size={16}>
+                  {capabilitySteps.map((step) => (
+                    <ConnectionStepCard
+                      connectionFailed={connectionFailed}
+                      isTestingConnection={isTestingConnection}
+                      key={step.name}
+                      testConnectionStep={step}
+                      testConnectionStepResult={getConnectionStepResult(step)}
+                    />
+                  ))}
+                </Space>
+              </div>
+            )}
+
+            {rawLog && (
+              <Collapse ghost className="raw-connection-log">
+                <Panel
+                  data-testid="raw-connection-log"
+                  extra={
+                    <Tooltip title={t('message.copy-to-clipboard')}>
+                      <Button
+                        className="flex-center bg-white"
+                        data-testid="copy-raw-log-button"
+                        icon={<CopyIcon height={16} width={16} />}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onCopyToClipBoard();
+                        }}
+                      />
+                    </Tooltip>
+                  }
+                  header={t('label.raw-connection-log')}
+                  key="raw-log">
+                  <pre className="raw-connection-log-content">{rawLog}</pre>
+                </Panel>
+              </Collapse>
+            )}
           </>
         )}
       </Space>

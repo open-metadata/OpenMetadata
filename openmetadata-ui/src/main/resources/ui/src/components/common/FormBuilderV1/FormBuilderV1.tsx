@@ -64,6 +64,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       okText,
       cancelText,
       isLoading,
+      isSubmitDisabled = false,
       hideCancelButton = false,
       status = 'initial',
       onCancel,
@@ -156,7 +157,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           <Button
             color="primary"
             data-testid="submit-btn"
-            isDisabled={isSubmitting || isLoading}
+            isDisabled={isSubmitting || isLoading || isSubmitDisabled}
             size="sm"
             type="submit">
             {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
