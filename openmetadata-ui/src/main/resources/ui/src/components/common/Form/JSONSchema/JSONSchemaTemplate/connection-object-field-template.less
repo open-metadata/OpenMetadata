@@ -91,6 +91,15 @@
       grid-column: 1 / -1;
     }
 
+    .core-object-field-template-body-grid
+      > .core-object-field-template-property-full-width,
+    .core-object-field-template-body-grid
+      > .core-object-field-template-property:has(> .core-one-of-field) {
+      grid-column: 1 / -1;
+      justify-self: stretch;
+      width: 100%;
+    }
+
     .core-object-field-template-credential-block .design-field-label {
       min-height: 34px;
       align-items: flex-start;
@@ -448,6 +457,7 @@
 
     .core-one-of-field-select,
     .core-select-widget {
+      align-self: stretch;
       width: 100%;
     }
 

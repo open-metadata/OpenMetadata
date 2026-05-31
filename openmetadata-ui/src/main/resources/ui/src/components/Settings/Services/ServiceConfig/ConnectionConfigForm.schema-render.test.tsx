@@ -325,9 +325,13 @@ describe('ConnectionConfigForm schema rendering', () => {
       connectionSection,
       '[data-field-id="root/credentials"]'
     );
-    const selectedCredentialBranch = getRequiredElement(
+    const gcpConfigField = getRequiredElement(
       gcpCredentialsBlock,
-      '.core-object-field-template[data-field-id="root/credentials/gcpConfig"]'
+      '.core-one-of-field[data-field-id="root/credentials/gcpConfig"]'
+    );
+    const selectedCredentialBranch = getRequiredElement(
+      gcpConfigField,
+      '.core-one-of-field-selected .core-object-field-template-body-grid'
     );
 
     expect(
@@ -343,9 +347,12 @@ describe('ConnectionConfigForm schema rendering', () => {
       'core-object-field-template-credential-block'
     );
     expect(
+      gcpConfigField.querySelector('.core-object-field-template-title')
+    ).not.toBeInTheDocument();
+    expect(
       Array.from(
         selectedCredentialBranch.querySelectorAll(
-          ':scope > .core-object-field-template-body-grid > .core-object-field-template-property'
+          ':scope > .core-object-field-template-property'
         )
       ).map((element) => element.getAttribute('data-field-name'))
     ).toEqual([
@@ -369,17 +376,17 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toHaveClass('core-object-field-template-property-full-width');
     expect(
       selectedCredentialBranch.querySelector(
-        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-type'
+        ':scope > .core-object-field-template-property-type'
       )
     ).not.toBeInTheDocument();
     expect(
       selectedCredentialBranch.querySelector(
-        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-authUri'
+        ':scope > .core-object-field-template-property-authUri'
       )
     ).not.toBeInTheDocument();
     expect(
       selectedCredentialBranch.querySelector(
-        ':scope > .core-object-field-template-body-grid > .core-object-field-template-property-tokenUri'
+        ':scope > .core-object-field-template-property-tokenUri'
       )
     ).not.toBeInTheDocument();
     expect(

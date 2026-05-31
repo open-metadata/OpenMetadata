@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from '@openmetadata/ui-core-components';
+import { Select, Typography } from '@openmetadata/ui-core-components';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
@@ -173,10 +173,10 @@ const CoreOneOfField = (props: FieldProps) => {
     delete childUiSchema['ui:field'];
     delete childUiSchema['ui:fieldReplacesAnyOrOneOf'];
 
-    return shouldRenderAsTabs
+    return hasMultipleOptions
       ? { ...childUiSchema, 'ui:label': false }
       : childUiSchema;
-  }, [shouldRenderAsTabs, uiSchema]);
+  }, [hasMultipleOptions, uiSchema]);
 
   const handleOptionChange = (newIndex: number) => {
     if (newIndex === safeSelectedOption) {
@@ -212,6 +212,14 @@ const CoreOneOfField = (props: FieldProps) => {
     hasMultipleOptions && safeSelectedOption >= 0
       ? String(safeSelectedOption)
       : null;
+  const selectedSchemaForRender =
+    hasMultipleOptions && selectedSchema
+      ? { ...selectedSchema, description: undefined, title: undefined }
+      : selectedSchema;
+  const selectedDescription =
+    hasMultipleOptions && typeof selectedSchema.description === 'string'
+      ? selectedSchema.description
+      : undefined;
 
   return (
     <div
@@ -286,6 +294,15 @@ const CoreOneOfField = (props: FieldProps) => {
         </Select>
       )}
 
+      {selectedDescription && (
+        <Typography
+          as="span"
+          className="core-one-of-field-selected-description tw:text-tertiary"
+          size="text-sm">
+          {selectedDescription}
+        </Typography>
+      )}
+
       <div className="core-one-of-field-selected">
         <SchemaField
           autofocus={autofocus}
@@ -303,11 +320,7 @@ const CoreOneOfField = (props: FieldProps) => {
           readonly={readonly}
           registry={registry}
           required={required}
-          schema={
-            shouldRenderAsTabs
-              ? { ...selectedSchema, title: undefined }
-              : selectedSchema
-          }
+          schema={selectedSchemaForRender}
           uiSchema={selectedFieldUiSchema}
           onBlur={onBlur}
           onChange={onChange}

@@ -279,6 +279,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     formData !== null &&
     (formData as { enabled?: boolean }).enabled === true;
   const addEntityLabel = title || t('label.property');
+  const shouldShowDescription = Boolean(description && description !== title);
   const isStaticCredentialDisabled = (name: string) =>
     isIamAuthEnabled && STATIC_AWS_CREDENTIAL_PROPERTIES.has(name);
   const getPropertyClassName = (
@@ -553,7 +554,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
               weight="semibold">
               {title}
             </Typography>
-            {description && (
+            {shouldShowDescription && (
               <Typography
                 as="span"
                 className="core-object-field-template-header-description tw:text-secondary"
