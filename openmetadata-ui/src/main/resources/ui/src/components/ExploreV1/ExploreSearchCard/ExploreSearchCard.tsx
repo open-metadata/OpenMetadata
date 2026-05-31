@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -31,9 +32,16 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
+import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
+import { prefetchTable } from '../../../rest/queries/tableQuery';
+import { prefetchTopic } from '../../../rest/queries/topicQuery';
+import {
+  getEntityName,
+  highlightEntityNameAndDescription,
+} from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
@@ -55,7 +63,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     {
       id,
       className,
-      source,
+      source: _source,
       matches,
       showEntityIcon,
       handleSummaryPanelDisplay,
@@ -66,8 +74,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showCheckboxes = false,
       checked = false,
       onCheckboxChange,
-      searchValue,
       score,
+      highlight,
       classNameForBreadcrumb,
     },
     ref
@@ -75,6 +83,46 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
+    const queryClient = useQueryClient();
+
+    const source = useMemo(() => {
+      return highlight
+        ? highlightEntityNameAndDescription(_source, highlight)
+        : _source;
+    }, [_source, highlight]);
+
+    // Hover/focus on an entity card warms the React Query cache so the click that follows
+    // hits an already-populated slot. Dispatched on entityType because each detail page reads
+    // a slot keyed on its own {@code ['<type>', fqn, fields]} convention; entity types that
+    // haven't migrated to useQuery yet fall through as no-ops. {@code prefetchQuery} is
+    // idempotent within the configured {@code staleTime}, so repeated hovers don't re-fire.
+    const handlePrefetch = useCallback(() => {
+      const fqn = source.fullyQualifiedName;
+      if (!fqn) {
+        return;
+      }
+      switch (source.entityType) {
+        case EntityType.TABLE:
+          prefetchTable(queryClient, fqn);
+
+          break;
+        case EntityType.DASHBOARD:
+          prefetchDashboard(queryClient, fqn);
+
+          break;
+        case EntityType.PIPELINE:
+          prefetchPipeline(queryClient, fqn);
+
+          break;
+        case EntityType.TOPIC:
+          prefetchTopic(queryClient, fqn);
+
+          break;
+        default:
+          break;
+      }
+    }, [queryClient, source.entityType, source.fullyQualifiedName]);
+
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
@@ -207,10 +255,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return _otherDetails;
     }, [source]);
 
-    const serviceIcon = useMemo(() => {
-      return searchClassBase.getServiceIcon(source);
-    }, [source]);
-
     const breadcrumbs = useMemo(
       () =>
         searchClassBase.getEntityBreadcrumbs(
@@ -242,13 +286,20 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {searchClassBase.getEntityIcon(source.entityType ?? '')}
+            {searchClassBase.getEntityIcon(
+              source.entityType ?? '',
+              'text-link-color'
+            )}
           </span>
         );
       }
 
       return null;
     }, [source, showEntityIcon]);
+
+    const serviceIcon = useMemo(() => {
+      return searchClassBase.getServiceIcon(source);
+    }, [source]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
@@ -264,15 +315,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         <Row gutter={[8, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={checked}
-                  className="assets-checkbox"
-                  onChange={(e) => {
-                    onCheckboxChange?.(e.target.checked);
-                  }}
-                />
-              </div>
+              <Checkbox
+                checked={checked}
+                className="assets-checkbox"
+                onChange={(e) => {
+                  onCheckboxChange?.(e.target.checked);
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
             </Col>
           )}
           {!hideBreadcrumbs && (
@@ -310,12 +361,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(
-                    highlightSearchText(
-                      searchClassBase.getEntityName(source),
-                      searchValue
-                    )
-                  )}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
@@ -333,16 +379,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     source,
                     openEntityInNewPage
                   )}
-                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}
+                  onFocus={handlePrefetch}
+                  onMouseEnter={handlePrefetch}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(
-                      highlightSearchText(
-                        searchClassBase.getEntityName(source),
-                        searchValue
-                      )
-                    )}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
 
@@ -393,10 +436,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={highlightSearchText(
-              source.description ?? '',
-              searchValue
-            )}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />

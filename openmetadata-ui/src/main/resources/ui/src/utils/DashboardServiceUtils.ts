@@ -12,29 +12,99 @@
  */
 
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import {
   DashboardConnection,
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
-import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
-import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
-import grafanaConnection from '../jsons/connectionSchemas/connections/dashboard/grafanaConnection.json';
-import hexConnection from '../jsons/connectionSchemas/connections/dashboard/hexConnection.json';
-import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
-import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
-import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
-import microStrategyConnection from '../jsons/connectionSchemas/connections/dashboard/microStrategyConnection.json';
-import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
-import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
-import qlikcloudConnection from '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json';
-import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
-import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
-import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
-import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json';
-import ssrsConnection from '../jsons/connectionSchemas/connections/dashboard/ssrsConnection.json';
-import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
-import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
+
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const dashboardSchemaLoaders: Partial<
+  Record<DashboardServiceType, SchemaLoader>
+> = {
+  [DashboardServiceType.Looker]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json'
+    ),
+  [DashboardServiceType.Metabase]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json'
+    ),
+  [DashboardServiceType.Mode]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/modeConnection.json'
+    ),
+  [DashboardServiceType.PowerBI]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json'
+    ),
+  [DashboardServiceType.Redash]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/redashConnection.json'
+    ),
+  [DashboardServiceType.Superset]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json'
+    ),
+  [DashboardServiceType.Sigma]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json'
+    ),
+  [DashboardServiceType.Tableau]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json'
+    ),
+  [DashboardServiceType.DomoDashboard]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json'
+    ),
+  [DashboardServiceType.CustomDashboard]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json'
+    ),
+  [DashboardServiceType.QuickSight]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json'
+    ),
+  [DashboardServiceType.QlikSense]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json'
+    ),
+  [DashboardServiceType.QlikCloud]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json'
+    ),
+  [DashboardServiceType.Lightdash]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json'
+    ),
+  [DashboardServiceType.MicroStrategy]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/microStrategyConnection.json'
+    ),
+  [DashboardServiceType.Grafana]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/grafanaConnection.json'
+    ),
+  [DashboardServiceType.Hex]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/hexConnection.json'
+    ),
+  [DashboardServiceType.Ssrs]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/ssrsConnection.json'
+    ),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   return !isUndefined(config) && !isEmpty(config.hostPort)
@@ -42,108 +112,14 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
     : '--';
 };
 
-export const getDashboardConfig = (type: DashboardServiceType) => {
-  let schema = {};
+export const getDashboardConfig = async (type: DashboardServiceType) => {
+  const loader = dashboardSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type) {
-    case DashboardServiceType.Looker: {
-      schema = lookerConnection;
 
-      break;
-    }
-    case DashboardServiceType.Metabase: {
-      schema = metabaseConnection;
-
-      break;
-    }
-    case DashboardServiceType.Mode: {
-      schema = modeConnection;
-
-      break;
-    }
-    case DashboardServiceType.PowerBI: {
-      schema = powerBIConnection;
-
-      break;
-    }
-    case DashboardServiceType.Redash: {
-      schema = redashConnection;
-
-      break;
-    }
-    case DashboardServiceType.Superset: {
-      schema = supersetConnection;
-
-      break;
-    }
-    case DashboardServiceType.Sigma: {
-      schema = sigmaConnection;
-
-      break;
-    }
-    case DashboardServiceType.Tableau: {
-      schema = tableauConnection;
-
-      break;
-    }
-    case DashboardServiceType.DomoDashboard: {
-      schema = domoDashboardConnection;
-
-      break;
-    }
-    case DashboardServiceType.CustomDashboard: {
-      schema = customDashboardConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.QuickSight: {
-      schema = quicksightConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.QlikSense: {
-      schema = qliksenseConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.QlikCloud: {
-      schema = qlikcloudConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.Lightdash: {
-      schema = lightdashConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.MicroStrategy: {
-      schema = microStrategyConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.Grafana: {
-      schema = grafanaConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.Hex: {
-      schema = hexConnection;
-
-      break;
-    }
-
-    case DashboardServiceType.Ssrs: {
-      schema = ssrsConnection;
-
-      break;
-    }
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

@@ -61,7 +61,7 @@ public class RollbackEntityImpl implements JavaDelegate {
         updatedBy = "governance-bot";
       }
 
-      EntityInterface currentEntity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface currentEntity = Entity.getEntity(entityLink, "", Include.ALL);
 
       String entityType = currentEntity.getEntityReference().getType();
       UUID entityId = currentEntity.getId();

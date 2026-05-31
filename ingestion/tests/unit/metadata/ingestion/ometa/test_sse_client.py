@@ -16,8 +16,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from unittest.mock import Mock, patch
 
-import httpx
 import pytest
+import requests
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.sse_client import SSEClient
@@ -30,21 +30,19 @@ class MockSSEResponse:
         self,
         lines: list[str],
         status_code: int = 200,
-        raise_error: Optional[Exception] = None,
+        raise_error: Optional[Exception] = None,  # noqa: UP045
     ):
         self.lines: list[str] = lines
         self.status_code: int = status_code
-        self.raise_error: Optional[Exception] = raise_error
+        self.raise_error: Optional[Exception] = raise_error  # noqa: UP045
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise httpx.HTTPStatusError(
-                "HTTP error",
-                request=Mock(),
-                response=Mock(status_code=self.status_code),
-            )
+            err = requests.exceptions.HTTPError("HTTP error")
+            err.response = Mock(status_code=self.status_code)
+            raise err
 
-    def iter_lines(self) -> Iterator[str]:
+    def iter_lines(self, decode_unicode: bool = False) -> Iterator[str]:
         if self.raise_error:
             raise self.raise_error
         yield from self.lines
@@ -56,23 +54,21 @@ class MockSSEResponse:
         return False
 
 
-class MockHTTPXClient:
-    """Mock httpx.Client for SSE streaming"""
+class MockRequestsSession:
+    """Mock requests.Session for SSE streaming.
+
+    Accepts all kwargs the SDK passes (``method``, ``url``, ``headers``, ``json``,
+    ``params``, ``stream``, ``timeout``, ``verify``, ``allow_redirects``,
+    ``cookies``, ``cert``) and returns the canned ``MockSSEResponse``.
+    """
 
     def __init__(self, response: MockSSEResponse):
         self.response: MockSSEResponse = response
 
-    def stream(
-        self,
-        method: str,
-        url: str,
-        headers: Optional[dict[str, str]] = None,
-        json: Optional[dict[str, Any]] = None,
-        params: Optional[dict[str, Any]] = None,
-    ) -> MockSSEResponse:
+    def request(self, **kwargs: Any) -> MockSSEResponse:
         return self.response
 
-    def __enter__(self) -> "MockHTTPXClient":
+    def __enter__(self) -> "MockRequestsSession":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
@@ -92,6 +88,8 @@ def mock_client_config():
     config.allow_redirects = True
     config.verify = True
     config.cookies = None
+    config.cert = None
+    config.user_agent = None
     config.auth_token = Mock(return_value=("test_token", 3600))
     return config
 
@@ -128,9 +126,9 @@ def test_stream_with_events(sse_client, mock_client_config):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/events"))
 
     assert len(events) == 3
@@ -157,9 +155,9 @@ def test_stream_filters_comment_lines(sse_client, mock_client_config):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/events"))
 
     assert len(events) == 2
@@ -184,16 +182,16 @@ def test_stream_with_auth_headers(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
-        captured_headers.update(headers or {})
+    def mock_request(**kwargs):
+        captured_headers.update(kwargs.get("headers") or {})
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events"))
 
     assert captured_headers.get("Authorization") == "Bearer test_token"
@@ -213,19 +211,19 @@ def test_stream_with_post_method_and_data(sse_client, mock_client_config):
     mock_response = MockSSEResponse(sse_lines)
 
     captured_method = None
-    captured_data = None
+    captured_data = None  # noqa: F841
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
+    def mock_request(**kwargs):
         nonlocal captured_method
-        captured_method = method
+        captured_method = kwargs["method"]
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("POST", "/events", data={"key": "value"}))
 
     assert captured_method == "POST"
@@ -242,19 +240,19 @@ def test_stream_with_get_method_converts_data_to_params(sse_client):
         "",
     ]
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events", data={"key": "value"}))
 
 
 def test_stream_http_error_raises_immediately(sse_client):
     """Test that HTTP errors are raised immediately without retries"""
     mock_response = MockSSEResponse([], status_code=404)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
-        with pytest.raises(httpx.HTTPStatusError):
+    with patch("requests.Session", return_value=mock_session):  # noqa: SIM117
+        with pytest.raises(requests.exceptions.HTTPError):
             list(sse_client.stream("GET", "/events"))
 
 
@@ -267,9 +265,7 @@ def test_stream_connection_error_with_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ConnectError("Connection failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -282,9 +278,9 @@ def test_stream_connection_error_with_retries(sse_client):
                 ]
             )
 
-        return MockHTTPXClient(mock_response)
+        return MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep"):
             events = list(sse_client.stream("GET", "/events"))
 
@@ -298,14 +294,12 @@ def test_stream_connection_error_with_retries(sse_client):
 
 def test_stream_max_retries_exceeded(sse_client):
     """Test that max retries are respected and exception is raised"""
-    mock_response = MockSSEResponse(
-        [], raise_error=httpx.ConnectError("Connection failed")
-    )
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):  # noqa: SIM117
         with patch("time.sleep"):
-            with pytest.raises(httpx.ConnectError):
+            with pytest.raises(requests.exceptions.ConnectionError):
                 list(sse_client.stream("GET", "/events"))
 
 
@@ -325,16 +319,16 @@ def test_stream_with_last_event_id(sse_client):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
-        captured_headers.update(headers or {})
+    def mock_request(**kwargs):
+        captured_headers.update(kwargs.get("headers") or {})
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events"))
 
     assert captured_headers.get("Last-Event-ID") == "event-123"
@@ -349,9 +343,7 @@ def test_stream_resets_retry_count_on_success(sse_client):
         call_count += 1
 
         if call_count == 1:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ConnectError("Connection failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -364,9 +356,9 @@ def test_stream_resets_retry_count_on_success(sse_client):
                 ]
             )
 
-        return MockHTTPXClient(mock_response)
+        return MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep"):
             events = list(sse_client.stream("GET", "/events"))
 
@@ -442,9 +434,9 @@ def test_stream_with_empty_lines_separating_events(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/events"))
 
     assert len(events) == 2
@@ -469,17 +461,17 @@ def test_stream_constructs_correct_url(sse_client, mock_client_config):
 
     captured_url = None
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
+    def mock_request(**kwargs):
         nonlocal captured_url
-        captured_url = str(url)
+        captured_url = kwargs["url"]
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events"))
 
     assert captured_url == "http://localhost:8585/api/v1/events"
@@ -501,16 +493,16 @@ def test_stream_with_no_auth_header(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
-        captured_headers.update(headers or {})
+    def mock_request(**kwargs):
+        captured_headers.update(kwargs.get("headers") or {})
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events"))
 
     assert "Authorization" not in captured_headers
@@ -533,16 +525,16 @@ def test_stream_with_no_auth_token_mode(sse_client, mock_client_config):
 
     captured_headers = {}
 
-    def mock_stream(method, url, headers=None, json=None, params=None):
-        captured_headers.update(headers or {})
+    def mock_request(**kwargs):
+        captured_headers.update(kwargs.get("headers") or {})
         return mock_response
 
-    mock_http_client = Mock()
-    mock_http_client.stream = mock_stream
-    mock_http_client.__enter__ = Mock(return_value=mock_http_client)
-    mock_http_client.__exit__ = Mock(return_value=False)
+    mock_session = Mock()
+    mock_session.request = mock_request
+    mock_session.__enter__ = Mock(return_value=mock_session)
+    mock_session.__exit__ = Mock(return_value=False)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         list(sse_client.stream("GET", "/events"))
 
     assert captured_headers.get("Authorization") == "test_token"
@@ -561,9 +553,7 @@ def test_stream_exponential_backoff_on_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ReadError("Read failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Read failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -576,11 +566,11 @@ def test_stream_exponential_backoff_on_retries(sse_client):
                 ]
             )
 
-        return MockHTTPXClient(mock_response)
+        return MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep", side_effect=mock_sleep):
-            events = list(sse_client.stream("GET", "/events"))
+            events = list(sse_client.stream("GET", "/events"))  # noqa: F841
 
     assert len(sleep_delays) == 2
     assert sleep_delays[0] < sleep_delays[1]
@@ -598,9 +588,9 @@ def test_stream_with_multiline_event_data(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/events"))
 
     assert len(events) == 2
@@ -624,9 +614,9 @@ def test_stream_with_realistic_stream_start_event(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
@@ -658,9 +648,9 @@ def test_stream_with_realistic_message_event(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
@@ -676,10 +666,7 @@ def test_stream_with_realistic_message_event(sse_client):
     data_json = json.loads(event["data"])
     assert data_json["streamId"] == "stream-123"
     assert data_json["data"]["message"]["sender"] == "system"
-    assert (
-        data_json["data"]["message"]["content"][0]["textMessage"]["message"]
-        == "Test message"
-    )
+    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "Test message"
 
 
 def test_stream_with_stream_completed_event_terminates(sse_client):
@@ -697,9 +684,9 @@ def test_stream_with_stream_completed_event_terminates(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
@@ -727,9 +714,9 @@ def test_stream_with_error_event_terminates(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 2
@@ -759,9 +746,9 @@ def test_stream_with_complete_realistic_flow(sse_client):
     ]
 
     mock_response = MockSSEResponse(sse_lines)
-    mock_http_client = MockHTTPXClient(mock_response)
+    mock_session = MockRequestsSession(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("requests.Session", return_value=mock_session):
         events = list(sse_client.stream("GET", "/chat/stream"))
 
     assert len(events) == 4

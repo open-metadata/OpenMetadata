@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  AuthenticationResult,
-  BrowserCacheLocation,
-  Configuration,
-  PopupRequest,
-} from '@azure/msal-browser';
+import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
@@ -26,8 +21,9 @@ import {
   OidcUser,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
+import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
+import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
   AuthenticationConfiguration,
   ClientType,
@@ -188,7 +184,7 @@ export const getAuthConfig = (
           postLogoutRedirectUri: '/',
         },
         cache: {
-          cacheLocation: BrowserCacheLocation.LocalStorage,
+          cacheLocation: 'localStorage',
         },
         provider,
         enableSelfSignup,
@@ -207,7 +203,7 @@ export const getAuthConfig = (
           postLogoutRedirectUri: '/',
         },
         cache: {
-          cacheLocation: BrowserCacheLocation.LocalStorage,
+          cacheLocation: 'localStorage',
         },
         provider,
         clientType,
@@ -222,9 +218,9 @@ export const getAuthConfig = (
 };
 
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
-export const msalLoginRequest: PopupRequest = {
+export const msalLoginRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
-};
+} as const;
 
 export const getNameFromEmail = (email: string) => {
   if (new RegExp(EMAIL_REG_EX).exec(email)) {
@@ -279,8 +275,8 @@ export const extractNameFromUserProfile = (user: UserProfile): string => {
     return user.name.trim();
   }
 
-  const givenName = get(user, 'given_name', '');
-  const familyName = get(user, 'family_name', '');
+  const givenName: string = get(user, 'given_name', '');
+  const familyName: string = get(user, 'family_name', '');
 
   if (givenName && familyName) {
     return `${givenName.trim()} ${familyName.trim()}`;

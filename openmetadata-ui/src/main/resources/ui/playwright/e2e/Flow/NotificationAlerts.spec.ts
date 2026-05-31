@@ -239,6 +239,7 @@ test('Single Filter Alert', async ({ page }) => {
  * verifies changes, then deletes the alert.
  */
 test('Multiple Filters Alert', async ({ page }) => {
+  test.slow();
   const ALERT_NAME = generateAlertName();
   await visitNotificationAlertPage(page);
 

@@ -16,12 +16,8 @@ def test_context_get_set_attr():
     cm = ContextManager.get_instance()
     assert cm is not None
     # Set and get using enums
-    ContextManager.set_context_attr(
-        ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME, service_name
-    )
-    value = ContextManager.get_context_attr(
-        ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME
-    )
+    ContextManager.set_context_attr(ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME, service_name)
+    value = ContextManager.get_context_attr(ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME)
     assert value == service_name
 
 
@@ -41,20 +37,13 @@ def test_thread_safety():
     assert cm is not None
 
     def set_service_name(name):
-        ContextManager.set_context_attr(
-            ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME, name
-        )
+        ContextManager.set_context_attr(ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME, name)
 
-    threads = [
-        threading.Thread(target=set_service_name, args=(f"service_{i}",))
-        for i in range(10)
-    ]
+    threads = [threading.Thread(target=set_service_name, args=(f"service_{i}",)) for i in range(10)]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
     # The final value should be one of the set values
-    final_value = ContextManager.get_context_attr(
-        ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME
-    )
+    final_value = ContextManager.get_context_attr(ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME)
     assert final_value in {f"service_{i}" for i in range(10)}

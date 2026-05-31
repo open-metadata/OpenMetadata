@@ -19,10 +19,11 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -54,10 +55,38 @@ public interface SearchIndex {
           "connection",
           "changeSummary");
 
+  /**
+   * Relationship/enrichment fields fetched by {@code EntityRepository.setFields} that every search
+   * document populates via {@link #populateCommonFields(Map, EntityInterface, String)}. Stored-JSON
+   * fields (name, displayName, description, service, entity-native counts) are NOT in this set —
+   * they live on the entity row and need no extra fetch.
+   */
+  Set<String> COMMON_REINDEX_FIELDS =
+      Set.of(
+          "owners",
+          "domains",
+          "reviewers",
+          "followers",
+          "votes",
+          "extension",
+          "tags",
+          "certification",
+          "dataProducts");
+
   SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
 
   default Map<String, Object> buildSearchIndexDoc() {
+    return buildSearchIndexDoc(DocBuildContext.empty());
+  }
+
+  /**
+   * Builds the search index document with optional pre-fetched data passed via {@link
+   * DocBuildContext}. Reindex bulk sinks construct a context with batch-prefetched lineage so
+   * doc-build mixins skip per-entity DB lookups; all other callers should keep using the no-arg
+   * overload, which delegates here with {@link DocBuildContext#empty()}.
+   */
+  default Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
     Object entity = getEntity();
     Map<String, Object> esDoc = JsonUtils.getMap(entity);
 
@@ -74,7 +103,7 @@ public interface SearchIndex {
       sbi.applyServiceFields(esDoc);
     }
     if (this instanceof LineageIndex li) {
-      li.applyLineageFields(esDoc);
+      li.applyLineageFields(esDoc, ctx);
     }
 
     // Phase 3: Entity-specific fields only
@@ -116,6 +145,23 @@ public interface SearchIndex {
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   /**
+   * Returns the minimal set of fields the {@code SearchIndexApp} reindex path must ask
+   * {@code EntityRepository.setFields} to populate for this index to build a correct document.
+   *
+   * <p>Default is {@link #COMMON_REINDEX_FIELDS}, augmented with {@code "tags"} when the index
+   * implements {@link TaggableIndex}. Individual index classes override to add entity-specific
+   * relationships. Keep this method side-effect-free and safe to call on a probe instance whose
+   * entity is {@code null} — it is invoked without an entity to discover fields statically.
+   */
+  default Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(COMMON_REINDEX_FIELDS);
+    if (this instanceof TaggableIndex) {
+      fields.add("tags");
+    }
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  /**
    * Populates common entity fields into the search index document. Called automatically by {@link
    * #buildSearchIndexDoc()} for all EntityInterface-based entities. Individual index classes should
    * NOT call this — it is handled by the framework.
@@ -142,8 +188,11 @@ public interface SearchIndex {
     doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    Optional.ofNullable(entity.getEntityStatus())
-        .ifPresent(status -> doc.put("entityStatus", status.value()));
+    doc.put(
+        "entityStatus",
+        entity.getEntityStatus() != null
+            ? entity.getEntityStatus().value()
+            : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
       int downVotes =
@@ -229,6 +278,232 @@ public interface SearchIndex {
                 .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal())));
   }
 
+  /**
+   * Returns the batch-prefetched upstream lineage map for {@code entities} when {@code
+   * entityType}'s index implements {@link LineageIndex}, or {@code null} when prefetch is not
+   * applicable. {@code null} is returned in any of these cases:
+   *
+   * <ul>
+   *   <li>{@code entities} is null/empty,
+   *   <li>the entity type's index does not implement {@link LineageIndex},
+   *   <li>the batch DB call inside {@link #prefetchUpstreamLineage(List)} failed.
+   * </ul>
+   *
+   * A non-null map (possibly with entity-id keys mapping to empty lists for entities that have no
+   * upstream edges) signals "prefetch succeeded; bind the per-entity slice into {@link
+   * DocBuildContext}". Callers that get {@code null} must leave the context empty so doc-build
+   * falls back to per-entity DB lookups via {@link #getLineageData(EntityReference)}.
+   */
+  static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
+      String entityType, List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = null;
+    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entityType)) {
+      Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Per-JVM cache of "does {@code entityType}'s index implement {@link LineageIndex}?" so the
+   * type-level marker probe runs at most once per type. Bounded per the project's caching policy
+   * (CLAUDE.md): entity types are a closed set (~50), so 256 is far above the working set and
+   * still satisfies "no unbounded caches".
+   */
+  com.google.common.cache.Cache<String, Boolean> LINEAGE_PREFETCH_SUPPORT_CACHE =
+      com.google.common.cache.CacheBuilder.newBuilder().maximumSize(256).build();
+
+  /**
+   * Type-level marker check: builds the index for {@code entityType} with a {@code null} entity
+   * (the same null-entity probe pattern used by {@code SearchIndexFactory#getReindexFieldsFor})
+   * and returns true if the resulting index implements {@link LineageIndex}. Avoids constructing
+   * a throwaway index over a real entity instance just to read a marker interface.
+   *
+   * <p>Only successful probes are memoized into {@link #LINEAGE_PREFETCH_SUPPORT_CACHE}; if the
+   * probe fails (e.g. transient class-init issue during startup, mocked Entity in tests) we
+   * return {@code false} without caching so a subsequent call retries.
+   */
+  private static boolean supportsLineagePrefetch(String entityType) {
+    Boolean cached = LINEAGE_PREFETCH_SUPPORT_CACHE.getIfPresent(entityType);
+    if (cached == null) {
+      cached = probeLineagePrefetchSupport(entityType);
+      if (cached != null) {
+        LINEAGE_PREFETCH_SUPPORT_CACHE.put(entityType, cached);
+      }
+    }
+    return Boolean.TRUE.equals(cached);
+  }
+
+  private static Boolean probeLineagePrefetchSupport(String entityType) {
+    Boolean supported = null;
+    try {
+      SearchIndex probe = Entity.buildSearchIndex(entityType, null);
+      supported = probe instanceof LineageIndex;
+    } catch (Exception | LinkageError e) {
+      LOG.warn(
+          "Could not determine LineageIndex support for type '{}'; will retry on next call",
+          entityType,
+          e);
+    }
+    return supported;
+  }
+
+  /**
+   * Batch-prefetch upstream lineage for every entity in {@code entities} using one
+   * {@code findFromBatch} call and one {@code getEntityReferencesByIds} call per upstream entity
+   * type. The returned map is keyed by every input entity's id (entities with no upstream lineage
+   * map to an empty list), so the doc-build phase can wrap it in a {@link DocBuildContext} and
+   * skip per-entity JDBI handle acquisition entirely.
+   *
+   * <p>An empty map signals "nothing prefetched" — either the input was empty or the batch DB
+   * call failed. In the failure case callers must build doc-build {@link DocBuildContext#empty()}
+   * so doc-build falls back to per-entity DB lookups.
+   */
+  static Map<UUID, List<EsLineageData>> prefetchUpstreamLineage(
+      List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = new HashMap<>();
+    if (!nullOrEmpty(entities)) {
+      populatePrefetchedUpstreamLineage(entities, result);
+    }
+    return result;
+  }
+
+  private static void populatePrefetchedUpstreamLineage(
+      List<? extends EntityInterface> entities, Map<UUID, List<EsLineageData>> result) {
+    Map<UUID, EntityReference> toRefByEntityId = new HashMap<>(entities.size());
+    List<String> toIds = new ArrayList<>(entities.size());
+    // Seed every input id with the shared immutable empty-list sentinel. Reindex batches are
+    // typically sparse in upstream lineage (most entities have none), so deferring the
+    // ArrayList allocation to the first edge keeps the no-lineage path GC-free.
+    for (EntityInterface entity : entities) {
+      UUID entityId = entity.getId();
+      if (entityId == null) {
+        continue;
+      }
+      result.put(entityId, Collections.emptyList());
+      toIds.add(entityId.toString());
+      toRefByEntityId.put(entityId, entity.getEntityReference());
+    }
+    // Skip the batch DB call when every input entity had a null id; `WHERE toId IN ()` is
+    // invalid SQL on most engines and the call would log noise for no benefit.
+    if (!toIds.isEmpty()) {
+      List<CollectionDAO.EntityRelationshipObject> records = fetchUpstreamRelationships(toIds);
+      if (records == null) {
+        result.clear();
+      } else if (!records.isEmpty()) {
+        Map<UUID, EntityReference> upstreamRefById = resolveUpstreamReferences(records);
+        mergeRecordsIntoResult(records, upstreamRefById, toRefByEntityId, result);
+      }
+    }
+  }
+
+  private static List<CollectionDAO.EntityRelationshipObject> fetchUpstreamRelationships(
+      List<String> toIds) {
+    List<CollectionDAO.EntityRelationshipObject> records;
+    try {
+      records =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findFromBatch(toIds, Relationship.UPSTREAM.ordinal(), Include.ALL);
+    } catch (Exception e) {
+      LOG.warn("Batch lineage prefetch failed; doc-build will fall back to per-entity lookups", e);
+      records = null;
+    }
+    return records;
+  }
+
+  private static Map<UUID, EntityReference> resolveUpstreamReferences(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> upstreamIdsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID fromId = parseUuidOrNull(rec.getFromId());
+      if (fromId != null && !nullOrEmpty(rec.getFromEntity())) {
+        upstreamIdsByType.computeIfAbsent(rec.getFromEntity(), k -> new HashSet<>()).add(fromId);
+      }
+    }
+    Map<UUID, EntityReference> upstreamRefById = new HashMap<>();
+    for (Map.Entry<String, Set<UUID>> entry : upstreamIdsByType.entrySet()) {
+      try {
+        List<EntityReference> refs =
+            Entity.getEntityReferencesByIds(
+                entry.getKey(), new ArrayList<>(entry.getValue()), Include.ALL);
+        for (EntityReference ref : refs) {
+          upstreamRefById.put(ref.getId(), ref);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to batch-fetch upstream references for type '{}' during lineage prefetch",
+            entry.getKey(),
+            e);
+      }
+    }
+    return upstreamRefById;
+  }
+
+  private static void mergeRecordsIntoResult(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Map<UUID, EntityReference> upstreamRefById,
+      Map<UUID, EntityReference> toRefByEntityId,
+      Map<UUID, List<EsLineageData>> result) {
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = parseUuidOrNull(rec.getToId());
+      UUID fromId = parseUuidOrNull(rec.getFromId());
+      if (toId != null && fromId != null) {
+        EntityReference toRef = toRefByEntityId.get(toId);
+        EntityReference fromRef = upstreamRefById.get(fromId);
+        if (toRef != null) {
+          appendLineageEdge(rec, fromRef, toRef, fromId, toId, result);
+        }
+      }
+    }
+  }
+
+  private static UUID parseUuidOrNull(String value) {
+    UUID parsed = null;
+    try {
+      parsed = UUID.fromString(value);
+    } catch (IllegalArgumentException | NullPointerException e) {
+      LOG.warn("Skipping prefetch record with invalid UUID '{}'", value);
+    }
+    return parsed;
+  }
+
+  private static void appendLineageEdge(
+      CollectionDAO.EntityRelationshipObject rec,
+      EntityReference fromRef,
+      EntityReference toRef,
+      UUID fromId,
+      UUID toId,
+      Map<UUID, List<EsLineageData>> result) {
+    if (fromRef == null) {
+      LOG.warn(
+          "Upstream entity '{}' (ID: {}) not found during prefetch for '{}'; skipping lineage edge",
+          rec.getFromEntity(),
+          fromId,
+          toRef.getFullyQualifiedName());
+    } else {
+      try {
+        LineageDetails details = JsonUtils.readValue(rec.getJson(), LineageDetails.class);
+        EsLineageData edge = buildEntityLineageData(fromRef, toRef, details);
+        // Promote the empty-list sentinel to a mutable ArrayList on first edge.
+        List<EsLineageData> sink = result.get(toId);
+        if (!(sink instanceof ArrayList)) {
+          sink = new ArrayList<>();
+          result.put(toId, sink);
+        }
+        sink.add(edge);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to build prefetched lineage edge {} -> {}",
+            fromRef.getFullyQualifiedName(),
+            toRef.getFullyQualifiedName(),
+            e);
+      }
+    }
+  }
+
   static List<EsLineageData> getLineageDataFromRefs(
       EntityReference entity, List<CollectionDAO.EntityRelationshipRecord> records) {
     List<EsLineageData> data = new ArrayList<>();
@@ -249,6 +524,15 @@ public interface SearchIndex {
             entityRelationshipRecord.getId(),
             entity.getFullyQualifiedName(),
             ex.getMessage());
+      } catch (Exception ex) {
+        // Mirror the prefetch path: malformed lineage JSON or a transient failure on one edge
+        // should not fail the whole entity's indexing. Log and skip; other edges still apply.
+        LOG.warn(
+            "Failed to build legacy lineage edge for entity '{}' from upstream '{}' (ID: {}); skipping",
+            entity.getFullyQualifiedName(),
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId(),
+            ex);
       }
     }
     return data;

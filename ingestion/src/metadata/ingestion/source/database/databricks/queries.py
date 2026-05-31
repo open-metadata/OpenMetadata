@@ -48,25 +48,29 @@ DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
     """
 )
 
-DATABRICKS_GET_TABLE_COMMENTS = (
-    "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}`"
+DATABRICKS_GET_TABLE_COMMENTS = "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}`"
+
+DATABRICKS_GET_TABLE_DESCRIBE_JSON = "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}` AS JSON"
+
+DATABRICKS_GET_TABLE_TYPES = textwrap.dedent(
+    """
+    SELECT table_name, table_type
+    FROM `{database_name}`.information_schema.tables
+    WHERE table_schema = :schema_name
+    """
 )
 
-DATABRICKS_GET_SCHEMA_COMMENTS = (
-    "DESCRIBE SCHEMA EXTENDED `{database_name}`.`{schema_name}`"
-)
+DATABRICKS_GET_SCHEMA_COMMENTS = "DESCRIBE SCHEMA EXTENDED `{database_name}`.`{schema_name}`"
 
 DATABRICKS_GET_CATALOGS = "SHOW CATALOGS"
 
-DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent(
-    """SELECT * FROM `{database_name}`.information_schema.catalog_tags;"""
-)
+DATABRICKS_GET_CATALOGS_TAGS = textwrap.dedent("""SELECT * FROM `{database_name}`.information_schema.catalog_tags;""")
 
 DATABRICKS_GET_SCHEMA_TAGS = textwrap.dedent(
     """
     SELECT 
         * 
-    FROM `{database_name}`.information_schema.schema_tags"""
+    FROM `{database_name}`.information_schema.schema_tags"""  # noqa: W291
 )
 
 DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
@@ -74,7 +78,7 @@ DATABRICKS_GET_TABLE_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM `{database_name}`.information_schema.table_tags 
-    """
+    """  # noqa: W291
 )
 
 DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
@@ -82,7 +86,7 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     SELECT 
         * 
     FROM `{database_name}`.information_schema.column_tags 
-    """
+    """  # noqa: W291
 )
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"

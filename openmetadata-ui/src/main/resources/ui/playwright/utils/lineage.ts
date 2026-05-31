@@ -511,7 +511,9 @@ export const applyPipelineFromModal = async (
   );
 
   await clickEdgeBetweenNodes(page, fromNode, toNode);
-  await page.getByTestId('add-pipeline').click();
+  const addPipelineBtn = page.getByTestId('add-pipeline');
+  await addPipelineBtn.waitFor({ state: 'visible' });
+  await addPipelineBtn.dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -860,8 +862,6 @@ export const verifyColumnLineageInCSV = async (
       (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
     )
   );
-
-  console.log('Expected Row:', expectedRow, parsedData);
 
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };

@@ -278,6 +278,42 @@ function getBasePropertyName(propertyName) {
 }
 
 /**
+ * Maps an OpenMetadata custom property type (from the field config) to the
+ * fieldType / nestedField the ES query builder uses. This is unambiguous because
+ * the type comes from the registry — unlike path-based parsing which is
+ * ambiguous when property names contain dots (e.g. `owner.name`).
+ *
+ * @param {string} omPropertyType - OpenMetadata property type
+ * @param {string} propertyName - The full property name (used for timeInterval start/end disambiguation)
+ * @returns {{ fieldType: string, nestedField: string|null }|null} - Mapping, or null if no mapping
+ * @private
+ */
+function getFieldTypeInfoFromOmType(omPropertyType, propertyName) {
+  if (!omPropertyType) {
+    return null;
+  }
+  switch (omPropertyType) {
+    case 'entityReference':
+    case 'array<entityReference>':
+      return { fieldType: 'entityReference', nestedField: 'refName' };
+    case 'hyperlink-cp':
+      return { fieldType: 'hyperlink', nestedField: 'stringValue' };
+    case 'table-cp':
+      return { fieldType: 'table', nestedField: 'stringValue' };
+    case 'timeInterval':
+      if (propertyName.endsWith('.end')) {
+        return { fieldType: 'timeInterval', nestedField: 'end' };
+      }
+
+      return { fieldType: 'timeInterval', nestedField: 'start' };
+    default:
+      // For string, integer, number, timestamp, enum, markdown, sqlQuery,
+      // date-cp, dateTime-cp, time-cp etc., fall through to default behaviour.
+      return { fieldType: 'default', nestedField: null };
+  }
+}
+
+/**
  * Determines the field type and appropriate ES field mapping from the property name.
  *
  * @param {string} propertyName - The full property name with potential nested path
@@ -294,17 +330,21 @@ function getFieldTypeInfo(propertyName) {
   }
 
   // EntityReference fields: propertyName.displayName.keyword, propertyName.name.keyword, etc.
+  // NOTE: These checks use endsWith (not includes) so that property names which
+  // legitimately contain `.name` (e.g. a property literally named `random.name.with`)
+  // are not misclassified. For full disambiguation when the property name itself
+  // is `owner.name`, callers should pass the type via getFieldTypeInfoFromOmType.
   if (
-    propertyName.includes('.displayName') ||
-    propertyName.includes('.name') ||
-    propertyName.includes('.fullyQualifiedName')
+    propertyName.endsWith('.displayName') ||
+    propertyName.endsWith('.name') ||
+    propertyName.endsWith('.fullyQualifiedName')
   ) {
     return { fieldType: 'entityReference', nestedField: 'refName' };
   }
 
   // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
   // Both URL and displayText are now stored in stringValue for wildcard support
-  if (propertyName.includes('.url') || propertyName.includes('.displayText')) {
+  if (propertyName.endsWith('.url') || propertyName.endsWith('.displayText')) {
     return { fieldType: 'hyperlink', nestedField: 'stringValue' };
   }
 
@@ -316,6 +356,24 @@ function getFieldTypeInfo(propertyName) {
 
   // Default: string or numeric type (determined by operator)
   return { fieldType: 'default', nestedField: null };
+}
+
+/**
+ * Looks up the OpenMetadata property type for a custom property from the
+ * query builder config. Returns null if not found (e.g. legacy saved filters).
+ *
+ * @param {object} config - The query builder config
+ * @param {string} entityType - Entity type segment (e.g. "table")
+ * @param {string} propertyName - Full property path including any sub-field suffix
+ * @returns {string|null} - The OM property type, or null
+ * @private
+ */
+function lookupOmPropertyType(config, entityType, propertyName) {
+  const extensionGroup = config?.fields?.extension;
+  const entityGroup = extensionGroup?.subfields?.[entityType];
+  const fieldConfig = entityGroup?.subfields?.[propertyName];
+
+  return fieldConfig?.__omPropertyType ?? null;
 }
 
 /**
@@ -354,7 +412,11 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
   // Build the value query based on operator
   if (isRangeOperator(operator)) {
     const rangeQuery = {};
-    if (operator === 'between' && Array.isArray(value) && value.length >= 2) {
+    if (
+      (operator === 'between' || operator === 'not_between') &&
+      Array.isArray(value) &&
+      value.length >= 2
+    ) {
       rangeQuery.gte = value[0];
       rangeQuery.lte = value[1];
     } else if (operator === 'less') {
@@ -404,12 +466,24 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @param {any} value - The value to search for
  * @param {string} operator - The query operator
  * @param {boolean} not - Whether to negate the query
+ * @param {string|null} omPropertyType - The OpenMetadata property type from config (preferred over path parsing)
  * @returns {object} - The ES query for custom properties
  * @private
  */
-function buildExtensionQuery(propertyName, entityType, value, operator, not) {
+function buildExtensionQuery(
+  propertyName,
+  entityType,
+  value,
+  operator,
+  not,
+  omPropertyType
+) {
   const basePropertyName = getBasePropertyName(propertyName);
-  const { fieldType, nestedField } = getFieldTypeInfo(propertyName);
+  // Prefer the type from the registry config (unambiguous) and fall back to
+  // path-based parsing for legacy callers that don't pass the type.
+  const { fieldType, nestedField } =
+    getFieldTypeInfoFromOmType(omPropertyType, propertyName) ??
+    getFieldTypeInfo(propertyName);
 
   let mainQuery;
 
@@ -570,20 +644,27 @@ function buildExtensionQuery(propertyName, entityType, value, operator, not) {
     operator === 'multiselect_equals' ||
     operator === 'multiselect_not_equals'
   ) {
-    // Exact match: detect numeric values and use appropriate field
-    // Note: parseFloat parses partial strings, so we need to check the entire value
+    // Exact match: pick the right typed field.
+    // 1) If we know the OM property type, route directly: numeric types ->
+    //    longValue/doubleValue, all others -> stringValue. This avoids the bug
+    //    where a string property storing "123" was queried via longValue.
+    // 2) Otherwise (legacy callers without config), fall back to value-shape
+    //    detection.
     const stringValue = String(value);
     const trimmedValue = stringValue.trim();
     const numericValue =
       typeof value === 'number' ? value : parseFloat(trimmedValue);
-    // Check if the entire value is a valid number (parseFloat alone won't catch '05:04:04' -> 5)
     const isNumeric =
       !isNaN(numericValue) &&
       isFinite(numericValue) &&
       String(numericValue) === trimmedValue;
+    const isNumericOmType =
+      omPropertyType === 'integer' ||
+      omPropertyType === 'number' ||
+      omPropertyType === 'timestamp';
+    const useNumericField = omPropertyType ? isNumericOmType : isNumeric;
 
-    if (isNumeric) {
-      // For numeric values, use longValue (for integers) or doubleValue (for decimals)
+    if (useNumericField && isNumeric) {
       const isDecimal = stringValue.includes('.');
       const nestedField = isDecimal ? 'doubleValue' : 'longValue';
       mainQuery = buildNestedTypedQuery(
@@ -593,7 +674,6 @@ function buildExtensionQuery(propertyName, entityType, value, operator, not) {
         'equal'
       );
     } else {
-      // For string values, use stringValue
       mainQuery = buildNestedTypedQuery(
         basePropertyName,
         'stringValue',
@@ -701,6 +781,16 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     return undefined;
   } // rule is not fully entered
 
+  if (
+    (operator === 'between' || operator === 'not_between') &&
+    (!Array.isArray(value) ||
+      value.length < 2 ||
+      value[0] === undefined ||
+      value[1] === undefined)
+  ) {
+    return undefined;
+  }
+
   // Check if field has custom elasticsearch field mapping or handle extension fields
   let actualFieldName = fieldName;
   let isNestedExtensionField = false;
@@ -736,12 +826,35 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
   const hasValue = Array.isArray(value) && value.length > 0;
   if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
+    const omPropertyType = lookupOmPropertyType(
+      config,
+      entityType,
+      extensionPropertyName
+    );
+
+    // For range operators (between / not_between) the value is a two-element
+    // array [from, to]. Pass the full array so buildExtensionQuery can build
+    // a proper gte/lte range query. This is scoped to numeric types where ES
+    // range queries work correctly. Non-numeric types (e.g. dateTime-cp)
+    // store values as formatted strings where ES range comparison is unreliable.
+    const isBetweenOp = op === 'between';
+    const isNumericOmType =
+      omPropertyType === 'integer' ||
+      omPropertyType === 'number' ||
+      omPropertyType === 'timestamp';
+    const extensionValue = hasValue
+      ? isBetweenOp && isNumericOmType
+        ? value
+        : value[0]
+      : null;
+
     return buildExtensionQuery(
       extensionPropertyName,
       entityType,
-      hasValue ? value[0] : null,
+      extensionValue,
       op,
-      not
+      not,
+      omPropertyType
     );
   }
 

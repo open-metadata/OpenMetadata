@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,10 @@ class PollingJobNotifierTest {
     notifier.start();
     notifier.start();
     assertTrue(notifier.isRunning());
-    assertNotNull(getField(notifier, "scheduler"));
+    ScheduledExecutorService scheduler = (ScheduledExecutorService) getField(notifier, "scheduler");
+    assertNotNull(scheduler);
+    scheduler.shutdownNow();
+    assertTrue(scheduler.awaitTermination(5, TimeUnit.SECONDS));
 
     notifier.notifyJobStarted(jobId, "FULL");
     assertTrue(getKnownJobs(notifier).contains(jobId));
@@ -63,13 +68,14 @@ class PollingJobNotifierTest {
     AtomicReference<UUID> callbackJob = new AtomicReference<>();
     notifier.onJobStarted(callbackJob::set);
     getRunningFlag(notifier).set(true);
+    setFastIdleUntil(notifier, System.currentTimeMillis() + 60_000L);
 
     invokePoll(notifier);
 
     assertEquals(jobId, callbackJob.get());
     assertTrue(getKnownJobs(notifier).contains(jobId));
 
-    setLastPollTime(notifier, System.currentTimeMillis() - 31_000L);
+    setLastPollTime(notifier, System.currentTimeMillis() - 5_000L);
     invokePoll(notifier);
 
     assertTrue(getKnownJobs(notifier).isEmpty());
@@ -94,6 +100,29 @@ class PollingJobNotifierTest {
     invokePoll(notifier);
 
     assertTrue(getKnownJobs(notifier).isEmpty());
+  }
+
+  @Test
+  void idlePollingBacksOffAfterFastWindowAndResumesAfterJobActivity() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.SearchIndexJobDAO jobDAO = mock(CollectionDAO.SearchIndexJobDAO.class);
+    when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
+    when(jobDAO.getRunningJobIds()).thenReturn(List.of());
+
+    PollingJobNotifier notifier = new PollingJobNotifier(collectionDAO, "server-backoff");
+    getRunningFlag(notifier).set(true);
+
+    setFastIdleUntil(notifier, System.currentTimeMillis() - 1L);
+    setLastPollTime(notifier, System.currentTimeMillis() - 10_000L);
+    invokePoll(notifier);
+
+    verifyNoInteractions(jobDAO);
+
+    notifier.notifyJobCompleted(UUID.randomUUID());
+    setLastPollTime(notifier, System.currentTimeMillis() - 5_000L);
+    invokePoll(notifier);
+
+    verify(jobDAO).getRunningJobIds();
   }
 
   @Test
@@ -129,6 +158,12 @@ class PollingJobNotifierTest {
 
   private void setLastPollTime(PollingJobNotifier notifier, long value) throws Exception {
     Field field = notifier.getClass().getDeclaredField("lastPollTime");
+    field.setAccessible(true);
+    field.setLong(notifier, value);
+  }
+
+  private void setFastIdleUntil(PollingJobNotifier notifier, long value) throws Exception {
+    Field field = notifier.getClass().getDeclaredField("fastIdleUntil");
     field.setAccessible(true);
     field.setLong(notifier, value);
   }

@@ -13,10 +13,14 @@
 import { Col, Grid, Layout, Row } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
-import { ReactNode } from 'react';
-import LoginCarousel from '../../../pages/LoginPage/LoginCarousel';
+import { lazy, ReactNode } from 'react';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import './carousel-layout.less';
+
+const LoginCarousel = withSuspenseFallback(
+  lazy(() => import('../../../pages/LoginPage/LoginCarousel'))
+);
 
 export const CarouselLayout = ({
   pageTitle,

@@ -12,8 +12,9 @@
 Definition of tags for the PII algorithms.
 These tags currently belong to the layer logic of the algorithms.
 """
+
 import enum
-from typing import List
+from typing import List  # noqa: UP035
 
 
 class PIISensitivityTag(enum.Enum):
@@ -86,7 +87,7 @@ class PIITag(enum.Enum):
     FI_PERSONAL_IDENTITY_CODE = "FI_PERSONAL_IDENTITY_CODE"
 
     @classmethod
-    def values(cls) -> List[str]:
+    def values(cls) -> List[str]:  # noqa: UP006
         """
         Get all the values of the enum as a set of strings.
         """

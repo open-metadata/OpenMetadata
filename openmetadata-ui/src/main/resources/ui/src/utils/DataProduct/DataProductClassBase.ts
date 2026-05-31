@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -38,6 +40,7 @@ type DataProductWidgetKeys =
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.DOMAIN
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.EXPERTS;
 
 class DataProductClassBase {
@@ -54,6 +57,7 @@ class DataProductClassBase {
       [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN]: 1.5,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -161,11 +165,19 @@ class DataProductClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 7,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 7,
+        y: 8,
         static: false,
       },
     ];
@@ -195,6 +207,7 @@ class DataProductClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
@@ -225,6 +238,21 @@ class DataProductClassBase {
       default:
         return 1;
     }
+  }
+
+  public getShowRequestDataAccess(): boolean {
+    return false;
+  }
+
+  public getRequestDataAccessDrawer(
+    _isOpen: boolean,
+    _onClose: () => void,
+    _entityFqn: string,
+    _entityName: string,
+    _entityType: string,
+    _onCreated?: () => void
+  ): ReactNode {
+    return null;
   }
 
   public getDummyData(): DataProduct {

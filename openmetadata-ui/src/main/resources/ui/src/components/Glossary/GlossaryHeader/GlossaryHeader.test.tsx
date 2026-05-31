@@ -132,7 +132,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityVoteStatus: jest.fn().mockReturnValue(QueryVoteType.votedUp),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getEntityDeleteMessage: jest.fn(),
 }));
 jest.mock('../../../hooks/useFqn', () => ({

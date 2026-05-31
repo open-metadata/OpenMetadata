@@ -50,7 +50,6 @@ import {
   removeTag,
   removeTagsFromChildren,
   removeTier,
-  replyAnnouncement,
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
@@ -65,7 +64,7 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
-import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
+import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type = '';
@@ -112,30 +111,6 @@ export class EntityClass {
 
       this.customPropertyValue = data.customProperties;
       this.cleanupUser = data.cleanupUser;
-    }
-  }
-
-  async cleanupCustomProperty(apiContext: APIRequestContext) {
-    // Delete custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
-      await this.cleanupUser?.(apiContext);
-      const entitySchemaResponse = await apiContext.get(
-        `/api/v1/metadata/types/name/${
-          ENTITY_PATH[this.endpoint as keyof typeof ENTITY_PATH]
-        }`
-      );
-      const entitySchema = await entitySchemaResponse.json();
-      await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
-        data: [
-          {
-            op: 'remove',
-            path: '/customProperties',
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      });
     }
   }
 
@@ -235,7 +210,8 @@ export class EntityClass {
         'Tier',
         'tier.tagFQN',
         tier2Fqn,
-        entity
+        entity,
+        true
       );
     }
     await removeTier(page, this.endpoint);
@@ -509,7 +485,6 @@ export class EntityClass {
       title: 'Edited Playwright Test Announcement',
       description: 'Updated Playwright Test Announcement Description',
     });
-    await replyAnnouncement(page);
     await deleteAnnouncement(page);
   }
 

@@ -18,8 +18,7 @@ import { useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { pluralize } from '../../utils/CommonUtils';
-import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { pluralize } from '../../utils/StringUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -51,7 +50,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   } = useCurrentUserPreferences();
 
   const searchResultCards = useMemo(() => {
-    return data.map(({ _source: table, highlight }, index) => {
+    return data.map(({ _source: table, highlight, _id }) => {
       const matches = highlight
         ? Object.entries(highlight)
             .filter(([key]) => !key.includes('.ngram'))
@@ -59,24 +58,22 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             .filter((d) => !ASSETS_NAME.has(d.key))
         : [];
 
-      const source = highlightEntityNameAndDescription(table, highlight);
-
       return (
-        <div className="m-b-md" key={`tabledatacard${index}`}>
-          <ExploreSearchCard
-            className={classNames(
-              table.id === selectedEntityId && isSummaryPanelVisible
-                ? 'highlight-card'
-                : ''
-            )}
-            handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-            id={`tabledatacard${index}`}
-            matches={matches}
-            searchValue={filter?.search as string}
-            showTags={false}
-            source={source}
-          />
-        </div>
+        <ExploreSearchCard
+          showEntityIcon
+          className={classNames(
+            table.id === selectedEntityId && isSummaryPanelVisible
+              ? 'highlight-card'
+              : ''
+          )}
+          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+          highlight={highlight}
+          id={`search-card-${_id}`}
+          key={_id}
+          matches={matches}
+          showTags={false}
+          source={table}
+        />
       );
     });
   }, [
@@ -86,8 +83,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     selectedEntityId,
   ]);
 
-  const ResultCount = () => {
-    if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
+  const resultCount = useMemo(() => {
+    if (isFilterSelected || filter?.quickFilter) {
       if (MAX_RESULT_HITS === totalValue) {
         return <div>{`About ${totalValue} results`}</div>;
       } else {
@@ -96,7 +93,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     } else {
       return null;
     }
-  };
+  }, [isFilterSelected, filter, totalValue]);
 
   const { page = 1, size = globalPageSize } = useMemo(
     () =>
@@ -117,11 +114,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
-              <ResultCount />
+              {showResultCount ? resultCount : null}
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
-                  className="text-center p-b-box"
+                  className="text-center p-y-sm tw:sticky"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size))

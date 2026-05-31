@@ -11,171 +11,33 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import { FC, ReactNode, useEffect, useMemo } from 'react';
-import { RouterProvider } from 'react-aria-components';
-import { HelmetProvider } from 'react-helmet-async';
-import { I18nextProvider } from 'react-i18next';
-import { BrowserRouter, useNavigate } from 'react-router-dom';
-import { useShallow } from 'zustand/react/shallow';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { FC, useEffect } from 'react';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
-import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import AirflowStatusProvider from './context/AirflowStatusProvider/AirflowStatusProvider';
-import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
-import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
-import PermissionProvider from './context/PermissionProvider/PermissionProvider';
-import TourProvider from './context/TourProvider/TourProvider';
-import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
-import { useApplicationStore } from './hooks/useApplicationStore';
-import {
-  getCustomUiThemePreference,
-  getSystemConfig,
-} from './rest/settingConfigAPI';
-import { getBasePath } from './utils/HistoryUtils';
-
-import GlobalStyles from '@mui/material/GlobalStyles';
-import { ThemeProvider } from '@mui/material/styles';
-import {
-  createMuiTheme,
-  SnackbarContent,
-} from '@openmetadata/ui-core-components';
-import { SnackbarProvider } from 'notistack';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { DEFAULT_THEME } from './constants/Appearance.constants';
-import RuleEnforcementProvider from './context/RuleEnforcementProvider/RuleEnforcementProvider';
-import { ThemeProvider as UntitledUIThemeProvider } from './context/UntitledUIThemeProvider/theme-provider';
-import i18n from './utils/i18next/LocalUtil';
-import { getThemeConfig } from './utils/ThemeUtils';
-
-const ReactAriaRouterBridge = ({ children }: { children: ReactNode }) => {
-  const navigate = useNavigate();
-
-  return <RouterProvider navigate={navigate}>{children}</RouterProvider>;
-};
+import { queryClient } from './queryClient';
+import { idlePrefetchRoutes } from './utils/idlePrefetchRoutes';
 
 const App: FC = () => {
-  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
-    useApplicationStore(
-      useShallow((state) => ({
-        applicationConfig: state.applicationConfig,
-        setApplicationConfig: state.setApplicationConfig,
-        setRdfEnabled: state.setRdfEnabled,
-      }))
-    );
-
-  // Create dynamic MUI theme based on user customizations
-  const muiTheme = useMemo(
-    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
-    [applicationConfig?.customTheme]
-  );
-
-  const fetchApplicationConfig = async () => {
-    try {
-      const [themeData, systemConfig] = await Promise.all([
-        getCustomUiThemePreference(),
-        getSystemConfig(),
-      ]);
-
-      setApplicationConfig({
-        ...themeData,
-        customTheme: getThemeConfig(themeData.customTheme),
-      });
-
-      // Set RDF enabled state
-      setRdfEnabled(systemConfig.rdfEnabled || false);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-    }
-  };
-
+  // After first paint, warm the chunk cache for Explore / Settings / EntityRouter
+  // during browser idle. Most users land on /my-data and click into Explore or an
+  // entity link next; pre-fetching those route chunks turns the click into a cache
+  // hit (~5ms) instead of a network round-trip (~200–500ms).
   useEffect(() => {
-    fetchApplicationConfig();
+    idlePrefetchRoutes();
   }, []);
 
-  useEffect(() => {
-    const faviconHref = isEmpty(
-      applicationConfig?.customLogoConfig?.customFaviconUrlPath
-    )
-      ? '/favicon.png'
-      : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
-        '/favicon.png';
-    const link = document.querySelectorAll('link[rel~="icon"]');
-
-    if (!isEmpty(link)) {
-      link.forEach((item) => {
-        item.setAttribute('href', faviconHref);
-      });
-    }
-  }, [applicationConfig]);
-
+  // QueryClientProvider sits ABOVE AuthProvider so that the singleton is available everywhere
+  // — including AuthProvider's onLogout handler, which needs to clear the query cache so a
+  // freshly-authenticated user can't see another principal's cached entity bodies. The
+  // QueryClient itself is also exported from `./queryClient` for non-hook callers (axios
+  // interceptors, programmatic prefetch, etc.) that can't go through `useQueryClient()`.
   return (
-    <div className="main-container">
-      <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
-          <ReactAriaRouterBridge>
-            <I18nextProvider i18n={i18n}>
-              <HelmetProvider>
-                <ErrorBoundary>
-                  <AntDConfigProvider>
-                    <UntitledUIThemeProvider
-                      brandColors={applicationConfig?.customTheme}>
-                      <ThemeProvider theme={muiTheme}>
-                        <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
-                        <SnackbarProvider
-                          Components={{
-                            default: SnackbarContent,
-                            error: SnackbarContent,
-                            success: SnackbarContent,
-                            warning: SnackbarContent,
-                            info: SnackbarContent,
-                          }}
-                          anchorOrigin={{
-                            vertical: 'top',
-                            horizontal: 'right',
-                          }}
-                          autoHideDuration={6000}
-                          maxSnack={3}>
-                          <AuthProvider childComponentType={AppRouter}>
-                            <TourProvider>
-                              <WebAnalyticsProvider>
-                                <PermissionProvider>
-                                  <WebSocketProvider>
-                                    <ApplicationsProvider>
-                                      <AsyncDeleteProvider>
-                                        <EntityExportModalProvider>
-                                          <AirflowStatusProvider>
-                                            <RuleEnforcementProvider>
-                                              <DndProvider
-                                                backend={HTML5Backend}>
-                                                <AppRouter />
-                                              </DndProvider>
-                                            </RuleEnforcementProvider>
-                                          </AirflowStatusProvider>
-                                        </EntityExportModalProvider>
-                                      </AsyncDeleteProvider>
-                                    </ApplicationsProvider>
-                                  </WebSocketProvider>
-                                </PermissionProvider>
-                              </WebAnalyticsProvider>
-                            </TourProvider>
-                          </AuthProvider>
-                        </SnackbarProvider>
-                      </ThemeProvider>
-                    </UntitledUIThemeProvider>
-                  </AntDConfigProvider>
-                </ErrorBoundary>
-              </HelmetProvider>
-            </I18nextProvider>
-          </ReactAriaRouterBridge>
-        </BrowserRouter>
-      </div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider childComponentType={AppRouter}>
+        <AppRouter />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 

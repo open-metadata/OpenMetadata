@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/policyAgentTaskDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PolicyAgentTaskDefinition",
+  "description": "Runs the Policy Agent to enforce data access on supported connectors, or falls back to a manual grant step.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PolicyAgentTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "If true, waits for the Policy Agent ingestion pipeline to finish before continuing.",
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Maximum seconds to wait for the Policy Agent pipeline to complete.",
+          "type": "integer",
+          "default": 600
+        }
+      },
+      "additionalProperties": false,
+      "required": ["waitForCompletion", "timeoutSeconds"]
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "policyAgentTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["granted", "manual", "denied"],
+      "additionalItems": false,
+      "minItems": 3,
+      "maxItems": 3
+    }
+  }
+}

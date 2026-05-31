@@ -14,11 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
@@ -46,6 +48,7 @@ import org.openmetadata.service.util.AsciiTable;
 public class MigrationWorkflow {
   public static final String SUCCESS_MSG = "Success";
   public static final String FAILED_MSG = "Failed due to : ";
+  public static final String SKIPPED_MSG = "Skipped";
   public static final String CURRENT = "Current";
   private List<MigrationProcess> migrations;
   private final String nativeSQLScriptRootPath;
@@ -162,6 +165,7 @@ public class MigrationWorkflow {
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     List<MigrationFile> applyMigrations = resolveApplyMigrations(availableMigrations);
+    List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
     List<MigrationProcess> processes = new ArrayList<>();
     try {
       for (MigrationFile file : applyMigrations) {
@@ -172,27 +176,35 @@ public class MigrationWorkflow {
               file.version);
           continue;
         }
-        String extClazzName = null;
-        if (file.version.contains("collate")) {
-          extClazzName = file.getMigrationProcessExtClassName();
-        }
-        if (extClazzName != null) {
-          MigrationProcess collateProcess =
-              (MigrationProcess)
-                  Class.forName(extClazzName).getConstructor(MigrationFile.class).newInstance(file);
-          processes.add(collateProcess);
-        } else {
-          String clazzName = file.getMigrationProcessClassName();
-          MigrationProcess openMetadataProcess =
-              (MigrationProcess)
-                  Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
-          processes.add(openMetadataProcess);
-        }
+        processes.add(resolveMigrationProcess(file, extensionProviders));
       }
     } catch (Exception e) {
       LOG.error("Failed to list and add migrations to run due to ", e);
     }
     return processes;
+  }
+
+  private MigrationProcess resolveMigrationProcess(
+      MigrationFile file, List<MigrationProcessExtensionProvider> extensionProviders)
+      throws ReflectiveOperationException {
+    if (file.isExtension) {
+      // No provider handled this extension version: run SQL only, skip Java data migration.
+      // Critical: do not fall through to OM's same-version native migration class.
+      return extensionProviders.stream()
+          .map(provider -> provider.provide(file))
+          .flatMap(Optional::stream)
+          .findFirst()
+          .orElseGet(() -> new MigrationProcessImpl(file));
+    }
+    String clazzName = file.getMigrationProcessClassName();
+    return (MigrationProcess)
+        Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+  }
+
+  private List<MigrationProcessExtensionProvider> loadExtensionProviders() {
+    return StreamSupport.stream(
+            ServiceLoader.load(MigrationProcessExtensionProvider.class).spliterator(), false)
+        .toList();
   }
 
   private static int compareVersions(String version1, String version2) {
@@ -229,6 +241,22 @@ public class MigrationWorkflow {
     return !version.contains("-");
   }
 
+  private record ReleaseTrain(int major, int minor) implements Comparable<ReleaseTrain> {
+    private static ReleaseTrain fromVersion(String version) {
+      int[] parts = parseVersion(version);
+      return new ReleaseTrain(parts[0], parts[1]);
+    }
+
+    @Override
+    public int compareTo(ReleaseTrain another) {
+      int result = Integer.compare(major, another.major);
+      if (result == 0) {
+        result = Integer.compare(minor, another.minor);
+      }
+      return result;
+    }
+  }
+
   /*
    * Parse a version string into an array of integers
    * Follows the format major.minor.patch, patch can contain -extension
@@ -250,13 +278,6 @@ public class MigrationWorkflow {
       numbers[2] = Integer.parseInt(parts[2]);
     }
     return numbers;
-  }
-
-  static boolean sameOrHigherMajorMinor(String version, String maxVersion) {
-    int[] v = parseVersion(version);
-    int[] max = parseVersion(maxVersion);
-    if (v[0] != max[0]) return v[0] > max[0];
-    return v[1] >= max[1];
   }
 
   // Package-private for testing
@@ -297,21 +318,16 @@ public class MigrationWorkflow {
       Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
     List<MigrationFile> nativeMigrations =
         availableMigrations.stream().filter(m -> !m.isExtension).toList();
-    Set<String> nativeVersions = nativeMigrations.stream().map(m -> m.version).collect(toSet());
-    Optional<String> maxExecuted =
-        executedMigrations.stream()
-            .filter(nativeVersions::contains)
-            .max(MigrationWorkflow::compareReprocessingCandidates);
-    if (maxExecuted.isEmpty()) {
+    Set<String> reprocessingVersions =
+        getReprocessingVersions(executedMigrations, nativeMigrations);
+    if (reprocessingVersions.isEmpty()) {
       return nativeMigrations;
     }
-    String maxVer = maxExecuted.get();
     List<MigrationFile> result = new ArrayList<>();
     for (MigrationFile migration : nativeMigrations) {
-      if (migration.version.equals(maxVer)) {
+      if (reprocessingVersions.contains(migration.version)) {
         result.add(migration.copyWithReprocessing(true));
-      } else if (!executedMigrations.contains(migration.version)
-          && sameOrHigherMajorMinor(migration.version, maxVer)) {
+      } else if (!executedMigrations.contains(migration.version)) {
         result.add(migration.copyWithReprocessing(false));
       }
     }
@@ -322,22 +338,63 @@ public class MigrationWorkflow {
       Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
     List<MigrationFile> extensionMigrations =
         availableMigrations.stream().filter(migration -> migration.isExtension).toList();
-    Set<String> extensionVersions =
-        extensionMigrations.stream().map(migration -> migration.version).collect(toSet());
-    Optional<String> maxExecutedExtension =
-        executedMigrations.stream()
-            .filter(extensionVersions::contains)
-            .max(MigrationWorkflow::compareReprocessingCandidates);
+    Set<String> reprocessingVersions =
+        getReprocessingVersions(executedMigrations, extensionMigrations);
     List<MigrationFile> result = new ArrayList<>();
     for (MigrationFile migration : extensionMigrations) {
-      if (maxExecutedExtension.isPresent()
-          && migration.version.equals(maxExecutedExtension.get())) {
+      if (reprocessingVersions.contains(migration.version)) {
         result.add(migration.copyWithReprocessing(true));
       } else if (!executedMigrations.contains(migration.version)) {
         result.add(migration.copyWithReprocessing(false));
       }
     }
     return result;
+  }
+
+  private Set<String> getReprocessingVersions(
+      Set<String> executedMigrations, List<MigrationFile> availableMigrations) {
+    Set<String> availableVersions =
+        availableMigrations.stream().map(migration -> migration.version).collect(toSet());
+    Optional<String> maxExecuted =
+        executedMigrations.stream()
+            .filter(availableVersions::contains)
+            .max(MigrationWorkflow::compareReprocessingCandidates);
+    if (maxExecuted.isEmpty()) {
+      return Set.of();
+    }
+
+    Set<String> reprocessingVersions = new HashSet<>();
+    ReleaseTrain currentReleaseTrain = ReleaseTrain.fromVersion(maxExecuted.get());
+    getMaxExecutedVersionForReleaseTrain(
+            currentReleaseTrain, executedMigrations, availableMigrations)
+        .ifPresent(reprocessingVersions::add);
+
+    getPreviousReleaseTrain(currentReleaseTrain, availableMigrations)
+        .flatMap(
+            releaseTrain ->
+                getMaxExecutedVersionForReleaseTrain(
+                    releaseTrain, executedMigrations, availableMigrations))
+        .ifPresent(reprocessingVersions::add);
+    return reprocessingVersions;
+  }
+
+  private Optional<String> getMaxExecutedVersionForReleaseTrain(
+      ReleaseTrain releaseTrain,
+      Set<String> executedMigrations,
+      List<MigrationFile> availableMigrations) {
+    return availableMigrations.stream()
+        .filter(migration -> ReleaseTrain.fromVersion(migration.version).equals(releaseTrain))
+        .map(migration -> migration.version)
+        .filter(executedMigrations::contains)
+        .max(MigrationWorkflow::compareReprocessingCandidates);
+  }
+
+  private Optional<ReleaseTrain> getPreviousReleaseTrain(
+      ReleaseTrain currentReleaseTrain, List<MigrationFile> availableMigrations) {
+    return availableMigrations.stream()
+        .map(migration -> ReleaseTrain.fromVersion(migration.version))
+        .filter(releaseTrain -> releaseTrain.compareTo(currentReleaseTrain) < 0)
+        .max(ReleaseTrain::compareTo);
   }
 
   public void printMigrationInfo() {
@@ -401,9 +458,14 @@ public class MigrationWorkflow {
             // Schema Changes
             runSchemaChanges(row, process);
 
-            // Reprocessing can rerun Java migrations when new SQL is appended to the current
-            // version. Implementations must remain idempotent, same as force mode.
-            runStepAndAddStatus(row, process::runDataMigration);
+            if (shouldRunDataMigration(process)) {
+              runStepAndAddStatus(row, process::runDataMigration);
+            } else {
+              LOG.info(
+                  "[MigrationWorkflow] Skipping data migration for reprocessed previous release train version: {}",
+                  process.getVersion());
+              row.add(SKIPPED_MSG);
+            }
 
             // Post DDL Scripts
             runPostDDLChanges(row, process);
@@ -430,6 +492,14 @@ public class MigrationWorkflow {
       }
     }
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
+  }
+
+  private boolean shouldRunDataMigration(MigrationProcess process) {
+    boolean result = true;
+    if (process.isReprocessing() && currentMaxMigrationVersion.isPresent()) {
+      result = compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
+    }
+    return result;
   }
 
   private void runSchemaChanges(List<String> row, MigrationProcess process) {

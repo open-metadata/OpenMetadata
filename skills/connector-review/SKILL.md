@@ -140,6 +140,11 @@ Verify:
 - Secrets use SecretStr/format: "password", never logged
 - Test connection steps are meaningful (not just CheckAccess)
 - Rate limiting handled for REST APIs
+- MASKED API FAILURES: Check client helper methods (e.g., _get_data, _get_response) that return
+  empty defaults ({}, [], None) when the HTTP call returns None or a non-dict. This silently
+  converts real API failures (auth errors, network issues, 500s) into empty results, making
+  debugging impossible. Correct pattern: raise on None response, return defaults with WARNING
+  log only for unexpected response shapes. This is a WARNING.
 - PYDANTIC MODELS: Any model using Field(alias=...) must have
   model_config = ConfigDict(populate_by_name=True). Missing this is a WARNING
   (Python attribute names won't work, tests will break).
@@ -186,6 +191,21 @@ Verify memory management (read memory.md standard):
 - UNBOUNDED READS: Check for .read() / .readall() / .download_as_string() on files
   without a size check. If the file could be large (data files, query logs, API exports),
   this is a BLOCKER (OOM on production instances).
+- STREAMING DEFEATED BY MATERIALIZATION: Flag any call that wraps a streaming iterator
+  in a collection constructor, turning a lazy cursor into a full in-memory list. These
+  look like streaming at a glance but are not:
+    * SQLAlchemy: `list(conn.execute(q))`, `list(result.yield_per(N))`,
+      `result.all()`, `result.fetchall()`, `[row for row in result]`,
+      `list(result.scalars())`, and any `list(...)` around `result.partitions()` /
+      `result.mappings()` / `.stream(...)`
+    * DB-API: `cursor.fetchall()` on unbounded queries; `list(cursor)`
+    * Generators: `list(generator_fn())`, `[x for x in gen()]` when the consumer
+      could iterate directly
+    * HTTP pagers: `list(paginator)`, `list(response.iter_pages())`,
+      `response.json()["items"]` inside a `while next_cursor` that extends a list
+  `yield_per` / `stream_results` / `partitions()` only help if the caller stays lazy —
+  a single `list(...)` around them negates the whole point. This is a BLOCKER when the
+  result set size is not provably bounded, WARNING when bounded but wasteful.
 - OBJECT LIFECYCLE: Check if large objects (raw API responses, file contents, DataFrames)
   are held in memory longer than needed. Missing `del` + `gc.collect()` after processing
   large data is a WARNING.
@@ -193,6 +213,9 @@ Verify memory management (read memory.md standard):
   scope-based clearing. Unbounded caches that grow with entity count are a WARNING.
 - GENERATOR USAGE: Check yield methods — do they accumulate results in a list before
   returning, or yield immediately? List accumulation in yield methods is a WARNING.
+  Also check non-yield helper functions that return `List[...]` — if the underlying
+  source is a cursor/iterator, the helper itself is the materialization point and the
+  return type should be `Iterable` or `Iterator`, not `List`. Flag as WARNING.
 - RESOURCE CLEANUP: Check that cursors, file handles, and HTTP responses are closed
   explicitly (context managers or finally blocks). Leaked resources are a WARNING.
 

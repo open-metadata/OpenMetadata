@@ -90,6 +90,34 @@
       "type": "boolean",
       "default": true
     },
+    "policyAgentConfig": {
+      "description": "Policy agent configuration for access control extraction.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.PolicyAgentConfig",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Enable policy agent extraction.",
+          "type": "boolean"
+        },
+        "supportsColumnAccess": {
+          "title": "Supports Column Access",
+          "description": "Supports column-level access policy extraction.",
+          "type": "boolean"
+        },
+        "supportsFullAccess": {
+          "title": "Supports Full Access",
+          "description": "Supports full access policy extraction.",
+          "type": "boolean"
+        },
+        "supportsMaskedAccess": {
+          "title": "Supports Masked Access",
+          "description": "Supports masked access policy extraction.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "dataStorageConfig": {
       "description": "Storage config to store sample data",
       "type": "object",
