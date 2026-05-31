@@ -413,11 +413,26 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         });
   const getIsToggleBannerProperty = (name: string) =>
     isGatedCredentialConfig && name === 'enabled';
+  const isImpersonationOnlyDisclosure =
+    isGenericNestedConfig &&
+    orderedAdvancedProperties.length === 1 &&
+    orderedAdvancedProperties[0].name.toLowerCase().includes('impersonate');
   const getAdvancedHeaderLabel = (isOpen: boolean) => {
     if (isGatedCredentialConfig) {
       return `${t(isOpen ? 'label.hide' : 'label.show')} ${t(
         'label.advanced-config'
       )} (${orderedAdvancedProperties.length})`;
+    }
+
+    if (isImpersonationOnlyDisclosure) {
+      return t(
+        isOpen
+          ? 'label.hide-impersonation-settings'
+          : 'label.show-impersonation-settings',
+        {
+          count: orderedAdvancedProperties.length,
+        }
+      );
     }
 
     if (isGenericNestedConfig) {

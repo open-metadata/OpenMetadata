@@ -52,6 +52,12 @@ jest.mock('react-i18next', () => ({
       if (key === 'label.hide-advanced-credential-settings') {
         return `Hide advanced credential settings (${params?.count})`;
       }
+      if (key === 'label.show-impersonation-settings') {
+        return `Show impersonation settings (${params?.count})`;
+      }
+      if (key === 'label.hide-impersonation-settings') {
+        return `Hide impersonation settings (${params?.count})`;
+      }
 
       return params?.count ? `${params.count} required` : key;
     },
@@ -468,10 +474,15 @@ describe('ConnectionConfigForm schema rendering', () => {
         '.core-object-field-template-property-gcpImpersonateServiceAccount'
       )
     ).not.toBeInTheDocument();
+    expect(
+      within(gcpCredentialsBlock).queryByRole('button', {
+        name: 'Show advanced credential settings (1)',
+      })
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       within(gcpCredentialsBlock).getByRole('button', {
-        name: 'Show advanced credential settings (1)',
+        name: 'Show impersonation settings (1)',
       })
     );
 

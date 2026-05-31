@@ -123,6 +123,34 @@
       width: 100%;
     }
 
+    .core-object-field-template-property-gcpConfig,
+    .core-one-of-field-selected .core-object-field-template-property-projectId {
+      grid-column: 1 / -1 !important;
+      justify-self: stretch !important;
+      width: 100% !important;
+    }
+
+    .core-one-of-field-selected .core-object-field-template-property-projectId {
+      order: -10;
+    }
+
+    .core-object-field-template-property-gcpConfig > .core-one-of-field,
+    .core-one-of-field-selected
+      .core-object-field-template-property-projectId
+      > .core-one-of-field {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .core-object-field-template-property-gcpConfig
+      > .core-one-of-field
+      > .core-one-of-field-select,
+    .core-one-of-field-selected
+      .core-object-field-template-property-projectId
+      .core-one-of-field-select {
+      margin-left: 0 !important;
+    }
+
     .core-object-field-template-credential-block .design-field-label {
       min-height: 34px;
       align-items: flex-start;
