@@ -131,13 +131,14 @@ public final class IntakeFormValidator {
   }
 
   private static IntakeForm loadIntakeForm(String entityType) {
-    try {
-      IntakeFormRepository repo =
-          (IntakeFormRepository) Entity.getEntityRepository(Entity.INTAKE_FORM);
-      return repo.findEnabledForEntityType(entityType);
-    } catch (Exception e) {
-      LOG.debug("IntakeForm lookup failed for {}: {}", entityType, e.getMessage());
-      return null;
-    }
+    // Intentionally no catch: findEnabledForEntityType returns null when no
+    // form is configured (or it's disabled), so the only thing that can throw
+    // here is a real repository-registration / DAO / JSON-deserialization
+    // failure. Swallowing those to null would silently bypass intake-form
+    // enforcement on a transient error — let them propagate so writes fail
+    // closed.
+    IntakeFormRepository repo =
+        (IntakeFormRepository) Entity.getEntityRepository(Entity.INTAKE_FORM);
+    return repo.findEnabledForEntityType(entityType);
   }
 }

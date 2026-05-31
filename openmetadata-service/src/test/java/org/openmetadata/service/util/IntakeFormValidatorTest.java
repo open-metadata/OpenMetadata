@@ -91,6 +91,23 @@ class IntakeFormValidatorTest {
     assertDoesNotThrow(() -> IntakeFormValidator.validate(domain, Entity.DOMAIN));
   }
 
+  @Test
+  void validate_failsClosedWhenIntakeFormLookupThrows() {
+    // A DAO / JSON-deserialization failure during intake-form lookup must NOT be
+    // swallowed into a silent no-op — that would let a write bypass governance
+    // enforcement on a transient error. The exception must propagate so the
+    // write fails closed.
+    when(mockRepo.findEnabledForEntityType(anyString()))
+        .thenThrow(new RuntimeException("transient DB failure"));
+
+    DataProduct dp = validDataProduct();
+
+    RuntimeException ex =
+        assertThrows(
+            RuntimeException.class, () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
+    assertTrue(ex.getMessage().contains("transient DB failure"));
+  }
+
   // ---------------------------------------------------------------------------
   // Intake-form-required enforcement
   // ---------------------------------------------------------------------------
