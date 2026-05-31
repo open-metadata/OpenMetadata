@@ -91,6 +91,89 @@
     .core-object-field-template-credential-block .design-field-label label {
       line-height: 16px;
     }
+
+    .core-object-field-template-gated-credential-block {
+      .core-object-field-template-property-toggle-banner {
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+      }
+
+      .core-object-field-template-property-toggle-banner .design-boolean-field {
+        min-height: 0 !important;
+        gap: 12px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      .core-object-field-template-property-toggle-banner
+        .design-boolean-field
+        label {
+        color: #181d27 !important;
+        font-size: 13.5px !important;
+        font-weight: 600 !important;
+        line-height: 18px !important;
+      }
+
+      .core-object-field-template-property-toggle-banner
+        .design-boolean-field
+        label
+        + div {
+        display: -webkit-box;
+        max-width: 760px;
+        overflow: hidden;
+        color: #535862 !important;
+        font-size: 12.5px !important;
+        line-height: 18px !important;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+
+      .design-field-label + div + div {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+
+      .core-object-field-template-credential-advanced-header {
+        padding: 12px 0 0 !important;
+        border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+        background: transparent !important;
+        color: #414651 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 18px !important;
+      }
+
+      .core-object-field-template-credential-advanced-panel {
+        padding: 16px 0 0 !important;
+        background: transparent !important;
+      }
+
+      .core-object-field-template-advanced-grid {
+        display: grid !important;
+        grid-auto-flow: row dense;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 18px 20px !important;
+        align-items: start;
+      }
+
+      .core-object-field-template-advanced-grid
+        > .core-object-field-template-property {
+        min-width: 0;
+        padding: 0;
+        border-radius: 0;
+        background-color: transparent !important;
+      }
+
+      .core-object-field-template-advanced-grid
+        > .core-object-field-template-property-full-width {
+        grid-column: 1 / -1;
+      }
+    }
   }
 
   .connection-section-card-scope {

@@ -64,6 +64,23 @@ const STORAGE_CONFIG_PROPERTY_ORDER = [
   'assumeRoleSessionName',
   'assumeRoleSourceIdentity',
 ];
+const GATED_CREDENTIAL_PROPERTY_ORDER = [
+  'enabled',
+  'awsAccessKeyId',
+  'awsSecretAccessKey',
+  'awsRegion',
+];
+const GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER = [
+  'awsSessionToken',
+  'endPointURL',
+  'profileName',
+  'assumeRoleArn',
+  'assumeRoleSessionName',
+  'assumeRoleSourceIdentity',
+];
+const GATED_CREDENTIAL_VISIBLE_PROPERTIES = new Set(
+  GATED_CREDENTIAL_PROPERTY_ORDER
+);
 const STATIC_AWS_CREDENTIAL_PROPERTIES = new Set([
   'awsAccessKeyId',
   'awsSecretAccessKey',
@@ -127,6 +144,11 @@ const hasSchemaType = (
 
   return schemaProperty?.type === type;
 };
+
+const isRequiredSchemaProperty = (
+  schema: ObjectFieldTemplateProps['schema'],
+  name: string
+) => (schema.required as string[] | undefined)?.includes(name) ?? false;
 
 const hasLongValueSignal = (
   name: string,
@@ -232,6 +254,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const isAwsS3StorageConfig =
     idSchema.$id.endsWith(STORAGE_CONFIG_ID_SUFFIX) ||
     (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
+  const isGatedCredentialConfig =
+    !isRoot && !schema.additionalProperties && hasIamAuthToggle;
   const isGenericNestedConfig =
     !isRoot &&
     !schema.additionalProperties &&
@@ -251,13 +275,15 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const getPropertyClassName = (
     name: string,
     disabled?: boolean,
-    fullWidth?: boolean
+    fullWidth?: boolean,
+    toggleBanner?: boolean
   ) =>
     classNames(
       'core-object-field-template-property tw:rounded-xl tw:bg-utility-gray-blue-50',
       `core-object-field-template-property-${name}`,
       isRoot && 'tw:p-4',
       fullWidth && 'core-object-field-template-property-full-width',
+      toggleBanner && 'core-object-field-template-property-toggle-banner',
       disabled && 'core-object-field-template-property-disabled'
     );
   const getPropertyContent = (element: (typeof properties)[number]) => {
@@ -285,12 +311,19 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     </Button>
   ) : null;
 
+  const isGatedCredentialAdvancedProperty = (name: string) =>
+    isGatedCredentialConfig &&
+    !GATED_CREDENTIAL_VISIBLE_PROPERTIES.has(name) &&
+    !isRequiredSchemaProperty(schema, name);
   const { normalProperties, advancedProperties } = properties.reduce(
     (acc, prop) => {
       if (prop.hidden) {
         return acc;
       }
-      if (ADVANCED_PROPERTIES.has(prop.name)) {
+      if (
+        ADVANCED_PROPERTIES.has(prop.name) ||
+        isGatedCredentialAdvancedProperty(prop.name)
+      ) {
         acc.advancedProperties.push(prop);
       } else {
         acc.normalProperties.push(prop);
@@ -312,8 +345,58 @@ export const CoreObjectFieldTemplate: FunctionComponent<
       return orderProperties(normalProperties, STORAGE_CONFIG_PROPERTY_ORDER);
     }
 
+    if (isGatedCredentialConfig) {
+      return orderProperties(normalProperties, GATED_CREDENTIAL_PROPERTY_ORDER);
+    }
+
     return normalProperties;
   })();
+  const orderedAdvancedProperties = isGatedCredentialConfig
+    ? orderProperties(
+        advancedProperties,
+        GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER
+      )
+    : advancedProperties;
+  const getIsFullWidthProperty = (name: string) =>
+    (isGatedCredentialConfig && name === 'enabled') ||
+    shouldSpanFullWidth({
+      name,
+      schema,
+      uiSchema,
+    });
+  const getIsToggleBannerProperty = (name: string) =>
+    isGatedCredentialConfig && name === 'enabled';
+  const getAdvancedHeaderLabel = () => {
+    if (isGatedCredentialConfig) {
+      return `${t('label.show')} ${t('label.advanced-config')} (${
+        orderedAdvancedProperties.length
+      })`;
+    }
+
+    return title
+      ? `${title} ${t('label.advanced-config')}`
+      : t('label.advanced-config');
+  };
+  const renderProperty = (element: (typeof properties)[number]) => {
+    const isDisabled = isStaticCredentialDisabled(element.name);
+    const isFullWidth = getIsFullWidthProperty(element.name);
+    const isToggleBanner = getIsToggleBannerProperty(element.name);
+
+    return (
+      <div
+        aria-disabled={isDisabled || undefined}
+        className={getPropertyClassName(
+          element.name,
+          isDisabled,
+          isFullWidth,
+          isToggleBanner
+        )}
+        data-field-name={element.name}
+        key={element.name}>
+        {getPropertyContent(element)}
+      </div>
+    );
+  };
 
   const propertiesContent = (
     <>
@@ -336,28 +419,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             {addButton}
           </div>
         )}
-        {orderedNormalProperties.map((element) => {
-          const isDisabled = isStaticCredentialDisabled(element.name);
-          const isFullWidth = shouldSpanFullWidth({
-            name: element.name,
-            schema,
-            uiSchema,
-          });
-
-          return (
-            <div
-              aria-disabled={isDisabled || undefined}
-              className={getPropertyClassName(
-                element.name,
-                isDisabled,
-                isFullWidth
-              )}
-              data-field-name={element.name}
-              key={element.name}>
-              {getPropertyContent(element)}
-            </div>
-          );
-        })}
+        {orderedNormalProperties.map(renderProperty)}
         {!isRoot &&
           schema.additionalProperties &&
           normalProperties.length === 0 && (
@@ -370,24 +432,26 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           )}
       </div>
 
-      {advancedProperties.length > 0 && (
+      {orderedAdvancedProperties.length > 0 && (
         <div className="tw:my-3">
           <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
             <AccordionItem id={`${idSchema.$id}-advanced`}>
-              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50">
-                {title
-                  ? `${title} ${t('label.advanced-config')}`
-                  : t('label.advanced-config')}
+              <AccordionHeader
+                className={classNames(
+                  'tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50',
+                  isGatedCredentialConfig &&
+                    'core-object-field-template-credential-advanced-header'
+                )}>
+                {getAdvancedHeaderLabel()}
               </AccordionHeader>
-              <AccordionPanel className="tw:flex tw:flex-col tw:bg-utility-gray-blue-50 tw:gap-4 tw:border-t-0">
-                {advancedProperties.map((element) => (
-                  <div
-                    className={getPropertyClassName(element.name)}
-                    data-field-name={element.name}
-                    key={element.name}>
-                    {element.content}
-                  </div>
-                ))}
+              <AccordionPanel
+                className={classNames(
+                  'tw:bg-utility-gray-blue-50 tw:border-t-0',
+                  isGatedCredentialConfig
+                    ? 'core-object-field-template-credential-advanced-panel core-object-field-template-advanced-grid'
+                    : 'tw:flex tw:flex-col tw:gap-4'
+                )}>
+                {orderedAdvancedProperties.map(renderProperty)}
               </AccordionPanel>
             </AccordionItem>
           </Accordion>
@@ -414,6 +478,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             'core-object-field-template-sample-data-section',
           isSampleDataConfig && 'core-object-field-template-sample-data-config',
           isAwsS3StorageConfig && 'core-object-field-template-storage-config',
+          isGatedCredentialConfig &&
+            'core-object-field-template-gated-credential-block',
           isGenericNestedConfig && 'core-object-field-template-credential-block'
         )}
         data-additional-properties={

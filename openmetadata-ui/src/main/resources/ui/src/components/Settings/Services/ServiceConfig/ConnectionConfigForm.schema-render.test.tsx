@@ -14,7 +14,13 @@
 import Form from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   getFilteredSchema,
@@ -182,5 +188,33 @@ describe('ConnectionConfigForm schema rendering', () => {
         '.core-object-field-template-property-secureConnectBundle'
       )
     ).toHaveClass('core-object-field-template-property-full-width');
+  });
+
+  it('organizes Athena AWS credentials into visible essentials and collapsed advanced fields', async () => {
+    const { container } = await renderConnectionSchema('Athena');
+    const awsConfigBlock = container.querySelector(
+      '[data-field-id="root/awsConfig"]'
+    );
+
+    expect(awsConfigBlock).toHaveClass(
+      'core-object-field-template-gated-credential-block'
+    );
+    expect(
+      awsConfigBlock?.querySelector(
+        '.core-object-field-template-property-enabled'
+      )
+    ).toHaveClass('core-object-field-template-property-toggle-banner');
+    expect(
+      Array.from(
+        awsConfigBlock?.querySelectorAll(
+          ':scope > .core-object-field-template-body > .core-object-field-template-property'
+        ) ?? []
+      ).map((element) => element.getAttribute('data-field-name'))
+    ).toEqual(['enabled', 'awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
+    expect(
+      within(awsConfigBlock as HTMLElement).getByRole('button', {
+        name: 'label.show label.advanced-config (6)',
+      })
+    ).toBeInTheDocument();
   });
 });

@@ -454,8 +454,16 @@ describe('FormBuilderV1 templates', () => {
       container.querySelector('.core-object-field-template-storage-config')
     ).toBeInTheDocument();
     expect(
+      container.querySelector(
+        '.core-object-field-template-gated-credential-block'
+      )
+    ).toBeInTheDocument();
+    expect(
       container.querySelector('.core-object-field-template-property-enabled')
     ).toHaveTextContent('enabled field');
+    expect(
+      container.querySelector('.core-object-field-template-property-enabled')
+    ).toHaveClass('core-object-field-template-property-toggle-banner');
     expect(
       container.querySelector('.core-object-field-template-property-awsRegion')
     ).toHaveTextContent('region field');
@@ -465,22 +473,29 @@ describe('FormBuilderV1 templates', () => {
           '.core-object-field-template-storage-config > .core-object-field-template-body > .core-object-field-template-property'
         )
       ).map((element) => element.getAttribute('data-field-name'))
-    ).toEqual([
-      'enabled',
-      'awsAccessKeyId',
-      'awsSecretAccessKey',
-      'awsRegion',
-      'awsSessionToken',
-      'assumeRoleArn',
-    ]);
+    ).toEqual(['enabled', 'awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
     expect(screen.getByTestId('field-awsAccessKeyId')).toBeDisabled();
     expect(screen.getByTestId('field-awsSecretAccessKey')).toBeDisabled();
-    expect(screen.getByTestId('field-awsSessionToken')).toBeDisabled();
     expect(
       container.querySelector(
         '.core-object-field-template-property-awsAccessKeyId'
       )
     ).toHaveClass('core-object-field-template-property-disabled');
+
+    const advancedCredentialToggle = screen.getByRole('button', {
+      name: 'label.show label.advanced-config (2)',
+    });
+
+    expect(
+      screen.queryByTestId('field-awsSessionToken')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(advancedCredentialToggle);
+
+    expect(screen.getByTestId('field-awsSessionToken')).toBeDisabled();
+    expect(
+      container.querySelector('.core-object-field-template-advanced-grid')
+    ).toBeInTheDocument();
   });
 
   it('uses a generic two-column layout for nested credential configs', () => {
