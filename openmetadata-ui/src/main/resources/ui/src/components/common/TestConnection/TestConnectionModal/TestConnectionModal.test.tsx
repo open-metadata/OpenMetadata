@@ -64,31 +64,37 @@ describe('TestConnectionModal', () => {
   it('Should render the steps and their results', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    expect(screen.getByText('Step 1')).toBeInTheDocument();
-    expect(screen.getByText('Step 2')).toBeInTheDocument();
+    expect(screen.getByText('label.establish-connection')).toBeInTheDocument();
+    expect(screen.getAllByText('Step 2').length).toBeGreaterThan(0);
   });
 
   it('Should render the success icon for a passing step', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    expect(screen.getByTestId('success-badge')).toBeInTheDocument();
+    expect(screen.getAllByTestId('success-badge').length).toBeGreaterThan(0);
   });
 
   it('Should render the fail icon for a failing step', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+    expect(screen.getAllByTestId('fail-badge').length).toBeGreaterThan(0);
   });
 
   it('Should render the awaiting status for a step being tested', () => {
-    render(<TestConnectionModal {...commonProps} isTestingConnection />);
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[]}
+      />
+    );
 
-    expect(screen.getAllByText('label.awaiting-status...')).toHaveLength(2);
+    expect(screen.getAllByText('label.queued')).toHaveLength(1);
   });
 
   it('Should call onCancel when the cancel button is clicked', () => {
-    render(<TestConnectionModal {...commonProps} />);
-    const cancelButton = screen.getByText('Cancel');
+    render(<TestConnectionModal {...commonProps} isTestingConnection />);
+    const cancelButton = screen.getByText('label.cancel');
 
     fireEvent.click(cancelButton);
 
@@ -97,7 +103,7 @@ describe('TestConnectionModal', () => {
 
   it('Should call onConfirm when the confirm button is clicked', () => {
     render(<TestConnectionModal {...commonProps} />);
-    const okButton = screen.getByText('OK');
+    const okButton = screen.getByText('label.done');
 
     fireEvent.click(okButton);
 
@@ -197,7 +203,9 @@ describe('TestConnectionModal', () => {
   it('should render the raw connection log with a copy action', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    expect(screen.getByText('label.raw-connection-log')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.show-raw-connection-log-lines')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('copy-raw-log-button')).toBeInTheDocument();
   });
 });

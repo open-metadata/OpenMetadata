@@ -37,11 +37,13 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   getFilteredSchema,
+  getMissingRequiredFieldsCount,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
+import { shouldTestConnection } from '../../../../utils/ServiceUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
 import {
@@ -73,6 +75,7 @@ const ConnectionConfigForm = ({
   onSave,
   onFocus,
   disableTestConnection = false,
+  requireTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
@@ -89,6 +92,8 @@ const ConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
+  const [isConnectionTestSuccessful, setIsConnectionTestSuccessful] =
+    useState(false);
 
   const validConfig = useMemo(() => buildValidConfig(data), [data]);
 
@@ -145,6 +150,7 @@ const ConnectionConfigForm = ({
 
   const handleFormChange = (event: IChangeEvent<ConfigData>) => {
     setCurrentFormData((event.formData ?? {}) as ConfigData);
+    setIsConnectionTestSuccessful(false);
   };
 
   const customFields: RegistryFieldsType = {
@@ -192,6 +198,34 @@ const ConnectionConfigForm = ({
     );
   }, [connSch.uiSchema, schemaWithoutDefaultFilterPatternFields]);
 
+  const shouldShowTestConnection = useMemo(
+    () =>
+      !isEmpty(connSch.schema) &&
+      shouldTestConnection(serviceType) &&
+      !disableTestConnection,
+    [connSch.schema, disableTestConnection, serviceType]
+  );
+
+  const shouldRequireSuccessfulTestConnection = useMemo(
+    () => requireTestConnection && shouldShowTestConnection,
+    [requireTestConnection, shouldShowTestConnection]
+  );
+
+  const missingRequiredFieldsCount = useMemo(() => {
+    if (isEmpty(connSch.schema)) {
+      return 0;
+    }
+
+    return getMissingRequiredFieldsCount(
+      schemaWithoutDefaultFilterPatternFields,
+      currentFormData
+    );
+  }, [
+    connSch.schema,
+    currentFormData,
+    schemaWithoutDefaultFilterPatternFields,
+  ]);
+
   const isSubmitDisabled = useMemo(() => {
     if (isEmpty(connSch.schema)) {
       return false;
@@ -206,17 +240,25 @@ const ConnectionConfigForm = ({
       hasMissingRequiredFlatCredential(
         schemaWithoutDefaultFilterPatternFields,
         currentFormData
-      )
+      ) ||
+      (shouldRequireSuccessfulTestConnection && !isConnectionTestSuccessful)
     );
   }, [
     connSch.schema,
     currentFormData,
+    isConnectionTestSuccessful,
     schemaWithoutDefaultFilterPatternFields,
+    shouldRequireSuccessfulTestConnection,
   ]);
 
   useEffect(() => {
     setCurrentFormData(validConfig);
+    setIsConnectionTestSuccessful(false);
   }, [validConfig]);
+
+  useEffect(() => {
+    setIsConnectionTestSuccessful(false);
+  }, [serviceCategory, serviceType]);
 
   useEffect(() => {
     const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
@@ -250,14 +292,16 @@ const ConnectionConfigForm = ({
           type="info"
         />
       )}
-      {!isEmpty(connSch.schema) && isAirflowAvailable && (
+      {shouldShowTestConnection && (
         <TestConnection
           connectionType={serviceType}
           getData={() => currentFormData}
           hostIp={hostIp}
           isTestingDisabled={disableTestConnection}
+          missingRequiredFieldsCount={missingRequiredFieldsCount}
           serviceCategory={serviceCategory}
           serviceName={data?.name}
+          onTestConnectionStatusChange={setIsConnectionTestSuccessful}
           onValidateFormRequiredFields={handleRequiredFieldsValidation}
         />
       )}

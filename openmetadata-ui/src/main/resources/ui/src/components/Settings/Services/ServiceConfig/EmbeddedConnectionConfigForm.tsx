@@ -36,10 +36,12 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   getFilteredSchema,
+  getMissingRequiredFieldsCount,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
+import { shouldTestConnection } from '../../../../utils/ServiceUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -58,6 +60,7 @@ const EmbeddedConnectionConfigForm = ({
   onSave,
   onFocus,
   disableTestConnection = false,
+  requireTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
@@ -74,6 +77,8 @@ const EmbeddedConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
+  const [isConnectionTestSuccessful, setIsConnectionTestSuccessful] =
+    useState(false);
 
   const validConfig = useMemo(() => buildValidConfig(data), [data]);
 
@@ -130,6 +135,7 @@ const EmbeddedConnectionConfigForm = ({
 
   const handleFormChange = (event: IChangeEvent<ConfigData>) => {
     setCurrentFormData((event.formData ?? {}) as ConfigData);
+    setIsConnectionTestSuccessful(false);
   };
 
   const connectionSchema = connSch.schema as RJSFSchema;
@@ -166,6 +172,34 @@ const EmbeddedConnectionConfigForm = ({
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);
 
+  const shouldShowTestConnection = useMemo(
+    () =>
+      !isEmpty(connSch.schema) &&
+      shouldTestConnection(serviceType) &&
+      !disableTestConnection,
+    [connSch.schema, disableTestConnection, serviceType]
+  );
+
+  const shouldRequireSuccessfulTestConnection = useMemo(
+    () => requireTestConnection && shouldShowTestConnection,
+    [requireTestConnection, shouldShowTestConnection]
+  );
+
+  const missingRequiredFieldsCount = useMemo(() => {
+    if (isEmpty(connSch.schema)) {
+      return 0;
+    }
+
+    return getMissingRequiredFieldsCount(
+      schemaWithoutDefaultFilterPatternFields,
+      currentFormData
+    );
+  }, [
+    connSch.schema,
+    currentFormData,
+    schemaWithoutDefaultFilterPatternFields,
+  ]);
+
   const isSubmitDisabled = useMemo(() => {
     if (isEmpty(connSch.schema)) {
       return false;
@@ -180,17 +214,25 @@ const EmbeddedConnectionConfigForm = ({
       hasMissingRequiredFlatCredential(
         schemaWithoutDefaultFilterPatternFields,
         currentFormData
-      )
+      ) ||
+      (shouldRequireSuccessfulTestConnection && !isConnectionTestSuccessful)
     );
   }, [
     connSch.schema,
     currentFormData,
+    isConnectionTestSuccessful,
     schemaWithoutDefaultFilterPatternFields,
+    shouldRequireSuccessfulTestConnection,
   ]);
 
   useEffect(() => {
     setCurrentFormData(validConfig);
+    setIsConnectionTestSuccessful(false);
   }, [validConfig]);
+
+  useEffect(() => {
+    setIsConnectionTestSuccessful(false);
+  }, [serviceCategory, serviceType]);
 
   useEffect(() => {
     const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
@@ -253,14 +295,16 @@ const EmbeddedConnectionConfigForm = ({
               type="info"
             />
           )}
-          {!isEmpty(connSch.schema) && isAirflowAvailable && (
+          {shouldShowTestConnection && (
             <TestConnection
               connectionType={serviceType}
               getData={() => currentFormData}
               hostIp={hostIp}
               isTestingDisabled={disableTestConnection}
+              missingRequiredFieldsCount={missingRequiredFieldsCount}
               serviceCategory={serviceCategory}
               serviceName={data?.name}
+              onTestConnectionStatusChange={setIsConnectionTestSuccessful}
               onValidateFormRequiredFields={handleRequiredFieldsValidation}
             />
           )}

@@ -11,31 +11,30 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Collapse,
-  Modal,
-  Progress,
-  ProgressProps,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { isUndefined } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Copy01,
+  RefreshCcw01,
+  XCircle,
+  XClose,
+} from '@untitledui/icons';
+import { Button, Modal, Progress, ProgressProps } from 'antd';
+import classNames from 'classnames';
+import { isUndefined, startCase } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
+import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { partitionConnectionSteps } from '../../../../utils/TestConnectionUtils';
 import InlineAlert from '../../InlineAlert/InlineAlert';
-import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
 import './test-connection-modal.less';
-
-const { Panel } = Collapse;
 
 interface TestConnectionModalProps {
   isOpen: boolean;
@@ -54,7 +53,28 @@ interface TestConnectionModalProps {
   handleCloseErrorMessage: () => void;
   serviceType?: string;
   hostIp?: string;
+  connectionType?: string;
+  connectionDisplayName?: string;
 }
+
+const STEP_LABEL_KEYS: Record<string, string> = {
+  CheckAccess: 'message.test-connection-step-check-access',
+  GetDatabases: 'message.test-connection-step-get-databases',
+  GetSchemas: 'message.test-connection-step-get-schemas',
+  GetTables: 'message.test-connection-step-get-tables',
+  GetViews: 'message.test-connection-step-get-views',
+  GetQueries: 'message.test-connection-step-get-queries',
+  GetTags: 'message.test-connection-step-get-tags',
+  GetSampleData: 'message.test-connection-step-get-sample-data',
+  GetStoredProcedures: 'message.test-connection-step-get-stored-procedures',
+};
+
+type ConnectionStepState =
+  | 'failed'
+  | 'passed'
+  | 'queued'
+  | 'skipped'
+  | 'warning';
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
   isOpen,
@@ -70,15 +90,25 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   handleCloseErrorMessage,
   serviceType,
   hostIp,
+  connectionType,
+  connectionDisplayName,
 }) => {
   const { t } = useTranslation();
 
   const [message, setMessage] = useState<string>();
+  const [showRawLog, setShowRawLog] = useState(false);
+  const [expandedStepName, setExpandedStepName] = useState<string>();
 
-  const getConnectionStepResult = (step: TestConnectionStep) =>
-    testConnectionStepResult.find(
-      (resultStep) => resultStep.name === step.name
-    );
+  const resultByName = useMemo(
+    () =>
+      new Map(testConnectionStepResult.map((result) => [result.name, result])),
+    [testConnectionStepResult]
+  );
+
+  const getConnectionStepResult = useCallback(
+    (step: TestConnectionStep) => resultByName.get(step.name),
+    [resultByName]
+  );
 
   // The connection "gate" establishes connectivity; capability checks only run
   // once it passes. Splitting them lets us show a real "Didn't run" state for the
@@ -91,6 +121,25 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   const gateResult = gateStep ? getConnectionStepResult(gateStep) : undefined;
   const connectionFailed =
     !isTestingConnection && !isUndefined(gateResult) && !gateResult.passed;
+
+  const passedCount = useMemo(
+    () => testConnectionStepResult.filter((result) => result.passed).length,
+    [testConnectionStepResult]
+  );
+
+  const totalCount = testConnectionStep.length;
+
+  const progressPercent = totalCount
+    ? Math.min(
+        100,
+        Math.max(progress, Math.round((passedCount / totalCount) * 100))
+      )
+    : progress;
+
+  const isComplete = !isTestingConnection && progress >= 100;
+  const isSuccessful =
+    isComplete && totalCount > 0 && passedCount === totalCount;
+  const isFailed = isComplete && !isSuccessful;
 
   const rawLog = useMemo(
     () =>
@@ -106,10 +155,173 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   );
 
   const { onCopyToClipBoard } = useClipboard(rawLog);
+  const rawLogLineCount = rawLog
+    ? rawLog.split('\n').filter((line) => line.trim()).length
+    : 0;
 
   const getProgressFormat: ProgressProps['format'] = (progress) => (
     <span data-testid="progress-bar-value">{`${progress}%`}</span>
   );
+
+  const serviceLogo = useMemo(
+    () =>
+      connectionType
+        ? getServiceLogo(connectionType, 'test-connection-service-logo-img')
+        : null,
+    [connectionType]
+  );
+
+  const getStepLabel = (step: TestConnectionStep) => {
+    const labelKey = STEP_LABEL_KEYS[step.name];
+
+    return labelKey ? t(labelKey) : startCase(step.name);
+  };
+
+  const getStepState = (
+    step: TestConnectionStep,
+    result?: TestConnectionStepResult
+  ): ConnectionStepState => {
+    if (result) {
+      return result.passed ? 'passed' : step.mandatory ? 'failed' : 'warning';
+    }
+
+    if (connectionFailed && gateStep?.name !== step.name) {
+      return 'skipped';
+    }
+
+    return 'queued';
+  };
+
+  const getStepStatusLabel = (state: ConnectionStepState) => {
+    switch (state) {
+      case 'passed':
+        return t('label.passed');
+      case 'failed':
+        return t('label.failed');
+      case 'warning':
+        return t('label.warning');
+      case 'skipped':
+        return t('message.connection-not-established');
+      case 'queued':
+      default:
+        return t('label.queued');
+    }
+  };
+
+  const getStepDetails = (
+    step: TestConnectionStep,
+    result?: TestConnectionStepResult
+  ) => {
+    const resultDetails = [result?.message, result?.errorLog]
+      .filter(Boolean)
+      .join('\n');
+
+    return (
+      resultDetails ||
+      step.description ||
+      t('message.test-connection-step-queued')
+    );
+  };
+
+  const renderStateIcon = (state: ConnectionStepState) => {
+    if (state === 'passed') {
+      return (
+        <CheckCircle
+          className="test-connection-state-icon"
+          data-testid="success-badge"
+          size={18}
+        />
+      );
+    }
+
+    if (state === 'failed') {
+      return (
+        <XCircle
+          className="test-connection-state-icon"
+          data-testid="fail-badge"
+          size={18}
+        />
+      );
+    }
+
+    if (state === 'warning') {
+      return (
+        <AlertTriangle
+          className="test-connection-state-icon"
+          data-testid="warning-badge"
+          size={18}
+        />
+      );
+    }
+
+    return <span className="test-connection-state-icon queued" />;
+  };
+
+  const renderStepRow = (step: TestConnectionStep) => {
+    const result = getConnectionStepResult(step);
+    const state = getStepState(step, result);
+    const isExpanded = expandedStepName === step.name;
+
+    return (
+      <div
+        className={classNames('test-connection-check-row', {
+          [`test-connection-check-row-${state}`]: state,
+          'test-connection-check-row-expanded': isExpanded,
+        })}
+        data-testid={`test-connection-step-${step.name}`}
+        key={step.name}>
+        <button
+          className="test-connection-check-row-button"
+          type="button"
+          onClick={() =>
+            setExpandedStepName((current) =>
+              current === step.name ? undefined : step.name
+            )
+          }>
+          <div className="test-connection-check-status">
+            {renderStateIcon(state)}
+          </div>
+          <div className="test-connection-check-copy">
+            <div className="test-connection-check-title">
+              {getStepLabel(step)}
+            </div>
+            <div className="test-connection-check-description">
+              {step.description}
+            </div>
+          </div>
+          <div className="test-connection-check-meta">
+            <span className="test-connection-method-chip">{step.name}</span>
+            {step.mandatory && (
+              <span className="test-connection-required-chip">
+                {t('label.required')}
+              </span>
+            )}
+            <span className="test-connection-result-text">
+              {getStepStatusLabel(state)}
+            </span>
+            {isExpanded ? (
+              <ChevronDown className="test-connection-chevron" size={18} />
+            ) : (
+              <ChevronRight className="test-connection-chevron" size={18} />
+            )}
+          </div>
+        </button>
+        {isExpanded && (
+          <pre className="test-connection-step-log">
+            {getStepDetails(step, result)}
+          </pre>
+        )}
+      </div>
+    );
+  };
+
+  const handleModalClose = () => {
+    if (isTestingConnection) {
+      onCancel();
+    } else {
+      onConfirm();
+    }
+  };
 
   useEffect(() => {
     const msg = t('message.test-connection-taking-too-long.default', {
@@ -125,22 +337,55 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
     }
   }, [hostIp]);
 
+  useEffect(() => {
+    if (isTestingConnection || expandedStepName) {
+      return;
+    }
+
+    const firstStepWithResult = capabilitySteps.find((step) =>
+      getConnectionStepResult(step)
+    );
+
+    if (firstStepWithResult) {
+      setExpandedStepName(firstStepWithResult.name);
+    }
+  }, [
+    capabilitySteps,
+    expandedStepName,
+    getConnectionStepResult,
+    isTestingConnection,
+  ]);
+
   return (
     <Modal
       centered
-      bodyStyle={{ padding: '16px 0px 16px 0px' }}
+      className="test-connection-status-modal"
       closable={false}
       data-testid="test-connection-modal"
+      footer={null}
       maskClosable={false}
       open={isOpen}
-      title={t('label.connection-status')}
-      width={748}
-      onCancel={onCancel}
-      onOk={onConfirm}>
-      <Space
-        className="p-x-md w-full overflow-hidden"
-        direction="vertical"
-        size={16}>
+      width={920}
+      onCancel={handleModalClose}>
+      <div className="test-connection-modal-header">
+        <div className="test-connection-modal-service-icon">{serviceLogo}</div>
+        <div className="test-connection-modal-title-group">
+          <div className="test-connection-modal-title">
+            {t('label.connection-status')}
+          </div>
+          <div className="test-connection-modal-subtitle">
+            {connectionDisplayName}
+          </div>
+        </div>
+        <Button
+          className="test-connection-modal-close"
+          data-testid="test-connection-close"
+          icon={<XClose size={18} />}
+          type="text"
+          onClick={handleModalClose}
+        />
+      </div>
+      <div className="test-connection-modal-body">
         {errorMessage && (
           <InlineAlert
             description={errorMessage.description}
@@ -150,26 +395,15 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           />
         )}
 
-        <Progress
-          className="test-connection-progress-bar"
-          format={getProgressFormat}
-          percent={progress}
-          strokeColor="#B3D4F4"
-        />
         {isConnectionTimeout ? (
-          <Space
-            align="center"
-            className="timeout-widget justify-center w-full"
-            data-testid="test-connection-timeout-widget"
-            direction="vertical"
-            size={20}>
+          <div
+            className="timeout-widget"
+            data-testid="test-connection-timeout-widget">
             <IconTimeOut height={100} width={100} />
-            <Typography.Title level={5}>
+            <div className="test-connection-timeout-title">
               {t('label.connection-timeout')}
-            </Typography.Title>
-            <Typography.Text className="text-grey-muted">
-              {message}
-            </Typography.Text>
+            </div>
+            <div className="test-connection-timeout-message">{message}</div>
             <Button
               ghost
               className="try-again-button"
@@ -179,69 +413,162 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
               onClick={onTestConnection}>
               {t('label.try-again')}
             </Button>
-          </Space>
+          </div>
         ) : (
           <>
+            <div
+              className={classNames('test-connection-status-banner', {
+                'test-connection-status-banner-success': isSuccessful,
+                'test-connection-status-banner-failed': isFailed,
+                'test-connection-status-banner-running': isTestingConnection,
+              })}>
+              <div>
+                <div className="test-connection-status-title">
+                  {isTestingConnection
+                    ? t('message.test-connection-running-checks', {
+                        passed: passedCount,
+                        total: totalCount,
+                      })
+                    : isSuccessful
+                    ? t('message.test-connection-verified')
+                    : t(TEST_CONNECTION_FAILURE_MESSAGE)}
+                </div>
+                <div className="test-connection-status-subtitle">
+                  {t('message.test-connection-checks-passed-count', {
+                    passed: passedCount,
+                    total: totalCount,
+                  })}
+                </div>
+              </div>
+              <Progress
+                className="test-connection-progress-bar"
+                format={getProgressFormat}
+                percent={progressPercent}
+                strokeColor={isSuccessful ? '#12B76A' : '#1570EF'}
+              />
+            </div>
+
             {gateStep && (
-              <div data-testid="connection-gate-phase">
-                <Typography.Text className="text-xss text-grey-muted m-b-xss d-block">
-                  {t('label.establish-connection')}
-                </Typography.Text>
-                <ConnectionStepCard
-                  isTestingConnection={isTestingConnection}
-                  testConnectionStep={gateStep}
-                  testConnectionStepResult={gateResult}
-                />
+              <div
+                className={classNames('test-connection-gate-card', {
+                  'test-connection-gate-card-passed': gateResult?.passed,
+                  'test-connection-gate-card-failed':
+                    gateResult && !gateResult.passed,
+                })}
+                data-testid="connection-gate-phase">
+                <div className="test-connection-gate-main">
+                  <div className="test-connection-gate-copy">
+                    <div className="test-connection-gate-title">
+                      {t('label.establish-connection')}
+                    </div>
+                    <div className="test-connection-gate-description">
+                      {gateResult?.message ||
+                        (gateResult?.passed
+                          ? t('message.test-connection-gate-success')
+                          : gateStep.description)}
+                    </div>
+                  </div>
+                  <div className="test-connection-gate-meta">
+                    <span className="test-connection-gate-chip">
+                      {t('label.gate')}
+                    </span>
+                    {renderStateIcon(getStepState(gateStep, gateResult))}
+                    <ChevronDown size={18} />
+                  </div>
+                </div>
+                <div className="test-connection-gate-pills">
+                  <span>{t('label.resolve-host')}</span>
+                  <span>{t('label.open-socket')}</span>
+                  <span>{t('label.authenticate')}</span>
+                  <span>{t('label.open-session')}</span>
+                </div>
               </div>
             )}
 
             {capabilitySteps.length > 0 && (
-              <div data-testid="capability-checks-phase">
-                <Typography.Text className="text-xss text-grey-muted m-b-xss d-block">
-                  {t('label.capability-check-plural')}
-                  {connectionFailed &&
-                    ` · ${t('message.connection-not-established')}`}
-                </Typography.Text>
-                <Space className="w-full" direction="vertical" size={16}>
-                  {capabilitySteps.map((step) => (
-                    <ConnectionStepCard
-                      connectionFailed={connectionFailed}
-                      isTestingConnection={isTestingConnection}
-                      key={step.name}
-                      testConnectionStep={step}
-                      testConnectionStepResult={getConnectionStepResult(step)}
-                    />
-                  ))}
-                </Space>
+              <div
+                className="test-connection-capability-section"
+                data-testid="capability-checks-phase">
+                <div className="test-connection-section-header">
+                  <span>{t('label.capability-check-plural')}</span>
+                  <span>
+                    {t('message.test-connection-checks-passed-count', {
+                      passed: capabilitySteps.filter(
+                        (step) => getConnectionStepResult(step)?.passed
+                      ).length,
+                      total: capabilitySteps.length,
+                    })}
+                  </span>
+                </div>
+                <div className="test-connection-check-list">
+                  {capabilitySteps.map(renderStepRow)}
+                </div>
               </div>
             )}
 
             {rawLog && (
-              <Collapse ghost className="raw-connection-log">
-                <Panel
-                  data-testid="raw-connection-log"
-                  extra={
-                    <Tooltip title={t('message.copy-to-clipboard')}>
-                      <Button
-                        className="flex-center bg-white"
-                        data-testid="copy-raw-log-button"
-                        icon={<CopyIcon height={16} width={16} />}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onCopyToClipBoard();
-                        }}
-                      />
-                    </Tooltip>
-                  }
-                  header={t('label.raw-connection-log')}
-                  key="raw-log">
-                  <pre className="raw-connection-log-content">{rawLog}</pre>
-                </Panel>
-              </Collapse>
+              <div className="raw-connection-log">
+                <button
+                  className="raw-connection-log-toggle"
+                  type="button"
+                  onClick={() => setShowRawLog((current) => !current)}>
+                  {showRawLog ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronRight size={16} />
+                  )}
+                  {showRawLog
+                    ? t('message.hide-raw-connection-log-lines', {
+                        count: rawLogLineCount,
+                      })
+                    : t('message.show-raw-connection-log-lines', {
+                        count: rawLogLineCount,
+                      })}
+                </button>
+                <Button
+                  className="raw-connection-log-copy"
+                  data-testid="copy-raw-log-button"
+                  icon={<Copy01 size={16} />}
+                  type="text"
+                  onClick={onCopyToClipBoard}
+                />
+                {showRawLog && (
+                  <pre
+                    className="raw-connection-log-content"
+                    data-testid="raw-connection-log">
+                    {rawLog}
+                  </pre>
+                )}
+              </div>
             )}
           </>
         )}
-      </Space>
+      </div>
+      <div className="test-connection-modal-footer">
+        <Button
+          className="test-connection-modal-copy-button"
+          data-testid="copy-log-button"
+          disabled={!rawLog}
+          icon={<Copy01 size={16} />}
+          onClick={onCopyToClipBoard}>
+          {t('label.copy-log')}
+        </Button>
+        {isConnectionTimeout ? (
+          <Button
+            className="test-connection-footer-try-again"
+            icon={<RefreshCcw01 size={16} />}
+            type="primary"
+            onClick={onTestConnection}>
+            {t('label.try-again')}
+          </Button>
+        ) : isTestingConnection ? (
+          <Button onClick={onCancel}>{t('label.cancel')}</Button>
+        ) : (
+          <Button type="primary" onClick={onConfirm}>
+            {t('label.done')}
+          </Button>
+        )}
+      </div>
     </Modal>
   );
 };

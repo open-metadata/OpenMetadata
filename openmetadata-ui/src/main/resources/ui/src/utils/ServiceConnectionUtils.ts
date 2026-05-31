@@ -278,6 +278,58 @@ const isFilledValue = (value: unknown): boolean => {
   return true;
 };
 
+const getRequiredFields = (schema: Record<string, unknown>): string[] => {
+  const required = schema.required;
+
+  return Array.isArray(required)
+    ? required.filter((field): field is string => typeof field === 'string')
+    : [];
+};
+
+const getMissingSchemaRequiredFieldsCount = (
+  schema: Record<string, unknown>,
+  formData?: Record<string, unknown>
+): number => {
+  const oneOf = schema.oneOf;
+  if (Array.isArray(oneOf)) {
+    const counts = oneOf
+      .filter((branch): branch is Record<string, unknown> => {
+        return Boolean(branch) && typeof branch === 'object';
+      })
+      .map((branch) => getMissingSchemaRequiredFieldsCount(branch, formData));
+
+    return counts.length > 0 ? Math.min(...counts) : 0;
+  }
+
+  const properties = (schema.properties ?? {}) as JsonObject;
+
+  return getRequiredFields(schema).reduce((count, key) => {
+    const value = formData?.[key];
+    const propertySchema = properties[key];
+
+    if (!isFilledValue(value)) {
+      return count + 1;
+    }
+
+    if (
+      propertySchema &&
+      typeof propertySchema === 'object' &&
+      !Array.isArray(value) &&
+      typeof value === 'object'
+    ) {
+      return (
+        count +
+        getMissingSchemaRequiredFieldsCount(
+          propertySchema,
+          value as Record<string, unknown>
+        )
+      );
+    }
+
+    return count;
+  }, 0);
+};
+
 export const hasMissingRequiredFlatCredential = (
   schema: Record<string, unknown>,
   formData: ConfigData
@@ -297,6 +349,33 @@ export const hasMissingRequiredFlatCredential = (
       (key) =>
         !isFilledValue((formData as Record<string, unknown> | undefined)?.[key])
     )
+  );
+};
+
+export const getMissingRequiredFieldsCount = (
+  schema: Record<string, unknown>,
+  formData: ConfigData
+): number => {
+  const formDataRecord = formData as Record<string, unknown>;
+  const missingSchemaFields = getMissingSchemaRequiredFieldsCount(
+    schema,
+    formDataRecord
+  );
+  const credentialKeys = getFlatSecretKeys(schema).secretKeys.filter(
+    (key) => !PASSPHRASE_RE.test(key)
+  );
+  const requiredFields = getRequiredFields(schema);
+  const hasMissingFlatCredential = hasMissingRequiredFlatCredential(
+    schema,
+    formData
+  );
+
+  return (
+    missingSchemaFields +
+    (hasMissingFlatCredential &&
+    !credentialKeys.some((key) => requiredFields.includes(key))
+      ? 1
+      : 0)
   );
 };
 

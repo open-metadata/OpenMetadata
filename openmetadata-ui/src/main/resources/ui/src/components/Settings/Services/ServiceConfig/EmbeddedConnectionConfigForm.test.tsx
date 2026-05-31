@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act, forwardRef } from 'react';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
@@ -67,10 +68,12 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
   buildValidConfig: jest.fn().mockReturnValue({}),
   loadConnectionSchema: jest
     .fn()
-    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
+    .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
+  hasMissingRequiredFlatCredential: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
@@ -88,26 +91,36 @@ jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
 
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
-    jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (
-      <div data-testid="form-builder-v1">
-        {children}
-        <button
-          data-testid="submit-button"
-          onClick={() => onSubmit({ formData })}>
-          Submit
-        </button>
-        <button onClick={onCancel}>Cancel</button>
-      </div>
-    ))
+    jest
+      .fn()
+      .mockImplementation(
+        ({ children, isSubmitDisabled, onSubmit, onCancel }) => (
+          <div data-testid="form-builder-v1">
+            {children}
+            <button
+              data-testid="submit-button"
+              disabled={isSubmitDisabled}
+              onClick={() => onSubmit({ formData })}>
+              Submit
+            </button>
+            <button onClick={onCancel}>Cancel</button>
+          </div>
+        )
+      )
   )
 );
 
 jest.mock('../../../common/TestConnection/TestConnection', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
+  jest.fn().mockImplementation(({ onTestConnectionStatusChange }) => (
+    <div>
       <p data-testid="test-connection">TestConnection</p>
-    ))
+      <button
+        data-testid="mark-test-connection-success"
+        onClick={() => onTestConnectionStatusChange?.(true)}>
+        Success
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -152,6 +165,11 @@ const mockProps = {
 
 describe('EmbeddedConnectionConfigForm', () => {
   beforeEach(() => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+      platform: 'Argo',
+    });
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -197,6 +215,20 @@ describe('EmbeddedConnectionConfigForm', () => {
     expect(await screen.findByTestId('ip-address')).toBeInTheDocument();
   });
 
+  it('renders test connection even when airflow status is unavailable', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: false,
+      platform: 'Argo',
+    });
+
+    await act(async () => {
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('test-connection')).toBeInTheDocument();
+  });
+
   it('calls onSave with formatted form data when submit button clicked', async () => {
     const mockFormatted = { ...formData };
     (formatFormDataForSubmit as jest.Mock).mockReturnValue(mockFormatted);
@@ -211,6 +243,22 @@ describe('EmbeddedConnectionConfigForm', () => {
     expect(formatFormDataForSubmit).toHaveBeenCalledWith(formData);
     expect(mockOnSave).toHaveBeenCalledWith({
       formData: mockFormatted,
+    });
+  });
+
+  it('disables next until the test connection succeeds when required', async () => {
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
+      );
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
     });
   });
 });

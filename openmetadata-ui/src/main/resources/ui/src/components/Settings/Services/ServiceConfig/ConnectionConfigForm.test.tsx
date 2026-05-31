@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act, forwardRef } from 'react';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
@@ -129,6 +130,7 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
   getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
   hasMissingRequiredFlatCredential: jest.fn().mockReturnValue(false),
@@ -179,11 +181,16 @@ jest.mock('../../../common/FormBuilder/FormBuilder', () =>
 );
 
 jest.mock('../../../common/TestConnection/TestConnection', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
+  jest.fn().mockImplementation(({ onTestConnectionStatusChange }) => (
+    <div>
       <p data-testid="test-connection">TestConnection</p>
-    ))
+      <button
+        data-testid="mark-test-connection-success"
+        onClick={() => onTestConnectionStatusChange?.(true)}>
+        Success
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -228,6 +235,11 @@ const mockProps = {
 
 describe('ServiceConfig', () => {
   beforeEach(() => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+      platform: 'Argo',
+    });
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -325,6 +337,20 @@ describe('ServiceConfig', () => {
     });
   });
 
+  it('should disable next until the test connection succeeds when required', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
   it('should disable next until a flat credential method is filled', async () => {
     (hasMissingRequiredFlatCredential as jest.Mock).mockReturnValueOnce(true);
 
@@ -333,6 +359,20 @@ describe('ServiceConfig', () => {
     });
 
     expect(await screen.findByTestId('submit-button')).toBeDisabled();
+  });
+
+  it('should render test connection even when airflow status is unavailable', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: false,
+      platform: 'Argo',
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('test-connection')).toBeInTheDocument();
   });
 
   it('should not display host ip if unable to fetch', async () => {

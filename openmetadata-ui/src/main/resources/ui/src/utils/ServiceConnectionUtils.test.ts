@@ -14,6 +14,7 @@ import { reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import { ServiceNestedConnectionFields } from '../enums/service.enum';
 import {
+  getMissingRequiredFieldsCount,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
@@ -158,5 +159,76 @@ describe('hasMissingRequiredFlatCredential', () => {
         {}
       )
     ).toBe(false);
+  });
+});
+
+describe('getMissingRequiredFieldsCount', () => {
+  it('counts missing top-level required fields', () => {
+    expect(
+      getMissingRequiredFieldsCount(
+        {
+          required: ['username', 'account'],
+          properties: {
+            username: { type: 'string' },
+            account: { type: 'string' },
+          },
+        },
+        {
+          username: 'openmetadata',
+        }
+      )
+    ).toBe(1);
+  });
+
+  it('counts a missing flat credential method as one required field', () => {
+    expect(
+      getMissingRequiredFieldsCount(
+        {
+          required: ['username', 'account', 'warehouse'],
+          properties: {
+            username: { type: 'string' },
+            account: { type: 'string' },
+            warehouse: { type: 'string' },
+            password: { format: 'password' },
+            privateKey: { format: 'password' },
+          },
+        },
+        {}
+      )
+    ).toBe(4);
+  });
+
+  it('counts the least expensive oneOf credential branch', () => {
+    expect(
+      getMissingRequiredFieldsCount(
+        {
+          required: ['authType'],
+          properties: {
+            authType: {
+              oneOf: [
+                {
+                  type: 'object',
+                  required: ['password'],
+                  properties: {
+                    password: { format: 'password' },
+                  },
+                },
+                {
+                  type: 'object',
+                  required: ['privateKey'],
+                  properties: {
+                    privateKey: { format: 'password' },
+                    passphrase: { format: 'password' },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          authType: {},
+        }
+      )
+    ).toBe(1);
   });
 });

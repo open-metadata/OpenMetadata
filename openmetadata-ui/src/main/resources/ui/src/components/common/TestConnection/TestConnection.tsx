@@ -10,15 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip } from 'antd';
+import { AlertTriangle, CheckCircle, XCircle } from '@untitledui/icons';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
-import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
@@ -70,8 +68,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   connectionType,
   serviceName,
   onValidateFormRequiredFields,
+  onTestConnectionStatusChange,
   shouldValidateForm = true,
   showDetails = true,
+  missingRequiredFieldsCount = 0,
   hostIp,
   extraInfo,
 }) => {
@@ -131,6 +131,45 @@ const TestConnection: FC<TestConnectionProps> = ({
     !allowTestConn ||
     !isAirflowAvailable;
 
+  const connectionDisplayName = useMemo(() => {
+    const formData = getData();
+    const connectionData = (formData ?? {}) as Record<string, unknown>;
+    const account = connectionData.account;
+
+    if (
+      connectionType === 'Snowflake' &&
+      typeof account === 'string' &&
+      account.trim()
+    ) {
+      const trimmedAccount = account.trim();
+
+      return trimmedAccount.includes('snowflakecomputing.com')
+        ? trimmedAccount
+        : `${trimmedAccount}.snowflakecomputing.com`;
+    }
+
+    const displayFields = [
+      'hostPort',
+      'host',
+      'hostname',
+      'server',
+      'endpointURL',
+      'brokerEndpoint',
+      'database',
+      'projectId',
+      'account',
+    ];
+
+    for (const field of displayFields) {
+      const value = connectionData[field];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    return serviceName || connectionType;
+  }, [connectionType, getData, serviceName]);
+
   // data fetch handlers
 
   const fetchConnectionDefinition = async () => {
@@ -172,6 +211,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
+    onTestConnectionStatusChange?.(false);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -195,6 +235,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     if (isTestConnectionSuccess) {
       setTestStatus(StatusType.Successful);
       setMessage(t(TEST_CONNECTION_SUCCESS_MESSAGE));
+      onTestConnectionStatusChange?.(true);
     } else {
       const isMandatoryStepsFailing = steps.some(
         (step) => step.mandatory && !step.passed
@@ -205,6 +246,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           ? t(TEST_CONNECTION_FAILURE_MESSAGE)
           : t(TEST_CONNECTION_WARNING_MESSAGE)
       );
+      onTestConnectionStatusChange?.(false);
     }
   };
 
@@ -269,6 +311,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   // handlers
   const testConnection = async () => {
     setIsTestingConnection(true);
+    onTestConnectionStatusChange?.(false);
     setMessage(t(TEST_CONNECTION_TESTING_MESSAGE));
     handleResetState();
 
@@ -322,6 +365,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         setTestStatus(StatusType.Failed);
         setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
         setIsTestingConnection(false);
+        onTestConnectionStatusChange?.(false);
 
         // delete the workflow if workflow is not triggered successfully
         await handleDeleteWorkflow(response.id);
@@ -357,6 +401,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
         setIsTestingConnection(false);
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+        onTestConnectionStatusChange?.(false);
       }, FETCHING_EXPIRY_TIME);
 
       intervalObject.timeoutId = Number(timeoutId);
@@ -369,6 +414,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
       setTestStatus(StatusType.Failed);
+      onTestConnectionStatusChange?.(false);
       if ((error as AxiosError)?.status === 500) {
         setErrorMessage({
           description: t('server.unexpected-response'),
@@ -422,6 +468,68 @@ const TestConnection: FC<TestConnectionProps> = ({
     return title;
   }, [isAirflowAvailable]);
 
+  const connectionCardTitle = useMemo(() => {
+    if (!isAirflowAvailable) {
+      return t('label.platform-service-client-unavailable');
+    }
+
+    if (isTestingConnection) {
+      return t('message.testing-connection');
+    }
+
+    if (testStatus) {
+      return message;
+    }
+
+    return t('message.test-your-connection-to-continue');
+  }, [isAirflowAvailable, isTestingConnection, message, t, testStatus]);
+
+  const connectionCardDescription = useMemo(() => {
+    if (!isAirflowAvailable) {
+      return (
+        <Transi18next
+          i18nKey="message.configure-airflow"
+          renderElement={
+            <a
+              data-testid="airflow-doc-link"
+              href={AIRFLOW_DOCS}
+              rel="noopener noreferrer"
+              target="_blank"
+            />
+          }
+          values={{
+            text: t('label.documentation-lowercase'),
+          }}
+        />
+      );
+    }
+
+    if (isTestingConnection) {
+      return t(TEST_CONNECTION_TESTING_MESSAGE);
+    }
+
+    if (testStatus) {
+      return t('message.test-connection-view-details');
+    }
+
+    if (missingRequiredFieldsCount > 0) {
+      return t(
+        missingRequiredFieldsCount === 1
+          ? 'message.fill-one-required-field-then-test-connection'
+          : 'message.fill-required-fields-then-test-connection',
+        { count: missingRequiredFieldsCount }
+      );
+    }
+
+    return t('message.run-successful-test-to-continue');
+  }, [
+    isAirflowAvailable,
+    isTestingConnection,
+    missingRequiredFieldsCount,
+    t,
+    testStatus,
+  ]);
+
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
@@ -446,69 +554,65 @@ const TestConnection: FC<TestConnectionProps> = ({
         <div
           className="test-connection-card"
           data-testid="test-connection-card">
-          <Space
-            align={testStatus ? 'start' : 'center'}
+          <div
             className="test-connection-card-message"
-            data-testid="message-container"
-            size={8}>
-            {isTestingConnection && <Loader size="small" />}
-            {testStatus === StatusType.Successful && (
-              <SuccessIcon
-                className="status-icon"
-                data-testid="success-badge"
-              />
+            data-testid="message-container">
+            {(isTestingConnection || testStatus) && (
+              <div
+                className={classNames('test-connection-card-icon', {
+                  'test-connection-card-icon-success':
+                    testStatus === StatusType.Successful,
+                  'test-connection-card-icon-failed':
+                    testStatus === StatusType.Failed,
+                  'test-connection-card-icon-warning': testStatus === 'Warning',
+                })}>
+                {isTestingConnection && <Loader size="small" />}
+                {testStatus === StatusType.Successful && (
+                  <CheckCircle
+                    className="status-icon"
+                    data-testid="success-badge"
+                    size={20}
+                  />
+                )}
+                {testStatus === StatusType.Failed && (
+                  <XCircle
+                    className="status-icon"
+                    data-testid="fail-badge"
+                    size={20}
+                  />
+                )}
+                {testStatus === 'Warning' && (
+                  <AlertTriangle
+                    className="status-icon"
+                    data-testid="warning-badge"
+                    size={20}
+                  />
+                )}
+              </div>
             )}
-            {testStatus === StatusType.Failed && (
-              <FailIcon className="status-icon" data-testid="fail-badge" />
-            )}
-            {testStatus === 'Warning' && (
-              <WarningIcon
-                className="status-icon"
-                data-testid="warning-badge"
-              />
-            )}
-            <div data-testid="messag-text">
-              {isAirflowAvailable ? (
-                message
-              ) : (
-                <Transi18next
-                  i18nKey="message.configure-airflow"
-                  renderElement={
-                    <a
-                      data-testid="airflow-doc-link"
-                      href={AIRFLOW_DOCS}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    text: t('label.documentation-lowercase'),
-                  }}
-                />
-              )}{' '}
-              {(testStatus || isTestingConnection) && (
-                <Transi18next
-                  i18nKey="message.click-text-to-view-details"
-                  renderElement={
-                    <Button
-                      className="p-0 test-connection-message-btn"
-                      data-testid="test-connection-details-btn"
-                      type="link"
-                      onClick={() => setDialogOpen(true)}
-                    />
-                  }
-                  values={{
-                    text: t('label.here-lowercase'),
-                  }}
-                />
-              )}
+            <div
+              className="test-connection-card-copy"
+              data-testid="messag-text">
+              <div className="test-connection-card-title">
+                {connectionCardTitle}
+              </div>
+              <div className="test-connection-card-description">
+                {connectionCardDescription}
+                {(testStatus || isTestingConnection) && (
+                  <Button
+                    className="p-0 test-connection-message-btn"
+                    data-testid="test-connection-details-btn"
+                    type="link"
+                    onClick={() => setDialogOpen(true)}>
+                    {t('label.view')}
+                  </Button>
+                )}
+              </div>
             </div>
-          </Space>
+          </div>
           <Tooltip title={buttonTooltipTitle}>
             <Button
-              className={classNames('test-connection-card-button', {
-                'text-primary': !isTestConnectionDisabled,
-              })}
+              className="test-connection-card-button"
               data-testid="test-connection-btn"
               disabled={isTestConnectionDisabled}
               loading={isTestingConnection}
@@ -534,6 +638,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Tooltip>
       )}
       <TestConnectionModal
+        connectionDisplayName={connectionDisplayName}
+        connectionType={connectionType}
         errorMessage={errorMessage}
         handleCloseErrorMessage={handleCloseErrorMessage}
         hostIp={hostIp}

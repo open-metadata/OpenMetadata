@@ -330,6 +330,7 @@ const EmbeddedAddServicePage = () => {
                   }}
                 />
                 <EmbeddedConnectionConfigForm
+                  requireTestConnection
                   cancelText={t('label.back')}
                   data={serviceConfig as ServicesType}
                   okText={t('label.next-what-to-ingest')}

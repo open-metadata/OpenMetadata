@@ -105,10 +105,20 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      screen.getByText('message.test-your-connection-before-creating-service')
+      screen.getByText('message.test-your-connection-to-continue')
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('test-connection-btn')).toBeInTheDocument();
+  });
+
+  it('Should show missing required field count before testing', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} missingRequiredFieldsCount={4} />);
+    });
+
+    expect(
+      screen.getByText('message.fill-required-fields-then-test-connection')
+    ).toBeInTheDocument();
   });
 
   it('Should render the button only is showDetails is false', async () => {
@@ -576,5 +586,29 @@ describe('Test Connection Component', () => {
 
     // delete api should be called
     expect(deleteWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id, true);
+  });
+
+  it('Should notify parent when test connection status changes', async () => {
+    const onTestConnectionStatusChange = jest.fn();
+    jest.useFakeTimers();
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
 });
