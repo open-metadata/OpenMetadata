@@ -71,6 +71,116 @@ const STATIC_AWS_CREDENTIAL_PROPERTIES = new Set([
 ]);
 
 type DisableableFieldElement = ReactElement<{ disabled?: boolean }>;
+type SchemaPropertyLayout = {
+  anyOf?: unknown[];
+  description?: string;
+  format?: string;
+  oneOf?: unknown[];
+  properties?: Record<string, unknown>;
+  title?: string;
+  type?: string | string[];
+};
+
+const FULL_WIDTH_FIELD_PATTERN =
+  /(url|uri|arn|path|pattern|connectionstring|jdbc|dsn|bundle|certificate|cert|pem)/i;
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getSchemaProperty = (
+  schema: ObjectFieldTemplateProps['schema'],
+  name: string
+): SchemaPropertyLayout | undefined => {
+  if (!isPlainObject(schema.properties)) {
+    return undefined;
+  }
+
+  const property = schema.properties[name];
+
+  if (!isPlainObject(property)) {
+    return undefined;
+  }
+
+  return property as SchemaPropertyLayout;
+};
+
+const getUiSchemaProperty = (
+  uiSchema: ObjectFieldTemplateProps['uiSchema'],
+  name: string
+): Record<string, unknown> | undefined => {
+  if (!isPlainObject(uiSchema)) {
+    return undefined;
+  }
+
+  const property = uiSchema[name];
+
+  return isPlainObject(property) ? property : undefined;
+};
+
+const hasSchemaType = (
+  schemaProperty: SchemaPropertyLayout | undefined,
+  type: string
+) => {
+  if (Array.isArray(schemaProperty?.type)) {
+    return schemaProperty.type.includes(type);
+  }
+
+  return schemaProperty?.type === type;
+};
+
+const hasLongValueSignal = (
+  name: string,
+  schemaProperty: SchemaPropertyLayout | undefined
+) => {
+  const layoutText = [
+    name,
+    schemaProperty?.title,
+    schemaProperty?.description,
+    schemaProperty?.format,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/[\s_-]+/g, '');
+  const normalizedName = name.replace(/[\s_-]+/g, '').toLowerCase();
+
+  return (
+    FULL_WIDTH_FIELD_PATTERN.test(layoutText) || normalizedName === 'privatekey'
+  );
+};
+
+const shouldSpanFullWidth = ({
+  name,
+  schema,
+  uiSchema,
+}: {
+  name: string;
+  schema: ObjectFieldTemplateProps['schema'];
+  uiSchema: ObjectFieldTemplateProps['uiSchema'];
+}) => {
+  const schemaProperty = getSchemaProperty(schema, name);
+  const uiSchemaProperty = getUiSchemaProperty(uiSchema, name);
+  const uiOptions = uiSchemaProperty?.['ui:options'];
+
+  if (
+    isPlainObject(uiOptions) &&
+    typeof uiOptions.fullWidth === 'boolean' &&
+    uiOptions.fullWidth
+  ) {
+    return true;
+  }
+
+  if (uiSchemaProperty?.['ui:widget'] === 'textarea') {
+    return true;
+  }
+
+  return (
+    hasSchemaType(schemaProperty, 'object') ||
+    hasSchemaType(schemaProperty, 'array') ||
+    Boolean(schemaProperty?.oneOf?.length) ||
+    Boolean(schemaProperty?.anyOf?.length) ||
+    hasLongValueSignal(name, schemaProperty)
+  );
+};
 
 const orderProperties = (
   properties: ObjectFieldTemplateProps['properties'],
@@ -100,6 +210,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   schema,
   properties,
   idSchema,
+  uiSchema,
 }) => {
   const { t } = useTranslation();
 
@@ -121,7 +232,14 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const isAwsS3StorageConfig =
     idSchema.$id.endsWith(STORAGE_CONFIG_ID_SUFFIX) ||
     (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
-  const isNestedConfigGrid = isSampleDataConfig || isAwsS3StorageConfig;
+  const isGenericNestedConfig =
+    !isRoot &&
+    !schema.additionalProperties &&
+    !isSampleDataSection &&
+    !isSampleDataConfig &&
+    !isAwsS3StorageConfig;
+  const isNestedConfigGrid =
+    isSampleDataConfig || isAwsS3StorageConfig || isGenericNestedConfig;
   const isIamAuthEnabled =
     hasIamAuthToggle &&
     typeof formData === 'object' &&
@@ -130,11 +248,16 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const addEntityLabel = title || t('label.property');
   const isStaticCredentialDisabled = (name: string) =>
     isIamAuthEnabled && STATIC_AWS_CREDENTIAL_PROPERTIES.has(name);
-  const getPropertyClassName = (name: string, disabled?: boolean) =>
+  const getPropertyClassName = (
+    name: string,
+    disabled?: boolean,
+    fullWidth?: boolean
+  ) =>
     classNames(
       'core-object-field-template-property tw:rounded-xl tw:bg-utility-gray-blue-50',
       `core-object-field-template-property-${name}`,
       isRoot && 'tw:p-4',
+      fullWidth && 'core-object-field-template-property-full-width',
       disabled && 'core-object-field-template-property-disabled'
     );
   const getPropertyContent = (element: (typeof properties)[number]) => {
@@ -215,11 +338,20 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         )}
         {orderedNormalProperties.map((element) => {
           const isDisabled = isStaticCredentialDisabled(element.name);
+          const isFullWidth = shouldSpanFullWidth({
+            name: element.name,
+            schema,
+            uiSchema,
+          });
 
           return (
             <div
               aria-disabled={isDisabled || undefined}
-              className={getPropertyClassName(element.name, isDisabled)}
+              className={getPropertyClassName(
+                element.name,
+                isDisabled,
+                isFullWidth
+              )}
               data-field-name={element.name}
               key={element.name}>
               {getPropertyContent(element)}
@@ -281,7 +413,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           isSampleDataSection &&
             'core-object-field-template-sample-data-section',
           isSampleDataConfig && 'core-object-field-template-sample-data-config',
-          isAwsS3StorageConfig && 'core-object-field-template-storage-config'
+          isAwsS3StorageConfig && 'core-object-field-template-storage-config',
+          isGenericNestedConfig && 'core-object-field-template-credential-block'
         )}
         data-additional-properties={
           schema.additionalProperties ? 'true' : undefined

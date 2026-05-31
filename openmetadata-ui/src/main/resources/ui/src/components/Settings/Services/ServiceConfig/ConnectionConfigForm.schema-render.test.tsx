@@ -14,7 +14,7 @@
 import Form from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   getFilteredSchema,
@@ -79,7 +79,7 @@ const renderConnectionSchema = async (connectorType: string) => {
     getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema)
   );
 
-  render(
+  return render(
     <Form
       noHtml5Validate
       fields={customFields}
@@ -146,5 +146,41 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
 
     expect(renderedConnectorCount).toBe(connectorTypes.length);
+  });
+
+  it('renders Cassandra cloud config as a compact nested credential block', async () => {
+    const { container } = await renderConnectionSchema('Cassandra');
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    expect(
+      screen.getByText('DataStax Astra DB Configuration')
+    ).toBeInTheDocument();
+
+    const cloudConfigBlock = container.querySelector(
+      '[data-field-id="root/authType/cloudConfig"]'
+    );
+
+    expect(cloudConfigBlock).toHaveClass(
+      'core-object-field-template-credential-block'
+    );
+    expect(
+      cloudConfigBlock?.querySelector('.core-object-field-template-body-grid')
+    ).toBeInTheDocument();
+    expect(
+      cloudConfigBlock?.querySelector(
+        '.core-object-field-template-property-connectTimeout'
+      )
+    ).not.toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      cloudConfigBlock?.querySelector(
+        '.core-object-field-template-property-requestTimeout'
+      )
+    ).not.toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      cloudConfigBlock?.querySelector(
+        '.core-object-field-template-property-secureConnectBundle'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
   });
 });

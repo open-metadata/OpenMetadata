@@ -45,6 +45,54 @@
     }
   }
 
+  .connection-nested-object {
+    width: 100%;
+    min-width: 0;
+
+    .core-object-field-template-credential-block {
+      width: 100%;
+      min-width: 0;
+      gap: 10px;
+      padding: 0;
+      border-radius: 0;
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-credential-block
+      > .core-object-field-template-body-grid {
+      display: grid !important;
+      grid-auto-flow: row dense;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 18px 20px !important;
+      align-items: start;
+    }
+
+    .core-object-field-template-credential-block
+      > .core-object-field-template-body-grid
+      > .core-object-field-template-property {
+      min-width: 0;
+      padding: 0;
+      border-radius: 0;
+      background-color: transparent !important;
+    }
+
+    .core-object-field-template-credential-block
+      > .core-object-field-template-body-grid
+      > .core-object-field-template-property-full-width {
+      grid-column: 1 / -1;
+    }
+
+    .core-object-field-template-credential-block .design-field-label {
+      min-height: 34px;
+      align-items: flex-start;
+      line-height: 16px;
+    }
+
+    .core-object-field-template-credential-block .design-field-label label {
+      line-height: 16px;
+    }
+  }
+
   .connection-section-card-scope {
     .connection-section-boolean-grid {
       gap: 28px 48px !important;

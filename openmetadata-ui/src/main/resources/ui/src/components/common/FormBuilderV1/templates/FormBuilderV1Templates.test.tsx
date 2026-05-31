@@ -483,6 +483,89 @@ describe('FormBuilderV1 templates', () => {
     ).toHaveClass('core-object-field-template-property-disabled');
   });
 
+  it('uses a generic two-column layout for nested credential configs', () => {
+    const { container } = render(
+      <CoreObjectFieldTemplate
+        {...({
+          idSchema: { $id: 'root/authType/cloudConfig/cloudConfig' },
+          registry: {} as ObjectFieldTemplateProps['registry'],
+          schema: {
+            type: 'object',
+            properties: {
+              connectTimeout: {
+                title: 'Connect Timeout',
+                type: 'integer',
+              },
+              requestTimeout: {
+                title: 'Request Timeout',
+                type: 'integer',
+              },
+              token: {
+                title: 'Token',
+                type: 'string',
+              },
+              secureConnectBundle: {
+                description:
+                  'File path to the Secure Connect Bundle (.zip) used for a secure connection.',
+                title: 'Secure Connect Bundle',
+                type: 'string',
+              },
+            },
+          },
+          title: 'DataStax Astra DB Configuration',
+          onAddClick: jest.fn(),
+          properties: [
+            {
+              content: <div>connect timeout field</div>,
+              hidden: false,
+              name: 'connectTimeout',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>request timeout field</div>,
+              hidden: false,
+              name: 'requestTimeout',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>token field</div>,
+              hidden: false,
+              name: 'token',
+            } as ObjectFieldTemplatePropertyType,
+            {
+              content: <div>secure bundle field</div>,
+              hidden: false,
+              name: 'secureConnectBundle',
+            } as ObjectFieldTemplatePropertyType,
+          ],
+        } as unknown as ObjectFieldTemplateProps)}
+      />
+    );
+
+    expect(
+      container.querySelector('.core-object-field-template-credential-block')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.core-object-field-template-body-grid')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-connectTimeout'
+      )
+    ).not.toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-requestTimeout'
+      )
+    ).not.toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      container.querySelector('.core-object-field-template-property-token')
+    ).not.toHaveClass('core-object-field-template-property-full-width');
+    expect(
+      container.querySelector(
+        '.core-object-field-template-property-secureConnectBundle'
+      )
+    ).toHaveClass('core-object-field-template-property-full-width');
+  });
+
   it('disables static AWS credentials for AWS S3 configs with IAM auth', () => {
     const { container } = render(
       <CoreObjectFieldTemplate
