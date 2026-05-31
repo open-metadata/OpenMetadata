@@ -135,9 +135,9 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     }
 
     if (i18n.dir() === 'rtl') {
-      dragHandleElement.style.right = `${rect.right - rect.width}px`;
+      dragHandleElement.style.right = `${rect.right - rect.width - 10}px`;
     } else {
-      dragHandleElement.style.left = `${rect.left - rect.width}px`;
+      dragHandleElement.style.left = `${rect.left - rect.width - 10}px`;
     }
     dragHandleElement.style.top = `${rect.top}px`;
     showDragHandle();
@@ -159,7 +159,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
 
   const handleMouseMoveForBlockHandle = (event: MouseEvent) => {
     const node = nodeDOMAtCoords({
-      x: event.clientX + options.dragHandleWidth * 4 + options.blockHandleWidth,
+      x: event.clientX + 50 + options.dragHandleWidth,
       y: event.clientY,
     });
 
@@ -188,13 +188,9 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     }
 
     if (i18n.dir() === 'rtl') {
-      blockHandleElement.style.right = `${
-        rect.right - rect.width - options.blockHandleWidth
-      }px`;
+      blockHandleElement.style.right = `${rect.right - rect.width + 6}px`;
     } else {
-      blockHandleElement.style.left = `${
-        rect.left - rect.width - options.blockHandleWidth
-      }px`;
+      blockHandleElement.style.left = `${rect.left - rect.width + 6}px`;
     }
     blockHandleElement.style.top = `${rect.top}px`;
     showBlockHandle();

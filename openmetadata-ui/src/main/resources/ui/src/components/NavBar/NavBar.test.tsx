@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
@@ -69,10 +70,12 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
   hasNotificationPermission: jest.fn(),
   shouldRequestPermission: jest.fn(),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
+  getNameFromFQN: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
-  getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -213,6 +216,11 @@ jest.mock('./PopupAlertClassBase', () => ({
   },
 }));
 
+jest.mock('../../utils/i18next/i18nextUtil', () => ({
+  languageSelectOptions: [],
+  getInitOptions: jest.fn().mockImplementation(() => ({})),
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
@@ -287,6 +295,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.resetModules();
     jest.clearAllMocks();
     global.Date.now = jest.fn();
+    mockUseCustomLocation.pathname = '/';
   });
 
   afterEach(() => {

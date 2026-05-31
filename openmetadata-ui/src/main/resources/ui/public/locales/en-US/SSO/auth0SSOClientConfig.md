@@ -1,8 +1,3 @@
----
-title: Auth0 SSO Configuration | OpenMetadata
-description: Configure Auth0 Active Directory Single Sign-On for OpenMetadata with complete field reference
-slug: /main-concepts/metadata-standard/schemas/security/client/azure-ad-sso
----
 
 # Auth0 SSO Configuration
 
@@ -10,14 +5,17 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 
 ## Authentication Configuration
 
-### <span data-id="providerName">Provider Name</span>
+$$section
+### Provider Name $(id="providerName")
 
 - **Definition:** A human-readable name for this Auth0 SSO configuration instance.
 - **Example:** Auth0 SSO, Company Auth0, Custom Identity Provider
 - **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
 - **Note:** This is a display name and doesn't affect authentication functionality.
+$$
 
-### <span data-id="clientType">Client Type</span>
+$$section
+### Client Type $(id="clientType")
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).
 - **Options:** Public | Confidential
@@ -27,23 +25,29 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
   - Choose **Public** for SPAs and mobile apps
   - Choose **Confidential** for backend services and web applications
   - Auth0 typically uses **Confidential** client type
+$$
 
-### <span data-id="selfSignup">Enable Self Signup</span>
+$$section
+### Enable Self Signup $(id="selfSignup")
 
 - **Definition:** Allows users to automatically create accounts on first login.
 - **Options:** Enabled | Disabled
 - **Example:** Enabled
 - **Why it matters:** Controls whether new users can join automatically or need manual approval.
 - **Note:** Disable for stricter control over user access.
+$$
 
-### <span data-id="clientId">Client ID</span>
+$$section
+### Client ID $(id="clientId")
 
 - **Definition:** Application (client) ID assigned to your app in Auth0.
 - **Example:** abc123def456ghi789jkl012mno345pqr
 - **Why it matters:** Auth0 uses this to identify your application during authentication.
 - **Note:** Found in Auth0 → Applications → Your app → Overview → Application (client) ID
+$$
 
-### <span data-id="callbackUrl">Callback URL</span>
+$$section
+### Callback URL $(id="callbackUrl")
 
 - **Definition:** Redirect URI where Auth0 sends authentication responses.
 - **Example:** https://yourapp.company.com/callback
@@ -51,8 +55,10 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 - **Note:**
   - Must be registered in Auth0 → Applications → Authentication → Redirect URIs
   - Always use HTTPS in production
+$$
 
-### <span data-id="authority">Authority</span>
+$$section
+### Authority $(id="authority")
 
 - **Definition:** Auth0 endpoint that issues tokens for your tenant.
 - **Example:** https://dev-abc123.us.auth0.com/your-auth0-domain
@@ -60,15 +66,19 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 - **Note:**
   - Replace `your-auth0-domain` with your actual Auth0 tenant ID
   - For multi-tenant apps, you can use `common` instead of tenant ID
+$$
 
-### <span data-id="publicKey">Public Key URLs</span>
+$$section
+### Public Key URLs $(id="publicKey")
 
 - **Definition:** List of URLs where Auth0 publishes its public keys for token verification.
 - **Example:** ["https://dev-abc123.us.auth0.com/common/discovery/v2.0/keys"]
 - **Why it matters:** Used to verify JWT token signatures from Auth0.
 - **Note:** Usually auto-discovered from the discovery URI, rarely needs manual configuration
+$$
 
-### <span data-id="principals">JWT Principal Claims</span>
+$$section
+### JWT Principal Claims $(id="principals")
 
 > ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
 > - These claims MUST exist in JWT tokens from Auth0
@@ -82,8 +92,10 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Auth0 claims: email, name, sub, nickname
   - Order matters; first matching claim is used
+$$
 
-### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
+$$section
+### JWT Principal Claims Mapping $(id="jwtPrincipalClaimsMapping")
 
 - **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides jwtPrincipalClaims if set)
 - **Example:** ["email:email", "username:preferred_username"]
@@ -94,8 +106,10 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
 - **Important:** JWT Principal Claims Mapping is **rarely needed** for most Auth0 configurations. The default JWT Principal Claims (`email`, `name`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
+$$
 
-### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+$$section
+### JWT Team Claim Mapping $(id="jwtTeamClaimMapping")
 
 - **Definition:** Auth0 claim or attribute containing team/department information for automatic team assignment.
 - **Example:** "department", "groups", "organization", or custom user metadata fields
@@ -121,15 +135,19 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 ## OIDC Configuration (Confidential Client Only)
 
 These fields are only shown when Client Type is set to **Confidential**.
+$$
 
-### <span data-id="id">OIDC Client ID</span>
+$$section
+### OIDC Client ID $(id="id")
 
 - **Definition:** Application (client) ID for OIDC authentication with Auth0.
 - **Example:** abc123def456ghi789jkl012mno345pqr
 - **Why it matters:** Identifies your application to Auth0 in OIDC flows.
 - **Note:** Same as the Client ID in Auth0 app registration
+$$
 
-### <span data-id="clientSecret">OIDC Client Secret</span>
+$$section
+### OIDC Client Secret $(id="clientSecret")
 
 - **Definition:** Secret key for confidential client authentication with Auth0.
 - **Example:** abc123def456ghi789jkl012mno345pqr678st
@@ -138,70 +156,85 @@ These fields are only shown when Client Type is set to **Confidential**.
   - Generate in Auth0 → Applications → Certificates & secrets
   - Store securely and rotate regularly
   - Only shown for Confidential client type
+$$
 
-### <span data-id="scopes">OIDC Request Scopes</span>
+$$section
+### OIDC Request Scopes $(id="scopes")
 
 - **Definition:** Permissions requested from Auth0 during authentication.
 - **Default:** openid email profile
 - **Example:** openid email profile User.Read
 - **Why it matters:** Determines what user information OpenMetadata can access.
 - **Note:** `openid email profile` are typically sufficient for most use cases
+$$
 
-### <span data-id="discoveryUri">OIDC Discovery URI</span>
+$$section
+### OIDC Discovery URI $(id="discoveryUri")
 
 - **Definition:** Auth0's OpenID Connect metadata endpoint.
 - **Example:** https://dev-abc123.us.auth0.com/your-auth0-domain/v2.0/.well-known/openid-configuration
 - **Why it matters:** Allows OpenMetadata to automatically discover Auth0's OIDC endpoints.
 - **Note:** Replace `your-auth0-domain` with your actual tenant ID
+$$
 
-### <span data-id="useNonce">OIDC Use Nonce</span>
+$$section
+### OIDC Use Nonce $(id="useNonce")
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
 - **Default:** false
 - **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
 - **Note:** Can be enabled for additional security if your provider supports it
+$$
 
-
-
-### <span data-id="disablePkce">OIDC Disable PKCE</span>
+$$section
+### OIDC Disable PKCE $(id="disablePkce")
 
 - **Definition:** Whether to disable Proof Key for Code Exchange (security extension).
 - **Default:** false
 - **Example:** false
 - **Why it matters:** PKCE adds security to the authorization code flow.
 - **Note:** Should typically be left enabled (false) for security
+$$
 
-### <span data-id="maxClockSkew">OIDC Max Clock Skew</span>
+$$section
+### OIDC Max Clock Skew $(id="maxClockSkew")
 
 - **Definition:** Maximum allowed time difference between systems when validating tokens.
 - **Example:** 0 (seconds)
 - **Why it matters:** Prevents token validation failures due to minor time differences.
 - **Note:** Usually 0 is fine unless you have significant clock skew issues
+$$
 
-### <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
+$$section
+### OIDC Client Authentication Method $(id="clientAuthenticationMethod")
 
 - **Definition:** Method used to authenticate the client with Auth0.
 - **Default:** client_secret_post (automatically configured)
 - **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by Auth0.
 - **Note:** This field is hidden and automatically configured. Auth0 supports both `client_secret_post` and `client_secret_basic`.
+$$
 
-### <span data-id="tokenValidity">OIDC Token Validity</span>
+$$section
+### OIDC Token Validity $(id="tokenValidity")
 
 - **Definition:** How long (in seconds) the issued tokens remain valid.
 - **Default:** 0 (use provider default)
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls token lifetime and security vs usability balance.
+$$
 
-### <span data-id="customParams">OIDC Custom Parameters</span>
+$$section
+### OIDC Custom Parameters $(id="customParams")
 
 - **Definition:** Additional parameters to send in OIDC requests.
 - **Example:** {"prompt": "select_account", "domain_hint": "company.com"}
 - **Why it matters:** Allows customization of Auth0 authentication behavior.
 - **Note:** Common parameters include `prompt`, `domain_hint`, `login_hint`
+$$
 
-
-### <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
+$$section
+### OIDC Callback URL / Redirect URI $(id="callbackUrl")
 
 - **Definition:** URL where Auth0 redirects after authentication.
 - **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
@@ -211,15 +244,19 @@ These fields are only shown when Client Type is set to **Confidential**.
   - **This field is read-only** - it cannot be edited
   - **Copy this exact URL** and add it to Auth0's allowed redirect URIs list
   - Format is always: `{your-domain}/callback`
+$$
 
-### <span data-id="maxAge">OIDC Max Age</span>
+$$section
+### OIDC Max Age $(id="maxAge")
 
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
 - **Note:** Leave empty for no specific max age requirement
+$$
 
-### <span data-id="prompt">OIDC Prompt</span>
+$$section
+### OIDC Prompt $(id="prompt")
 
 - **Definition:** Controls Auth0's authentication prompts.
 - **Options:** none | login | consent | select_account
@@ -229,8 +266,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `select_account`: Show account picker
+$$
 
-### <span data-id="sessionExpiry">OIDC Session Expiry</span>
+$$section
+### OIDC Session Expiry $(id="sessionExpiry")
 
 - **Definition:** How long (in seconds) user sessions remain valid.
 - **Default:** 604800 (7 days)
@@ -239,29 +278,37 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Note:** Only applies to confidential clients
 
 ## Authorizer Configuration
+$$
 
-### <span data-id="adminPrincipals">Admin Principals</span>
+$$section
+### Admin Principals $(id="adminPrincipals")
 
 - **Definition:** List of user principals who will have admin access.
 - **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
+$$
 
-### <span data-id="principalDomain">Principal Domain</span>
+$$section
+### Principal Domain $(id="principalDomain")
 
 - **Definition:** Default domain for user principals.
 - **Example:** company.com
 - **Why it matters:** Used to construct full user principals when only username is provided.
 - **Note:** Typically your organization's primary domain
+$$
 
-### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+$$section
+### Enforce Principal Domain $(id="enforcePrincipalDomain")
 
 - **Definition:** Whether to enforce that all users belong to the principal domain.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+$$
 
-### <span data-id="allowedDomains">Allowed Domains</span>
+$$section
+### Allowed Domains $(id="allowedDomains")
 
 - **Definition:** List of email domains that are permitted to access OpenMetadata.
 - **Example:** ["company.com", "partner-company.com"]
@@ -271,11 +318,14 @@ These fields are only shown when Client Type is set to **Confidential**.
   - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
   - Leave empty or use single `principalDomain` if you only have one Auth0 tenant
   - Useful when your Auth0 tenant contains users from multiple domains
+$$
 
-### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
+$$section
+### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
 - **Definition:** Whether to use SSL/TLS for secure connections.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Ensures encrypted communication for security.
 - **Note:** Should be enabled in production environments
+$$

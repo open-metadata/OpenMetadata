@@ -13,14 +13,13 @@
 Config builder classes
 """
 
-
 from copy import deepcopy
 
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
 )
 
-from ..e2e_types import E2EType
+from ..e2e_types import E2EType  # noqa: TID252
 
 
 class BaseBuilder:
@@ -59,7 +58,12 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.config["source"]["sourceConfig"] = {
             "config": {
                 "type": "Profiler",
-                "profileSample": self.profilerSample,
+                "profileSampleConfig": {
+                    "sampleConfigType": "STATIC",
+                    "config": {
+                        "profileSample": self.profilerSample,
+                    },
+                },
             }
         }
 
@@ -126,9 +130,7 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": self.config_args.get(
-                    "processQueryLineage", False
-                ),
+                "processQueryLineage": self.config_args.get("processQueryLineage", False),
                 "processStoredProcedureLineage": False,
             }
         }
@@ -202,9 +204,7 @@ class SchemaConfigBuilder(BaseBuilder):
     """Builder for schema filter config"""
 
     def build(self) -> dict:
-        self.config["source"]["sourceConfig"]["config"][
-            "schemaFilterPattern"
-        ] = self.config_args
+        self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = self.config_args
         return self.config
 
 
@@ -212,9 +212,7 @@ class TableConfigBuilder(BaseBuilder):
     """Builder for table filter config"""
 
     def build(self) -> dict:
-        self.config["source"]["sourceConfig"]["config"][
-            "tableFilterPattern"
-        ] = self.config_args
+        self.config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = self.config_args
         return self.config
 
 
@@ -232,12 +230,8 @@ class DashboardConfigBuilder(BaseBuilder):
     """Builder for dashboard filter config"""
 
     def build(self) -> dict:
-        self.config["source"]["sourceConfig"]["config"][
-            "includeTags"
-        ] = self.config_args["includeTags"]
-        self.config["source"]["sourceConfig"]["config"][
-            "includeDataModels"
-        ] = self.config_args["includeDataModels"]
+        self.config["source"]["sourceConfig"]["config"]["includeTags"] = self.config_args["includeTags"]
+        self.config["source"]["sourceConfig"]["config"]["includeDataModels"] = self.config_args["includeDataModels"]
         return self.config
 
 
@@ -245,15 +239,9 @@ class DashboardMixConfigBuilder(BaseBuilder):
     """Builder for dashboard mix filter config (table and schema)"""
 
     def build(self) -> dict:
-        self.config["source"]["sourceConfig"]["config"][
-            "dashboardFilterPattern"
-        ] = self.config_args["dashboards"]
-        self.config["source"]["sourceConfig"]["config"][
-            "chartFilterPattern"
-        ] = self.config_args["charts"]
-        self.config["source"]["sourceConfig"]["config"][
-            "dataModelFilterPattern"
-        ] = self.config_args["dataModels"]
+        self.config["source"]["sourceConfig"]["config"]["dashboardFilterPattern"] = self.config_args["dashboards"]
+        self.config["source"]["sourceConfig"]["config"]["chartFilterPattern"] = self.config_args["charts"]
+        self.config["source"]["sourceConfig"]["config"]["dataModelFilterPattern"] = self.config_args["dataModels"]
 
         return self.config
 

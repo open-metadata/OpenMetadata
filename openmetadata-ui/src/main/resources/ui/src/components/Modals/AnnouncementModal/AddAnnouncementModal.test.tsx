@@ -13,27 +13,18 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { DateTime } from 'luxon';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { postThread } from '../../../rest/feedsAPI';
+import { createAnnouncement } from '../../../rest/announcementsAPI';
 import * as ToastUtils from '../../../utils/ToastUtils';
 import AddAnnouncementModal from './AddAnnouncementModal';
 
 // Mock dependencies
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn(),
+jest.mock('../../../rest/announcementsAPI', () => ({
+  createAnnouncement: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({
-    currentUser: {
-      name: 'testuser',
-    },
-  }),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -54,7 +45,9 @@ jest.mock('../../../utils/formUtils', () => ({
   getField: jest.fn(() => <div data-testid="mocked-description-field" />),
 }));
 
-const mockPostThread = postThread as jest.MockedFunction<typeof postThread>;
+const mockCreateAnnouncement = createAnnouncement as jest.MockedFunction<
+  typeof createAnnouncement
+>;
 const mockShowErrorToast = ToastUtils.showErrorToast as jest.MockedFunction<
   typeof ToastUtils.showErrorToast
 >;
@@ -117,17 +110,17 @@ describe('AddAnnouncementModal', () => {
   });
 
   it('should successfully create announcement with valid data', async () => {
-    const mockThreadResponse = {
+    const mockAnnouncementResponse = {
       id: '1',
-      message: 'Test Announcement',
-      about: '<#E::table::test.table>',
-      type: ThreadType.Announcement,
-      from: 'testuser',
-      threadTs: Date.now(),
+      name: 'announcement-1',
+      displayName: 'Test Announcement',
+      entityLink: '<#E::table::test.table>',
+      description: 'Test description',
+      startTime: Date.now(),
+      endTime: Date.now(),
       updatedAt: Date.now(),
-      updatedBy: 'testuser',
     };
-    mockPostThread.mockResolvedValueOnce(mockThreadResponse);
+    mockCreateAnnouncement.mockResolvedValueOnce(mockAnnouncementResponse);
 
     render(<AddAnnouncementModal {...defaultProps} />);
 
@@ -136,20 +129,16 @@ describe('AddAnnouncementModal', () => {
 
     // Simulate the announcement creation logic
     const announcementData = {
-      from: 'testuser',
-      message: 'Test Announcement',
-      about: '<#E::table::test.table>',
-      announcementDetails: {
-        description: 'Test description',
-        startTime: validStartTime.toMillis(),
-        endTime: validEndTime.toMillis(),
-      },
-      type: ThreadType.Announcement,
+      displayName: 'Test Announcement',
+      description: 'Test description',
+      entityLink: '<#E::table::test.table>',
+      startTime: validStartTime.toMillis(),
+      endTime: validEndTime.toMillis(),
     };
 
-    await mockPostThread(announcementData);
+    await mockCreateAnnouncement(announcementData);
 
-    expect(mockPostThread).toHaveBeenCalledWith(announcementData);
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith(announcementData);
   });
 
   it('should call onCancel when cancel button is clicked', async () => {

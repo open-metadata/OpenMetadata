@@ -43,7 +43,7 @@ import { getMetrics } from '../../../rest/metricsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   descriptionTableObject,
   ownerTableObject,

@@ -69,9 +69,7 @@ EXPECTED_MODELS = [
         mlStore=MlStore(storage="file://storage_2"),
         service=ML_MODEL_SERVICE_MOCK,
     ),
-    CreateMlModelRequest(
-        name="model_3", algorithm="mlmodel", mlStore=None, service=ML_MODEL_SERVICE_MOCK
-    ),
+    CreateMlModelRequest(name="model_3", algorithm="mlmodel", mlStore=None, service=ML_MODEL_SERVICE_MOCK),
 ]
 
 REGISTERED_MODELS_SUMMARY_MOCK = [
@@ -124,17 +122,15 @@ class SagemakerClientMock:
     def list_models(self, *args, **kwargs):
         return {"Models": MODELS_MOCK, "NextToken": None}
 
-    def describe_model(self, modelName: str, *args, **kwargs):
+    def describe_model(self, modelName: str, *args, **kwargs):  # noqa: N803
         return MODEL_DESCRIPTIONS_MOCK.get(modelName)
 
     def get_paginator(self, operation_name: str):
         if operation_name == "list_model_package_groups":
-            return PaginatorMock(
-                {"ModelPackageGroupSummaryList": REGISTERED_MODELS_SUMMARY_MOCK}
-            )
+            return PaginatorMock({"ModelPackageGroupSummaryList": REGISTERED_MODELS_SUMMARY_MOCK})
         return None
 
-    def describe_model_package_group(self, ModelPackageGroupName: str):
+    def describe_model_package_group(self, ModelPackageGroupName: str):  # noqa: N803
         return REGISTERED_MODELS_DESCRIPTION_MOCK.get(ModelPackageGroupName)
 
 
@@ -176,10 +172,8 @@ sagemaker_config = {
 
 
 class SagemakerTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.mlmodel.sagemaker.metadata.SagemakerSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.mlmodel.sagemaker.metadata.SagemakerSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = parse_workflow_config_gracefully(sagemaker_config)
@@ -190,15 +184,11 @@ class SagemakerTest(TestCase):
 
         self.sagemaker_source.sagemaker = SagemakerClientMock()
 
-        self.sagemaker_source.context.get().__dict__[
-            "mlmodel_service"
-        ] = ML_MODEL_SERVICE_MOCK
+        self.sagemaker_source.context.get().__dict__["mlmodel_service"] = ML_MODEL_SERVICE_MOCK
 
     def test_ccreate_ml_model_request_is_correct(self):
         for i, mlmodel in enumerate(self.sagemaker_source.get_mlmodels()):
-            assert self.sagemaker_source.yield_mlmodel(mlmodel) == Either(
-                right=EXPECTED_MODELS[i]
-            )
+            assert self.sagemaker_source.yield_mlmodel(mlmodel) == Either(right=EXPECTED_MODELS[i])
 
     def test_list_registered_models(self):
         registered_models = self.sagemaker_source.list_registered_models()
@@ -207,6 +197,4 @@ class SagemakerTest(TestCase):
             assert model["ModelName"] == EXPECTED_REGISTERED_MODELS[i]["ModelName"]
             assert model["ModelArn"] == EXPECTED_REGISTERED_MODELS[i]["ModelArn"]
             assert model["description"] == EXPECTED_REGISTERED_MODELS[i]["description"]
-            assert (
-                model["CreationTime"] == EXPECTED_REGISTERED_MODELS[i]["CreationTime"]
-            )
+            assert model["CreationTime"] == EXPECTED_REGISTERED_MODELS[i]["CreationTime"]

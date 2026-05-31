@@ -354,6 +354,24 @@ export class TableClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page, searchTerm?: string) {
+    if (!this.entityResponseData.fullyQualifiedName) {
+      const { EntityDataClass } = await import('./EntityDataClass');
+      EntityDataClass.loadResponseData();
+    }
+
+    if (
+      !this.entityResponseData.fullyQualifiedName &&
+      this.entityResponseData.id
+    ) {
+      const response = await page.request.get(
+        `/api/v1/tables/${this.entityResponseData.id}`
+      );
+
+      if (response.ok()) {
+        this.entityResponseData = await response.json();
+      }
+    }
+
     const tableFqn = this.entityResponseData.fullyQualifiedName ?? '';
     const canUseDirectNavigation =
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
@@ -362,7 +380,9 @@ export class TableClass extends EntityClass {
       const tableResponse = page.waitForResponse(
         `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
       );
-      await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await tableResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -516,14 +536,38 @@ export class TableClass extends EntityClass {
     patchData: Operation[];
     queryParams?: Record<string, string>;
   }) {
-    const fqn = encodeURIComponent(
-      this.entityResponseData?.fullyQualifiedName ?? ''
-    );
+    if (
+      !this.entityResponseData?.fullyQualifiedName &&
+      this.entityResponseData?.id
+    ) {
+      const tableResponse = await apiContext.get(
+        `/api/v1/tables/${this.entityResponseData.id}`
+      );
+
+      if (tableResponse.ok()) {
+        this.entityResponseData = await tableResponse.json();
+      }
+    }
+
+    const tableId = this.entityResponseData?.id;
+    const tableFqn = this.entityResponseData?.fullyQualifiedName;
+
+    if (!tableId && !tableFqn) {
+      throw new Error(
+        `TableClass.patch: table id and fullyQualifiedName are missing for table "${
+          this.entityResponseData?.name ?? this.entity.name
+        }"`
+      );
+    }
+
     const queryString = queryParams
       ? `?${new URLSearchParams(queryParams).toString()}`
       : '';
+
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${fqn}${queryString}`,
+      tableId
+        ? `/api/v1/tables/${tableId}${queryString}`
+        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
       {
         data: patchData,
         headers: {
@@ -581,5 +625,21 @@ export class TableClass extends EntityClass {
       service: serviceResponse.body,
       entity: this.entityResponseData,
     };
+  }
+
+  async setOwner(
+    apiContext: APIRequestContext,
+    owner: { id: string; type: 'user' | 'team' }
+  ) {
+    return this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [owner],
+        },
+      ],
+    });
   }
 }

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-  act,
   fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import { act } from 'react';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';

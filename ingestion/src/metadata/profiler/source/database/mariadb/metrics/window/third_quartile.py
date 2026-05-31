@@ -5,6 +5,8 @@ from metadata.profiler.source.database.mariadb.functions.median import MariaDBMe
 
 
 class MariaDBThirdQuartile(ThirdQuartile):
-    def _compute_sqa_fn(self, column, table, percentile):
+    def _compute_sqa_fn(self, column, table, percentile, dimension_col=None):
         """Generic method to compute the quartile using sqlalchemy"""
+        if dimension_col is not None:
+            return MariaDBMedianFn(column, table, percentile, dimension_col)
         return MariaDBMedianFn(column, table, percentile)

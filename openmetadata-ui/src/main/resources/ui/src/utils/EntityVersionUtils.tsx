@@ -68,7 +68,7 @@ import {
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
 import { t } from './i18next/LocalUtil';
-import { getJSONFromString, isValidJSONString } from './StringsUtils';
+import { getJSONFromString, isValidJSONString } from './StringUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;

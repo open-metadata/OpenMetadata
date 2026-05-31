@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional, Union
 
@@ -53,7 +54,7 @@ from metadata.utils.constants import THREE_MIN
 
 def get_connection(
     connection: SupersetConnection,
-) -> Union[SupersetAPIClient, Engine, None]:
+) -> Union[SupersetAPIClient, Engine, None]:  # noqa: UP007
     """
     Create connection
     """
@@ -68,10 +69,10 @@ def get_connection(
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Union[SupersetAPIClient, Engine],
+    client: Union[SupersetAPIClient, Engine],  # noqa: UP007
     service_connection: SupersetConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -88,9 +89,7 @@ def test_connection(
         test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
         test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
         if isinstance(service_connection.connection, MysqlConnectionConfig):
-            test_fn["GetCharts"] = partial(
-                test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`")
-            )
+            test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`"))
         else:
             test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
 

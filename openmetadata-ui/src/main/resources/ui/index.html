@@ -30,6 +30,27 @@
       window.BASE_PATH = '${basePath}';
     </script>
 
+    <!--
+      Theme restore — runs before any bundle parses so the boot shell paints
+      in the user's last theme instead of always flashing the light skeleton
+      and re-painting once React reads localStorage. Mirrors Linear's inline
+      splash trick (see linear.app/changelog): pre-paint reads of stable
+      localStorage keys avoid a visible re-theme on cold load. The bundle's
+      ThemeProvider re-reads the same `ui-theme` key on mount and stays in
+      sync with the class we set here. `appStart` mark gives the bundle a
+      RUM anchor to measure HTML-parse → first paint vs. JS-ready.
+    -->
+    <script nonce="${cspNonce}">
+      try {
+        if (localStorage.getItem('ui-theme') === 'dark') {
+          document.documentElement.classList.add('dark-mode');
+        }
+      } catch (e) {}
+      try {
+        performance.mark('appStart');
+      } catch (e) {}
+    </script>
+
     <link rel="shortcut icon" href="${basePath}favicon.png" type="image/png" />
     <link
       rel="apple-touch-icon"
@@ -89,18 +110,13 @@
       href="${basePath}favicons/favicon-16x16.png" />
     <link rel="manifest" href="${basePath}manifest.json" />
 
-    <script nonce="${cspNonce}">
-      let images = [
-        '${basePath}images/governance.png',
-        '${basePath}images/data-collaboration.png',
-      ];
-
-      images.forEach((image) => {
-        let img = new Image();
-        img.loading = 'eager';
-        img.src = image;
-      });
-    </script>
+    <!--
+      governance.png and data-collaboration.png are only used on the /signin
+      and onboarding pages. The previous eager-preload script fired on every
+      page load (~200 KB combined). Removed — the bundle's signin route loads
+      them on demand via standard <img>, and the rest of the app never reads
+      them. Saves 2 image fetches per page view for signed-in users.
+    -->
 
     <script id="google-tag-manager" nonce="${cspNonce}">
       let isSandbox = location.host === 'sandbox.open-metadata.org';
@@ -109,22 +125,187 @@
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({
           'gtm.start': new Date().getTime(),
-          event: 'gtm.js'
+          event: 'gtm.js',
         });
 
         const gtmScript = document.createElement('script');
         gtmScript.async = true;
         gtmScript.setAttribute('nonce', '${cspNonce}');
-        gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
+        gtmScript.src =
+          'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
         document.head.appendChild(gtmScript);
       }
     </script>
 
     <title>OpenMetadata</title>
+
+    <!--
+      Inlined loading shell. Shown the instant the HTML is parsed — about a
+      second before the React bundle finishes executing on a cold tab. Lives
+      inside <head> as a <style> + inside <div id="root"> as DOM, so it's
+      replaced atomically when React calls createRoot().render() on root.
+      No external CSS, no JS, no fonts — first paint is bounded by the HTML
+      parser, not the network.
+    -->
+    <style nonce="${cspNonce}">
+      .om-boot-shell {
+        position: fixed;
+        inset: 0;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #535862;
+        z-index: 0;
+      }
+      .om-boot-shell__bar {
+        height: 56px;
+        border-bottom: 1px solid #e9eaeb;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        gap: 16px;
+      }
+      .om-boot-shell__logo {
+        height: 28px;
+        width: 28px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #4b48ff, #6f6cff);
+      }
+      .om-boot-shell__body {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+      .om-boot-shell__sidebar {
+        width: 240px;
+        border-right: 1px solid #e9eaeb;
+        background: #ffffff;
+        padding: 16px 12px;
+      }
+      .om-boot-shell__skeleton {
+        height: 14px;
+        margin: 12px 4px;
+        border-radius: 6px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      .om-boot-shell__skeleton--short {
+        width: 60%;
+      }
+      .om-boot-shell__skeleton--medium {
+        width: 80%;
+      }
+      .om-boot-shell__main {
+        flex: 1;
+        padding: 24px 32px;
+      }
+      .om-boot-shell__title {
+        height: 22px;
+        width: 280px;
+        margin-bottom: 24px;
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      .om-boot-shell__card {
+        height: 96px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      @keyframes om-boot-shimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+      /*
+        When React mounts it replaces the children of #root, so the shell
+        unmounts naturally. The .om-boot-shell--hidden class is here as a
+        belt-and-braces escape hatch if something delays unmount.
+      */
+      .om-boot-shell--hidden {
+        display: none;
+      }
+
+      /*
+        Dark variant — applied by the pre-paint script above when
+        localStorage.ui-theme is "dark". Matches the dark-mode CSS variables
+        the bundle eventually sets via ThemeProvider, so the visual transition
+        from shell to React UI is seamless instead of a light→dark flash.
+      */
+      .dark-mode .om-boot-shell {
+        background: #0e0f11;
+        color: #94959b;
+      }
+      .dark-mode .om-boot-shell__bar,
+      .dark-mode .om-boot-shell__sidebar {
+        background: #16181b;
+        border-color: #2a2d31;
+      }
+      .dark-mode .om-boot-shell__skeleton,
+      .dark-mode .om-boot-shell__title,
+      .dark-mode .om-boot-shell__card {
+        background: linear-gradient(
+          90deg,
+          #1f2226 25%,
+          #2a2d31 37%,
+          #1f2226 63%
+        );
+        background-size: 400% 100%;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="om-boot-shell" aria-hidden="true">
+        <div class="om-boot-shell__bar">
+          <div class="om-boot-shell__logo"></div>
+        </div>
+        <div class="om-boot-shell__body">
+          <aside class="om-boot-shell__sidebar">
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+          </aside>
+          <main class="om-boot-shell__main">
+            <div class="om-boot-shell__title"></div>
+            <div class="om-boot-shell__card"></div>
+            <div class="om-boot-shell__card"></div>
+            <div class="om-boot-shell__card"></div>
+          </main>
+        </div>
+      </div>
+    </div>
     <img
       referrerpolicy="no-referrer-when-downgrade"
       src="https://static.scarf.sh/a.png?x-pxid=9744b844-501a-4ca1-ad54-29b13e6b4642"

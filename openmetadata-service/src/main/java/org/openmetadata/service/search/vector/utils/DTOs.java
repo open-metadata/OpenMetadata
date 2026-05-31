@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector.utils;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ public final class DTOs {
     public int size = 10;
     public Integer from = 0;
     public int k = 1_000;
+
+    @JsonAlias("min_score")
     public double threshold = 0.0;
   }
 

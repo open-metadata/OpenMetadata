@@ -13,6 +13,7 @@ Test Deltalake using the topology
 
 Here we don't need to patch, as we can just create our own metastore
 """
+
 import shutil
 import sys
 import unittest
@@ -87,21 +88,15 @@ MOCK_DATABASE = Database(
     id="2004514B-A800-4D92-8442-14B2796F712E",
     name="default",
     fullyQualifiedName="delta.default",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
     id="92D36A9B-B1A9-4D0A-A00B-1B2ED137ABA5",
     name="default",
     fullyQualifiedName="delta.default.default",
-    database=EntityReference(
-        id="2004514B-A800-4D92-8442-14B2796F712E", type="database"
-    ),
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    database=EntityReference(id="2004514B-A800-4D92-8442-14B2796F712E", type="database"),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 
@@ -119,9 +114,7 @@ class DeltaLakeUnitTest(TestCase):
         """
         Prepare the SparkSession and metastore
         """
-        with patch(
-            "metadata.ingestion.source.database.deltalake.metadata.DeltalakeSource.test_connection"
-        ):
+        with patch("metadata.ingestion.source.database.deltalake.metadata.DeltalakeSource.test_connection"):
             config = OpenMetadataWorkflowConfig.model_validate(MOCK_DELTA_CONFIG)
             cls.delta = DeltalakeSource.create(
                 MOCK_DELTA_CONFIG["source"],
@@ -141,23 +134,15 @@ class DeltaLakeUnitTest(TestCase):
         # Create the DF as a tmp view to be able to run Spark SQL statements on top
         df.createOrReplaceTempView("tmp_df")
         # If no db is specified, the table will be created under `default`
-        cls.spark.sql(
-            "CREATE TABLE IF NOT EXISTS my_df COMMENT 'testing around' AS SELECT * FROM tmp_df"
-        )
+        cls.spark.sql("CREATE TABLE IF NOT EXISTS my_df COMMENT 'testing around' AS SELECT * FROM tmp_df")
 
         # Create a database. We will be ingesting that as a schema
-        cls.spark.sql(
-            f"CREATE DATABASE sample_db LOCATION '{SPARK_SQL_WAREHOUSE}/sample_db'"
-        )
+        cls.spark.sql(f"CREATE DATABASE sample_db LOCATION '{SPARK_SQL_WAREHOUSE}/sample_db'")
 
         # Set context
-        cls.delta.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        cls.delta.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         cls.delta.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        cls.delta.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        cls.delta.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         # We pick up the table comments when getting their name and type, so we
         # store the description in the context
         cls.delta.context.get().__dict__["table_description"] = "testing around"
@@ -175,9 +160,7 @@ class DeltaLakeUnitTest(TestCase):
         self.assertEqual(database_names, ["default"])
 
     def test_yield_database(self):
-        database_request = next(
-            self.delta.yield_database(database_name="default")
-        ).right
+        database_request = next(self.delta.yield_database(database_name="default")).right
         expected_database_request = CreateDatabaseRequest(
             name="default",
             service=FullyQualifiedEntityName("delta"),
@@ -190,12 +173,8 @@ class DeltaLakeUnitTest(TestCase):
         self.assertEqual(schema_names, {"default", "sample_db"})
 
     def test_yield_database_schema(self):
-        schema_request = next(
-            self.delta.yield_database_schema(schema_name="default")
-        ).right
-        expected_schema_request = CreateDatabaseSchemaRequest(
-            name="default", database="delta.default"
-        )
+        schema_request = next(self.delta.yield_database_schema(schema_name="default")).right
+        expected_schema_request = CreateDatabaseSchemaRequest(name="default", database="delta.default")
 
         self.assertEqual(schema_request, expected_schema_request)
 
@@ -205,9 +184,7 @@ class DeltaLakeUnitTest(TestCase):
         self.assertEqual(table_names, [("my_df", TableType.Regular)])
 
     def test_yield_table(self):
-        table_request = next(
-            self.delta.yield_table(table_name_and_type=("my_df", TableType.Regular))
-        ).right
+        table_request = next(self.delta.yield_table(table_name_and_type=("my_df", TableType.Regular))).right
 
         expected_columns = [
             Column(name="a", dataType=DataType.BIGINT, dataTypeDisplay="bigint"),

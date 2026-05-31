@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -78,9 +78,7 @@ class DomodatabaseSource(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.domo_client = get_connection(self.service_connection)
@@ -92,23 +90,19 @@ class DomodatabaseSource(DatabaseServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDatabaseConnection):
-            raise InvalidSourceException(
-                f"Expected DomoDatabaseConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DomoDatabaseConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
 
         database_request = CreateDatabaseRequest(
             name=EntityName(database_name),
@@ -121,9 +115,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         scheme_name = "default"
         yield scheme_name
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         schema_request = CreateDatabaseSchemaRequest(
             name=EntityName(schema_name),
             database=FullyQualifiedEntityName(
@@ -138,7 +130,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
@@ -155,10 +147,8 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
 
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table["name"],
+                    self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table["name"],  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(
                         table_fqn,
@@ -175,7 +165,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:
+    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:  # noqa: UP045
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -184,9 +174,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
@@ -235,17 +223,13 @@ class DomodatabaseSource(DatabaseServiceSource):
             response = self.domo_client.datasets.query(dataset_id, sql_query)
             if response:
                 for i, column_name in enumerate(response["columns"] or []):
-                    schema_column = SchemaColumn(
-                        name=column_name, type=response["metadata"][i]["type"]
-                    )
+                    schema_column = SchemaColumn(name=column_name, type=response["metadata"][i]["type"])
                     schema_columns.append(schema_column)
             if schema_columns:
                 return Schema(columns=schema_columns)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while fetching columns from federated dataset {table_name} - {exc}"
-            )
+            logger.warning(f"Error while fetching columns from federated dataset {table_name} - {exc}")
         return None
 
     def get_columns(self, table_object: OutputDataset):
@@ -272,22 +256,16 @@ class DomodatabaseSource(DatabaseServiceSource):
                 row_order += 1
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error while fetching details of column {column} - {exc}"
-                )
+                logger.warning(f"Error while fetching details of column {column} - {exc}")
         return columns
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
@@ -295,8 +273,8 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,
-    ) -> Optional[str]:
+        table_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for domodatabase
         """

@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEmpty, isUndefined } from 'lodash';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_CONNECTION_UI_SCHEMA } from '../../../../constants/ServiceConnection.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
-  getConnectionSchemas,
+  buildValidConfig,
+  ConnectionSchemaResult,
+  EMPTY_CONNECTION_SCHEMA,
   getFilteredSchema,
+  loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
@@ -46,11 +49,35 @@ function FiltersConfigForm({
   const customFields: RegistryFieldsType = {
     ArrayField: WorkflowArrayFieldTemplate,
   };
-  const { connSch, validConfig } = getConnectionSchemas({
-    data,
-    serviceCategory,
-    serviceType,
-  });
+  const [connSch, setConnSch] = useState<ConnectionSchemaResult['connSch']>(
+    EMPTY_CONNECTION_SCHEMA
+  );
+
+  // {@code validConfig} is the sanitized initial form data — sync useMemo on {@code data}
+  // so RJSF's {@code formData} prop is stable until the parent commits a new prop. See
+  // {@link EmbeddedConnectionConfigForm} for the original bug context.
+  const validConfig = useMemo(() => buildValidConfig(data), [data]);
+
+  // Schema only depends on serviceCategory + serviceType. Refetching on every {@code data}
+  // change reset the RJSF form mid-edit.
+  useEffect(() => {
+    let cancelled = false;
+    loadConnectionSchema(serviceCategory, serviceType)
+      .then((schema) => {
+        if (!cancelled) {
+          setConnSch(schema);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnSch(EMPTY_CONNECTION_SCHEMA);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceCategory, serviceType]);
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
@@ -58,20 +85,18 @@ function FiltersConfigForm({
     await onSave({ ...data, formData: updatedFormData });
   };
 
-  // Remove the filters property from the schema
-  // Since it'll have a separate form in the next step
-  const filteredSchema = useMemo(() => {
+  const filteredSchema = useMemo<RJSFSchema>(() => {
     const propertiesWithoutFilters = getFilteredSchema(
-      connSch.schema.properties,
+      connSch.schema.properties as Record<string, unknown> | undefined,
       false
     );
 
     return {
-      ...connSch.schema,
-      properties: propertiesWithoutFilters,
-      additionalProperties: false, // Disable additional properties for default filters form
-    };
-  }, [connSch.schema.properties]);
+      ...(connSch.schema as Record<string, unknown>),
+      properties: propertiesWithoutFilters as RJSFSchema['properties'],
+      additionalProperties: false,
+    } as RJSFSchema;
+  }, [connSch.schema]);
 
   return (
     <FormBuilder
