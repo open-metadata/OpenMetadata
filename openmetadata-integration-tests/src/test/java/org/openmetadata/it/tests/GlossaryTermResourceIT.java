@@ -1066,10 +1066,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getReviewers());
     assertEquals(1, updated.getReviewers().size());
 
-    // Add another reviewer
-    updated.setReviewers(
+    // Add another reviewer — re-fetch first so the patch diff contains only the
+    // reviewer change. Adding the first reviewer triggers the async approval
+    // workflow which flips entityStatus to IN_REVIEW; patching the stale
+    // `updated` object (still APPROVED) would otherwise produce an IN_REVIEW ->
+    // APPROVED status diff that checkUpdatedByReviewer rejects because admin is
+    // not a reviewer.
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
