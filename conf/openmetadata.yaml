@@ -718,6 +718,13 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
+  requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
+  writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}
+  writeRetryInitialBackoffMs: ${RDF_WRITE_RETRY_INITIAL_BACKOFF_MS:-250}
+  writeRetryMaxBackoffMs: ${RDF_WRITE_RETRY_MAX_BACKOFF_MS:-2000}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-50}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-25}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
