@@ -52,7 +52,6 @@ import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
-  getRunHistoryForPipeline,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -192,10 +191,6 @@ const TestSuitePipelineTab = ({
       )
     );
 
-    const recentRunStatusPromises = testSuitePipelines.map((item) =>
-      getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-    );
-
     Promise.allSettled(permissionPromises).then((permissionResponse) => {
       const permissionData = permissionResponse.reduce((acc, cv, index) => {
         return {
@@ -210,31 +205,17 @@ const TestSuitePipelineTab = ({
       );
     });
 
-    Promise.allSettled(recentRunStatusPromises)
-      .then((recentRunStatusResponse) => {
-        const recentRunStatusData = recentRunStatusResponse.reduce(
-          (acc, cv, index) => {
-            let value: PipelineStatus[] = [];
-
-            if (cv.status === 'fulfilled') {
-              const runs = cv.value.data ?? [];
-              const ingestion = testSuitePipelines[index];
-              value =
-                runs.length === 0 && ingestion?.pipelineStatuses
-                  ? [ingestion.pipelineStatuses]
-                  : runs;
-            }
-
-            return {
-              ...acc,
-              [testSuitePipelines[index]?.name]: value,
-            };
-          },
-          {}
-        );
-        setRecentRunStatuses(recentRunStatusData);
-      })
-      .finally(() => setIsIngestionRunsLoading(false));
+    const recentRunStatusData = testSuitePipelines.reduce<
+      Record<string, PipelineStatus[]>
+    >(
+      (acc, ingestion) => ({
+        ...acc,
+        [ingestion.name]: ingestion.pipelineStatuses ?? [],
+      }),
+      {}
+    );
+    setRecentRunStatuses(recentRunStatusData);
+    setIsIngestionRunsLoading(false);
   }, [testSuitePipelines, getEntityPermissionByFqn]);
 
   const handlePipelinePageChange = useCallback(

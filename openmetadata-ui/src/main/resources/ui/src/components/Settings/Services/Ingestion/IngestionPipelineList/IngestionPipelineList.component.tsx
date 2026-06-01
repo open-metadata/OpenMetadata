@@ -145,7 +145,10 @@ export const IngestionPipelineList = ({
       setLoading(true);
       try {
         const { data, paging: pagingRes } = await getIngestionPipelines({
-          arrQueryFields: [TabSpecificField.OWNERS],
+          arrQueryFields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PIPELINE_STATUSES,
+          ],
           serviceType:
             serviceName === 'testSuites'
               ? EntityType.TEST_SUITE

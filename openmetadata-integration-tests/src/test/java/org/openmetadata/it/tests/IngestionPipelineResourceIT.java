@@ -840,6 +840,55 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
+  void test_pipelineStatusesFieldReturnsRecentRunsNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("statuses_field_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String statusPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    long baseTimestamp = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+    List<String> runIdsInAscendingTimestamp = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      String runId = UUID.randomUUID().toString();
+      runIdsInAscendingTimestamp.add(runId);
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000L));
+      client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+    }
+
+    String entityPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getId() + "?fields=pipelineStatuses";
+    IngestionPipeline withStatuses =
+        client.getHttpClient().execute(HttpMethod.GET, entityPath, null, IngestionPipeline.class);
+
+    List<PipelineStatus> statuses = withStatuses.getPipelineStatuses();
+    assertNotNull(statuses);
+    assertEquals(5, statuses.size());
+
+    List<String> expectedNewestFirst = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));
+    Collections.reverse(expectedNewestFirst);
+    List<String> actualRunIds = statuses.stream().map(PipelineStatus::getRunId).toList();
+    assertEquals(expectedNewestFirst, actualRunIds);
+  }
+
+  @Test
   void test_pipelineStatusDeletion(TestNamespace ns) throws OpenMetadataException {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 

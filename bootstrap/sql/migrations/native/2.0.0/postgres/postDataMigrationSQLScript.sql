@@ -82,3 +82,10 @@ WHERE configtype = 'workflowSettings'
   AND json->'executorConfiguration' IS NOT NULL
   AND ((json->'executorConfiguration'->>'asyncJobAcquisitionInterval')::int > 1000
     OR (json->'executorConfiguration'->>'timerJobAcquisitionInterval')::int > 5000);
+
+-- pipelineStatuses is a derived field, read on demand from entity_extension_time_series, and is
+-- now an array instead of a single object. Strip any stale single-object value that a GET->PUT
+-- round-trip may have persisted into the stored entity JSON so it cannot break deserialization.
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{pipelineStatuses}')::json
+WHERE json::jsonb #> '{pipelineStatuses}' IS NOT NULL;

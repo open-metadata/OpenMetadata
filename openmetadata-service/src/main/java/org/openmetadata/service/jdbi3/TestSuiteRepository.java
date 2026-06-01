@@ -810,7 +810,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               "*",
               Include.NON_DELETED);
 
-      PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
+      PipelineStatusType state =
+          IngestionPipelineRepository.latestPipelineStatus(pipeline).getPipelineState();
 
       Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
       createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
@@ -932,10 +933,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       Optional.of(pipeline)
           .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
-          .filter(p -> p.getPipelineStatuses() != null)
+          .filter(p -> !nullOrEmpty(p.getPipelineStatuses()))
           .filter(
               p -> {
-                PipelineStatusType state = p.getPipelineStatuses().getPipelineState();
+                PipelineStatusType state =
+                    IngestionPipelineRepository.latestPipelineStatus(p).getPipelineState();
                 return state == PipelineStatusType.SUCCESS
                     || state == PipelineStatusType.FAILED
                     || state == PipelineStatusType.PARTIAL_SUCCESS;

@@ -593,12 +593,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
       String effectiveRunId =
-          !nullOrEmpty(runId)
-              ? runId
-              : (ingestionPipeline.getPipelineStatuses() != null
-                  ? ingestionPipeline.getPipelineStatuses().getRunId()
-                  : null);
+          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
