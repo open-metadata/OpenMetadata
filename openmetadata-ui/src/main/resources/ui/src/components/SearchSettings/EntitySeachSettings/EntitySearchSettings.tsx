@@ -283,10 +283,11 @@ const EntitySearchSettings = () => {
           (config: AssetTypeConfiguration) => config.assetType === entityType
         );
 
-      setSearchSettings({
+      setSearchSettings((prev) => ({
+        ...prev,
         ...savedEntityConfig,
         isUpdated: false,
-      });
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
