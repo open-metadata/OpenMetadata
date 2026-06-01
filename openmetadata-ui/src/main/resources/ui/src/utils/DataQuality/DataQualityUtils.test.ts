@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
@@ -20,6 +21,12 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../generated/tests/testDefinition';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
   buildDataQualityDashboardFilters,
@@ -29,6 +36,7 @@ import {
   buildMustEsFilterForTier,
   buildTestCaseParams,
   createTestCaseParameters,
+  createUpdatedTestCasePatch,
   filterTestCasesByTableAndColumn,
   getColumnFilterEntityLink,
   getColumnFilterOptions,
@@ -70,6 +78,7 @@ jest.mock('../TableUtils', () => ({
   generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
     return `<#E::table::${fqn}>`;
   }),
+  getTierTags: jest.fn().mockReturnValue(undefined),
 }));
 
 jest.mock('../FeedUtils', () => ({
@@ -1076,6 +1085,87 @@ describe('DataQualityUtils', () => {
           'sample_snowflake.ANALYTICS_DB.prod.customer_360::zip'
         )
       ).toBe('zip');
+    });
+  });
+
+  describe('createUpdatedTestCasePatch', () => {
+    const classificationTag: TagLabel = {
+      tagFQN: 'PII.Sensitive',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+
+    const baseTestCase = {
+      id: 'test-case-id',
+      name: 'test_case',
+      displayName: 'Old name',
+      entityLink: '<#E::table::svc.db.schema.tbl::columns::col>',
+    } as TestCase;
+
+    const baseValue = {
+      params: {},
+      displayName: 'Old name',
+      tags: [],
+      glossaryTerms: [],
+    } as unknown as TestCaseFormType;
+
+    const hasTagsOp = (patch: { path: string }[]) =>
+      patch.some((op) => op.path === '/tags' || op.path.startsWith('/tags/'));
+
+    it('should not emit a tags op when test case has no tags and none are added', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, displayName: 'New name' },
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/displayName',
+        value: 'New name',
+      });
+    });
+
+    it('should not emit a tags op when existing tags are unchanged', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: {
+          ...baseValue,
+          displayName: 'New name',
+          tags: [classificationTag],
+        },
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/displayName',
+        value: 'New name',
+      });
+    });
+
+    it('should emit a tags op when existing tags are cleared', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: { ...baseValue, tags: [], glossaryTerms: [] },
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(true);
+    });
+
+    it('should keep the original tags when only parameters are edited', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: baseValue,
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
     });
   });
 });
