@@ -27,26 +27,23 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock(
-  '@openmetadata/ui-core-components',
-  () => ({
-    Typography: ({
-      as: Element = 'div',
-      children,
-      ...props
-    }: {
-      as?: ElementType;
-      children: ReactNode;
-    }) => <Element {...props}>{children}</Element>,
-  }),
-  { virtual: true }
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Typography: ({
+    as: Element = 'div',
+    children,
+    ...props
+  }: {
+    as?: ElementType;
+    children: ReactNode;
+  }) => <Element {...props}>{children}</Element>,
+}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(),
 }));
 
-const mockUseApplicationStore = useApplicationStore as jest.Mock;
+const mockUseApplicationStore =
+  useApplicationStore as jest.MockedFunction<typeof useApplicationStore>;
 
 describe('MarketplaceGreetingBanner', () => {
   it('renders greeting displayName in start case', () => {
