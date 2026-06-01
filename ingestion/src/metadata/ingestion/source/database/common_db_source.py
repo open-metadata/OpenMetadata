@@ -68,10 +68,6 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
-from metadata.utils.execution_time_tracker import (
-    calculate_execution_time,
-    calculate_execution_time_generator,
-)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -223,7 +219,6 @@ class CommonDbSourceService(
         by default there will be no stored procedure description
         """
 
-    @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
     ) -> Iterable[Either[CreateDatabaseRequest]]:
@@ -285,7 +280,6 @@ class CommonDbSourceService(
         """
         yield from self._get_filtered_schema_names()
 
-    @calculate_execution_time_generator()
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
@@ -346,7 +340,6 @@ class CommonDbSourceService(
         self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
-    @calculate_execution_time()
     def get_table_description(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
@@ -411,12 +404,16 @@ class CommonDbSourceService(
             try:
                 table_iter = self.query_table_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
+                logger.warning(
+                    f"Fetching table list failed for schema {schema_name} due to - {err}"
+                )
                 logger.debug(traceback.format_exc())
                 table_iter = []
             for table_and_type in table_iter:
                 try:
-                    table_name = self.standardize_table_name(schema_name, table_and_type.name)
+                    table_name = self.standardize_table_name(
+                        schema_name, table_and_type.name
+                    )
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -440,7 +437,9 @@ class CommonDbSourceService(
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.warning(
+                        f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}"
+                    )
                     logger.debug(traceback.format_exc())
                     continue
                 yield table_name, table_and_type.type_
@@ -449,12 +448,16 @@ class CommonDbSourceService(
             try:
                 view_iter = self.query_view_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
+                logger.warning(
+                    f"Fetching view list failed for schema {schema_name} due to - {err}"
+                )
                 logger.debug(traceback.format_exc())
                 view_iter = []
             for view_and_type in view_iter:
                 try:
-                    view_name = self.standardize_table_name(schema_name, view_and_type.name)
+                    view_name = self.standardize_table_name(
+                        schema_name, view_and_type.name
+                    )
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -478,12 +481,13 @@ class CommonDbSourceService(
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.warning(
+                        f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}"
+                    )
                     logger.debug(traceback.format_exc())
                     continue
                 yield view_name, view_and_type.type_
 
-    @calculate_execution_time()
     def get_schema_definition(
         self,
         table_type: TableType,
@@ -576,7 +580,6 @@ class CommonDbSourceService(
         Method to fetch the extensions of the table
         """
 
-    @calculate_execution_time_generator()
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -772,7 +775,6 @@ class CommonDbSourceService(
 
         return foreign_constraints
 
-    @calculate_execution_time()
     def update_table_constraints(
         self,
         table_name,

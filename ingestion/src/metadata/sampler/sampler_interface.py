@@ -14,7 +14,7 @@ Interface for sampler
 import traceback
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, List, Optional, Set  # noqa: UP035
+from typing import Any, List, Optional, Set
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
@@ -57,7 +57,6 @@ from metadata.utils.constants import (
     SAMPLE_DATA_DEFAULT_COUNT,
     SAMPLE_DATA_MAX_CELL_LENGTH,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -205,7 +204,8 @@ class SamplerInterface(ABC):
                 self._get_asset_row_count()
                 if (
                     self.sample_config.profileSampleConfig
-                    and self.sample_config.profileSampleConfig.sampleConfigType == SampleConfigType.DYNAMIC
+                    and self.sample_config.profileSampleConfig.sampleConfigType
+                    == SampleConfigType.DYNAMIC
                 )
                 else None
             ),
@@ -286,7 +286,6 @@ class SamplerInterface(ABC):
             return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
         return value
 
-    @calculate_execution_time(store=False)
     def generate_sample_data(
         self, sample_data_config: Optional[SampleDataIngestionConfig] = None
     ) -> TableData:
