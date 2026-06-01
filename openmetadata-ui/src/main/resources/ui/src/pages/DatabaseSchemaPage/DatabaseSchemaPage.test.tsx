@@ -18,7 +18,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -99,7 +99,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
@@ -119,11 +119,15 @@ jest.mock('../../rest/tableAPI', () => ({
     ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation((error) => error),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 

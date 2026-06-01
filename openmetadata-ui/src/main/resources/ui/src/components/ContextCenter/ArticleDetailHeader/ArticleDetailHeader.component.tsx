@@ -67,8 +67,10 @@ import {
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import {
+  getKnowledgePageName,
+  updateKnowledgeCenterRecentViewed,
+} from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -109,7 +111,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       {
         name: '',
         icon: <Home02 size={14} />,
-        url: '/',
+        url: contextCenterClassBase.getHomePath(),
         activeTitle: true,
       },
       {
@@ -122,7 +124,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       },
       {
         activeTitle: true,
-        name: getEntityName(knowledgePage) || t('label.untitled'),
+        name: getKnowledgePageName(knowledgePage, t),
         url: '',
       },
     ],
@@ -343,7 +345,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               {/* Article name with icon */}
               <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
                 <Typography ellipsis as="h3" className="tw:truncate">
-                  {getEntityName(knowledgePage) || t('label.untitled')}
+                  {getKnowledgePageName(knowledgePage, t)}
                 </Typography>
                 {entityStatusBadge}
               </div>
@@ -556,6 +558,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
+                  data-testid="share-btn"
                   icon={<Copy06 height={20} width={20} />}
                   onClick={handleShare}
                 />
@@ -607,10 +610,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             )}
 
             <DeleteModal
-              entityTitle={getEntityName(knowledgePage) || t('label.untitled')}
+              entityTitle={getKnowledgePageName(knowledgePage, t)}
               isDeleting={isDeleting}
               message={t('message.soft-delete-message-for-entity', {
-                entity: getEntityName(knowledgePage) || t('label.untitled'),
+                entity: getKnowledgePageName(knowledgePage, t),
               })}
               open={isDeleteModalOpen}
               onCancel={() => setIsDeleteModalOpen(false)}
@@ -650,6 +653,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className="tw:relative tw:bottom-2.5"
                   color="tertiary"
+                  data-testid="right-panel-toggle-btn"
                   icon={
                     <SidebarCollapsible
                       className={isRightPanelOpen ? undefined : 'tw:rotate-180'}

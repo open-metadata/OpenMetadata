@@ -14,6 +14,7 @@
 import {
   ButtonUtility,
   Card,
+  FileIcon,
   Skeleton,
   Tree,
   Typography,
@@ -26,7 +27,6 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
-import { FileTypeLabel } from '../../../utils/ContextCenterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 import { DocFile } from './DocumentsView.interface';
@@ -106,7 +106,7 @@ const DocumentFolderView = ({
 
   return (
     <>
-      <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col">
+      <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
@@ -117,11 +117,12 @@ const DocumentFolderView = ({
                 {t('label.folder')}
               </Typography>
               <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
+                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 <span>
                   {folders.length} {t('label.folder-plural')}
                 </span>
+                <span className="tw:select-none tw:text-lg">&middot;</span>
                 <span>
                   {files.length} {t('label.file-plural')}
                 </span>
@@ -191,7 +192,7 @@ const DocumentFolderView = ({
                           icon={Trash01}
                           size="xs"
                           tooltip={t('label.delete')}
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setFolderToDelete(folder);
                           }}
@@ -205,7 +206,12 @@ const DocumentFolderView = ({
                         key={file.id}
                         textValue={file.name}>
                         <Tree.ItemContent showExpandIcon={false}>
-                          <FileTypeLabel fileType={file.fileType} />
+                          <FileIcon
+                            className="tw:size-6"
+                            theme="light"
+                            type={file.fileExtension ?? ''}
+                            variant="default"
+                          />
                           <Typography
                             ellipsis
                             className="tw:truncate tw:text-gray-700 tw:max-w-[70%]"

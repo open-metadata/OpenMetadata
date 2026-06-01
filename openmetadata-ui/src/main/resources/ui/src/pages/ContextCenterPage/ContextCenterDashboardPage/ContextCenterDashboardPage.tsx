@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Home02 } from '@untitledui/icons';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ChevronDown, Home02, UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -23,20 +25,29 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
+import {
+  QuickLinkFormModal,
+  QuickLinkFormModalFormData,
+} from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  CreateKnowledgePage,
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
 import { listContextFiles } from '../../../rest/assetAPI';
-import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import {
+  getListKnowledgePages,
+  postKnowledgePage,
+} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   contextFileToUploadedDocumentItem,
@@ -45,7 +56,7 @@ import {
   knowledgePageToArticleItem,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const RECENT_ARTICLES_LIMIT = 20;
 const RECENT_DOCUMENTS_LIMIT = 20;
@@ -58,6 +69,7 @@ const ContextCenterDashboardPage: FC = () => {
   const { getResourcePermission } = usePermissionProvider();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [articles, setArticles] = useState<ArticleCardItem[]>([]);
   const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
@@ -74,6 +86,43 @@ const ContextCenterDashboardPage: FC = () => {
   const handleCreateArticle = useCallback(async () => {
     await createArticleKnowledgePage(currentUser?.id ?? '', navigate);
   }, [currentUser, navigate]);
+
+  const handleAddQuickLink = useCallback(
+    async (formData: QuickLinkFormModalFormData) => {
+      try {
+        const tags = [
+          ...(formData.tags ?? []),
+          ...(formData.glossaryTerms ?? []),
+        ];
+        const data: CreateKnowledgePage = {
+          description: formData.description,
+          displayName: formData.displayName ?? '',
+          name: `${PageType.QUICK_LINK}_${cryptoRandomString({
+            length: 8,
+            type: 'alphanumeric',
+          })}`,
+          owners: [{ id: currentUser?.id ?? '', type: 'user' }],
+          page: { url: formData.url },
+          pageType: PageType.QUICK_LINK,
+          relatedEntities: formData?.relatedEntities,
+          tags,
+        };
+        const response = await postKnowledgePage(data);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.quick-link'),
+          })
+        );
+        setArticles((prev) => [
+          knowledgePageToArticleItem(response, t('label.untitled')),
+          ...prev,
+        ]);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [currentUser, t]
+  );
 
   const fetchRecentArticles = useCallback(async () => {
     setIsArticlesLoading(true);
@@ -139,11 +188,50 @@ const ContextCenterDashboardPage: FC = () => {
       data-testid="context-center-dashboard-page">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
+        actionsSlot={
+          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
+            <Button
+              color="secondary"
+              iconLeading={UploadCloud02}
+              size="sm"
+              onClick={() => setIsUploadModalOpen(true)}>
+              {t('label.upload-file')}
+            </Button>
+            <LimitWrapper resource="knowledgeCenter">
+              <Dropdown.Root>
+                <Button
+                  color="primary"
+                  data-testid="create-knowledge-page-btn"
+                  iconTrailing={ChevronDown}>
+                  {t('label.create')}
+                </Button>
+
+                <Dropdown.Popover className="tw:w-30">
+                  <Dropdown.Menu aria-label="create knowledge page">
+                    <Dropdown.Item
+                      data-testid="create-article-btn"
+                      key={PageType.ARTICLE}
+                      onAction={handleCreateArticle}>
+                      {t('label.article')}
+                    </Dropdown.Item>
+
+                    <Dropdown.Item
+                      data-testid="create-quick-link-btn"
+                      key={PageType.QUICK_LINK}
+                      onAction={() => setShowAddLinkModal(true)}>
+                      {t('label.quick-link')}
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            </LimitWrapper>
+          </div>
+        }
         breadcrumbs={[
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -159,8 +247,6 @@ const ContextCenterDashboardPage: FC = () => {
         hasPermission={hasCreatePermission}
         subtitle={t('message.context-center-dashboard-subtitle')}
         title={t('label.dashboard')}
-        onCreateArticle={handleCreateArticle}
-        onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
       <div className="tw:flex tw:flex-col tw:gap-6">
@@ -188,6 +274,23 @@ const ContextCenterDashboardPage: FC = () => {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUploaded={handleUploaded}
+      />
+
+      <QuickLinkFormModal
+        isOpen={showAddLinkModal}
+        permissions={
+          {
+            EditAll: true,
+            EditDescription: true,
+            EditDisplayName: true,
+            EditTags: true,
+          } as OperationPermission
+        }
+        onCancel={() => setShowAddLinkModal(false)}
+        onSave={async (data) => {
+          await handleAddQuickLink(data);
+          setShowAddLinkModal(false);
+        }}
       />
     </div>
   );

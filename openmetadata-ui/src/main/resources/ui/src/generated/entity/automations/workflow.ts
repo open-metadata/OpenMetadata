@@ -1730,6 +1730,10 @@ export interface ConfigObject {
      */
     httpPath?: string;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Table name to fetch the query history.
      *
      * Table name to fetch the query history. When set, this overrides the default
@@ -4161,6 +4165,10 @@ export interface ConfigConnection {
      */
     ingestAllDatabases?: boolean;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
@@ -4333,6 +4341,28 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GcpConfigClass;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -4826,6 +4856,10 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -5998,9 +6032,15 @@ export interface TestConnectionResult {
      */
     errorLog?: string;
     /**
-     * The actual query that was executed (may be transpiled or modified from the original)
+     * The query that was executed, post-transpile but without the guardrail row LIMIT. If the
+     * user supplied their own LIMIT in the original query, it is preserved here.
      */
     executedQuery?: string;
+    /**
+     * Row LIMIT injected by the query runner as a guardrail when the original query had no
+     * LIMIT. Null when the user's query already contained a LIMIT or when no cap was applied.
+     */
+    executionLimit?: number;
     /**
      * S3 or GCS key path where the query results CSV is stored. Present when storage mode is
      * enabled; mutually exclusive with 'results'.

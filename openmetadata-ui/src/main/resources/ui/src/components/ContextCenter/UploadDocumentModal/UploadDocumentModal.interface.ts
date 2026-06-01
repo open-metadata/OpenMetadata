@@ -20,16 +20,12 @@ export interface UploadDocumentModalProps {
   onUploaded?: (files: ContextFile[]) => void;
 }
 
-export type UploadStatus = 'uploading' | 'done' | 'error';
-
-export interface StagedFile {
-  id: string;
-  file: File;
-}
+export type UploadStatus = 'done' | 'error';
 
 export interface QueuedFile {
   id: string;
   file: File;
   progress: number;
   status: UploadStatus;
+  sizeExceeded?: boolean;
 }

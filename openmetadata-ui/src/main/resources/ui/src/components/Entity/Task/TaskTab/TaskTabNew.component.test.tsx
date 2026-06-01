@@ -350,7 +350,8 @@ jest.mock('../../../../utils/TasksUtils', () => ({
   generateOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 

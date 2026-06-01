@@ -160,7 +160,7 @@ const ContextCenterDocumentsPage: FC = () => {
         prev.filter((document) => document.id !== fileToDelete.id)
       );
       showSuccessToast(
-        t('server.entity-deleted-successfully', {
+        t('server.entity-deleted-success', {
           entity: t('label.document'),
         })
       );
@@ -193,7 +193,7 @@ const ContextCenterDocumentsPage: FC = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -220,7 +220,7 @@ const ContextCenterDocumentsPage: FC = () => {
       <ReflexContainer
         className="tw:flex-1 tw:overflow-hidden"
         orientation="vertical">
-        <ReflexElement flex={0.25} minSize={200}>
+        <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
           <DocumentFolderView
             files={allDocuments}
             selectedFolderId={selectedFolderId}

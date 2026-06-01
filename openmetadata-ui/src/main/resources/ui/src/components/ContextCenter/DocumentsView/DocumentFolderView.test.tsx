@@ -27,6 +27,10 @@ jest.mock('rest/assetAPI', () => ({
   deleteFolder: jest.fn(),
 }));
 
+jest.mock('../../../assets/svg/ic-folder-new.svg', () => ({
+  ReactComponent: jest.fn(() => <span data-testid="folder-icon" />),
+}));
+
 jest.mock('../CreateFolderModal/CreateFolderModal.component', () =>
   jest.fn(
     ({
@@ -83,12 +87,6 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   )
 );
 
-jest.mock('utils/ContextCenterUtils', () => ({
-  FileTypeLabel: jest.fn(({ fileType }: { fileType: string }) => (
-    <span data-testid={`badge-${fileType}`}>{fileType}</span>
-  )),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(
     ({
@@ -108,6 +106,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div data-testid="card">{children}</div>
   )),
+  FileIcon: jest.fn(({ type }: { type: string }) => (
+    <span data-testid={`file-icon-${type}`} />
+  )),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tree: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -119,9 +120,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           <div data-testid={`tree-item-${id}`}>{children}</div>
         )
       ),
-      ItemContent: jest.fn(({ children }: { children: React.ReactNode }) => (
-        <div>{children}</div>
-      )),
+      ItemContent: jest.fn(
+        ({
+          children,
+        }: {
+          children: React.ReactNode;
+          showExpandIcon?: boolean;
+        }) => <div>{children}</div>
+      ),
     }
   ),
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (

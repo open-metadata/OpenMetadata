@@ -43,7 +43,7 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { handleSearchFilterOption } from '../../../utils/CommonUtils';
+import { handleSearchFilterOption } from '../../../utils/FilterQueryUtils';
 import { createScrollToErrorHandler } from '../../../utils/formUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';

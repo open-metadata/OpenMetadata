@@ -48,7 +48,7 @@ import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -183,6 +183,11 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         { fields: getKnowledgePageFields() }
       );
 
+      showSuccessToast(
+        t('message.entity-saved-successfully', {
+          entity: t('label.quick-link'),
+        })
+      );
       onSave({
         displayName: response.displayName,
         description: response.description,
@@ -195,6 +200,11 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleCancel = () => {
+    form.resetFields();
+    onCancel();
   };
 
   const handleFormFinish = (
@@ -330,7 +340,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const title = isUndefined(quickLink)
     ? t('label.add-entity', { entity: t('label.quick-link') })
     : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
-        quickLink.displayName ?? t('label.untitled')
+        getEntityName(quickLink) || t('label.untitled')
       }`;
 
   return (
@@ -338,14 +348,14 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       isDismissable
       isOpen={isOpen}
       style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && onCancel()}>
+      onOpenChange={(open) => !open && handleCancel()}>
       <Modal>
         <Dialog
           showCloseButton
           className="quick-link-form-modal"
-          title={title}
           width={600}
-          onClose={onCancel}>
+          onClose={handleCancel}>
+          <Dialog.Header title={title} />
           <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
             <Form
               className="new-form-style"
@@ -371,8 +381,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           </Dialog.Content>
 
           <Dialog.Footer className="quick-link-modal-footer">
-            <Button color="secondary" onClick={onCancel}>
-              {t('label.back')}
+            <Button color="secondary" onClick={handleCancel}>
+              {t('label.cancel')}
             </Button>
             <Button
               color="primary"

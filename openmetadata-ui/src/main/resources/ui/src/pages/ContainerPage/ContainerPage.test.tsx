@@ -180,13 +180,27 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI');
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+jest.mock('../../utils/EntityUtils', () => ({
   addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
   getFeedCounts: jest.fn().mockReturnValue(0),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
+}));
+
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../hooks/paging/usePaging', () => ({
@@ -214,7 +228,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn().mockImplementation((str) => str),
