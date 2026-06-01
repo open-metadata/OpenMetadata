@@ -14,6 +14,7 @@
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
+import { Typography } from 'antd';
 import RGL, {
   Layout,
   ReactGridLayoutProps,
@@ -148,18 +149,26 @@ function CustomizeMyData({
     [layout]
   );
 
-  const disableSave = useMemo(() => {
-    const filteredLayout = layout.filter((widget) =>
-      widget.i.startsWith('KnowledgePanel')
-    );
+  const filteredLayout = useMemo(
+    () =>
+      layout.filter(
+        (widget) =>
+          widget.i.startsWith('KnowledgePanel') &&
+          !widget.i.endsWith('.EmptyWidgetPlaceholder')
+      ),
+    [layout]
+  );
 
+  const isWidgetSelectionEmpty = filteredLayout.length === 0;
+
+  const disableSave = useMemo(() => {
     const jsonPatch = compare(
       cloneDeep((initialPageData?.layout || []) as WidgetConfig[]),
       cloneDeep(filteredLayout || [])
     );
 
-    return jsonPatch.length === 0;
-  }, [initialPageData?.layout, layout]);
+    return isWidgetSelectionEmpty || jsonPatch.length === 0;
+  }, [filteredLayout, initialPageData?.layout, isWidgetSelectionEmpty]);
 
   const handleSave = async (updatedLayout?: WidgetConfig[]) => {
     await onSaveLayout({
@@ -233,6 +242,14 @@ function CustomizeMyData({
             onReset={handleReset}
             onSave={handleSave}
           />
+          {isWidgetSelectionEmpty && (
+            <Typography.Text
+              className="m-b-md d-block"
+              data-testid="minimum-widget-warning"
+              type="danger">
+              {t('message.minimum-widget-required')}
+            </Typography.Text>
+          )}
           {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
           {/*
             ReactGridLayout has known issues with RTL layouts, 

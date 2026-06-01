@@ -2983,6 +2983,7 @@
     "metric-relations-require-glossary-term": "Select a glossary term to add relationships.",
     "metric-tags-info": "Metrics link to glossary terms through tags.",
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
+    "minimum-widget-required": "At least one widget is required to save this page.",
     "minute": "Minute",
     "missing-config-value": "Missing config value: {{field}}",
     "missing-description": "Missing Description",

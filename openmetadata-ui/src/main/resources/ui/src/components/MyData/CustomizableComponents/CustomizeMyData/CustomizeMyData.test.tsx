@@ -136,7 +136,7 @@ jest.mock(
   () => ({
     CustomizablePageHeader: jest
       .fn()
-      .mockImplementation(({ onAddWidget, onReset, onSave }) => (
+      .mockImplementation(({ disableSave, onAddWidget, onReset, onSave }) => (
         <div data-testid="customizable-page-header">
           <button data-testid="add-widget-button" onClick={onAddWidget}>
             Add Widget
@@ -147,7 +147,10 @@ jest.mock(
           <button data-testid="reset-button" onClick={onReset}>
             Reset
           </button>
-          <button data-testid="save-button" onClick={onSave}>
+          <button
+            data-testid="save-button"
+            disabled={disableSave}
+            onClick={onSave}>
             Save
           </button>
         </div>
@@ -264,5 +267,19 @@ describe('CustomizeMyData component', () => {
     fireEvent.click(closeWidgetButton);
 
     expect(screen.queryByText('CustomiseHomeModal')).toBeNull();
+  });
+
+  it('should disable save and show warning when all widgets are removed', async () => {
+    await act(async () => {
+      render(
+        <CustomizeMyData
+          {...mockProps}
+          initialPageData={{ ...mockProps.initialPageData, layout: [] }}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('save-button')).toBeDisabled();
+    expect(screen.getByTestId('minimum-widget-warning')).toBeInTheDocument();
   });
 });
