@@ -214,6 +214,7 @@
     },
     "policyAgentConfig": {
       "title": "Policy Agent Config",
+      "description": "Policy agent configuration for access control extraction.",
       "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
       "default": {
         "enabled": true,

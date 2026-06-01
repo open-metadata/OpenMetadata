@@ -962,7 +962,10 @@ export interface ConnectionClass {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
