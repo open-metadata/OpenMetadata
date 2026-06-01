@@ -53,6 +53,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './add-service-page.less';
 import { ServiceConfig } from './AddServicePage.interface';
+import { useServiceNameValidation } from './useServiceNameValidation';
 
 const AddServicePage = () => {
   const navigate = useNavigate();
@@ -66,7 +67,6 @@ const AddServicePage = () => {
     SERVICE_DEFAULT_ERROR_MAP
   );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
-  const [nameError, setNameError] = useState<string>('');
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
     name: '',
     description: '',
@@ -78,9 +78,20 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+  const {
+    isServiceNameChecking,
+    nameError,
+    resetNameValidation,
+    setNameError,
+    validateServiceName,
+  } = useServiceNameValidation({
+    enabled: activeServiceStep === 2 && Boolean(serviceConfig.serviceType),
+    serviceCategory,
+    serviceName: serviceConfig.name,
+  });
 
   const handleConnectorChangeClick = useCallback(() => {
-    setNameError('');
+    resetNameValidation();
     setActiveField('');
     setActiveServiceStep(1);
     setServiceConfig({
@@ -91,7 +102,7 @@ const AddServicePage = () => {
         config: {} as ConfigData,
       },
     });
-  }, []);
+  }, [resetNameValidation]);
 
   const slashedBreadcrumb = useMemo(
     () => getAddServiceEntityBreadcrumb(serviceCategory),
@@ -137,6 +148,7 @@ const AddServicePage = () => {
   );
 
   const handleServiceTypeClick = (type: string) => {
+    resetNameValidation();
     setServiceConfig({
       name: '',
       description: '',
@@ -158,8 +170,10 @@ const AddServicePage = () => {
   };
 
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
-  const handleConfigUpdate = (newConfigData: ConfigData) => {
-    if (!serviceConfig.name.trim()) {
+  const handleConfigUpdate = async (newConfigData: ConfigData) => {
+    const serviceName = serviceConfig.name.trim();
+
+    if (!serviceName) {
       setNameError(
         t('message.field-text-is-required', {
           fieldText: t('label.service-name'),
@@ -169,8 +183,14 @@ const AddServicePage = () => {
       return;
     }
 
+    const isServiceNameAvailable = await validateServiceName(serviceName);
+
+    if (!isServiceNameAvailable) {
+      return;
+    }
+
     const data = serviceUtilClassBase.getServiceConfigData({
-      serviceName: serviceConfig.name,
+      serviceName,
       serviceType: serviceConfig.serviceType,
       description: serviceConfig.description,
       userId: currentUser?.id ?? '',
@@ -179,6 +199,7 @@ const AddServicePage = () => {
 
     setServiceConfig((prev) => ({
       ...prev,
+      name: serviceName,
       ...data,
     }));
     setActiveServiceStep(3);
@@ -326,7 +347,7 @@ const AddServicePage = () => {
                   }
                   onFocus={handleFieldFocus}
                   onNameChange={(name) => {
-                    setNameError('');
+                    resetNameValidation();
                     setServiceConfig((prev) => ({ ...prev, name }));
                   }}
                 />
@@ -334,6 +355,7 @@ const AddServicePage = () => {
                   requireTestConnection
                   cancelText={t('label.back')}
                   data={serviceConfig as ServicesType}
+                  isSubmitDisabled={Boolean(nameError) || isServiceNameChecking}
                   okText={t('label.next-what-to-ingest')}
                   serviceCategory={serviceCategory}
                   serviceType={serviceConfig.serviceType}
@@ -341,7 +363,7 @@ const AddServicePage = () => {
                   onCancel={handleConnectionDetailsBackClick}
                   onFocus={handleFieldFocus}
                   onSave={async (e) => {
-                    e.formData && handleConfigUpdate(e.formData);
+                    e.formData && (await handleConfigUpdate(e.formData));
                   }}
                 />
               </div>
@@ -350,6 +372,8 @@ const AddServicePage = () => {
             {activeServiceStep === 3 && (
               <FiltersConfigForm
                 cancelText={t('label.back')}
+                data={serviceConfig as ServicesType}
+                okText={t('label.create-and-deploy')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}
                 status={saveServiceState}

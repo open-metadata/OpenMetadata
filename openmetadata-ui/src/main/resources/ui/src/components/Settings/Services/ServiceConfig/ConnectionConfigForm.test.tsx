@@ -20,9 +20,13 @@ import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI'
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  buildValidConfig,
+  flattenAuthTypeIntoConfig,
   getFilteredSchema,
+  getSchemaWithSynthesizedAuthType,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
+  wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
@@ -76,6 +80,45 @@ const formData = {
   supportsProfiler: true,
   supportsQueryComment: true,
 };
+
+const ambiguousAuthSchema = {
+  type: 'object',
+  required: ['username'],
+  properties: {
+    username: {
+      type: 'string',
+    },
+    authType: {
+      oneOf: [
+        {
+          title: 'Basic Auth',
+          type: 'object',
+          properties: {
+            password: {
+              type: 'string',
+            },
+          },
+          additionalProperties: false,
+        },
+        {
+          title: 'Cloud SQL Auth',
+          type: 'object',
+          properties: {
+            password: {
+              type: 'string',
+            },
+            gcpConfig: {
+              type: 'object',
+            },
+          },
+          additionalProperties: false,
+        },
+      ],
+    },
+  },
+};
+
+const mockTestConnectionProps = jest.fn();
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
   getDatabaseConfig: jest.fn().mockResolvedValue({
@@ -159,13 +202,34 @@ jest.mock('../../../common/FormBuilder/FormBuilder', () =>
     jest
       .fn()
       .mockImplementation(
-        ({ children, isSubmitDisabled, onChange, onSubmit, onCancel }) => (
-          <div data-testid="form-builder">
+        ({
+          children,
+          isSubmitDisabled,
+          noValidate,
+          onChange,
+          onSubmit,
+          onCancel,
+        }) => (
+          <div
+            data-no-validate={String(Boolean(noValidate))}
+            data-testid="form-builder">
             {children}
             <button
               data-testid="change-valid-form"
               onClick={() => onChange({ formData })}>
               Change FormBuilder
+            </button>
+            <button
+              data-testid="change-edited-form"
+              onClick={() =>
+                onChange({
+                  formData: {
+                    ...formData,
+                    username: 'changed-admin',
+                  },
+                })
+              }>
+              Change FormBuilder With Edits
             </button>
             <button
               data-testid="submit-button"
@@ -181,16 +245,20 @@ jest.mock('../../../common/FormBuilder/FormBuilder', () =>
 );
 
 jest.mock('../../../common/TestConnection/TestConnection', () =>
-  jest.fn().mockImplementation(({ onTestConnectionStatusChange }) => (
-    <div>
-      <p data-testid="test-connection">TestConnection</p>
-      <button
-        data-testid="mark-test-connection-success"
-        onClick={() => onTestConnectionStatusChange?.(true)}>
-        Success
-      </button>
-    </div>
-  ))
+  jest.fn().mockImplementation((props) => {
+    mockTestConnectionProps(props);
+
+    return (
+      <div>
+        <p data-testid="test-connection">TestConnection</p>
+        <button
+          data-testid="mark-test-connection-success"
+          onClick={() => props.onTestConnectionStatusChange?.(true)}>
+          Success
+        </button>
+      </div>
+    );
+  })
 );
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -235,6 +303,7 @@ const mockProps = {
 
 describe('ServiceConfig', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     (useAirflowStatus as jest.Mock).mockReturnValue({
       reason: 'reason message',
       isAirflowAvailable: true,
@@ -289,12 +358,33 @@ describe('ServiceConfig', () => {
     ).toBeInTheDocument();
   });
 
+  it('should render no config available if schema loading fails', async () => {
+    (loadConnectionSchema as jest.Mock).mockRejectedValueOnce(
+      new Error('schema failed')
+    );
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(
+      await screen.findByText('message.no-config-available')
+    ).toBeInTheDocument();
+  });
+
   it('should call onSubmit when submit button is clicked', async () => {
-    const mockSubmit = (
-      formatFormDataForSubmit as jest.Mock
-    ).mockImplementation(() => ({
+    const flattenedFormData = {
       ...formData,
-    }));
+      password: 'secret',
+    };
+
+    (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValueOnce(
+      flattenedFormData
+    );
+    const mockSubmit = (formatFormDataForSubmit as jest.Mock).mockReturnValue({
+      ...flattenedFormData,
+    });
+
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
@@ -302,7 +392,57 @@ describe('ServiceConfig', () => {
 
     fireEvent.click(submitButton);
 
-    expect(mockSubmit).toHaveBeenCalledWith(formData);
+    expect(flattenAuthTypeIntoConfig).toHaveBeenCalledWith(formData, {
+      type: 'object',
+    });
+    expect(mockSubmit).toHaveBeenCalledWith(flattenedFormData);
+  });
+
+  it('should wrap flat credentials into authType for rendering', async () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+          format: 'password',
+        },
+        privateKey: {
+          type: 'string',
+          format: 'password',
+        },
+      },
+    };
+    const rawConfig = {
+      password: 'secret',
+    };
+    const wrappedConfig = {
+      authType: {
+        password: 'secret',
+      },
+    };
+
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema,
+      uiSchema: {},
+    });
+    (buildValidConfig as jest.Mock).mockReturnValueOnce(rawConfig);
+    (wrapFlatCredentialsIntoAuthType as jest.Mock).mockReturnValueOnce(
+      wrappedConfig
+    );
+    (getSchemaWithSynthesizedAuthType as jest.Mock).mockReturnValueOnce(schema);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(wrapFlatCredentialsIntoAuthType).toHaveBeenCalledWith(
+      rawConfig,
+      schema
+    );
+    expect(getSchemaWithSynthesizedAuthType).toHaveBeenCalledWith(
+      schema,
+      expect.any(Function)
+    );
   });
 
   it('should disable next until required schema fields are filled', async () => {
@@ -337,6 +477,14 @@ describe('ServiceConfig', () => {
     });
   });
 
+  it('should respect the parent submit disabled state', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} isSubmitDisabled />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+  });
+
   it('should disable next until the test connection succeeds when required', async () => {
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
@@ -348,6 +496,143 @@ describe('ServiceConfig', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should pass backend-ready flattened config to test connection', async () => {
+    const flattenedFormData = {
+      ...formData,
+      password: 'secret',
+    };
+
+    (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValue(flattenedFormData);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.getData()).toEqual(flattenedFormData);
+    expect(flattenAuthTypeIntoConfig).toHaveBeenCalledWith(formData, {
+      type: 'object',
+    });
+  });
+
+  it('should expose required-field validation to the test connection component', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
+  it('should use selected ingestion runner when deciding whether to show the IP alert', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+      platform: 'Hybrid',
+    });
+    (buildValidConfig as jest.Mock).mockReturnValueOnce({
+      ingestionRunner: 'CollateSaaS',
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ip-address')).toBeInTheDocument();
+    });
+  });
+
+  it('should enable next after a required test succeeds when auth schema validation is ambiguous', async () => {
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: ambiguousAuthSchema,
+      uiSchema: {},
+    });
+    (getFilteredSchema as jest.Mock).mockReturnValueOnce(
+      ambiguousAuthSchema.properties
+    );
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    expect(screen.getByTestId('form-builder')).toHaveAttribute(
+      'data-no-validate',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should not submit or move to the next step when the test connection succeeds', async () => {
+    const onSave = jest.fn();
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          requireTestConnection
+          onSave={onSave}
+        />
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('should keep next enabled when the form emits an equivalent change after test succeeds', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should disable next when the form changes after test succeeds', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByTestId('change-edited-form'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).toBeDisabled();
     });
   });
 

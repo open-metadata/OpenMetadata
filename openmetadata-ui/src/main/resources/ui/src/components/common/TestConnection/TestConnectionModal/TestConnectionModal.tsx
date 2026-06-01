@@ -27,7 +27,10 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
-import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
+import {
+  TEST_CONNECTION_FAILURE_MESSAGE,
+  TEST_CONNECTION_WARNING_MESSAGE,
+} from '../../../../constants/Services.constant';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -98,6 +101,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   const [message, setMessage] = useState<string>();
   const [showRawLog, setShowRawLog] = useState(false);
   const [expandedStepName, setExpandedStepName] = useState<string>();
+  const [isGateExpanded, setIsGateExpanded] = useState(false);
 
   const resultByName = useMemo(
     () =>
@@ -128,6 +132,20 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   );
 
   const totalCount = testConnectionStep.length;
+  const requiredSteps = useMemo(
+    () => testConnectionStep.filter((step) => step.mandatory),
+    [testConnectionStep]
+  );
+  const optionalSteps = useMemo(
+    () => testConnectionStep.filter((step) => !step.mandatory),
+    [testConnectionStep]
+  );
+  const areRequiredStepsPassing =
+    requiredSteps.length > 0 &&
+    requiredSteps.every((step) => getConnectionStepResult(step)?.passed);
+  const hasOptionalFailures = optionalSteps.some(
+    (step) => getConnectionStepResult(step)?.passed === false
+  );
 
   const progressPercent = totalCount
     ? Math.min(
@@ -137,9 +155,10 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
     : progress;
 
   const isComplete = !isTestingConnection && progress >= 100;
-  const isSuccessful =
-    isComplete && totalCount > 0 && passedCount === totalCount;
-  const isFailed = isComplete && !isSuccessful;
+  const canProceed = isComplete && areRequiredStepsPassing;
+  const isSuccessful = canProceed && !hasOptionalFailures;
+  const isWarning = canProceed && hasOptionalFailures;
+  const isFailed = isComplete && !areRequiredStepsPassing;
 
   const rawLog = useMemo(
     () =>
@@ -282,20 +301,19 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
             {renderStateIcon(state)}
           </div>
           <div className="test-connection-check-copy">
-            <div className="test-connection-check-title">
-              {getStepLabel(step)}
-            </div>
-            <div className="test-connection-check-description">
-              {step.description}
+            <div className="test-connection-check-title-row">
+              <span className="test-connection-check-title">
+                {getStepLabel(step)}
+              </span>
+              <span className="test-connection-method-chip">{step.name}</span>
+              {step.mandatory && (
+                <span className="test-connection-required-chip">
+                  {t('label.required')}
+                </span>
+              )}
             </div>
           </div>
           <div className="test-connection-check-meta">
-            <span className="test-connection-method-chip">{step.name}</span>
-            {step.mandatory && (
-              <span className="test-connection-required-chip">
-                {t('label.required')}
-              </span>
-            )}
             <span className="test-connection-result-text">
               {getStepStatusLabel(state)}
             </span>
@@ -419,33 +437,56 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
             <div
               className={classNames('test-connection-status-banner', {
                 'test-connection-status-banner-success': isSuccessful,
+                'test-connection-status-banner-warning': isWarning,
                 'test-connection-status-banner-failed': isFailed,
                 'test-connection-status-banner-running': isTestingConnection,
               })}>
               <div>
-                <div className="test-connection-status-title">
-                  {isTestingConnection
-                    ? t('message.test-connection-running-checks', {
-                        passed: passedCount,
-                        total: totalCount,
-                      })
-                    : isSuccessful
-                    ? t('message.test-connection-verified')
-                    : t(TEST_CONNECTION_FAILURE_MESSAGE)}
+                <div className="test-connection-status-title-row">
+                  {isWarning ? (
+                    <AlertTriangle
+                      className="test-connection-status-icon warning"
+                      size={18}
+                    />
+                  ) : isSuccessful ? (
+                    <CheckCircle
+                      className="test-connection-status-icon"
+                      size={18}
+                    />
+                  ) : null}
+                  <span className="test-connection-status-title">
+                    {isTestingConnection
+                      ? t('message.test-connection-running-checks', {
+                          passed: passedCount,
+                          total: totalCount,
+                        })
+                      : isWarning
+                      ? t(TEST_CONNECTION_WARNING_MESSAGE)
+                      : isSuccessful
+                      ? t('message.test-connection-verified-count', {
+                          passed: passedCount,
+                          total: totalCount,
+                        })
+                      : t(TEST_CONNECTION_FAILURE_MESSAGE)}
+                  </span>
                 </div>
-                <div className="test-connection-status-subtitle">
-                  {t('message.test-connection-checks-passed-count', {
-                    passed: passedCount,
-                    total: totalCount,
-                  })}
-                </div>
+                {!isSuccessful && (
+                  <div className="test-connection-status-subtitle">
+                    {t('message.test-connection-checks-passed-count', {
+                      passed: passedCount,
+                      total: totalCount,
+                    })}
+                  </div>
+                )}
               </div>
-              <Progress
-                className="test-connection-progress-bar"
-                format={getProgressFormat}
-                percent={progressPercent}
-                strokeColor={isSuccessful ? '#12B76A' : '#1570EF'}
-              />
+              {!isSuccessful && (
+                <Progress
+                  className="test-connection-progress-bar"
+                  format={getProgressFormat}
+                  percent={progressPercent}
+                  strokeColor="#1570EF"
+                />
+              )}
             </div>
 
             {gateStep && (
@@ -456,7 +497,10 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
                     gateResult && !gateResult.passed,
                 })}
                 data-testid="connection-gate-phase">
-                <div className="test-connection-gate-main">
+                <button
+                  className="test-connection-gate-main"
+                  type="button"
+                  onClick={() => setIsGateExpanded((current) => !current)}>
                   <div className="test-connection-gate-copy">
                     <div className="test-connection-gate-title">
                       {t('label.establish-connection')}
@@ -473,15 +517,21 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
                       {t('label.gate')}
                     </span>
                     {renderStateIcon(getStepState(gateStep, gateResult))}
-                    <ChevronDown size={18} />
+                    {isGateExpanded ? (
+                      <ChevronDown size={18} />
+                    ) : (
+                      <ChevronRight size={18} />
+                    )}
                   </div>
-                </div>
-                <div className="test-connection-gate-pills">
-                  <span>{t('label.resolve-host')}</span>
-                  <span>{t('label.open-socket')}</span>
-                  <span>{t('label.authenticate')}</span>
-                  <span>{t('label.open-session')}</span>
-                </div>
+                </button>
+                {isGateExpanded && (
+                  <div className="test-connection-gate-pills">
+                    <span>{t('label.resolve-host')}</span>
+                    <span>{t('label.open-socket')}</span>
+                    <span>{t('label.authenticate')}</span>
+                    <span>{t('label.open-session')}</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -525,13 +575,6 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
                         count: rawLogLineCount,
                       })}
                 </button>
-                <Button
-                  className="raw-connection-log-copy"
-                  data-testid="copy-raw-log-button"
-                  icon={<Copy01 size={16} />}
-                  type="text"
-                  onClick={onCopyToClipBoard}
-                />
                 {showRawLog && (
                   <pre
                     className="raw-connection-log-content"

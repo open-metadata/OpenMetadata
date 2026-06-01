@@ -104,13 +104,33 @@
 }
 
 .test-connection-status-banner-success {
+  display: flex;
   border-color: #abefc6;
   background: #ecfdf3;
+}
+
+.test-connection-status-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.test-connection-status-icon {
+  color: #12b76a;
+}
+
+.test-connection-status-icon.warning {
+  color: #dc6803;
 }
 
 .test-connection-status-banner-failed {
   border-color: #fecdca;
   background: #fef3f2;
+}
+
+.test-connection-status-banner-warning {
+  border-color: #fedf89;
+  background: #fffaeb;
 }
 
 .test-connection-status-title {
@@ -170,10 +190,15 @@
 
 .test-connection-gate-main {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
 .test-connection-gate-copy {
@@ -277,7 +302,7 @@
   grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 12px 14px;
+  padding: 14px 18px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -313,19 +338,19 @@
   min-width: 0;
 }
 
+.test-connection-check-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
 .test-connection-check-title {
+  overflow: hidden;
   color: #101828;
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-}
-
-.test-connection-check-description {
-  overflow: hidden;
-  margin-top: 1px;
-  color: #667085;
-  font-size: 12px;
-  line-height: 17px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -338,13 +363,14 @@
 
 .test-connection-method-chip {
   display: inline-flex;
+  flex: 0 0 auto;
   height: 24px;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid #d0d5dd;
+  border: 0;
   border-radius: 999px;
-  background: #f9fafb;
-  color: #344054;
+  background: #f5f5f5;
+  color: #717680;
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
@@ -398,16 +424,19 @@
 }
 
 .raw-connection-log {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
 }
 
 .raw-connection-log-toggle {
   display: inline-flex;
+  width: max-content;
+  max-width: 100%;
   align-items: center;
   gap: 4px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: #1570ef;
@@ -415,15 +444,19 @@
   font-weight: 500;
   line-height: 18px;
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
-}
 
-.raw-connection-log-copy {
-  color: #667085;
+  &:focus-visible {
+    outline: 2px solid #1570ef;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 .raw-connection-log-content {
-  grid-column: 1 / -1;
+  width: 100%;
+  max-height: 360px;
   margin: 0;
 }
 

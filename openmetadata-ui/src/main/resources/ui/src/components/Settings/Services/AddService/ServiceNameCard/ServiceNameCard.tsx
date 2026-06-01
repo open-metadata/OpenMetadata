@@ -91,6 +91,7 @@ const ServiceNameCard = ({
         <button
           className="tw:mt-3 tw:flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
           data-testid="add-description-button"
+          tabIndex={-1}
           type="button"
           onClick={() => {
             onFocus?.('serviceDescription');

@@ -55,6 +55,10 @@ const commonProps = {
 };
 
 describe('TestConnectionModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render the modal title', () => {
     render(<TestConnectionModal {...commonProps} />);
 
@@ -101,11 +105,27 @@ describe('TestConnectionModal', () => {
     expect(onCancelMock).toHaveBeenCalled();
   });
 
+  it('Should call onCancel from the header close button while testing', () => {
+    render(<TestConnectionModal {...commonProps} isTestingConnection />);
+
+    fireEvent.click(screen.getByTestId('test-connection-close'));
+
+    expect(onCancelMock).toHaveBeenCalled();
+  });
+
   it('Should call onConfirm when the confirm button is clicked', () => {
     render(<TestConnectionModal {...commonProps} />);
     const okButton = screen.getByText('label.done');
 
     fireEvent.click(okButton);
+
+    expect(onConfirmMock).toHaveBeenCalled();
+  });
+
+  it('Should call onConfirm from the header close button after testing', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    fireEvent.click(screen.getByTestId('test-connection-close'));
 
     expect(onConfirmMock).toHaveBeenCalled();
   });
@@ -126,6 +146,21 @@ describe('TestConnectionModal', () => {
 
     expect(
       screen.getByTestId('test-connection-timeout-widget')
+    ).toBeInTheDocument();
+  });
+
+  it('Should render the timeout message with host IP', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isConnectionTimeout
+        hostIp="10.0.0.1"
+        progress={90}
+      />
+    );
+
+    expect(
+      screen.getByText(/message.test-connection-taking-too-long.withIp/)
     ).toBeInTheDocument();
   });
 
@@ -206,6 +241,88 @@ describe('TestConnectionModal', () => {
     expect(
       screen.getByText('message.show-raw-connection-log-lines')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('copy-raw-log-button')).toBeInTheDocument();
+    expect(screen.getByTestId('copy-log-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('copy-raw-log-button')).not.toBeInTheDocument();
+  });
+
+  it('should expand and collapse a capability step log', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    const step = screen.getByTestId('test-connection-step-Step 2');
+    const stepToggle = step.querySelector('button') as HTMLButtonElement;
+
+    fireEvent.click(stepToggle);
+
+    expect(screen.getByText('Error message')).toBeInTheDocument();
+
+    fireEvent.click(stepToggle);
+
+    expect(screen.getByText('Error message')).toBeInTheDocument();
+  });
+
+  it('should expand the connection gate details', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    fireEvent.click(
+      screen
+        .getByTestId('connection-gate-phase')
+        .querySelector('button') as HTMLButtonElement
+    );
+
+    expect(screen.getByText('label.resolve-host')).toBeInTheDocument();
+    expect(screen.getByText('label.open-socket')).toBeInTheDocument();
+    expect(screen.getByText('label.authenticate')).toBeInTheDocument();
+    expect(screen.getByText('label.open-session')).toBeInTheDocument();
+  });
+
+  it('should show and hide raw connection logs', () => {
+    render(<TestConnectionModal {...commonProps} />);
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    expect(screen.getByTestId('raw-connection-log')).toHaveTextContent(
+      'Error message'
+    );
+
+    fireEvent.click(screen.getByText('message.hide-raw-connection-log-lines'));
+
+    expect(screen.queryByTestId('raw-connection-log')).not.toBeInTheDocument();
+  });
+
+  it('should render the connector logo when connection type is available', () => {
+    render(<TestConnectionModal {...commonProps} connectionType="Snowflake" />);
+
+    expect(
+      document.querySelector('.test-connection-modal-service-icon')
+    ).not.toBeEmptyDOMElement();
+  });
+
+  it('should show optional failures as warnings when required steps pass', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+          { name: 'GetQueries', description: 'Queries', mandatory: false },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          { name: 'GetSchemas', passed: true, mandatory: true },
+          { name: 'GetQueries', passed: false, mandatory: false },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByText('message.connection-test-warning')
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('.test-connection-status-banner-warning')
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('.test-connection-status-banner-failed')
+    ).not.toBeInTheDocument();
   });
 });

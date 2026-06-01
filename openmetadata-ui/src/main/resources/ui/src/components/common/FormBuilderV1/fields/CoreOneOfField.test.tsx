@@ -26,15 +26,25 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onSelectionChange,
         selectedKey,
       }: {
-        children: (item: { id: string; label: string }) => React.ReactNode;
-        items: Array<{ id: string; label: string }>;
+        children: (item: {
+          icon?: React.ReactNode;
+          id: string;
+          label: string;
+        }) => React.ReactNode;
+        items: Array<{ icon?: React.ReactNode; id: string; label: string }>;
         label?: string;
-        onSelectionChange: (value: string) => void;
+        onSelectionChange: (value: string | null) => void;
         selectedKey?: string;
       }) => (
         <div>
           {label && <label>{label}</label>}
           <div data-testid="selected-key">{selectedKey}</div>
+          <button
+            data-testid="clear-selection"
+            type="button"
+            onClick={() => onSelectionChange(null)}>
+            Clear
+          </button>
           {items.map((item) => (
             <button
               data-selected={selectedKey === item.id}
@@ -48,8 +58,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
     {
-      Item: ({ children }: { children: React.ReactNode }) => (
-        <span>{children}</span>
+      Item: ({
+        children,
+        icon,
+      }: {
+        children: React.ReactNode;
+        icon?: React.ReactNode;
+      }) => (
+        <span>
+          {icon}
+          {children}
+        </span>
       ),
     }
   ),
@@ -150,6 +169,17 @@ describe('CoreOneOfField', () => {
     );
   });
 
+  it('renders no selected branch for an empty oneOf schema', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps({}, { oneOf: [], title: 'Type' }, {}, 'root/type')}
+      />
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('schema-field')).toBeEmptyDOMElement();
+  });
+
   it('does not pass a parent ui field to the selected schema branch', () => {
     render(
       <CoreOneOfField
@@ -237,6 +267,56 @@ describe('CoreOneOfField', () => {
       screen.getByRole('button', { name: 'GCS Config' })
     ).toBeInTheDocument();
     expect(screen.queryByText('S 3 Config')).not.toBeInTheDocument();
+  });
+
+  it('shows the storage config icon for AWS S3 config choices', () => {
+    render(
+      <CoreOneOfField
+        {...getBaseProps(
+          {},
+          {
+            oneOf: [
+              { title: 'AWS S3 Storage Config', type: 'object' },
+              { title: 'GCS Config', type: 'object' },
+            ],
+            title: 'Storage Config',
+          },
+          {},
+          'root/sampleDataStorageConfig/config/storageConfig'
+        )}
+      />
+    );
+
+    expect(screen.getByTestId('storage-config-title-icon')).toBeInTheDocument();
+  });
+
+  it('ignores no-op and null compact selector changes', () => {
+    const onChange = jest.fn();
+
+    render(
+      <CoreOneOfField
+        {...{
+          ...getBaseProps(
+            {},
+            {
+              oneOf: [
+                { title: 'First Option With Long Label', type: 'object' },
+                { title: 'Second Option With Long Label', type: 'object' },
+              ],
+              title: 'Type',
+            }
+          ),
+          onChange,
+        }}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'First Option With Long Label' })
+    );
+    fireEvent.click(screen.getByTestId('clear-selection'));
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('keeps nested project ID selectors as a compact select', () => {

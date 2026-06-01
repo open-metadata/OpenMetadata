@@ -16,8 +16,15 @@ import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 
-import { isEmpty, isUndefined } from 'lodash';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
@@ -36,12 +43,15 @@ import {
   buildValidConfig,
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
+  flattenAuthTypeIntoConfig,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
+  getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
+  wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
 import { shouldTestConnection } from '../../../../utils/ServiceUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
@@ -75,6 +85,7 @@ const ConnectionConfigForm = ({
   onSave,
   onFocus,
   disableTestConnection = false,
+  isSubmitDisabled: isSubmitDisabledFromParent = false,
   requireTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
@@ -85,6 +96,7 @@ const ConnectionConfigForm = ({
   );
 
   const formRef = useRef<Form<ConfigData>>(null);
+  const currentFormDataRef = useRef<ConfigData>({} as ConfigData);
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
@@ -92,10 +104,10 @@ const ConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
-  const [isConnectionTestSuccessful, setIsConnectionTestSuccessful] =
-    useState(false);
+  const [testedConnectionFormData, setTestedConnectionFormData] =
+    useState<ConfigData>();
 
-  const validConfig = useMemo(() => buildValidConfig(data), [data]);
+  const rawValidConfig = useMemo(() => buildValidConfig(data), [data]);
 
   const fetchHostIp = async () => {
     try {
@@ -143,14 +155,18 @@ const ConnectionConfigForm = ({
   };
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
-    const updatedFormData = formatFormDataForSubmit(data.formData);
+    const updatedFormData = formatFormDataForSubmit(
+      flattenAuthTypeIntoConfig(data.formData, connSch.schema)
+    );
 
     await onSave({ ...data, formData: updatedFormData });
   };
 
   const handleFormChange = (event: IChangeEvent<ConfigData>) => {
-    setCurrentFormData((event.formData ?? {}) as ConfigData);
-    setIsConnectionTestSuccessful(false);
+    const nextFormData = (event.formData ?? {}) as ConfigData;
+
+    currentFormDataRef.current = nextFormData;
+    setCurrentFormData(nextFormData);
   };
 
   const customFields: RegistryFieldsType = {
@@ -161,7 +177,15 @@ const ConnectionConfigForm = ({
     authSelect: AuthSelectField,
   };
 
-  const connectionSchema = connSch.schema as RJSFSchema;
+  const connectionSchema = useMemo(
+    () => getSchemaWithSynthesizedAuthType(connSch.schema, t) as RJSFSchema,
+    [connSch.schema, t]
+  );
+
+  const validConfig = useMemo(
+    () => wrapFlatCredentialsIntoAuthType(rawValidConfig, connSch.schema),
+    [connSch.schema, rawValidConfig]
+  );
 
   const shouldShowIPAlert = useMemo(() => {
     return (
@@ -211,6 +235,22 @@ const ConnectionConfigForm = ({
     [requireTestConnection, shouldShowTestConnection]
   );
 
+  const isConnectionTestSuccessful = useMemo(
+    () =>
+      !isUndefined(testedConnectionFormData) &&
+      isEqual(testedConnectionFormData, currentFormData),
+    [currentFormData, testedConnectionFormData]
+  );
+
+  const handleTestConnectionStatusChange = useCallback(
+    (isSuccessful: boolean) => {
+      setTestedConnectionFormData(
+        isSuccessful ? cloneDeep(currentFormDataRef.current) : undefined
+      );
+    },
+    []
+  );
+
   const missingRequiredFieldsCount = useMemo(() => {
     if (isEmpty(connSch.schema)) {
       return 0;
@@ -227,8 +267,16 @@ const ConnectionConfigForm = ({
   ]);
 
   const isSubmitDisabled = useMemo(() => {
+    if (isSubmitDisabledFromParent) {
+      return true;
+    }
+
     if (isEmpty(connSch.schema)) {
       return false;
+    }
+
+    if (shouldRequireSuccessfulTestConnection) {
+      return missingRequiredFieldsCount > 0 || !isConnectionTestSuccessful;
     }
 
     return (
@@ -240,24 +288,30 @@ const ConnectionConfigForm = ({
       hasMissingRequiredFlatCredential(
         schemaWithoutDefaultFilterPatternFields,
         currentFormData
-      ) ||
-      (shouldRequireSuccessfulTestConnection && !isConnectionTestSuccessful)
+      )
     );
   }, [
     connSch.schema,
     currentFormData,
+    isSubmitDisabledFromParent,
     isConnectionTestSuccessful,
+    missingRequiredFieldsCount,
     schemaWithoutDefaultFilterPatternFields,
     shouldRequireSuccessfulTestConnection,
   ]);
 
   useEffect(() => {
+    if (isEqual(currentFormDataRef.current, validConfig)) {
+      return;
+    }
+
+    currentFormDataRef.current = validConfig;
     setCurrentFormData(validConfig);
-    setIsConnectionTestSuccessful(false);
+    setTestedConnectionFormData(undefined);
   }, [validConfig]);
 
   useEffect(() => {
-    setIsConnectionTestSuccessful(false);
+    setTestedConnectionFormData(undefined);
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
@@ -295,13 +349,15 @@ const ConnectionConfigForm = ({
       {shouldShowTestConnection && (
         <TestConnection
           connectionType={serviceType}
-          getData={() => currentFormData}
+          getData={() =>
+            flattenAuthTypeIntoConfig(currentFormData, connSch.schema)
+          }
           hostIp={hostIp}
           isTestingDisabled={disableTestConnection}
           missingRequiredFieldsCount={missingRequiredFieldsCount}
           serviceCategory={serviceCategory}
           serviceName={data?.name}
-          onTestConnectionStatusChange={setIsConnectionTestSuccessful}
+          onTestConnectionStatusChange={handleTestConnectionStatusChange}
           onValidateFormRequiredFields={handleRequiredFieldsValidation}
         />
       )}
@@ -333,6 +389,7 @@ const ConnectionConfigForm = ({
         fields={customFields}
         formData={validConfig}
         isSubmitDisabled={isSubmitDisabled}
+        noValidate={shouldRequireSuccessfulTestConnection}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}

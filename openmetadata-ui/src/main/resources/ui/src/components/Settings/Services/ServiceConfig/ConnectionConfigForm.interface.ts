@@ -28,6 +28,7 @@ export interface ConnectionConfigFormProps {
   onFocus: (id: string) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
+  isSubmitDisabled?: boolean;
   requireTestConnection?: boolean;
   onCancel?: () => void;
 }

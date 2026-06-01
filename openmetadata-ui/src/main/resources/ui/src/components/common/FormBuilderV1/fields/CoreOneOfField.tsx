@@ -17,11 +17,15 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
+import { Hexagon01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
+const STORAGE_CONFIG_ID_SUFFIX =
+  '/sampleDataStorageConfig/config/storageConfig';
+const AWS_S3_STORAGE_CONFIG_TITLE = 'AWS S3 Storage Config';
 const MAX_SEGMENTED_OPTION_COUNT = 3;
 const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
 const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
@@ -152,13 +156,27 @@ const CoreOneOfField = (props: FieldProps) => {
     hasMultipleOptions && !selectedBranchIsObjectLike && !shouldRenderAsTabs;
   const shouldSuppressSelectedBranchLabel =
     hasMultipleOptions && selectedBranchIsObjectLike;
+  const isStorageConfigSelector = idSchema.$id.endsWith(
+    STORAGE_CONFIG_ID_SUFFIX
+  );
   const optionItems = useMemo(
     () =>
-      resolvedOptions.map((option, index) => ({
-        id: String(index),
-        label: getOptionTitle(option, index),
-      })),
-    [resolvedOptions]
+      resolvedOptions.map((option, index) => {
+        const label = getOptionTitle(option, index);
+
+        return {
+          icon:
+            isStorageConfigSelector && label === AWS_S3_STORAGE_CONFIG_TITLE ? (
+              <Hexagon01
+                aria-hidden="true"
+                data-testid="storage-config-title-icon"
+              />
+            ) : undefined,
+          id: String(index),
+          label,
+        };
+      }),
+    [isStorageConfigSelector, resolvedOptions]
   );
 
   const selectedIdSchema = useMemo(
@@ -300,7 +318,11 @@ const CoreOneOfField = (props: FieldProps) => {
             }
           }}>
           {(item) => (
-            <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            <Select.Item
+              icon={item.icon}
+              id={item.id}
+              key={item.id}
+              textValue={item.label}>
               {item.label}
             </Select.Item>
           )}

@@ -264,6 +264,17 @@ const getFlatSecretKeys = (
   };
 };
 
+const hasSynthesizableFlatAuth = (
+  schema?: Record<string, unknown>
+): boolean => {
+  const properties = schema?.properties as JsonObject | undefined;
+  const { hasPassword, hasPrivateKey } = getFlatSecretKeys(schema);
+
+  return Boolean(
+    properties && !properties[AUTH_PROPERTY_KEY] && hasPassword && hasPrivateKey
+  );
+};
+
 const isFilledValue = (value: unknown): boolean => {
   if (isNil(value)) {
     return false;
@@ -393,16 +404,12 @@ export const getSchemaWithSynthesizedAuthType = (
   t: (key: string) => string
 ): Record<string, unknown> => {
   const properties = schema?.properties as JsonObject | undefined;
-  const { secretKeys, hasPassword, hasPrivateKey } = getFlatSecretKeys(schema);
+  const { secretKeys } = getFlatSecretKeys(schema);
   let result = schema;
-  if (
-    properties &&
-    !properties[AUTH_PROPERTY_KEY] &&
-    hasPassword &&
-    hasPrivateKey
-  ) {
+  if (hasSynthesizableFlatAuth(schema) && properties) {
     const nextProperties: JsonObject = { ...properties };
     const keyPairKeys = secretKeys.filter((key) => key !== PASSWORD_KEY);
+    const required = getRequiredFields(schema);
     const passwordBranch = {
       title: t('label.password'),
       type: 'object',
@@ -429,10 +436,55 @@ export const getSchemaWithSynthesizedAuthType = (
       description: t('message.authentication-section-description'),
       oneOf: [passwordBranch, keyPairBranch],
     };
-    result = { ...schema, properties: nextProperties };
+    result = {
+      ...schema,
+      properties: nextProperties,
+      required: [
+        ...required.filter((field) => !secretKeys.includes(field)),
+        AUTH_PROPERTY_KEY,
+      ],
+    };
   }
 
   return result;
+};
+
+const keyByFilledValue = (
+  source: Record<string, unknown>,
+  keys: string[]
+): Record<string, unknown> =>
+  keys.reduce((acc, key) => {
+    if (isFilledValue(source[key])) {
+      acc[key] = source[key];
+    }
+
+    return acc;
+  }, {} as Record<string, unknown>);
+
+const getFlatAuthTypeData = (
+  authType: Record<string, unknown>,
+  secretKeys: string[]
+) => {
+  const hasPrivateKeyCredential = secretKeys.some(
+    (key) =>
+      PRIVATE_KEY_RE.test(key) &&
+      !PASSPHRASE_RE.test(key) &&
+      isFilledValue(authType[key])
+  );
+  const password = authType[PASSWORD_KEY];
+
+  if (hasPrivateKeyCredential) {
+    return keyByFilledValue(
+      authType,
+      secretKeys.filter((key) => key !== PASSWORD_KEY)
+    );
+  }
+
+  if (isFilledValue(password)) {
+    return { [PASSWORD_KEY]: password };
+  }
+
+  return {};
 };
 
 /**
@@ -444,17 +496,13 @@ export const wrapFlatCredentialsIntoAuthType = (
   config: ConfigData,
   schema: Record<string, unknown>
 ): ConfigData => {
-  const { secretKeys, hasPassword, hasPrivateKey } = getFlatSecretKeys(schema);
+  const { secretKeys } = getFlatSecretKeys(schema);
   let result = config;
-  if (hasPassword && hasPrivateKey) {
+  if (hasSynthesizableFlatAuth(schema)) {
     const next = { ...config } as Record<string, unknown>;
-    const authType: Record<string, unknown> = {};
-    secretKeys.forEach((key) => {
-      if (next[key] !== undefined && next[key] !== '') {
-        authType[key] = next[key];
-      }
-      delete next[key];
-    });
+    const authType = getFlatAuthTypeData(next, secretKeys);
+
+    secretKeys.forEach((key) => delete next[key]);
     next[AUTH_PROPERTY_KEY] = authType;
     result = next as ConfigData;
   }
@@ -463,17 +511,26 @@ export const wrapFlatCredentialsIntoAuthType = (
 };
 
 /** Flattens a synthesized `authType` object back to top-level flat secrets. */
-export const flattenAuthTypeIntoConfig = (config: ConfigData): ConfigData => {
+export const flattenAuthTypeIntoConfig = (
+  config: ConfigData,
+  schema?: Record<string, unknown>
+): ConfigData => {
   const authType = (config as Record<string, unknown>)?.[AUTH_PROPERTY_KEY];
   let result = config;
-  if (authType && typeof authType === 'object' && !Array.isArray(authType)) {
+  if (
+    hasSynthesizableFlatAuth(schema) &&
+    authType &&
+    typeof authType === 'object' &&
+    !Array.isArray(authType)
+  ) {
+    const { secretKeys } = getFlatSecretKeys(schema);
     const { [AUTH_PROPERTY_KEY]: _omit, ...rest } = config as Record<
       string,
       unknown
     >;
     result = {
       ...rest,
-      ...(authType as Record<string, unknown>),
+      ...getFlatAuthTypeData(authType as Record<string, unknown>, secretKeys),
     } as ConfigData;
   }
 

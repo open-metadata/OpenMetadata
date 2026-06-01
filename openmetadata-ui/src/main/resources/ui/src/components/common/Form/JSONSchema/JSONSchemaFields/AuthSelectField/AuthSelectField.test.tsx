@@ -167,6 +167,10 @@ const getProps = (
   } as unknown as FieldProps);
 
 describe('AuthSelectField', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders one segmented option per oneOf branch using their titles', () => {
     render(<AuthSelectField {...getProps({})} />);
 
@@ -188,6 +192,8 @@ describe('AuthSelectField', () => {
   });
 
   it('clears the previous branch credential when switching methods (one-of guarantee)', () => {
+    sanitizeSpy.mockReturnValueOnce({});
+
     render(<AuthSelectField {...getProps({ password: 'secret' })} />);
 
     fireEvent.click(screen.getByRole('radio', { name: /Key pair/ }));
@@ -195,7 +201,11 @@ describe('AuthSelectField', () => {
     expect(sanitizeSpy).toHaveBeenCalledWith(KEY_PAIR_BRANCH, PASSWORD_BRANCH, {
       password: 'secret',
     });
-    expect(onChangeSpy).toHaveBeenCalled();
+    expect(onChangeSpy).toHaveBeenCalledWith(
+      {},
+      undefined,
+      'root/authType__oneof_select'
+    );
     expect(screen.getByRole('radio', { name: /Key pair/ })).toHaveAttribute(
       'aria-checked',
       'true'
@@ -241,5 +251,23 @@ describe('AuthSelectField', () => {
 
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     expect(screen.getByTestId('schema-field')).toHaveTextContent('password');
+  });
+
+  it('renders an empty selected schema when no auth branches are provided', () => {
+    render(
+      <AuthSelectField
+        {...getProps(
+          {},
+          {},
+          {
+            title: 'Authentication',
+            oneOf: [],
+          }
+        )}
+      />
+    );
+
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.getByTestId('schema-field')).toHaveTextContent('');
   });
 });

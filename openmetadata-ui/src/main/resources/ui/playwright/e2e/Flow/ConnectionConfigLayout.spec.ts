@@ -59,6 +59,105 @@ const chooseSelectOption = async (
   await page.getByRole('option', { exact: true, name: optionName }).click();
 };
 
+const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
+  const workflowId = 'pw-snowflake-test-workflow';
+
+  await page.route('**/api/v1/services/databaseServices/name/**', (route) =>
+    route.fulfill({ status: 404, body: '' })
+  );
+  await page.route(
+    '**/api/v1/services/testConnectionDefinitions/name/**',
+    (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Snowflake.testConnectionDefinition',
+          steps: [
+            {
+              name: 'CheckAccess',
+              mandatory: true,
+              description: 'Establish Snowflake connection',
+            },
+            {
+              name: 'GetSchemas',
+              mandatory: true,
+              description: 'Read schemas',
+            },
+            {
+              name: 'GetViews',
+              mandatory: false,
+              description: 'Read views',
+            },
+          ],
+        }),
+      })
+  );
+  await page.route('**/api/v1/automations/workflows', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+
+      return;
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: workflowId,
+        name: workflowId,
+        status: 'Running',
+        workflowType: 'TEST_CONNECTION',
+      }),
+    });
+  });
+  await page.route('**/api/v1/automations/workflows/trigger/**', (route) =>
+    route.fulfill({ status: 200, body: '{}' })
+  );
+  await page.route(
+    `**/api/v1/automations/workflows/${workflowId}**`,
+    (route) => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ id: workflowId }),
+        });
+      }
+
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: workflowId,
+          name: workflowId,
+          status: 'Successful',
+          workflowType: 'TEST_CONNECTION',
+          response: {
+            status: 'Successful',
+            steps: [
+              {
+                name: 'CheckAccess',
+                mandatory: true,
+                passed: true,
+                message: 'Connected',
+              },
+              {
+                name: 'GetSchemas',
+                mandatory: true,
+                passed: true,
+                message: 'Schemas readable',
+              },
+              {
+                name: 'GetViews',
+                mandatory: false,
+                passed: true,
+                message: 'Views readable',
+              },
+            ],
+          },
+        }),
+      });
+    }
+  );
+};
+
 const openSnowflakeConnectionConfig = async (page: Page) => {
   await page.goto('/databaseServices/add-service', {
     waitUntil: 'domcontentloaded',
@@ -294,11 +393,11 @@ test.describe('Connection config layout', () => {
     );
 
     const samplePanel = page.locator(
-      '.core-object-field-template-sample-data-config[data-field-id$="/sampleDataStorageConfig/config"]'
+      '[data-field-id$="/sampleDataStorageConfig/config"]'
     );
-    const sampleBody = samplePanel.locator(
-      ':scope > .core-object-field-template-body'
-    );
+    const sampleBody = samplePanel
+      .locator('.core-object-field-template-body-grid')
+      .first();
     const sampleField = (name: string) =>
       sampleBody.locator(`:scope > [data-field-name="${name}"]`);
 
@@ -352,13 +451,13 @@ test.describe('Connection config layout', () => {
     );
 
     const storagePanel = page.locator(
-      '.core-object-field-template-storage-config[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
+      '[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
     );
-    const storageBody = storagePanel.locator(
-      ':scope > .core-object-field-template-body'
-    );
+    const storageBody = storagePanel
+      .locator('.core-object-field-template-credential-field-grid')
+      .first();
     const storageField = (name: string) =>
-      storageBody.locator(`:scope > [data-field-name="${name}"]`);
+      storagePanel.locator(`[data-field-name="${name}"]`);
 
     await expect(storagePanel).toBeVisible();
     await expect(
@@ -371,9 +470,6 @@ test.describe('Connection config layout', () => {
     const accessKey = storageField('awsAccessKeyId');
     const secretKey = storageField('awsSecretAccessKey');
     const region = storageField('awsRegion');
-    const sessionToken = storageField('awsSessionToken');
-    const endpoint = storageField('endPointURL');
-    const profile = storageField('profileName');
     const iamSwitch = enabled.locator('.ant-switch');
     const accessKeyInput = accessKey.locator('input');
 
@@ -381,7 +477,6 @@ test.describe('Connection config layout', () => {
     const accessKeyBox = await getBox(accessKey);
     const secretKeyBox = await getBox(secretKey);
     const regionBox = await getBox(region);
-    const sessionTokenBox = await getBox(sessionToken);
 
     expect(accessKeyBox.y).toBeGreaterThan(enabledBox.y + enabledBox.height);
     expect(Math.abs(accessKeyBox.y - secretKeyBox.y)).toBeLessThan(8);
@@ -391,7 +486,6 @@ test.describe('Connection config layout', () => {
         secretKeyBox.y + secretKeyBox.height
       )
     );
-    expect(Math.abs(regionBox.y - sessionTokenBox.y)).toBeLessThan(8);
 
     await expectNoOverlap(
       enabled,
@@ -407,6 +501,20 @@ test.describe('Connection config layout', () => {
       accessKey,
       region,
       'AWS access key and region fields overlap'
+    );
+
+    await storagePanel
+      .getByRole('button', { name: /Show Advanced Config/ })
+      .click();
+
+    const sessionToken = storageField('awsSessionToken');
+    const endpoint = storageField('endPointURL');
+    const profile = storageField('profileName');
+    const currentRegionBox = await getBox(region);
+    const sessionTokenBox = await getBox(sessionToken);
+
+    expect(sessionTokenBox.y).toBeGreaterThan(
+      currentRegionBox.y + currentRegionBox.height
     );
     await expectNoOverlap(
       region,
@@ -449,5 +557,94 @@ test.describe('Connection config layout', () => {
     await expect(secretKey.locator('input')).toBeDisabled();
     await expect(sessionToken.locator('input')).toBeDisabled();
     await expect(accessKey).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  test('should clear inactive Snowflake auth fields before test connection and unlock ingestion filters', async ({
+    page,
+  }) => {
+    await mockSuccessfulSnowflakeTestConnection(page);
+    await page.goto('/databaseServices/add-service', {
+      waitUntil: 'domcontentloaded',
+    });
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('Snowflake').click();
+
+    try {
+      await page.getByTestId('service-name').waitFor({
+        state: 'visible',
+        timeout: 5000,
+      });
+    } catch {
+      await page.getByTestId('next-button').click();
+      await page.getByTestId('service-name').waitFor({ state: 'visible' });
+    }
+
+    await page.getByTestId('service-name').fill('pw-snowflake-auth-payload');
+    await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
+      timeout: 10000,
+    });
+    await expect(page.locator('[id="root/account"]')).toBeVisible();
+
+    await page.locator('[id="root/account"]').fill('fsad');
+    await page.locator('[id="root/username"]').fill('openmetadata');
+    await page.locator('[id="root/warehouse"]').fill('COMPUTE_WH');
+    await page.locator('[id="root/authType/password"]').fill('stale-secret');
+    await page.getByTestId('auth-method-1').click();
+
+    await expect(page.locator('[id="root/authType/password"]')).toBeHidden();
+    await page.locator('[id="root/authType/privateKey"]').fill('pem-key');
+
+    const workflowRequest = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/automations/workflows') &&
+        request.method() === 'POST'
+    );
+
+    await page.getByTestId('test-connection-btn').click();
+
+    const workflowPayload = (await workflowRequest).postDataJSON();
+
+    expect(workflowPayload.request.connection.config).toMatchObject({
+      account: 'fsad',
+      privateKey: 'pem-key',
+      type: 'Snowflake',
+      username: 'openmetadata',
+      warehouse: 'COMPUTE_WH',
+    });
+    expect(workflowPayload.request.connection.config.password).toBeUndefined();
+    expect(workflowPayload.request.connection.config.authType).toBeUndefined();
+
+    await expect(
+      page.getByTestId('message-container').getByTestId('success-badge')
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Done' }).click();
+
+    const nextIngestionButton = page.getByRole('button', {
+      name: 'Next: what to ingest',
+    });
+
+    await expect(nextIngestionButton).toBeEnabled();
+    await nextIngestionButton.click();
+
+    await expect(page.getByTestId('filters-config-form')).toBeVisible();
+
+    const tableSection = page.getByTestId('filter-section-tableFilterPattern');
+
+    await tableSection.getByRole('button', { name: /Tables/ }).click();
+    await tableSection
+      .getByRole('button', { name: 'Only specific tables' })
+      .click();
+    await tableSection.getByPlaceholder('e.g. a table name').fill('orders');
+    await tableSection.getByRole('button', { name: 'Add' }).first().click();
+
+    await expect(
+      tableSection.getByText(
+        'Only tables matching 1 include rule are in scope.'
+      )
+    ).toBeVisible();
+    await tableSection
+      .getByRole('button', { name: 'Show equivalent regex' })
+      .click();
+    await expect(tableSection.getByText('includes += orders')).toBeVisible();
   });
 });

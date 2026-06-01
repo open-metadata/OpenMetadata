@@ -24,6 +24,7 @@ import {
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   getFilteredSchema,
+  getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   loadConnectionSchema,
@@ -88,7 +89,10 @@ const renderConnectionSchema = async (
   serviceCategory = ServiceCategory.DATABASE_SERVICES
 ) => {
   const connSch = await loadConnectionSchema(serviceCategory, connectorType);
-  const connectionSchema = connSch.schema as RJSFSchema;
+  const connectionSchema = getSchemaWithSynthesizedAuthType(
+    connSch.schema,
+    (key) => key
+  ) as RJSFSchema;
   const propertiesWithoutDefaultFilterPatternFields = getFilteredSchema(
     connectionSchema.properties as Record<string, unknown> | undefined
   );
@@ -227,6 +231,37 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
 
     expect(renderedConnectorCount).toBe(connectorTypes.length);
+  });
+
+  it('renders Snowflake password and key-pair credentials as one selectable auth method', async () => {
+    const { container } = await renderConnectionSchema('Snowflake');
+
+    expect(screen.getByTestId('auth-select-field')).toBeInTheDocument();
+    expect(screen.getByTestId('auth-method-0')).toHaveTextContent(
+      'label.password'
+    );
+    expect(screen.getByTestId('auth-method-1')).toHaveTextContent(
+      'label.key-pair'
+    );
+    expect(screen.queryByTestId('auth-tabs')).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="authType"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="password"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="privateKey"]')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    expect(
+      container.querySelector('[data-field-name="password"]')
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="privateKey"]')
+    ).toBeInTheDocument();
   });
 
   it('renders Cassandra cloud config as a compact nested credential block', async () => {

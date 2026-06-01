@@ -17,7 +17,7 @@ import type { TitleLink } from '../../components/common/TitleBreadcrumb/TitleBre
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
-import { postService } from '../../rest/serviceAPI';
+import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
@@ -67,7 +67,11 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
 });
 
 jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () => {
-  return jest.fn().mockImplementation(() => <div>ServiceDocPanel</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ activeField }) => (
+      <div data-testid="service-doc-panel">ServiceDocPanel:{activeField}</div>
+    ));
 });
 
 jest.mock(
@@ -96,26 +100,48 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard',
   () => {
-    return jest.fn().mockImplementation(({ onNameChange }) => (
-      <div>
-        <button onClick={() => onNameChange('test-service')}>
-          Set Service Name
-        </button>
-      </div>
-    ));
+    return jest
+      .fn()
+      .mockImplementation(
+        ({ nameError, onDescriptionChange, onFocus, onNameChange }) => (
+          <div>
+            <button onClick={() => onNameChange('test-service')}>
+              Set Service Name
+            </button>
+            <button onClick={() => onNameChange('existing-service')}>
+              Set Existing Service Name
+            </button>
+            <button onClick={() => onDescriptionChange('description')}>
+              Set Description
+            </button>
+            <button onClick={() => onFocus('')}>Focus Empty Field</button>
+            <button onClick={() => onFocus('account')}>Focus Account</button>
+            {nameError && (
+              <div data-testid="service-name-error">{nameError}</div>
+            )}
+          </div>
+        )
+      );
   }
 );
 
 jest.mock(
   '../../components/Settings/Services/AddService/Steps/SelectServiceType',
   () => {
-    return jest.fn().mockImplementation(({ handleServiceTypeClick }) => (
-      <div>
-        <button onClick={() => handleServiceTypeClick('mysql')}>
-          Select MySQL
-        </button>
-      </div>
-    ));
+    return jest
+      .fn()
+      .mockImplementation(
+        ({ handleServiceTypeClick, serviceCategoryHandler }) => (
+          <div>
+            <button onClick={() => handleServiceTypeClick('mysql')}>
+              Select MySQL
+            </button>
+            <button onClick={() => serviceCategoryHandler('messagingServices')}>
+              Change Category
+            </button>
+          </div>
+        )
+      );
   }
 );
 
@@ -155,6 +181,11 @@ jest.mock(
 );
 
 jest.mock('../../rest/serviceAPI', () => ({
+  getServiceByFQN: jest.fn().mockRejectedValue({
+    response: {
+      status: 404,
+    },
+  }),
   postService: jest.fn().mockImplementation(() =>
     Promise.resolve({
       name: 'test-service',
@@ -177,6 +208,18 @@ jest.mock('../../utils/RouterUtils', () => ({
   getServiceDetailsPath: jest
     .fn()
     .mockImplementation(() => '/service/details/path'),
+}));
+
+jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getAddServicePath: jest
+      .fn()
+      .mockImplementation((category) => `/add-service/${category}`),
+    getServiceDetailsPath: jest
+      .fn()
+      .mockImplementation(() => '/service/details/path'),
+  },
 }));
 
 jest.mock('../../utils/ServiceUtils', () => ({
@@ -203,7 +246,16 @@ const mockProps = {
 };
 
 describe('AddServicePage', () => {
+  beforeEach(() => {
+    (getServiceByFQN as jest.Mock).mockRejectedValue({
+      response: {
+        status: 404,
+      },
+    });
+  });
+
   afterEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
   });
 
@@ -235,6 +287,18 @@ describe('AddServicePage', () => {
       'mysql',
       'add-service-page-title-logo'
     );
+  });
+
+  it('should handle service category changes from connector picker', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Change Category'));
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/add-service/messagingServices');
   });
 
   it('should reset selected connector from add service breadcrumb', async () => {
@@ -281,7 +345,118 @@ describe('AddServicePage', () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    expect(screen.getByText('Save Filters')).toBeInTheDocument();
+    expect(await screen.findByText('Save Filters')).toBeInTheDocument();
+  });
+
+  it('updates description and focused docs field from the connection step', async () => {
+    jest.useFakeTimers();
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Description'));
+      fireEvent.click(screen.getByText('Focus Empty Field'));
+    });
+
+    expect(screen.getByTestId('service-doc-panel')).toHaveTextContent(
+      'ServiceDocPanel:'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Focus Account'));
+      jest.advanceTimersByTime(50);
+    });
+
+    expect(screen.getByTestId('service-doc-panel')).toHaveTextContent(
+      'ServiceDocPanel:account'
+    );
+  });
+
+  it('requires a service name before moving to filters', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+      'message.field-text-is-required'
+    );
+    expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
+  });
+
+  it('should flag duplicate service names before moving to filters', async () => {
+    (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+      name: 'existing-service',
+    });
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Existing Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+      'message.service-name-already-exists-with-suggestion'
+    );
+    expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
+    expect(
+      serviceUtilClassBaseModule.getServiceConfigData
+    ).not.toHaveBeenCalled();
+  });
+
+  it('should flag duplicate service names while editing the connection form', async () => {
+    jest.useFakeTimers();
+    (getServiceByFQN as jest.Mock).mockResolvedValue({
+      name: 'existing-service',
+    });
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Existing Service Name'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('service-name-error')).toHaveTextContent(
+      'message.service-name-already-exists-with-suggestion'
+    );
+    expect(getServiceByFQN).toHaveBeenCalledWith(
+      'databaseServices',
+      'existing-service'
+    );
   });
 
   it('should handle service creation success', async () => {
@@ -304,7 +479,7 @@ describe('AddServicePage', () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    const saveFiltersButton = screen.getByText('Save Filters');
+    const saveFiltersButton = await screen.findByText('Save Filters');
     await act(async () => {
       fireEvent.click(saveFiltersButton);
     });
@@ -312,6 +487,85 @@ describe('AddServicePage', () => {
     expect(postService).toHaveBeenCalled();
     expect(triggerOnDemandApp).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('should still navigate after service creation error', async () => {
+    (postService as jest.Mock).mockRejectedValueOnce(new Error('failed'));
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByText('Save Filters'));
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('should handle auto pilot trigger errors without blocking navigation', async () => {
+    (triggerOnDemandApp as jest.Mock).mockRejectedValueOnce(
+      new Error('autopilot failed')
+    );
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByText('Save Filters'));
+    });
+
+    expect(triggerOnDemandApp).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('returns to the connection step from filters', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByText('Back'));
+    });
+
+    expect(screen.getByText('Save Connection')).toBeInTheDocument();
   });
 
   it('should handle back navigation in connection configuration', async () => {
@@ -355,7 +609,7 @@ describe('AddServicePage', () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    const saveFiltersButton = screen.getByText('Save Filters');
+    const saveFiltersButton = await screen.findByText('Save Filters');
     await act(async () => {
       fireEvent.click(saveFiltersButton);
     });

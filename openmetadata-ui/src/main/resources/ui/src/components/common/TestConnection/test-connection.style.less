@@ -21,15 +21,42 @@
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-top: 16px;
-  padding: 18px 24px;
+  gap: 20px;
+  margin-top: 14px;
+  padding: 14px 20px;
   border: 1px solid #e4e7ec;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   color: var(--tw-color-text-primary);
   font-family: Inter, sans-serif;
   box-shadow: none;
+
+  &.test-connection-card-success {
+    border-color: #75e0a7;
+    background: #ecfdf3;
+  }
+
+  &.test-connection-card-warning {
+    border-color: #fedf89;
+    background: #fffaeb;
+  }
+
+  &.test-connection-card-failed {
+    border-color: #fecdca;
+    background: #fef3f2;
+  }
+
+  &.test-connection-card-running {
+    border-color: #b2ddff;
+    background: #eff8ff;
+  }
+
+  &.test-connection-card-ready {
+    padding: 22px 24px;
+    border-color: #84caff;
+    background: #f0f8ff;
+    box-shadow: 0 0 0 6px #e8f4ff;
+  }
 
   .test-connection-card-message {
     display: flex;
@@ -41,30 +68,48 @@
 
   .test-connection-card-icon {
     display: flex;
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
     align-items: center;
     justify-content: center;
     border: 1px solid #b2ddff;
     border-radius: 10px;
-    background: #ffffff;
+    background: #eff8ff;
     color: #1570ef;
   }
 
   .test-connection-card-icon-success {
-    border-color: #abefc6;
+    border-color: #75e0a7;
+    background: #dcfae6;
     color: #079455;
   }
 
   .test-connection-card-icon-failed {
-    border-color: #fecdca;
+    border-color: #fda29b;
+    background: #fef3f2;
     color: #d92d20;
   }
 
   .test-connection-card-icon-warning {
-    border-color: #fedf89;
+    border-color: #fec84b;
+    background: #fffaeb;
     color: #dc6803;
+  }
+
+  .test-connection-card-icon-ready {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-color: #c9e4ff;
+    border-radius: 12px;
+    background: #dbeeff;
+    color: #2563eb;
+
+    .status-icon {
+      width: 26px;
+      height: 26px;
+    }
   }
 
   .test-connection-card-copy {
@@ -73,38 +118,66 @@
 
   .test-connection-card-title {
     color: #101828;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    line-height: 24px;
+    line-height: 22px;
   }
 
   .test-connection-card-description {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
     margin-top: 2px;
     color: #667085;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
-    line-height: 20px;
+    line-height: 18px;
 
     .ant-btn-link {
       height: 20px;
       color: #1570ef;
-      font-size: 14px;
-      line-height: 20px;
+      font-size: 13px;
+      line-height: 18px;
     }
   }
 
+  &.test-connection-card-success .test-connection-card-description {
+    color: #067647;
+    font-weight: 500;
+  }
+
+  &.test-connection-card-warning .test-connection-card-description {
+    color: #93370d;
+  }
+
+  &.test-connection-card-failed .test-connection-card-description {
+    color: #b42318;
+  }
+
+  &.test-connection-card-ready .test-connection-card-title {
+    color: #101828;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  &.test-connection-card-ready .test-connection-card-description {
+    color: #2563eb;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
   .test-connection-card-button {
-    height: 48px;
-    min-width: 184px;
-    padding: 0 28px;
+    height: 42px;
+    min-width: 160px;
+    flex: 0 0 auto;
+    padding: 0 22px;
     border-color: #d0d5dd;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #ffffff;
     color: #1570ef;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06),
       0 1px 3px rgba(16, 24, 40, 0.1);
@@ -116,9 +189,25 @@
       color: #175cd3;
     }
   }
+
+  .test-connection-card-button-primary {
+    height: 48px;
+    min-width: 184px;
+    border-color: #2563eb;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 16px;
+
+    &:hover,
+    &:focus {
+      border-color: #1d4ed8;
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+  }
 }
 
 .status-icon {
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
 }
