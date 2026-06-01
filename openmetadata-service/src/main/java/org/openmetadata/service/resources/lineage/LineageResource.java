@@ -62,6 +62,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -93,6 +94,23 @@ public class LineageResource {
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext, EntityReference entityReference) {
+    EntityReference resolvedReference =
+        LineageRepository.resolveLineageReference(entityReference, Include.NON_DELETED);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(resolvedReference.getType(), MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(resolvedReference.getType(), resolvedReference.getId(), null));
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext, String entityType, String entityFQN) {
+    authorizeLineageReference(
+        securityContext,
+        new EntityReference().withType(entityType).withFullyQualifiedName(entityFQN));
   }
 
   @GET
@@ -733,22 +751,8 @@ public class LineageResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid AddLineage addLineage) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(
-            addLineage.getEdge().getFromEntity().getType(), MetadataOperation.EDIT_LINEAGE),
-        new ResourceContext<>(
-            addLineage.getEdge().getFromEntity().getType(),
-            addLineage.getEdge().getFromEntity().getId(),
-            addLineage.getEdge().getFromEntity().getName()));
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(
-            addLineage.getEdge().getToEntity().getType(), MetadataOperation.EDIT_LINEAGE),
-        new ResourceContext<>(
-            addLineage.getEdge().getToEntity().getType(),
-            addLineage.getEdge().getToEntity().getId(),
-            addLineage.getEdge().getToEntity().getName()));
+    authorizeLineageReference(securityContext, addLineage.getEdge().getFromEntity());
+    authorizeLineageReference(securityContext, addLineage.getEdge().getToEntity());
     dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
@@ -776,6 +780,43 @@ public class LineageResource {
           @PathParam("toId")
           UUID toId) {
     return dao.getLineageEdge(fromId, toId);
+  }
+
+  @GET
+  @Path("/getLineageEdge/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
+  @Operation(
+      operationId = "getLineageEdgeByName",
+      summary = "Get a lineage edge by entity FQNs",
+      description =
+          "Get a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromFQN} is not found")
+      })
+  public Response getLineageEdgeByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromFQN")
+          String fromFQN,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toFQN")
+          String toFQN) {
+    return dao.getLineageEdgeByFQN(fromEntity, fromFQN, toEntity, toFQN);
   }
 
   @PATCH
@@ -834,6 +875,56 @@ public class LineageResource {
         fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
   }
 
+  @PATCH
+  @Path("/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
+  @Operation(
+      operationId = "patchLineageEdgeByName",
+      summary = "Patch a lineage edge by FQNs",
+      description =
+          "Patch a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromFQN} is not found")
+      })
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchLineageEdgeByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromFQN")
+          String fromFQN,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toFQN")
+          String toFQN,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    authorizeLineageReference(securityContext, fromEntity, fromFQN);
+    authorizeLineageReference(securityContext, toEntity, toFQN);
+    return dao.patchLineageEdgeByFQN(
+        fromEntity, fromFQN, toEntity, toFQN, patch, securityContext.getUserPrincipal().getName());
+  }
+
   @DELETE
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(
@@ -887,7 +978,7 @@ public class LineageResource {
   }
 
   @DELETE
-  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
+  @Path("/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
   @Operation(
       operationId = "deleteLineageEdgeByName",
       summary = "Delete a lineage edge by FQNs",
@@ -920,10 +1011,8 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+    authorizeLineageReference(securityContext, fromEntity, fromFQN);
+    authorizeLineageReference(securityContext, toEntity, toFQN);
     boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
     if (!deleted) {
       return Response.status(NOT_FOUND)
@@ -969,6 +1058,45 @@ public class LineageResource {
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
         new LineageResourceContext());
     dao.deleteLineageBySource(entityId, entityType, lineageSource);
+    return Response.status(Status.OK).build();
+  }
+
+  @DELETE
+  @Path("/source/name/{entityType}/{entityFQN}/type/{lineageSource}")
+  @Operation(
+      operationId = "deleteLineageEdgeByTypeAndName",
+      summary = "Delete lineage edges by type and entity FQN",
+      description =
+          "Delete lineage edges for an entity by source of lineage using the entity fully qualified name",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {entityFQN} is not found")
+      })
+  public Response deleteLineageByTypeAndName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("entityFQN")
+          String entityFQN,
+      @Parameter(
+              description = "Lineage Type",
+              required = true,
+              schema = @Schema(type = "string", example = "ViewLineage"))
+          @PathParam("lineageSource")
+          String lineageSource) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    dao.deleteLineageBySourceByFQN(entityType, entityFQN, lineageSource);
     return Response.status(Status.OK).build();
   }
 

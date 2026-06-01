@@ -3,12 +3,15 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +68,7 @@ import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -83,6 +87,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class LineageResourceIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String LINEAGE_PATH = "/v1/lineage";
 
   @Test
   void testAddLineageBetweenTables() throws Exception {
@@ -682,6 +687,43 @@ public class LineageResourceIT {
     }
   }
 
+  private EntityReference entityReferenceByFQN(String type, String fqn) {
+    return new EntityReference().withType(type).withFullyQualifiedName(fqn);
+  }
+
+  private JsonNode getLineageEdgeByName(OpenMetadataClient client, Table from, Table to)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                LINEAGE_PATH + "/getLineageEdge" + lineageEdgeByNamePath(from, to),
+                null);
+    return OBJECT_MAPPER.readTree(response);
+  }
+
+  private void deleteLineageByName(OpenMetadataClient client, Table from, Table to) {
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.DELETE, LINEAGE_PATH + lineageEdgeByNamePath(from, to), null);
+  }
+
+  private String lineageEdgeByNamePath(Table from, Table to) {
+    return "/name/table/"
+        + encodePathSegment(from.getFullyQualifiedName())
+        + "/table/"
+        + encodePathSegment(to.getFullyQualifiedName());
+  }
+
+  private RequestOptions jsonPatchRequestOptions() {
+    return RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+  }
+
+  private String encodePathSegment(String segment) {
+    return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
   private EntityLineage getLineage(
       OpenMetadataClient client,
       String entityType,
@@ -841,6 +883,185 @@ public class LineageResourceIT {
     deleteLineage(client, table1.getEntityReference(), table2.getEntityReference());
     cleanupTable(client, table1);
     cleanupTable(client, table2);
+  }
+
+  @Test
+  void testAddLineageWithFQNOnlyReferences() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_only_source");
+    Table targetTable = createTable(client, namespace, "fqn_only_target");
+    Pipeline pipeline = createPipeline(client, namespace, "fqn_only_pipeline");
+
+    LineageDetails details =
+        new LineageDetails()
+            .withDescription("FQN-only lineage")
+            .withPipeline(entityReferenceByFQN("pipeline", pipeline.getFullyQualifiedName()));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(
+                        entityReferenceByFQN("table", sourceTable.getFullyQualifiedName()))
+                    .withToEntity(
+                        entityReferenceByFQN("table", targetTable.getFullyQualifiedName()))
+                    .withLineageDetails(details));
+
+    String result = executeAddLineage(client, addLineage);
+    assertNotNull(result);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getFromEntity().equals(sourceTable.getId())
+                        && edge.getToEntity().equals(targetTable.getId())));
+
+    JsonNode edge = getLineageEdgeByName(client, sourceTable, targetTable).get("edge");
+    assertEquals(pipeline.getId().toString(), edge.get("pipeline").get("id").asText());
+
+    deleteLineageByName(client, sourceTable, targetTable);
+    cleanupPipeline(client, pipeline);
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testAddLineageBodyPrefersIdOverFQN() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "id_precedence_source");
+    Table targetTable = createTable(client, namespace, "id_precedence_target");
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(
+                        sourceTable.getEntityReference().withFullyQualifiedName("missing.source"))
+                    .withToEntity(
+                        targetTable.getEntityReference().withFullyQualifiedName("missing.target")));
+
+    String result = executeAddLineage(client, addLineage);
+    assertNotNull(result);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getFromEntity().equals(sourceTable.getId())
+                        && edge.getToEntity().equals(targetTable.getId())));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testAddLineageWithoutIdOrFQNFails() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table targetTable = createTable(client, namespace, "missing_ref_target");
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(new EntityReference().withType("table"))
+                    .withToEntity(targetTable.getEntityReference()));
+
+    assertThrows(OpenMetadataException.class, () -> client.lineage().addLineage(addLineage));
+
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testPatchAndDeleteLineageEdgeByFQN() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_patch_source");
+    Table targetTable = createTable(client, namespace, "fqn_patch_target");
+
+    addLineage(client, sourceTable, targetTable);
+
+    JsonNode patch =
+        OBJECT_MAPPER.readTree(
+            """
+            [{"op":"add","path":"/description","value":"Updated by FQN route"}]
+            """);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            LINEAGE_PATH + lineageEdgeByNamePath(sourceTable, targetTable),
+            patch,
+            jsonPatchRequestOptions());
+
+    JsonNode edge = getLineageEdgeByName(client, sourceTable, targetTable).get("edge");
+    assertEquals("Updated by FQN route", edge.get("description").asText());
+
+    deleteLineageByName(client, sourceTable, targetTable);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .noneMatch(
+                downstreamEdge ->
+                    downstreamEdge.getFromEntity().equals(sourceTable.getId())
+                        && downstreamEdge.getToEntity().equals(targetTable.getId())));
+
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testDeleteLineageBySourceByFQN() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_source_delete_source");
+    Table targetTable = createTable(client, namespace, "fqn_source_delete_target");
+
+    LineageDetails details =
+        new LineageDetails()
+            .withDescription("Query lineage by FQN")
+            .withSource(LineageDetails.Source.QUERY_LINEAGE);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+
+    executeAddLineage(client, addLineage);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            LINEAGE_PATH
+                + "/source/name/table/"
+                + encodePathSegment(targetTable.getFullyQualifiedName())
+                + "/type/"
+                + encodePathSegment(LineageDetails.Source.QUERY_LINEAGE.value()),
+            null);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .noneMatch(
+                downstreamEdge ->
+                    downstreamEdge.getFromEntity().equals(sourceTable.getId())
+                        && downstreamEdge.getToEntity().equals(targetTable.getId())));
+
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
   }
 
   @Test

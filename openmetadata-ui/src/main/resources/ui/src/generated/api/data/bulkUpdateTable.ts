@@ -343,7 +343,7 @@ export interface EntityReference {
     /**
      * Unique identifier that identifies an entity instance.
      */
-    id: string;
+    id?: string;
     /**
      * If true the relationship indicated by this entity reference is inherited from the parent
      * entity.

@@ -652,11 +652,11 @@ def _build_table_lineage(
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=from_entity.id.root,
+                    fullyQualifiedName=from_entity.fullyQualifiedName.root,
                     type="table",
                 ),
                 toEntity=EntityReference(
-                    id=to_entity.id.root,
+                    fullyQualifiedName=to_entity.fullyQualifiedName.root,
                     type="table",
                 ),
             )

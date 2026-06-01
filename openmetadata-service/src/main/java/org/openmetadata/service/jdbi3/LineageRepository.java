@@ -131,6 +131,20 @@ public class LineageRepository {
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
+  public static void validateLineageReference(EntityReference ref) {
+    if (ref == null
+        || nullOrEmpty(ref.getType())
+        || (ref.getId() == null && nullOrEmpty(ref.getFullyQualifiedName()))) {
+      throw new IllegalArgumentException(
+          "Lineage entity reference must include type and either id or fullyQualifiedName");
+    }
+  }
+
+  public static EntityReference resolveLineageReference(EntityReference ref, Include include) {
+    validateLineageReference(ref);
+    return Entity.getEntityReference(ref, include);
+  }
+
   @Transaction
   public void addLineage(AddLineage addLineage, String updatedBy) {
     // Validate from entity
@@ -138,12 +152,12 @@ public class LineageRepository {
         addLineage.getEdge().getLineageDetails() != null
             ? addLineage.getEdge().getLineageDetails()
             : new LineageDetails();
-    EntityReference from = addLineage.getEdge().getFromEntity();
-    from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
+    EntityReference from =
+        resolveLineageReference(addLineage.getEdge().getFromEntity(), Include.NON_DELETED);
 
     // Validate to entity
-    EntityReference to = addLineage.getEdge().getToEntity();
-    to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
+    EntityReference to =
+        resolveLineageReference(addLineage.getEdge().getToEntity(), Include.NON_DELETED);
 
     boolean relationAlreadyExists =
         !nullOrEmpty(
@@ -152,9 +166,8 @@ public class LineageRepository {
 
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
-      EntityReference pipeline = lineageDetails.getPipeline();
-      pipeline =
-          Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
+      EntityReference pipeline =
+          resolveLineageReference(lineageDetails.getPipeline(), Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
       lineageDetails.withPipeline(pipeline);
@@ -1090,6 +1103,12 @@ public class LineageRepository {
   }
 
   @Transaction
+  public void deleteLineageBySourceByFQN(String toEntity, String toFQN, String source) {
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
+    deleteLineageBySource(to.getId(), to.getType(), source);
+  }
+
+  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from =
@@ -1429,6 +1448,14 @@ public class LineageRepository {
     }
   }
 
+  public Response getLineageEdgeByFQN(
+      String fromEntity, String fromFQN, String toEntity, String toFQN) {
+    EntityReference from =
+        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    return getLineageEdge(from.getId(), to.getId());
+  }
+
   public Response patchLineageEdge(
       String fromEntity,
       UUID fromId,
@@ -1446,10 +1473,8 @@ public class LineageRepository {
       LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
       if (updated.getPipeline() != null) {
         // Validate pipeline entity
-        EntityReference pipeline = updated.getPipeline();
-        pipeline =
-            Entity.getEntityReferenceById(
-                pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
+        EntityReference pipeline =
+            resolveLineageReference(updated.getPipeline(), Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
 
@@ -1475,6 +1500,20 @@ public class LineageRepository {
               + " "
               + toId);
     }
+  }
+
+  public Response patchLineageEdgeByFQN(
+      String fromEntity,
+      String fromFQN,
+      String toEntity,
+      String toFQN,
+      JsonPatch patch,
+      String updatedBy) {
+    EntityReference from =
+        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    return patchLineageEdge(
+        from.getType(), from.getId(), to.getType(), to.getId(), patch, updatedBy);
   }
 
   private void getDownstreamLineage(

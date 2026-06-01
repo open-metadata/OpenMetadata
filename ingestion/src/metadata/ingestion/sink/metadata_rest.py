@@ -76,6 +76,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
@@ -110,6 +111,7 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import (
@@ -439,6 +441,21 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
+    def _delete_lineage_by_source_reference(self, entity_reference: EntityReference, source: str) -> None:
+        if entity_reference.id:
+            self.metadata.delete_lineage_by_source(
+                entity_type=entity_reference.type,
+                entity_id=model_str(entity_reference.id),
+                source=source,
+            )
+            return
+        if entity_reference.fullyQualifiedName:
+            self.metadata.delete_lineage_by_source_by_name(
+                entity_type=entity_reference.type,
+                entity_fqn=model_str(entity_reference.fullyQualifiedName),
+                source=source,
+            )
+
     @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
         """
@@ -460,16 +477,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 and add_lineage.lineage_request.edge.lineageDetails.source
                 in (LineageSource.PipelineLineage, LineageSource.OpenLineage)
             ):
-                self.metadata.delete_lineage_by_source(
-                    entity_type="pipeline",
-                    entity_id=str(add_lineage.lineage_request.edge.lineageDetails.pipeline.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    add_lineage.lineage_request.edge.lineageDetails.pipeline,
+                    add_lineage.lineage_request.edge.lineageDetails.source.value,
                 )
             else:
-                self.metadata.delete_lineage_by_source(
-                    entity_type=add_lineage.lineage_request.edge.toEntity.type,
-                    entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    add_lineage.lineage_request.edge.toEntity,
+                    add_lineage.lineage_request.edge.lineageDetails.source.value,
                 )
         lineage_response = self._run_dispatch(add_lineage.lineage_request)
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
