@@ -2053,7 +2053,9 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
-    await page.click('[data-testid="breadcrumb-link"]:last-child');
+    // The last breadcrumb crumb is now the (non-clickable) current entity, so
+    // navigate to the parent schema via the second-to-last crumb.
+    await page.click('[data-testid="breadcrumb-link"]:nth-last-child(2)');
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
     );

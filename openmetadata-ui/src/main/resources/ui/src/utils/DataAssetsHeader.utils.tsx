@@ -617,22 +617,6 @@ export const getDataAssetsHeaderInfo = (
         EntityType.API_COLLECTION
       );
 
-      returnData.extraInfo = (
-        <>
-          {apiCollection.endpointURL && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLink
-                newTab
-                href={apiCollection.endpointURL}
-                label={t('label.source-url')}
-                value={apiCollection.endpointURL}
-              />
-            </>
-          )}
-        </>
-      );
-
       break;
     }
     case EntityType.API_ENDPOINT: {
@@ -652,17 +636,6 @@ export const getDataAssetsHeaderInfo = (
                 dataTestId="api-endpoint-request-method"
                 label={t('label.request-method')}
                 value={apiEndpoint.requestMethod}
-              />
-            </>
-          )}
-          {apiEndpoint.endpointURL && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLink
-                newTab
-                href={apiEndpoint.endpointURL}
-                label={t('label.source-url')}
-                value={apiEndpoint.endpointURL}
               />
             </>
           )}

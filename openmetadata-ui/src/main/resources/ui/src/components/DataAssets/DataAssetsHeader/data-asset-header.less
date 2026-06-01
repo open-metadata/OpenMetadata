@@ -33,6 +33,22 @@
     max-width: 220px;
   }
 
+  // Breadcrumb (Figma node 8065:5192): ancestor crumbs are gray (#414651), the
+  // current entity crumb (activeTitle => .font-medium) is the Tailwind brand
+  // (primary) blue. Scoped to the header so other breadcrumbs are unchanged.
+  // !important is required to beat the global `.breadcrumb-item .link-title`
+  // color rule in app.less, which itself uses !important.
+  .breadcrumb-container {
+    .link-title {
+      color: @grey-700 !important;
+    }
+
+    .link-title.font-medium {
+      color: var(--tw-color-brand-700) !important;
+      font-weight: 600;
+    }
+  }
+
   .domain-link-container {
     max-width: 148px;
 

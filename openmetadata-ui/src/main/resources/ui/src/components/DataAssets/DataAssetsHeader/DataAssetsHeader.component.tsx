@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
@@ -52,6 +53,8 @@ import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import {
   ContractExecutionStatus,
   DataContract,
@@ -128,6 +131,7 @@ type StatItemProps = {
   loading?: boolean;
   disabled?: boolean;
   isActive?: boolean;
+  srLabel?: string;
 };
 
 const StatItem = ({
@@ -139,6 +143,7 @@ const StatItem = ({
   loading,
   disabled,
   isActive,
+  srLabel,
 }: StatItemProps) => {
   const content = (
     <span
@@ -152,6 +157,7 @@ const StatItem = ({
       data-testid={testId}>
       <Icon className="tw:size-4 tw:text-current" />
       <span className="tw:text-quaternary">{count}</span>
+      {srLabel && <span className="tw:sr-only">{srLabel}</span>}
     </span>
   );
 
@@ -740,7 +746,9 @@ export const DataAssetsHeader = ({
   ]);
 
   const sourceUrlButton = useMemo(() => {
-    const sourceUrl = (dataAsset as Table).sourceUrl;
+    const sourceUrl =
+      (dataAsset as Table).sourceUrl ??
+      (dataAsset as APICollection | APIEndpoint).endpointURL;
 
     if (!sourceUrl) {
       return null;
@@ -797,9 +805,15 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumb
               loading={isBreadcrumbLoading}
-              titleLinks={breadcrumbs.map((link) =>
-                isCustomizedView ? { ...link, url: '', noLink: true } : link
-              )}
+              separator={
+                <ChevronRight className="tw:size-4 tw:text-fg-quaternary" />
+              }
+              titleLinks={[
+                ...breadcrumbs.map((link) =>
+                  isCustomizedView ? { ...link, url: '', noLink: true } : link
+                ),
+                { name: entityName, url: '', activeTitle: true },
+              ]}
             />
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
@@ -845,6 +859,21 @@ export const DataAssetsHeader = ({
                 onClick={onVersionClick}
               />
             )}
+            {!excludeEntityService &&
+              !deleted &&
+              !isCustomizedView &&
+              onFollowClick && (
+                <StatItem
+                  count={followers ?? 0}
+                  icon={StarFilledIcon}
+                  isActive={isFollowing}
+                  loading={isFollowingLoading}
+                  srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                  testId="entity-follow-button"
+                  tooltip={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                  onClick={handleFollowingClick}
+                />
+              )}
           </div>
         </div>
 
@@ -911,41 +940,6 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {requestDataAccessButton}
-            {!excludeEntityService &&
-              !deleted &&
-              !isCustomizedView &&
-              onFollowClick && (
-                <Tooltip
-                  placement="top"
-                  title={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}>
-                  <TooltipTrigger>
-                    <button
-                      aria-label={t(
-                        `label.${isFollowing ? 'un-follow' : 'follow'}`
-                      )}
-                      aria-pressed={isFollowing}
-                      className={classNames(
-                        'tw:inline-flex tw:h-9 tw:w-9 tw:shrink-0 tw:items-center',
-                        'tw:justify-center tw:rounded-lg tw:border',
-                        'tw:border-border-secondary tw:bg-primary tw:shadow-xs',
-                        'tw:transition-colors tw:hover:bg-primary_hover',
-                        'tw:disabled:cursor-not-allowed tw:disabled:opacity-60',
-                        isFollowing
-                          ? 'tw:text-text-brand-secondary'
-                          : 'tw:text-fg-quaternary'
-                      )}
-                      data-testid="entity-follow-button"
-                      disabled={deleted || isFollowingLoading}
-                      type="button"
-                      onClick={handleFollowingClick}>
-                      <StarFilledIcon className="tw:size-4" />
-                      {(followers ?? 0) > 0 && (
-                        <span className="tw:sr-only">{followers}</span>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                </Tooltip>
-              )}
             <ManageButton
               isAsyncDelete
               afterDeleteAction={afterDeleteAction}
@@ -982,7 +976,7 @@ export const DataAssetsHeader = ({
 
         {/* Row 3 — Metadata strip */}
         <div
-          className="tw:flex tw:flex-wrap tw:items-start tw:gap-6"
+          className="tw:flex tw:flex-wrap tw:items-start tw:gap-[18px]"
           data-testid="data-asset-header-metadata">
           {showDomain && (
             <DomainLabel
