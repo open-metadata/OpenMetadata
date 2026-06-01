@@ -411,13 +411,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """Write per-step status as JSON to `path`.
 
         `success` is True iff every step meets its success threshold.
-        Shape: {"pipeline_type": str, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
+        Shape: {"pipeline_type": str | None, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
         """
         ingestion_status = self.build_ingestion_status()
         success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
+        source = getattr(self.config, "source", None)
         payload = {
-            "pipeline_type": self.config.source.type,  # pyright: ignore[reportAttributeAccessIssue]  # Union[Any, Dict] config; attrs present at runtime
-            "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,  # pyright: ignore[reportAttributeAccessIssue]
+            "pipeline_type": getattr(source, "type", None) or getattr(self.config, "sourcePythonClass", None),
+            "ingestion_pipeline_fqn": getattr(self.config, "ingestionPipelineFQN", None),
             "success": success,
             "steps": ingestion_status.model_dump(),
         }
