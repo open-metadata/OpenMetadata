@@ -17,6 +17,11 @@ if TYPE_CHECKING:
 _Direction = Literal["upstream", "downstream"]
 
 
+def _fqn_tail_match(candidate: str, wanted: str) -> bool:
+    """True if `candidate` FQN equals `wanted` or ends with `.{wanted}` (segment boundary, not substring)."""
+    return candidate == wanted or candidate.endswith(f".{wanted}")
+
+
 class LineageAssert:
     """Lineage namespace — reached via TableAssert.lineage.
 
@@ -85,7 +90,7 @@ class LineageAssert:
                 for col_edge in lineage_details.get("columnsLineage") or []:
                     froms = col_edge.get("fromColumns") or []
                     to = col_edge.get("toColumn") or ""
-                    if any(source in f for f in froms) and target in to:
+                    if any(_fqn_tail_match(f, source) for f in froms) and _fqn_tail_match(to, target):
                         return
             raise AssertionError(f"No column lineage {source!r} -> {target!r} on table {self._fqn}")
 
