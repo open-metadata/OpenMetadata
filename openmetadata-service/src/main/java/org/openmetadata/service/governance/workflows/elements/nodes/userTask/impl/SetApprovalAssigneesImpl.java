@@ -176,6 +176,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         List<String> admins = resolveAdminAssignees();
         admins.remove(updatedByEntityLink);
         assigneeList.addAll(admins);
+        if (assigneeList.isEmpty()) {
+          LOG.warn(
+              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; task left unassigned",
+              execution.getProcessInstanceId());
+        }
       }
 
       // Persist the list as JSON array so TaskListener can read it.
