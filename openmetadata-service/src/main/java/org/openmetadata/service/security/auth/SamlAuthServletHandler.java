@@ -41,6 +41,7 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -57,6 +58,74 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
   private List<String> displayNameAttributes;
+
+  /**
+   * Bridge for handing a SAML-authenticated identity to the MCP OAuth flow. The MCP module
+   * (openmetadata-mcp) registers an implementation at startup via {@link
+   * #setMcpSamlCallbackHandler}; this service module cannot import openmetadata-mcp, so the
+   * dependency is inverted through this hook (mirrors {@code
+   * AuthenticationCodeFlowHandler.setMcpStateChecker} used by the OIDC bridge).
+   */
+  @FunctionalInterface
+  public interface McpSamlCallbackHandler {
+    void handle(
+        HttpServletRequest req,
+        HttpServletResponse resp,
+        String username,
+        String email,
+        String relayState)
+        throws Exception;
+  }
+
+  private static volatile McpSamlCallbackHandler mcpSamlCallbackHandler;
+
+  public static void setMcpSamlCallbackHandler(McpSamlCallbackHandler handler) {
+    mcpSamlCallbackHandler = handler;
+  }
+
+  private static class Holder {
+    private static volatile SamlAuthServletHandler instance;
+    private static volatile AuthenticationConfiguration lastAuthConfig;
+    private static volatile AuthorizerConfiguration lastAuthzConfig;
+    private static volatile SessionService lastSessionService;
+  }
+
+  public static SamlAuthServletHandler getInstance(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null) {
+      throw new IllegalStateException("Session service is not initialized");
+    }
+    return getInstance(authConfig, authorizerConfig, sessionService);
+  }
+
+  public static SamlAuthServletHandler getInstance(
+      AuthenticationConfiguration authConfig,
+      AuthorizerConfiguration authorizerConfig,
+      SessionService sessionService) {
+    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig, sessionService)) {
+      synchronized (SamlAuthServletHandler.class) {
+        if (Holder.instance == null
+            || !isSameConfig(authConfig, authorizerConfig, sessionService)) {
+          Holder.instance =
+              new SamlAuthServletHandler(authConfig, authorizerConfig, sessionService);
+          Holder.lastAuthConfig = authConfig;
+          Holder.lastAuthzConfig = authorizerConfig;
+          Holder.lastSessionService = sessionService;
+        }
+      }
+    }
+    return Holder.instance;
+  }
+
+  private static boolean isSameConfig(
+      AuthenticationConfiguration authConfig,
+      AuthorizerConfiguration authorizerConfig,
+      SessionService sessionService) {
+    return authConfig == Holder.lastAuthConfig
+        && authorizerConfig == Holder.lastAuthzConfig
+        && sessionService == Holder.lastSessionService;
+  }
 
   public SamlAuthServletHandler(
       AuthenticationConfiguration authConfig,
@@ -125,15 +194,60 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  /**
+   * Initiates a SAML login for the MCP OAuth flow, carrying the MCP authorization request id in the
+   * SAML {@code RelayState}. The IdP echoes RelayState back to the ACS, where {@link
+   * #tryHandleMcpSamlCallback} detects it. Unlike {@link #handleLogin}, this does not set a session
+   * redirect URI — MCP relies on RelayState (a SAML protocol field), not the session cookie.
+   */
+  public void initiateMcpLogin(
+      HttpServletRequest req, HttpServletResponse resp, String relayState) {
+    try {
+      javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
+      javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
+
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
+      auth.login(relayState); // returnTo becomes the SAML RelayState
+    } catch (Exception e) {
+      LOG.error("[SAML] Error initiating MCP SAML login", e);
+      throw new IllegalStateException("SAML MCP login initiation failed", e);
+    }
+  }
+
+  /**
+   * Detects an MCP-initiated SAML callback (RelayState = "mcp:{authRequestId}") and delegates the
+   * authenticated identity to the registered MCP handler. Returns true when the callback was an MCP
+   * flow and has been handled (the caller must stop processing); false for normal web SAML logins.
+   */
+  private boolean tryHandleMcpSamlCallback(
+      HttpServletRequest req, HttpServletResponse resp, String username, String email)
+      throws Exception {
+    String relayState = req.getParameter("RelayState");
+    if (relayState == null || !relayState.startsWith("mcp:")) {
+      return false; // normal web SAML login — not an MCP OAuth flow
+    }
+    // This IS an MCP OAuth login. If the MCP bridge is not registered (MCP disabled, init failure,
+    // or a startup race), fail closed — never fall through to the web login path, which would
+    // auto-provision the user and mint a web JWT, bypassing the MCP deny-unknown-user contract.
+    McpSamlCallbackHandler handler = mcpSamlCallbackHandler;
+    if (handler == null) {
+      LOG.error(
+          "[SAML] MCP OAuth callback received but no MCP handler is registered; failing the MCP "
+              + "login instead of falling back to web login");
+      sendError(
+          resp,
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          "MCP authentication is not available. Please contact your administrator.");
+      return true;
+    }
+    LOG.info("[SAML] MCP OAuth callback detected, delegating to MCP handler");
+    handler.handle(req, resp, username, email, relayState);
+    return true;
+  }
+
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      UserSession pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
-      if (pendingSession == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
-        return;
-      }
-
       // This handles the SAML response from IDP (ACS - Assertion Consumer Service)
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -163,6 +277,20 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       } else {
         username = nameId;
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
+      }
+
+      // If this login was initiated by an MCP OAuth client (RelayState = "mcp:{authRequestId}"),
+      // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
+      // This fires before getOrCreateUser so MCP keeps the deny-unknown-user semantics of the
+      // OIDC MCP path (handleSSOCallbackWithDbState serves the "Access Denied" page).
+      if (tryHandleMcpSamlCallback(req, resp, username, email)) {
+        return;
+      }
+
+      UserSession pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
+      if (pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+        return;
       }
 
       // Extract display name from SAML attributes (name, given_name, family_name)

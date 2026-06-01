@@ -68,7 +68,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityfqnhash character varying(768),
     about character varying(2048),
     aboutfqnhash character varying(768),
-    actorid character varying(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorname is the display fallback.
+    actorid character varying(36),
     actorname character varying(256),
     timestamp bigint NOT NULL,
     summary character varying(500),
