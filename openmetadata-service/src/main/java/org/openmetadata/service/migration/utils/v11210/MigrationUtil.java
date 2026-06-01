@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
@@ -33,8 +34,6 @@ public class MigrationUtil {
   // object/enabled:false. Its indexed leaves no longer exist so references to
   // columns.children.name, dataModel.columns.children.name, and the schemaFields
   // variants in highlightFields, searchFields, and allowedFields are now dead weight.
-  // Upgraded clusters keep the stale entries because the additive settings merge
-  // preserves stored asset config wholesale; this scrub removes exactly those entries.
   private static final Set<String> STALE_FLATTENED_CHILDREN_FIELDS =
       Set.of(
           "columns.children.name",
@@ -44,12 +43,6 @@ public class MigrationUtil {
           "requestSchema.schemaFields.children.name",
           "responseSchema.schemaFields.children.name");
 
-  /**
-   * Removes every reference to the now non-indexed {@code *.children} fields from the DB-stored
-   * SearchSettings on clusters upgrading to 1.12.10. The recursive column/schema {@code children}
-   * subtree is mapped {@code object} with {@code "enabled": false} — stored for display, not
-   * indexed — so its leaves no longer resolve. Idempotent; safe to call on every reprocessing pass.
-   */
   public static void removeFlattenedChildrenSearchSettings() {
     try {
       Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
@@ -112,6 +105,62 @@ public class MigrationUtil {
                 .getFields()
                 .removeIf(field -> STALE_FLATTENED_CHILDREN_FIELDS.contains(field.getName()));
       }
+    }
+    return removed;
+  }
+
+  // PR #27080 renamed the file search field and aggregation from "extension" (flattened —
+  // unsupported for terms agg and multi_match on OpenSearch) to "fileExtension" (keyword). The
+  // seed was updated but the additive settings merge means clusters upgraded from pre-1.12.5
+  // still carry both stale entries, causing a 500 on every file search query on OpenSearch.
+  private static final String STALE_FILE_EXTENSION_FIELD = "extension";
+  private static final String FILE_ASSET_TYPE = "file";
+
+  public static void removeStaleFileExtensionAggregation() {
+    try {
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn("Search settings not found in database; skipping stale file extension scrub");
+        return;
+      }
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      if (stripStaleFileExtensionSettings(currentSettings)) {
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Removed stale 'extension' searchField and aggregation from file search settings");
+      } else {
+        LOG.info("No stale 'extension' entries found in file search settings");
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing stale file extension settings", e);
+    }
+  }
+
+  public static boolean stripStaleFileExtensionSettings(SearchSettings settings) {
+    boolean changed = false;
+    if (settings == null) {
+      return false;
+    }
+    for (AssetTypeConfiguration assetConfig : listOrEmpty(settings.getAssetTypeConfigurations())) {
+      if (FILE_ASSET_TYPE.equals(assetConfig.getAssetType())) {
+        changed |= removeStaleAggregation(assetConfig.getAggregations());
+        changed |= removeStaleSearchField(assetConfig.getSearchFields());
+      }
+    }
+    return changed;
+  }
+
+  private static boolean removeStaleAggregation(List<Aggregation> aggregations) {
+    boolean removed = false;
+    if (!nullOrEmpty(aggregations)) {
+      removed = aggregations.removeIf(agg -> STALE_FILE_EXTENSION_FIELD.equals(agg.getField()));
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleSearchField(List<FieldBoost> searchFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(searchFields)) {
+      removed = searchFields.removeIf(field -> STALE_FILE_EXTENSION_FIELD.equals(field.getField()));
     }
     return removed;
   }
