@@ -447,6 +447,46 @@ describe('AddTestCaseList', () => {
       });
     });
 
+    // Regression for #28400: existingTest must seed pre-selection by id,
+    // independent of the (paginated) selectedTest name list.
+    it('pre-selects every test case in existingTest by id, even when selectedTest is empty', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: {
+          total: 3,
+        },
+      });
+
+      const existingTest: EntityReference[] = mockTestCases.map((tc) => ({
+        id: tc.id ?? '',
+        name: tc.name,
+        type: 'testCase',
+      }));
+
+      await act(async () => {
+        renderWithRouter({
+          ...mockProps,
+          existingTest,
+          selectedTest: [],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+          'checked',
+          true
+        );
+      });
+    });
+
     it('handles test cases without id gracefully', async () => {
       const testCasesWithoutId = [{ ...mockTestCases[0], id: undefined }];
 

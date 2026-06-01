@@ -26,7 +26,7 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { TestCase } from '../../../generated/tests/testCase';
+import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -41,6 +41,19 @@ import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
+const seedSelectedFromExistingTest = (
+  existingTest?: EntityReference[]
+): Map<string, TestCase> => {
+  const seed = new Map<string, TestCase>();
+  (existingTest ?? []).forEach((ref) => {
+    if (ref.id) {
+      seed.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+    }
+  });
+
+  return seed;
+};
+
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
@@ -48,6 +61,7 @@ export const AddTestCaseList = ({
   submitText,
   filters,
   selectedTest,
+  existingTest,
   onChange,
   showButton = true,
   testCaseParams,
@@ -55,7 +69,9 @@ export const AddTestCaseList = ({
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>();
   const [items, setItems] = useState<TestCase[]>([]);
-  const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>();
+  const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>(
+    () => seedSelectedFromExistingTest(existingTest)
+  );
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,19 +100,22 @@ export const AddTestCaseList = ({
         });
 
         setTotalCount(testCaseResponse.paging.total ?? 0);
-        if (selectedTest) {
-          setSelectedItems((pre) => {
-            const selectedItemsMap = new Map();
-            pre?.forEach((item) => selectedItemsMap.set(item.id, item));
-            testCaseResponse.data.forEach((hit) => {
-              if (selectedTest.find((test) => hit.name === test)) {
-                selectedItemsMap.set(hit.id ?? '', hit);
-              }
-            });
-
-            return selectedItemsMap;
+        setSelectedItems((pre) => {
+          const selectedItemsMap = new Map(pre ?? new Map());
+          testCaseResponse.data.forEach((hit) => {
+            if (!hit.id) {
+              return;
+            }
+            if (selectedItemsMap.has(hit.id)) {
+              selectedItemsMap.set(hit.id, hit);
+            }
+            if (selectedTest?.find((test) => hit.name === test)) {
+              selectedItemsMap.set(hit.id, hit);
+            }
           });
-        }
+
+          return selectedItemsMap;
+        });
         setItems(
           page === 1
             ? testCaseResponse.data
@@ -169,6 +188,24 @@ export const AddTestCaseList = ({
     }
   };
   useEffect(() => {
+    if (!existingTest || existingTest.length === 0) {
+      return;
+    }
+    setSelectedItems((prev) => {
+      const next = new Map(prev ?? new Map());
+      let changed = false;
+      existingTest.forEach((ref) => {
+        if (ref.id && !next.has(ref.id)) {
+          next.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [existingTest]);
+
+  useEffect(() => {
     fetchTestCases({ searchText: searchTerm });
   }, [searchTerm]);
 
@@ -191,12 +228,14 @@ export const AddTestCaseList = ({
             loading={{
               spinning: isLoading,
               indicator: <Loader />,
-            }}>
+            }}
+          >
             <VirtualList
               data={items}
               height={500}
               itemKey="id"
-              onScroll={onScroll}>
+              onScroll={onScroll}
+            >
               {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
@@ -206,12 +245,14 @@ export const AddTestCaseList = ({
                   <Space
                     className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
-                    onClick={() => handleCardClick(test)}>
+                    onClick={() => handleCardClick(test)}
+                  >
                     <Space className="justify-between w-full">
                       <Typography.Paragraph
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{ tooltip: true }}
+                      >
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
@@ -222,7 +263,8 @@ export const AddTestCaseList = ({
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}>
+                      ellipsis={{ tooltip: true }}
+                    >
                       {getEntityName(test.testDefinition)}
                     </Typography.Paragraph>
                     <Typography.Paragraph className="m-0">
@@ -233,7 +275,8 @@ export const AddTestCaseList = ({
                           tableFqn,
                           EntityTabs.PROFILER
                         )}
-                        onClick={(e) => e.stopPropagation()}>
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {tableName}
                       </Link>
                     </Typography.Paragraph>
@@ -277,7 +320,8 @@ export const AddTestCaseList = ({
       {showButton && (
         <Col
           className="d-flex justify-end items-center p-y-xss gap-4"
-          span={24}>
+          span={24}
+        >
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
@@ -285,7 +329,8 @@ export const AddTestCaseList = ({
             data-testid="submit"
             loading={isLoading}
             type="primary"
-            onClick={handleSubmit}>
+            onClick={handleSubmit}
+          >
             {submitText ?? t('label.create')}
           </Button>
         </Col>

@@ -98,7 +98,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 3.0f);
+    fields.put("columnNamesFuzzy", 3.0f);
     return fields;
   }
 }
