@@ -726,6 +726,10 @@
       "columnNames": {
         "type": "keyword"
       },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"

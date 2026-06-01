@@ -600,6 +600,10 @@
       "columnNames": {
         "type": "keyword"
       },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "project": {
         "type": "text",
         "fields": {
