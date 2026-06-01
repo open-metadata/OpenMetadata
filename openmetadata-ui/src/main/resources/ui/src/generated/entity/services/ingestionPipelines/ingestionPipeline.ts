@@ -733,8 +733,6 @@ export enum VerifySSL {
 }
 
 /**
- * Last of executions and status for the Pipeline.
- *
  * This defines runtime status of Pipeline.
  */
 export interface PipelineStatus {
