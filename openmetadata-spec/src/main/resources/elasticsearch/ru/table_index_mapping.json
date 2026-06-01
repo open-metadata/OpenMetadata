@@ -251,7 +251,8 @@
             "type": "integer"
           },
           "children": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           }
         }
       },
