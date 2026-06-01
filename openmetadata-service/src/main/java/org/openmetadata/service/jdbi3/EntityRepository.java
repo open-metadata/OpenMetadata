@@ -4621,6 +4621,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private Fields buildSearchRehydrateFields(Fields callerFields) {
     Set<String> combined = new HashSet<>(callerFields.getFieldList());
     combined.addAll(getFieldsStrippedFromStorageJson());
+    // Standard relationship fields (tags, owners, domains, dataProducts, reviewers …) are stripped
+    // from the ES JSON before deserialization. They must always be rehydrated from the DB so the
+    // search-path response shape stays identical to the DB-backed path, regardless of which fields
+    // the caller explicitly requested.
+    FIELDS_STORED_AS_RELATIONSHIPS.stream()
+        .filter(allowedFields::contains)
+        .forEach(combined::add);
     return new Fields(combined);
   }
 
