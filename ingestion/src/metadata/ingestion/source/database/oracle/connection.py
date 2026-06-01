@@ -105,6 +105,19 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         return isinstance(self.service_connection.oracleConnectionType, OracleAutonomousConnection)
 
     @staticmethod
+    def _autonomous_inner(autonomous: OracleAutonomousConnection):
+        """Unwrap the Pydantic RootModel.
+
+        OracleAutonomousConnection is generated as
+        RootModel[Union[OracleAutonomousConnection1, OracleAutonomousConnection2]]
+        because the JSON schema uses ``anyOf`` to enforce that either walletPath
+        or walletContent must be present. The inner variant carries the actual
+        ``tnsAlias``, ``walletPath``, ``walletContent`` and ``walletPassword``
+        fields, so callers must go through ``.root`` to read them.
+        """
+        return autonomous.root
+
+    @staticmethod
     def _safe_extract_wallet_archive(zip_ref: zipfile.ZipFile, target_dir: str) -> None:
         target_root = Path(target_dir).resolve()
 
@@ -178,6 +191,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         autonomous_connection = self.service_connection.oracleConnectionType
         if not isinstance(autonomous_connection, OracleAutonomousConnection):
             return
+        autonomous = self._autonomous_inner(autonomous_connection)
 
         if not self.service_connection.connectionArguments:
             self.service_connection.connectionArguments = init_empty_connection_arguments()
@@ -186,12 +200,12 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         connection_arguments: dict[str, Any] = self.service_connection.connectionArguments.root
 
-        wallet_path = autonomous_connection.walletPath
-        if autonomous_connection.walletContent:
+        wallet_path = autonomous.walletPath
+        if autonomous.walletContent:
             if self._wallet_temp_dir and Path(self._wallet_temp_dir).is_dir():
                 wallet_path = self._wallet_temp_dir
             else:
-                wallet_path = self._extract_wallet_content(autonomous_connection.walletContent)
+                wallet_path = self._extract_wallet_content(autonomous.walletContent)
         else:
             self._cleanup_wallet_temp_dir()
 
@@ -200,15 +214,33 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         connection_arguments["config_dir"] = wallet_path
         connection_arguments["wallet_location"] = wallet_path
-
-        if autonomous_connection.walletPassword:
-            connection_arguments["wallet_password"] = autonomous_connection.walletPassword.get_secret_value()
-        else:
-            connection_arguments.pop("wallet_password", None)
+        # wallet_password is intentionally NOT persisted into connectionArguments.
+        # The raw secret is materialised only inside _build_connection_args at
+        # the SQLAlchemy/oracledb call boundary, so it never lives on the
+        # service_connection object and cannot leak via get_connection_dict(),
+        # repr, or logging of the connection.
+        connection_arguments.pop("wallet_password", None)
 
     def _uses_inline_wallet_content(self) -> bool:
         connection_type = self.service_connection.oracleConnectionType
-        return bool(isinstance(connection_type, OracleAutonomousConnection) and connection_type.walletContent)
+        if not isinstance(connection_type, OracleAutonomousConnection):
+            return False
+        return bool(self._autonomous_inner(connection_type).walletContent)
+
+    def _build_connection_args(self, connection: OracleConnectionConfig) -> dict:
+        """Build SQLAlchemy connect_args, injecting wallet_password just-in-time.
+
+        Keeping wallet_password off connectionArguments avoids leaking it
+        through any path that serialises or logs the persisted connection
+        (e.g. get_connection_dict()).
+        """
+        args = dict(get_connection_args_common(connection))
+        connection_type = connection.oracleConnectionType
+        if isinstance(connection_type, OracleAutonomousConnection):
+            autonomous = self._autonomous_inner(connection_type)
+            if autonomous.walletPassword:
+                args["wallet_password"] = autonomous.walletPassword.get_secret_value()
+        return args
 
     def _get_client(self) -> Engine:
         """
@@ -229,7 +261,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             return create_generic_db_connection(
                 connection=self.service_connection,
                 get_connection_url_fn=self.get_connection_url,
-                get_connection_args_fn=get_connection_args_common,
+                get_connection_args_fn=self._build_connection_args,
             )
         except Exception:
             if self._uses_inline_wallet_content():
@@ -289,7 +321,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         elif isinstance(connection_copy.oracleConnectionType, OracleTNSConnection):
             connection_dict["host"] = connection_copy.oracleConnectionType.oracleTNSConnection
         elif isinstance(connection_copy.oracleConnectionType, OracleAutonomousConnection):
-            connection_dict["host"] = connection_copy.oracleConnectionType.tnsAlias
+            connection_dict["host"] = self._autonomous_inner(connection_copy.oracleConnectionType).tnsAlias
 
         # Add connection options if present
         if connection_copy.connectionOptions and connection_copy.connectionOptions.root:
@@ -343,7 +375,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             return url
 
         if isinstance(connection.oracleConnectionType, OracleAutonomousConnection):
-            url += connection.oracleConnectionType.tnsAlias
+            url += OracleConnection._autonomous_inner(connection.oracleConnectionType).tnsAlias
             return url
 
         # If not TNS, we add the hostPort

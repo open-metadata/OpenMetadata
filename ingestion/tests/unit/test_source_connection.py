@@ -1336,7 +1336,13 @@ class SourceConnectionTest(TestCase):
         assert mock_init_oracle_client.call_count == 0
         assert oracle_connection.service_connection.connectionArguments.root["config_dir"] == "/tmp/my_wallet"
         assert oracle_connection.service_connection.connectionArguments.root["wallet_location"] == "/tmp/my_wallet"
-        assert oracle_connection.service_connection.connectionArguments.root["wallet_password"] == "wallet_password"
+        # wallet_password must NOT be persisted into connectionArguments — it
+        # would otherwise leak via get_connection_dict() and any logging of the
+        # service_connection. It is injected just-in-time at engine creation.
+        assert "wallet_password" not in oracle_connection.service_connection.connectionArguments.root
+        # The driver-call-boundary helper must surface it for oracledb.
+        engine_args = oracle_connection._build_connection_args(oracle_connection.service_connection)
+        assert engine_args["wallet_password"] == "wallet_password"
 
     @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
     def test_oracle_autonomous_wallet_content_args(self, mock_create_generic_db_connection):
@@ -1445,6 +1451,16 @@ class SourceConnectionTest(TestCase):
 
         assert "base64-encoded wallet zip" in str(error.exception)
         assert oracle_connection._wallet_temp_dir is None
+
+    def test_oracle_autonomous_schema_requires_wallet_path_or_content(self):
+        # The JSON schema uses anyOf to enforce that walletPath OR walletContent
+        # is set. Pydantic should refuse to construct the model when neither is
+        # provided, so invalid configs are rejected at the API boundary instead
+        # of failing later at ingestion runtime.
+        from pydantic import ValidationError
+
+        with self.assertRaises(ValidationError):
+            OracleAutonomousConnection(tnsAlias="myadb_high")
 
     def test_oracle_mkdir_secure_within_rejects_path_outside_root(self):
         # _safe_extract_wallet_archive validates containment before calling
