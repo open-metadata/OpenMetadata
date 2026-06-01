@@ -105,8 +105,8 @@ test(
       );
       await expect(page.getByTestId('view-service-button')).toBeVisible();
 
-         const ingestionPipelinesListResponse2 =
-      waitForTestSuiteIngestionPipelinesListResponse(page);
+      const ingestionPipelinesListResponse2 =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
       await ingestionPipelinesListResponse2;
     });
@@ -169,8 +169,8 @@ test(
         /has been updated and deployed successfully/
       );
 
-         const ingestionPipelinesListResponse =
-      waitForTestSuiteIngestionPipelinesListResponse(page);
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
       await ingestionPipelinesListResponse;
     });
