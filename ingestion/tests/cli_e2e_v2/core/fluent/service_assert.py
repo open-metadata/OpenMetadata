@@ -19,8 +19,7 @@ _ENTITY_COUNT_LIMIT = 1000
 class ServiceAssert(EntityAssert[DatabaseService]):
     """Service namespace — reached via OmClient.service(name).
 
-    Provides smoke-level checks beyond the shared base: bulk entity counts.
-    Inherits exists / get / eventually / has_description_containing.
+    Inherits exists / get / eventually / has_description_containing; adds bulk entity-count assertions.
     """
 
     _entity_cls = DatabaseService

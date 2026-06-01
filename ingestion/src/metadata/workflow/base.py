@@ -215,11 +215,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """Steps to report status from"""
 
     def _step_meets_success_threshold(self, step: Step) -> bool:
-        """True iff the step has no failures, or its success ratio meets the workflow's threshold.
-
-        Shared by `raise_from_status_internal` (which raises on failure) and
-        `write_status_file` (which reports the CLI's observable success/failure state).
-        """
+        """True iff the step has no failures or its success ratio meets the workflow's successThreshold."""
         status = step.get_status()
         if not status.failures:
             return True
@@ -412,24 +408,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         )
 
     def write_status_file(self, path: Path) -> None:
-        """Serialize per-step status to JSON at the given path.
+        """Write per-step status as JSON to `path`.
 
-        The `success` field mirrors the CLI's exit-code semantic: True iff every
-        step meets its success threshold (the same condition under which
-        `raise_from_status_internal` does NOT raise).
-
-        Shape:
-            {
-              "pipeline_type": str,
-              "ingestion_pipeline_fqn": str | None,
-              "success": bool,
-              "steps": [<StepSummary dicts>]
-            }
+        `success` is True iff every step meets its success threshold.
+        Shape: {"pipeline_type": str, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
         """
         ingestion_status = self.build_ingestion_status()
         success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
         payload = {
-            "pipeline_type": self.config.source.type,  # pyright: ignore[reportAttributeAccessIssue]
+            "pipeline_type": self.config.source.type,  # pyright: ignore[reportAttributeAccessIssue]  # Union[Any, Dict] config; attrs present at runtime
             "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,  # pyright: ignore[reportAttributeAccessIssue]
             "success": success,
             "steps": ingestion_status.model_dump(),

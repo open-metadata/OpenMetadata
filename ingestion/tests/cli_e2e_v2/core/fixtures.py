@@ -1,23 +1,11 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Shared helpers for per-connector pytest fixtures.
+"""Plain-function bodies for per-connector pytest fixtures.
 
-Per-connector conftests (`<connector>/conftest.py`) wire their own
-`<connector>_source_ready` and `<connector>_metadata_ingested` fixtures on
-top of these helpers instead of copy-pasting the body.
-
-Design:
-  - These are PLAIN FUNCTIONS (not pytest fixtures). The per-connector
-    conftest is still where pytest scoping (`scope="session"` /
-    `scope="module"`) lives — otherwise pytest couldn't build the
-    dependency graph. The helpers carry just the body.
-  - `run_source_baseline` takes a zero-arg policy factory so each
-    connector's `get_policy` stays lazy (its engine shouldn't be
-    constructed at module import time).
-  - `metadata_ingest_once` applies an optional filter overlay so the
-    vast majority of connectors can pass `schemas_include=[...]`
-    without writing a one-off pipeline-chain-and-run code block.
+Per-connector conftests call these instead of copy-pasting the body.
+Scoping (`scope="session"` / `scope="module"`) stays in the conftest so
+pytest can build the dependency graph.
 """
 
 from __future__ import annotations
@@ -43,12 +31,7 @@ def run_source_baseline(
     *,
     connector_name: str,
 ) -> None:
-    """Thin wrapper around `ensure_baseline` for per-connector `source_ready` fixtures.
-
-    The factory indirection keeps engine construction lazy — `get_policy`
-    opens a SQLAlchemy engine, and we don't want that happening at module
-    import time (pytest collects conftests eagerly).
-    """
+    """Call `ensure_baseline` via a lazy policy factory to defer engine construction past import time."""
     ensure_baseline(policy_factory(), baseline, connector_name=connector_name)
 
 
@@ -62,13 +45,7 @@ def metadata_ingest_once(
     filter_kwargs: dict | None = None,
     label: str = "metadata",
 ) -> None:
-    """Run one metadata CLI ingest and assert success.
-
-    Registers `service_name` for session-end cleanup so individual tests
-    don't need to. `label` controls the tmp-path prefix and failure-
-    message wording — pass the connector name for readable artifacts
-    (e.g. `mysql_ingest0/`).
-    """
+    """Run one metadata CLI ingest, assert success, and register `service_name` for cleanup."""
     if service_name not in registered_services:
         registered_services.append(service_name)
 

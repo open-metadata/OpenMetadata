@@ -3,14 +3,7 @@
 #  you may not use this file except in compliance with the License.
 """Derive Expected* trees from a SQLAlchemy MetaData.
 
-Replaces hand-authored `ExpectedColumn` lists in per-dialect expected
-modules. For each Table in `metadata`, builds an `ExpectedTable` with:
-  - data_type resolved via the dialect's `TypeMap` (SQLAlchemy -> OM)
-  - primary_key / constraint derived from `col.primary_key` / `col.nullable`
-  - description pulled straight from `col.comment` / `tbl.comment`
-
-Stored procedures are NOT derivable (not in MetaData) — callers pass their
-own hand-authored list into `derive_expected_service`.
+Stored procedures are not derivable from MetaData; pass them explicitly to `derive_expected_service`.
 """
 
 from __future__ import annotations
@@ -39,12 +32,7 @@ if TYPE_CHECKING:
 
 
 def derive_expected_tables(metadata: MetaData, type_map: TypeMap) -> list[ExpectedTable]:
-    """Build one ExpectedTable per Table in `metadata`.
-
-    Columns come straight off the SQLAlchemy Column — name, type (via
-    type_map), primary_key, constraint (from nullable), comment (as
-    description). Tables iterated in FK-safe order via `sorted_tables`.
-    """
+    """Build one ExpectedTable per Table in `metadata`, iterated in FK-safe order."""
     return [
         ExpectedTable(
             name=tbl.name,
@@ -84,12 +72,10 @@ def derive_expected_service(
     views: list[ExpectedTable] | None = None,
     stored_procedures: list[ExpectedStoredProcedure] | None = None,
 ) -> ExpectedService:
-    """Build a full ExpectedService tree (service -> db -> schema -> tables + SPs).
+    """Build a full ExpectedService tree from MetaData.
 
-    `schema` defaults to `metadata.schema`. `views` and `stored_procedures`
-    are hand-authored — neither lives in SQLAlchemy MetaData. Views join
-    the regular table list (OM models views as Table entities with
-    tableType=View, so STRICT extras checks see them together).
+    `schema` defaults to `metadata.schema`; raises ValueError if neither is set.
+    Views are appended to the table list (OM models them as Table entities).
     """
     schema_name = schema or metadata.schema
     if schema_name is None:

@@ -11,11 +11,7 @@ from .entity_assert import EntityAssert
 
 
 class StoredProcedureAssert(EntityAssert[StoredProcedure]):
-    """Fluent assertions on a single stored procedure by FQN.
-
-    Inherits exists / get / eventually / has_description_containing from
-    EntityAssert; adds `has_code_containing` which reads the SP body.
-    """
+    """Fluent assertions on a single stored procedure by FQN; adds has_code_containing."""
 
     _entity_cls = StoredProcedure
 

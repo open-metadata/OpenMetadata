@@ -58,18 +58,14 @@ def ensure_baseline(
     *,
     connector_name: str,
 ) -> None:
-    """Three-phase lifecycle with trust-mode short-circuit.
+    """Compare then apply (or raise) source-baseline drift.
 
-    Trust mode: policy or expected is None → log a warning, do nothing.
-    Lets a connector migrate to v2 before its baseline is declared.
+    Trust mode: if policy or expected is None, logs a warning and returns
+    without enforcing anything.
 
-    Otherwise: introspect → compare → apply or raise:
+    Otherwise:
       - no drifts → log and return
-      - drifts + CHECK_ONLY → raise SourceBaselineDrift listing each drift.
-        The exception message tells the operator to re-run locally with
-        APPLY against a dedicated database — the standalone apply CLI
-        considered in the v2 design was deferred to the first cloud
-        connector (see `project-cloud-baseline-recovery-deferred.md`).
+      - drifts + CHECK_ONLY → raise SourceBaselineDrift
       - drifts + APPLY → call enforcer.apply(drifts)
     """
     if policy is None or expected is None:
@@ -99,10 +95,5 @@ def ensure_baseline(
 
 
 def _render_drift_list(drifts: list[Diff]) -> str:
-    """Inline renderer for a drift list inside the check-only error message.
-
-    Uses Diff's own `__str__` so source-side and OM-side error output share
-    the same `  path:\\n    expected: X\\n    actual: Y` shape — consistent
-    reading across both failure surfaces.
-    """
+    """Render drifts as a newline-joined string for inclusion in error messages."""
     return "\n".join(str(d) for d in drifts)

@@ -3,13 +3,7 @@
 #  you may not use this file except in compliance with the License.
 """TableAssert + ColumnAssert — fluent assertions on Table entities.
 
-TableAssert inherits shared fluent surface (exists / get / eventually /
-has_description_containing) from `EntityAssert[Table]`. Entity-specific
-terminals (tags, owners, FK constraint, column descent, lineage/profile
-namespaces) live here.
-
-ColumnAssert is synchronous — column checks on fresh ingests are reliable
-in practice; polling chains off TableAssert.
+ColumnAssert is synchronous; polling chains off TableAssert via .eventually().
 """
 
 from __future__ import annotations
@@ -40,13 +34,9 @@ def _fk_matches(
     referenced_table: str,
     referenced_column: str,
 ) -> bool:
-    """True if `constraint` is a FOREIGN_KEY on `column` pointing at the
-    named referred column.
+    """True if `constraint` is a FOREIGN_KEY on `column` pointing at `referenced_table.referenced_column`.
 
-    The referredColumns FQNs may be rendered as either the full
-    `service.database.schema.table.column` form or the shorter
-    `table.column` form depending on how OM resolved them at ingest time;
-    both are accepted via tail-match.
+    Accepts both full FQN and short `table.column` forms via tail-match.
     """
     if constraint.constraintType != ConstraintType.FOREIGN_KEY:
         return False
@@ -95,12 +85,7 @@ class TableAssert(EntityAssert[Table]):
         referenced_table: str,
         referenced_column: str,
     ) -> TableAssert:
-        """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
-        pointing at `referenced_table.referenced_column`.
-
-        MySQL lands FK data here — not as a lineage edge. Matching delegates
-        to `_fk_matches`.
-        """
+        """Assert the table carries a FOREIGN_KEY constraint on `column` -> `referenced_table.referenced_column`."""
 
         def _check() -> None:
             constraints = unwrap_root_list(self._fetch(fields=["tableConstraints"]).tableConstraints)
@@ -119,20 +104,7 @@ class TableAssert(EntityAssert[Table]):
         return self
 
     def has_schema_definition_containing(self, text: str) -> TableAssert:
-        """Assert `schemaDefinition` (raw DDL stored on the entity) contains
-        `text` — case-insensitive substring match.
-
-        Populated for views when metadata ingest runs with `includeDDL=True`,
-        and for tables when the connector emits CREATE TABLE bodies. Used as
-        the prerequisite check that ingest actually plumbed DDL through —
-        a failed lineage parse with empty `schemaDefinition` is a different
-        bug than a failed parse on present DDL.
-
-        Case insensitivity matters: MySQL normalizes view DDL to lowercase
-        (`left join`, not `LEFT JOIN`); other dialects preserve case. The
-        assertion keeps tests portable across dialects without each one
-        having to know the specific casing.
-        """
+        """Assert `schemaDefinition` contains `text` — case-insensitive substring match."""
         wanted_lower = text.lower()
 
         def _check() -> None:
@@ -148,13 +120,7 @@ class TableAssert(EntityAssert[Table]):
         return self
 
     def is_soft_deleted(self) -> TableAssert:
-        """Assert the table exists in OM but is marked `deleted=True`.
-
-        Soft-deleted entities are filtered out of `get_by_name` by default.
-        We use `list_entities` with `include=all` to find the entity even
-        when soft-deleted, then check the `deleted` field. Used by
-        mark-deleted tests after re-ingest with `markDeletedTables=True`.
-        """
+        """Assert the table exists in OM but is marked `deleted=True`."""
 
         def _check() -> None:
             if not self._fetch_any_state().deleted:
@@ -175,8 +141,7 @@ class TableAssert(EntityAssert[Table]):
         return self
 
     def _fetch_any_state(self) -> Table:
-        """Fetch the table including soft-deleted state (default get_by_name
-        filters those out)."""
+        """Fetch the table including soft-deleted state."""
         entity = self._om.get_by_name(
             entity=Table,
             fqn=self._fqn,
@@ -232,13 +197,7 @@ class ColumnAssert:
         return self
 
     def has_no_tag(self, fqn: str) -> ColumnAssert:
-        """Assert the column does NOT carry the given tag.
-
-        Used as the negative complement to `has_tag` — guards against
-        regressions where a classifier becomes overconfident and tags
-        non-PII columns. Without this, a positive-only suite passes
-        cleanly even when every column gets PII-flagged.
-        """
+        """Assert the column does NOT carry the given tag."""
         column = self._fetch_column()
         actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
         if fqn in actual:

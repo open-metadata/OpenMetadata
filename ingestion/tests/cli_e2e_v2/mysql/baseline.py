@@ -3,21 +3,10 @@
 #  you may not use this file except in compliance with the License.
 """MySQL source baseline — common portable tables + MySQL-specific all_types.
 
-Structure:
-  - Portable tables (customers, transactions) + their seed rows come from
-    `core/source/common_baseline.py`.
-  - MySQL adds a dialect-specific `all_types` table exercising every native
-    type the connector maps (TINYINT / MEDIUMINT / TEXT variants / blobs /
-    BIT / ENUM / SET etc.). Seed is trivial — id=1..3 with everything else
-    NULL; tests only assert on row count + type mappings.
-  - INSERT templates carry MySQL's `ON DUPLICATE KEY UPDATE` idempotency;
-    the base enforcer binds them against common row data via executemany.
-  - One view + one stored procedure for lineage and SP-ingestion coverage.
-
-Schema evolution caveat:
-  metadata.create_all uses CREATE TABLE IF NOT EXISTS — no ALTER migration.
-  When baseline shape changes (column add/drop, FK, comments), drop first:
-      DROP SCHEMA IF EXISTS e2e;
+- Common tables (customers, transactions) and seed rows from `core/source/common_baseline.py`.
+- Dialect-specific `all_types` table covering MySQL native types for connector type-mapping coverage.
+- INSERT templates use `ON DUPLICATE KEY UPDATE` for idempotent seeding.
+- One view and two stored procedures for lineage and SP-ingestion coverage.
 """
 
 from __future__ import annotations
@@ -99,8 +88,7 @@ def _declare_all_types(md: MetaData) -> Table:
     )
 
 
-# all_types seed — one row per id, NULL elsewhere. Tests assert row count
-# and column type mappings, not cell content, so this is sufficient.
+# One row per id, all other columns NULL — tests assert row count and type mappings only.
 _ALL_TYPES_ROWS: list[dict[str, Any]] = [{"id": 1}, {"id": 2}, {"id": 3}]
 
 
@@ -187,10 +175,7 @@ _SP_ACTIVE_CUSTOMER_COUNT = StoredProcedureDefinition(
 )
 
 
-# A second SP exercising parameterized DML — covers a different code path
-# than the read-only `sp_active_customer_count`. The body intentionally
-# carries an UPDATE statement so OM's stored-procedure ingestion stores
-# DML text, not just SELECT text.
+# Parameterized SP with DML body — exercises the UPDATE code path in stored-procedure ingestion.
 _SP_UPDATE_CUSTOMER_STATUS = StoredProcedureDefinition(
     schema="e2e",
     name="sp_update_customer_status",
@@ -252,25 +237,11 @@ MYSQL_BASELINE = SqlSourceBaseline(
 
 @lru_cache(maxsize=1)
 def get_admin_engine() -> Engine:
-    """Build (and cache) the SQLAlchemy engine bound to ADMIN credentials.
+    """Return the cached SQLAlchemy engine for admin (root) credentials.
 
-    Distinct from the ingest credentials `build_mysql_config` uses for the
-    CLI subprocess: the ingest user (`om_user`) is a scoped account whose
-    GRANTs match the OM MySQL connector's documented minimum (SELECT,
-    SHOW VIEW, EXECUTE on the target schema; PROCESS globally). ADMIN
-    credentials are the container's `root` user, which the enforcer needs
-    for CREATE SCHEMA / CREATE TABLE / INSERT / SELECT.
-
-    Tests that need to mutate the source out-of-band (e.g. drop a table
-    to test mark-deleted; create a poisoned view to test error
-    containment) consume this helper directly — keeps engine construction
-    centralized so admin DSN never lives in two places.
-
-    E2E_MYSQL_ADMIN_USER / E2E_MYSQL_ADMIN_PASSWORD / E2E_MYSQL_HOST_PORT
-    are populated automatically by the session-scoped `mysql_container`
-    fixture in conftest.py, which boots a dedicated MySQL via
-    testcontainers and creates the scoped `om_user` post-startup.
-    Teammates do not set these vars manually.
+    Reads E2E_MYSQL_ADMIN_USER, E2E_MYSQL_ADMIN_PASSWORD, and
+    E2E_MYSQL_HOST_PORT, populated by the session-scoped ``mysql_container``
+    fixture.
     """
     user = Env("E2E_MYSQL_ADMIN_USER", default="root").get()
     password = Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get()
@@ -289,10 +260,6 @@ def get_admin_engine() -> Engine:
 
 @lru_cache(maxsize=1)
 def get_policy() -> EnforcementPolicy:
-    """Lazy-build and cache the MySQL EnforcementPolicy.
-
-    Reuses `get_admin_engine` for engine construction so the admin DSN
-    has a single source of truth.
-    """
+    """Return the cached MySQL EnforcementPolicy backed by the admin engine."""
     enforcer = MySqlEnforcer(get_admin_engine(), MYSQL_BASELINE)
     return EnforcementPolicy(enforcer=enforcer, mode=EnforcementMode.APPLY)

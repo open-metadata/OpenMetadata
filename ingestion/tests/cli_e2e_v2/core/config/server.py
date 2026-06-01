@@ -3,16 +3,9 @@
 #  you may not use this file except in compliance with the License.
 """Shared OpenMetadata server configuration for ingestion tests.
 
-Instance fields hold resolved values for the session HTTP client (which
-authenticates directly, no YAML indirection). Rendered YAML emits ${OM_*}
-references so cfg_*.yaml artifacts never embed raw JWTs — safe to share.
-
-Token resolution: if OM_JWT_TOKEN is exported, use it. Otherwise mint a
-long-lived ingestion-bot token from the running server (admin login →
-GET /bots/name/ingestion-bot → GET /users/auth-mechanism/{userId}). The
-minted token is signed by THIS server's keystore, so it works against
-any OM instance regardless of how it was bootstrapped — no shared dev
-keypair assumption.
+- `ServerConfig.from_env()` resolves server URL and JWT for the session.
+- Rendered YAML emits `${OM_*}` refs; secrets never appear in tmp_path artifacts.
+- If `OM_JWT_TOKEN` is unset, a long-lived bot token is minted from the live server.
 """
 
 from __future__ import annotations
@@ -41,20 +34,10 @@ class TokenMintError(E2ESetupError):
 
 
 def _mint_ingestion_bot_token(server_url: str, admin_email: str, admin_password: str) -> str:
-    """Mint a server-signed, long-lived ingestion-bot JWT.
+    """Return a permanent ingestion-bot JWT minted from the live OM server.
 
-    Three hops against the live OM server:
-      1. POST /v1/users/login → short-lived admin access token.
-      2. GET  /v1/bots/name/ingestion-bot → bot's linked user id.
-      3. GET  /v1/users/auth-mechanism/{user_id} → bot's permanent JWT.
-
-    The returned token is signed by THIS server's RSA keypair, so it
-    validates regardless of which keystore the OM instance was
-    bootstrapped with. Bot tokens have `JWTTokenExpiry: Unlimited` per
-    OM's default bot bootstrap, so they survive long test sessions.
-
-    Admin password is base64-encoded in the login payload to match OM's
-    expectation (the server decodes before bcrypt-comparing).
+    Raises `TokenMintError` on any HTTP, key-lookup, or parse failure.
+    Admin password is base64-encoded as required by the OM login endpoint.
     """
     encoded_password = base64.b64encode(admin_password.encode()).decode()
     try:
@@ -92,13 +75,10 @@ def _mint_ingestion_bot_token(server_url: str, admin_email: str, admin_password:
 
 @dataclass(frozen=True)
 class ServerConfig:
-    """Shared sinkConfig + workflowConfig.openMetadataServerConfig applied to every test.
+    """Shared sinkConfig + workflowConfig applied to every test.
 
-    `token_source` records how `jwt_token` was obtained — "env" when
-    OM_JWT_TOKEN was already exported at session start, "minted" when
-    from_env() had to mint via the bot-token flow. Exposed for the
-    session posture log so a developer can see at a glance which auth
-    path was taken without having to instrument the fixture.
+    `token_source` is "env" when `OM_JWT_TOKEN` was already exported,
+    "minted" when `from_env()` had to mint via the bot-token flow.
     """
 
     server_url: str
@@ -107,18 +87,11 @@ class ServerConfig:
 
     @classmethod
     def from_env(cls) -> ServerConfig:
-        """Resolve server URL + JWT for the session — PURE: no side effects.
+        """Resolve server URL and JWT; pure — does not write to `os.environ`.
 
-        OM_JWT_TOKEN, if exported, wins (escape hatch for hermetic CI or
-        deliberately scoped tokens). Otherwise mint via the bot-token
-        flow against OM_SERVER_URL using OM_ADMIN_EMAIL / OM_ADMIN_PASSWORD
-        (defaults: admin@open-metadata.org / admin — the docker-compose
-        bootstrap creds).
-
-        This method DOES NOT write OM_JWT_TOKEN back into os.environ. The
-        `om_server_config` fixture in the top-level conftest is the single
-        named place that does that install step — keeping the factory
-        pure and the ambient-env mutation explicit.
+        Uses `OM_JWT_TOKEN` if set; otherwise mints via the bot-token flow
+        with `OM_ADMIN_EMAIL` / `OM_ADMIN_PASSWORD`. The fixture layer is
+        responsible for installing the token into the environment.
         """
         server_url = Env("OM_SERVER_URL", default=_DEFAULT_OM_SERVER_URL).get()
 
@@ -142,11 +115,7 @@ class ServerConfig:
         )
 
     def to_workflow_config_dict(self) -> dict[str, Any]:
-        """Builds the workflowConfig block for a rendered config YAML.
-
-        Emits ${OM_*} refs. metadata CLI expands them at subprocess load time;
-        the rendered YAML on disk never embeds the raw JWT.
-        """
+        """Return the workflowConfig block with `${OM_*}` refs (no raw JWT on disk)."""
         return {
             "openMetadataServerConfig": {
                 "hostPort": Env("OM_SERVER_URL").ref(),
@@ -156,14 +125,9 @@ class ServerConfig:
         }
 
     def to_sink_config_dict(self) -> dict[str, Any]:
-        """Builds the sink block for a rendered config YAML.
+        """Return the sink block with `bulk_sink_batch_size: 1`.
 
-        `bulk_sink_batch_size: 1` forces the OM sink to flush each entity
-        synchronously instead of buffering up to 100. Required for the FK
-        post-process path: `yield_table_constraints` runs BEFORE the final
-        sink flush, so deferred FK lookups (`metadata.get_by_name(...)` on
-        the referred table) otherwise miss entities still sitting in the
-        buffer. Production runs usually cross the buffer threshold and
-        hide this; small E2E fixtures (<100 entities) don't.
+        Batch size 1 forces per-entity flushes so FK post-process lookups
+        never miss entities still buffered when `yield_table_constraints` runs.
         """
         return {"type": "metadata-rest", "config": {"bulk_sink_batch_size": 1}}

@@ -1,12 +1,7 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Meta-tests: prove the eventually polling primitives behave correctly.
-
-retry_until is the foundation of every fluent `.eventually()` chain in
-the framework — a regression here silently turns flaky-but-eventually-
-correct ingestion into spurious test passes (or false failures).
-"""
+"""Meta-tests: verify retry_until and EventuallyRunner polling primitives behave correctly."""
 
 from __future__ import annotations
 
@@ -16,12 +11,7 @@ from ..core.fluent.eventually import EventuallyRunner, retry_until
 
 
 def _attempt_counter():
-    """Return a list whose `len()` is the number of times `check` has been called.
-
-    Mutable container so closures can append on each invocation without a
-    `nonlocal` declaration on every check. Tests inspect the length to
-    assert how many attempts retry_until made.
-    """
+    """Return an empty list; tests append to it on each check call and inspect its length."""
     return []
 
 
@@ -115,17 +105,12 @@ def test_runner_armed_retries_until_success() -> None:
             raise AssertionError("not yet")
         return "done"
 
-    # Note: EventuallyRunner uses retry_until's default poll interval (2s).
-    # We rely on the check converging fast enough that the natural sleep
-    # is acceptable. Two attempts ⇒ one ~2s sleep between them.
     assert runner.run(_check, name="armed") == "done"
     assert len(attempts) == 2
 
 
 def test_runner_arming_is_one_shot() -> None:
-    """After a successful armed run, the next call reverts to sync — the
-    timeout is consumed, not sticky. This is the contract that prevents
-    accidental cross-test polling state."""
+    """After one armed run succeeds, the next call is sync — the timeout is consumed, not sticky."""
     runner = EventuallyRunner()
     runner.arm(timeout=2)
 

@@ -3,11 +3,9 @@
 #  you may not use this file except in compliance with the License.
 """Immutable WorkflowConfig builder rendered to YAML for the metadata CLI.
 
-Two-step: factory returns a base (connection + service + server);
-`.pipeline(options)` picks the pipeline (options is an OM Pydantic model);
-`.with_filter(...)` layers filter patterns. Filters persist across later
-`.pipeline()` transitions; inline filters on the options take precedence.
-Render fails loudly when no pipeline is set.
+- `.pipeline(options)` selects the pipeline and must be called before rendering.
+- `.with_filter(...)` layers filter patterns; filters persist across `.pipeline()` calls.
+- Raises `PipelineNotSetError` if rendered or queried before a pipeline is set.
 """
 
 from __future__ import annotations
@@ -38,10 +36,8 @@ _FILTER_KEYS: tuple[str, ...] = (
     "tableFilterPattern",
 )
 
-# Pipelines that require a `processor` block in the rendered YAML.
-# OM's Profiler + AutoClassification workflows instantiate an ORM profiler
-# to compute column statistics / PII inference; without a processor entry,
-# workflow init crashes with `'NoneType' object has no attribute 'model_dump'`.
+# Pipelines that require a `processor` block in the rendered YAML; omitting it
+# causes workflow init to crash on model_dump of a None processor.
 _PIPELINES_NEEDING_PROCESSOR: tuple[type, ...] = (
     ProfilerPipeline,
     AutoClassificationPipeline,
@@ -57,12 +53,8 @@ class PipelineNotSetError(RuntimeError):
 class WorkflowConfig:
     """Frozen carrier for one workflow's rendered config + active pipeline.
 
-    Two fields:
-      _doc       — the full YAML document as a dict tree
-      _options   — the Pydantic pipeline options model (None on base configs
-                   returned from the factory; set by .pipeline())
-
-    Instances are frozen — overlays return new instances via copy.deepcopy.
+    Overlays (`.pipeline()`, `.with_filter()`) return new instances; this
+    instance is never mutated.
     """
 
     _doc: dict[str, Any]
@@ -78,11 +70,7 @@ class WorkflowConfig:
         service_connection: dict[str, Any],
         server: ServerConfig,
     ) -> WorkflowConfig:
-        """Build a base config without any pipeline selected.
-
-        Callers pass `service_connection` as a plain dict (either model_dump'd
-        from an OM connection class or built manually with env refs).
-        """
+        """Build a base config without a pipeline selected."""
         doc: dict[str, Any] = {
             "source": {
                 "type": source_type,
@@ -97,16 +85,10 @@ class WorkflowConfig:
 
     # --- pipeline transition --------------------------------------------
     def pipeline(self, options: PipelineOptions) -> WorkflowConfig:
-        """Transition to a concrete pipeline.
+        """Return a new config with the given pipeline selected.
 
-        `options` is one of the OM-generated Pydantic pipeline models
-        (re-exported with short aliases in `pipelines.py`). The instance's
-        `.type` field discriminator is carried through into the rendered
-        YAML as `sourceConfig.config.type`.
-
-        Filter patterns already set on this config (via `.with_filter(...)`)
-        persist across the transition. Filters set inline on `options` take
-        precedence over preserved filters.
+        Filter patterns previously set via `.with_filter()` are preserved;
+        filters set inline on `options` take precedence.
         """
         dumped = options.model_dump(mode="json", exclude_none=True)
 
@@ -118,10 +100,7 @@ class WorkflowConfig:
 
         new_doc["source"]["sourceConfig"]["config"] = dumped
 
-        # OM's `import_source_class` selects the connector class by
-        # splitting `source.type` on "-" and dispatching to metadata_source_class,
-        # lineage_source_class, or usage_source_class. The suffix must match
-        # the pipeline: e.g. "mysql-lineage" for a DatabaseLineage run.
+        # `import_source_class` dispatches by suffix (e.g. "-lineage", "-usage").
         base_connector = new_doc["source"]["type"].split("-", 1)[0]
         new_doc["source"]["type"] = base_connector + source_type_suffix_for(options)
 
@@ -143,11 +122,10 @@ class WorkflowConfig:
         tables_include: list[str] | None = None,
         tables_exclude: list[str] | None = None,
     ) -> WorkflowConfig:
-        """Append include/exclude patterns at database, schema, or table level.
+        """Return a new config with patterns appended (not replaced) at each level.
 
-        Multiple calls MERGE (append), not replace. Include AND exclude at the
-        same level are allowed — OM's filter semantic applies exclude over
-        include on overlapping matches.
+        Multiple calls merge. Exclude takes priority over include on overlapping
+        matches per OM's filter semantics.
         """
         new_doc = copy.deepcopy(self._doc)
         cfg = new_doc["source"]["sourceConfig"]["config"]
@@ -170,14 +148,14 @@ class WorkflowConfig:
     # --- accessors ------------------------------------------------------
     @property
     def pipeline_identifier(self) -> str:
-        """Short id for artifact filenames and invocation counters."""
+        """Short id for artifact filenames and invocation counters. Raises `PipelineNotSetError` if no pipeline is set."""
         if self._options is None:
             raise PipelineNotSetError("pipeline not set — call .pipeline(options) before querying identifier")
         return pipeline_identifier(self._options)
 
     @property
     def cli_subcommand(self) -> str:
-        """The `metadata <cmd>` subcommand CliRunner will invoke."""
+        """The `metadata <cmd>` subcommand to invoke. Raises `PipelineNotSetError` if no pipeline is set."""
         if self._options is None:
             raise PipelineNotSetError("pipeline not set — call .pipeline(options) before querying subcommand")
         return cli_subcommand_for(self._options)

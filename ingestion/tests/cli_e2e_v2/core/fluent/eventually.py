@@ -4,14 +4,12 @@
 """Polling primitives for fluent assertion chains.
 
 `retry_until` is the low-level deadline-based retry. `EventuallyRunner` is
-a one-shot arming wrapper held by each fluent assert class to dispatch
-terminal checks either synchronously or via `retry_until`.
+a one-shot arming wrapper that dispatches terminal checks either
+synchronously or via `retry_until`.
 
 Logging levels:
-  - DEBUG   first-attempt failure (the single "starting to retry" signal)
-  - INFO    every attempt when E2E_POLL_VERBOSE=1 — surfaces intermittent
-            flakes that otherwise disappear into DEBUG. Use it in CI when
-            a poll is blinking without obvious cause.
+  - DEBUG   first-attempt failure
+  - INFO    every attempt when E2E_POLL_VERBOSE=1
   - ERROR   final timeout
 """
 
@@ -35,8 +33,6 @@ T = TypeVar("T")
 
 
 def _verbose_polling() -> bool:
-    """Reads E2E_POLL_VERBOSE at call time so the env var can be toggled
-    within a single pytest session via monkeypatch if needed."""
     return os.environ.get("E2E_POLL_VERBOSE", "").lower() in ("1", "true", "yes")
 
 
@@ -99,13 +95,7 @@ def retry_until(
 
 @dataclass
 class EventuallyRunner:
-    """One-shot arming dispatcher shared by every fluent assert class.
-
-    `.arm(timeout)` queues polling for the NEXT terminal; `.run` consumes
-    the arming and reverts to sync for subsequent calls. `.run` returns
-    whatever `check` returns — callers that don't need the value simply
-    ignore it (None-returning checks still type-check as `T=None`).
-    """
+    """One-shot arming dispatcher: arm() queues polling for the NEXT terminal; run() consumes it and reverts to sync."""
 
     _timeout: int | None = None
 

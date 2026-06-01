@@ -1,14 +1,10 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""SQLAlchemy -> OM DataType map.
+"""SQLAlchemy -> OM DataType map used by `derive_expected_tables`.
 
-Used by `derive_expected_tables` to build Expected trees directly from the
-baseline's SQLAlchemy MetaData. `CORE_TYPE_MAP` covers the portable types
-used in `common_baseline.py`; each dialect's expected module extends it
-with dialect-specific classes (e.g. `mysql.MEDIUMINT`, `mysql.ENUM`).
-
-Resolution walks the SQLAlchemy type's MRO so subclasses inherit parent
+`CORE_TYPE_MAP` covers portable SQLAlchemy types; dialect modules extend it with
+dialect-specific classes. Resolution walks the MRO, so subclasses inherit parent
 entries unless explicitly overridden.
 """
 
@@ -38,15 +34,8 @@ from metadata.generated.schema.entity.data.table import DataType
 TypeMap = dict[type, DataType]
 
 
-# CORE entries marked with (via MRO) are the ones that let dialect maps
-# DROP their equivalent `dialects.<x>.FOO` entry: mysql.JSON / mysql.ENUM /
-# mysql.BLOB / mysql.TIMESTAMP all inherit from these core classes, so the
-# MRO walk in `resolve_om_type` hits the core entry without needing a
-# dialect duplicate. Dialect-specific size variants (MEDIUMTEXT, LONGBLOB,
-# TINYINT, etc.) still need per-dialect entries — they extend PRIVATE
-# bases (`_StringType`, `_Binary`) that MRO skips past the public
-# `String` / `LargeBinary`, or they want a more-specific OM DataType than
-# the core parent yields.
+# Dialect subclasses (e.g. mysql.JSON, mysql.ENUM) inherit via MRO and don't need
+# duplicate entries unless they extend a private base or need a more-specific DataType.
 CORE_TYPE_MAP: TypeMap = {
     Integer: DataType.INT,
     BigInteger: DataType.BIGINT,

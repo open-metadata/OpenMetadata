@@ -1,12 +1,10 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Runs `metadata <subcommand>` via subprocess and returns a typed Status.
+"""Runs `metadata <subcommand>` via subprocess and returns a typed `Status`.
 
-One CliRunner per test, bound to tmp_path. Each `.run()` writes numbered
-cfg / status / stdout artifacts. Subprocess has a bounded timeout
-(default 600s, kwarg override). CliExecutionError carries exit_code,
-stderr, stdout, config_path, and argv for post-mortem.
+Each `.run()` writes numbered cfg / status / stdout artifacts under `tmp_path`.
+Raises `CliExecutionError` on non-zero exit, timeout, or missing status file.
 """
 
 from __future__ import annotations
@@ -28,23 +26,13 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 600
 
-# Cap inline step failures GLOBALLY across all steps. Failures cascade —
-# step 1's first failure is overwhelmingly the root cause, step 5's third
-# failure is downstream noise. The full list is in the status JSON for
-# deep dives.
+# Cap inline failure lines in the exception message; full list is in the status JSON.
 _INLINE_FAILURES_LIMIT = 3
 _INLINE_FAILURE_CHARS = 500
 
 
 def _summarize_step_failures(status_path: Path) -> str | None:
-    """Best-effort: read the status JSON and pull out the first few step
-    failures (across all steps, capped globally) as a short, scannable
-    block. Returns None on any read / parse failure — caller falls back
-    to the raw stdout/stderr dump.
-
-    Output shape (one line per failure, truncated):
-        [StepName::FailureName] first-line-of-error…
-    """
+    """Return the first few step failures as a compact block, or None on read/parse error."""
     if not status_path.exists():
         return None
     try:
@@ -65,13 +53,7 @@ def _summarize_step_failures(status_path: Path) -> str | None:
 
 
 class CliRunner:
-    """Runs `metadata <subcommand>` via subprocess and returns a typed Status.
-
-    Usage:
-        runner = CliRunner(tmp_path)
-        status = runner.run(cfg)                        # ingest
-        status2 = runner.run(cfg.pipeline(Profiler...))  # profile
-    """
+    """Runs `metadata <subcommand>` via subprocess and returns a typed `Status`."""
 
     def __init__(self, tmp_path: Path) -> None:
         self.tmp_path = tmp_path
@@ -109,8 +91,7 @@ class CliRunner:
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired as exc:
-            # exc.stdout / exc.stderr may be bytes or str depending on
-            # capture config — normalize to str for consistent logging.
+            # exc.stdout/stderr may be bytes or str — normalize for consistent logging.
             out = _coerce_text(exc.stdout)
             err = _coerce_text(exc.stderr)
             stdout_path.write_text(out)
@@ -123,12 +104,8 @@ class CliRunner:
                 command=command,
             ) from exc
 
-        # Persist stdout unconditionally — useful for debugging both
-        # successful runs (checking warnings) and failed ones.
         stdout_path.write_text(result.stdout or "")
 
-        # One line with the three artifact paths. Invaluable for post-mortem
-        # because pytest's tmp_path lives under a deep auto-generated dir.
         logger.info(
             "[cli] %s invocation=%d exit=%d cfg=%s status=%s stdout=%s",
             identifier,
@@ -150,9 +127,7 @@ class CliRunner:
                 step_failures_summary=_summarize_step_failures(status_path),
             )
 
-        # Defensive: CLI reported success but wrote no status file — something
-        # broke between workflow completion and file emission (e.g., a future
-        # BaseWorkflow.write_status_file regression).
+        # CLI exited 0 but wrote no status file — guard against write_status_file regressions.
         if not status_path.exists():
             raise CliExecutionError(
                 exit_code=0,

@@ -1,16 +1,10 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Fluent entry point wrapping the existing OpenMetadata HTTP client.
+"""OmClient — fluent entry point for E2E assertions.
 
-Per Decision #21 of the v2 spec, OmClient is a thin facade — we do NOT build
-a new HTTP client. All actual REST calls delegate to
-metadata.ingestion.ometa.OpenMetadata, which already handles auth, retries,
-and Pydantic deserialization.
-
-OmClient's public surface is the fluent layer: .table(fqn), .service(name),
-.stored_procedure(fqn), plus .raw for escape-hatch tests that need the
-underlying client directly.
+Public surface: .table(fqn), .service(name), .stored_procedure(fqn).
+.raw exposes the underlying OpenMetadata client for escape-hatch tests.
 """
 
 from __future__ import annotations

@@ -1,15 +1,7 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""SQL-family baseline types.
-
-`SqlSourceBaseline` carries a SQLAlchemy `MetaData` (tables + columns + FKs +
-comments) plus companion data for things Core doesn't model: seed rows,
-view definitions, stored procedures. DDL is emitted by
-`metadata.create_all(conn)` in the enforcer; seed INSERTs are dialect-specific
-(the `TableSeed.insert_sql` template is supplied by each connector's
-baseline).
-"""
+"""SQL-family baseline types: SqlSourceBaseline, TableSeed, ViewDefinition, StoredProcedureDefinition."""
 
 from __future__ import annotations
 
@@ -26,15 +18,10 @@ if TYPE_CHECKING:
 class TableSeed:
     """Deterministic seed rows for a baseline table.
 
-    `rows` is portable data (list of dicts). `insert_sql` is a
-    dialect-specific template with `:key` placeholders that SQLAlchemy binds
-    against each row via executemany — this is where idempotent upsert
-    clauses live (MySQL `ON DUPLICATE KEY UPDATE`, Postgres `ON CONFLICT DO
-    UPDATE`, etc.). The base enforcer runs `insert_sql` against `rows`
-    without knowing the dialect.
-
-    `expected_row_count` is derived — `len(rows)` — so the seed spec has
-    one source of truth.
+    `insert_sql` must be a dialect-specific idempotent upsert template with
+    `:key` placeholders (e.g., `ON DUPLICATE KEY UPDATE` for MySQL). The
+    enforcer binds it against `rows` via executemany without dialect branching.
+    `expected_row_count` is derived from `len(rows)`.
     """
 
     table_name: str

@@ -26,14 +26,7 @@ class BaselineSpec:
 
 
 class DiffKind(Enum):
-    """Why a `Diff` was produced.
-
-    Replaces brittle string sentinels (``expected="present", actual="missing"``)
-    with a typed discriminator. Lets downstream code filter diffs by kind
-    (``[d for d in diffs if d.kind is DiffKind.MISSING]``) without re-parsing
-    the human-readable expected/actual fields, and lets the renderer pick a
-    one-liner vs. expected/actual block per kind.
-    """
+    """Typed discriminator for why a `Diff` was produced."""
 
     MISSING = "missing"  # entity declared expected, not found in actual
     UNEXPECTED = "unexpected"  # STRICT mode: actual entity not in expected set
@@ -42,17 +35,11 @@ class DiffKind(Enum):
 
 @dataclass(frozen=True)
 class Diff:
-    """One path-qualified discrepancy between expected and actual.
+    """One path-qualified discrepancy between expected and actual state.
 
-    Used for both source-side baseline drift (schema / tables / seeds)
-    and OM-side catalog diffing (service / database / schema / table /
-    column). Path uses bracket notation — `schema[e2e].table[users].column
-    [email].type` — so failure output from either domain is scannable by
-    eye and sortable for grouping.
-
-    `expected` / `actual` are the human-readable values for VALUE_MISMATCH
-    kinds; for MISSING / UNEXPECTED they are usually omitted (the kind
-    itself carries the meaning). `__str__` renders accordingly.
+    Path uses bracket notation (`schema[e2e].table[users].column[email].type`).
+    `expected` / `actual` are populated for VALUE_MISMATCH; omitted for
+    MISSING / UNEXPECTED (the kind itself carries the meaning).
     """
 
     path: str

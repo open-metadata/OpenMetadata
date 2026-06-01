@@ -3,18 +3,11 @@
 #  you may not use this file except in compliance with the License.
 """Shared base for fluent entity-assertion classes.
 
-`EntityAssert[T]` hoists the 20 lines of boilerplate every entity-assert
-class shared into one place: the om/fqn/runner constructor, `_fetch()` +
-`exists()` + `get()`, one-shot `.eventually(timeout)`, and the ubiquitous
-`has_description_containing(text)` terminal.
-
 Subclasses declare:
-  - `_entity_cls: type[T]`   -- the OM Pydantic class (e.g. Table)
+  - `_entity_cls: type[T]`       -- the OM Pydantic class (e.g. Table)
   - `_default_fields: list[str]` -- fields to request from the OM API
 
-Entity-specific terminals (e.g. TableAssert.has_foreign_key_constraint,
-ServiceAssert.has_entity_count, StoredProcedureAssert.has_code_containing)
-stay on the subclass.
+Entity-specific terminals stay on the subclass.
 """
 
 from __future__ import annotations
@@ -58,7 +51,7 @@ class EntityAssert(Generic[T]):
         return entity
 
     def exists(self) -> None:
-        """Synchronous — primary API is consistent immediately post-ingest."""
+        """Assert the entity is present in OM."""
         self._fetch()
 
     def get(self) -> T:

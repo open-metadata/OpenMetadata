@@ -1,31 +1,12 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Typed status contract between CliRunner and tests.
+"""Typed view of the JSON written by `BaseWorkflow.write_status_file`.
 
-Mirrors the JSON shape written by BaseWorkflow.write_status_file (see
-ingestion/src/metadata/workflow/base.py). Observed live in smoke testing:
-  {
-    "pipeline_type": "mysql",
-    "ingestion_pipeline_fqn": null,
-    "success": true,
-    "steps": [
-      {"name": "Mysql", "records": 178, "updated_records": 47,
-       "warnings": 0, "errors": 0, "filtered": 0,
-       "failures": null, "progress": null, "operationMetrics": null,
-       "sourceTimeMs": null, "sinkTimeMs": null},
-      ...
-    ]
-  }
-
-Parsing contract:
-  - required keys must be present (pipeline_type, success, steps)
-  - required step keys must be present (name, records, updated_records,
-    warnings, errors, filtered, failures)
-  - step `failures` may be `null` (mapped to empty list) or a list of dicts
-  - A schema change on the CLI side surfaces as a KeyError at parse time,
-    not a silent mis-count — the test halts loudly rather than passing with
-    zeroes it inferred from missing keys.
+Required keys (`pipeline_type`, `success`, `steps`, and per-step `name`,
+`records`, `updated_records`, `warnings`, `errors`, `filtered`, `failures`)
+must be present; a schema change surfaces as `KeyError` at parse time rather
+than silent zeroes. Step `failures` may be `null` (mapped to `[]`).
 """
 
 from __future__ import annotations

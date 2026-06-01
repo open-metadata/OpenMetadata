@@ -1,15 +1,7 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Dialect-agnostic SQL baseline enforcer via SQLAlchemy Inspector + Core.
-
-Introspection goes through `sqlalchemy.inspect(conn)` — dialect-agnostic.
-DDL emission goes through `metadata.create_all(conn)` — also dialect-aware
-via SQLAlchemy Core. Seeds apply via a dialect-specific INSERT template
-carried on each `TableSeed`, so the base enforcer runs them without
-knowing the dialect. Stored procedures and their listing query stay
-subclass responsibility (SQLAlchemy doesn't model SPs uniformly).
-"""
+"""Dialect-agnostic SQL baseline enforcer; introspection and DDL via SQLAlchemy; stored-procedure DDL is subclass responsibility."""
 
 from __future__ import annotations
 
@@ -41,12 +33,7 @@ class _TableSnapshot(TypedDict):
 
 
 class _SqlSnapshot(TypedDict):
-    """Typed shape of `_snapshot()`'s return payload.
-
-    Lets the `_diff_*` methods take a real type (not `dict`) so typos like
-    `state["tabels"]` are caught by the type checker rather than silently
-    at runtime.
-    """
+    """Typed shape of `_snapshot()`'s return payload."""
 
     schemas: set[str]
     tables: dict[tuple[str, str], _TableSnapshot]
@@ -65,23 +52,14 @@ _INTEGER_TYPES: frozenset[str] = frozenset({"TINYINT", "SMALLINT", "MEDIUMINT", 
 class SqlBaselineEnforcer(ABC):
     """SQL-family SourceBaselineEnforcer via SQLAlchemy Inspector + Core.
 
-    Subclasses customize only:
-      - `_stored_procedure_query_sql`: raw SQL returning `(schema, name)`
-        rows for procedures; binds a `:schemas` IN-list (expanding).
-      - `_apply_stored_procedure(conn, sp)`: dialect-specific procedure DDL.
-        Required override (abstract) — subclasses without stored procedures
-        in their baseline can implement as a `pass` no-op.
-      - `_apply_view` default runs `view.definition_sql` verbatim — override
-        only if the dialect needs special plumbing.
-
-    Tables, columns, FKs, comments, and PK come from the baseline's
-    SQLAlchemy `MetaData` — `metadata.create_all(conn)` emits the right
-    DDL per dialect. Seed INSERTs are dialect-specific templates on each
-    `TableSeed`, bound against the (portable) row data at apply time.
-
-    Marking `_apply_stored_procedure` abstract surfaces missing overrides at
-    enforcer instantiation (fixture setup) rather than at first SP-apply
-    inside a running test, where the failure context is harder to triage.
+    Subclasses must:
+      - Set `_stored_procedure_query_sql` to a raw SQL string returning
+        `(schema, name)` rows with a `:schemas` IN-list bind, or leave it
+        `None` if the baseline declares no stored procedures.
+      - Implement `_apply_stored_procedure(conn, sp)` (abstract); implement
+        as a `pass` no-op if no stored procedures are declared.
+      - Override `_apply_view` only if the dialect needs special handling
+        beyond running `view.definition_sql` verbatim.
     """
 
     _stored_procedure_query_sql: str | None = None
@@ -198,10 +176,7 @@ class SqlBaselineEnforcer(ABC):
         """Compare seed row counts for tables that already exist.
 
         Skips seeds whose target table isn't in the snapshot — the missing
-        table is already flagged by `_diff_tables`, and issuing COUNT(*)
-        against a nonexistent table (or schema) would raise. The apply()
-        pass creates the tables + seeds them; next compare() can then
-        verify row counts.
+        table is already flagged by `_diff_tables`.
         """
         drifts: list[Diff] = []
         actual_tables = state["tables"]
@@ -244,8 +219,6 @@ class SqlBaselineEnforcer(ABC):
         with self._engine.begin() as conn:
             for schema_name in self._baseline.schemas:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-            # metadata.create_all emits CREATE TABLE IF NOT EXISTS + FKs +
-            # column comments + table comments in the engine's dialect.
             self._baseline.metadata.create_all(conn)
             for seed in self._baseline.seeds:
                 self._apply_seed(conn, seed)
@@ -283,15 +256,7 @@ class SqlBaselineEnforcer(ABC):
 
 
 def _normalize_type(t: str) -> str:
-    """Canonicalize a SQL native-type string for cross-dialect comparison.
-
-    - upper case
-    - strip `UNSIGNED`
-    - collapse whitespace, including "DECIMAL(10, 2)" -> "DECIMAL(10,2)"
-    - strip single quotes (enum/set members: "ENUM('a','b')" -> "ENUM(A,B)")
-    - alias INTEGER -> INT, NUMERIC -> DECIMAL
-    - drop display width for integer family (INT(11) -> INT)
-    """
+    """Canonicalize a SQL native-type string for cross-dialect comparison."""
     raw = " ".join(t.upper().replace("UNSIGNED", "").split())
     raw = raw.replace(", ", ",").replace("'", "")
     head, paren, rest = raw.partition("(")

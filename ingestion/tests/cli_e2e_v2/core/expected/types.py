@@ -3,19 +3,9 @@
 #  you may not use this file except in compliance with the License.
 """Declarative dataclasses describing expected OM-side state post-ingestion.
 
-Per Decision #4 of the v2 spec: these reuse OM's Pydantic value types
-(DataType, Constraint, DatabaseServiceType) for fields that map to schema
-enums — automatic drift-safety whenever the generated schema updates.
-They deliberately expose ONLY fields tests assert on, not every field on
-the underlying OM entity (Table alone has 30+ fields, most noise for a
-structural spec).
-
-Rules enforced:
-  - Fields that map to OM schema enums MUST use the OM enum type.
-  - Fields that don't map to enums stay as plain Python types.
-  - Unset / None means "don't assert this field" — differ skips it.
-  - For string fields like description, non-None means substring-match
-    (Decision #16), not exact equality.
+Fields that map to OM schema enums use the OM enum type directly.
+None on any field means "don't assert this field" — the differ skips it.
+Non-None string fields (e.g. description) use substring match, not exact equality.
 """
 
 from __future__ import annotations
@@ -32,14 +22,10 @@ if TYPE_CHECKING:
 
 
 class MatchMode(Enum):
-    """Controls how strictly the structural differ treats "extra" entities in actual.
+    """Controls how the differ treats extra entities in actual.
 
-    - STRICT: actual must equal expected exactly — any unexpected table or column
-      flags as a diff. Used for filter tests where we care the filter eliminated
-      unwanted entities.
-    - SUPERSET (default): actual ⊇ expected. Extras are tolerated; only missing
-      or mismatched entities flag. Right for cloud accounts where shared schemas
-      may accumulate unrelated tables over time.
+    - STRICT: actual must equal expected exactly; unexpected entities flag as diffs.
+    - SUPERSET (default): actual ⊇ expected; extras are tolerated.
     """
 
     STRICT = "strict"
@@ -60,11 +46,7 @@ class ExpectedColumn:
 
 @dataclass(frozen=True)
 class ExpectedTable:
-    """A single table's expected shape in OM.
-
-    Column matching is always by-name (dict lookup). Use STRICT match mode
-    on the differ to fail when actual tables carry unexpected extra columns.
-    """
+    """A single table's expected shape in OM; column matching is by name."""
 
     name: str
     columns: list[ExpectedColumn]

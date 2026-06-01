@@ -1,21 +1,10 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Structural differ — walks an Expected* tree, fetches actual OM state per-level,
-collects path-qualified diffs, raises StructuralMismatch when anything doesn't match.
+"""Structural differ for Expected* trees.
 
 Public surface: `assert_service_matches(expected, om, mode=SUPERSET)`.
-
-Internal shape: every node-level differ has the **uniform signature**
-`_diff_<x>(node, parent_path, om, mode, diffs)`. The single `_diff_node`
-entry point dispatches on `type(node)` via `_DIFFERS`, and each differ
-recurses into children by calling `_diff_node` on them. Adding a new
-node type (e.g. ExpectedView) is one registry entry plus one function.
-Parent-path threading is uniform: every differ receives the owning FQN
-and builds `self_fqn = f"{parent_path}.{node.name}"` the same way.
-
-Diffs use bracket-path notation (`service[foo].database[bar].table[baz].
-column[qux].dataType`) for readability in pytest failure output.
+Diffs use bracket-path notation (e.g. `service[s].database[d].table[t].column[c].dataType`).
 """
 
 from __future__ import annotations
@@ -49,12 +38,7 @@ if TYPE_CHECKING:
 
 
 class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surface — public exception name)
-    """Aggregate assertion error carrying all collected diffs.
-
-    Renders with a summary header (counts by category) and path-sorted body
-    grouped by owning entity — so a failure with 20 column diffs is
-    scannable rather than a wall of text.
-    """
+    """Aggregate assertion error carrying all collected diffs; renders grouped by entity scope."""
 
     def __init__(self, diffs: list[Diff]) -> None:
         self.diffs = list(diffs)
@@ -68,7 +52,6 @@ class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surfac
         sorted_diffs = sorted(diffs, key=lambda d: d.path)
         classified = [(d, *_classify_path(d.path)) for d in sorted_diffs]
 
-        # Header: category counts, most-frequent first, alphabetical on ties.
         counts: dict[str, int] = {}
         for _, _, category in classified:
             counts[category] = counts.get(category, 0) + 1
@@ -77,7 +60,6 @@ class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surfac
         )
         header = f"StructuralMismatch: {len(sorted_diffs)} diff{'' if len(sorted_diffs) == 1 else 's'} ({summary})"
 
-        # Body: diffs grouped by owning-entity scope.
         body_lines: list[str] = []
         last_scope: str | None = None
         for d, scope, _ in classified:
@@ -89,15 +71,8 @@ class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surfac
         return header + "\n" + "\n".join(body_lines)
 
 
-# One table driving both category tally and scope clustering.
-#   token:    substring searched for in the path string
-#   category: label used in the summary header
-#   is_scope: whether this level counts as an owning-entity scope (the
-#             body groups diffs by the finest scope-level bracket segment).
-#             Column / seed diffs are category buckets but NOT scope
-#             levels — they cluster under their owning table.
-# Ordered from finest-grained to coarsest; both passes walk top-to-bottom
-# so the first hit wins for category and scope alike.
+# (token, category, is_scope) — ordered finest-to-coarsest; first hit wins.
+# Columns/seeds are category buckets but not scope levels (cluster under their table).
 _PATH_LEVELS: tuple[tuple[str, str, bool], ...] = (
     (".column[", "column", False),
     (".seed", "seed", False),
@@ -111,15 +86,11 @@ _PATH_LEVELS: tuple[tuple[str, str, bool], ...] = (
 
 
 def _classify_path(path: str) -> tuple[str, str]:
-    """Return (scope, category) for a diff path in one pass.
+    """Return (scope, category) for a diff path.
 
-    `category` = the finest-grained level token present in the path,
-    used for the summary-line tally.
-    `scope` = the owning-entity bracket segment (e.g. `table[customers]`),
-    used to cluster related diffs in the failure body. Columns and seeds
-    collapse into their owning table's scope rather than introducing a
-    scope of their own. Falls back to the whole path when no bracket
-    token matches.
+    `scope` is the finest owning-entity bracket segment (e.g. `table[customers]`);
+    columns and seeds collapse into their owning table's scope. Falls back to the
+    whole path when no bracket token matches.
     """
     category: str | None = None
     scope: str | None = None
@@ -169,21 +140,11 @@ def _diff_node(
     mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    """Dispatch entry — looks up the per-type differ in `_DIFFERS`.
-
-    Unknown node types are a plan bug, not a runtime condition — raising
-    TypeError surfaces the mismatch at author time.
-    """
+    """Dispatch entry; raises TypeError for an unregistered node type."""
     differ = _DIFFERS.get(type(node))
     if differ is None:
         raise TypeError(f"no differ registered for {type(node).__name__}; add an entry to _DIFFERS in differ.py")
     differ(node, parent_path, om, mode, diffs)
-
-
-# -----------------------------------------------------------------------------
-# Per-node differs — all have the same signature
-#                    (node, parent_path, om, mode, diffs)
-# -----------------------------------------------------------------------------
 
 
 def _diff_service(
@@ -305,19 +266,18 @@ def _diff_table(
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
 
-    # owner (single-owner check — matches when exp.owner appears in any actual owner)
+    # owner: matches when exp.owner appears in any actual owner
     if node.owner is not None:
         actual_owners = {o.name for o in unwrap_root_list(actual.owners)}
         if node.owner not in actual_owners:
             diffs.append(Diff(path=f"{path}.owner", expected=node.owner, actual=sorted(actual_owners)))
 
-    # tags (subset match — all expected tags must be present).
+    # tags: subset match — all expected tags must be present
     if node.tags:
         actual_tags = {model_str(t.tagFQN) for t in unwrap_root_list(actual.tags)}
         if node.tags - actual_tags:
             diffs.append(Diff(path=f"{path}.tags", expected=sorted(node.tags), actual=sorted(actual_tags)))
 
-    # description (substring match per Decision #16)
     if node.description is not None:
         actual_desc = model_str(actual.description) if actual.description else ""
         if node.description not in actual_desc:
@@ -325,7 +285,6 @@ def _diff_table(
                 Diff(path=f"{path}.description", expected=f"contains {node.description!r}", actual=actual_desc)
             )
 
-    # columns — no separate OM fetch; walk the actual.columns set in place.
     actual_columns_by_name = {model_str(c.name): c for c in unwrap_root_list(actual.columns)}
     for exp_col in node.columns:
         _diff_column(exp_col, path, actual_columns_by_name, diffs)
@@ -367,9 +326,6 @@ def _diff_stored_procedure(
             )
 
 
-# Column-level diffs don't fetch from OM and don't recurse, so they're NOT
-# registered in _DIFFERS. `_diff_table` calls this helper directly for each
-# expected column with the already-fetched `actual.columns` dict.
 def _diff_column(
     exp_col: ExpectedColumn,
     table_path: str,
@@ -406,12 +362,7 @@ def _check_strict_extras(
     om: OpenMetadata,
     diffs: list[Diff],
 ) -> None:
-    """Flag actual entities under a parent that weren't declared as expected.
-
-    `path_fmt` must contain a `{name}` slot filled with each extra entity's
-    name at emit time. Pagination: capped at _STRICT_LIST_LIMIT — fine for
-    e2e-sized services.
-    """
+    """Flag actual entities not declared in expected; `path_fmt` must contain a `{name}` slot."""
     for actual in om.list_all_entities(entity=entity_cls, params=list_params, limit=_STRICT_LIST_LIMIT):
         name = model_str(actual.name)
         if name in expected_names:
@@ -419,8 +370,7 @@ def _check_strict_extras(
         diffs.append(Diff(path=path_fmt.format(name=name), kind=DiffKind.UNEXPECTED))
 
 
-# Registry is declared AFTER the per-node differs so it can reference them
-# by name. Adding a new node type = one function above + one entry here.
+# Registry declared after differs so it can reference them by name.
 _DIFFERS: dict[type, _NodeDiffer] = {
     ExpectedService: _diff_service,
     ExpectedDatabase: _diff_database,

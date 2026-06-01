@@ -1,13 +1,7 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Meta-tests: prove the fluent assertion classes raise the right error
-on mismatched OM state — and pass on matching state.
-
-Runs synthetically against a stub OM client. Each test pairs a positive
-case (correct state → no raise) with a negative case (mismatched state →
-AssertionError with a useful message).
-"""
+"""Meta-tests: verify fluent assertion classes raise on mismatched OM state and pass on matching state."""
 
 from __future__ import annotations
 
@@ -32,13 +26,7 @@ from ..core.fluent.table_assert import TableAssert
 
 
 class _FakeOM:
-    """Stub for the OpenMetadata client.
-
-    Stores canned entities keyed on `(entity_cls, fqn, include_filter)`. The
-    `include` kwarg distinguishes default `get_by_name` (deleted=False) from
-    `include="all"` used by `is_soft_deleted` / `is_not_deleted` so each
-    test can set the right view independently.
-    """
+    """Stub OpenMetadata client; keyed on `(entity_cls, fqn, include)` so deleted and live views are independent."""
 
     def __init__(self) -> None:
         self.entities: dict[tuple[type, str, str | None], Any] = {}
@@ -244,8 +232,7 @@ def test_column_has_tag_raises_when_missing() -> None:
 
 
 def test_column_has_no_tag_raises_when_unexpectedly_present() -> None:
-    """has_no_tag is the negative complement — guards against
-    over-classification by PII recognizers."""
+    """has_no_tag raises when the column carries a tag it should not have."""
     fake = _FakeOM()
     fake.register(
         Table,
@@ -280,9 +267,7 @@ def test_sp_has_code_containing_passes_on_match() -> None:
 
 
 def test_sp_has_code_containing_raises_on_empty_body() -> None:
-    """The exact regression that motivated `SHOW_ROUTINE` in conftest.py:
-    body returns empty string when the OM connector lacks routine-read
-    privilege."""
+    """has_code_containing raises when stored procedure body is an empty string."""
     fake = _FakeOM()
     fake.register(StoredProcedure, "svc.default.e2e.sp_count", _sp(code=""))
     with pytest.raises(AssertionError, match=r"code does not contain 'SELECT COUNT"):

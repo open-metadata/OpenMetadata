@@ -37,7 +37,7 @@ class LineageAssert:
         return self._om.get_lineage_by_name(entity=Table, fqn=self._fqn) or {}
 
     def _check_edge(self, direction: _Direction, fqn: str) -> None:
-        """Match direction-typed edges; resolve UUID-only Edge endpoints via nodes/entity FQN map."""
+        """Assert a direction-typed edge to `fqn` exists; resolves UUID endpoints via the nodes FQN map."""
         data = self._lineage()
         nodes = data.get("nodes") or []
         central = data.get("entity") or {}

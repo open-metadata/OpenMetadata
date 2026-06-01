@@ -1,17 +1,12 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""ProfileAssert + ColumnProfileAssert + NumericAssert.
+"""ProfileAssert + ColumnProfileAssert + NumericAssert — table and column profile assertions.
 
-Two assertion surfaces:
-  - table-level: row count via `.profile.eventually().row_count().equals(N)`
-  - column-level: arbitrary metric subset via
-    `.profile.eventually().column(name).has_metrics(min=600, max=750, ...)`
+  - Table-level: `.profile.eventually().row_count().equals(N)`
+  - Column-level: `.profile.eventually().column(name).has_metrics(min=600, max=750, ...)`
 
-Both share the same poll-and-fetch primitive — when armed with
-`.eventually(timeout)`, the profile is polled until present. Column-
-metric assertion uses kwargs that map 1:1 to OM's ColumnProfile field
-names; an unknown kwarg raises so a typo doesn't silently pass.
+Unknown kwarg names in `has_metrics` raise immediately (typo guard).
 """
 
 from __future__ import annotations
@@ -50,15 +45,7 @@ class NumericAssert:
 
 
 class ColumnProfileAssert:
-    """Per-column profile assertions reached via
-    `.profile.eventually().column(name)`.
-
-    `has_metrics(**expected)` accepts any subset of OM's ColumnProfile
-    field names as kwargs (e.g. `min=600, max=750, distinctCount=5,
-    nullCount=0, mean=680`). Each kwarg is compared against the
-    corresponding profile field; numeric values that come back as
-    Decimal/float are normalized for the comparison.
-    """
+    """Per-column profile assertions reached via `.profile.eventually().column(name)`."""
 
     def __init__(
         self,
@@ -73,12 +60,7 @@ class ColumnProfileAssert:
         self._eventually = runner
 
     def has_metrics(self, **expected: Any) -> ColumnProfileAssert:
-        """Assert each given metric matches the column's actual profile.
-
-        Unknown kwargs (typos / fields the OM Pydantic model doesn't
-        carry) raise immediately so a misspelled metric name fails loud
-        rather than silently passing.
-        """
+        """Assert each given metric matches the column's actual profile; unknown kwarg names raise immediately."""
         if not expected:
             raise ValueError("has_metrics requires at least one kwarg")
         label = f"column_profile({self._fqn}.{self._column_name})"
@@ -140,11 +122,7 @@ class ProfileAssert:
         return table
 
     def row_count(self) -> NumericAssert:
-        """Extract rowCount from the profile, returning a NumericAssert.
-
-        When armed via `.eventually()`, polls until `profile.rowCount` is
-        non-None, then constructs NumericAssert with the polled value.
-        """
+        """Return a NumericAssert for the table's rowCount; polls when armed via .eventually()."""
         label = f"rowCount({self._fqn})"
 
         def _get() -> int:
@@ -157,23 +135,12 @@ class ProfileAssert:
         return NumericAssert(value, label=label)
 
     def column(self, name: str) -> ColumnProfileAssert:
-        """Reach a ColumnProfileAssert scoped to the given column.
-
-        Inherits the parent ProfileAssert's arm — calling
-        `.profile.eventually().column(...)` makes the next column-level
-        terminal poll, just like `.row_count()` does.
-        """
+        """Return a ColumnProfileAssert for the given column, inheriting the current arm state."""
         return ColumnProfileAssert(self._om, self._fqn, name, runner=self._eventually)
 
 
 def _values_match(actual: Any, expected: Any) -> bool:
-    """Compare profile-metric values tolerating Decimal/float/int crossover.
-
-    OM serializes numeric profile metrics as Decimal in some cases and
-    float in others; tests want to write `min=600` without thinking
-    about which path the value took. Falls back to == for non-numeric
-    types (strings, None, bools).
-    """
+    """Compare profile-metric values, normalizing Decimal/float/int to float for numeric types."""
     if actual is None:
         return False
     if isinstance(actual, (Decimal, float, int)) and isinstance(expected, (Decimal, float, int)):

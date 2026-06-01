@@ -8,16 +8,11 @@ with one of `.table(fqn)`, `.service(name)`, or `.stored_procedure(fqn)`.
 
 Sync vs eventually
 ------------------
-Most terminals are **synchronous** — they assume the data is already in OM
-(typical after a completed metadata ingest). A few entity domains are
-**eventually-consistent** and must be wrapped in `.eventually(timeout=60)`
-one-shot arming:
+`.eventually(timeout)` is ONE-SHOT: it arms the very next terminal and
+resets afterward. Arm again for each eventually-polled assertion.
 
   eventually: profile, lineage, foreign-key constraint, service entity count
   sync only:  column.has_type, column.has_tag, stored_procedure, structural
-
-Arming is ONE-SHOT: it applies to the very next terminal in the chain and
-resets afterward. Arm again for each eventually-polled assertion.
 
 Assertion catalog
 -----------------
@@ -63,8 +58,7 @@ Structural differ (a different entry point, not fluent)
   assert_service_matches(expected_tree, om_client, mode=MatchMode.STRICT)  # filter tests
 
 Walks the entire Expected* tree at once and raises `StructuralMismatch`
-collecting every diff — use this over one-off chains when you're
-verifying "the whole catalog looks right."
+collecting every diff.
 
 Extending
 ---------

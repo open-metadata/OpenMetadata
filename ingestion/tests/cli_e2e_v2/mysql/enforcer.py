@@ -1,13 +1,10 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL dialect specifics for SqlBaselineEnforcer.
+"""MySQL dialect overrides for SqlBaselineEnforcer.
 
-Introspection + table DDL (CREATE TABLE + FK + COMMENT) live in the base
-via SQLAlchemy Inspector + `metadata.create_all`. This subclass supplies
-only what Core doesn't model:
-  - stored-procedure listing (`INFORMATION_SCHEMA.ROUTINES`)
-  - DROP + CREATE for procedures (MySQL has no CREATE OR REPLACE PROCEDURE)
+Adds stored-procedure listing via ``INFORMATION_SCHEMA.ROUTINES`` and
+DROP+CREATE for procedures (MySQL lacks ``CREATE OR REPLACE PROCEDURE``).
 """
 
 from __future__ import annotations

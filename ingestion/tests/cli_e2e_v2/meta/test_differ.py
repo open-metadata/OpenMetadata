@@ -1,13 +1,7 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Meta-tests: prove StructuralDiffer detects each documented failure mode.
-
-These run synthetically against a stub OM client — no testcontainers, no
-network. They are the safety net that catches regressions in the differ
-itself: if a real connector test ever silently passes when OM diverges
-from Expected, one of these will already have failed in CI.
-"""
+"""Meta-tests: verify StructuralDiffer detects each documented failure mode against a stub OM client."""
 
 from __future__ import annotations
 
@@ -44,12 +38,7 @@ from ..core.source.types import DiffKind
 
 
 class _FakeOM:
-    """Minimal OpenMetadata stand-in.
-
-    Stores canned `get_by_name` responses keyed on `(entity_cls, fqn)` and
-    canned `list_all_entities` responses keyed on `(entity_cls, parent_key, parent_value)`.
-    Anything not registered returns None / [].
-    """
+    """Stub OpenMetadata client backed by pre-registered canned responses; unregistered lookups return None / []."""
 
     def __init__(self) -> None:
         self.entities: dict[tuple[type, str], Any] = {}
@@ -72,9 +61,7 @@ class _FakeOM:
 
 
 def _stub(**kwargs: Any) -> SimpleNamespace:
-    """Build a SimpleNamespace with given attributes — drop-in for Pydantic
-    entities the differ reads via attribute access. Defaults cover the
-    fields touched by the differ for any entity type."""
+    """Build a SimpleNamespace with differ-required defaults overridden by kwargs."""
     defaults = {
         "tags": [],
         "owners": [],
@@ -95,9 +82,7 @@ SCHEMA_FQN = "svc.default.e2e"
 
 
 def _seed_happy_path(fake: _FakeOM, expected: ExpectedService) -> None:
-    """Register OM responses that exactly match `expected` so the differ
-    sees zero drift. Negative tests build on top of this by overwriting
-    one entry to introduce a single, isolated discrepancy."""
+    """Register OM responses that exactly match `expected`; negative tests overwrite one entry to inject a discrepancy."""
     fake.register(DatabaseService, expected.name, _stub(serviceType=expected.service_type))
     for db in expected.databases:
         db_fqn = f"{expected.name}.{db.name}"
@@ -119,7 +104,7 @@ def _seed_happy_path(fake: _FakeOM, expected: ExpectedService) -> None:
 
 
 def _baseline_expected() -> ExpectedService:
-    """Reference Expected tree the negative tests perturb."""
+    """Return the canonical ExpectedService tree used by negative tests."""
     return ExpectedService(
         name="svc",
         service_type=DatabaseServiceType.Mysql,

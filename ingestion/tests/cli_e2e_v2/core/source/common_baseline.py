@@ -1,21 +1,13 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Common portable baseline — tables + seed data shared across SQL dialects.
+"""Portable baseline shared across SQL dialects: common MetaData and seed rows.
 
-`build_common_metadata(schema)` returns a SQLAlchemy `MetaData` with the
-portable tables (`customers`, `transactions`) declared via Core types so
-`metadata.create_all(conn)` emits dialect-correct DDL everywhere.
-
-`COMMON_CUSTOMER_ROWS` and `COMMON_TRANSACTION_ROWS` are the portable seed
-data. Dialects consume them through a TableSeed with a dialect-specific
-`insert_sql` template (`ON DUPLICATE KEY UPDATE` for MySQL, `ON CONFLICT
-DO UPDATE` for Postgres, etc.) — the base enforcer runs the template
-against these rows via SQLAlchemy's executemany binding, no dialect
-branching needed.
-
-Dialect-specific tables (e.g., MySQL's `all_types`) live in each
-connector's baseline module and are added to its extended MetaData.
+- `build_common_metadata(schema)` returns a MetaData with `customers` and
+  `transactions` tables; connector baselines may add dialect-specific tables.
+- `COMMON_CUSTOMER_ROWS` / `COMMON_TRANSACTION_ROWS` are the portable seeds;
+  each connector baseline wraps them in a `TableSeed` with a dialect-specific
+  `insert_sql` template.
 """
 
 from __future__ import annotations

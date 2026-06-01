@@ -8,9 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Validate the logic and status handling of the base workflow
-"""
+"""Validate the logic and status handling of the base workflow."""
 
 import json
 from typing import Iterable, Tuple  # noqa: UP035
@@ -152,7 +150,6 @@ class BrokenWorkflow(IngestionWorkflow):
         self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
 
 
-# Pass only the required details so that the workflow can be initialized
 config = OpenMetadataWorkflowConfig(
     source=Source(
         type="simple",
@@ -219,12 +216,7 @@ class TestBaseWorkflow(TestCase):
 
 
 class TestWorkflowExecuteTeardown:
-    """
-    Validates the execute() teardown contract: status must be printed before
-    stop() tears down resources (so final records are flushed while the
-    metadata client and steps are alive), and stop() must still run when
-    print_status() raises so we never leak the timer thread or OM client.
-    """
+    """Validates the execute() teardown contract: print_status runs before stop(), and stop() runs even when print_status() raises."""
 
     def test_print_status_runs_before_stop(self):
         workflow = SimpleWorkflow(config=config)
@@ -290,7 +282,6 @@ def test_write_status_file_reports_failure_shape_with_sink_errors(tmp_path):
     assert len(payload["steps"]) >= 2
     sink_steps_with_failures = [s for s in payload["steps"] if s.get("failures")]
     assert len(sink_steps_with_failures) >= 1
-    # Sink has 1/5 failures (80%) which is below the default 90% threshold
     assert payload["success"] is False
 
 
@@ -302,8 +293,6 @@ def test_write_status_file_reports_failure_when_source_fails(tmp_path):
     workflow.write_status_file(status_file)
 
     payload = json.loads(status_file.read_text())
-
-    # BrokenSource yields non-Either values → source failures → result_status FAILURE
     assert payload["success"] is False
 
 
