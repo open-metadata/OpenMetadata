@@ -11,11 +11,10 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
+public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -35,50 +34,53 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TABLE;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // "columns" is fields-gated in TableRepository; without it column-level tags are not
+    // hydrated, breaking tag merge in the search doc.
+    fields.add("columns");
+    // "usageSummary" is fields-gated too (TableRepository.clearFields nulls it when not
+    // requested). Live indexing fetches the full entity so it's present, but reindex only
+    // fetches the declared fields — without this it's dropped from _source on reindex,
+    // breaking Explore's "Sort by Weekly Usage" (reads usageSummary.weeklyStats.count).
+    fields.add("usageSummary");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> columnsWithChildrenName = new ArrayList<>();
     if (table.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(table.getColumns(), cols, null);
 
+      List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
         if (col.getTags() != null) {
-          tagsWithChildren.add(col.getTags());
+          childTags.add(col.getTags());
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
-      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
       doc.put("columnDescriptionStatus", getColumnDescriptionStatus(table));
+      mergeChildTags(doc, childTags);
 
-      // Transform column extensions to typed custom properties
       SearchIndexUtils.transformColumnExtensions(doc, Entity.TABLE_COLUMN);
     }
 
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    Map<String, Object> commonAttributes = getCommonAttributesMap(table, Entity.TABLE);
-    doc.putAll(commonAttributes);
-    doc.put("tags", flattenedTagList);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", table.getServiceType());
     doc.put("locationPath", table.getLocationPath());
     doc.put("schemaDefinition", table.getSchemaDefinition());
-    doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("processedLineage", table.getProcessedLineage());
     doc.put(
         "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));
@@ -98,7 +100,7 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 3.0f);
+    fields.put("columnNamesFuzzy", 3.0f);
     return fields;
   }
 }

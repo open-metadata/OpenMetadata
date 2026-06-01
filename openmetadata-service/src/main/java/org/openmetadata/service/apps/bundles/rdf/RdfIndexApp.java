@@ -10,19 +10,22 @@ import static org.openmetadata.service.socket.WebSocketManager.RDF_INDEX_JOB_BRO
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -30,20 +33,19 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.LineageDetails;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor;
+import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobStatsAggregator;
+import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
@@ -66,29 +68,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final int MAX_CONSUMER_THREADS = 5;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
-  private static final List<Integer> ALL_RELATIONSHIPS =
-      java.util.Arrays.stream(Relationship.values())
-          .map(Relationship::ordinal)
-          .collect(Collectors.toList());
-
-  // Entity types that should be excluded from RDF relationships as they don't provide
-  // meaningful semantic value (operational/audit entities)
+  private static final List<Integer> ALL_RELATIONSHIPS = RdfBatchProcessor.ALL_RELATIONSHIPS;
   private static final Set<String> EXCLUDED_RELATIONSHIP_ENTITY_TYPES =
-      Set.of(
-          "changeEvent",
-          "auditLog",
-          "webAnalyticEvent",
-          "entityUsage",
-          "eventSubscription",
-          "vote",
-          "THREAD");
-
-  // Relationship types that should be excluded from RDF as they don't provide
-  // meaningful semantic relationships (user interactions, not data relationships)
+      RdfBatchProcessor.EXCLUDED_RELATIONSHIP_ENTITY_TYPES;
   private static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
-      Set.of(Relationship.VOTED.ordinal(), Relationship.FOLLOWS.ordinal());
+      RdfBatchProcessor.EXCLUDED_RELATIONSHIP_TYPES;
 
   private final RdfRepository rdfRepository;
+  private final RdfBatchProcessor batchProcessor;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -100,6 +87,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private final AtomicReference<Stats> rdfIndexStats = new AtomicReference<>();
   private final AtomicBoolean producersDone = new AtomicBoolean(false);
   private BlockingQueue<IndexingTask> taskQueue;
+  private volatile DistributedRdfIndexExecutor distributedExecutor;
 
   record IndexingTask(
       String entityType, List<? extends EntityInterface> entities, int offset, int retryCount) {
@@ -115,6 +103,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   public RdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.rdfRepository = RdfRepository.getInstance();
+    this.batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
   }
 
   @Override
@@ -153,6 +142,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
       return;
     }
 
+    try {
+      rdfRepository.ensureStorageReady();
+    } catch (Exception e) {
+      LOG.error("RDF storage is not ready; aborting indexing job", e);
+      updateJobStatus(EventPublisherJob.Status.FAILED);
+      jobData.setFailure(
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.JOB)
+              .withMessage("RDF storage is not ready: " + e.getMessage()));
+      sendUpdates(jobExecutionContext, true);
+      return;
+    }
+
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
       Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, Map.class);
@@ -160,9 +162,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      boolean containsAll = jobData.getEntities().contains(ALL);
-      if (containsAll) {
-        jobData.setEntities(getAll());
+      jobData.setEntities(resolveEntityTypes(jobData.getEntities()));
+      if (jobData.getEntities().isEmpty()) {
+        throw new IllegalStateException(
+            "No repository-backed entity types configured for RDF indexing");
       }
 
       LOG.info(
@@ -178,12 +181,50 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
 
       updateJobStatus(EventPublisherJob.Status.RUNNING);
-      reIndexFromStartToEnd();
+      if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
+        reIndexDistributed();
+      } else {
+        reIndexFromStartToEnd();
+      }
 
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
       } else {
+        // Mark the job COMPLETED BEFORE compacting. compactStorage is a
+        // blocking call (up to COMPACT_MAX_WAIT_MS = 10 min while it polls
+        // /$/tasks/{id}); doing it before the status update would delay the
+        // websocket "done" notification by however long compaction takes,
+        // and a misbehaving Fuseki could leave the run looking RUNNING for
+        // up to 10 minutes after the reindex actually finished. Compaction
+        // is best-effort hygiene; surface job-completion to the UI first
+        // and run compaction as the very last step.
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
+        // Final compaction after a successful run. The recreate branch already
+        // compacted *before* the reindex (against the empty post-clearAll
+        // state) to maximise the reclaim; on the incremental branch nothing
+        // had ever compacted, so weeks of incremental runs piled the TDB2
+        // free-list and journal up to tens of GB even though the live triple
+        // count stayed bounded. Running compact at the end of every successful
+        // reindex caps growth at one-run's worth of churn regardless of which
+        // path took us here.
+        //
+        // Defensive try/catch: JenaFusekiStorage.compactStorage() already
+        // catches its own exceptions, but RdfRepository.compactStorage() is
+        // a thin pass-through and a future storage backend (QLever, etc.)
+        // may not honor the same swallow-failures contract. Worse, a race
+        // between isEnabled() and storageService.compactStorage() could
+        // surface an NPE. Catch here so any unexpected runtime failure
+        // can NEVER demote a job that's already COMPLETED to FAILED via
+        // the outer catch's handleJobFailure().
+        try {
+          rdfRepository.compactStorage();
+        } catch (RuntimeException compactFailure) {
+          LOG.warn(
+              "Post-run compaction failed for this RDF reindex job; disk reclamation "
+                  + "skipped, but the job itself completed successfully. Reason: {}",
+              compactFailure.getMessage(),
+              compactFailure);
+        }
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());
@@ -208,6 +249,27 @@ public class RdfIndexApp extends AbstractNativeApplication {
     rdfIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(rdfIndexStats.get());
 
+    // bulkAddGlossaryTermRelations has no per-batch DELETE side, so stale
+    // glossary-term relations would accumulate forever across reindex runs.
+    // When recreateIndex=true clearAll() already wipes everything, so we
+    // only need this targeted cleanup on incremental runs.
+    //
+    // Let the failure propagate: clearAllGlossaryTermRelations rethrows on
+    // failure precisely so the indexer can fail loudly instead of silently
+    // marking a job successful while the graph still has stale predicates.
+    // The outer try/catch in execute() will set the run status to FAILED.
+    if (!Boolean.TRUE.equals(jobData.getRecreateIndex())
+        && jobData.getEntities() != null
+        && jobData.getEntities().contains(Entity.GLOSSARY_TERM)) {
+      LOG.info("Clearing existing glossary term relations before re-indexing");
+      rdfRepository.clearAllGlossaryTermRelations();
+    }
+
+    if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
+      sendUpdates(jobExecutionContext, true);
+      return;
+    }
+
     int queueSize = jobData.getQueueSize() != null ? jobData.getQueueSize() : DEFAULT_QUEUE_SIZE;
     int effectiveQueueSize = calculateMemoryAwareQueueSize(queueSize);
     taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
@@ -230,9 +292,50 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdfRepository.clearAll();
       LOG.info("Cleared all RDF data");
+      // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
+      // on-disk dataset and journal keep growing across runs. Compact NOW while
+      // the dataset is essentially empty so the next re-ingest writes into a
+      // fresh, small dataset directory. Without this, every recreateIndex run
+      // accumulates ~1x the dataset size on disk and the PVC eventually fills.
+      // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
+      // copied through compaction unnecessarily.
+      rdfRepository.compactStorage();
+      // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
+      // before indexing starts so SPARQL queries that depend on the ontology
+      // (inference, federated, etc.) work after the wipe.
+      rdfRepository.reloadOntologies();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);
+    }
+  }
+
+  private void reIndexDistributed() throws InterruptedException {
+    int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
+    String createdBy =
+        getApp() != null && getApp().getName() != null ? getApp().getName() : "system";
+
+    distributedExecutor = new DistributedRdfIndexExecutor(collectionDAO, partitionSize);
+    distributedExecutor.performStartupRecovery();
+
+    RdfIndexJob distributedJob =
+        distributedExecutor.createJob(jobData.getEntities(), jobData, createdBy);
+
+    ExecutorService distributedExecutionExecutor =
+        Executors.newSingleThreadExecutor(
+            Thread.ofVirtual().name("rdf-distributed-execution-", 0).factory());
+    Future<?> distributedExecution =
+        distributedExecutionExecutor.submit(
+            () -> {
+              distributedExecutor.execute(jobData);
+              return null;
+            });
+
+    try {
+      monitorDistributedJob(distributedJob.getId(), distributedExecution);
+      awaitDistributedExecution(distributedExecution);
+    } finally {
+      distributedExecutionExecutor.shutdownNow();
     }
   }
 
@@ -266,10 +369,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      // Clear entire RDF store before re-indexing to remove stale data
-      LOG.info("Clearing RDF store before re-indexing");
-      rdfRepository.clearAll();
-
       processEntityTypes();
       signalConsumersToStop(numConsumers);
       consumerLatch.await();
@@ -279,6 +378,105 @@ public class RdfIndexApp extends AbstractNativeApplication {
       stopped = true;
       Thread.currentThread().interrupt();
       throw e;
+    }
+  }
+
+  private void monitorDistributedJob(UUID jobId, Future<?> distributedExecution)
+      throws InterruptedException {
+    RdfDistributedJobStatsAggregator statsAggregator = new RdfDistributedJobStatsAggregator();
+
+    while (!stopped) {
+      RdfIndexJob latestJob =
+          distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
+      if (latestJob != null) {
+        Stats aggregatedStats = statsAggregator.toStats(latestJob);
+        rdfIndexStats.set(aggregatedStats);
+        jobData.setStats(aggregatedStats);
+        if (latestJob.getStatus()
+            != org.openmetadata
+                .service
+                .apps
+                .bundles
+                .searchIndex
+                .distributed
+                .IndexJobStatus
+                .STOPPING) {
+          sendUpdates(jobExecutionContext, false);
+        }
+
+        if (latestJob.isTerminal()) {
+          handleTerminalDistributedJob(latestJob);
+          return;
+        }
+      }
+
+      if (distributedExecution.isDone()) {
+        return;
+      }
+
+      TimeUnit.SECONDS.sleep(2);
+    }
+  }
+
+  private void handleTerminalDistributedJob(RdfIndexJob latestJob) {
+    org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus jobStatus =
+        latestJob.getStatus();
+    if (jobStatus
+        == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.STOPPED) {
+      stopped = true;
+      return;
+    }
+
+    boolean failedOutright =
+        jobStatus
+            == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.FAILED;
+    // The coordinator marks a job COMPLETED_WITH_ERRORS when any partition is
+    // FAILED or CANCELLED, which can happen even with failedRecords == 0 (e.g.
+    // user-initiated stop that cancels in-flight partitions before any record
+    // failures accrue). Surface that case too so the run record reflects
+    // partition-level outcomes, not just record-level ones.
+    boolean completedWithErrors =
+        jobStatus
+            == org.openmetadata
+                .service
+                .apps
+                .bundles
+                .searchIndex
+                .distributed
+                .IndexJobStatus
+                .COMPLETED_WITH_ERRORS;
+
+    if (!failedOutright && !completedWithErrors) {
+      return;
+    }
+
+    String message = latestJob.getErrorMessage();
+    if (message == null || message.isBlank()) {
+      message =
+          latestJob.getFailedRecords() > 0
+              ? String.format(
+                  "RDF index job completed with %d failed record(s)", latestJob.getFailedRecords())
+              : "RDF index job completed with errors at the partition level";
+    }
+    LOG.error("RDF index job {} terminated with errors: {}", latestJob.getId(), message);
+    jobData.setFailure(
+        new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
+  }
+
+  private void awaitDistributedExecution(Future<?> distributedExecution)
+      throws InterruptedException {
+    try {
+      distributedExecution.get();
+    } catch (CancellationException e) {
+      if (!stopped) {
+        throw new RuntimeException("Distributed RDF execution was cancelled unexpectedly", e);
+      }
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw new RuntimeException("Distributed RDF execution failed", cause);
     }
   }
 
@@ -310,220 +508,61 @@ public class RdfIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    int successCount = 0;
-    int failedCount = 0;
-
     try {
-      for (EntityInterface entity : entities) {
-        if (stopped) {
-          break;
-        }
-        try {
-          rdfRepository.createOrUpdate(entity);
-          successCount++;
-        } catch (Exception e) {
-          LOG.error("Failed to index entity {} to RDF", entity.getId(), e);
-          failedCount++;
-        }
-      }
+      RdfBatchProcessor.BatchProcessingResult result =
+          batchProcessor.processEntities(entityType, entities, () -> stopped);
 
-      processBatchRelationships(entityType, entities);
-
-      // Process glossary term relations if this is a glossaryTerm batch
-      if ("glossaryTerm".equals(entityType)) {
-        processGlossaryTermRelations(entities);
-      }
-
+      // failedRecords stays an entity-level stat (relationship failures are
+      // per-edge, not per-record). But for surfacing failures on the run
+      // record we want either kind of failure to count, so use hasAnyFailure().
       StepStats currentStats =
-          new StepStats().withSuccessRecords(successCount).withFailedRecords(failedCount);
+          new StepStats()
+              .withSuccessRecords(result.successCount())
+              .withFailedRecords(result.failedCount());
       updateEntityStats(entityType, currentStats);
+      if (result.hasAnyFailure() && result.lastError() != null) {
+        recordIndexingFailure(
+            entityType,
+            result.failedCount() + result.relationshipFailureCount(),
+            result.lastError());
+      }
       sendUpdates(jobExecutionContext, false);
 
     } catch (Exception e) {
       LOG.error("Error processing batch for entity type {}", entityType, e);
       updateEntityStats(
-          entityType,
-          new StepStats()
-              .withSuccessRecords(successCount)
-              .withFailedRecords(entities.size() - successCount));
+          entityType, new StepStats().withSuccessRecords(0).withFailedRecords(entities.size()));
+      recordIndexingFailure(entityType, entities.size(), e.getMessage());
+    }
+  }
+
+  private void recordIndexingFailure(String entityType, int failedCount, String errorMessage) {
+    String message =
+        String.format(
+            "%d record(s) failed for entity type %s: %s",
+            failedCount, entityType, errorMessage != null ? errorMessage : "");
+    if (jobData.getFailure() == null) {
+      jobData.setFailure(
+          new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
     }
   }
 
   private void processBatchRelationships(
       String entityType, List<? extends EntityInterface> entities) {
-    if (entities.isEmpty()) {
-      return;
-    }
-
-    List<String> entityIds =
-        entities.stream().map(e -> e.getId().toString()).collect(Collectors.toList());
-
-    try {
-      List<EntityRelationshipObject> outgoingRelationships =
-          collectionDAO
-              .relationshipDAO()
-              .findToBatchWithRelations(entityIds, entityType, ALL_RELATIONSHIPS);
-
-      List<EntityRelationshipObject> incomingLineage =
-          collectionDAO
-              .relationshipDAO()
-              .findFromBatch(entityIds, Relationship.UPSTREAM.ordinal(), Include.ALL);
-
-      List<org.openmetadata.schema.type.EntityRelationship> allRelationships = new ArrayList<>();
-
-      for (EntityRelationshipObject rel : outgoingRelationships) {
-        // Skip relationships to/from excluded entity types (changeEvent, auditLog, vote, etc.)
-        // These don't provide meaningful semantic value in the knowledge graph
-        if (EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getToEntity())
-            || EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getFromEntity())) {
-          LOG.debug(
-              "Skipping relationship {} -> {} (excluded entity type: {} or {})",
-              rel.getFromId(),
-              rel.getToId(),
-              rel.getFromEntity(),
-              rel.getToEntity());
-          continue;
-        }
-
-        // Skip excluded relationship types (VOTED, FOLLOWS, etc.)
-        if (EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation())) {
-          LOG.debug(
-              "Skipping relationship {} -> {} (excluded relationship type: {})",
-              rel.getFromId(),
-              rel.getToId(),
-              rel.getRelation());
-          continue;
-        }
-
-        if (rel.getRelation() == Relationship.UPSTREAM.ordinal() && rel.getJson() != null) {
-          processLineageRelationship(rel);
-        } else {
-          // Skip glossary term RELATED_TO relationships - they're handled separately
-          // by processGlossaryTermRelations() with typed predicates
-          if ("glossaryTerm".equals(entityType)
-              && rel.getRelation() == Relationship.RELATED_TO.ordinal()
-              && "glossaryTerm".equals(rel.getToEntity())) {
-            LOG.debug(
-                "Skipping glossary term relation {} -> {} (handled by processGlossaryTermRelations)",
-                rel.getFromId(),
-                rel.getToId());
-            continue;
-          }
-          allRelationships.add(convertToEntityRelationship(rel));
-        }
-      }
-
-      for (EntityRelationshipObject rel : incomingLineage) {
-        // Skip relationships to/from excluded entity types
-        if (EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getToEntity())
-            || EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getFromEntity())) {
-          continue;
-        }
-
-        // Skip excluded relationship types
-        if (EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation())) {
-          continue;
-        }
-
-        if (rel.getJson() != null) {
-          processLineageRelationship(rel);
-        } else {
-          allRelationships.add(convertToEntityRelationship(rel));
-        }
-      }
-
-      if (!allRelationships.isEmpty()) {
-        rdfRepository.bulkAddRelationships(allRelationships);
-        LOG.debug(
-            "Bulk added {} relationships for {} entities",
-            allRelationships.size(),
-            entities.size());
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to process batch relationships for entity type {}", entityType, e);
-    }
+    batchProcessor.processBatchRelationships(entityType, entities);
   }
 
   private void processLineageRelationship(EntityRelationshipObject rel) {
-    try {
-      UUID fromId = UUID.fromString(rel.getFromId());
-      UUID toId = UUID.fromString(rel.getToId());
-      LineageDetails lineageDetails = JsonUtils.readValue(rel.getJson(), LineageDetails.class);
-      rdfRepository.addLineageWithDetails(
-          rel.getFromEntity(), fromId, rel.getToEntity(), toId, lineageDetails);
-      LOG.debug(
-          "Added lineage with details from {}/{} to {}/{}",
-          rel.getFromEntity(),
-          fromId,
-          rel.getToEntity(),
-          toId);
-    } catch (Exception e) {
-      LOG.debug("Failed to parse lineage details, falling back to basic relationship", e);
-      try {
-        rdfRepository.addRelationship(convertToEntityRelationship(rel));
-      } catch (Exception ex) {
-        LOG.debug("Failed to add basic lineage relationship", ex);
-      }
-    }
+    batchProcessor.processLineageRelationship(rel);
   }
 
   private void processGlossaryTermRelations(List<? extends EntityInterface> entities) {
-    List<RdfRepository.GlossaryTermRelationData> relations = new ArrayList<>();
-
-    for (EntityInterface entity : entities) {
-      if (stopped) {
-        break;
-      }
-
-      if (entity instanceof GlossaryTerm glossaryTerm) {
-        List<TermRelation> relatedTerms = glossaryTerm.getRelatedTerms();
-        if (relatedTerms != null && !relatedTerms.isEmpty()) {
-          UUID fromTermId = glossaryTerm.getId();
-          LOG.info(
-              "Processing glossary term {} ({}) with {} relations",
-              glossaryTerm.getName(),
-              fromTermId,
-              relatedTerms.size());
-
-          for (TermRelation termRelation : relatedTerms) {
-            if (termRelation.getTerm() != null && termRelation.getTerm().getId() != null) {
-              UUID toTermId = termRelation.getTerm().getId();
-              String relationType =
-                  termRelation.getRelationType() != null
-                      ? termRelation.getRelationType()
-                      : "relatedTo";
-
-              LOG.info(
-                  "  Relation: {} -> {} (type: {}, raw: {})",
-                  glossaryTerm.getName(),
-                  termRelation.getTerm().getName(),
-                  relationType,
-                  termRelation.getRelationType());
-
-              relations.add(
-                  new RdfRepository.GlossaryTermRelationData(fromTermId, toTermId, relationType));
-            }
-          }
-        }
-      }
-    }
-
-    if (!relations.isEmpty()) {
-      rdfRepository.bulkAddGlossaryTermRelations(relations);
-      LOG.info("Added {} glossary term relations to RDF store", relations.size());
-    }
+    batchProcessor.processGlossaryTermRelations(entities, () -> stopped);
   }
 
   private org.openmetadata.schema.type.EntityRelationship convertToEntityRelationship(
       EntityRelationshipObject rel) {
-    return new org.openmetadata.schema.type.EntityRelationship()
-        .withFromEntity(rel.getFromEntity())
-        .withFromId(UUID.fromString(rel.getFromId()))
-        .withToEntity(rel.getToEntity())
-        .withToId(UUID.fromString(rel.getToId()))
-        .withRelation(rel.getRelation())
-        .withRelationshipType(Relationship.values()[rel.getRelation()]);
+    return batchProcessor.convertToEntityRelationship(rel);
   }
 
   private void processEntityTypes() throws InterruptedException {
@@ -755,6 +794,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
     }
+    pushAppStatusUpdates(jobExecutionContext, appRecord, true);
 
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
@@ -823,6 +863,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
     if (jobExecutor != null) {
       jobExecutor.shutdownNow();
     }
+    if (distributedExecutor != null) {
+      distributedExecutor.stop();
+    }
 
     LOG.info("RDF indexing job stopped successfully.");
   }
@@ -837,6 +880,43 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private Set<String> getAll() {
-    return new HashSet<>(Entity.getEntityList());
+    return resolveEntityTypes(new HashSet<>(Entity.getEntityList()));
+  }
+
+  private Set<String> resolveEntityTypes(Set<String> requestedEntities) {
+    Set<String> entitiesToResolve = requestedEntities;
+    if (entitiesToResolve == null
+        || entitiesToResolve.isEmpty()
+        || entitiesToResolve.contains(ALL)) {
+      entitiesToResolve = new HashSet<>(Entity.getEntityList());
+    }
+
+    Set<String> resolvedEntities = new LinkedHashSet<>();
+    List<String> skippedEntities = new ArrayList<>();
+    for (String entityType : entitiesToResolve) {
+      if (entityType == null || entityType.isBlank() || ALL.equals(entityType)) {
+        continue;
+      }
+      if (isIndexableEntityType(entityType)) {
+        resolvedEntities.add(entityType);
+      } else {
+        skippedEntities.add(entityType);
+      }
+    }
+
+    if (!skippedEntities.isEmpty()) {
+      LOG.info("Skipping RDF indexing for non repository-backed entity types: {}", skippedEntities);
+    }
+
+    return resolvedEntities;
+  }
+
+  private boolean isIndexableEntityType(String entityType) {
+    try {
+      Entity.getEntityRepository(entityType);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

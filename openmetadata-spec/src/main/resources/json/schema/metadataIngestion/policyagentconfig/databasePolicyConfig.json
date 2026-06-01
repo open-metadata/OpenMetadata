@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/policyagentconfig/databasePolicyConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabasePolicyConfig",
+  "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePolicyConfig",
+  "definitions": {
+    "principalType": {
+      "description": "Type of principal the grant is issued to.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePrincipalType",
+      "enum": ["USER", "ROLE"],
+      "default": "USER"
+    },
+    "accessType": {
+      "description": "Pattern of access being requested.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseAccessType",
+      "enum": ["FullAccess", "ColumnLevel", "Masked"]
+    },
+    "requestedAccess": {
+      "description": "Permission level being requested.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseRequestedAccess",
+      "enum": ["Read", "Write", "Admin"]
+    }
+  },
+  "properties": {
+    "principalType": {
+      "$ref": "#/definitions/principalType",
+      "default": "USER"
+    },
+    "principal": {
+      "description": "Grantee identifier. For USER this is typically the email/username; for ROLE the role name.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^;'\" ]+$"
+    },
+    "databaseName": {
+      "description": "Database on which the grant is applied.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "schemaName": {
+      "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "tableName": {
+      "description": "Table on which the grant is applied. Requires schemaName.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "columnName": {
+      "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
+      "$ref": "../../entity/data/table.json#/definitions/columnName"
+    },
+    "columns": {
+      "description": "List of column names requested when accessType is ColumnLevel.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "accessType": {
+      "$ref": "#/definitions/accessType"
+    },
+    "requestedAccess": {
+      "$ref": "#/definitions/requestedAccess"
+    },
+    "duration": {
+      "description": "ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support time-limited grants may use this; others ignore it.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    }
+  },
+  "required": ["principal", "databaseName", "accessType", "requestedAccess"],
+  "dependencies": {
+    "tableName": ["schemaName"],
+    "columnName": ["tableName"]
+  },
+  "additionalProperties": false
+}

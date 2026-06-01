@@ -323,7 +323,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextById(entityId));
 
-    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+    // Only `dataProducts` is consulted by getEffectiveDataContract for inheritance;
+    // the rest of the resolution path uses entity.getEntityReference() (id, name,
+    // type, fqn). Loading the full entity with "*" was pulling every relationship
+    // (owners, tags, followers, domains, extension) and the heavy stored JSON for
+    // the entity (e.g. a parquet container's dataModel can be MBs of column-schema
+    // metadata). For containers this single line drove the endpoint past the
+    // 1-minute timeout in production. Limit the fetch to the only field we need.
+    boolean supportsDataProducts =
+        Entity.getEntityRepository(entityType)
+            .getAllowedFields()
+            .contains(Entity.FIELD_DATA_PRODUCTS);
+    EntityInterface entity =
+        Entity.getEntity(
+            entityType, entityId, supportsDataProducts ? "dataProducts" : "", Include.NON_DELETED);
     DataContract dataContract = repository.getEffectiveDataContract(entity);
 
     if (dataContract == null) {

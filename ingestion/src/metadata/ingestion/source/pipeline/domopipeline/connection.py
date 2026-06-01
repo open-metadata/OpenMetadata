@@ -43,15 +43,15 @@ def get_connection(connection: DomoPipelineConnection) -> Domo:
         return DomoClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def test_connection(
     metadata: OpenMetadata,
     connection: Domo,
     service_connection: DomoPipelineConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

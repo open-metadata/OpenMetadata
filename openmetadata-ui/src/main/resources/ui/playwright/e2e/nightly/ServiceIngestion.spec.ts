@@ -83,6 +83,12 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       );
     });
 
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await service.deleteServiceByAPI(apiContext);
+      await afterAction();
+    });
+
     /**
      * Tests service creation and first ingestion run
      * @description Creates the service and triggers ingestion
@@ -118,18 +124,15 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
        * Tests database-specific ingestion behaviors
        * @description Runs additional checks for Postgres, Redshift, and MySQL services
        */
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
-      });
+      test(
+        service.serviceType === MYSQL
+          ? 'Profiler ingestion workflow'
+          : `Service specific tests`,
+        async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        }
+      );
     }
-
-    /**
-     * Tests service deletion flow
-     * @description Deletes the service and validates removal
-     */
-    test(`Delete ${key} service`, async ({ page }) => {
-      await service.deleteService(page);
-    });
   });
 });
 
@@ -478,7 +481,7 @@ test.describe.serial(
         async (route) => {
           // Mock the pipelineStatus endpoint to simulate high latency
           // eslint-disable-next-line playwright/no-wait-for-timeout
-          await page.waitForTimeout(8000);
+          await page.waitForTimeout(5000);
           await route.continue();
         }
       );
@@ -523,14 +526,23 @@ test.describe.serial(
       await pipelineRow.getByTestId('more-actions').click();
       await expect(page.getByTestId('run-button')).toBeVisible();
 
-      // Trigger a pipeline run via the run button
+      // Trigger a pipeline run via the run button.
+      // Also register a waiter for the pipelineStatus refresh that follows the trigger
+      // (the route mock adds 8s latency, so we must await the response before asserting).
+      // Both waiters are registered before the click to avoid race conditions.
       const triggerResponse = page.waitForResponse(
         (res) =>
           res.url().includes('/services/ingestionPipelines/trigger/') &&
           res.request().method() === 'POST'
       );
+      const statusRefreshResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/pipelineStatus') &&
+          res.request().method() === 'GET'
+      );
       await page.getByTestId('run-button').click();
       await triggerResponse;
+      await statusRefreshResponse;
 
       // Verify the run was triggered by checking the pipeline row shows a running state
       await expect(

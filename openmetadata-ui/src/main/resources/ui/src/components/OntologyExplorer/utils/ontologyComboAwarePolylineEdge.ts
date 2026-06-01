@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Group, Text as GText } from '@antv/g';
 import {
   ExtensionCategory,
   idOf,
@@ -19,6 +20,7 @@ import {
   type Node,
   type PolylineStyleProps,
 } from '@antv/g6';
+import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
 
 const COMBO_HIERARCHY = 'combo' as const;
 
@@ -37,6 +39,26 @@ type ElementLike = {
  * obstacles (built-in {@link Polyline} only avoids other nodes).
  */
 export class OntologyComboAwarePolyline extends Polyline {
+  override render(attributes: ParsedPolylineStyle, container: Group): void {
+    super.render(attributes, container);
+    this.drawCardinalityLabel(attributes, container, 'start');
+    this.drawCardinalityLabel(attributes, container, 'end');
+  }
+
+  private drawCardinalityLabel(
+    attributes: ParsedPolylineStyle,
+    container: Group,
+    end: 'start' | 'end'
+  ): void {
+    const endpoints = this.getEndpoints(attributes);
+    const attrs = computeCardinalityLabelAttrs(
+      attributes as Record<string, unknown>,
+      [endpoints[0] as [number, number], endpoints[1] as [number, number]],
+      end
+    );
+    this.upsert(`cardinality-${end}`, GText, attrs, container);
+  }
+
   private buildRoutingObstacleNodes(
     sourceNode: { id: string },
     targetNode: { id: string },

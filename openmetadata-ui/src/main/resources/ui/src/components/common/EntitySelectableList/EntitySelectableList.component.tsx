@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Popover } from 'antd';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
@@ -29,6 +29,11 @@ export const EntitySelectableList = <T,>({
   multiSelect = true,
 }: EntitySelectableListProps<T>) => {
   const [popupVisible, setPopupVisible] = useState(false);
+
+  const selectedItemsAsEntityReferences = useMemo(
+    () => config.toEntityReference(selectedItems),
+    [selectedItems, config.toEntityReference]
+  );
 
   const handleUpdate = async (updateItems: EntityReference[]) => {
     const convertedItems = config.fromEntityReference(updateItems);
@@ -49,7 +54,7 @@ export const EntitySelectableList = <T,>({
               multiSelect={multiSelect}
               searchBarDataTestId={config.searchBarDataTestId}
               searchPlaceholder={config.searchPlaceholder}
-              selectedItems={config.toEntityReference(selectedItems)}
+              selectedItems={selectedItemsAsEntityReferences}
               onCancel={onCancel}
               onUpdate={handleUpdate}
             />

@@ -12,8 +12,9 @@
 """
 Datalake S3 Client
 """
+
 from functools import partial
-from typing import Callable, Iterable, Optional, Set
+from typing import Callable, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -26,7 +27,7 @@ from metadata.utils.s3_utils import list_s3_objects
 
 logger = ingestion_logger()
 
-S3_COLD_STORAGE_CLASSES: Set[str] = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}
+S3_COLD_STORAGE_CLASSES: Set[str] = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}  # noqa: UP006
 
 
 class DatalakeS3Client(DatalakeBaseClient):
@@ -35,8 +36,16 @@ class DatalakeS3Client(DatalakeBaseClient):
         if not config.securityConfig:
             raise RuntimeError("S3Config securityConfig can't be None.")
 
-        s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
-        return cls(client=s3_client)
+        aws_client = AWSClient(config.securityConfig)
+        session = aws_client.create_session()
+        if config.securityConfig.endPointURL:
+            s3_client = session.client(
+                service_name="s3",
+                endpoint_url=str(config.securityConfig.endPointURL),
+            )
+        else:
+            s3_client = session.client(service_name="s3")
+        return cls(client=s3_client, session=session)
 
     def update_client_database(self, config, database_name: str):
         # For the S3 Client we don't need to do anything when changing the database
@@ -45,7 +54,7 @@ class DatalakeS3Client(DatalakeBaseClient):
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
+    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
         if bucket_name:
             yield bucket_name
         else:
@@ -55,9 +64,9 @@ class DatalakeS3Client(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],
+        prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
-    ) -> Iterable[str]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
         kwargs = {"Bucket": bucket_name}
 
         if prefix:
@@ -76,11 +85,9 @@ class DatalakeS3Client(DatalakeBaseClient):
                         f"(StorageClass: {storage_class}, ArchiveStatus: {archive_status})"
                     )
                     continue
-            yield key["Key"]
+            yield key["Key"], key.get("Size")
 
-    def get_folders_prefix(
-        self, bucket_name: str, prefix: Optional[str]
-    ) -> Iterable[str]:
+    def get_folders_prefix(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:  # noqa: UP045
         for page in self._client.get_paginator("list_objects_v2").paginate(
             Bucket=bucket_name, Prefix=prefix or "", Delimiter="/"
         ):
@@ -91,7 +98,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         # For the S3 Client we don't need to do anything when closing the connection
         pass
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
 
         if bucket_name:
             return partial(self._client.list_objects, Bucket=bucket_name)

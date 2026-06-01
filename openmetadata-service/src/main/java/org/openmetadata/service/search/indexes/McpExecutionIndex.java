@@ -23,6 +23,11 @@ public record McpExecutionIndex(McpExecution mcpExecution) implements SearchInde
     return mcpExecution;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.MCP_EXECUTION;
+  }
+
   private void setParentRelationships(Map<String, Object> doc) {
     if (mcpExecution.getServer() == null) {
       return;

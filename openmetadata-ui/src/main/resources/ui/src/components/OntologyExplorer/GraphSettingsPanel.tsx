@@ -15,10 +15,11 @@ import {
   Button,
   ButtonUtility,
   Dropdown,
+  Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Settings01, X } from '@untitledui/icons';
+import { Settings01, X } from '@untitledui/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutType } from './OntologyExplorer.constants';
@@ -51,7 +52,6 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
   const layoutItems = useMemo(
     () => [
       { id: LayoutType.Hierarchical, label: t('label.hierarchical') },
-      { id: LayoutType.Radial, label: t('label.radial') },
       { id: LayoutType.Circular, label: t('label.circular') },
     ],
     [t]
@@ -81,34 +81,27 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
             className="tw:text-xs tw:font-semibold tw:text-gray-500">
             {t('label.layout')}
           </Typography>
-          <Dropdown.Root>
-            <Button
-              className="tw:w-full tw:justify-between"
-              color="secondary"
-              iconTrailing={ChevronDown}
-              size="sm">
-              {layoutItems.find((i) => i.id === settings.layout)?.label ??
-                t('label.layout')}
-            </Button>
-            <Dropdown.Popover className="tw:w-72 tw:min-w-0">
-              <Dropdown.Menu
-                className="tw:w-full"
-                items={layoutItems}
-                onAction={(key) => {
-                  const layout = layoutItems.find((i) => i.id === key)?.id;
-                  if (layout) {
-                    handleLayoutChange(layout);
-                  }
-                }}>
-                {(item) => (
-                  <Dropdown.Item id={item.id} label={item.label ?? ''} />
-                )}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
+          <Select
+            className="tw:w-full"
+            data-testid="graph-settings-layout-select"
+            fontSize="sm"
+            items={layoutItems}
+            size="sm"
+            value={settings.layout}
+            onChange={(key) => {
+              const layout = layoutItems.find((i) => i.id === key)?.id;
+              if (layout) {
+                handleLayoutChange(layout);
+              }
+            }}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
         </div>
         <div className="tw:flex tw:flex-col tw:gap-3 tw:py-4">
           <Toggle
+            data-testid="graph-settings-edge-labels-toggle"
             isSelected={settings.showEdgeLabels}
             label={t('label.edge-labels')}
             size="sm"
@@ -127,7 +120,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         iconLeading={<Settings01 height={20} width={20} />}
         size="sm"
       />
-      <Dropdown.Popover aria-label={t('label.graph-settings')}>
+      <Dropdown.Popover aria-label={t('label.graph-settings')} placement="top">
         {popoverContent}
       </Dropdown.Popover>
     </Dropdown.Root>

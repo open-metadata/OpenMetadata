@@ -30,9 +30,7 @@ table = Table(
     id=Uuid(root=uuid.uuid4()),
     name=EntityName(root="customers"),
     displayName=None,
-    fullyQualifiedName=FullyQualifiedEntityName(
-        root="Service.database.schema.customers"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers"),
     description=Markdown(root="testing comments here"),
     tableType=TableType.Partitioned,
     columns=[
@@ -46,9 +44,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="integer",
             description=Markdown(root="the ID of the customer"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.customer_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.customer_id"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -61,9 +57,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="character varying(20)",
             description=Markdown(root="Customer's first name. PII."),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.first_name"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.first_name"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -76,9 +70,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="character varying(2)",
             description=Markdown(root="First letter of the Last name of the customer"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.last_name"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.last_name"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -91,9 +83,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="date",
             description=Markdown(root="Date (UTC) of a customer's first order"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.first_order"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.first_order"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -106,9 +96,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="date",
             description=Markdown(root="Date (UTC) of a customer's most recent order"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.most_recent_order"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.most_recent_order"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -120,12 +108,8 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="bigint",
-            description=Markdown(
-                root="Count of the number of orders a customer has placed"
-            ),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.customers.number_of_orders"
-            ),
+            description=Markdown(root="Count of the number of orders a customer has placed"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers.number_of_orders"),
             constraint=Constraint.NULL,
         ),
         Column(

@@ -25,7 +25,7 @@ import {
 import { TFunction } from 'i18next';
 import { ROUTES } from './constants';
 
-export const CUSTOM_SIDEBAR_ROUTES = [ROUTES.DATA_MARKETPLACE];
+export const CUSTOM_SIDEBAR_ROUTES: string[] = [];
 
 export interface SidebarConfig {
   items: (NavItemType | NavItemDividerType)[];

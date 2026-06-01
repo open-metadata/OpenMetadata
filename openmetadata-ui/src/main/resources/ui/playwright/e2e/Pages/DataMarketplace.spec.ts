@@ -128,7 +128,8 @@ test.describe(
       });
     });
 
-    test('Search returns results and clicking navigates to entity', async ({
+    // Skipped: /data-marketplace/* sub-routes removed in PR #27377; re-enable when the standalone marketplace shell is reintroduced.
+    test.skip('Search returns results and clicking navigates to entity', async ({
       page,
     }) => {
       test.slow();
@@ -170,7 +171,7 @@ test.describe(
       });
     });
 
-    test('Widget card click navigates to entity detail page', async ({
+    test.skip('Widget card click navigates to entity detail page', async ({
       page,
     }) => {
       test.slow();
@@ -201,7 +202,7 @@ test.describe(
       });
     });
 
-    test('View All links navigate correctly', async ({ page }) => {
+    test.skip('View All links navigate correctly', async ({ page }) => {
       test.slow();
 
       await test.step('Navigate to marketplace', async () => {
@@ -235,7 +236,7 @@ test.describe(
 
       await test.step('Open add data product drawer', async () => {
         await page.getByTestId('add-data-product-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill data product form and select domain', async () => {
@@ -246,8 +247,9 @@ test.describe(
           domains: [],
         } as DataProduct['data']);
 
-        const domainInput = page.getByTestId('domain-select');
-        await domainInput.scrollIntoViewIfNeeded();
+        const domainContainer = page.getByTestId('domain-select');
+        await domainContainer.scrollIntoViewIfNeeded();
+        const domainInput = domainContainer.getByRole('combobox');
         await domainInput.click();
 
         const searchDomain = page.waitForResponse((response) =>
@@ -273,7 +275,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('marketplace-dp-widget')).toBeVisible();
       });
@@ -290,7 +292,7 @@ test.describe(
 
       await test.step('Open add domain drawer', async () => {
         await page.getByTestId('add-domain-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill domain form and select type', async () => {
@@ -314,7 +316,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(
           page.getByTestId('marketplace-domains-widget')

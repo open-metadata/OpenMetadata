@@ -20,6 +20,7 @@ import { PAGE_SIZE } from '../constants/constants';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -33,7 +34,7 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;
@@ -46,7 +47,12 @@ type TagWidgetKeys =
   | DetailPageWidgetKeys.DOMAIN;
 
 class TagClassBase {
+  static filterClassification: string[] = [];
   defaultWidgetHeight: Record<TagWidgetKeys, number>;
+
+  public setFilterClassification(value: string[]) {
+    TagClassBase.filterClassification = value;
+  }
 
   constructor() {
     this.defaultWidgetHeight = {
@@ -206,6 +212,7 @@ class TagClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

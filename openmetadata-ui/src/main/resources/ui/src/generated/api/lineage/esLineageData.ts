@@ -64,6 +64,12 @@ export interface EsLineageData {
      */
     sqlQuery?: string;
     /**
+     * Key referencing the full SQL text in the parent document's lineageSqlQueries map. Set
+     * when the same SQL appears in multiple edges to avoid storing it repeatedly. Look up the
+     * actual SQL in lineageSqlQueries[sqlQueryKey].
+     */
+    sqlQueryKey?: string;
+    /**
      * Lineage path through temporary/intermediate tables. Each element represents a hop with
      * fromEntity and toEntity fields.
      */

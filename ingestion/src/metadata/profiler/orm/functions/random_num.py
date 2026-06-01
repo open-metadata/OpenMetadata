@@ -16,6 +16,7 @@ Returns a column with random values
 between 0 and 100 to help us draw sample
 data.
 """
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 

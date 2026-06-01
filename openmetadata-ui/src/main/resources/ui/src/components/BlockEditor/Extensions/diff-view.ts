@@ -60,18 +60,19 @@ export default Node.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes, node }) {
-    const diffNode = document.createElement('span');
-
-    Object.keys(HTMLAttributes).forEach((key) => {
-      diffNode.setAttribute(key, HTMLAttributes[key]);
-    });
-
-    diffNode.setAttribute('data-diff', 'true');
-    diffNode.innerHTML = node.textContent;
-
-    return {
-      dom: diffNode,
+  renderHTML({ HTMLAttributes }) {
+    const safeAttrs: Record<string, string> = {
+      'data-diff': 'true',
     };
+
+    if (HTMLAttributes['class']) {
+      safeAttrs['class'] = HTMLAttributes['class'];
+    }
+
+    if (HTMLAttributes['data-testid']) {
+      safeAttrs['data-testid'] = HTMLAttributes['data-testid'];
+    }
+
+    return ['span', safeAttrs, 0];
   },
 });

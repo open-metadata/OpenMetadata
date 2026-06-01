@@ -18,12 +18,13 @@ import jakarta.servlet.http.HttpServletResponseWrapper;
 import jakarta.servlet.http.HttpSession;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
@@ -104,7 +105,7 @@ public class McpCallbackServlet extends HttpServlet {
         return mcpConfig.getBaseUrl();
       }
     } catch (Exception e) {
-      LOG.warn("Failed to get base URL from MCP config: {}", e.getMessage());
+      LOG.warn("Failed to get base URL from MCP config", e);
     }
     try {
       SystemRepository systemRepository = Entity.getSystemRepository();
@@ -119,8 +120,13 @@ public class McpCallbackServlet extends HttpServlet {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Could not get base URL from system settings: {}", e.getMessage());
+      LOG.warn("Could not get base URL from system settings", e);
     }
+
+    LOG.error(
+        "No base URL configured in MCP settings or system settings. "
+            + "Falling back to http://localhost:8585 — this is only suitable for local development. "
+            + "Configure a proper base URL for production deployments.");
     return "http://localhost:8585";
   }
 
@@ -296,54 +302,21 @@ public class McpCallbackServlet extends HttpServlet {
           AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI, baseUrl + "/mcp/callback");
       LOG.debug("Set session SSO callback URL to: {}", ssoCallbackUrl);
 
-      AtomicBoolean handlerWroteError = new AtomicBoolean(false);
-      AtomicInteger capturedStatus = new AtomicInteger(0);
-      ByteArrayOutputStream errorSink = new ByteArrayOutputStream();
-      HttpServletResponseWrapper responseWrapper =
-          new HttpServletResponseWrapper(response) {
-            @Override
-            public void sendRedirect(String location) throws IOException {
-              LOG.info("Intercepted redirect from SSO handler");
-              LOG.debug("Redirect target: {}", location);
-            }
+      BufferedServletResponseWrapper callbackResponse =
+          new BufferedServletResponseWrapper(response);
+      ssoHandler.handleCallback(request, callbackResponse);
 
-            @Override
-            public void setStatus(int sc) {
-              if (sc >= 400) {
-                capturedStatus.set(sc);
-                handlerWroteError.set(true);
-              }
-            }
-
-            @Override
-            public ServletOutputStream getOutputStream() throws IOException {
-              if (handlerWroteError.get()) {
-                return new ServletOutputStream() {
-                  @Override
-                  public void write(int b) {
-                    errorSink.write(b);
-                  }
-
-                  @Override
-                  public boolean isReady() {
-                    return true;
-                  }
-
-                  @Override
-                  public void setWriteListener(WriteListener writeListener) {}
-                };
-              }
-              return super.getOutputStream();
-            }
-          };
-
-      ssoHandler.handleCallback(request, responseWrapper);
-
-      if (handlerWroteError.get()) {
-        String errorBody = errorSink.toString(StandardCharsets.UTF_8);
-        LOG.error("SSO token exchange failed with HTTP {}: {}", capturedStatus.get(), errorBody);
+      if (callbackResponse.getStatusCode() >= HttpServletResponse.SC_BAD_REQUEST) {
+        String errorBody = callbackResponse.getCapturedBody();
+        LOG.error(
+            "SSO token exchange failed with HTTP {}: {}",
+            callbackResponse.getStatusCode(),
+            errorBody);
         throw new IllegalStateException(
-            "SSO provider token exchange failed (HTTP " + capturedStatus.get() + "): " + errorBody);
+            "SSO provider token exchange failed (HTTP "
+                + callbackResponse.getStatusCode()
+                + "): "
+                + errorBody);
       }
 
       OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
@@ -386,8 +359,15 @@ public class McpCallbackServlet extends HttpServlet {
 
       LOG.debug("Extracted user identity from SSO callback");
 
-      userSSOProvider.handleSSOCallbackWithDbState(
-          request, response, userName, email, "mcp:" + pendingRequest.authRequestId());
+      processBufferedCallbackResponse(
+          response,
+          wrappedResponse ->
+              userSSOProvider.handleSSOCallbackWithDbState(
+                  request,
+                  wrappedResponse,
+                  userName,
+                  email,
+                  "mcp:" + pendingRequest.authRequestId()));
 
       LOG.info("MCP OAuth SSO callback completed successfully");
 
@@ -473,9 +453,195 @@ public class McpCallbackServlet extends HttpServlet {
 
     session.removeAttribute("mcp.auth.request.id");
 
-    userSSOProvider.handleSSOCallbackWithDbState(
-        request, response, userName, email, "mcp:" + authRequestId);
+    processBufferedCallbackResponse(
+        response,
+        wrappedResponse ->
+            userSSOProvider.handleSSOCallbackWithDbState(
+                request, wrappedResponse, userName, email, "mcp:" + authRequestId));
 
     LOG.info("MCP OAuth direct ID token flow completed successfully");
+  }
+
+  private void processBufferedCallbackResponse(
+      HttpServletResponse response, BufferedResponseAction action) throws Exception {
+    BufferedServletResponseWrapper bufferedResponse = new BufferedServletResponseWrapper(response);
+    action.execute(bufferedResponse);
+    bufferedResponse.commitTo(response);
+  }
+
+  @FunctionalInterface
+  private interface BufferedResponseAction {
+    void execute(HttpServletResponse response) throws Exception;
+  }
+
+  private static final class BufferedServletResponseWrapper extends HttpServletResponseWrapper {
+    private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    private final ServletOutputStream outputStream = new BufferedServletOutputStream(buffer);
+    private PrintWriter writer;
+    private Integer statusCode = HttpServletResponse.SC_OK;
+    private String contentType;
+    private String characterEncoding = StandardCharsets.UTF_8.name();
+    private String redirectLocation;
+    private boolean committed;
+    private boolean outputStreamRequested;
+    private boolean writerRequested;
+
+    BufferedServletResponseWrapper(HttpServletResponse response) {
+      super(response);
+    }
+
+    int getStatusCode() {
+      return statusCode;
+    }
+
+    String getCapturedBody() throws IOException {
+      flushBuffer();
+      return buffer.toString(StandardCharsets.UTF_8);
+    }
+
+    void commitTo(HttpServletResponse response) throws IOException {
+      flushBuffer();
+      if (redirectLocation != null) {
+        response.sendRedirect(redirectLocation);
+        return;
+      }
+
+      response.setStatus(statusCode);
+      if (characterEncoding != null) {
+        response.setCharacterEncoding(characterEncoding);
+      }
+      if (contentType != null) {
+        response.setContentType(contentType);
+      }
+      if (buffer.size() > 0) {
+        response.getOutputStream().write(buffer.toByteArray());
+      }
+      response.flushBuffer();
+    }
+
+    @Override
+    public void setStatus(int sc) {
+      statusCode = sc;
+    }
+
+    @Override
+    public void sendError(int sc) {
+      statusCode = sc;
+      committed = true;
+    }
+
+    @Override
+    public void sendError(int sc, String msg) throws IOException {
+      statusCode = sc;
+      committed = true;
+      if (msg != null) {
+        writeToBuffer(msg);
+      }
+    }
+
+    @Override
+    public void sendRedirect(String location) {
+      redirectLocation = location;
+      committed = true;
+    }
+
+    @Override
+    public void setContentType(String type) {
+      contentType = type;
+    }
+
+    @Override
+    public String getContentType() {
+      return contentType;
+    }
+
+    @Override
+    public void setCharacterEncoding(String charset) {
+      if (!writerRequested) {
+        characterEncoding = charset;
+      }
+    }
+
+    @Override
+    public String getCharacterEncoding() {
+      return characterEncoding;
+    }
+
+    @Override
+    public ServletOutputStream getOutputStream() {
+      if (writerRequested) {
+        throw new IllegalStateException("getWriter() has already been called on this response");
+      }
+      outputStreamRequested = true;
+      return outputStream;
+    }
+
+    @Override
+    public PrintWriter getWriter() {
+      if (outputStreamRequested) {
+        throw new IllegalStateException(
+            "getOutputStream() has already been called on this response");
+      }
+      if (writer == null) {
+        writer =
+            new PrintWriter(
+                new OutputStreamWriter(
+                    buffer,
+                    Charset.forName(
+                        characterEncoding != null
+                            ? characterEncoding
+                            : StandardCharsets.UTF_8.name())),
+                true);
+      }
+      writerRequested = true;
+      return writer;
+    }
+
+    @Override
+    public void flushBuffer() throws IOException {
+      if (writer != null) {
+        writer.flush();
+      }
+      if (outputStreamRequested) {
+        outputStream.flush();
+      }
+      committed = true;
+    }
+
+    @Override
+    public boolean isCommitted() {
+      return committed;
+    }
+
+    private void writeToBuffer(String value) throws IOException {
+      if (writer != null) {
+        writer.flush();
+      }
+      buffer.write(
+          value.getBytes(
+              Charset.forName(
+                  characterEncoding != null ? characterEncoding : StandardCharsets.UTF_8.name())));
+    }
+  }
+
+  private static final class BufferedServletOutputStream extends ServletOutputStream {
+    private final ByteArrayOutputStream buffer;
+
+    private BufferedServletOutputStream(ByteArrayOutputStream buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public void write(int b) {
+      buffer.write(b);
+    }
+
+    @Override
+    public boolean isReady() {
+      return true;
+    }
+
+    @Override
+    public void setWriteListener(WriteListener writeListener) {}
   }
 }

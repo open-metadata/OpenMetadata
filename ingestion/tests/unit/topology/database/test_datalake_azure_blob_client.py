@@ -59,9 +59,7 @@ class TestDatalakeAzureBlobClient(unittest.TestCase):
         test_fn()  # Execute the returned callable
 
         # Assert
-        self.mock_blob_service_client.list_containers.assert_called_once_with(
-            name_starts_with=""
-        )
+        self.mock_blob_service_client.list_containers.assert_called_once_with(name_starts_with="")
 
     def test_get_test_list_buckets_fn_without_bucket_iterates_results(self):
         """
@@ -93,18 +91,14 @@ class TestDatalakeAzureBlobClient(unittest.TestCase):
         """
         # Arrange
         mock_container_client = MagicMock()
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
         # Act
         test_fn = self.client.get_test_list_buckets_fn(bucket_name="decube")
         test_fn()
 
         # Assert
-        self.mock_blob_service_client.get_container_client.assert_called_once_with(
-            "decube"
-        )
+        self.mock_blob_service_client.get_container_client.assert_called_once_with("decube")
         mock_container_client.get_container_properties.assert_called_once()
         self.mock_blob_service_client.list_containers.assert_not_called()
 
@@ -116,12 +110,8 @@ class TestDatalakeAzureBlobClient(unittest.TestCase):
         """
         # Arrange
         mock_container_client = MagicMock()
-        mock_container_client.get_container_properties.side_effect = (
-            ResourceNotFoundError("Container not found")
-        )
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        mock_container_client.get_container_properties.side_effect = ResourceNotFoundError("Container not found")
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
         # Act & Assert
         test_fn = self.client.get_test_list_buckets_fn(bucket_name="nonexistent")
@@ -180,9 +170,7 @@ class TestDatalakeAzureBlobClientFromConfig(unittest.TestCase):
         mock_config = MagicMock()
         mock_config.securityConfig = MagicMock()
         mock_blob_client = MagicMock()
-        mock_azure_client.return_value.create_blob_client.return_value = (
-            mock_blob_client
-        )
+        mock_azure_client.return_value.create_blob_client.return_value = mock_blob_client
 
         # Act
         client = DatalakeAzureBlobClient.from_config(mock_config)
@@ -286,9 +274,7 @@ class TestDatalakeAzureBlobClientSchemaMethods(unittest.TestCase):
         result = list(self.client.get_database_schema_names(bucket_name="decube"))
 
         # Assert
-        self.mock_blob_service_client.list_containers.assert_called_once_with(
-            name_starts_with="decube"
-        )
+        self.mock_blob_service_client.list_containers.assert_called_once_with(name_starts_with="decube")
         self.assertEqual(result, ["decube", "decube-backup"])
 
     def test_get_database_schema_names_without_bucket_lists_all(self):
@@ -307,9 +293,7 @@ class TestDatalakeAzureBlobClientSchemaMethods(unittest.TestCase):
         result = list(self.client.get_database_schema_names(bucket_name=None))
 
         # Assert
-        self.mock_blob_service_client.list_containers.assert_called_once_with(
-            name_starts_with=""
-        )
+        self.mock_blob_service_client.list_containers.assert_called_once_with(name_starts_with="")
         self.assertEqual(result, ["container1", "container2"])
 
 
@@ -334,23 +318,16 @@ class TestDatalakeAzureBlobClientTableMethods(unittest.TestCase):
         mock_blob2 = MagicMock()
         mock_blob2.name = "atlas-wind/file2.csv"
         mock_container_client.list_blobs.return_value = [mock_blob1, mock_blob2]
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
         # Act
-        result = list(
-            self.client.get_table_names(bucket_name="decube", prefix="atlas-wind/")
-        )
+        result = list(self.client.get_table_names(bucket_name="decube", prefix="atlas-wind/"))
 
         # Assert
-        self.mock_blob_service_client.get_container_client.assert_called_once_with(
-            "decube"
-        )
-        mock_container_client.list_blobs.assert_called_once_with(
-            name_starts_with="atlas-wind/"
-        )
-        self.assertEqual(result, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
+        self.mock_blob_service_client.get_container_client.assert_called_once_with("decube")
+        mock_container_client.list_blobs.assert_called_once_with(name_starts_with="atlas-wind/")
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
 
     def test_get_table_names_with_no_prefix(self):
         """
@@ -361,9 +338,7 @@ class TestDatalakeAzureBlobClientTableMethods(unittest.TestCase):
         # Arrange
         mock_container_client = MagicMock()
         mock_container_client.list_blobs.return_value = []
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
         # Act
         result = list(self.client.get_table_names(bucket_name="decube", prefix=None))
@@ -380,10 +355,11 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
         self.mock_blob_service_client = MagicMock()
         self.client = DatalakeAzureBlobClient(client=self.mock_blob_service_client)
 
-    def _make_blob(self, name, blob_tier=None):
+    def _make_blob(self, name, blob_tier=None, size=1024):
         blob = MagicMock()
         blob.name = name
         blob.blob_tier = blob_tier
+        blob.size = size
         return blob
 
     def test_get_table_names_skip_cold_storage_filters_cold_tiers(self):
@@ -400,17 +376,12 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
             self._make_blob("archive_file.csv", blob_tier="Archive"),
             self._make_blob("no_tier_file.csv", blob_tier=None),
         ]
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="container", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="container", prefix=None, skip_cold_storage=True))
 
-        self.assertEqual(result, ["hot_file.csv", "no_tier_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "no_tier_file.csv"])
 
     def test_get_table_names_skip_cold_storage_false_returns_all(self):
         """
@@ -423,17 +394,12 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
             self._make_blob("hot_file.csv", blob_tier="Hot"),
             self._make_blob("archive_file.csv", blob_tier="Archive"),
         ]
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="container", prefix=None, skip_cold_storage=False
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="container", prefix=None, skip_cold_storage=False))
 
-        self.assertEqual(result, ["hot_file.csv", "archive_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "archive_file.csv"])
 
     def test_get_table_names_default_skip_cold_storage_is_false(self):
         """
@@ -445,13 +411,12 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
         mock_container_client.list_blobs.return_value = [
             self._make_blob("archive_file.csv", blob_tier="Archive"),
         ]
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
         result = list(self.client.get_table_names(bucket_name="container", prefix=None))
 
-        self.assertEqual(result, ["archive_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["archive_file.csv"])
 
     def test_get_table_names_skip_cold_filters_each_cold_tier(self):
         """
@@ -460,19 +425,11 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
         THEN: All cold-tier blobs should be filtered out
         """
         mock_container_client = MagicMock()
-        blobs = [
-            self._make_blob(f"{tier}.csv", blob_tier=tier) for tier in AZURE_COLD_TIERS
-        ]
+        blobs = [self._make_blob(f"{tier}.csv", blob_tier=tier) for tier in AZURE_COLD_TIERS]
         mock_container_client.list_blobs.return_value = blobs
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
+        self.mock_blob_service_client.get_container_client.return_value = mock_container_client
 
-        result = list(
-            self.client.get_table_names(
-                bucket_name="container", prefix=None, skip_cold_storage=True
-            )
-        )
+        result = list(self.client.get_table_names(bucket_name="container", prefix=None, skip_cold_storage=True))
 
         self.assertEqual(result, [])
 

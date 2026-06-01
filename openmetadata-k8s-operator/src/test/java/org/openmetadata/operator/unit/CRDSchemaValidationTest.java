@@ -22,6 +22,7 @@ import io.fabric8.kubernetes.api.model.EnvVarBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.PodSecurityContext;
+import io.fabric8.kubernetes.api.model.TolerationBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -103,6 +104,14 @@ class CRDSchemaValidationTest {
           podSpec.setEnv(List.of());
           podSpec.setServiceAccountName("sa");
           podSpec.setNodeSelector(Map.of());
+          podSpec.setTolerations(
+              List.of(
+                  new TolerationBuilder()
+                      .withKey("key")
+                      .withOperator("Equal")
+                      .withValue("value")
+                      .withEffect("NoSchedule")
+                      .build()));
           podSpec.setSecurityContext(new PodSecurityContext());
           podSpec.setLabels(Map.of());
           podSpec.setAnnotations(Map.of());
@@ -122,6 +131,7 @@ class CRDSchemaValidationTest {
         expectedPodSpecFields.contains("nodeSelector"), "CRD should have nodeSelector field");
     assertTrue(
         expectedPodSpecFields.contains("securityContext"), "CRD should have securityContext field");
+    assertTrue(expectedPodSpecFields.contains("tolerations"), "CRD should have tolerations field");
     assertTrue(expectedPodSpecFields.contains("labels"), "CRD should have labels field");
     assertTrue(expectedPodSpecFields.contains("annotations"), "CRD should have annotations field");
   }

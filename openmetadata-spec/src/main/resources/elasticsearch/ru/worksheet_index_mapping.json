@@ -333,61 +333,8 @@
             "type": "integer"
           },
           "children": {
-            "properties": {
-              "name": {
-                "type": "text",
-                "analyzer": "om_analyzer",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256,
-                    "normalizer": "lowercase_normalizer"
-                  }
-                }
-              },
-              "displayName": {
-                "type": "text",
-                "analyzer": "om_analyzer",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
-                  }
-                }
-              },
-              "description": {
-                "type": "text",
-                "analyzer": "om_analyzer"
-              },
-              "dataType": {
-                "type": "keyword"
-              },
-              "dataTypeDisplay": {
-                "type": "keyword"
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "tags": {
-                "properties": {
-                  "tagFQN": {
-                    "type": "keyword"
-                  },
-                  "labelType": {
-                    "type": "keyword"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "source": {
-                    "type": "keyword"
-                  },
-                  "state": {
-                    "type": "keyword"
-                  }
-                }
-              }
-            }
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -693,6 +640,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -750,6 +700,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -769,6 +722,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

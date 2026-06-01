@@ -12,6 +12,7 @@
 """
 Profiler utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path

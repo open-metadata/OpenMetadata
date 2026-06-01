@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
@@ -24,7 +28,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-
 // Grant clipboard permissions for copy link tests
 test.use({
   contextOptions: {
@@ -56,7 +59,9 @@ test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
@@ -65,7 +70,9 @@ test.describe('Container entity specific tests ', () => {
   test.afterAll('Clean up', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await container.delete(apiContext);
 
@@ -92,7 +99,9 @@ test.describe('Container entity specific tests ', () => {
   }) => {
     await container.visitEntityPage(page);
 
-    await page.getByText('Children').click();
+    // Tab is identified by EntityTabs.CHILDREN ('children'); the displayed text
+    // is now 'Containers' (label.container-plural) so target the testid, not text.
+    await page.getByTestId('children').click();
 
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -102,7 +111,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=15'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=15')
     );
     await page.getByTestId('next').click();
     await childrenResponse;
@@ -114,7 +125,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=25&offset=0'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=25&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
@@ -132,7 +145,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Back to the original page size
     const childrenResponseSizeChange2 = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=0'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
@@ -152,9 +167,8 @@ test.describe('Container entity specific tests ', () => {
     page,
     browser,
   }) => {
-    const { apiContext, afterAction: afterSetup } = await performAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction: afterSetup } =
+      await getDefaultAdminAPIContext(browser);
     const nestedContainer = new ContainerClass();
     const structColName = `struct_col_${uuid()}`;
     const nestedFieldName = `nested_field_${uuid()}`;
@@ -162,7 +176,7 @@ test.describe('Container entity specific tests ', () => {
     nestedContainer.entity.dataModel.columns = [
       {
         name: structColName,
-        dataType: 'STRUCT',
+        dataType: DataType.Struct,
         dataTypeDisplay: 'struct',
         description: 'A struct column with nested fields.',
         tags: [],
@@ -170,7 +184,7 @@ test.describe('Container entity specific tests ', () => {
         children: [
           {
             name: nestedFieldName,
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             dataLength: 100,
             dataTypeDisplay: 'varchar',
             description: 'A nested field inside the struct.',
@@ -302,7 +316,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     const serviceRes = await apiContext.post(
       '/api/v1/services/storageServices',
@@ -358,7 +374,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
@@ -443,5 +461,470 @@ test.describe('Deeply nested container navigation', () => {
       await expect(breadcrumb).not.toContainText(deepContainer3Name);
       await expect(breadcrumb).not.toContainText(deepContainer4Name);
     });
+  });
+});
+
+// Children tab search + Deleted toggle.
+//
+// The /children listing on the Container detail page (renamed from "Children"
+// to "Containers" — same EntityTabs.CHILDREN tab key) now supports:
+//   - case-insensitive substring search via ?q=...
+//   - the same Deleted / non-deleted Switch the service-level Containers tab
+//     already had.
+//
+// These tests pin three behaviours that are easy to regress at the wiring
+// layer (the SQL is covered by ContainerResourceIT):
+//   1. Search filters the parent's direct children only — siblings of the
+//      parent and their descendants must never leak into the result. This is
+//      the per-parent dual of the FQN-depth predicate already enforced by
+//      listDirectChildSummariesByParentHash; if a future change forwards the
+//      query to a service-wide search index instead of the FQN-scoped DAO
+//      method, that scoping would silently break.
+//   2. The Deleted Switch flips include between non-deleted (default) and
+//      deleted, hiding/showing soft-deleted children.
+//   3. Search and the Deleted Switch compose — a deleted child is reachable
+//      via search only when the toggle is on.
+test.describe('Children tab search + Deleted toggle', () => {
+  test.slow(true);
+
+  const serviceName = `pw-storage-service-search-${uuid()}`;
+  const parentName = `pw-search-parent-${uuid()}`;
+  const siblingParentName = `pw-search-other-parent-${uuid()}`;
+
+  // Suffixes are stable so search assertions don't have to thread uuids; full
+  // names get a uuid baked in so the entities don't collide with prior runs.
+  const aliceChildName = `pw-search-alice-${uuid()}`;
+  const aliceClonedSiblingName = `pw-search-alice-clone-${uuid()}`;
+  const bobChildName = `pw-search-bob-${uuid()}`;
+  const carolChildName = `pw-search-carol-${uuid()}`;
+  const deletedChildName = `pw-search-deleted-${uuid()}`;
+  const SEARCH_TERM_ALICE = 'alice';
+  const SEARCH_TERM_DELETED = 'deleted';
+  const SEARCH_TERM_NO_MATCH = 'zzzdoesnotmatch';
+
+  let parentFqn = '';
+
+  test.beforeAll('Setup search/deleted fixtures', async ({ browser }) => {
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    await apiContext.post('/api/v1/services/storageServices', {
+      data: {
+        name: serviceName,
+        ...S3_SERVICE_CONFIG,
+      },
+    });
+
+    // Two parents under the same service so we can verify search results
+    // don't leak across parents. The "alice clone" sibling forces this:
+    // it shares the SEARCH_TERM_ALICE substring but lives under a different
+    // parent; it must NOT appear when searching from the search-parent's
+    // children tab.
+    const parentRes = await apiContext.post('/api/v1/containers', {
+      data: { name: parentName, service: serviceName },
+    });
+    const parent = await parentRes.json();
+    parentFqn = parent.fullyQualifiedName;
+
+    const siblingParentRes = await apiContext.post('/api/v1/containers', {
+      data: { name: siblingParentName, service: serviceName },
+    });
+    const siblingParent = await siblingParentRes.json();
+
+    for (const childName of [
+      aliceChildName,
+      bobChildName,
+      carolChildName,
+      deletedChildName,
+    ]) {
+      await apiContext.post('/api/v1/containers', {
+        data: {
+          name: childName,
+          service: serviceName,
+          parent: { id: parent.id, type: 'container' },
+        },
+      });
+    }
+
+    await apiContext.post('/api/v1/containers', {
+      data: {
+        name: aliceClonedSiblingName,
+        service: serviceName,
+        parent: { id: siblingParent.id, type: 'container' },
+      },
+    });
+
+    // Soft-delete one of the parent's children so the Deleted toggle has
+    // something to reveal. Direct API soft-delete is faster + more reliable
+    // than driving the manage-button flow for each setup run.
+    const deletedChildRes = await apiContext.get(
+      `/api/v1/containers/name/${encodeURIComponent(
+        `${serviceName}.${parentName}.${deletedChildName}`
+      )}`
+    );
+    const deletedChild = await deletedChildRes.json();
+    await apiContext.delete(
+      `/api/v1/containers/${deletedChild.id}?hardDelete=false&recursive=true`
+    );
+
+    await afterAction();
+  });
+
+  test.afterAll('Tear down search/deleted fixtures', async ({ browser }) => {
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    await apiContext.delete(
+      `/api/v1/services/storageServices/name/${encodeURIComponent(
+        serviceName
+      )}?recursive=true&hardDelete=true`
+    );
+
+    await afterAction();
+  });
+
+  test.beforeEach('Visit parent container Containers tab', async ({ page }) => {
+    // Match the proven nav pattern used by the existing "Deeply nested
+    // container navigation" describe in this file: register the response
+    // listener BEFORE goto, then await it. The container's only tab when
+    // dataModel is empty (our fixture parents) is CHILDREN, so the page
+    // fires /children automatically on mount — no separate tab click needed.
+    const initialChildrenResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(`/api/v1/containers/name/`) &&
+        res.url().includes('/children?') &&
+        res.status() === 200
+    );
+    await page.goto(`/container/${parentFqn}`);
+    await initialChildrenResponse;
+    await waitForAllLoadersToDisappear(page);
+  });
+
+  test('search filters direct children only — sibling subtree never leaks', async ({
+    page,
+  }) => {
+    // Baseline — all four live children of the parent are visible, the
+    // soft-deleted one is hidden by default, and the alice-clone under the
+    // sibling parent does not appear (it lives under a different FQN prefix).
+    const childTable = page.getByTestId('container-list-table');
+    await expect(childTable.getByText(aliceChildName)).toBeVisible();
+    await expect(childTable.getByText(bobChildName)).toBeVisible();
+    await expect(childTable.getByText(carolChildName)).toBeVisible();
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+    await expect(childTable.getByText(aliceClonedSiblingName)).toHaveCount(0);
+
+    // The search request must include the parent's FQN AND the q= bind. If
+    // someone wires this through the global search index, the URL would no
+    // longer match this matcher and the test fails fast — exactly the scoping
+    // regression we want to catch.
+    const searchResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(`/api/v1/containers/name/`) &&
+        res.url().includes(encodeURIComponent(parentFqn)) &&
+        res.url().includes('/children?') &&
+        res.url().includes(`q=${SEARCH_TERM_ALICE}`) &&
+        res.status() === 200
+    );
+    await page.getByTestId('searchbar').fill(SEARCH_TERM_ALICE);
+    await searchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Filtered view: only the alice child of the search-parent. The sibling
+    // parent's alice-clone shares the substring but must not appear because
+    // the q= filter is applied AFTER the FQN-depth gate, not in place of it.
+    await expect(childTable.getByText(aliceChildName)).toBeVisible();
+    await expect(childTable.getByText(aliceClonedSiblingName)).toHaveCount(0);
+    await expect(childTable.getByText(bobChildName)).toHaveCount(0);
+    await expect(childTable.getByText(carolChildName)).toHaveCount(0);
+
+    // Empty state — a substring no child contains returns zero rows. Empty
+    // here means the API returned an empty page, not that the filter was
+    // ignored and the previous full result is still on screen.
+    const emptyResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        res.url().includes(`q=${SEARCH_TERM_NO_MATCH}`) &&
+        res.status() === 200
+    );
+    await page.getByTestId('searchbar').fill(SEARCH_TERM_NO_MATCH);
+    await emptyResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(aliceChildName)).toHaveCount(0);
+    await expect(childTable.getByText(bobChildName)).toHaveCount(0);
+    await expect(childTable.getByText(carolChildName)).toHaveCount(0);
+
+    // Clearing the search restores the unfiltered listing — same baseline
+    // as the start of the test.
+    const clearResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        !res.url().includes('q=') &&
+        res.status() === 200
+    );
+    await page.getByTestId('searchbar').fill('');
+    await clearResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(aliceChildName)).toBeVisible();
+    await expect(childTable.getByText(bobChildName)).toBeVisible();
+    await expect(childTable.getByText(carolChildName)).toBeVisible();
+  });
+
+  test('Deleted toggle reveals and hides soft-deleted children', async ({
+    page,
+  }) => {
+    const childTable = page.getByTestId('container-list-table');
+
+    // Default state — non-deleted only. The soft-deleted child fixture is
+    // hidden, the three live children are visible.
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+    await expect(childTable.getByText(aliceChildName)).toBeVisible();
+
+    // Toggle on — include flips to 'deleted'. The deleted child appears,
+    // the live children disappear (deleted-only mode, not "all").
+    const deletedOnResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        res.url().includes('include=deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('show-deleted').click();
+    await deletedOnResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(deletedChildName)).toBeVisible();
+    await expect(childTable.getByText(aliceChildName)).toHaveCount(0);
+    await expect(childTable.getByText(bobChildName)).toHaveCount(0);
+
+    // Toggle off — back to non-deleted. Re-fetches must hit the API and the
+    // deleted child must drop out again. Pinning include=non-deleted in the
+    // URL guards against the cache returning a stale page from the toggled
+    // request (ChildrenPageCache key includes the include tag for this
+    // reason).
+    const deletedOffResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        res.url().includes('include=non-deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('show-deleted').click();
+    await deletedOffResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+    await expect(childTable.getByText(aliceChildName)).toBeVisible();
+  });
+
+  test('search + Deleted toggle compose to find soft-deleted children by name', async ({
+    page,
+  }) => {
+    const childTable = page.getByTestId('container-list-table');
+
+    // Start in default mode and search for the deleted child's substring —
+    // it must NOT appear because include defaults to non-deleted, regardless
+    // of whether the substring matches.
+    const initialSearchResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        res.url().includes(`q=${SEARCH_TERM_DELETED}`) &&
+        res.url().includes('include=non-deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('searchbar').fill(SEARCH_TERM_DELETED);
+    await initialSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+
+    // Flip Deleted on while the search is active — the request must carry
+    // BOTH q= and include=deleted, and the deleted child becomes visible.
+    // Asserting on the URL params (not just the result) catches the case
+    // where the toggle handler resets the search state — a likely bug if
+    // the page-reset on toggle change ever drops the search value too.
+    const combinedResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/children?') &&
+        res.url().includes(`q=${SEARCH_TERM_DELETED}`) &&
+        res.url().includes('include=deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('show-deleted').click();
+    await combinedResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(childTable.getByText(deletedChildName)).toBeVisible();
+    await expect(childTable.getByText(aliceChildName)).toHaveCount(0);
+  });
+});
+
+// Multi-level scoping for the Deleted toggle.
+//
+// At every level of a container hierarchy, ?include=deleted shows ONLY direct
+// children of that level whose own deleted=true — never grandchildren or deeper
+// descendants. This pins the FQN-depth predicate (fqnHash NOT LIKE :parentHashChild)
+// at the UI layer; the API-side equivalent lives in
+// ContainerResourceIT#test_listChildren_includeDeleted_scopedToDirectChildrenAtEachLevel.
+//
+// The screenshot scenario this guards against: user soft-deletes a grandchild,
+// navigates back up to the grandparent, toggles "Deleted" ON, and is surprised
+// the grandchild doesn't appear. The behavior is correct (the toggle is a literal
+// per-level filter, not a recursive search), but it's the kind of cross-level
+// expectation that's easy to break with one accidental change to the SQL — e.g.
+// dropping the depth predicate while keeping the deleted filter would silently
+// start surfacing deleted descendants from any depth.
+test.describe('Children tab Deleted toggle is scoped per-level', () => {
+  test.slow(true);
+
+  const serviceName = `pw-storage-service-scope-${uuid()}`;
+  const grandparentName = `pw-scope-grandparent-${uuid()}`;
+  const parentName = `pw-scope-parent-${uuid()}`;
+  const deletedChildName = `pw-scope-deleted-grandchild-${uuid()}`;
+
+  let grandparentFqn = '';
+  let parentFqn = '';
+
+  test.beforeAll(
+    'Setup three-level chain with deleted leaf',
+    async ({ browser }) => {
+      const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+        browser
+      );
+
+      await apiContext.post('/api/v1/services/storageServices', {
+        data: {
+          name: serviceName,
+          ...S3_SERVICE_CONFIG,
+        },
+      });
+
+      const grandparentRes = await apiContext.post('/api/v1/containers', {
+        data: { name: grandparentName, service: serviceName },
+      });
+      const grandparent = await grandparentRes.json();
+      grandparentFqn = grandparent.fullyQualifiedName;
+
+      const parentRes = await apiContext.post('/api/v1/containers', {
+        data: {
+          name: parentName,
+          service: serviceName,
+          parent: { id: grandparent.id, type: 'container' },
+        },
+      });
+      const parent = await parentRes.json();
+      parentFqn = parent.fullyQualifiedName;
+
+      const deletedChildRes = await apiContext.post('/api/v1/containers', {
+        data: {
+          name: deletedChildName,
+          service: serviceName,
+          parent: { id: parent.id, type: 'container' },
+        },
+      });
+      const deletedChild = await deletedChildRes.json();
+
+      // Soft-delete the leaf via API (faster + more reliable than the manage-button
+      // flow). hardDelete=false keeps the row but flips deleted=true.
+      await apiContext.delete(
+        `/api/v1/containers/${deletedChild.id}?hardDelete=false&recursive=true`
+      );
+
+      await afterAction();
+    }
+  );
+
+  test.afterAll('Tear down three-level chain', async ({ browser }) => {
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    await apiContext.delete(
+      `/api/v1/services/storageServices/name/${encodeURIComponent(
+        serviceName
+      )}?recursive=true&hardDelete=true`
+    );
+
+    await afterAction();
+  });
+
+  test('grandparent Deleted toggle returns empty — deleted grandchild does not bubble up', async ({
+    page,
+  }) => {
+    const initialChildrenResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/containers/name/') &&
+        res.url().includes(encodeURIComponent(grandparentFqn)) &&
+        res.url().includes('/children?') &&
+        res.status() === 200
+    );
+    await page.goto(`/container/${grandparentFqn}`);
+    await initialChildrenResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const childTable = page.getByTestId('container-list-table');
+
+    // Default mode: the alive direct child (the parent in the chain) is visible.
+    // The deleted leaf is NOT — it's a grandchild, not a direct child.
+    await expect(childTable.getByText(parentName)).toBeVisible();
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+
+    // Toggle ON at the grandparent level. The request must carry include=deleted
+    // and the URL must still target the grandparent FQN — pinning that the toggle
+    // is applied locally and not somehow widened to a service-wide search.
+    const deletedResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(encodeURIComponent(grandparentFqn)) &&
+        res.url().includes('/children?') &&
+        res.url().includes('include=deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('show-deleted').click();
+    await deletedResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Empty: the grandparent has zero deleted DIRECT children — the deleted leaf
+    // is one level deeper. Both the alive parent and the deleted grandchild are
+    // absent (parent because it's not deleted, grandchild because it's not direct).
+    await expect(childTable.getByText(parentName)).toHaveCount(0);
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+  });
+
+  test('parent Deleted toggle reveals the deleted grandchild — its actual direct parent', async ({
+    page,
+  }) => {
+    const initialChildrenResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/containers/name/') &&
+        res.url().includes(encodeURIComponent(parentFqn)) &&
+        res.url().includes('/children?') &&
+        res.status() === 200
+    );
+    await page.goto(`/container/${parentFqn}`);
+    await initialChildrenResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const childTable = page.getByTestId('container-list-table');
+
+    // Default mode at the direct parent of the deleted leaf — the deleted leaf
+    // is hidden because include defaults to non-deleted.
+    await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
+
+    const deletedResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(encodeURIComponent(parentFqn)) &&
+        res.url().includes('/children?') &&
+        res.url().includes('include=deleted') &&
+        res.status() === 200
+    );
+    await page.getByTestId('show-deleted').click();
+    await deletedResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Toggle ON at the actual direct parent — the deleted leaf appears here and
+    // only here. Asserting it appears at this level (and not at the grandparent
+    // in the previous test) is the dual that pins the per-level scoping.
+    await expect(childTable.getByText(deletedChildName)).toBeVisible();
   });
 });

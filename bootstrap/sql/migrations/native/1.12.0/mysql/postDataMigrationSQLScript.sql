@@ -76,4 +76,3 @@ SET json = JSON_REMOVE(JSON_REMOVE(json, '$.inputPorts'), '$.outputPorts')
 WHERE jsonSchema = 'dataProduct'
   AND (JSON_CONTAINS_PATH(json, 'one', '$.inputPorts')
        OR JSON_CONTAINS_PATH(json, 'one', '$.outputPorts'));
-

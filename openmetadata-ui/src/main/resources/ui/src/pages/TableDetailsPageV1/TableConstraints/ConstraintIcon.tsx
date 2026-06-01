@@ -56,7 +56,14 @@ const ConstraintIcon = ({
             entity: t('label.dist'),
           }),
         };
-
+      case ConstraintType.ClusterKey:
+        return {
+          icon: IconDistribution,
+          title: t('label.entity-key', {
+            entity: t('label.cluster'),
+          }),
+        };
+      case ConstraintType.SortKey:
       default:
         return {
           icon: IconSort,

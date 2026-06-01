@@ -16,6 +16,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -23,10 +24,12 @@ import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
 interface ActivityFeedListV1Props {
-  feedList: Thread[];
+  feedList?: Thread[];
+  activityList?: ActivityEvent[];
   isLoading: boolean;
   showThread?: boolean;
   onFeedClick?: (feed: Thread) => void;
+  onActivityClick?: (activity: ActivityEvent) => void;
   activeFeedId?: string;
   hidePopover: boolean;
   isForFeedTab?: boolean;
@@ -46,6 +49,7 @@ interface ActivityFeedListV1Props {
 
 const ActivityFeedListV1New = ({
   feedList,
+  activityList,
   isLoading,
   showThread = true,
   componentsVisibility = {
@@ -53,6 +57,7 @@ const ActivityFeedListV1New = ({
     showRepliesContainer: true,
   },
   onFeedClick,
+  onActivityClick,
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
@@ -66,63 +71,107 @@ const ActivityFeedListV1New = ({
   isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const isActivityMode = !isUndefined(activityList) && activityList.length > 0;
 
   useEffect(() => {
-    const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-    setEntityThread(updatedFeedList);
-  }, [feedList]);
-
-  useEffect(() => {
-    const thread = entityThread.find((feed) => feed.id === selectedThread?.id);
-
-    if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
-      onFeedClick(entityThread[0]);
+    if (feedList && !isActivityMode) {
+      const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
+      setEntityThread(updatedFeedList);
     }
-  }, [entityThread, selectedThread, onFeedClick]);
+  }, [feedList, isActivityMode]);
 
   useEffect(() => {
-    if (isEmpty(feedList) && handlePanelResize) {
+    if (isActivityMode) {
+      const activity = activityList?.find(
+        (activity) => activity.id === selectedThread?.id
+      );
+
+      if (
+        onActivityClick &&
+        (isUndefined(selectedThread) || isUndefined(activity))
+      ) {
+        onActivityClick(activityList ? activityList[0] : ({} as ActivityEvent));
+      }
+    } else {
+      const thread = entityThread.find(
+        (feed) => feed.id === selectedThread?.id
+      );
+
+      if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
+        onFeedClick(entityThread[0]);
+      }
+    }
+  }, [entityThread, selectedThread, onFeedClick, isActivityMode]);
+
+  useEffect(() => {
+    const listToCheck = isActivityMode ? activityList : feedList;
+    if (isEmpty(listToCheck) && handlePanelResize) {
       handlePanelResize?.(true);
     } else {
       handlePanelResize?.(false);
     }
-  }, [feedList]);
+  }, [feedList, activityList, isActivityMode]);
 
-  const feeds = useMemo(
-    () =>
-      entityThread.map((feed) => (
+  const feeds = useMemo(() => {
+    if (isActivityMode && activityList) {
+      return activityList.map((activity) => (
         <FeedPanelBodyV1New
-          feed={feed}
+          activity={activity}
           handlePanelResize={handlePanelResize}
           hidePopover={hidePopover}
-          isActive={activeFeedId === feed.id}
+          isActive={activeFeedId === activity.id}
           isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
           isFullSizeWidget={isFullSizeWidget}
           isFullWidth={isFullWidth}
-          key={feed.id}
+          key={activity.id}
           showThread={showThread}
+          onActivityClick={onActivityClick}
           onAfterClose={onAfterClose}
-          onFeedClick={onFeedClick}
           onUpdateEntityDetails={onUpdateEntityDetails}
         />
-      )),
-    [
-      entityThread,
-      activeFeedId,
-      componentsVisibility,
-      hidePopover,
-      isForFeedTab,
-      showThread,
-      isFullWidth,
-      isFullSizeWidget,
-    ]
-  );
+      ));
+    }
+
+    return entityThread.map((feed) => (
+      <FeedPanelBodyV1New
+        feed={feed}
+        handlePanelResize={handlePanelResize}
+        hidePopover={hidePopover}
+        isActive={activeFeedId === feed.id}
+        isFeedWidget={isFeedWidget}
+        isForFeedTab={isForFeedTab}
+        isFullSizeWidget={isFullSizeWidget}
+        isFullWidth={isFullWidth}
+        key={feed.id}
+        showThread={showThread}
+        onAfterClose={onAfterClose}
+        onFeedClick={onFeedClick}
+        onUpdateEntityDetails={onUpdateEntityDetails}
+      />
+    ));
+  }, [
+    entityThread,
+    activityList,
+    isActivityMode,
+    activeFeedId,
+    componentsVisibility,
+    hidePopover,
+    isForFeedTab,
+    showThread,
+    isFullWidth,
+    isFullSizeWidget,
+    onActivityClick,
+  ]);
   if (isLoading) {
     return <Loader />;
   }
 
-  if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
+  const hasNoData = isActivityMode
+    ? isEmpty(activityList)
+    : isEmpty(entityThread) && isEmpty(feedList);
+
+  if (hasNoData && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container h-full"

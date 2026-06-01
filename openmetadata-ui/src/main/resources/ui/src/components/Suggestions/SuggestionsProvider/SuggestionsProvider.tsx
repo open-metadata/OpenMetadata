@@ -25,10 +25,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
@@ -38,6 +34,7 @@ import {
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
+import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import {
   getSuggestionByType,
   getSuggestionTypeBasedOnData,

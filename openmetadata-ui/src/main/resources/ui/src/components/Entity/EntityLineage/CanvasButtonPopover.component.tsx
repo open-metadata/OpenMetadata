@@ -59,6 +59,9 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         ...position,
         pointerEvents: 'all',
         zIndex: 1000,
+        background: 'none',
+        border: 'none',
+        padding: 0,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}>

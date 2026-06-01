@@ -123,18 +123,15 @@ const AppRunsHistory = forwardRef(
         return appRunsHistoryData;
       }
 
-      return [
-        {
-          id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
-          appId: appData.id,
-          appName: appData.name,
-          config: appData.appConfiguration ?? {},
-          isSynthetic: true,
-          runType: 'CurrentConfig',
-          startTime: appData.updatedAt,
-          timestamp: appData.updatedAt,
-        },
-      ];
+      const syntheticRecord: AppRunRecordWithId = {
+        id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+        appId: appData.id,
+        appName: appData.name,
+        config: (appData.appConfiguration as { [key: string]: unknown }) ?? {},
+        isSynthetic: true,
+      };
+
+      return [syntheticRecord];
     }, [appData, appRunsHistoryData, isExternalApp]);
 
     const handleRowExpandable = useCallback(
@@ -181,6 +178,9 @@ const AppRunsHistory = forwardRef(
     }, []);
 
     const showAppRunConfig = (record: AppRunRecordWithId) => {
+      if (!jsonSchema) {
+        return;
+      }
       setShowConfigModal(true);
       setAppRunRecordConfig(record.config ?? {});
     };
@@ -201,12 +201,14 @@ const AppRunsHistory = forwardRef(
             <Button
               className="m-l-xs p-0"
               data-testid="app-historical-config"
+              disabled={!jsonSchema}
               size="small"
               type="link"
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {record.status !== Status.Success &&
+            {!record.isSynthetic &&
+              record.status !== Status.Success &&
               record.status !== Status.Failed &&
               record.status !== Status.Stopped &&
               record.status !== Status.Completed &&
@@ -240,6 +242,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'timestamp',
           key: 'timestamp',
           render: (_, record) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             return isExternalApp
               ? formatDateTime(record.startTime)
               : formatDateTime(record.timestamp);
@@ -249,8 +255,12 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-type'),
           dataIndex: 'runType',
           key: 'runType',
-          render: (runType) => (
-            <Typography.Text>{runType ?? NO_DATA_PLACEHOLDER}</Typography.Text>
+          render: (runType, record) => (
+            <Typography.Text>
+              {record.isSynthetic
+                ? NO_DATA_PLACEHOLDER
+                : runType ?? NO_DATA_PLACEHOLDER}
+            </Typography.Text>
           ),
         },
         {
@@ -258,6 +268,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             if (isExternalApp && record.executionTime) {
               return formatDurationToHHMMSS(record.executionTime);
             }
@@ -403,6 +417,13 @@ const AppRunsHistory = forwardRef(
           }
         });
 
+        socket.on(SOCKET_EVENTS.RDF_INDEX_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const rdfIndexJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(rdfIndexJob);
+          }
+        });
+
         socket.on(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, (data) => {
           if (data) {
             const dataInsightJob = JSON.parse(data);
@@ -421,6 +442,7 @@ const AppRunsHistory = forwardRef(
       return () => {
         if (socket) {
           socket.off(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
+          socket.off(SOCKET_EVENTS.RDF_INDEX_JOB_BROADCAST_CHANNEL);
           socket.off(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
           socket.off(SOCKET_EVENTS.CACHE_WARMUP_JOB_BROADCAST_CHANNEL);
         }
@@ -508,22 +530,24 @@ const AppRunsHistory = forwardRef(
             </Typography.Text>
           }
           width={800}>
-          <FormBuilder
-            capitalizeOptionLabel
-            hideCancelButton
-            readonly
-            useSelectWidget
-            cancelText={t('label.back')}
-            formData={appRunRecordConfig}
-            isLoading={false}
-            okText={t('label.submit')}
-            schema={jsonSchema}
-            serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-            uiSchema={UiSchema}
-            validator={validator}
-            onCancel={noop}
-            onSubmit={noop}
-          />
+          {jsonSchema && (
+            <FormBuilder
+              capitalizeOptionLabel
+              hideCancelButton
+              readonly
+              useSelectWidget
+              cancelText={t('label.back')}
+              formData={appRunRecordConfig}
+              isLoading={false}
+              okText={t('label.submit')}
+              schema={jsonSchema}
+              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+              uiSchema={UiSchema}
+              validator={validator}
+              onCancel={noop}
+              onSubmit={noop}
+            />
+          )}
         </Modal>
       </>
     );

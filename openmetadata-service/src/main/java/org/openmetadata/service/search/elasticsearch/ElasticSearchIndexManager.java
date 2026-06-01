@@ -7,8 +7,12 @@ import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
 import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
@@ -458,23 +462,36 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
-      String pattern = prefix + "*";
+      String pattern = buildScopedPattern(prefix);
       GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.aliases().keySet());
 
-      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+      LOG.info(
+          "Retrieved {} indices matching pattern '{}' (prefix='{}'): {}",
+          indices.size(),
+          pattern,
+          prefix,
+          indices);
     } catch (Exception e) {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
   }
 
+  private String buildScopedPattern(String prefix) {
+    if (prefix != null && !prefix.isEmpty()) {
+      return prefix + "*";
+    }
+    return clusterAlias.isEmpty() ? "*" : clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
+  }
+
   @Override
   public List<IndexStats> getAllIndexStats() throws IOException {
     List<IndexStats> result = new ArrayList<>();
-    var statsResponse = client.indices().stats(s -> s.index("*"));
+    String statsPattern = buildScopedPattern(null);
+    var statsResponse = client.indices().stats(s -> s.index(statsPattern));
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();
@@ -512,5 +529,60 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
               indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
     }
     return result;
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update settings for {}.", indexName);
+      return;
+    }
+    if (settingsJson == null || settingsJson.isBlank()) {
+      LOG.debug("No settings to apply for index {}, skipping.", indexName);
+      return;
+    }
+    try {
+      PutIndicesSettingsRequest request =
+          PutIndicesSettingsRequest.of(
+              b -> {
+                b.index(indexName);
+                b.withJson(new StringReader(settingsJson));
+                return b;
+              });
+      PutIndicesSettingsResponse response = client.indices().putSettings(request);
+      LOG.info(
+          "Updated settings on index '{}' acknowledged={} settings={}",
+          indexName,
+          response.acknowledged(),
+          settingsJson);
+    } catch (Exception e) {
+      LOG.error("Failed to update settings on index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot force-merge {}.", indexName);
+      return;
+    }
+    try {
+      long start = System.currentTimeMillis();
+      ForcemergeRequest request =
+          ForcemergeRequest.of(
+              b ->
+                  b.index(indexName).maxNumSegments((long) maxNumSegments).waitForCompletion(true));
+      ForcemergeResponse response = client.indices().forcemerge(request);
+      LOG.info(
+          "Force-merged index '{}' to {} segments in {}ms (failed shards: {})",
+          indexName,
+          maxNumSegments,
+          System.currentTimeMillis() - start,
+          response.shards() != null && response.shards().failed() != null
+              ? response.shards().failed()
+              : 0);
+    } catch (Exception e) {
+      LOG.error("Failed to force-merge index {}: {}", indexName, e.getMessage(), e);
+    }
   }
 }

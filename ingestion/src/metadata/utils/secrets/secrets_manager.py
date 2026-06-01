@@ -12,6 +12,7 @@
 """
 Secrets manager interface
 """
+
 from abc import abstractmethod
 
 from metadata.utils.logger import ingestion_logger

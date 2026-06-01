@@ -11,6 +11,7 @@
 """
 REST Auth & Client for Apache Superset
 """
+
 import json
 import traceback
 
@@ -123,9 +124,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard count")
         return 0
 
-    def fetch_dashboards(
-        self, current_page: int, page_size: int
-    ) -> SupersetDashboardCount:
+    def fetch_dashboards(self, current_page: int, page_size: int) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -138,12 +137,10 @@ class SupersetAPIClient:
         """
 
         try:
-            dashboard_response = self.client.get(
-                f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
-            )
+            dashboard_response = self.client.get(f"/dashboard/?q=(page:{current_page},page_size:{page_size})")
             if dashboard_response:
                 dashboard_list = SupersetDashboardCount(**dashboard_response)
-                return dashboard_list
+                return dashboard_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
@@ -164,7 +161,7 @@ class SupersetAPIClient:
             response = self.client.get(f"/dashboard/{dashboard_id}")
             if response:
                 dashboard = FetchedDashboard(**response)
-                return dashboard
+                return dashboard  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch dashboard {dashboard_id}")
@@ -204,12 +201,10 @@ class SupersetAPIClient:
         """
 
         try:
-            chart_response = self.client.get(
-                f"/chart/?q=(page:{current_page},page_size:{page_size})"
-            )
+            chart_response = self.client.get(f"/chart/?q=(page:{current_page},page_size:{page_size})")
             if chart_response:
                 chart_list = SupersetChart(**chart_response)
-                return chart_list
+                return chart_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the charts list")
@@ -217,7 +212,7 @@ class SupersetAPIClient:
 
     def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
-        return response
+        return response  # noqa: RET504
 
     def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
@@ -233,7 +228,7 @@ class SupersetAPIClient:
             datasource_response = self.client.get(f"/dataset/{datasource_id}")
             if datasource_response:
                 datasource_list = SupersetDatasource(**datasource_response)
-                return datasource_list
+                return datasource_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the datasource list")
@@ -254,7 +249,7 @@ class SupersetAPIClient:
             database_response = self.client.get(f"/database/{database_id}")
             if database_response:
                 database_list = ListDatabaseResult(**database_response)
-                return database_list
+                return database_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")

@@ -56,6 +56,13 @@ export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
     label: 'label.entity-key',
     labelData: {
+      entity: 'label.cluster',
+    },
+    value: ConstraintType.ClusterKey,
+  },
+  {
+    label: 'label.entity-key',
+    labelData: {
       entity: 'label.sort',
     },
     value: ConstraintType.SortKey,

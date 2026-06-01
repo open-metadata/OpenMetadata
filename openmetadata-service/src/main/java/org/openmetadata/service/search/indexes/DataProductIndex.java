@@ -4,9 +4,8 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
+public record DataProductIndex(DataProduct dataProduct) implements TaggableIndex, LineageIndex {
   private static final Set<String> excludeFields = Set.of("assets");
 
   @Override
@@ -14,14 +13,12 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
     return dataProduct;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DATA_PRODUCT;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(dataProduct, Entity.DATA_PRODUCT);
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DATA_PRODUCT, dataProduct));
-    doc.put("tags", parseTags.getTags());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dataProduct.getEntityReference()));
     return doc;
   }
 

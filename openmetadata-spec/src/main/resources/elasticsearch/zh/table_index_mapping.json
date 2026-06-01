@@ -258,6 +258,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -427,11 +430,19 @@
                 "type": "keyword"
               }
             }
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "databaseSchema": {
         "properties": {
@@ -1008,6 +1019,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -1027,6 +1041,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

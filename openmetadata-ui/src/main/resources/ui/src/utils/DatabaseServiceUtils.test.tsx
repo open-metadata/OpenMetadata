@@ -139,8 +139,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
 });
 
 describe('getDatabaseConfig', () => {
-  it('should return correct schema and UI schema for MySQL', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Mysql);
+  it('should return correct schema and UI schema for MySQL', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Mysql);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -148,8 +148,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for Postgres', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Postgres);
+  it('should return correct schema and UI schema for Postgres', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Postgres);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -157,8 +157,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for Snowflake', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.Snowflake);
+  it('should return correct schema and UI schema for Snowflake', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Snowflake);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -166,8 +166,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for BigQuery', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.BigQuery);
+  it('should return correct schema and UI schema for BigQuery', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.BigQuery);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -175,8 +175,8 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return correct schema and UI schema for CustomDatabase', () => {
-    const result = getDatabaseConfig(DatabaseServiceType.CustomDatabase);
+  it('should return correct schema and UI schema for CustomDatabase', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.CustomDatabase);
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');
@@ -184,8 +184,10 @@ describe('getDatabaseConfig', () => {
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
   });
 
-  it('should return empty schema and default UI schema for unknown database type', () => {
-    const result = getDatabaseConfig('UnknownType' as DatabaseServiceType);
+  it('should return empty schema and default UI schema for unknown database type', async () => {
+    const result = await getDatabaseConfig(
+      'UnknownType' as DatabaseServiceType
+    );
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');

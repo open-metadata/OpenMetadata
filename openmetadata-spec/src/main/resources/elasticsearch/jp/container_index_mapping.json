@@ -256,6 +256,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -458,6 +461,10 @@
               },
               "ordinalPosition": {
                 "type": "integer"
+              },
+              "children": {
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -720,6 +727,10 @@
       "columnNames": {
         "type": "keyword"
       },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -839,6 +850,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -858,6 +872,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }
