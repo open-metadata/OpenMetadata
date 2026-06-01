@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.api.search.Aggregation;
+import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -47,8 +48,14 @@ public class MigrationUtil {
   // OpenSearch, highlighting a flattened field throws "no associated analyzer", failing the search.
   // Upgraded clusters keep their stored asset config wholesale, so the seed fix never reaches them;
   // this scrub removes exactly the seed-removed entries from the DB-stored settings.
-  private static final Set<String> STALE_FLATTENED_CHILDREN_HIGHLIGHT_FIELDS =
-      Set.of("dataModel.columns.children.name");
+  private static final Set<String> STALE_FLATTENED_CHILDREN_FIELDS =
+      Set.of(
+          "columns.children.name",
+          "columns.children.description",
+          "dataModel.columns.children.name",
+          "messageSchema.schemaFields.children.name",
+          "requestSchema.schemaFields.children.name",
+          "responseSchema.schemaFields.children.name");
 
   public static void updateOwnerChartFormulas() {
     DataInsightSystemChartRepository repository = new DataInsightSystemChartRepository();
@@ -388,34 +395,37 @@ public class MigrationUtil {
   }
 
   /**
-   * Removes the stale {@code dataModel.columns.children.name} highlight field from the DB-stored
-   * SearchSettings on upgraded clusters. PR #28214 flattened container
-   * {@code dataModel.columns.children} and dropped that entry from the searchSettings.json seed,
-   * but the additive settings merge preserves a cluster's stored config, so the now-unhighlightable
-   * field survives and breaks container search on OpenSearch ("no associated analyzer"). Idempotent;
-   * safe to call on every reprocessing pass.
+   * Removes every reference to the now non-indexed {@code *.children} fields from the DB-stored
+   * SearchSettings on upgraded clusters. The recursive column/schema {@code children} subtree is
+   * mapped {@code object} with {@code "enabled": false} (stored for display, not indexed) so a
+   * single oversized leaf can no longer trip Lucene's per-term limit on the previous
+   * {@code flattened} representation. Its leaves ({@code columns.children.name},
+   * {@code dataModel.columns.children.name}, the schemaFields variants, etc.) therefore no longer
+   * resolve, yet the additive settings merge preserves a cluster's stored config, so these entries
+   * survive an upgrade — including the highlight entry that broke container search on OpenSearch
+   * ("no associated analyzer"). Scrubs them from highlightFields, searchFields, and the
+   * allowedFields catalog. Idempotent; safe to call on every reprocessing pass.
    */
-  public static void removeFlattenedChildrenHighlightFields() {
+  public static void removeFlattenedChildrenSearchSettings() {
     try {
       Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
       if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database; skipping flattened-children highlight scrub");
-        return;
-      }
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      if (stripFlattenedChildrenHighlightFields(currentSettings)) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info("Removed stale flattened children highlight fields from search settings");
+        LOG.warn("Search settings not found in database; skipping flattened-children scrub");
       } else {
-        LOG.info("No stale flattened children highlight fields found in search settings");
+        SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+        if (stripFlattenedChildrenReferences(currentSettings)) {
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Removed stale flattened children references from search settings");
+        } else {
+          LOG.info("No stale flattened children references found in search settings");
+        }
       }
     } catch (Exception e) {
-      LOG.error("Error removing stale flattened children highlight fields from search settings", e);
+      LOG.error("Error removing stale flattened children references from search settings", e);
     }
   }
 
-  public static boolean stripFlattenedChildrenHighlightFields(SearchSettings settings) {
+  public static boolean stripFlattenedChildrenReferences(SearchSettings settings) {
     boolean changed = false;
     if (settings != null) {
       if (settings.getGlobalSettings() != null) {
@@ -424,7 +434,9 @@ public class MigrationUtil {
       for (AssetTypeConfiguration assetConfig :
           listOrEmpty(settings.getAssetTypeConfigurations())) {
         changed |= removeStaleHighlightFields(assetConfig.getHighlightFields());
+        changed |= removeStaleSearchFields(assetConfig.getSearchFields());
       }
+      changed |= removeStaleAllowedFields(settings.getAllowedFields());
     }
     return changed;
   }
@@ -432,7 +444,30 @@ public class MigrationUtil {
   private static boolean removeStaleHighlightFields(List<String> highlightFields) {
     boolean removed = false;
     if (!nullOrEmpty(highlightFields)) {
-      removed = highlightFields.removeIf(STALE_FLATTENED_CHILDREN_HIGHLIGHT_FIELDS::contains);
+      removed = highlightFields.removeIf(STALE_FLATTENED_CHILDREN_FIELDS::contains);
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleSearchFields(List<FieldBoost> searchFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(searchFields)) {
+      removed =
+          searchFields.removeIf(
+              field -> STALE_FLATTENED_CHILDREN_FIELDS.contains(field.getField()));
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleAllowedFields(List<AllowedSearchFields> allowedFields) {
+    boolean removed = false;
+    for (AllowedSearchFields allowedField : listOrEmpty(allowedFields)) {
+      if (!nullOrEmpty(allowedField.getFields())) {
+        removed |=
+            allowedField
+                .getFields()
+                .removeIf(field -> STALE_FLATTENED_CHILDREN_FIELDS.contains(field.getName()));
+      }
     }
     return removed;
   }
