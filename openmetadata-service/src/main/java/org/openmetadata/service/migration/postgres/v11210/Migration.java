@@ -29,5 +29,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     MigrationUtil.removeFlattenedChildrenSearchSettings();
+    MigrationUtil.removeStaleFileExtensionAggregation();
   }
 }
