@@ -589,7 +589,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               user.getUserName()
             )}*`;
             const searchResponse = page.waitForResponse(searchApi);
-            await page.locator('#entityReference').clear();
+            // Remove existing selections if any
+            await page
+              .getByTestId('asset-select-list')
+              .getByRole('button')
+              .click();
             await page.locator('#entityReference').fill(user.getUserName());
             await searchResponse;
             await page

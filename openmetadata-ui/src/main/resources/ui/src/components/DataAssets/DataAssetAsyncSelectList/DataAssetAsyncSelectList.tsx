@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type {
+  PopoverProps,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { Autocomplete } from '@openmetadata/ui-core-components';
-import type { PopoverProps, SelectItemType } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
 import {
@@ -264,7 +267,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       if (isString(arr[0])) {
         // Array of FQN strings - resolve from knownOptionsRef or create placeholder
         const items = (arr as string[]).map(
-          (val) => knownOptionsRef.current.get(val) ?? createPlaceholderOption(val)
+          (val) =>
+            knownOptionsRef.current.get(val) ?? createPlaceholderOption(val)
         );
         setSelectedItems(items);
       } else {
