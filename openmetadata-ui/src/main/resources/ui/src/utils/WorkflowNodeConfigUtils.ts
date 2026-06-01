@@ -227,7 +227,7 @@ export const configureNodeInputOutput = (
         | {
             addReviewers?: boolean;
             addOwners?: boolean;
-            emptyAssigneeStrategy?: string;
+            emptyAssigneeStrategy?: 'none' | 'assignAdmins';
             candidates?: Array<{
               id: string;
               type: string;

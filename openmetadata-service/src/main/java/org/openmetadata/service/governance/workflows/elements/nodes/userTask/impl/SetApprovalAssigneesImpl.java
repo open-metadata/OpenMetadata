@@ -257,18 +257,25 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     listFilter.addQueryParam("isAdmin", "true");
     List<String> admins = new ArrayList<>();
     String after = null;
-    do {
-      ResultList<User> page =
-          userRepository.listAfter(
-              null, EntityUtil.Fields.EMPTY_FIELDS, listFilter, ADMIN_PAGE_SIZE, after);
-      page.getData()
-          .forEach(
-              user ->
-                  admins.add(
-                      new MessageParser.EntityLink(Entity.USER, user.getFullyQualifiedName())
-                          .getLinkString()));
-      after = page.getPaging().getAfter();
-    } while (after != null);
+    try {
+      do {
+        ResultList<User> page =
+            userRepository.listAfter(
+                null, EntityUtil.Fields.EMPTY_FIELDS, listFilter, ADMIN_PAGE_SIZE, after);
+        page.getData()
+            .forEach(
+                user ->
+                    admins.add(
+                        new MessageParser.EntityLink(Entity.USER, user.getFullyQualifiedName())
+                            .getLinkString()));
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception e) {
+      // Degrade gracefully: a transient admin-lookup failure must not fail the whole
+      // approval workflow. Return whatever was collected so the task is created (possibly
+      // unassigned) rather than raising a BpmnError.
+      LOG.warn("Failed to resolve admin assignees for empty-assignee fallback: {}", e.getMessage());
+    }
     return admins;
   }
 
