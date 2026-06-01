@@ -475,7 +475,7 @@ public class MigrationUtil {
     }
     for (AssetTypeConfiguration assetConfig : listOrEmpty(settings.getAssetTypeConfigurations())) {
       if (FILE_ASSET_TYPE.equals(assetConfig.getAssetType())) {
-        changed = removeStaleAggregation(assetConfig.getAggregations());
+        changed |= removeStaleAggregation(assetConfig.getAggregations());
       }
     }
     return changed;
