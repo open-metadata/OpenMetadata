@@ -168,12 +168,12 @@ describe('FormBuilderV1 templates', () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+
     consoleErrorSpy.mockRestore();
   });
 
@@ -183,7 +183,7 @@ describe('FormBuilderV1 templates', () => {
 
     render(
       <CoreArrayFieldTemplate
-        {...({
+        {...{
           canAdd: true,
           idSchema: { $id: 'array-field' },
           registry: {} as ArrayFieldTemplateProps['registry'],
@@ -226,7 +226,7 @@ describe('FormBuilderV1 templates', () => {
               registry: {} as ArrayFieldTemplateItemType['registry'],
             },
           ] as unknown as ArrayFieldTemplateItemType[],
-        } as unknown as ArrayFieldTemplateProps)}
+        }}
       />
     );
 
@@ -286,7 +286,7 @@ describe('FormBuilderV1 templates', () => {
 
     render(
       <CoreObjectFieldTemplate
-        {...({
+        {...{
           idSchema: { $id: 'object-field' },
           registry: {} as ObjectFieldTemplateProps['registry'],
           schema: { additionalProperties: true },
@@ -297,14 +297,14 @@ describe('FormBuilderV1 templates', () => {
               content: <div>basic property</div>,
               hidden: false,
               name: 'name',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>advanced property</div>,
               hidden: false,
               name: 'connectionOptions',
-            } as ObjectFieldTemplatePropertyType,
+            },
           ],
-        } as unknown as ObjectFieldTemplateProps)}
+        }}
       />
     );
 
@@ -335,7 +335,7 @@ describe('FormBuilderV1 templates', () => {
   it('adds stable layout classes for sample data storage nested configs', () => {
     const { container, rerender } = render(
       <CoreObjectFieldTemplate
-        {...({
+        {...{
           idSchema: { $id: 'root/sampleDataStorageConfig/config' },
           registry: {} as ObjectFieldTemplateProps['registry'],
           schema: {},
@@ -346,29 +346,29 @@ describe('FormBuilderV1 templates', () => {
               content: <div>file path field</div>,
               hidden: false,
               name: 'filePathPattern',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>bucket field</div>,
               hidden: false,
               name: 'bucketName',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>prefix field</div>,
               hidden: false,
               name: 'prefix',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>overwrite field</div>,
               hidden: false,
               name: 'overwriteData',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>storage field</div>,
               hidden: false,
               name: 'storageConfig',
-            } as ObjectFieldTemplatePropertyType,
+            },
           ],
-        } as unknown as ObjectFieldTemplateProps)}
+        }}
       />
     );
 
@@ -404,7 +404,7 @@ describe('FormBuilderV1 templates', () => {
 
     rerender(
       <CoreObjectFieldTemplate
-        {...({
+        {...{
           idSchema: {
             $id: 'root/sampleDataStorageConfig/config/storageConfig',
           },
@@ -418,34 +418,34 @@ describe('FormBuilderV1 templates', () => {
               content: <div>assume role field</div>,
               hidden: false,
               name: 'assumeRoleArn',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>region field</div>,
               hidden: false,
               name: 'awsRegion',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>enabled field</div>,
               hidden: false,
               name: 'enabled',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <input data-testid="field-awsSecretAccessKey" />,
               hidden: false,
               name: 'awsSecretAccessKey',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <input data-testid="field-awsAccessKeyId" />,
               hidden: false,
               name: 'awsAccessKeyId',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <input data-testid="field-awsSessionToken" />,
               hidden: false,
               name: 'awsSessionToken',
-            } as ObjectFieldTemplatePropertyType,
+            },
           ],
-        } as unknown as ObjectFieldTemplateProps)}
+        }}
       />
     );
 
@@ -596,7 +596,7 @@ describe('FormBuilderV1 templates', () => {
   it('disables static AWS credentials for AWS S3 configs with IAM auth', () => {
     const { container } = render(
       <CoreObjectFieldTemplate
-        {...({
+        {...{
           idSchema: { $id: 'root/securityConfig' },
           formData: { enabled: true },
           registry: {} as ObjectFieldTemplateProps['registry'],
@@ -608,24 +608,24 @@ describe('FormBuilderV1 templates', () => {
               content: <div>enabled field</div>,
               hidden: false,
               name: 'enabled',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <input data-testid="generic-awsAccessKeyId" />,
               hidden: false,
               name: 'awsAccessKeyId',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <input data-testid="generic-awsSecretAccessKey" />,
               hidden: false,
               name: 'awsSecretAccessKey',
-            } as ObjectFieldTemplatePropertyType,
+            },
             {
               content: <div>region field</div>,
               hidden: false,
               name: 'awsRegion',
-            } as ObjectFieldTemplatePropertyType,
+            },
           ],
-        } as unknown as ObjectFieldTemplateProps)}
+        }}
       />
     );
 

@@ -143,7 +143,7 @@ const EmbeddedConnectionConfigForm = ({
   };
 
   const handleFormChange = (event: IChangeEvent<ConfigData>) => {
-    const nextFormData = (event.formData ?? {}) as ConfigData;
+    const nextFormData = event.formData ?? {};
 
     currentFormDataRef.current = nextFormData;
     setCurrentFormData(nextFormData);

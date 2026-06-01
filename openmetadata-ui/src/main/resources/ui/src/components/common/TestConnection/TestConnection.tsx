@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
-import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
@@ -310,6 +310,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       onTestConnectionStatusChange?.(false);
     }
   };
+  const updateProgress = useCallback(
+    (prev: number) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE,
+    []
+  );
 
   const handleWorkflowPolling = async (
     response: Workflow,
@@ -327,7 +331,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalObject.intervalId = toNumber(
         setInterval(async () => {
-          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
+          setProgress(updateProgress);
           try {
             const workflowResponse = await getWorkflowData(
               response.id,
@@ -508,8 +512,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const handleTestConnection = () => {
     if (shouldValidateForm) {
-      const isFormValid =
-        onValidateFormRequiredFields && onValidateFormRequiredFields();
+      const isFormValid = onValidateFormRequiredFields?.();
       handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
@@ -716,8 +719,9 @@ const TestConnection: FC<TestConnectionProps> = ({
                 {(testStatus || isTestingConnection) && (
                   <Button
                     className="p-0 test-connection-message-btn"
+                    color="link-color"
                     data-testid="test-connection-details-btn"
-                    type="link"
+                    size="sm"
                     onClick={() => setDialogOpen(true)}>
                     {t('label.view')}
                   </Button>
@@ -730,11 +734,11 @@ const TestConnection: FC<TestConnectionProps> = ({
               className={classNames('test-connection-card-button', {
                 'test-connection-card-button-primary': isReadyToTestCard,
               })}
+              color="secondary"
               data-testid="test-connection-btn"
-              disabled={isTestConnectionDisabled}
-              loading={isTestingConnection}
-              size="middle"
-              type="default"
+              isDisabled={isTestConnectionDisabled}
+              isLoading={isTestingConnection}
+              size="md"
               onClick={handleTestConnection}>
               {connectionButtonLabel}
             </Button>
@@ -743,10 +747,11 @@ const TestConnection: FC<TestConnectionProps> = ({
       ) : (
         <Tooltip title={buttonTooltipTitle}>
           <Button
+            color="primary"
             data-testid="test-connection-button"
-            disabled={isTestConnectionDisabled}
-            loading={isTestingConnection}
-            type="primary"
+            isDisabled={isTestConnectionDisabled}
+            isLoading={isTestingConnection}
+            size="sm"
             onClick={handleTestConnection}>
             {t('label.test-entity', {
               entity: t('label.connection'),

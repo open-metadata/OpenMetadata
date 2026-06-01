@@ -1645,6 +1645,7 @@
     "pipeline-name": "نام خط لوله",
     "pipeline-owner-plural": "صاحبان خط لوله",
     "pipeline-plural": "خطوط لوله",
+    "pipeline-server-ip-address": "آدرس IP سرور پایپلاین",
     "pipeline-service": "سرویس پایپ‌لاین",
     "pipeline-service-name": "نام سرویس خط لوله",
     "pipeline-service-type": "نوع سرویس خط لوله",

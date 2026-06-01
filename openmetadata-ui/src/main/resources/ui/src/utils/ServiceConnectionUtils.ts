@@ -534,7 +534,7 @@ export const wrapFlatCredentialsIntoAuthType = (
 
     secretKeys.forEach((key) => delete next[key]);
     next[AUTH_PROPERTY_KEY] = authType;
-    result = next as ConfigData;
+    result = next;
   }
 
   return result;
@@ -542,9 +542,9 @@ export const wrapFlatCredentialsIntoAuthType = (
 
 /** Flattens a synthesized `authType` object back to top-level flat secrets. */
 export const flattenAuthTypeIntoConfig = (
-  config: ConfigData,
+  config?: ConfigData,
   schema?: Record<string, unknown>
-): ConfigData => {
+) => {
   const authType = (config as Record<string, unknown>)?.[AUTH_PROPERTY_KEY];
   let result = config;
   if (
@@ -561,7 +561,7 @@ export const flattenAuthTypeIntoConfig = (
     result = {
       ...rest,
       ...getFlatAuthTypeData(authType as Record<string, unknown>, secretKeys),
-    } as ConfigData;
+    };
   }
 
   return result;

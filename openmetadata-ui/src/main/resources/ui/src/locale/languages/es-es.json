@@ -1645,6 +1645,7 @@
     "pipeline-name": "Nombre de la pipeline",
     "pipeline-owner-plural": "Propietarias de tuberías",
     "pipeline-plural": "Tuberías",
+    "pipeline-server-ip-address": "Dirección IP del servidor de pipeline",
     "pipeline-service": "Servicio de Canalización",
     "pipeline-service-name": "Nombre del servicio de canalización",
     "pipeline-service-type": "Tipo de servicio de tubería",

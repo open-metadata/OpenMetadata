@@ -13,7 +13,6 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -96,7 +95,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
 
     const handleFormChange = (e: IChangeEvent) => {
       setLocalFormData(e.formData ?? {});
-      props.onChange && props.onChange(e);
+      props.onChange?.(e);
     };
 
     const isSubmitting = status === 'waiting';
@@ -117,6 +116,18 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.widgets]
     );
 
+    const mergedTemplates = useMemo(
+      () => ({
+        ArrayFieldTemplate: CoreArrayFieldTemplate,
+        FieldTemplate: CoreFieldTemplate,
+        ObjectFieldTemplate: CoreObjectFieldTemplate,
+        FieldErrorTemplate: CoreFieldErrorTemplate,
+        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
+        ...(props.templates ?? {}),
+      }),
+      [props.templates]
+    );
+
     return (
       <Form
         {...props}
@@ -128,15 +139,9 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         formData={localFormData}
         idSeparator="/"
         ref={ref}
-        schema={schema as RJSFSchema}
+        schema={schema}
         showErrorList={false}
-        templates={{
-          ArrayFieldTemplate: CoreArrayFieldTemplate,
-          FieldTemplate: CoreFieldTemplate,
-          ObjectFieldTemplate: CoreObjectFieldTemplate,
-          FieldErrorTemplate: CoreFieldErrorTemplate,
-          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
-        }}
+        templates={mergedTemplates}
         transformErrors={transformErrors}
         uiSchema={uiSchema}
         validator={validator}

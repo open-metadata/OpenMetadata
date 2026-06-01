@@ -1645,6 +1645,7 @@
     "pipeline-name": "管線名稱",
     "pipeline-owner-plural": "所有者",
     "pipeline-plural": "管線",
+    "pipeline-server-ip-address": "管線伺服器 IP 位址",
     "pipeline-service": "管線服務",
     "pipeline-service-name": "管線服務名稱",
     "pipeline-service-type": "管線服務類型",

@@ -1645,6 +1645,7 @@
     "pipeline-name": "Наименование пайплайна",
     "pipeline-owner-plural": "Владельцы пайплайна",
     "pipeline-plural": "Пайплайны",
+    "pipeline-server-ip-address": "IP-адрес сервера пайплайна",
     "pipeline-service": "Сервис конвейера",
     "pipeline-service-name": "Имя сервиса пайплайна",
     "pipeline-service-type": "Тип сервиса пайплайна",

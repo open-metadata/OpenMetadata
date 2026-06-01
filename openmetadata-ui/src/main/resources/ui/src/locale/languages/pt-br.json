@@ -1645,6 +1645,7 @@
     "pipeline-name": "Nome do Pipeline",
     "pipeline-owner-plural": "Proprietários do Pipeline",
     "pipeline-plural": "Gasodutos",
+    "pipeline-server-ip-address": "Endereço IP do servidor de pipeline",
     "pipeline-service": "Serviço de Pipeline",
     "pipeline-service-name": "Nome do Serviço do Pipeline",
     "pipeline-service-type": "Tipo de serviço de pipeline",

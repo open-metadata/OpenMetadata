@@ -1645,6 +1645,7 @@
     "pipeline-name": "Pipelinenaam",
     "pipeline-owner-plural": "Pipeline eigenaren",
     "pipeline-plural": "Pijplijnen",
+    "pipeline-server-ip-address": "IP-adres van de pipelineserver",
     "pipeline-service": "Pipeline service",
     "pipeline-service-name": "Pipeline service naam",
     "pipeline-service-type": "Pipeline service type",

@@ -1645,6 +1645,7 @@
     "pipeline-name": "اسم سير العمل",
     "pipeline-owner-plural": "مالكو سير العمل",
     "pipeline-plural": "خطوط أنابيب",
+    "pipeline-server-ip-address": "عنوان IP لخادم خط الأنابيب",
     "pipeline-service": "خدمة سير العمل",
     "pipeline-service-name": "اسم خدمة سير العمل",
     "pipeline-service-type": "نوع خدمة سير العمل",

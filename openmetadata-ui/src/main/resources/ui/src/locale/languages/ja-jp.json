@@ -1645,6 +1645,7 @@
     "pipeline-name": "パイプライン名",
     "pipeline-owner-plural": "所有者",
     "pipeline-plural": "パイプライン",
+    "pipeline-server-ip-address": "パイプラインサーバーのIPアドレス",
     "pipeline-service": "パイプラインサービス",
     "pipeline-service-name": "パイプラインサービス名",
     "pipeline-service-type": "パイプラインサービスタイプ",

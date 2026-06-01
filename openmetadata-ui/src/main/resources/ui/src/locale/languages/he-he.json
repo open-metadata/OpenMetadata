@@ -1645,6 +1645,7 @@
     "pipeline-name": "שם תהליך הטעינה/עיבוד",
     "pipeline-owner-plural": "מעלים של תהליך הטעינה",
     "pipeline-plural": "תהליכי טעינה/עיבוד",
+    "pipeline-server-ip-address": "כתובת ה-IP של שרת ה-Pipeline",
     "pipeline-service": "שירות צינור",
     "pipeline-service-name": "שם שירות צינור",
     "pipeline-service-type": "סוג שירות צינור",

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Alert } from 'antd';
 
 import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
 import {
@@ -63,12 +63,7 @@ import {
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
-import CoreOneOfField from '../../../common/FormBuilderV1/fields/CoreOneOfField';
-import { CoreFieldTemplate } from '../../../common/FormBuilderV1/templates/CoreFieldTemplate';
-import { CoreWrapIfAdditionalTemplate } from '../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
-import CoreSelectWidget from '../../../common/FormBuilderV1/widgets/CoreSelectWidget';
-import CoreTextAreaWidget from '../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TestConnection from '../../../common/TestConnection/TestConnection';
@@ -163,17 +158,15 @@ const ConnectionConfigForm = ({
   };
 
   const handleFormChange = (event: IChangeEvent<ConfigData>) => {
-    const nextFormData = (event.formData ?? {}) as ConfigData;
+    const nextFormData = event.formData ?? {};
 
     currentFormDataRef.current = nextFormData;
     setCurrentFormData(nextFormData);
   };
 
   const customFields: RegistryFieldsType = {
-    AnyOfField: CoreOneOfField,
     BooleanField: BooleanFieldTemplate,
     ArrayField: WorkflowArrayFieldTemplate,
-    OneOfField: CoreOneOfField,
     authSelect: AuthSelectField,
   };
 
@@ -336,15 +329,14 @@ const ConnectionConfigForm = ({
         <Alert
           className="tw:mt-2 tw:rounded-lg"
           data-testid="ip-address"
-          description={
-            <Transi18next
-              i18nKey="message.airflow-host-ip-address"
-              renderElement={<strong />}
-              values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
-            />
-          }
-          type="info"
-        />
+          title={t('label.pipeline-server-ip-address')}
+          variant="brand">
+          <Transi18next
+            i18nKey="message.airflow-host-ip-address"
+            renderElement={<strong />}
+            values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+          />
+        </Alert>
       )}
       {shouldShowTestConnection && (
         <TestConnection
@@ -383,8 +375,7 @@ const ConnectionConfigForm = ({
   return (
     <Fragment>
       <AirflowMessageBanner />
-      <FormBuilder
-        useSelectWidget
+      <FormBuilderV1
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}
@@ -393,20 +384,14 @@ const ConnectionConfigForm = ({
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}
-        serviceCategory={serviceCategory}
         status={status}
         templates={{
           ObjectFieldTemplate: ConnectionObjectFieldTemplate,
-          FieldTemplate: CoreFieldTemplate,
-          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
         }}
         uiSchema={uiSchema}
-        validator={validator}
         widgets={{
           TextWidget: DesignTextWidget,
           PasswordWidget: DesignSecretWidget,
-          SelectWidget: CoreSelectWidget,
-          TextareaWidget: CoreTextAreaWidget,
           EmailWidget: DesignTextWidget,
           URLWidget: DesignTextWidget,
           UpDownWidget: DesignTextWidget,
@@ -416,7 +401,7 @@ const ConnectionConfigForm = ({
         onFocus={onFocus}
         onSubmit={handleSave}>
         {formChildren}
-      </FormBuilder>
+      </FormBuilderV1>
     </Fragment>
   );
 };

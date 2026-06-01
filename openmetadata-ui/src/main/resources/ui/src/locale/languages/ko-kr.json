@@ -1645,6 +1645,7 @@
     "pipeline-name": "파이프라인 이름",
     "pipeline-owner-plural": "소유자",
     "pipeline-plural": "파이프라인들",
+    "pipeline-server-ip-address": "파이프라인 서버 IP 주소",
     "pipeline-service": "파이프라인 서비스",
     "pipeline-service-name": "파이프라인 서비스 이름",
     "pipeline-service-type": "파이프라인 서비스 유형",

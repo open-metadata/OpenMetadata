@@ -1645,6 +1645,7 @@
     "pipeline-name": "ชื่อท่อ",
     "pipeline-owner-plural": "เจ้าของท่อ",
     "pipeline-plural": "ท่อหลายรายการ",
+    "pipeline-server-ip-address": "ที่อยู่ IP ของเซิร์ฟเวอร์ไปป์ไลน์",
     "pipeline-service": "บริการสายงาน",
     "pipeline-service-name": "ชื่อบริการท่อ",
     "pipeline-service-type": "ประเภทบริการท่อ",

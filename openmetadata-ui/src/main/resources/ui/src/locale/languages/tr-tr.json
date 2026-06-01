@@ -1645,6 +1645,7 @@
     "pipeline-name": "İş Akışı Adı",
     "pipeline-owner-plural": "İş Akışı Sahipleri",
     "pipeline-plural": "İş Akışları",
+    "pipeline-server-ip-address": "Pipeline sunucusu IP adresi",
     "pipeline-service": "Boru Hattı Servisi",
     "pipeline-service-name": "İş Akışı Servisi Adı",
     "pipeline-service-type": "İş Akışı Servisi Türü",
