@@ -244,7 +244,7 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
-  void test_nonExistentScopeFqn_returns400(TestNamespace ns) throws Exception {
+  void test_nonExistentScopeFqn_returns404(TestNamespace ns) throws Exception {
     HttpResponse<String> response =
         BulkApi.deleteStaleRaw(
             "tables",
@@ -254,7 +254,10 @@ public class BulkDeleteStaleIT {
                 .withSeenFqns(new ArrayList<>()),
             SdkClients.getAdminToken());
 
-    assertEquals(400, response.statusCode(), "non-existent scopeFqn must be rejected");
+    assertEquals(404, response.statusCode(), "non-existent scopeFqn must return SCOPE_NOT_FOUND");
+    assertTrue(
+        response.body().contains("SCOPE_NOT_FOUND"),
+        "response must carry the SCOPE_NOT_FOUND errorType so the connector can skip gracefully");
   }
 
   // ===================================================================

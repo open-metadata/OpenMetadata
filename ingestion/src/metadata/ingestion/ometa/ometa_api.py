@@ -803,7 +803,7 @@ class OpenMetadata(
                     scope_entity_type,
                     scope_fqn,
                 )
-                return BulkOperationResult(numberOfRowsProcessed=0)
+                return BulkOperationResult(numberOfRowsProcessed=0)  # pyright: ignore[reportCallIssue]
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",

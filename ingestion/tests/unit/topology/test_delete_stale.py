@@ -201,9 +201,5 @@ class TestDeleteEntityFromSource:
         )
 
         metadata.list_all_entities.assert_called_once()
-        deleted_fqns = {
-            r.right.entity.fullyQualifiedName.root
-            for r in results
-            if not isinstance(r.right, Barrier)
-        }
+        deleted_fqns = {r.right.entity.fullyQualifiedName.root for r in results if not isinstance(r.right, Barrier)}
         assert deleted_fqns == {"svc.db.sch.t2", "svc.db.sch.t3"}

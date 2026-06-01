@@ -323,7 +323,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         try:
             result = self.metadata.bulk_create_or_update(
-                entities=self.buffer,
+                entities=self.buffer,  # pyright: ignore[reportArgumentType]
                 use_async=False,
                 override_metadata=self.config.override_metadata,
             )
