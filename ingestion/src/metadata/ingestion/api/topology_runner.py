@@ -395,7 +395,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Stamp the source hash so the server-side bulk endpoint can skip unchanged entities.
         if entity_request.right is not None and hasattr(entity_request.right, "sourceHash"):
             entity_request.right.sourceHash = generate_source_hash(
-                create_request=cast(BaseModel, entity_request.right),
+                create_request=cast("BaseModel", entity_request.right),
             )
 
         # When the entity is not already present (or is overwritable) we yield the request to
