@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -355,6 +356,153 @@ class CreateTaskTest {
         requested,
         CreateTask.resolveEffectiveDueDate(
             TaskEntityStatus.Granted, Map.of("duration", "not-a-duration"), requested));
+  }
+
+  // ---- resolveEffectiveExpirationDate ----
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonGrantedStatus() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Approved, Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Open, Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Revoked, Map.of("duration", "P14D")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNullPayload() {
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, null));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonMapPayload() {
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, "plain"));
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, 42));
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, List.of("a")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullWhenDurationMissingOrBlank() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("accessType", "FullAccess")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "  ")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonStringDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", 14)));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForUnparseableDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "not-a-duration")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesDayDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "P14D"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long fourteenDays = 14L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + fourteenDays);
+    assertTrue(result <= after + fourteenDays);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesHourDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "PT2H"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long twoHours = 2L * 60 * 60 * 1000;
+    assertTrue(result >= before + twoHours);
+    assertTrue(result <= after + twoHours);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateIsIdempotentWhenPayloadAlreadyHasIt() {
+    // Re-entry into the Granted stage (or upstream-set value) must not overwrite the
+    // existing expirationDate — that would silently extend access on every reload.
+    Long existing = 1700000000000L;
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "P14D", "expirationDate", existing));
+    assertEquals(existing, result);
+  }
+
+  // ---- withGrantExpirationDate ----
+
+  @Test
+  void testWithGrantExpirationDateMergesIntoPayloadOnGranted() {
+    Map<String, Object> payload =
+        Map.of("accessType", "Masked", "duration", "P14D", "reason", "audit");
+    Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
+
+    assertTrue(result instanceof Map<?, ?>);
+    Map<?, ?> mergedMap = (Map<?, ?>) result;
+    assertEquals("Masked", mergedMap.get("accessType"));
+    assertEquals("P14D", mergedMap.get("duration"));
+    assertEquals("audit", mergedMap.get("reason"));
+    Object expiration = mergedMap.get("expirationDate");
+    assertNotNull(expiration);
+    assertTrue(expiration instanceof Long);
+    long expirationMillis = (Long) expiration;
+    assertTrue(expirationMillis > System.currentTimeMillis());
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNotGranted() {
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Approved, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNoDuration() {
+    Map<String, Object> payload = Map.of("accessType", "FullAccess");
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenPayloadAlreadyHasExpirationDate() {
+    Map<String, Object> payload = Map.of("duration", "P14D", "expirationDate", 1700000000000L);
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenPayloadNotMap() {
+    assertSame("string", CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, "string"));
+    assertNull(CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, null));
+  }
+
+  @Test
+  void testWithGrantExpirationDateDoesNotMutateOriginalPayload() {
+    // The payload comes in from the workflow runtime; mutating it could leak state into
+    // subsequent listeners. Confirm we produce a fresh map and leave the input alone.
+    Map<String, Object> payload = new java.util.HashMap<>();
+    payload.put("duration", "P14D");
+    Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
+
+    assertFalse(payload.containsKey("expirationDate"));
+    assertTrue(result instanceof Map<?, ?>);
+    assertTrue(((Map<?, ?>) result).containsKey("expirationDate"));
   }
 
   @Test

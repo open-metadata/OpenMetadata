@@ -14,11 +14,8 @@
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getHtmlStringFromMarkdownString,
-  getTextFromHtmlString,
-} from '../../../utils/BlockEditorUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { ArticleCardProps } from './ArticleCard.interface';
 
 const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
@@ -55,9 +52,7 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
         </Typography>
         {description ? (
           <Typography className="tw:text-gray-500 tw:line-clamp-2">
-            {getTextFromHtmlString(
-              getHtmlStringFromMarkdownString(description)
-            )}
+            {stripMarkdown(description)}
           </Typography>
         ) : (
           <Typography className="text-grey-muted">

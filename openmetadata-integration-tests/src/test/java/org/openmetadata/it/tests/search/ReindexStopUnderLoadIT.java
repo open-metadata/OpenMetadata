@@ -15,6 +15,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchClusterResetExtension;
@@ -25,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 
 /**
  * Triggers a reindex over a 10k-table cohort, lets it warm up, then sends a stop
@@ -41,7 +43,6 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexStopUnderLoadIT {
 
-  private static final String TABLE_ALIAS = "table_search_index";
   private static final int SEED_TABLES = 10_000;
   private static final int COLUMNS_PER_TABLE = 3;
   private static final int LOAD_WORKERS = 16;
@@ -51,12 +52,14 @@ class ReindexStopUnderLoadIT {
 
   private static ServerHandle server;
   private static SearchAssertions search;
+  private static String tableAlias;
 
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
   }
 
   @Test
@@ -97,9 +100,9 @@ class ReindexStopUnderLoadIT {
         .as("run status after stop")
         .isIn("stopped", "success", "completed");
 
-    final long countAtStop = search.count(TABLE_ALIAS);
+    final long countAtStop = search.count(tableAlias);
     Thread.sleep(POST_STOP_QUIESCE.toMillis());
-    final long countAfterQuiesce = search.count(TABLE_ALIAS);
+    final long countAfterQuiesce = search.count(tableAlias);
     assertThat(countAfterQuiesce - countAtStop)
         .as("doc count must plateau within %s after stop", POST_STOP_QUIESCE)
         .isLessThanOrEqualTo(50L);
