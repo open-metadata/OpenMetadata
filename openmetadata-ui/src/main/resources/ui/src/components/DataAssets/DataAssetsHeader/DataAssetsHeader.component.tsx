@@ -17,7 +17,14 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronRight } from '@untitledui/icons';
+import {
+  ChevronRight,
+  Copy01,
+  File02,
+  RefreshCcw01,
+  ThumbsDown,
+  ThumbsUp,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
@@ -26,13 +33,9 @@ import QueryString from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -124,6 +127,7 @@ import {
 
 type StatItemProps = {
   icon: FC<{ className?: string }>;
+  iconClassName?: string;
   count: string | number;
   tooltip: string;
   testId: string;
@@ -136,6 +140,7 @@ type StatItemProps = {
 
 const StatItem = ({
   icon: Icon,
+  iconClassName = 'tw:size-5',
   count,
   tooltip,
   testId,
@@ -155,7 +160,7 @@ const StatItem = ({
           : 'tw:cursor-default'
       )}
       data-testid={testId}>
-      <Icon className="tw:size-4 tw:text-current" />
+      <Icon className={classNames(iconClassName, 'tw:text-current')} />
       <span className="tw:text-quaternary">{count}</span>
       {srLabel && <span className="tw:sr-only">{srLabel}</span>}
     </span>
@@ -181,10 +186,6 @@ const StatItem = ({
     </Tooltip>
   );
 };
-
-const ThumbsDownOutline: FC<{ className?: string }> = ({ className }) => (
-  <ThumbsUpOutline className={classNames('tw:rotate-180', className)} />
-);
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -297,7 +298,6 @@ export const DataAssetsHeader = ({
         followers: hasFollowers
           ? (dataAsset as DataAssetsWithFollowersField).followers?.length
           : 0,
-
         tier: getTierTags(dataAsset.tags ?? []),
         entityName: getEntityName(dataAsset),
         version: dataAsset.version,
@@ -539,6 +539,12 @@ export const DataAssetsHeader = ({
     }),
     [permissions, dataAsset]
   );
+
+  const hasEditableMetadata =
+    editDomainPermission ||
+    editOwnerPermission ||
+    editTierPermission ||
+    editCertificationPermission;
 
   const tierSuggestionRender = useMemo(() => {
     if (entityType === EntityType.TABLE) {
@@ -784,7 +790,8 @@ export const DataAssetsHeader = ({
       <div
         className={classNames(
           'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5',
-          'data-assets-header-container'
+          'data-assets-header-container',
+          { 'has-editable-metadata': hasEditableMetadata }
         )}
         data-testid="data-assets-header">
         {isDarAwaitingGrant && (
@@ -822,7 +829,7 @@ export const DataAssetsHeader = ({
                 <StatItem
                   count={votes?.upVotes ?? 0}
                   disabled={deleted}
-                  icon={ThumbsUpOutline}
+                  icon={ThumbsUp}
                   isActive={voteStatus === QueryVoteType.votedUp}
                   loading={upVoteLoading}
                   testId="up-vote-btn"
@@ -832,7 +839,7 @@ export const DataAssetsHeader = ({
                 <StatItem
                   count={votes?.downVotes ?? 0}
                   disabled={deleted}
-                  icon={ThumbsDownOutline}
+                  icon={ThumbsDown}
                   isActive={voteStatus === QueryVoteType.votedDown}
                   loading={downVoteLoading}
                   testId="down-vote-btn"
@@ -844,7 +851,7 @@ export const DataAssetsHeader = ({
             {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
               <StatItem
                 count={openTaskCount ?? 0}
-                icon={TaskOpenIcon}
+                icon={File02}
                 testId="open-task-stat"
                 tooltip={t('label.open-task-plural')}
                 onClick={handleOpenTaskClick}
@@ -853,7 +860,7 @@ export const DataAssetsHeader = ({
             {version !== undefined && (
               <StatItem
                 count={version}
-                icon={VersionIcon}
+                icon={RefreshCcw01}
                 testId="version-button"
                 tooltip={t('label.version-plural-history')}
                 onClick={onVersionClick}
@@ -866,6 +873,7 @@ export const DataAssetsHeader = ({
                 <StatItem
                   count={followers ?? 0}
                   icon={StarFilledIcon}
+                  iconClassName="tw:size-6"
                   isActive={isFollowing}
                   loading={isFollowingLoading}
                   srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
@@ -910,21 +918,19 @@ export const DataAssetsHeader = ({
                   copyTooltip ??
                   t('label.copy-item', { item: t('label.url-uppercase') })
                 }>
-                <TooltipTrigger>
+                <TooltipTrigger className="tw:flex tw:items-center">
                   <button
                     aria-label={t('label.copy-item', {
                       item: t('label.url-uppercase'),
                     })}
                     className={classNames(
-                      'tw:inline-flex tw:size-7 tw:shrink-0 tw:items-center',
-                      'tw:justify-center tw:rounded-md tw:border',
-                      'tw:border-border-secondary tw:bg-primary tw:text-fg-quaternary',
-                      'tw:transition-colors tw:hover:bg-primary_hover tw:hover:text-fg-secondary'
+                      'tw:inline-flex tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center',
+                      'tw:text-fg-quaternary tw:transition-colors tw:hover:text-fg-secondary'
                     )}
                     data-testid="entity-header-copy-button"
                     type="button"
                     onClick={handleCopyEntityUrl}>
-                    <ShareIcon className="tw:size-3.5" />
+                    <Copy01 className="tw:size-4" />
                   </button>
                 </TooltipTrigger>
               </Tooltip>
@@ -1019,7 +1025,7 @@ export const DataAssetsHeader = ({
                 <Typography
                   as="span"
                   className="tw:text-secondary"
-                  size="text-xs"
+                  size="text-sm"
                   weight="medium">
                   {t('label.tier')}
                 </Typography>
@@ -1086,7 +1092,7 @@ export const DataAssetsHeader = ({
                   <Typography
                     as="span"
                     className="tw:text-secondary"
-                    size="text-xs"
+                    size="text-sm"
                     weight="medium">
                     {t('label.certification')}
                   </Typography>

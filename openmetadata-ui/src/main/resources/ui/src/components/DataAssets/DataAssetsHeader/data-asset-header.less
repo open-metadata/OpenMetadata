@@ -63,10 +63,14 @@
   }
 
   // Match the Figma "Domain · Owners · Tier · Certification · …" field labels —
-  // DomainLabel and OwnerLabel default to brand blue for use in side-panel
-  // summaries; in the header context they must render gray (#414651).
+  // DomainLabel, OwnerLabel (both its populated `text-brand-700` heading and the
+  // empty-state `no-owner-heading`) and RetentionPeriod's `extra-info-label-heading`
+  // all default to brand blue for use in side-panel summaries; in the header context
+  // they must render gray (#414651).
   .domain-link.ant-typography,
-  .owner-label-container [class*='text-brand-700'] {
+  .owner-label-container [class*='text-brand-700'],
+  .ant-typography.no-owner-heading,
+  .extra-info-label-heading {
     color: @grey-700;
   }
 
@@ -87,6 +91,20 @@
       color: @primary-7;
       border-color: @blue-39;
       background-color: @blue-33;
+    }
+  }
+
+  // Editable fields (Domain · Owners · Tier · Certification · Retention) get a 20px label
+  // row from the edit pencil (.icon-button-sm). Entity-extra fields (Type, Usage, …) have
+  // a bare text label, so their value floats up out of line. When the pencils are shown,
+  // reserve the same 20px label row so the values share the metadata strip baseline.
+  // Gated by .has-editable-metadata so read-only views (no pencils) keep their natural
+  // text-height alignment.
+  &.has-editable-metadata {
+    .header-extra-info-field > :first-child {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
     }
   }
 }

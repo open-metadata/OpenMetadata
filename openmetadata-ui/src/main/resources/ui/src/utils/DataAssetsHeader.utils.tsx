@@ -114,13 +114,13 @@ export const ExtraInfoLabel = ({
   }
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-1.5 extra-info-container">
+    <div className="tw:flex tw:flex-col tw:gap-1.5 extra-info-container header-extra-info-field">
       <Typography
         as="span"
         className="tw:whitespace-nowrap tw:text-secondary"
         data-testid={dataTestId ? `${dataTestId}-label` : undefined}
         ellipsis={{ tooltip: true }}
-        size="text-xs"
+        size="text-sm"
         weight="medium">
         {label}
       </Typography>
