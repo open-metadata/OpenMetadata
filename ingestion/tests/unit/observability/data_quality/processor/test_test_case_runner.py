@@ -97,7 +97,7 @@ class TestFilterForOMTestCases:
         dbt_test_case = create_test_case("dbt_case", dbt_definition._test_id)
         ge_test_case = create_test_case("ge_case", great_expectations_definition._test_id)
 
-        def get_by_id_side_effect(entity_type, entity_id):
+        def get_by_id_side_effect(entity_type, entity_id, nullable=False):
             # entity_id is a pydantic Uuid wrapper, access .root to get the UUID
             id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
@@ -130,7 +130,7 @@ class TestFilterForOMTestCases:
         enabled_test_case = create_test_case("enabled_case", enabled_definition._test_id)
         disabled_test_case = create_test_case("disabled_case", disabled_definition._test_id)
 
-        def get_by_id_side_effect(entity_type, entity_id):
+        def get_by_id_side_effect(entity_type, entity_id, nullable=False):
             id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
                 str(enabled_definition._test_id): enabled_definition,
@@ -209,7 +209,7 @@ class TestFilterForOMTestCases:
             create_test_case("case_dbt_disabled", dbt_disabled._test_id),
         ]
 
-        def get_by_id_side_effect(entity_type, entity_id):
+        def get_by_id_side_effect(entity_type, entity_id, nullable=False):
             id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
                 str(om_enabled._test_id): om_enabled,
