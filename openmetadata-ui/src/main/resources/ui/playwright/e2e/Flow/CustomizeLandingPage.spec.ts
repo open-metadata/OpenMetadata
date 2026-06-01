@@ -317,5 +317,45 @@ test.describe(
         }
       }
     });
+
+    test('Save button state should follow widget selection', async ({
+      adminPage,
+    }) => {
+      await navigateToCustomizeLandingPage(adminPage, {
+        personaName: persona2.responseData.name,
+      });
+
+      for (const widgetKey of [
+        'KnowledgePanel.ActivityFeed',
+        'KnowledgePanel.Following',
+        'KnowledgePanel.DataAssets',
+        'KnowledgePanel.MyData',
+        'KnowledgePanel.KPI',
+        'KnowledgePanel.TotalAssets',
+      ]) {
+        await removeAndCheckWidget(adminPage, {
+          widgetKey,
+        });
+      }
+
+      await expect(
+        adminPage.getByTestId('minimum-widget-warning')
+      ).toBeVisible();
+      await expect(adminPage.getByTestId('save-button')).toBeDisabled();
+
+      await openAddCustomizeWidgetModal(adminPage);
+
+      await adminPage
+        .getByRole('dialog', { name: 'Customize Home' })
+        .getByTestId('KnowledgePanel.Following')
+        .click();
+
+      await adminPage.locator('[data-testid="apply-btn"]').click();
+
+      await expect(adminPage.getByTestId('minimum-widget-warning')).toHaveCount(
+        0
+      );
+      await expect(adminPage.getByTestId('save-button')).toBeEnabled();
+    });
   }
 );

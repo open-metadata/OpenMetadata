@@ -148,7 +148,10 @@ function CustomizeMyData({
     [layout]
   );
 
-  const filteredLayout = useMemo(() => getUniqueFilteredLayout(layout), [layout]);
+  const filteredLayout = useMemo(
+    () => getUniqueFilteredLayout(layout),
+    [layout]
+  );
 
   const isWidgetSelectionEmpty = filteredLayout.length === 0;
 
@@ -158,8 +161,8 @@ function CustomizeMyData({
       cloneDeep(filteredLayout || [])
     );
 
-    return isWidgetSelectionEmpty || jsonPatch.length === 0;
-  }, [filteredLayout, initialPageData?.layout, isWidgetSelectionEmpty]);
+    return filteredLayout.length === 0 || jsonPatch.length === 0;
+  }, [filteredLayout, initialPageData?.layout]);
 
   const handleSave = async (updatedLayout?: WidgetConfig[]) => {
     await onSaveLayout({
