@@ -169,12 +169,15 @@ class TestDbUtils(TestCase):
             self.assertIsNotNone(lineage_request.edge.fromEntity)
             self.assertIsNotNone(lineage_request.edge.toEntity)
 
-            # Check that the IDs match our expected entities
+            # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.id.root,
-                self.source_table_entity.id.root,
+                lineage_request.edge.fromEntity.fullyQualifiedName,
+                self.source_table_entity.fullyQualifiedName.root,
             )
-            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
+            self.assertEqual(
+                lineage_request.edge.toEntity.fullyQualifiedName,
+                self.table_entity.fullyQualifiedName.root,
+            )
 
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
@@ -235,12 +238,15 @@ class TestDbUtils(TestCase):
             self.assertIsNotNone(lineage_request.edge.fromEntity)
             self.assertIsNotNone(lineage_request.edge.toEntity)
 
-            # Check that the IDs match our expected entities
+            # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.id.root,
-                self.source_table_entity.id.root,
+                lineage_request.edge.fromEntity.fullyQualifiedName,
+                self.source_table_entity.fullyQualifiedName.root,
             )
-            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
+            self.assertEqual(
+                lineage_request.edge.toEntity.fullyQualifiedName,
+                self.table_entity.fullyQualifiedName.root,
+            )
 
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
@@ -366,12 +372,15 @@ class TestDbUtils(TestCase):
             self.assertIsNotNone(lineage_request.edge.fromEntity)
             self.assertIsNotNone(lineage_request.edge.toEntity)
 
-            # Check that the IDs match our expected entities
+            # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.id.root,
-                self.source_table_entity.id.root,
+                lineage_request.edge.fromEntity.fullyQualifiedName,
+                self.source_table_entity.fullyQualifiedName.root,
             )
-            self.assertEqual(lineage_request.edge.toEntity.id.root, self.table_entity.id.root)
+            self.assertEqual(
+                lineage_request.edge.toEntity.fullyQualifiedName,
+                self.table_entity.fullyQualifiedName.root,
+            )
 
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_no_view_definition(self, mock_fqn):
@@ -500,14 +509,14 @@ class TestDbUtils(TestCase):
             # Check the from and to entities exist
             self.assertIsNotNone(lineage_request.edge.fromEntity)
             self.assertIsNotNone(lineage_request.edge.toEntity)
-            # Check that the IDs match our expected entities
+            # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.id.root,
-                self.source_table_entity_non_postgres.id.root,
+                lineage_request.edge.fromEntity.fullyQualifiedName,
+                self.source_table_entity_non_postgres.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.id.root,
-                self.table_entity_non_postgres.id.root,
+                lineage_request.edge.toEntity.fullyQualifiedName,
+                self.table_entity_non_postgres.fullyQualifiedName.root,
             )
 
     @patch("metadata.utils.db_utils.get_lineage_by_query")
@@ -654,12 +663,12 @@ class TestDbUtils(TestCase):
             # Check the from and to entities exist
             self.assertIsNotNone(lineage_request.edge.fromEntity)
             self.assertIsNotNone(lineage_request.edge.toEntity)
-            # Check that the IDs match our expected entities
+            # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.id.root,
-                self.source_table_entity.id.root,
+                lineage_request.edge.fromEntity.fullyQualifiedName,
+                self.source_table_entity.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.id.root,
-                self.table_entity.id.root,
+                lineage_request.edge.toEntity.fullyQualifiedName,
+                self.table_entity.fullyQualifiedName.root,
             )

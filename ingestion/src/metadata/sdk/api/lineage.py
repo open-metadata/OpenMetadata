@@ -155,6 +155,7 @@ class Lineage:
         request = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
+                    id=None,
                     fullyQualifiedName=from_entity_fqn,
                     type=from_entity_type,
                     name=None,
@@ -165,6 +166,7 @@ class Lineage:
                     href=None,
                 ),
                 toEntity=EntityReference(
+                    id=None,
                     fullyQualifiedName=to_entity_fqn,
                     type=to_entity_type,
                     name=None,
@@ -235,6 +237,7 @@ class Lineage:
         client = cast(Any, cls._get_client())  # noqa: TC006
         edge = EntitiesEdge(
             fromEntity=EntityReference(
+                id=None,
                 fullyQualifiedName=from_entity_fqn,
                 type=from_entity_type,
                 name=None,
@@ -245,6 +248,7 @@ class Lineage:
                 href=None,
             ),
             toEntity=EntityReference(
+                id=None,
                 fullyQualifiedName=to_entity_fqn,
                 type=to_entity_type,
                 name=None,

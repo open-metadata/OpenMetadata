@@ -18,7 +18,7 @@ import functools
 import json
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union  # noqa: UP035
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -41,6 +41,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
+LINEAGE_ROUTE = "/lineage"
 
 
 class OMetaLineageMixin(Generic[T]):
@@ -53,23 +54,16 @@ class OMetaLineageMixin(Generic[T]):
     client: REST
 
     @staticmethod
-    def _lineage_reference_cache_key(entity_reference: EntityReference) -> tuple:
+    def _lineage_reference_cache_key(entity_reference: EntityReference) -> str:
         if entity_reference.id:
-            return (entity_reference.type, "id", model_str(entity_reference.id))
+            return f"{entity_reference.type}:id:{model_str(entity_reference.id)}"
         if entity_reference.fullyQualifiedName:
-            return (
-                entity_reference.type,
-                "name",
-                model_str(entity_reference.fullyQualifiedName),
-            )
+            return f"{entity_reference.type}:name:{model_str(entity_reference.fullyQualifiedName)}"
         raise ValueError("Lineage references must include id or fullyQualifiedName")
 
     @classmethod
-    def _lineage_edge_cache_key(cls, from_entity: EntityReference, to_entity: EntityReference) -> tuple:
-        return (
-            cls._lineage_reference_cache_key(from_entity),
-            cls._lineage_reference_cache_key(to_entity),
-        )
+    def _lineage_edge_cache_key(cls, from_entity: EntityReference, to_entity: EntityReference) -> str:
+        return f"{cls._lineage_reference_cache_key(from_entity)}->{cls._lineage_reference_cache_key(to_entity)}"
 
     @staticmethod
     def _lineage_edge_path(from_entity: EntityReference, to_entity: EntityReference) -> str:
@@ -102,8 +96,9 @@ class OMetaLineageMixin(Generic[T]):
             cache_key = self._lineage_edge_cache_key(from_entity, to_entity)
             if cache_key in search_cache:
                 return search_cache.get(cache_key)
-            res = self.client.get(
-                f"{self.get_suffix(AddLineageRequest)}/{self._lineage_edge_lookup_path(from_entity, to_entity)}"
+            res = cast(
+                "dict[str, Any]",
+                self.client.get(f"{LINEAGE_ROUTE}/{self._lineage_edge_lookup_path(from_entity, to_entity)}"),
             )
             search_cache.put(cache_key, res)
             return res  # noqa: TRY300
@@ -405,9 +400,7 @@ class OMetaLineageMixin(Generic[T]):
         Remove lineage edges by source for the entity identified by FQN.
         """
         try:
-            self.client.delete(
-                f"{self.get_suffix(AddLineageRequest)}/source/name/{entity_type}/{quote(entity_fqn)}/type/{source}"
-            )
+            self.client.delete(f"{LINEAGE_ROUTE}/source/name/{entity_type}/{quote(entity_fqn)}/type/{source}")
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {entity_fqn} of type {source}")

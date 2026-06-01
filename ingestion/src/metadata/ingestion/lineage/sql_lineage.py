@@ -17,7 +17,7 @@ import itertools
 import traceback
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
 
 import networkx as nx
 from collate_sqllineage.core.holders import SQLLineageHolder
@@ -50,6 +50,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -637,6 +638,21 @@ def _build_table_lineage(
         Either[AddLineageRequest] with the lineage request or an error
     """
     try:
+        from_entity_fqn = from_entity.fullyQualifiedName
+        to_entity_fqn = to_entity.fullyQualifiedName
+        if from_entity_fqn is None or to_entity_fqn is None:
+            return Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=(
+                        f"Error creating lineage for tables [{from_table_raw_name}] and [{to_table_raw_name}]: "
+                        "Lineage table entities must include fullyQualifiedName"
+                    ),
+                    stackTrace="",
+                ),
+                right=None,
+            )
+
         col_lineage = get_column_lineage(
             to_entity=to_entity,
             to_table_raw_name=str(to_table_raw_name),
@@ -652,11 +668,11 @@ def _build_table_lineage(
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    fullyQualifiedName=from_entity.fullyQualifiedName.root,
+                    fullyQualifiedName=model_str(from_entity_fqn),
                     type="table",
                 ),
                 toEntity=EntityReference(
-                    fullyQualifiedName=to_entity.fullyQualifiedName.root,
+                    fullyQualifiedName=model_str(to_entity_fqn),
                     type="table",
                 ),
             )
@@ -1189,7 +1205,7 @@ def get_lineage_by_graph(
 
     # Extract each component as an independent subgraph and process paths
     for component in components:
-        subtree = graph.subgraph(component).copy()
+        subtree = cast("DiGraph", graph.subgraph(component).copy())
         paths = _get_paths_from_subtree(subtree)
         hops_map = _collect_temp_lineage_hops(paths, subtree)
         seen_pairs = set()

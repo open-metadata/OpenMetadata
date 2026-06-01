@@ -38,6 +38,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.utils import model_str
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
@@ -252,14 +253,20 @@ def _(record: AddLineageRequest) -> str:
     a string that we can log
     """
 
-    # id and type will always be informed
-    id_ = record.edge.fromEntity.id.root
-    type_ = record.edge.fromEntity.type
+    from_entity = record.edge.fromEntity
+    type_ = from_entity.type
 
     # name can be informed or not
-    name_str = f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
+    name_str = f"name: {from_entity.name}, " if from_entity.name else ""
 
-    return f"{type_} [{name_str}id: {id_}]"
+    if from_entity.id:
+        identifier = f"id: {model_str(from_entity.id)}"
+    elif from_entity.fullyQualifiedName:
+        identifier = f"fullyQualifiedName: {model_str(from_entity.fullyQualifiedName)}"
+    else:
+        identifier = "unresolved reference"
+
+    return f"{type_} [{name_str}{identifier}]"
 
 
 @get_log_name.register

@@ -999,9 +999,9 @@ class TestMergedLineageByGraph:
         fqn_pairs = set()
         for r in results:
             edge = r.right.edge
-            from_fqn = edge.fromEntity.id
-            to_fqn = edge.toEntity.id
-            fqn_pairs.add((str(from_fqn), str(to_fqn)))
+            from_fqn = edge.fromEntity.fullyQualifiedName
+            to_fqn = edge.toEntity.fullyQualifiedName
+            fqn_pairs.add((from_fqn, to_fqn))
         # Two distinct pairs
         assert len(fqn_pairs) == 2
 

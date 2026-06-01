@@ -50,6 +50,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.utils.entity_reference import require_entity_reference_id
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -125,7 +126,7 @@ class WorkflowConfigBuilder:
             ],
         )
 
-        service_id = cast(EntityReference, self.table.service).id  # noqa: TC006
+        service_id = require_entity_reference_id(cast(EntityReference, self.table.service), "Table service")  # noqa: TC006
         service = self._safe_get_by_id(DatabaseService, service_id)
 
         self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
