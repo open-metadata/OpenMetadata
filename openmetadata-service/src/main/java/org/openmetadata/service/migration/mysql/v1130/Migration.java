@@ -36,6 +36,7 @@ public class Migration extends MigrationProcessImpl {
     }
     MigrationUtil.addTableColumnSearchSettings();
     MigrationUtil.removeFlattenedChildrenSearchSettings();
+    MigrationUtil.removeStaleFileExtensionAggregation();
     addTriggerOperationToDefaultBotPolicies(collectionDAO);
     addTriggerRuleToDataStewardPolicy(collectionDAO);
     try {
