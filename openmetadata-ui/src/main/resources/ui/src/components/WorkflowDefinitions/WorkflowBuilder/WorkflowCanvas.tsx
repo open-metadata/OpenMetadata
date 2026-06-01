@@ -91,7 +91,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
       }
       onNodesChange(changes);
     },
-    [allowStructuralGraphEdits, isViewMode, onNodesChange]
+    [allowStructuralGraphEdits, canDragNodesInViewMode, onNodesChange]
   );
 
   const guardedOnEdgesChange = useCallback(
