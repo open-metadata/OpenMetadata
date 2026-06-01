@@ -10,6 +10,8 @@ import java.util.Set;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Read-only view over the live search engine for reindex assertions:
@@ -56,17 +58,52 @@ public final class IndexAliasInspector {
     }
   }
 
-  /** Alias name for the given entity type (e.g., {@code "table" -> "table_search_index"}). */
+  /**
+   * Alias name for the given entity type, cluster-alias-aware. When the server runs with a cluster
+   * alias (the test stacks use {@code "openmetadata"}), the live read alias is prefixed
+   * ({@code "table" -> "openmetadata_table_search_index"}); without one it's the bare
+   * {@code "table_search_index"}. Resolving via {@link SearchRepository#getClusterAlias()} (the same
+   * value the server names indices with) keeps these assertions querying the alias that actually
+   * exists in the engine instead of a name that 404s under a cluster alias.
+   */
   public String aliasFor(final String entityType) {
+    return mappingFor(entityType).getAlias(clusterAlias());
+  }
+
+  /**
+   * The entity's own canonical index name, cluster-alias-aware ({@code table} ->
+   * {@code openmetadata_table_search_index}). Unlike {@link #aliasFor}, this resolves to the 1:1
+   * read alias the server attaches to each entity's single backing index — not the short grouping
+   * alias ({@code openmetadata_table}) that also spans child/sibling indices (e.g. columns under
+   * {@code table}, time-series under {@code testCase}). Use this whenever an assertion must target
+   * exactly one entity type's index rather than an alias that fans out across several.
+   */
+  public String indexNameFor(final String entityType) {
+    return mappingFor(entityType).getIndexName(clusterAlias());
+  }
+
+  private static IndexMapping mappingFor(final String entityType) {
     final IndexMapping mapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
     if (mapping == null) {
       throw new IllegalArgumentException(
           "No index mapping declared for entity type: " + entityType);
     }
-    return mapping.getAlias(null);
+    return mapping;
   }
 
-  /** Live alias -> backing index map (alphabetical for stable diffs). */
+  /** The server's configured cluster alias (empty string when none), or {@code null} if the
+   * SearchRepository isn't initialized in this JVM (e.g. external/UIIT mode). */
+  private static String clusterAlias() {
+    final SearchRepository searchRepository = Entity.getSearchRepository();
+    return searchRepository != null ? searchRepository.getClusterAlias() : null;
+  }
+
+  /**
+   * Live 1:1 alias -> backing index map (alphabetical for stable diffs). Shared grouping aliases
+   * that resolve to multiple indices (e.g. {@code testSuite} spans test_case / test_suite /
+   * test_case_result) are skipped: they aren't a single entity type's primary read alias, so they
+   * don't belong in a 1:1 alias→index snapshot used for swap assertions.
+   */
   public Map<String, String> aliasToIndex() {
     final Map<String, String> result = new LinkedHashMap<>();
     for (final String entityType : declaredEntityTypes()) {
@@ -74,9 +111,6 @@ public final class IndexAliasInspector {
       final List<String> indices = indicesForAlias(alias);
       if (indices.size() == 1) {
         result.put(alias, indices.get(0));
-      } else if (indices.size() > 1) {
-        throw new IllegalStateException(
-            "Alias " + alias + " resolves to multiple indices: " + indices);
       }
     }
     return result;

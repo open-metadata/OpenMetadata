@@ -77,9 +77,17 @@ VERSIONS = {
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
+    "rarfile": "rarfile~=4.2",
+    "py7zr": "py7zr~=1.1.0",
 }
 
 COMMONS = {
+    "storage-archive": {
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        VERSIONS["rarfile"],
+        VERSIONS["py7zr"],
+    },
     "datalake": {
         VERSIONS["asammdf"],
         VERSIONS["avro"],
@@ -105,7 +113,7 @@ COMMONS = {
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
         VERSIONS["grpc-tools"],  # grpcio-tools already depends on grpcio. No need to add separately
-        "protobuf",
+        "protobuf>=5.29.6",  # CVE-2026-0994 JSON recursion depth bypass
     },
     "postgres": {
         VERSIONS["pymysql"],
@@ -150,10 +158,15 @@ base_requirements = {
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
+    "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
+    "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
+    "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
     "mypy_extensions>=0.4.3",
+    "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
@@ -188,6 +201,14 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
+        # Transitive floor pins for Airflow 3.x stack — Dependabot CVEs.
+        "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
+        "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
+        "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
+        "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
+        "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
+        "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
+        "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
@@ -241,8 +262,11 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
+        # CVE-2026-27459 (DTLS cookie callback BoF) wants pyOpenSSL>=26.0.0, but
+        # snowflake-connector-python 3.18 (forced via base_requirements) pins
+        # pyOpenSSL<26.0.0. Dismiss until snowflake stack supports connector 4.x.
         "pyOpenSSL>=24.3.0",
-        "pyasn1~=0.6.0",
+        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -268,6 +292,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "deltalake>=0.19.0,<0.20",
         "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
+    "s3": {*COMMONS["storage-archive"]},
+    "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
@@ -324,9 +350,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # <3.11 keeps the search/registry surface stable; the MySQL integration test
-    # sets log_bin_trust_function_creators=1 so the 3.8.1+ trigger creation passes.
-    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
+    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
+    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -373,7 +398,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.4"},
+    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
+    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
+    # CVE-2026-28802 (alg:none bypass).
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],

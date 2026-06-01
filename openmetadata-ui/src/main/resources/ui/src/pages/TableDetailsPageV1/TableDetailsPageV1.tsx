@@ -73,12 +73,6 @@ import {
 } from '../../rest/tableAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
-  addToRecentViewed,
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
-import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
@@ -88,10 +82,16 @@ import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
+import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
@@ -117,7 +117,8 @@ const TableDetailsPageV1: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions: resourcePermissions } =
+    usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -446,6 +447,10 @@ const TableDetailsPageV1: React.FC = () => {
       setDqLineageData(undefined);
     };
   }, [tableFqn]);
+
+  const canCreateTask = Boolean(
+    resourcePermissions?.[ResourceEntity.TASK]?.Create
+  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -1037,6 +1042,7 @@ const TableDetailsPageV1: React.FC = () => {
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
+              canCreateTask={canCreateTask}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}

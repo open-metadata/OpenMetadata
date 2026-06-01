@@ -38,6 +38,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
   LONG_DELAY,
   SHORT_DELAY,
 } from '../../../constants/constants';
@@ -78,19 +79,21 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/CommonUtils';
-import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+} from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
+  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -576,6 +579,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           <>
             <TitleComponent
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
+              placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
               ref={titleRef}
               value={displayName}
@@ -716,6 +720,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [tabs, activeTab]
   );
 
+  useEffect(() => {
+    tagClassBase.setFilterClassification([]);
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, []);
+
   const pageConfig = useMemo(() => {
     let rightPanel = null;
     if (
@@ -758,7 +770,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       onToggleRightPanel,
       rightPanel,
       tabs,
-      title: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+      title: getKnowledgePageName(knowledgePage, t),
     };
   }, [
     knowledgePage,

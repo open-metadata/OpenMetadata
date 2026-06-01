@@ -36,6 +36,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
   fetchEntityData,
@@ -384,6 +385,19 @@ const ExplorePageV1: FC<unknown> = () => {
       indexNotFound?: boolean;
     } = {};
     const isStale = () => latestFetchDepsRef.current !== cacheKey;
+    const handleNlqAppliedFilters = (
+      appliedQuickFilters?: QueryFilterInterface
+    ) => {
+      if (isStale()) {
+        return;
+      }
+      setAdvancedSearchQuickFilters(
+        getCombinedQueryFilterObject(
+          getAdvancedSearchQuickFilters(),
+          appliedQuickFilters
+        )
+      );
+    };
     const captureSetSearchResults: typeof setSearchResults = (value) => {
       if (isStale()) {
         return;
@@ -472,6 +486,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setSearchResults: captureSetSearchResults,
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
+        onNlqAppliedFilters: handleNlqAppliedFilters,
       }).then(commitCacheIfFresh);
 
       return;
@@ -501,6 +516,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setSearchResults: captureSetSearchResults,
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
+        onNlqAppliedFilters: handleNlqAppliedFilters,
       });
       commitCacheIfFresh();
     } finally {

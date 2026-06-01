@@ -63,7 +63,7 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getDomainDetailsPath: jest.fn((fqn) => `/domain/${fqn}`),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn((fqn) => fqn),
 }));
 

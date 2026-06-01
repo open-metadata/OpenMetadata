@@ -76,7 +76,9 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
   Transi18next: jest.fn().mockReturnValue('text'),
 }));
 

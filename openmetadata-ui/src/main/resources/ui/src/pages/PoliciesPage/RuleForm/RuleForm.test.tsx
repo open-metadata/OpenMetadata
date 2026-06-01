@@ -26,7 +26,7 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getErrorText: jest.fn(),
 }));
 

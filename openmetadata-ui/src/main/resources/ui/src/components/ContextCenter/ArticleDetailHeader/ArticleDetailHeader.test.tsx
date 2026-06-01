@@ -45,6 +45,10 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 jest.mock('../../../utils/KnowledgePageUtils', () => ({
+  getKnowledgePageName: jest.fn(
+    (entity?: { displayName?: string; name?: string }) =>
+      entity?.displayName || entity?.name || 'label.untitled'
+  ),
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
@@ -464,8 +468,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-    fireEvent.click(utilityButtons[0]);
+    fireEvent.click(screen.getByTestId('share-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });
@@ -473,8 +476,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onToggleRightPanel when the sidebar toggle is clicked on non-feed tabs', () => {
     render(<ArticleDetailHeader {...defaultProps} activeTab="documentation" />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-    fireEvent.click(utilityButtons[utilityButtons.length - 1]);
+    fireEvent.click(screen.getByTestId('right-panel-toggle-btn'));
 
     expect(defaultProps.onToggleRightPanel).toHaveBeenCalled();
   });
@@ -482,8 +484,8 @@ describe('ArticleDetailHeader', () => {
   it('does not render the right panel toggle on the activity_feed tab', () => {
     render(<ArticleDetailHeader {...defaultProps} activeTab="activity_feed" />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-
-    expect(utilityButtons).toHaveLength(1);
+    expect(
+      screen.queryByTestId('right-panel-toggle-btn')
+    ).not.toBeInTheDocument();
   });
 });

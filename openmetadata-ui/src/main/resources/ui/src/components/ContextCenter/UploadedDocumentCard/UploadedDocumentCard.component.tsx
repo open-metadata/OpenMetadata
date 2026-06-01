@@ -14,14 +14,14 @@
 import {
   ButtonUtility,
   Card,
+  FileIcon,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
-import React, { FC, useMemo } from 'react';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFileTypeIcon } from '../../../utils/ContextCenterUtils';
 import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
 
 const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
@@ -30,11 +30,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   onDownload,
 }) => {
   const { t } = useTranslation();
-  const { name, fileType, sizeLabel } = document;
-
-  const fileTypeIcon = useMemo(() => {
-    return getFileTypeIcon(fileType);
-  }, [fileType]);
+  const { name, fileExtension, sizeLabel } = document;
 
   return (
     <Card
@@ -54,20 +50,29 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
         }
       }}>
       <div className="tw:flex tw:items-center tw:justify-center tw:h-15 tw:bg-gray-50">
-        {fileTypeIcon}
+        <FileIcon
+          className="tw:size-8"
+          theme="light"
+          type={fileExtension}
+          variant="default"
+        />
       </div>
 
       <div className="tw:flex tw:flex-col tw:p-3">
         <Typography
           ellipsis
           className="tw:m-0"
+          data-testid="document-name"
           size="text-xs"
           title={name}
           weight="medium">
           {name}
         </Typography>
         <div className="tw:flex tw:items-center tw:justify-between">
-          <Typography className="tw:text-gray-400" size="text-xs">
+          <Typography
+            className="tw:text-gray-400"
+            data-testid="document-size"
+            size="text-xs">
             {sizeLabel}
           </Typography>
           {onDownload && (

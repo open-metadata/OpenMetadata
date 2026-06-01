@@ -29,15 +29,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div data-testid="dialog-footer">{children}</div>
     )
   );
+  const MockDialogHeader = jest.fn(({ title }: { title: string }) => (
+    <div data-testid="dialog-header">{title}</div>
+  ));
   const MockDialog = jest.fn(({ children }: { children: React.ReactNode }) => (
     <div data-testid="dialog">{children}</div>
   )) as jest.Mock & {
     Content: typeof MockDialogContent;
     Footer: typeof MockDialogFooter;
+    Header: typeof MockDialogHeader;
   };
 
   MockDialog.Content = MockDialogContent;
   MockDialog.Footer = MockDialogFooter;
+  MockDialog.Header = MockDialogHeader;
 
   return {
     ModalOverlay: jest.fn(
@@ -82,6 +87,7 @@ jest.mock('utils/TableTags/TableTags.utils', () => ({
 
 jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('pages/TasksPage/shared/DescriptionTask');
@@ -148,7 +154,7 @@ describe('QuickLinkFormModal', () => {
   it('onCancel should work', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
-    const cancelBtn = screen.getByText('label.back');
+    const cancelBtn = screen.getByText('label.cancel');
 
     await act(async () => {
       fireEvent.click(cancelBtn);

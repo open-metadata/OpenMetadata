@@ -23,7 +23,7 @@ import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {

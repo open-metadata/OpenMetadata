@@ -26,7 +26,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/CommonUtils';
+} from '../../../utils/FeedUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -38,7 +38,11 @@ jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+jest.mock('../../../utils/FeedUtils', () => ({
+  getFeedCounts: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  fetchEntityActivityCountInto: jest.fn(),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/SpreadsheetClassBase', () => ({

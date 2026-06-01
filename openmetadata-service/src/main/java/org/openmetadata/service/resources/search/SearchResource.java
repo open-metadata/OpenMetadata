@@ -160,9 +160,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
-                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2. Each value carried as its own "
+                      + "parameter so values containing ',' (e.g. a glossary term FQN) are safe.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(
               description =
                   "Sort the search results by field, available fields to "
@@ -518,9 +520,12 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values")
+      @Parameter(
+              description =
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(description = "Sort the search results by field")
           @DefaultValue("_score")
           @QueryParam("sort_field")

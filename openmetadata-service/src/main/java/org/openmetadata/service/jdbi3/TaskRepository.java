@@ -24,16 +24,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -322,6 +315,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
+    TaskFieldValidator.validateDataAccessCapabilities(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -995,76 +989,6 @@ public class TaskRepository extends EntityRepository<Task> {
     storeEntity(updated, true);
     postUpdate(original, updated);
     return updated;
-  }
-
-  public Task persistExpirationDate(UUID taskId, String updatedBy) {
-    Task original = get(null, taskId, getFields("*"));
-    Map<String, Object> payload = mutablePayloadMap(original);
-    if (payload == null) {
-      return original;
-    }
-    String durationStr = stringValue(payload.get("duration"));
-    if (durationStr == null) {
-      return original;
-    }
-    long grantedAtMillis = System.currentTimeMillis();
-    Long expirationMillis = computeExpirationMillis(grantedAtMillis, durationStr);
-    if (expirationMillis == null) {
-      LOG.warn(
-          "[TaskRepository] Cannot parse DAR duration '{}' for task '{}'; skipping expirationDate",
-          durationStr,
-          taskId);
-      return original;
-    }
-    Task updated = JsonUtils.deepCopy(original, Task.class);
-    Map<String, Object> updatedPayload = mutablePayloadMap(updated);
-    updatedPayload.put("expirationDate", expirationMillis);
-    updated.setPayload(updatedPayload);
-    updated.setUpdatedBy(updatedBy);
-    updated.setUpdatedAt(grantedAtMillis);
-    storeEntity(updated, true);
-    postUpdate(original, updated);
-    return updated;
-  }
-
-  private static Map<String, Object> mutablePayloadMap(Task task) {
-    Object rawPayload = task.getPayload();
-    if (rawPayload == null) {
-      return null;
-    }
-    return JsonUtils.convertValue(rawPayload, new TypeReference<Map<String, Object>>() {});
-  }
-
-  private static String stringValue(Object obj) {
-    if (!(obj instanceof String str) || str.isBlank()) {
-      return null;
-    }
-    return str;
-  }
-
-  private static Long computeExpirationMillis(long grantedAtMillis, String durationStr) {
-    TemporalAmount amount = parseIsoDuration(durationStr);
-    if (amount == null) {
-      return null;
-    }
-    if (amount instanceof Duration d) {
-      return grantedAtMillis + d.toMillis();
-    }
-    LocalDateTime grantedAt =
-        LocalDateTime.ofEpochSecond(grantedAtMillis / 1000, 0, ZoneOffset.UTC);
-    return grantedAt.plus(amount).toInstant(ZoneOffset.UTC).toEpochMilli();
-  }
-
-  private static TemporalAmount parseIsoDuration(String durationStr) {
-    try {
-      return Duration.parse(durationStr);
-    } catch (DateTimeParseException ignored) {
-      try {
-        return Period.parse(durationStr);
-      } catch (DateTimeParseException ignored2) {
-        return null;
-      }
-    }
   }
 
   public Task resolveTask(Task task, TaskResolution resolution, String updatedBy) {
