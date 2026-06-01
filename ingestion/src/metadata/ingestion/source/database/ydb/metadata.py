@@ -88,7 +88,7 @@ class YdbSource(CommonDbSourceService):
         ]
 
     @staticmethod
-    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str | None:
         return None
 
     def _get_columns_with_constraints(

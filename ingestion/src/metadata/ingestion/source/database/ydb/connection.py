@@ -54,7 +54,8 @@ from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: YDBConnection) -> str:
-    url = f"{connection.scheme.value}://{connection.hostPort}{connection.database}"
+    database = connection.database if connection.database.startswith("/") else f"/{connection.database}"
+    url = f"{connection.scheme.value}://{connection.hostPort}{database}"
     options = get_connection_options_dict(connection)
     if options:
         params = "&".join(f"{quote_plus(str(key))}={quote_plus(str(value))}" for key, value in options.items() if value)
@@ -74,7 +75,11 @@ def _get_credentials(auth_type):
     if isinstance(auth_type, TokenCredentials):
         return {"token": auth_type.token.get_secret_value()}
     if isinstance(auth_type, ServiceAccountCredentials):
-        return {"service_account_json": json.loads(auth_type.serviceAccountJson.get_secret_value())}
+        try:
+            service_account_json = json.loads(auth_type.serviceAccountJson.get_secret_value())
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Service Account JSON is not valid JSON: {exc}") from exc
+        return {"service_account_json": service_account_json}
     if isinstance(auth_type, MetadataCredentials):
         import ydb.iam  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -93,7 +98,7 @@ def get_connection(connection: YDBConnection) -> Engine:
         connect_args["credentials"] = credentials
 
     if connection.caCertificate:
-        connect_args["root_certificates"] = connection.caCertificate.get_secret_value()
+        connect_args["root_certificates"] = connection.caCertificate.get_secret_value().encode("utf-8")
 
     return create_engine(
         get_connection_url(connection),

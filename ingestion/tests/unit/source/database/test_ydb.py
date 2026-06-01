@@ -136,6 +136,15 @@ class TestConnection:
 
         assert get_connection_url(connection) == "yql+ydb://localhost:2136/local?trace+id=abc+123"
 
+    def test_get_connection_url_prepends_missing_leading_slash(self):
+        from metadata.ingestion.source.database.ydb.connection import (
+            get_connection_url,
+        )
+
+        connection = YDBConnection(hostPort="localhost:2136", database="local")
+
+        assert get_connection_url(connection) == "yql+ydb://localhost:2136/local"
+
     def test_get_connection_merges_generated_and_user_arguments(self):
         from metadata.ingestion.source.database.ydb.connection import get_connection
 
