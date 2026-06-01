@@ -24,9 +24,8 @@ from math import ceil
 from typing import Optional
 
 from pydantic import BaseModel
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, Subquery
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
@@ -58,7 +57,7 @@ def _ydb_avg(element, compiler, **kw):
 class YdbSampler(SQASampler):
     """SQA sampler that builds ORM classes with YDB-native path identifiers."""
 
-    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Subquery:
         """Mirror of :py:meth:`SQASampler.get_sample_query` adapted for YDB.
 
         Two YQL-specific deviations from the base implementation:

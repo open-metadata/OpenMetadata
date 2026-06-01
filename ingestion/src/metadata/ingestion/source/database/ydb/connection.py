@@ -40,6 +40,7 @@ from metadata.generated.schema.entity.services.connections.database.ydb.tokenCre
 )
 from metadata.generated.schema.entity.services.connections.database.ydbConnection import (
     YDBConnection,
+    YDBScheme,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -55,7 +56,8 @@ from metadata.utils.constants import THREE_MIN
 
 def get_connection_url(connection: YDBConnection) -> str:
     database = connection.database if connection.database.startswith("/") else f"/{connection.database}"
-    url = f"{connection.scheme.value}://{connection.hostPort}{database}"
+    scheme = connection.scheme.value if connection.scheme else YDBScheme.yql_ydb.value
+    url = f"{scheme}://{connection.hostPort}{database}"
     options = get_connection_options_dict(connection)
     if options:
         params = "&".join(f"{quote_plus(str(key))}={quote_plus(str(value))}" for key, value in options.items() if value)

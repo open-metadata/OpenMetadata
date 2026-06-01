@@ -79,7 +79,7 @@
     },
     "caCertificate": {
       "title": "CA Certificate",
-      "description": "PEM-encoded CA certificate for TLS (grpcs). Leave empty for insecure grpc.",
+      "description": "PEM-encoded CA certificate for TLS verification (grpcs). Leave empty to use the system trust store; use protocol grpc for insecure connections.",
       "type": "string",
       "format": "password"
     },

@@ -1298,7 +1298,8 @@ export interface Connection {
      */
     dataPlane?: string;
     /**
-     * PEM-encoded CA certificate for TLS (grpcs). Leave empty for insecure grpc.
+     * PEM-encoded CA certificate for TLS verification (grpcs). Leave empty to use the system
+     * trust store; use protocol grpc for insecure connections.
      */
     caCertificate?: string;
     [property: string]: any;
