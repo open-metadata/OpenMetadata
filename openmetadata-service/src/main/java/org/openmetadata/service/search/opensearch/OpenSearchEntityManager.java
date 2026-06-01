@@ -53,6 +53,7 @@ import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
+import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
@@ -1040,6 +1041,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1115,6 +1117,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1189,6 +1192,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(idsQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1253,6 +1257,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(domainIndexName)
                       .query(combinedQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1300,8 +1305,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           oldFqn,
           newFqn);
 
-      // Use match_all query - the script will filter and update only matching documents
-      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+      Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
 
       Map<String, JsonData> params =
           Map.of(
@@ -1312,7 +1316,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               req ->
                   req.index(indexName)
-                      .query(matchAllQuery)
+                      .query(matchingDomainQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1344,6 +1349,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     } catch (Exception e) {
       LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
+  }
+
+  private Query buildDomainFqnPrefixQuery(String oldFqn) {
+    Query prefixOnField =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnKeyword =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
+    return Query.of(
+        q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
   }
 
   @Override
