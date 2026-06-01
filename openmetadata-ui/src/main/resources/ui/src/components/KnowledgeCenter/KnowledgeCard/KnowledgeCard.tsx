@@ -55,6 +55,7 @@ import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
+  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -67,7 +68,6 @@ import {
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {
@@ -337,7 +337,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
                 data-testid="entity-header-display-name"
                 ellipsis={{ tooltip: true }}>
-                {getEntityName(knowledgePage) || t('label.untitled')}
+                {getKnowledgePageName(knowledgePage, t)}
               </Typography.Text>
               {isQuickLink && !readonly && quickLinkActions}
             </div>
@@ -472,7 +472,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         />
       )}
       <DeleteModal
-        entityTitle={knowledgePage.displayName || t('label.untitled')}
+        entityTitle={getKnowledgePageName(knowledgePage, t)}
         isDeleting={isDeleting}
         message={t('message.delete-entity-permanently', {
           entityType: t('label.quick-link'),

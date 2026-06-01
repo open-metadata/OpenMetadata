@@ -627,11 +627,34 @@ describe('AddTestCaseList', () => {
         fireEvent.click(screen.getByTestId('filter-table'));
       });
 
+      // Must pass includeAllTests=true so column-level tests under the
+      // table are not dropped by the backend's exact-match entityFQN filter.
       expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           entityLink: '<#E::table::sample.table>',
+          includeAllTests: true,
         })
       );
+    });
+
+    it('does not set includeAllTests when no table filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+
+      const lastCallParams = mockGetListTestCaseBySearch.mock.calls.at(-1)?.[0];
+
+      expect(lastCallParams?.entityLink).toBeUndefined();
+      expect(lastCallParams?.includeAllTests).toBeUndefined();
     });
 
     it('filters list by column selection (server-side)', async () => {
@@ -848,6 +871,103 @@ describe('AddTestCaseList', () => {
         expect(checkbox1).toHaveProperty('checked', true);
         expect(checkbox2).toHaveProperty('checked', true);
       });
+    });
+
+    // Regression for #28400: existingTest must seed pre-selection by id,
+    // independent of the (paginated) selectedTest name list.
+    it('pre-selects every test case in existingTest by id, even when selectedTest is empty', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: {
+          total: 3,
+        },
+      });
+
+      const existingTest: EntityReference[] = mockTestCases.map((tc) => ({
+        id: tc.id ?? '',
+        name: tc.name,
+        type: 'testCase',
+      }));
+
+      await act(async () => {
+        renderWithRouter({
+          ...mockProps,
+          existingTest,
+          selectedTest: [],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+          'checked',
+          true
+        );
+        expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+          'checked',
+          true
+        );
+      });
+    });
+
+    it('keeps existingTest entries selected after user picks an extra test case', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: {
+          total: 3,
+        },
+      });
+
+      const existingTest: EntityReference[] = [
+        {
+          id: mockTestCases[0].id ?? '',
+          name: mockTestCases[0].name,
+          type: 'testCase',
+        },
+      ];
+      const onChange = jest.fn();
+
+      await act(async () => {
+        renderWithRouter({
+          ...mockProps,
+          existingTest,
+          onChange,
+          selectedTest: [],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+          'checked',
+          true
+        );
+      });
+
+      const testCaseCard = screen
+        .getByTestId('test_case_2')
+        .closest('.cursor-pointer');
+
+      await act(async () => {
+        fireEvent.click(testCaseCard as Element);
+      });
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(
+          payloadPartial([mockTestCases[0], mockTestCases[1]])
+        );
+      });
+
+      expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+        'checked',
+        true
+      );
+      expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+        'checked',
+        true
+      );
     });
 
     it('handles test cases without id gracefully', async () => {
