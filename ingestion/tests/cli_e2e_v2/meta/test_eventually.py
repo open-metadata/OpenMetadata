@@ -9,39 +9,35 @@ import pytest
 
 from ..core.fluent.eventually import EventuallyRunner, retry_until
 
-
-def _attempt_counter():
-    """Return an empty list; tests append to it on each check call and inspect its length."""
-    return []
-
-
 # --------------------------------------------------------------------------- #
 # retry_until — the low-level primitive                                       #
 # --------------------------------------------------------------------------- #
 
 
 def test_retry_until_returns_value_on_first_success() -> None:
-    attempts = _attempt_counter()
+    calls = 0
 
     def _check() -> str:
-        attempts.append(None)
+        nonlocal calls
+        calls += 1
         return "ok"
 
     assert retry_until(_check, timeout=2, poll_interval=0.01, name="t") == "ok"
-    assert len(attempts) == 1
+    assert calls == 1
 
 
 def test_retry_until_retries_until_success() -> None:
-    attempts = _attempt_counter()
+    calls = 0
 
     def _check() -> int:
-        attempts.append(None)
-        if len(attempts) < 3:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
             raise AssertionError("not yet")
         return 42
 
     assert retry_until(_check, timeout=2, poll_interval=0.01, name="converge") == 42
-    assert len(attempts) == 3
+    assert calls == 3
 
 
 def test_retry_until_times_out_with_last_failure() -> None:
@@ -71,42 +67,45 @@ def test_retry_until_propagates_non_assertion_errors() -> None:
 
 def test_runner_unarmed_runs_sync() -> None:
     runner = EventuallyRunner()
-    attempts = _attempt_counter()
+    calls = 0
 
     def _check() -> str:
-        attempts.append(None)
+        nonlocal calls
+        calls += 1
         return "value"
 
     assert runner.run(_check, name="sync") == "value"
-    assert len(attempts) == 1
+    assert calls == 1
 
 
 def test_runner_unarmed_propagates_assertion_error_without_retry() -> None:
     runner = EventuallyRunner()
-    attempts = _attempt_counter()
+    calls = 0
 
     def _check() -> None:
-        attempts.append(None)
+        nonlocal calls
+        calls += 1
         raise AssertionError("immediate")
 
     with pytest.raises(AssertionError, match="immediate"):
         runner.run(_check, name="sync")
-    assert len(attempts) == 1
+    assert calls == 1
 
 
 def test_runner_armed_retries_until_success() -> None:
     runner = EventuallyRunner()
     runner.arm(timeout=2)
-    attempts = _attempt_counter()
+    calls = 0
 
     def _check() -> str:
-        attempts.append(None)
-        if len(attempts) < 2:
+        nonlocal calls
+        calls += 1
+        if calls < 2:
             raise AssertionError("not yet")
         return "done"
 
     assert runner.run(_check, name="armed") == "done"
-    assert len(attempts) == 2
+    assert calls == 2
 
 
 def test_runner_arming_is_one_shot() -> None:
@@ -119,12 +118,13 @@ def test_runner_arming_is_one_shot() -> None:
 
     runner.run(_ok, name="first")  # consumes the arm
 
-    attempts = _attempt_counter()
+    calls = 0
 
     def _fail_once() -> None:
-        attempts.append(None)
+        nonlocal calls
+        calls += 1
         raise AssertionError("immediate")
 
     with pytest.raises(AssertionError, match="immediate"):
         runner.run(_fail_once, name="second")
-    assert len(attempts) == 1, "second run should have been sync, not retried"
+    assert calls == 1, "second run should have been sync, not retried"

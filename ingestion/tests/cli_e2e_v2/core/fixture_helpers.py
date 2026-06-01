@@ -1,11 +1,12 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Plain-function bodies for per-connector pytest fixtures.
+"""Shared bodies for per-connector pytest fixtures.
 
-Per-connector conftests call these instead of copy-pasting the body.
-Scoping (`scope="session"` / `scope="module"`) stays in the conftest so
-pytest can build the dependency graph.
+Per-connector conftests wrap these in thin `@pytest.fixture` shells instead
+of copy-pasting the body. The fixture decorator, name, and scope
+(`scope="session"` / `scope="module"`) stay in the conftest so pytest can
+build the dependency graph.
 """
 
 from __future__ import annotations
@@ -13,26 +14,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .runner.cli_runner import CliRunner
-from .source.orchestrator import EnforcementPolicy, ensure_baseline
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     import pytest
 
     from .config.builder import WorkflowConfig
     from .config.pipelines import PipelineOptions
-    from .source.types import BaselineSpec
-
-
-def run_source_baseline(
-    policy_factory: Callable[[], EnforcementPolicy],
-    baseline: BaselineSpec,
-    *,
-    connector_name: str,
-) -> None:
-    """Call `ensure_baseline` via a lazy policy factory to defer engine construction past import time."""
-    ensure_baseline(policy_factory(), baseline, connector_name=connector_name)
 
 
 def metadata_ingest_once(

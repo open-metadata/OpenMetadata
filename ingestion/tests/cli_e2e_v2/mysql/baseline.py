@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import (
@@ -26,25 +25,20 @@ from sqlalchemy import (
     SmallInteger,
     Table,
     Time,
-    create_engine,
 )
 from sqlalchemy.dialects import mysql
-from sqlalchemy.engine import URL, Engine
 
-from ..core.config.env import Env
 from ..core.source.common_baseline import (
     COMMON_CUSTOMER_ROWS,
     COMMON_TRANSACTION_ROWS,
     build_common_metadata,
 )
-from ..core.source.orchestrator import EnforcementMode, EnforcementPolicy
 from ..core.source.sql import (
     SqlSourceBaseline,
     StoredProcedureDefinition,
     TableSeed,
     ViewDefinition,
 )
-from .enforcer import MySqlEnforcer
 
 # -----------------------------------------------------------------------------
 # all_types — MySQL-specific native types (exercises connector type mapping)
@@ -228,38 +222,3 @@ MYSQL_BASELINE = SqlSourceBaseline(
     views=[_CUSTOMER_TXN_SUMMARY_VIEW],
     stored_procedures=[_SP_ACTIVE_CUSTOMER_COUNT, _SP_UPDATE_CUSTOMER_STATUS],
 )
-
-
-# -----------------------------------------------------------------------------
-# Policy factory
-# -----------------------------------------------------------------------------
-
-
-@lru_cache(maxsize=1)
-def get_admin_engine() -> Engine:
-    """Return the cached SQLAlchemy engine for admin (root) credentials.
-
-    Reads E2E_MYSQL_ADMIN_USER, E2E_MYSQL_ADMIN_PASSWORD, and
-    E2E_MYSQL_HOST_PORT, populated by the session-scoped ``mysql_container``
-    fixture.
-    """
-    user = Env("E2E_MYSQL_ADMIN_USER", default="root").get()
-    password = Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get()
-    host_port = Env("E2E_MYSQL_HOST_PORT").get()
-    host, _, port_str = host_port.partition(":")
-    port = int(port_str) if port_str else None
-    url = URL.create(
-        drivername="mysql+pymysql",
-        username=user,
-        password=password,
-        host=host,
-        port=port,
-    )
-    return create_engine(url)
-
-
-@lru_cache(maxsize=1)
-def get_policy() -> EnforcementPolicy:
-    """Return the cached MySQL EnforcementPolicy backed by the admin engine."""
-    enforcer = MySqlEnforcer(get_admin_engine(), MYSQL_BASELINE)
-    return EnforcementPolicy(enforcer=enforcer, mode=EnforcementMode.APPLY)

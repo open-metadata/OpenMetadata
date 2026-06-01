@@ -22,12 +22,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 from testcontainers.mysql import MySqlContainer
 
+from ..core.config.env import Env
 from ..core.config.pipelines import MetadataPipeline
-from ..core.fixtures import metadata_ingest_once, run_source_baseline
-from .baseline import MYSQL_BASELINE, get_admin_engine, get_policy
+from ..core.fixture_helpers import metadata_ingest_once
+from ..core.source.orchestrator import EnforcementMode, EnforcementPolicy, ensure_baseline
+from .baseline import MYSQL_BASELINE
 from .connector import build_mysql_config, mysql_service_name
+from .enforcer import MySqlEnforcer
 from .expected import mysql_expected
 
 if TYPE_CHECKING:
@@ -79,7 +83,7 @@ def mysql_container() -> Generator[MySqlContainer, None, None]:
         finally:
             engine.dispose()
 
-        # Populate env vars so Env(...).ref() and get_admin_engine() resolve without testcontainers knowledge.
+        # Populate env vars so Env(...).ref() and the admin-engine fixture resolve without testcontainers knowledge.
         previous: dict[str, str | None] = {var: os.environ.get(var) for var in _ENV_VARS}
         os.environ["E2E_MYSQL_USER"] = _INGEST_USER
         os.environ["E2E_MYSQL_PASSWORD"] = _INGEST_PASSWORD
@@ -95,9 +99,6 @@ def mysql_container() -> Generator[MySqlContainer, None, None]:
                     os.environ.pop(var, None)
                 else:
                     os.environ[var] = prev
-            # Clear cached engines so a second run in the same process rebuilds against the new container.
-            get_admin_engine.cache_clear()
-            get_policy.cache_clear()
 
 
 @pytest.fixture(scope="session")
@@ -123,18 +124,38 @@ def mysql_expected_factory(
 
 
 @pytest.fixture(scope="session")
-def mysql_admin_engine(mysql_container: MySqlContainer) -> Engine:
+def mysql_admin_engine(mysql_container: MySqlContainer) -> Generator[Engine, None, None]:
     """Yield the admin (root) engine for out-of-band source mutations.
 
     Depends on ``mysql_container`` so E2E_MYSQL_ADMIN_* vars are set before use.
     """
-    return get_admin_engine()
+    host_port = Env("E2E_MYSQL_HOST_PORT").get()
+    host, _, port_str = host_port.partition(":")
+    url = URL.create(
+        drivername="mysql+pymysql",
+        username=Env("E2E_MYSQL_ADMIN_USER", default="root").get(),
+        password=Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get(),
+        host=host,
+        port=int(port_str) if port_str else None,
+    )
+    engine = create_engine(url)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture(scope="session")
-def mysql_source_ready(mysql_container: MySqlContainer) -> None:
+def mysql_policy(mysql_admin_engine: Engine) -> EnforcementPolicy:
+    """Session MySQL EnforcementPolicy backed by the admin engine."""
+    enforcer = MySqlEnforcer(mysql_admin_engine, MYSQL_BASELINE)
+    return EnforcementPolicy(enforcer=enforcer, mode=EnforcementMode.APPLY)
+
+
+@pytest.fixture(scope="session")
+def mysql_source_ready(mysql_policy: EnforcementPolicy) -> None:
     """Reconcile the MySQL source with MYSQL_BASELINE once per session."""
-    run_source_baseline(get_policy, MYSQL_BASELINE, connector_name="mysql")
+    ensure_baseline(mysql_policy, MYSQL_BASELINE, connector_name="mysql")
 
 
 @pytest.fixture(scope="module")

@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from ..core.expected.types import ExpectedService
     from ..core.fluent.om_client import OmClient
     from ..core.runner.cli_runner import CliRunner
+    from ..core.source.orchestrator import EnforcementPolicy
 
 # ---------------------------------------------------------------------------
 # Structural (metadata pipeline) — full Expected* tree walk
@@ -265,6 +266,7 @@ def test_mark_deleted_tables_on_reingest(
     session_uuid: str,
     registered_services: list[str],
     mysql_admin_engine: Engine,
+    mysql_policy: EnforcementPolicy,
     mysql_source_ready: None,
 ) -> None:
     """Dropping a source table and re-ingesting with markDeletedTables=True soft-deletes the OM entity."""
@@ -292,9 +294,7 @@ def test_mark_deleted_tables_on_reingest(
         om_client.table(all_types_fqn).eventually(30).is_soft_deleted()
     finally:
         # Restore source baseline so subsequent sessions start clean.
-        from .baseline import get_policy
-
-        get_policy().enforcer.apply([])
+        mysql_policy.enforcer.apply([])
 
 
 # ---------------------------------------------------------------------------

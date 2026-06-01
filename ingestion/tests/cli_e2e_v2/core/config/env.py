@@ -11,14 +11,17 @@
 from __future__ import annotations
 
 import os
-from typing import Generic, Literal, TypeVar, overload
+from typing import Generic, Literal, TypeAlias, TypeVar, overload
 
 
 class EnvLoadError(RuntimeError):
     """Raised when a required env var is unset (or empty)."""
 
 
-_Req = TypeVar("_Req", Literal[True], Literal[False])
+Required: TypeAlias = Literal[True]
+NotRequired: TypeAlias = Literal[False]
+
+_Req = TypeVar("_Req", Required, NotRequired)
 
 
 class Env(Generic[_Req]):
@@ -27,31 +30,22 @@ class Env(Generic[_Req]):
     key: str
 
     @overload
-    def __new__(
-        cls,
+    def __init__(
+        self: Env[Required],
         key: str,
         default: str | None = None,
         *,
-        required: Literal[True] = True,
-    ) -> Env[Literal[True]]: ...
+        required: Required = True,
+    ) -> None: ...
 
     @overload
-    def __new__(
-        cls,
+    def __init__(
+        self: Env[NotRequired],
         key: str,
         default: str | None = None,
         *,
-        required: Literal[False],
-    ) -> Env[Literal[False]]: ...
-
-    def __new__(
-        cls,
-        key: str,
-        default: str | None = None,
-        *,
-        required: bool = True,
-    ) -> Env:
-        return object.__new__(cls)
+        required: NotRequired,
+    ) -> None: ...
 
     def __init__(
         self,
@@ -71,10 +65,10 @@ class Env(Generic[_Req]):
         return f"${{{self.key}}}"
 
     @overload
-    def get(self: Env[Literal[True]]) -> str: ...
+    def get(self: Env[Required]) -> str: ...
 
     @overload
-    def get(self: Env[Literal[False]]) -> str | None: ...
+    def get(self: Env[NotRequired]) -> str | None: ...
 
     def get(self) -> str | None:
         return os.environ.get(self.key)
