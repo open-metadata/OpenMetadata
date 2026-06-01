@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
@@ -115,11 +117,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final int writeMaxRetries;
   private final long writeRetryInitialBackoffMs;
   private final long writeRetryMaxBackoffMs;
+  private final LongConsumer retryDelayMs;
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
   private final AtomicLong circuitOpenUntilMs = new AtomicLong(0L);
 
   public JenaFusekiStorage(RdfConfiguration config) {
+    this(config, JenaFusekiStorage::sleepRetryDelay);
+  }
+
+  JenaFusekiStorage(RdfConfiguration config, LongConsumer retryDelayMs) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
@@ -134,6 +141,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.writeMaxRetries = resolveWriteMaxRetries(config);
     this.writeRetryInitialBackoffMs = resolveWriteRetryInitialBackoffMs(config);
     this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
+    this.retryDelayMs = retryDelayMs;
 
     // Best-effort attempt to create the dataset at startup; callers should invoke
     // ensureStorageReady() before running work to recover from later restarts of the RDF server.
@@ -526,32 +534,71 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private void runWriteWithRetry(Runnable op, String description) {
+    runWriteWithRetry(
+        op,
+        description,
+        writeMaxRetries,
+        writeRetryInitialBackoffMs,
+        writeRetryMaxBackoffMs,
+        retryDelayMs,
+        () -> throwIfCircuitOpen(description),
+        this::recordSuccess,
+        this::recordFailure,
+        this::isCircuitOpen);
+  }
+
+  static void runWriteWithRetry(
+      Runnable op,
+      String description,
+      int writeMaxRetries,
+      long writeRetryInitialBackoffMs,
+      long writeRetryMaxBackoffMs,
+      LongConsumer retryDelayMs,
+      Runnable throwIfCircuitOpen,
+      Runnable recordSuccess,
+      Runnable recordFailure,
+      BooleanSupplier isCircuitOpen) {
     RuntimeException lastException = null;
     for (int attempt = 0; attempt <= writeMaxRetries; attempt++) {
-      throwIfCircuitOpen(description);
+      throwIfCircuitOpen.run();
       try {
         op.run();
-        recordSuccess();
+        recordSuccess.run();
         return;
       } catch (RuntimeException e) {
         lastException = e;
-        if (isCircuitBreakerFailure(e)) {
-          recordFailure();
-          if (isCircuitOpen()) {
-            throw new RdfStorageCircuitOpenException(description, e);
-          }
+        if (!isCircuitBreakerFailure(e)) {
+          throw e;
+        }
+        recordFailure.run();
+        if (isCircuitOpen.getAsBoolean()) {
+          throw new RdfStorageCircuitOpenException(description, e);
         }
         if (attempt >= writeMaxRetries) {
           throw e;
         }
-        sleepBeforeRetry(description, attempt + 1, e);
+        sleepBeforeRetry(
+            description,
+            attempt + 1,
+            e,
+            writeMaxRetries,
+            writeRetryInitialBackoffMs,
+            writeRetryMaxBackoffMs,
+            retryDelayMs);
       }
     }
     throw lastException;
   }
 
-  private void sleepBeforeRetry(String description, int retryNumber, RuntimeException cause) {
-    long waitTime = retryBackoffMs(retryNumber);
+  private static void sleepBeforeRetry(
+      String description,
+      int retryNumber,
+      RuntimeException cause,
+      int writeMaxRetries,
+      long writeRetryInitialBackoffMs,
+      long writeRetryMaxBackoffMs,
+      LongConsumer retryDelayMs) {
+    long waitTime = retryBackoffMs(retryNumber, writeRetryInitialBackoffMs, writeRetryMaxBackoffMs);
     LOG.debug(
         "Retrying RDF write {} after {} ms (retry {}/{})",
         description,
@@ -562,15 +609,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (waitTime <= 0) {
       return;
     }
+    retryDelayMs.accept(waitTime);
+  }
+
+  private static void sleepRetryDelay(long waitTime) {
     try {
       Thread.sleep(waitTime);
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException("Interrupted while retrying " + description, ie);
+      throw new RuntimeException("Interrupted while retrying RDF write", ie);
     }
   }
 
-  private long retryBackoffMs(int retryNumber) {
+  private static long retryBackoffMs(
+      int retryNumber, long writeRetryInitialBackoffMs, long writeRetryMaxBackoffMs) {
     if (writeRetryInitialBackoffMs <= 0 || writeRetryMaxBackoffMs <= 0) {
       return 0L;
     }

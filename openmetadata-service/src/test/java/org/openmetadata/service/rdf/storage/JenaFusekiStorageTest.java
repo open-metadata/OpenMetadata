@@ -16,10 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -103,6 +107,74 @@ class JenaFusekiStorageTest {
     void payloadFailureDoesNotCountAsCircuitBreakerFailure() {
       assertFalse(
           JenaFusekiStorage.isCircuitBreakerFailure(new IllegalArgumentException("bad RDF")));
+    }
+  }
+
+  @Nested
+  @DisplayName("write retry policy")
+  class WriteRetryPolicyTests {
+
+    @Test
+    @DisplayName("non-transient write failures are not retried or delayed")
+    void nonTransientWriteFailuresAreNotRetriedOrDelayed() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+      AtomicLong delayMs = new AtomicLong();
+      IllegalArgumentException failure = new IllegalArgumentException("bad RDF payload");
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  JenaFusekiStorage.runWriteWithRetry(
+                      () -> {
+                        attempts.incrementAndGet();
+                        throw failure;
+                      },
+                      "testWrite",
+                      2,
+                      250,
+                      2_000,
+                      delayMs::addAndGet,
+                      () -> {},
+                      () -> {},
+                      failureRecords::incrementAndGet,
+                      () -> false));
+
+      assertSame(failure, thrown);
+      assertEquals(1, attempts.get());
+      assertEquals(0, failureRecords.get());
+      assertEquals(0, delayMs.get());
+    }
+
+    @Test
+    @DisplayName("transient write failures are retried with injected delay")
+    void transientWriteFailuresAreRetriedWithInjectedDelay() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger successes = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+      AtomicLong delayMs = new AtomicLong();
+
+      JenaFusekiStorage.runWriteWithRetry(
+          () -> {
+            if (attempts.incrementAndGet() <= 2) {
+              throw new RuntimeException("timed out", new TimeoutException());
+            }
+          },
+          "testWrite",
+          2,
+          250,
+          2_000,
+          delayMs::addAndGet,
+          () -> {},
+          successes::incrementAndGet,
+          failureRecords::incrementAndGet,
+          () -> false);
+
+      assertEquals(3, attempts.get());
+      assertEquals(1, successes.get());
+      assertEquals(2, failureRecords.get());
+      assertEquals(750, delayMs.get());
     }
   }
 
