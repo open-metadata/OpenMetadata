@@ -43,7 +43,10 @@ class KafkaSampler(MessagingSampler):
 
         fqn = self.entity.fullyQualifiedName.root
         parts = fqn_split(fqn)
-        return parts[-1] if len(parts) > 1 else fqn
+        topic_name = parts[-1] if len(parts) > 1 else fqn
+        if topic_name.startswith('"') and topic_name.endswith('"'):
+            topic_name = topic_name[1:-1]
+        return topic_name
 
     def _build_consumer_config(self) -> dict[str, Any]:
         config = {
@@ -57,7 +60,7 @@ class KafkaSampler(MessagingSampler):
         if self.service_connection_config.saslUsername:
             config["sasl.username"] = self.service_connection_config.saslUsername
         if self.service_connection_config.saslPassword:
-            config["sasl.password"] = self.service_connection_config.saslPassword
+            config["sasl.password"] = self.service_connection_config.saslPassword.get_secret_value()
         if self.service_connection_config.saslMechanism:
             config["sasl.mechanism"] = self.service_connection_config.saslMechanism.value
         if self.service_connection_config.securityProtocol:
