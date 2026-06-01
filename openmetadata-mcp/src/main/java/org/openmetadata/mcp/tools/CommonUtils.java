@@ -68,7 +68,7 @@ public class CommonUtils {
       throw new IllegalArgumentException(
           "Parameter '" + name + "' is required and must be a non-blank string. Received: " + raw);
     }
-    return (String) raw;
+    return s;
   }
 
   public static String optString(Map<String, Object> params, String key) {
