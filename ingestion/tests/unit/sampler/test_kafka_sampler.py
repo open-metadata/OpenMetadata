@@ -16,7 +16,10 @@ def _last_part(fqn: str) -> str:
     from metadata.utils.fqn import split as fqn_split
 
     parts = fqn_split(fqn)
-    return parts[-1] if len(parts) > 1 else fqn
+    topic_name = parts[-1] if len(parts) > 1 else fqn
+    if topic_name.startswith('"') and topic_name.endswith('"'):
+        topic_name = topic_name[1:-1]
+    return topic_name
 
 
 def test_get_topic_name_simple() -> None:
@@ -32,7 +35,7 @@ def test_get_topic_name_multiple_parts() -> None:
 def test_get_topic_name_quoted() -> None:
     parts = fqn_split('kafka."events.v2"')
     assert parts == ["kafka", '"events.v2"']
-    assert _last_part('kafka."events.v2"') == '"events.v2"'
+    assert _last_part('kafka."events.v2"') == "events.v2"
 
 
 def test_get_topic_name_single_part() -> None:

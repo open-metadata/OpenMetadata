@@ -59,7 +59,7 @@ class OMetaTopicMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET sample data for {topic.fullyQualifiedName.root}: {exc}")
+            logger.warning("Error trying to GET sample data for %s: %s", topic.fullyQualifiedName.root, exc)
 
         if resp:
             return Topic(**{**topic.model_dump(), "sampleData": resp.get("sampleData")})
