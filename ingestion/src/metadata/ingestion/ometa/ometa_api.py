@@ -113,9 +113,6 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
 
-# Server errorType returned by the deleteStale endpoint when the scope entity is not found.
-SCOPE_NOT_FOUND_ERROR_TYPE = "SCOPE_NOT_FOUND"
-
 
 class MissingEntityTypeException(Exception):  # noqa: N818
     """
@@ -796,14 +793,6 @@ class OpenMetadata(
         try:
             resp = self.client.put(url, json=request)
         except APIError as err:
-            if err.status_code == 404 and err.error_type == SCOPE_NOT_FOUND_ERROR_TYPE:
-                logger.warning(
-                    "deleteStale scope %s '%s' not found; skipping stale deletion this run "
-                    "(scope not yet persisted or already removed)",
-                    scope_entity_type,
-                    scope_fqn,
-                )
-                return BulkOperationResult(numberOfRowsProcessed=0)  # pyright: ignore[reportCallIssue]
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",

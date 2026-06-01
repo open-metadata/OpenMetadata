@@ -74,13 +74,6 @@ class APIError(Exception):
         return self._error["code"]
 
     @property
-    def error_type(self):
-        """
-        Return the server-supplied errorType, when present.
-        """
-        return self._error.get("errorType")
-
-    @property
     def status_code(self):
         """
         Return response status code

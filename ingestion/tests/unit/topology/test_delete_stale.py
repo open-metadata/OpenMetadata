@@ -23,10 +23,7 @@ from metadata.generated.schema.type.bulkOperationResult import BulkOperationResu
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import (
-    SCOPE_NOT_FOUND_ERROR_TYPE,
-    OpenMetadata,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class MockEntity:
@@ -114,17 +111,17 @@ class TestDeleteStaleEntitiesMixin:
                 live_fqns=[],
             )
 
-    def test_scope_not_found_returns_empty_not_none(self):
-        """A 404 with errorType SCOPE_NOT_FOUND is a benign no-op, not an endpoint-missing
-        fallback: return an empty result (non-None) so the caller skips the legacy path."""
+    def test_missing_scope_returns_empty_result(self):
+        """A missing scope is a server-side no-op: it returns 200 + an empty BulkOperationResult
+        (zero rows), which the client passes through so the caller does not fall back to legacy."""
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/tables"
-        http_error = MagicMock()
-        http_error.response.status_code = 404
-        metadata.client.put.side_effect = APIError(
-            {"message": "scope not found", "errorType": SCOPE_NOT_FOUND_ERROR_TYPE},
-            http_error,
-        )
+        metadata.client.put.return_value = {
+            "status": "success",
+            "numberOfRowsProcessed": 0,
+            "numberOfRowsPassed": 0,
+            "numberOfRowsFailed": 0,
+        }
 
         result = OpenMetadata.delete_stale_entities(
             metadata,
