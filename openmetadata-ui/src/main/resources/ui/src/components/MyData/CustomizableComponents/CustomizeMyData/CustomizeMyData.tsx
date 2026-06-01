@@ -14,7 +14,6 @@
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
-import { Typography } from 'antd';
 import RGL, {
   Layout,
   ReactGridLayoutProps,
@@ -149,15 +148,7 @@ function CustomizeMyData({
     [layout]
   );
 
-  const filteredLayout = useMemo(
-    () =>
-      layout.filter(
-        (widget) =>
-          widget.i.startsWith('KnowledgePanel') &&
-          !widget.i.endsWith('.EmptyWidgetPlaceholder')
-      ),
-    [layout]
-  );
+  const filteredLayout = useMemo(() => getUniqueFilteredLayout(layout), [layout]);
 
   const isWidgetSelectionEmpty = filteredLayout.length === 0;
 
@@ -243,12 +234,12 @@ function CustomizeMyData({
             onSave={handleSave}
           />
           {isWidgetSelectionEmpty && (
-            <Typography.Text
-              className="m-b-md d-block"
+            <p
+              className="tw:mb-4 tw:text-error"
               data-testid="minimum-widget-warning"
-              type="danger">
+              role="alert">
               {t('message.minimum-widget-required')}
-            </Typography.Text>
+            </p>
           )}
           {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
           {/*

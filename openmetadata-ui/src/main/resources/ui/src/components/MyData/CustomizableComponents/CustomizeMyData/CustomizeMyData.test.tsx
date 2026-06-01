@@ -281,5 +281,6 @@ describe('CustomizeMyData component', () => {
 
     expect(screen.getByTestId('save-button')).toBeDisabled();
     expect(screen.getByTestId('minimum-widget-warning')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });
