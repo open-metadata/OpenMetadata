@@ -83,6 +83,19 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "create_classification":
+          result =
+              new CreateClassificationTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_tag":
+          result = new CreateTagTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_domain":
+          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_data_product":
+          result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
+          break;
         default:
           return McpSchema.CallToolResult.builder()
               .content(
