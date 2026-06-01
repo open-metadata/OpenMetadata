@@ -318,10 +318,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(page.getByText('Switch Persona')).toBeVisible();
 
     // Initially should show limited personas (2 by default)
-    const initialPersonaLabels = page
-      .locator('[data-testid="persona-label"]')
-      .locator('input[type="radio"]');
-    await initialPersonaLabels.first().click();
+    await page
+      .getByRole('menuitem', { name: persona.responseData.displayName })
+      .click();
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
     await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
 

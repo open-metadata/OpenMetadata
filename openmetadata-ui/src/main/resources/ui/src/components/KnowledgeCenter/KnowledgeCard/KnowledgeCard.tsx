@@ -55,6 +55,7 @@ import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
+  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -336,7 +337,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
                 data-testid="entity-header-display-name"
                 ellipsis={{ tooltip: true }}>
-                {knowledgePage?.displayName || t('label.untitled')}
+                {getKnowledgePageName(knowledgePage, t)}
               </Typography.Text>
               {isQuickLink && !readonly && quickLinkActions}
             </div>
@@ -471,7 +472,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         />
       )}
       <DeleteModal
-        entityTitle={knowledgePage.displayName || t('label.untitled')}
+        entityTitle={getKnowledgePageName(knowledgePage, t)}
         isDeleting={isDeleting}
         message={t('message.delete-entity-permanently', {
           entityType: t('label.quick-link'),
@@ -481,7 +482,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         onDelete={async () => {
           setIsDeleting(true);
           try {
-            await deleteKnowledgePage(knowledgePage.id, false);
+            await deleteKnowledgePage(knowledgePage.id, false, true);
             afterDeleteAction(false);
           } catch (error) {
             showErrorToast(error as AxiosError);

@@ -13,7 +13,7 @@
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import Loader from '../Loader/Loader';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';

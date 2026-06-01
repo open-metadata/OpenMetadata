@@ -15,12 +15,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import UploadedDocumentCard from './UploadedDocumentCard.component';
 import { UploadedDocumentItem } from './UploadedDocumentCard.interface';
 
-jest.mock('utils/ContextCenterUtils', () => ({
-  getFileTypeIcon: jest.fn((fileType: string) => (
-    <span data-testid={`file-icon-${fileType}`} />
-  )),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(({ onClick }: { onClick?: () => void }) => (
     <button onClick={onClick}>download</button>
@@ -40,6 +34,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+  FileIcon: jest.fn(({ type }: { type: string }) => (
+    <span data-testid={`file-icon-${type}`} />
+  )),
   Typography: jest.fn(
     ({ children, title }: { children: React.ReactNode; title?: string }) => (
       <span title={title}>{children}</span>
@@ -56,7 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const mockDocument: UploadedDocumentItem = {
   id: 'doc-1',
   name: 'MyReport.pdf',
-  fileType: 'pdf',
+  fileExtension: 'pdf',
   sizeLabel: '1.2 MB',
   status: 'processed',
   updatedBy: 'alice',
@@ -82,17 +79,17 @@ describe('UploadedDocumentCard', () => {
     expect(screen.getByText('1.2 MB')).toBeInTheDocument();
   });
 
-  it('renders the file type icon using getFileTypeIcon', () => {
+  it('renders the file type icon for pdf extension', () => {
     render(<UploadedDocumentCard document={mockDocument} />);
 
     expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
   });
 
-  it('renders the correct file icon for doc type', () => {
+  it('renders the correct file icon for doc extension', () => {
     const docDocument: UploadedDocumentItem = {
       ...mockDocument,
       id: 'doc-2',
-      fileType: 'doc',
+      fileExtension: 'doc',
     };
     render(<UploadedDocumentCard document={docDocument} />);
 

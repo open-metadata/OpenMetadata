@@ -20,6 +20,8 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 
 /**
  * Verifies that the live mapping for every declared alias carries the canonical OM
@@ -29,7 +31,11 @@ import org.openmetadata.sdk.fluent.Apps;
  * directly against the running engine.
  *
  * <p>Skips aliases that resolve to no backing index (e.g., index types only created
- * on-demand for entities that haven't been seeded yet).
+ * on-demand for entities that haven't been seeded yet), and aliases that don't carry the
+ * envelope by design: time-series indices (no soft delete) and report-data/analytics
+ * indices (a {@code timestamp} + {@code data} shape, not a searchable OM entity). The
+ * server's {@link EntityIndexCapabilityRegistry} is the source of truth for which entity
+ * types own the envelope.
  */
 @ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
@@ -54,20 +60,34 @@ class IndexMappingTemplatesIT {
   void everyDeclaredAliasHasCanonicalEnvelopeFields() {
     final List<String> failures = new ArrayList<>();
     for (final String entityType : inspector.declaredEntityTypes()) {
-      final String alias = inspector.aliasFor(entityType);
-      if (inspector.indicesForAlias(alias).isEmpty()) {
+      if (!carriesCanonicalEnvelope(entityType)) {
         continue;
       }
-      final JsonNode mapping = inspector.mapping(alias);
+      final String index = inspector.indexNameFor(entityType);
+      if (inspector.indicesForAlias(index).isEmpty()) {
+        continue;
+      }
+      final JsonNode mapping = inspector.mapping(index);
       final JsonNode properties = mapping.path("properties");
       for (final String field : REQUIRED_FIELDS) {
         if (properties.path(field).isMissingNode() || properties.path(field).isEmpty()) {
-          failures.add(String.format("  %s: missing required field '%s' in mapping", alias, field));
+          failures.add(String.format("  %s: missing required field '%s' in mapping", index, field));
         }
       }
     }
     assertThat(failures)
         .as("every alias must declare canonical envelope fields:%n%s", String.join("\n", failures))
         .isEmpty();
+  }
+
+  /**
+   * A searchable OM entity owns the canonical envelope. Time-series indices (soft delete is
+   * meaningless for an append-only series) and report-data/analytics index types (which have no
+   * registered capability — they store a {@code timestamp} + {@code data} shape, not an entity)
+   * do not, so the envelope contract must not be asserted against them.
+   */
+  private static boolean carriesCanonicalEnvelope(final String entityType) {
+    final EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability != null && !capability.isTimeSeries();
   }
 }

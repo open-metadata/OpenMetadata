@@ -41,12 +41,12 @@ import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDataModelColumnsByFQN } from '../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getTableExpandableConfig,
   pruneEmptyChildren,
