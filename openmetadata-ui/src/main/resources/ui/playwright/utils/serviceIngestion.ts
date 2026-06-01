@@ -147,25 +147,25 @@ export const testConnection = async (page: Page) => {
   await page.getByTestId('test-connection-btn').waitFor();
 
   await page.click('[data-testid="test-connection-btn"]');
-  const modalTitle = page.locator(
-    '[data-testid="test-connection-modal"] .ant-modal-title'
-  );
+  const testConnectionDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: /Connection status|Test Connection/ });
 
-  await expect(modalTitle).toBeVisible();
+  await expect(testConnectionDialog).toBeVisible();
 
-  await page.getByRole('button', { name: 'OK' }).click();
+  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
 
   // Wait for the success badge or the warning badge to appear
-  const successBadge = page.locator('[data-testid="success-badge"]');
+  const statusBadge = page.locator(
+    '[data-testid="message-container"] [data-testid="success-badge"], [data-testid="message-container"] [data-testid="warning-badge"]'
+  );
 
-  const warningBadge = page.locator('[data-testid="warning-badge"]');
-
-  await expect(successBadge.or(warningBadge)).toBeVisible({
+  await expect(statusBadge).toBeVisible({
     timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
+    /Connection verified|Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata./
   );
 };
 
