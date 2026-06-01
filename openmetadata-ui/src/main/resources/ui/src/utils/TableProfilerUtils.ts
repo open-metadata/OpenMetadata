@@ -21,11 +21,11 @@ import {
   TableProfile,
 } from '../generated/entity/data/table';
 import { CustomMetric } from '../generated/tests/customMetric';
-import { calculatePercentage, formatNumberWithComma } from './CommonUtils';
 import {
   customFormatDateTime,
   DATE_TIME_12_HOUR_FORMAT,
 } from './date-time/DateTimeUtils';
+import { calculatePercentage, formatNumberWithComma } from './NumberUtils';
 import { isHasKey } from './ObjectUtils';
 import {
   CalculateColumnProfilerMetricsInterface,

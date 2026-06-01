@@ -70,7 +70,7 @@ jest.mock('../../../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

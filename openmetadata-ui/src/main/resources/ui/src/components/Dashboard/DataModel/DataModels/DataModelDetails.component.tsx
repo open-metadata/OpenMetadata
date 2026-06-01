@@ -27,7 +27,6 @@ import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -35,6 +34,11 @@ import {
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
@@ -99,8 +103,27 @@ const DataModelDetails = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityTaskCountsInto(decodedDataModelFQN, setFeedCount);
+    }
+  }, [decodedDataModelFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD_DATA_MODEL,
+        decodedDataModelFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDataModelFQN]);
+
   useEffect(() => {
-    decodedDataModelFQN && getEntityFeedCount();
+    if (decodedDataModelFQN) {
+      fetchTaskCounts();
+      fetchActivityCount();
+    }
   }, [decodedDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {

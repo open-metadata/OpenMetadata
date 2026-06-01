@@ -1377,6 +1377,22 @@
   animation: skeleton-wave 1.5s ease-in-out infinite;
 }
 
+/* Copy-link burst ring animation. */
+@keyframes copy-link-ring-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+.copy-link-ring-pulse {
+  animation: copy-link-ring-pulse 0.55s ease-out forwards;
+}
+
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */
 @source "../../dist/**/*.{js,mjs,cjs}";

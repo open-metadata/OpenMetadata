@@ -863,8 +863,6 @@ export const verifyColumnLineageInCSV = async (
     )
   );
 
-  console.log('Expected Row:', expectedRow, parsedData);
-
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };
 
