@@ -19,14 +19,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.Argument;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.schema.entity.events.TriggerConfig.TriggerType;
+import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -49,6 +53,15 @@ public class CreateAlertTool implements McpTool {
 
   private static final String SUPPORTED_RESOURCE_TYPE = "ingestionPipeline";
   private static final String SUPPORTED_EVENT_TYPE = "pipelineFailed";
+  // `pipelineFailed` is the public-facing event name; the underlying
+  // observability filter ingestionPipelineStateList matches the lowercase
+  // PipelineStatusType value used by AlertsRuleEvaluator#matchIngestionPipelineState.
+  private static final String PIPELINE_FAILED_STATE = "failed";
+  // Observability-filter name from EntityObservabilityFilterDescriptor.json. No
+  // enum value exists for this filter since it is observability-only.
+  private static final String STATUS_FILTER_NAME = "GetIngestionPipelineStatusUpdates";
+  private static final String STATUS_FILTER_ARG = "ingestionPipelineStateList";
+  private static final String FQN_FILTER_ARG = "fqnList";
 
   private static final EventSubscriptionMapper MAPPER = new EventSubscriptionMapper();
 
@@ -94,7 +107,8 @@ public class CreateAlertTool implements McpTool {
     OperationContext operationContext = new OperationContext(Entity.EVENT_SUBSCRIPTION, CREATE);
     String userName = securityContext.getUserPrincipal().getName();
 
-    CreateEventSubscription create = buildRequest(alertName, description, webhookUrl);
+    CreateEventSubscription create =
+        buildRequest(alertName, description, resourceFqn, eventType, webhookUrl);
     EventSubscription entity = MAPPER.createToEntity(create, userName);
 
     CreateResourceContext<EventSubscription> createResourceContext =
@@ -122,14 +136,17 @@ public class CreateAlertTool implements McpTool {
     return result;
   }
 
-  private static CreateEventSubscription buildRequest(
-      String name, String description, String webhookUrl) {
+  static CreateEventSubscription buildRequest(
+      String name, String description, String resourceFqn, String eventType, String webhookUrl) {
     CreateEventSubscription r = new CreateEventSubscription();
     r.setName(name);
     if (description != null) {
       r.setDescription(description);
     }
-    r.setAlertType(AlertType.NOTIFICATION);
+    // OBSERVABILITY (not NOTIFICATION) so we can use the
+    // GetIngestionPipelineStatusUpdates observability filter to scope the
+    // alert to a specific pipeline state.
+    r.setAlertType(AlertType.OBSERVABILITY);
     r.setResources(List.of(SUPPORTED_RESOURCE_TYPE));
     r.setEnabled(true);
     r.setBatchSize(10);
@@ -139,6 +156,8 @@ public class CreateAlertTool implements McpTool {
     TriggerConfig trigger = new TriggerConfig();
     trigger.setTriggerType(TriggerType.REAL_TIME);
     r.setTrigger(trigger);
+
+    r.setInput(buildFilteringInput(resourceFqn, mapEventTypeToState(eventType)));
 
     SubscriptionDestination dest = new SubscriptionDestination();
     dest.setId(UUID.randomUUID());
@@ -155,6 +174,34 @@ public class CreateAlertTool implements McpTool {
 
     r.setDestinations(List.of(dest));
     return r;
+  }
+
+  private static AlertFilteringInput buildFilteringInput(String resourceFqn, String state) {
+    ArgumentsInput fqnFilter =
+        new ArgumentsInput()
+            .withName(NotificationFilterOperation.FILTER_BY_FQN.value())
+            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
+            .withArguments(
+                List.of(new Argument().withName(FQN_FILTER_ARG).withInput(List.of(resourceFqn))));
+    ArgumentsInput stateFilter =
+        new ArgumentsInput()
+            .withName(STATUS_FILTER_NAME)
+            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
+            .withArguments(
+                List.of(new Argument().withName(STATUS_FILTER_ARG).withInput(List.of(state))));
+    return new AlertFilteringInput().withFilters(List.of(fqnFilter, stateFilter));
+  }
+
+  private static String mapEventTypeToState(String eventType) {
+    String state;
+    if (SUPPORTED_EVENT_TYPE.equals(eventType)) {
+      state = PIPELINE_FAILED_STATE;
+    } else {
+      throw new IllegalArgumentException("Unsupported eventType: " + eventType);
+    }
+    return state;
   }
 
   private static boolean isValidHttpUrl(String s) {

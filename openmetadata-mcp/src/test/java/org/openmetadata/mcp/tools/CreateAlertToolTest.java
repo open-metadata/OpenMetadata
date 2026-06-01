@@ -13,12 +13,16 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -85,5 +89,40 @@ class CreateAlertToolTest {
         () ->
             new CreateAlertTool()
                 .execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of()));
+  }
+
+  @Test
+  void buildRequest_scopesAlertByFqnAndPipelineState() {
+    CreateEventSubscription request =
+        CreateAlertTool.buildRequest(
+            "demo_alert",
+            "demo description",
+            "service.namespace.flow",
+            "pipelineFailed",
+            "https://hooks.example.com/x");
+
+    assertEquals(
+        CreateEventSubscription.AlertType.OBSERVABILITY,
+        request.getAlertType(),
+        "Observability alert is required so the ingestionPipeline state filter is supported.");
+
+    assertNotNull(request.getInput(), "buildRequest must attach an AlertFilteringInput");
+    List<ArgumentsInput> filters = request.getInput().getFilters();
+    assertEquals(2, filters.size(), "expected fqn + pipeline-state filters");
+
+    ArgumentsInput fqnFilter = findFilterByName(filters, "filterByFqn");
+    assertEquals(ArgumentsInput.Effect.INCLUDE, fqnFilter.getEffect());
+    assertEquals(List.of("service.namespace.flow"), fqnFilter.getArguments().get(0).getInput());
+
+    ArgumentsInput stateFilter = findFilterByName(filters, "GetIngestionPipelineStatusUpdates");
+    assertEquals(ArgumentsInput.Effect.INCLUDE, stateFilter.getEffect());
+    assertEquals(List.of("failed"), stateFilter.getArguments().get(0).getInput());
+  }
+
+  private static ArgumentsInput findFilterByName(List<ArgumentsInput> filters, String name) {
+    return filters.stream()
+        .filter(f -> name.equals(f.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("filter '" + name + "' not found"));
   }
 }
