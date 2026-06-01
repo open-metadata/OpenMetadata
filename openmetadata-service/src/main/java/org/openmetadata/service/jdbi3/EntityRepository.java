@@ -8208,6 +8208,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwners() {
+      if (operation.isPut()
+          && !nullOrEmpty(original.getOwners())
+          && updatedByBot()
+          && !overrideMetadata) {
+        // Mirror updateDescription: a bot PUT (for example bulk ingestion) must not clobber
+        // user-curated owners. Use a PATCH or overrideMetadata=true to reassign ownership.
+        updated.setOwners(original.getOwners());
+        return;
+      }
       List<EntityReference> origOwners = getEntityReferences(original.getOwners());
       List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
       List<EntityReference> addedOwners = new ArrayList<>();

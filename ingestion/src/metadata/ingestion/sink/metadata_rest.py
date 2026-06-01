@@ -133,6 +133,7 @@ class MetadataRestSinkConfig(ConfigModel):
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
+    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -323,7 +324,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
+            result = self.metadata.bulk_create_or_update(
+                entities=self.buffer,
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())

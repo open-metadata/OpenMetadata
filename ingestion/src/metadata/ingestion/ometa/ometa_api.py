@@ -928,12 +928,20 @@ class OpenMetadata(
 
         return sorted_grouped  # noqa: RET504
 
-    def _execute_bulk_operation(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:  # noqa: UP006
+    def _execute_bulk_operation(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
         """Execute a bulk operation for a list of entities.
 
         Args:
             entities (List[Type[T]]): List of entities to execute the bulk operation for
             use_async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
 
         Returns:
             BulkOperationResult: Result containing success/failure details
@@ -941,7 +949,7 @@ class OpenMetadata(
         type_ = type(entities[0])
         data: list[str] = [entity.model_dump(mode="json", exclude_unset=True, exclude_none=True) for entity in entities]
         url = f"{self.get_suffix(type_)}/bulk"
-        url += f"?async={str(use_async).lower()}"
+        url += f"?async={str(use_async).lower()}&overrideMetadata={str(override_metadata).lower()}"
         try:
             resp = self.client.put(url, json=data)
         except Exception as exc:
@@ -961,12 +969,20 @@ class OpenMetadata(
             )
         return BulkOperationResult(**resp)
 
-    def bulk_create_or_update(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:  # noqa: UP006
+    def bulk_create_or_update(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
         """Bulk create or update (PUT) multiple entities in a single API call.
 
         Args:
             entities (List[Type[T]]): List of entities to create or update
             async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
 
         Returns:
             BulkOperationResult: Result containing success/failure details
@@ -985,12 +1001,12 @@ class OpenMetadata(
             grouped = self._group_entities_by_type(entities)
             for _, entities in grouped.items():  # noqa: PERF102, PLR1704
                 try:
-                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
                 except Exception as exc:
                     logger.debug("Failed to execute bulk operation: %s", exc)
                     logger.debug(traceback.format_exc())
         else:
-            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
 
         failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
         return BulkOperationResult(
