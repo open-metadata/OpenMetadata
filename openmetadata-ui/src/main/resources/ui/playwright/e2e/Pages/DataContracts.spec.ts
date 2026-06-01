@@ -359,12 +359,16 @@ test.describe('Data Contracts', () => {
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        await triggerContractValidation(page);
+        await toastPromise;
 
         await page.reload();
 
@@ -1135,9 +1139,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1310,9 +1321,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
