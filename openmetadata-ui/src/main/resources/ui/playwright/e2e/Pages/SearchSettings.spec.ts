@@ -319,9 +319,8 @@ test.describe('Search Settings', () => {
 
         // Register waitForResponse BEFORE the click so the on-load preview
         // request is captured rather than missed.
-        const initialPreviewPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/search/preview') && r.status() === 200
+        const initialPreviewPromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/search/preview')
         );
 
         await tableCard.click();
@@ -333,6 +332,7 @@ test.describe('Search Settings', () => {
 
         // Capture the initial preview request to read original n-gram boost.
         const initialPreviewResponse = await initialPreviewPromise;
+        expect(initialPreviewResponse.status()).toBe(200);
         const initialBody = initialPreviewResponse.request().postDataJSON();
 
         const initialNgramBoost =
@@ -364,10 +364,10 @@ test.describe('Search Settings', () => {
         await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
 
         // Wait for the preview to re-fetch with the reverted config.
-        const revertedPreviewResponse = await page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/search/preview') && r.status() === 200
+        const revertedPreviewResponse = await page.waitForResponse((r) =>
+          r.url().includes('/api/v1/search/preview')
         );
+        expect(revertedPreviewResponse.status()).toBe(200);
         const revertedBody = revertedPreviewResponse.request().postDataJSON();
 
         const revertedNgramBoost =
