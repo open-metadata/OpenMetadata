@@ -15,7 +15,6 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -29,17 +28,13 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 /**
  * Triggers an OpenMetadata ingestion pipeline via the same pathway used by the {@code
  * IngestionPipelineResource#triggerIngestion} REST endpoint.
- *
- * <p>The {@code pipelineServiceClient} field on {@link IngestionPipelineRepository} is private with
- * a Lombok-generated setter only. Until the repository exposes a public {@code runIngestion(...)}
- * helper (follow-up PR), we read the field reflectively. This is a small, isolated workaround --
- * the rest of the orchestration mirrors the resource implementation.
  */
 @Slf4j
 public class RunIngestionTool implements McpTool {
@@ -65,9 +60,6 @@ public class RunIngestionTool implements McpTool {
       return errorMap(PARAM_FQN + " is required");
     }
 
-    authorizer.authorize(
-        securityContext, new OperationContext(RESOURCE, EDIT_ALL), new ResourceContext<>(RESOURCE));
-
     IngestionPipeline pipeline =
         (IngestionPipeline) Entity.getEntityByName(RESOURCE, fqn, "*", Include.NON_DELETED);
     if (pipeline == null) {
@@ -77,10 +69,17 @@ public class RunIngestionTool implements McpTool {
       return errorMap("Pipeline is disabled: " + fqn);
     }
 
+    OperationContext operationContext = new OperationContext(RESOURCE, EDIT_ALL);
+    ResourceContext<IngestionPipeline> resourceContext =
+        new ResourceContext<>(RESOURCE, pipeline.getId(), null);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(RESOURCE, pipeline);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     IngestionPipelineRepository repo =
         (IngestionPipelineRepository) Entity.getEntityRepository(RESOURCE);
-
-    PipelineServiceClientInterface client = readPipelineServiceClient(repo);
+    PipelineServiceClientInterface client = repo.getPipelineServiceClient();
     if (client == null) {
       return errorMap(
           "Pipeline Service Client is not configured on this server -- cannot trigger ingestions.");
@@ -106,25 +105,6 @@ public class RunIngestionTool implements McpTool {
     result.put("platform", response.getPlatform());
     result.put("triggeredAt", System.currentTimeMillis());
     return result;
-  }
-
-  /**
-   * Reflectively read the {@code pipelineServiceClient} field on the repository. The field is
-   * package-private with a Lombok {@code @Setter} only. Follow-up PR: expose a public {@code
-   * runIngestion(...)} method on {@link IngestionPipelineRepository} so this is unnecessary.
-   */
-  private static PipelineServiceClientInterface readPipelineServiceClient(
-      IngestionPipelineRepository repo) {
-    try {
-      Field field = IngestionPipelineRepository.class.getDeclaredField("pipelineServiceClient");
-      field.setAccessible(true);
-      return (PipelineServiceClientInterface) field.get(repo);
-    } catch (ReflectiveOperationException exc) {
-      LOG.warn(
-          "Could not access IngestionPipelineRepository.pipelineServiceClient: {}",
-          exc.getMessage());
-      return null;
-    }
   }
 
   private static String requireString(Map<String, Object> params, String key) {

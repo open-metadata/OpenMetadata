@@ -21,7 +21,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -51,8 +53,16 @@ public class GetIngestionStatusTool implements McpTool {
     }
     final int limit = clampInt(params.get(PARAM_LIMIT), 1, MAX_LIMIT, DEFAULT_LIMIT);
 
-    authorizer.authorize(
-        securityContext, new OperationContext(RESOURCE, VIEW_ALL), new ResourceContext<>(RESOURCE));
+    IngestionPipeline pipeline =
+        (IngestionPipeline) Entity.getEntityByName(RESOURCE, fqn, "id", Include.NON_DELETED);
+    if (pipeline == null) {
+      return errorMap("Pipeline not found: " + fqn);
+    }
+
+    OperationContext operationContext = new OperationContext(RESOURCE, VIEW_ALL);
+    ResourceContext<IngestionPipeline> resourceContext =
+        new ResourceContext<>(RESOURCE, pipeline.getId(), null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     IngestionPipelineRepository repo =
         (IngestionPipelineRepository) Entity.getEntityRepository(RESOURCE);
