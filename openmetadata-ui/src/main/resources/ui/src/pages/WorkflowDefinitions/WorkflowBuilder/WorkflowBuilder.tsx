@@ -76,6 +76,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const {
     canAccessSidebar,
     canDragNodes,
+    canDragNodesInViewMode,
     enterViewMode,
     isEditMode,
     showWorkflowNodePalette,
@@ -492,7 +493,11 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 isConnectionModalOpen={isConnectionModalOpen}
                 isDragging={isDragging}
                 isNodeDragEnabled={
-                  canDragNodes ? isNodeDragEnabledWrapper : () => false
+                  canDragNodes
+                    ? isNodeDragEnabledWrapper
+                    : canDragNodesInViewMode
+                    ? () => true
+                    : () => false
                 }
                 nodes={nodes}
                 pendingConnection={pendingConnection}
