@@ -129,40 +129,41 @@ export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   extension: {},
 };
 
-// Custom-property types that the form renders with a USER_TEAM_SELECT_INPUT
-// picker. The picker emits an array of DomainFormSelectItem regardless of
-// the property's cardinality, so we unwrap to a single value for the
-// single-cardinality `entityReference` type before submit.
-export const ENTITY_REFERENCE_PROPERTY_TYPES = [
-  'entityReference',
-  'entityReferenceList',
-] as const;
+// Extension fields rendered by core-components pickers store the selected
+// FormSelectItem/DomainFormSelectItem ({ id, label, value, ... }) in form
+// state, but the API expects the raw wrapped `.value`:
+//  - SELECT (enum)          → item.value (the enum string)
+//  - USER_TEAM_SELECT_INPUT → item.value (an EntityReference), single or array
+// Plain TEXT / NUMBER / DESCRIPTION fields store raw values and pass through
+// untouched. This is shape-based (not custom-property-type-based) so it works
+// in every submit path — including the drawer flow, which calls
+// transformDomainFormData without the custom-property definitions.
+const isFormSelectItem = (value: unknown): value is DomainFormSelectItem =>
+  typeof value === 'object' &&
+  value !== null &&
+  'id' in value &&
+  'value' in value;
 
-const unwrapEntityReferenceExtension = (
-  extension: Record<string, unknown> | undefined,
-  customProperties: CustomProperty[]
+const unwrapSelectItemValue = (raw: unknown): unknown => {
+  if (Array.isArray(raw)) {
+    return raw.map((item) => (isFormSelectItem(item) ? item.value : item));
+  }
+  if (isFormSelectItem(raw)) {
+    return raw.value;
+  }
+
+  return raw;
+};
+
+const normalizeExtensionForApi = (
+  extension: Record<string, unknown> | undefined
 ): Record<string, unknown> | undefined => {
-  if (!extension || customProperties.length === 0) {
+  if (!extension) {
     return extension;
   }
-  const normalized = { ...extension };
-  for (const cp of customProperties) {
-    const propName = cp.name as string;
-    const typeName = cp.propertyType?.name;
-    const raw = normalized[propName];
-    if (raw === undefined) {
-      continue;
-    }
-    // The picker stores DomainFormSelectItem[]; extract the .value
-    // (EntityReference) onto a property-shape-appropriate container.
-    if (Array.isArray(raw) && typeName === 'entityReference') {
-      const first = raw[0] as DomainFormSelectItem | undefined;
-      normalized[propName] = first?.value as EntityReference | undefined;
-    } else if (Array.isArray(raw) && typeName === 'entityReferenceList') {
-      normalized[propName] = (raw as DomainFormSelectItem[]).map(
-        (item) => item.value as EntityReference
-      );
-    }
+  const normalized: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(extension)) {
+    normalized[key] = unwrapSelectItemValue(raw);
   }
 
   return normalized;
@@ -171,8 +172,7 @@ const unwrapEntityReferenceExtension = (
 export const transformDomainFormData = (
   formData: DomainFormValues,
   type: DomainFormType,
-  parentDomain?: Domain,
-  customProperties: CustomProperty[] = []
+  parentDomain?: Domain
 ): CreateDomain | CreateDataProduct => {
   const tags = formData.tags.map((item) => item.value as TagLabel);
   const expertsList = formData.experts.map(
@@ -212,10 +212,7 @@ export const transformDomainFormData = (
     ...updatedData,
     domainType: (formData.domainType?.value as DomainType) ?? undefined,
     experts: expertsList.map((item) => item.name ?? ''),
-    extension: unwrapEntityReferenceExtension(
-      formData.extension,
-      customProperties
-    ),
+    extension: normalizeExtensionForApi(formData.extension),
     owners: ownersList,
     style,
     tags: [...tags, ...formData.glossaryTerms],
@@ -1146,19 +1143,16 @@ const AddDomainForm = ({
   const isDomain =
     type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN;
 
-  // Unwrap entityReference picker shape (DomainFormSelectItem[]) onto the
-  // schema-mandated EntityReference / EntityReference[] before the parent's
+  // Unwrap the picker wrapper ({ id, label, value }) on extension fields onto
+  // the raw enum string / EntityReference the API expects, before the parent's
   // onSubmit runs, so callers don't need to know about the picker contract.
   const handleSubmit = useCallback(
     (data: DomainFormValues) =>
       onSubmit({
         ...data,
-        extension: unwrapEntityReferenceExtension(
-          data.extension,
-          customProperties
-        ),
+        extension: normalizeExtensionForApi(data.extension),
       }),
-    [onSubmit, customProperties]
+    [onSubmit]
   );
 
   return (
