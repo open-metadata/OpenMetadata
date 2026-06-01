@@ -193,7 +193,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
     if (!getNameHashColumn().equals("fqnHash")) {
-      return java.util.Collections.emptyList();
+      return List.of();
     }
     String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
     return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
