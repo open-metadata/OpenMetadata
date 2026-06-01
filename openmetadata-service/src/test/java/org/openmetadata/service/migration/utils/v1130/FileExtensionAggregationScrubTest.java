@@ -21,6 +21,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 
 class FileExtensionAggregationScrubTest {
@@ -32,6 +33,12 @@ class FileExtensionAggregationScrubTest {
     return a;
   }
 
+  private FieldBoost searchField(String field) {
+    FieldBoost fb = new FieldBoost();
+    fb.setField(field);
+    return fb;
+  }
+
   private AssetTypeConfiguration assetConfig(String assetType, Aggregation... aggregations) {
     AssetTypeConfiguration config = new AssetTypeConfiguration();
     config.setAssetType(assetType);
@@ -40,30 +47,30 @@ class FileExtensionAggregationScrubTest {
   }
 
   @Test
-  void scrubRemovesStaleExtensionAggregationFromFileConfig() {
-    SearchSettings settings = new SearchSettings();
-    settings.setAssetTypeConfigurations(
+  void scrubRemovesStaleExtensionAggregationAndSearchFieldFromFileConfig() {
+    AssetTypeConfiguration fileConfig = new AssetTypeConfiguration();
+    fileConfig.setAssetType("file");
+    fileConfig.setAggregations(
+        new ArrayList<>(List.of(agg("fileType"), agg("extension"), agg("fileExtension"))));
+    fileConfig.setSearchFields(
         new ArrayList<>(
-            List.of(
-                assetConfig(
-                    "file",
-                    agg("fileType"),
-                    agg("extension"),
-                    agg("fileExtension"),
-                    agg("service.displayName.keyword")))));
+            List.of(searchField("name"), searchField("extension"), searchField("fileExtension"))));
 
-    boolean changed = MigrationUtil.stripStaleFileExtensionAggregation(settings);
+    SearchSettings settings = new SearchSettings();
+    settings.setAssetTypeConfigurations(new ArrayList<>(List.of(fileConfig)));
 
-    assertTrue(
-        changed, "Scrub should report a change when the stale extension aggregation is present");
+    boolean changed = MigrationUtil.stripStaleFileExtensionSettings(settings);
+
+    assertTrue(changed);
     List<Aggregation> aggs = settings.getAssetTypeConfigurations().getFirst().getAggregations();
-    assertEquals(3, aggs.size());
-    assertTrue(
-        aggs.stream().noneMatch(a -> "extension".equals(a.getField())),
-        "Stale 'extension' aggregation must be removed");
-    assertTrue(
-        aggs.stream().anyMatch(a -> "fileExtension".equals(a.getField())),
-        "Current 'fileExtension' aggregation must be preserved");
+    assertEquals(2, aggs.size());
+    assertTrue(aggs.stream().noneMatch(a -> "extension".equals(a.getField())));
+    assertTrue(aggs.stream().anyMatch(a -> "fileExtension".equals(a.getField())));
+
+    List<FieldBoost> sfs = settings.getAssetTypeConfigurations().getFirst().getSearchFields();
+    assertEquals(2, sfs.size());
+    assertTrue(sfs.stream().noneMatch(f -> "extension".equals(f.getField())));
+    assertTrue(sfs.stream().anyMatch(f -> "fileExtension".equals(f.getField())));
   }
 
   @Test
@@ -76,51 +83,53 @@ class FileExtensionAggregationScrubTest {
                 assetConfig("table", agg("extension"), agg("columns.name")),
                 assetConfig("topic", agg("extension"), agg("messageSchema.schemaType")))));
 
-    boolean changed = MigrationUtil.stripStaleFileExtensionAggregation(settings);
+    boolean changed = MigrationUtil.stripStaleFileExtensionSettings(settings);
 
-    assertTrue(changed, "Scrub should report change for the file asset type");
+    assertTrue(changed);
     List<Aggregation> fileAggs = settings.getAssetTypeConfigurations().get(0).getAggregations();
-    assertEquals(1, fileAggs.size(), "Only file aggregations should be modified");
+    assertEquals(1, fileAggs.size());
     assertEquals("fileType", fileAggs.getFirst().getField());
 
-    List<Aggregation> tableAggs = settings.getAssetTypeConfigurations().get(1).getAggregations();
-    assertEquals(2, tableAggs.size(), "table aggregations must not be touched");
-
-    List<Aggregation> topicAggs = settings.getAssetTypeConfigurations().get(2).getAggregations();
-    assertEquals(2, topicAggs.size(), "topic aggregations must not be touched");
+    assertEquals(2, settings.getAssetTypeConfigurations().get(1).getAggregations().size());
+    assertEquals(2, settings.getAssetTypeConfigurations().get(2).getAggregations().size());
   }
 
   @Test
   void scrubIsIdempotentWhenExtensionAlreadyAbsent() {
-    SearchSettings settings = new SearchSettings();
-    settings.setAssetTypeConfigurations(
+    AssetTypeConfiguration fileConfig = new AssetTypeConfiguration();
+    fileConfig.setAssetType("file");
+    fileConfig.setAggregations(
         new ArrayList<>(
             List.of(
-                assetConfig(
-                    "file",
-                    agg("fileType"),
-                    agg("fileExtension"),
-                    agg("directory.displayName.keyword"),
-                    agg("service.displayName.keyword")))));
+                agg("fileType"),
+                agg("fileExtension"),
+                agg("directory.displayName.keyword"),
+                agg("service.displayName.keyword"))));
+    fileConfig.setSearchFields(
+        new ArrayList<>(List.of(searchField("name"), searchField("fileExtension"))));
 
-    boolean changed = MigrationUtil.stripStaleFileExtensionAggregation(settings);
+    SearchSettings settings = new SearchSettings();
+    settings.setAssetTypeConfigurations(new ArrayList<>(List.of(fileConfig)));
 
-    assertFalse(changed, "Scrub must not report a change when extension is already absent");
+    boolean changed = MigrationUtil.stripStaleFileExtensionSettings(settings);
+
+    assertFalse(changed);
     assertEquals(4, settings.getAssetTypeConfigurations().getFirst().getAggregations().size());
+    assertEquals(2, settings.getAssetTypeConfigurations().getFirst().getSearchFields().size());
   }
 
   @Test
   void scrubHandlesNullAndEmptyGracefully() {
-    assertFalse(MigrationUtil.stripStaleFileExtensionAggregation(null));
+    assertFalse(MigrationUtil.stripStaleFileExtensionSettings(null));
 
-    SearchSettings empty = new SearchSettings();
-    assertFalse(MigrationUtil.stripStaleFileExtensionAggregation(empty));
+    assertFalse(MigrationUtil.stripStaleFileExtensionSettings(new SearchSettings()));
 
-    SearchSettings nullAggs = new SearchSettings();
+    SearchSettings nullFields = new SearchSettings();
     AssetTypeConfiguration fileConfig = new AssetTypeConfiguration();
     fileConfig.setAssetType("file");
     fileConfig.setAggregations(null);
-    nullAggs.setAssetTypeConfigurations(new ArrayList<>(List.of(fileConfig)));
-    assertFalse(MigrationUtil.stripStaleFileExtensionAggregation(nullAggs));
+    fileConfig.setSearchFields(null);
+    nullFields.setAssetTypeConfigurations(new ArrayList<>(List.of(fileConfig)));
+    assertFalse(MigrationUtil.stripStaleFileExtensionSettings(nullFields));
   }
 }
