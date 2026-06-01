@@ -296,6 +296,9 @@ describe('ServiceDocPanel Component', () => {
           '# Snowflake',
           '## Requirements',
           'Grant metadata privileges.',
+          '$$note',
+          'Use Snowflake 8.0.0 and up.',
+          '$$',
           '### Usage & Lineage',
           'Grant lineage privileges.',
           '### Profiler & Data Quality',
@@ -316,6 +319,9 @@ describe('ServiceDocPanel Component', () => {
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('### label.lineage')
@@ -341,6 +347,9 @@ describe('ServiceDocPanel Component', () => {
           '# Snowflake',
           '## Requirements',
           'Grant metadata privileges.',
+          '$$note',
+          'Use Snowflake 8.0.0 and up.',
+          '$$',
           '### Usage & Lineage',
           'Grant lineage privileges.',
           '### Profiler & Data Quality',
@@ -367,6 +376,9 @@ describe('ServiceDocPanel Component', () => {
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('### label.lineage')

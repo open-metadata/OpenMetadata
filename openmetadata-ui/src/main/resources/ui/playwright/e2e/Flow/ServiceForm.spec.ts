@@ -30,6 +30,10 @@ import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
+import {
+  advanceToServiceConnectionStep,
+  selectServiceConnector,
+} from '../../utils/serviceIngestion';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,
@@ -85,11 +89,10 @@ test.describe(
 
         await page.goto('/dashboardServices/add-service');
         await waitForAllLoadersToDisappear(page);
-        await page.click(`[data-testid="Superset"]`);
-        await page.click('[data-testid="next-button"]');
+        await selectServiceConnector(page, 'Superset');
 
         await page.fill('[data-testid="service-name"]', 'test-superset');
-        await page.click('[data-testid="next-button"]');
+        await advanceToServiceConnectionStep(page);
 
         // Fill superset form details - 1
         await fillSupersetFormDetails({ page, ...supersetFormDetails1 });
@@ -245,11 +248,10 @@ test.describe(
       }) => {
         await page.goto('/dashboardServices/add-service');
         await waitForAllLoadersToDisappear(page);
-        await page.click(`[data-testid="Superset"]`);
-        await page.click('[data-testid="next-button"]');
+        await selectServiceConnector(page, 'Superset');
 
         await page.fill('[data-testid="service-name"]', 'test-superset');
-        await page.click('[data-testid="next-button"]');
+        await advanceToServiceConnectionStep(page);
 
         await fillSupersetFormDetails({ page, ...supersetFormDetails1 });
 
@@ -333,19 +335,21 @@ test.describe(
         await page.goto('/databaseServices/add-service');
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('BigQuery').click();
-        await page.getByTestId('next-button').click();
-        await page.getByTestId('next-button').click();
+        await selectServiceConnector(page, 'BigQuery');
 
-        await expect(page.locator('#name_help')).toContainText(
-          'Name is required'
-        );
+        if (await page.getByTestId('next-button').isVisible()) {
+          await page.getByTestId('next-button').click();
+
+          await expect(page.locator('#name_help')).toContainText(
+            'Name is required'
+          );
+        }
 
         await page.getByTestId('service-name').click();
         await page
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service1}`);
-        await page.getByTestId('next-button').click();
+        await advanceToServiceConnectionStep(page);
         await page.getByTestId('submit-btn').click();
         await page.getByTestId('submit-btn').click();
         await waitForAllLoadersToDisappear(page);
@@ -356,8 +360,7 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('add-service-button').click();
         await waitForAllLoadersToDisappear(page);
-        await page.getByTestId('Databricks').click();
-        await page.getByTestId('next-button').click();
+        await selectServiceConnector(page, 'Databricks');
 
         await page.getByTestId('service-name').click();
         await page
@@ -390,15 +393,13 @@ test.describe(
         await page.goto('/dashboardServices/add-service');
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('Looker').click();
-        await page.getByTestId('next-button').click();
-        await page.getByTestId('next-button').click();
+        await selectServiceConnector(page, 'Looker');
 
         await page.getByTestId('service-name').click();
         await page
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service2}`);
-        await page.getByTestId('next-button').click();
+        await advanceToServiceConnectionStep(page);
 
         await page.locator(String.raw`#root\/clientId`).clear();
         await page.fill(

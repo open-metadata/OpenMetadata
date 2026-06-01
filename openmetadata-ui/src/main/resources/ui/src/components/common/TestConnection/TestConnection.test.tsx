@@ -715,12 +715,11 @@ describe('Test Connection Component', () => {
     });
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
-    const buttonTooltipTitle = screen.getByTestId('tooltip');
 
     expect(testConnectionButton).toBeDisabled();
-    expect(buttonTooltipTitle).toHaveTextContent(
-      'label.platform-service-client-unavailable'
-    );
+    expect(
+      screen.getAllByText('label.platform-service-client-unavailable').length
+    ).toBeGreaterThan(0);
   });
 
   it('Should render the configure airflow message if airflow is not available', async () => {

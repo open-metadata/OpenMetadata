@@ -130,12 +130,15 @@ const stripMarkdownScaffold = (content: string): string =>
     .replace(/\s*\$\(id="[^"]+"\)/g, '')
     .trim();
 
+const stripRequirementMarkdownScaffold = (content: string): string =>
+  content.replace(/\s*\$\(id="[^"]+"\)/g, '').trim();
+
 const extractFocusedRequirementsMarkdown = (
   content: string,
   labels: RequirementLabels
 ): string => {
   const requirementsMarkdown = extractRequirementsMarkdown(content);
-  const body = stripMarkdownScaffold(
+  const body = stripRequirementMarkdownScaffold(
     requirementsMarkdown.replace(/^## Requirements\s*/m, '')
   );
 

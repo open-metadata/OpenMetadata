@@ -30,6 +30,10 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  advanceToServiceConnectionStep,
+  selectServiceConnector,
+} from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const serviceOwnerPolicy = new PolicyClass();
@@ -153,12 +157,11 @@ test.describe(
 
       await page.getByTestId('add-service-button').click();
 
-      await page.getByTestId('Mysql').click();
-      await page.getByTestId('next-button').click();
+      await selectServiceConnector(page, 'Mysql');
 
       const serviceName = `pw-user-owned-service-${uuid()}`;
       await page.getByTestId('service-name').fill(serviceName);
-      await page.getByTestId('next-button').click();
+      await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
       await page.locator('#root\\/authType\\/password').fill('test_password');

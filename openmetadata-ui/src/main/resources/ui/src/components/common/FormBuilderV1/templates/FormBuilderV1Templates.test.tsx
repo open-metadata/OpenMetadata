@@ -90,13 +90,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Button: jest.fn(
       ({
         children,
+        isDisabled,
         onClick,
         ...props
       }: {
         children: React.ReactNode;
+        isDisabled?: boolean;
         onClick?: () => void;
       }) => (
-        <button type="button" onClick={onClick} {...props}>
+        <button
+          disabled={isDisabled}
+          type="button"
+          onClick={onClick}
+          {...props}>
           {children}
         </button>
       )

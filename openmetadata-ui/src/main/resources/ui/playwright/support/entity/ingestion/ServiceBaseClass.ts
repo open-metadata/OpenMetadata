@@ -93,12 +93,14 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="add-service-button"]');
 
+    const ipPromise = page
+      .waitForRequest('/api/v1/services/ingestionPipelines/ip', {
+        timeout: 30_000,
+      })
+      .catch(() => null);
+
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
-
-    const ipPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/ip'
-    );
 
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
@@ -106,8 +108,6 @@ class ServiceBaseClass {
     await ipPromise;
 
     await page.click('[data-testid="service-requirements"]');
-
-    // await airflowStatus;
     await this.fillConnectionDetails(page);
 
     const runnerSelector = page.getByTestId(

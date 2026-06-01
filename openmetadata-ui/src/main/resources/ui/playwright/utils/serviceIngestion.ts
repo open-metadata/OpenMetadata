@@ -176,6 +176,36 @@ export const checkServiceFieldSectionHighlighting = async (
   await page.locator(`[data-id="${field}"][data-highlighted="true"]`).waitFor();
 };
 
+export const selectServiceConnector = async (
+  page: Page,
+  connectorType: string
+) => {
+  await page.getByTestId(connectorType).click();
+
+  try {
+    await page.getByTestId('service-name').waitFor({
+      state: 'visible',
+      timeout: 5000,
+    });
+  } catch {
+    await page.getByTestId('next-button').click();
+    await page.getByTestId('service-name').waitFor({ state: 'visible' });
+  }
+};
+
+export const advanceToServiceConnectionStep = async (
+  page: Page,
+  waitForTestId = 'service-requirements'
+) => {
+  const target = page.getByTestId(waitForTestId);
+  if (await target.isVisible({ timeout: 1000 }).catch(() => false)) {
+    return;
+  }
+
+  await page.getByTestId('next-button').click();
+  await target.waitFor({ state: 'visible' });
+};
+
 type RetryRequestData = {
   page: Page;
   retries?: number;

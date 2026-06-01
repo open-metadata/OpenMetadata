@@ -163,6 +163,7 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
 }));
 
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
+  formatFormDataForRender: jest.fn((data) => data),
   formatFormDataForSubmit: jest.fn(),
 }));
 
