@@ -46,6 +46,7 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   getFilteredSchema,
+  getSnowflakeAccountDisplayHost,
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -475,9 +476,7 @@ const getConnectionDisplayHost = (config: ConfigData, serviceType: string) => {
   ]).trim();
 
   if (serviceType.toLowerCase() === 'snowflake' && account) {
-    return account.includes('snowflakecomputing.com')
-      ? account
-      : `${account}.snowflakecomputing.com`;
+    return getSnowflakeAccountDisplayHost(account);
   }
 
   return host || account || serviceType;

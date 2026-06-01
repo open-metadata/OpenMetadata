@@ -24,6 +24,7 @@ import {
   getConnectionSchemas,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
+  getSnowflakeAccountDisplayHost,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
@@ -117,6 +118,30 @@ describe('getUISchemaWithAuthFieldsAsSelect', () => {
       'ui:field': 'authSelect',
       'ui:fieldReplacesAnyOrOneOf': true,
     });
+  });
+});
+
+describe('getSnowflakeAccountDisplayHost', () => {
+  it('appends the Snowflake domain to account identifiers', () => {
+    expect(getSnowflakeAccountDisplayHost('fsad.us-east-1.gcp')).toBe(
+      'fsad.us-east-1.gcp.snowflakecomputing.com'
+    );
+  });
+
+  it('preserves Snowflake hosts after parsing the hostname', () => {
+    expect(
+      getSnowflakeAccountDisplayHost(
+        ' https://fsad.snowflakecomputing.com/path '
+      )
+    ).toBe('https://fsad.snowflakecomputing.com/path');
+  });
+
+  it('does not trust Snowflake host substrings outside the hostname', () => {
+    expect(
+      getSnowflakeAccountDisplayHost(
+        'https://example.com/snowflakecomputing.com'
+      )
+    ).toBe('https://example.com/snowflakecomputing.com.snowflakecomputing.com');
   });
 });
 

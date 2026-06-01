@@ -50,6 +50,7 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+import { getSnowflakeAccountDisplayHost } from '../../../utils/ServiceConnectionUtils';
 import {
   getServiceType,
   getTestConnectionName,
@@ -191,11 +192,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       typeof account === 'string' &&
       account.trim()
     ) {
-      const trimmedAccount = account.trim();
-
-      return trimmedAccount.includes('snowflakecomputing.com')
-        ? trimmedAccount
-        : `${trimmedAccount}.snowflakecomputing.com`;
+      return getSnowflakeAccountDisplayHost(account);
     }
 
     const displayFields = [
@@ -218,7 +215,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
 
     return serviceName || connectionType;
-  }, [connectionType, getData, serviceName]);
+  }, [connectionType, dialogOpen, getData, serviceName]);
 
   // data fetch handlers
 

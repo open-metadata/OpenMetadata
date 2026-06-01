@@ -101,6 +101,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   const [message, setMessage] = useState<string>();
   const [showRawLog, setShowRawLog] = useState(false);
   const [expandedStepName, setExpandedStepName] = useState<string>();
+  const [hasUserCollapsedSteps, setHasUserCollapsedSteps] = useState(false);
   const [isGateExpanded, setIsGateExpanded] = useState(false);
 
   const resultByName = useMemo(
@@ -292,11 +293,12 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
         <button
           className="test-connection-check-row-button"
           type="button"
-          onClick={() =>
-            setExpandedStepName((current) =>
-              current === step.name ? undefined : step.name
-            )
-          }>
+          onClick={() => {
+            const isCollapsingStep = expandedStepName === step.name;
+
+            setHasUserCollapsedSteps(isCollapsingStep);
+            setExpandedStepName(isCollapsingStep ? undefined : step.name);
+          }}>
           <div className="test-connection-check-status">
             {renderStateIcon(state)}
           </div>
@@ -356,7 +358,13 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   }, [hostIp]);
 
   useEffect(() => {
-    if (isTestingConnection || expandedStepName) {
+    if (isTestingConnection) {
+      setHasUserCollapsedSteps(false);
+
+      return;
+    }
+
+    if (expandedStepName || hasUserCollapsedSteps) {
       return;
     }
 
@@ -371,6 +379,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
     capabilitySteps,
     expandedStepName,
     getConnectionStepResult,
+    hasUserCollapsedSteps,
     isTestingConnection,
   ]);
 

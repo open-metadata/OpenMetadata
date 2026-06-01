@@ -955,6 +955,21 @@ describe('FiltersConfigForm', () => {
     ).toHaveLength(2);
   });
 
+  it('does not trust Snowflake host substrings outside the hostname in scope copy', async () => {
+    await renderForm({
+      data: buildServiceData({
+        account: 'https://example.com/snowflakecomputing.com',
+      }),
+      serviceType: DatabaseServiceType.Snowflake,
+    });
+
+    expect(
+      screen.getByText(
+        'Connected to https://example.com/snowflakecomputing.com.snowflakecomputing.com'
+      )
+    ).toBeInTheDocument();
+  });
+
   it('does not duplicate Snowflake sample data when the schema already excludes it', async () => {
     mockLoadConnectionSchema.mockResolvedValue({
       schema: {

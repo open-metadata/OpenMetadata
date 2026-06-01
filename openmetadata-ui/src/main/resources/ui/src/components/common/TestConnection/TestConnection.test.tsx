@@ -281,6 +281,55 @@ describe('Test Connection Component', () => {
     );
   });
 
+  it('Should recompute the connection display name from latest form data when opening the modal', async () => {
+    let account = '';
+    const getData = jest.fn(() => ({ account } as ConfigData));
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={getData}
+        />
+      );
+    });
+
+    account = 'fresh-account';
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'fresh-account.snowflakecomputing.com'
+    );
+  });
+
+  it('Should not preserve Snowflake host substrings outside the hostname', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={() =>
+            ({
+              account: 'https://example.com/snowflakecomputing.com',
+            } as ConfigData)
+          }
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'https://example.com/snowflakecomputing.com.snowflakecomputing.com'
+    );
+  });
+
   it('Should fall back to service name for the connection modal title', async () => {
     await act(async () => {
       render(

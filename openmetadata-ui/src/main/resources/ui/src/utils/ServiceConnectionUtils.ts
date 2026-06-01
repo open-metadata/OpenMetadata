@@ -44,6 +44,36 @@ export const EMPTY_CONNECTION_SCHEMA: ConnectionSchemaResult['connSch'] = {
   uiSchema: {},
 };
 
+const SNOWFLAKE_HOST = 'snowflakecomputing.com';
+const SNOWFLAKE_HOST_SUFFIX = `.${SNOWFLAKE_HOST}`;
+const URL_SCHEME_PATTERN = /^[a-z][a-z\d+.-]*:\/\//i;
+
+const getNormalizedHostname = (value: string) => {
+  const candidate = URL_SCHEME_PATTERN.test(value) ? value : `https://${value}`;
+
+  try {
+    return new URL(candidate).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+};
+
+export const getSnowflakeAccountDisplayHost = (account: string) => {
+  const trimmedAccount = account.trim();
+
+  if (!trimmedAccount) {
+    return '';
+  }
+
+  const hostname = getNormalizedHostname(trimmedAccount);
+  const isSnowflakeHost =
+    hostname === SNOWFLAKE_HOST || hostname.endsWith(SNOWFLAKE_HOST_SUFFIX);
+
+  return isSnowflakeHost
+    ? trimmedAccount
+    : `${trimmedAccount}.${SNOWFLAKE_HOST}`;
+};
+
 export const buildValidConfig = (data?: ServicesType): ConfigData => {
   const config = isNil(data)
     ? ({} as ConfigData)

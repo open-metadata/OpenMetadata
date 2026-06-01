@@ -245,15 +245,17 @@ describe('TestConnectionModal', () => {
     expect(screen.queryByTestId('copy-raw-log-button')).not.toBeInTheDocument();
   });
 
-  it('should expand and collapse a capability step log', () => {
+  it('should let the user collapse and reopen an auto-expanded capability step log', () => {
     render(<TestConnectionModal {...commonProps} />);
 
     const step = screen.getByTestId('test-connection-step-Step 2');
     const stepToggle = step.querySelector('button') as HTMLButtonElement;
 
+    expect(screen.getByText('Error message')).toBeInTheDocument();
+
     fireEvent.click(stepToggle);
 
-    expect(screen.getByText('Error message')).toBeInTheDocument();
+    expect(screen.queryByText('Error message')).not.toBeInTheDocument();
 
     fireEvent.click(stepToggle);
 
