@@ -885,9 +885,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
 class ExasolTableMetricComputer(BaseTableMetricComputer):
     """Exasol Table Metric Computer"""
 
-    def compute(self):
-        """Compute table metrics for Exasol using SYS.EXA_ALL_TABLES and
-        SYS.EXA_ALL_OBJECT_SIZES for row count and size respectively."""
+    def _compute_table_metrics(self):
+        """Compute table metrics from Exasol catalog views."""
         schema_name = self.schema_name.upper()
         table_name = self.table_name.upper()
 
@@ -942,9 +941,26 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None:
+            return super().compute()
+        if res.rowCount == 0 and self._entity.tableType == TableType.View:
             return super().compute()
         return res
+
+    def _compute_view_metrics(self):
+        """Compute view metrics using the generic fallback path."""
+        return super().compute()
+
+    def compute(self):
+        """Compute table or view metrics for Exasol.
+
+        Exasol exposes table row counts through SYS.EXA_ALL_TABLES, but views
+        are cataloged separately and do not have a ROW_COUNT. Views therefore
+        use the generic fallback path rather than the catalog-based query.
+        """
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return self._compute_view_metrics()
+        return self._compute_table_metrics()
 
 
 class TeradataTableMetricComputer(BaseTableMetricComputer):
