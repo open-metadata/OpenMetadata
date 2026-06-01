@@ -166,13 +166,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         }
       }
 
-      // Last-resort routing: when the task would otherwise be unassigned (no
-      // reviewers/owners, or the only assignee was the requester and was stripped above),
-      // assign all platform admins. The requester is excluded so self-approval can never
-      // happen. Opt-in via addAdminsWhenEmpty.
-      boolean addAdminsWhenEmpty =
-          Boolean.TRUE.equals(assigneesConfig.getOrDefault("addAdminsWhenEmpty", false));
-      if (assigneeList.isEmpty() && addAdminsWhenEmpty) {
+      // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
+      // assignee was the requester and was stripped above), apply the node's configured
+      // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
+      // self-approval can never happen. NONE keeps the default behavior.
+      String emptyAssigneeStrategy =
+          String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
+      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
         List<String> admins = resolveAdminAssignees();
         admins.remove(updatedByEntityLink);
         assigneeList.addAll(admins);

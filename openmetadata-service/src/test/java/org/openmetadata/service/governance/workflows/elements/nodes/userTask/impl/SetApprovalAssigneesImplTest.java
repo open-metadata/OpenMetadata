@@ -293,11 +293,11 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testAdminFallbackAssignsAdminsWhenNoReviewersOrOwnersAndFlagEnabled() {
+  void testAdminFallbackAssignsAdminsWhenNoReviewersOrOwnersAndStrategyAssignAdmins() {
     when(mockEntity.getReviewers()).thenReturn(List.of());
     when(assigneesExpr.getValue(execution))
         .thenReturn(
-            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
@@ -323,7 +323,7 @@ class SetApprovalAssigneesImplTest {
         .thenReturn(List.of(new EntityReference().withType("user").withFullyQualifiedName("bob")));
     when(assigneesExpr.getValue(execution))
         .thenReturn(
-            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     delegate.execute(execution);
 
@@ -336,7 +336,7 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testAdminFallbackSkippedWhenFlagDisabled() {
+  void testAdminFallbackSkippedWhenStrategyNone() {
     when(mockEntity.getReviewers()).thenReturn(List.of());
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
@@ -349,7 +349,7 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testAdminFallbackWhenSoleAssigneeIsRequesterAndFlagEnabled() {
+  void testAdminFallbackWhenSoleAssigneeIsRequesterAndStrategyAssignAdmins() {
     when(mockEntity.getReviewers())
         .thenReturn(
             List.of(new EntityReference().withType("user").withFullyQualifiedName("alice")));
@@ -357,7 +357,7 @@ class SetApprovalAssigneesImplTest {
     when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
     when(assigneesExpr.getValue(execution))
         .thenReturn(
-            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
@@ -387,7 +387,7 @@ class SetApprovalAssigneesImplTest {
     when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
     when(assigneesExpr.getValue(execution))
         .thenReturn(
-            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"addAdminsWhenEmpty\":true}");
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);

@@ -79,11 +79,6 @@ export interface NodeConfiguration {
  */
 export interface Assignees {
     /**
-     * When no reviewers or owners resolve, fall back to assigning all platform admins so the
-     * task is never left unassigned. Defaults to false.
-     */
-    addAdminsWhenEmpty?: boolean;
-    /**
      * Add the Owners to the assignees List.
      */
     addOwners?: boolean;
@@ -95,6 +90,13 @@ export interface Assignees {
      * List of specific candidates (users or teams) assigned to this task.
      */
     candidates?: EntityReference[];
+    /**
+     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+     * excluding the requester so self-approval can never happen.
+     */
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
 
 /**
@@ -144,6 +146,17 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+ * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+ * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+ * excluding the requester so self-approval can never happen.
+ */
+export enum EmptyAssigneeStrategy {
+    AssignAdmins = "assignAdmins",
+    None = "none",
 }
 
 /**
