@@ -368,7 +368,55 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+const collectLeafValues = (obj: unknown, parts: string[]): string[] => {
+  if (parts.length === 0) {
+    return typeof obj === 'string' ? [obj] : [];
+  }
+  if (Array.isArray(obj)) {
+    return obj.flatMap((item) => collectLeafValues(item, parts));
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return collectLeafValues(
+      (obj as Record<string, unknown>)[parts[0]],
+      parts.slice(1)
+    );
+  }
+
+  return [];
+};
+
+const getDisplayLabelFromTopHits = (
+  bucket: Bucket,
+  sourceField: string
+): string | undefined => {
+  const topHitsSource = (
+    (bucket as Record<string, unknown>)['top_hits#top'] as
+      | {
+          hits?: {
+            hits?: Array<{
+              _source?: Record<string, unknown>;
+            }>;
+          };
+        }
+      | undefined
+  )?.hits?.hits?.[0]?._source;
+
+  if (!topHitsSource) {
+    return undefined;
+  }
+
+  const values = collectLeafValues(topHitsSource, sourceField.split('.'));
+
+  return (
+    values.find((v) => v.toLowerCase() === bucket.key.toLowerCase()) ??
+    values[0]
+  );
+};
+
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  sourceField?: string
+) => {
   if (!buckets) {
     return [];
   }
@@ -378,11 +426,18 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      const label =
+        sourceField !== undefined
+          ? getDisplayLabelFromTopHits(option, sourceField) ?? option.key
+          : option.key;
+
+      return {
+        key: option.key,
+        label,
+        count: option.doc_count ?? 0,
+      };
+    });
 };
 
 export const getTierOptions = async (): Promise<ListValues> => {

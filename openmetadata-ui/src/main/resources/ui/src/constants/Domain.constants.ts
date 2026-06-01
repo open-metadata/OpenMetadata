@@ -91,6 +91,7 @@ export const DOMAIN_FILTERS = [
   {
     label: 'label.owner-plural',
     key: EntityFields.OWNERS,
+    sourceField: 'owners.displayName',
   },
   {
     label: 'label.tag-plural',
@@ -110,6 +111,7 @@ export const SUB_DOMAIN_FILTERS = [
   {
     label: 'label.owner-plural',
     key: EntityFields.OWNERS,
+    sourceField: 'owners.displayName',
   },
   {
     label: 'label.tag-plural',

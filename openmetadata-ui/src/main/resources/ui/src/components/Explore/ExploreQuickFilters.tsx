@@ -117,13 +117,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         optionPageSize,
         isNLPActive,
-        searchText
+        searchText,
+        fields.find((f) => f.key === key)?.sourceField
       );
 
       buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    setOptions(
+      uniqWith(
+        getOptionsFromAggregationBucket(
+          buckets,
+          fields.find((f) => f.key === key)?.sourceField
+        ),
+        isEqual
+      )
+    );
   };
 
   const getInitialOptions = async (
@@ -179,6 +188,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       const searchIndexToUse = fieldSearchIndex ?? index;
       const searchKeyToUse = fieldSearchKey ?? key;
 
+      const fieldSourceField = fields.find((f) => f.key === key)?.sourceField;
       const res = await getAggregationOptions(
         searchIndexToUse,
         searchKeyToUse,
@@ -188,11 +198,17 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         undefined,
         isNLPActive,
-        searchText
+        searchText,
+        fieldSourceField
       );
 
       const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+      setOptions(
+        uniqWith(
+          getOptionsFromAggregationBucket(buckets, fieldSourceField),
+          isEqual
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

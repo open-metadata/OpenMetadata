@@ -24,10 +24,12 @@ export const DATAPRODUCT_FILTERS = [
   {
     label: 'label.owner-plural',
     key: EntityFields.OWNERS,
+    sourceField: 'owners.displayName',
   },
   {
     label: 'label.domain-plural',
     key: EntityFields.DOMAINS,
+    sourceField: 'domains.displayName',
   },
   {
     label: 'label.tag-plural',
