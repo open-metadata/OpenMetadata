@@ -102,6 +102,9 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "create_domain":
+          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               McpSchema.CallToolResult.builder()
