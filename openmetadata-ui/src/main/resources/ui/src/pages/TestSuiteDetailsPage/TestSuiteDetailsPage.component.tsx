@@ -262,7 +262,7 @@ const TestSuiteDetailsPage = () => {
         testSuiteId,
       });
       setIsTestCaseModalOpen(false);
-      fetchTestCases();
+      await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -271,7 +271,11 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTS,
+        ],
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -486,10 +490,6 @@ const TestSuiteDetailsPage = () => {
     testSuitePermissions,
   ]);
 
-  const selectedTestCases = useMemo(() => {
-    return testCaseResult.map((test) => test.name);
-  }, [testCaseResult]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -510,7 +510,8 @@ const TestSuiteDetailsPage = () => {
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
-      })}>
+      })}
+    >
       <Row className="page-container" gutter={[0, 24]}>
         <Col span={24}>
           <TitleBreadcrumb
@@ -537,7 +538,8 @@ const TestSuiteDetailsPage = () => {
                   <Button
                     data-testid="add-test-case-btn"
                     type="primary"
-                    onClick={() => setIsTestCaseModalOpen(true)}>
+                    onClick={() => setIsTestCaseModalOpen(true)}
+                  >
                     {t('label.add-entity', {
                       entity: t('label.test-case-plural'),
                     })}
@@ -614,10 +616,10 @@ const TestSuiteDetailsPage = () => {
             title={t('label.add-entity', {
               entity: t('label.test-case-plural'),
             })}
-            width={750}>
+            width={750}
+          >
             <AddTestCaseList
               existingTest={testSuite?.tests ?? []}
-              selectedTest={selectedTestCases}
               onCancel={() => setIsTestCaseModalOpen(false)}
               onSubmit={handleAddTestCaseSubmit}
             />
