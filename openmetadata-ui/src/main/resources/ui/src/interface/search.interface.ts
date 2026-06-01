@@ -20,6 +20,7 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import {
@@ -49,6 +50,7 @@ import { DatabaseService } from '../generated/entity/services/databaseService';
 import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
@@ -60,6 +62,7 @@ import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 import { KnowledgePage } from './knowledge-center.interface';
 
@@ -210,6 +213,10 @@ export interface StorageServiceSearchSource
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
+export interface MetadataServiceSearchSource
+  extends SearchSourceBase,
+    MetadataService {}
+
 export interface DriveServiceSearchSource
   extends SearchSourceBase,
     DriveService {}
@@ -237,6 +244,8 @@ export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
 export interface KnowledgePageSearchSource
   extends SearchSourceBase,
     KnowledgePage {}
+
+export interface DriveFileSearchSource extends SearchSourceBase, ContextFile {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -308,6 +317,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
   [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.METADATA_SERVICE]: MetadataServiceSearchSource;
   [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
   [SearchIndex.METRIC]: MetricSearchSource;
@@ -317,6 +327,8 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
   [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.DRIVE_FILE]: DriveFileSearchSource;
+  [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 
 export type SearchRequest<
@@ -404,6 +416,7 @@ export interface SearchResponse<
     hits: SearchIndexSearchHitBodyMapping<TIncludeFields>[SI][];
   };
   aggregations: Aggregations;
+  applied_quick_filters?: QueryFilterInterface;
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;

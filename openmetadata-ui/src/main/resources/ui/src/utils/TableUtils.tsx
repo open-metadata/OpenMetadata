@@ -182,21 +182,21 @@ import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/Par
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import { extractMlModelFeatures } from './MlModelDetailsUtils';
 import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
+import { ordinalize } from './StringUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
@@ -1725,27 +1725,6 @@ export const mergeTagsWithGlossary = (
   const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
 
   return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**

@@ -31,7 +31,7 @@ import {
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { t } from './i18next/LocalUtil';
-import { generateUUID } from './StringsUtils';
+import { generateUUID } from './StringUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,

@@ -17,6 +17,7 @@ import {
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
 } from '../../constant/alert';
+import { ObservabilityCreationDetails } from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -44,14 +45,15 @@ import {
   getObservabilityCreationDetails,
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
-const table1 = new TableClass();
-const table2 = new TableClass();
-const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const domain = new Domain();
+let table1: TableClass;
+let table2: TableClass;
+let pipeline: PipelineClass;
+let domain: Domain;
 
 const SOURCE_NAME_1 = 'container';
 const SOURCE_DISPLAY_NAME_1 = 'Container';
@@ -91,6 +93,10 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  table1 = new TableClass();
+  table2 = new TableClass();
+  pipeline = new PipelineClass();
+  domain = new Domain();
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -107,6 +113,56 @@ test.beforeAll(async ({ browser }) => {
   await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
   await pipeline.create(apiContext);
   await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
+
+  // Wait for the entities used as alert-filter dropdown picks to be searchable.
+  // In mode="multiple" the user can only pick options returned by the search API,
+  // so the test must wait for ES indexing before the UI flow runs.
+  await waitForSearchIndexed(
+    apiContext,
+    table1.entityResponseData.fullyQualifiedName ?? '',
+    'table'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table2.entityResponseData.fullyQualifiedName ?? '',
+    'table'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table1.testSuiteResponseData.fullyQualifiedName ?? '',
+    'testSuite'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table1.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+    'testCase'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    pipeline.ingestionPipelineResponseData.fullyQualifiedName ?? '',
+    'ingestionPipeline'
+  );
+
+  // Build the observability creation details using the entity FQNs returned
+  // from the API. The alert filter dropdowns run in mode="multiple", whose
+  // option `title` attribute equals the entity FQN, so the test's expected
+  // `inputValue` must match the FQN exactly.
+  observabilityDetailsBySource.clear();
+  const details = getObservabilityCreationDetails({
+    tableName1: table1.entityResponseData.fullyQualifiedName ?? '',
+    tableName2: table2.entityResponseData.fullyQualifiedName ?? '',
+    testSuiteFQN: table1.testSuiteResponseData.fullyQualifiedName ?? '',
+    testSuiteName: table1.testSuiteResponseData.name ?? '',
+    testCaseName: table1.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+    ingestionPipelineName:
+      pipeline.ingestionPipelineResponseData.fullyQualifiedName ?? '',
+    domainName: domain.data.name,
+    domainDisplayName: domain.data.displayName,
+    userName: `${user1.data.firstName}${user1.data.lastName}`,
+  });
+  for (const detail of details) {
+    observabilityDetailsBySource.set(detail.source, detail);
+  }
 
   await afterAction();
 });
@@ -202,21 +258,35 @@ test('Pipeline Alert', async ({ page }) => {
   });
 });
 
-const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
-  tableName1: table1.entity.name,
-  tableName2: table2.entity.name,
-  testSuiteFQN: TEST_SUITE_NAME,
-  testCaseName: TEST_CASE_NAME,
-  ingestionPipelineName: INGESTION_PIPELINE_NAME,
-  domainName: domain.data.name,
-  domainDisplayName: domain.data.displayName,
-  userName: `${user1.data.firstName}${user1.data.lastName}`,
-});
+// Test names must be known at module load, but filter/action values must use
+// FQNs that only exist after entity creation. Declare the source list statically
+// and look up the full details (built in beforeAll) inside each test.
+const OBSERVABILITY_SOURCES: Array<{
+  source: string;
+  sourceDisplayName: string;
+}> = [
+  { source: 'table', sourceDisplayName: 'Table' },
+  { source: 'ingestionPipeline', sourceDisplayName: 'Ingestion Pipeline' },
+  { source: 'testCase', sourceDisplayName: 'Test case' },
+  { source: 'testSuite', sourceDisplayName: 'Test Suite' },
+];
 
-for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
-  const { source, sourceDisplayName, filters, actions } = alertDetails;
+const observabilityDetailsBySource = new Map<
+  string,
+  ObservabilityCreationDetails
+>();
 
+for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
+    test.slow();
+    const alertDetails = observabilityDetailsBySource.get(source);
+    if (!alertDetails) {
+      throw new Error(
+        `Observability creation details missing for source "${source}". ` +
+          `Was beforeAll set up correctly?`
+      );
+    }
+    const { filters, actions } = alertDetails;
     const ALERT_NAME = generateAlertName();
 
     await test.step('Create alert', async () => {
@@ -282,13 +352,23 @@ test('Alert operations for a user with and without permissions', async ({
       .locator('.ant-select-dropdown:visible')
       .waitFor({ state: 'hidden' });
 
+    // The mode="multiple" AsyncSelect renders dropdown options whose `title`
+    // equals the entity FQN, not the bare name. Search and pick by FQN.
+    const table1Fqn = table1.entityResponseData.fullyQualifiedName ?? '';
+
+    // Focus the combobox first so the search input becomes editable
+    // (mode="multiple" keeps the input readonly until focused).
+    await userWithPermissionsPage.click(
+      `[data-testid="fqn-list-select"] [role="combobox"]`
+    );
+
     // Search and select filter input value
     const searchOptions = userWithPermissionsPage.waitForResponse(
       '/api/v1/search/query?q=*'
     );
     await userWithPermissionsPage.fill(
       `[data-testid="fqn-list-select"] [role="combobox"]`,
-      table1.entity.name,
+      table1Fqn,
       {
         force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
@@ -297,14 +377,14 @@ test('Alert operations for a user with and without permissions', async ({
     await searchOptions;
 
     await userWithPermissionsPage.click(
-      `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
+      `.ant-select-dropdown:visible [title="${table1Fqn}"]`
     );
 
     // Check if option is selected
     await test
       .expect(
         userWithPermissionsPage.locator(
-          `[data-testid="fqn-list-select"] [title="${table1.entity.name}"]`
+          `[data-testid="fqn-list-select"] [title="${table1Fqn}"]`
         )
       )
       .toBeAttached();

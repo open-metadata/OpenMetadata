@@ -19,6 +19,8 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.EntityPromotionContext;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.PromotionPolicy;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 
@@ -26,11 +28,15 @@ import org.openmetadata.service.search.ReindexContext;
 class DistributedReindexFinalizer {
   private final RecreateIndexHandler indexPromotionHandler;
   private final ReindexContext stagedIndexContext;
+  private final PromotionPolicy promotionPolicy;
 
   DistributedReindexFinalizer(
-      RecreateIndexHandler indexPromotionHandler, ReindexContext stagedIndexContext) {
+      RecreateIndexHandler indexPromotionHandler,
+      ReindexContext stagedIndexContext,
+      PromotionPolicy promotionPolicy) {
     this.indexPromotionHandler = indexPromotionHandler;
     this.stagedIndexContext = stagedIndexContext;
+    this.promotionPolicy = promotionPolicy;
   }
 
   boolean finalizeRemainingEntities(
@@ -125,15 +131,32 @@ class DistributedReindexFinalizer {
 
   private boolean computeEntitySuccess(
       String entityType, Map<String, SearchIndexJob.EntityTypeStats> entityStats) {
-    if (entityStats == null || entityStats.isEmpty()) {
-      return false;
+    if (entityStats == null || entityStats.isEmpty() || entityStats.get(entityType) == null) {
+      // No stats recorded for this entity type means the reader did zero work — either
+      // the source had 0 rows, or the entity is driven by a parallel pipeline (e.g.
+      // vectorEmbedding via RecreateWithEmbeddings) that doesn't feed the reader→sink
+      // stats. Treat absent stats as success so the staged index gets promoted rather
+      // than the job rolling up to FAILED on an entity that has nothing to fail on.
+      return true;
     }
     SearchIndexJob.EntityTypeStats stats = entityStats.get(entityType);
-    if (stats == null) {
-      return false;
-    }
-    return stats.getFailedRecords() == 0
-        && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();
+    EntityPromotionContext promotionContext =
+        new EntityPromotionContext(
+            entityType,
+            stats.getTotalRecords(),
+            stats.getSuccessRecords(),
+            stats.getFailedRecords(),
+            stats.getProcessedRecords());
+    PromotionPolicy.Decision decision = promotionPolicy.evaluate(promotionContext);
+    LOG.debug(
+        "Promotion decision for entity '{}': fullySuccessful={} reason={} (stats: total={}, success={}, failed={})",
+        entityType,
+        decision.fullySuccessful(),
+        decision.reason(),
+        stats.getTotalRecords(),
+        stats.getSuccessRecords(),
+        stats.getFailedRecords());
+    return decision.fullySuccessful();
   }
 
   private void finalizeEntityReindex(String entityType, boolean success) {

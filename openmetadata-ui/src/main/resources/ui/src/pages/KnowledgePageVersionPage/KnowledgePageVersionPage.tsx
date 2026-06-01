@@ -30,11 +30,9 @@ import {
 import { Col, Row, Skeleton, Space } from 'antd';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES } from '../../constants/constants';
+import contextCenterClassBase from '../../utils/ContextCenterClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
-import {
-  getKnowledgePagePath,
-  getKnowledgeVersionsPath,
-} from '../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -111,7 +109,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
         url: ROUTES.KNOWLEDGE_CENTER,
       },
       {
-        name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+        name: getKnowledgePageName(knowledgePage, t),
         url: '',
         activeTitle: false,
       },
@@ -120,13 +118,19 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   );
 
   const onVersionChange = (selectedVersion: string) => {
-    const path = getKnowledgeVersionsPath(fqn, selectedVersion);
-    navigate(path);
+    navigate(
+      contextCenterClassBase.getArticleVersionPath(fqn, selectedVersion)
+    );
   };
 
   const onBackHandler = () => {
-    const path = getKnowledgePagePath(selectedData?.fullyQualifiedName ?? '');
-    navigate(path);
+    navigate(
+      contextCenterClassBase.getArticlePath(
+        knowledgePage?.fullyQualifiedName ??
+          selectedData?.fullyQualifiedName ??
+          fqn
+      )
+    );
   };
 
   const getVersionTimeLineElement = useCallback(
@@ -181,8 +185,8 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   useEffect(() => {
     onPageChange({
       rightPanel: getVersionTimeLineElement(),
-      title: selectedData?.displayName || t('label.untitled'),
-      data: undefined,
+      title: getKnowledgePageName(selectedData, t),
+      data: knowledgePage,
       header: getHeaderElement(),
     });
   }, [selectedData, loading, versionList, version, knowledgePage]);

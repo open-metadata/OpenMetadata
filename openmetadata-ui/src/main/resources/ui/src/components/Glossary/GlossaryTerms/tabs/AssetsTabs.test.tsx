@@ -17,7 +17,7 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { searchQuery } from '../../../../rest/searchAPI';
 import * as SearchUtils from '../../../../utils/SearchUtils';
-import * as StringsUtils from '../../../../utils/StringsUtils';
+import * as StringUtils from '../../../../utils/StringUtils';
 import * as TagsUtils from '../../../../utils/TagsUtils';
 import AssetsTabs from './AssetsTabs.component';
 import { AssetsOfEntity } from './AssetsTabs.interface';
@@ -151,9 +151,9 @@ const mockEscapeESReservedCharacters = jest.fn((fqn) => fqn);
 const mockGetTagAssetsQueryFilter = jest.fn();
 
 jest.spyOn(SearchUtils, 'getTermQuery').mockImplementation(mockGetTermQuery);
-jest.spyOn(StringsUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
+jest.spyOn(StringUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
 jest
-  .spyOn(StringsUtils, 'escapeESReservedCharacters')
+  .spyOn(StringUtils, 'escapeESReservedCharacters')
   .mockImplementation(mockEscapeESReservedCharacters);
 jest
   .spyOn(TagsUtils, 'getTagAssetsQueryFilter')

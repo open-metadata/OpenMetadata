@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
@@ -46,7 +47,6 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
-from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
 from metadata.utils.progress_tracker import ProgressTrackerState
@@ -252,7 +252,6 @@ class TopologyRunnerMixin(Generic[C]):
         """Multithread processing of a Node Entity with progress tracking"""
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
-        ExecutionTimeTrackerContextMap().copy_from_parent(parent_thread_id)
 
         progress_tracker = ProgressTrackerState()
         operation_metrics = OperationMetricsState()
@@ -567,6 +566,21 @@ class TopologyRunnerMixin(Generic[C]):
         yield entity_request
 
         self.context.get().update_context_value(stage=stage, value=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: Barrier,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Forward Barrier records without touching the context.
+
+        Defensive: a Barrier yielded from a context-bearing stage would
+        otherwise reach the default handler, which assumes the record has a
+        ``.name`` attribute.
+        """
+        yield entity_request  # pyright: ignore
 
     def sink_request(self, stage: NodeStage, entity_request: Either[C]) -> Iterable[Either[Entity]]:
         """

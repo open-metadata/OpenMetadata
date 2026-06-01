@@ -38,11 +38,8 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import {
-  CustomTooltip,
-  getFormattedActiveUsersData,
-  renderLegend,
-} from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
+import { getFormattedActiveUsersData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import CustomStatistic from './CustomStatistic';

@@ -15,11 +15,13 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -53,6 +55,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -200,7 +203,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
-    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     ReindexContext reindexContext =
         contextData.containsKey(RECREATE_CONTEXT)
             ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
@@ -246,13 +248,22 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, recreateIndex, tracker),
+                            () -> addEntity(entity, indexName, tracker, docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -262,8 +273,7 @@ public class ElasticSearchBulkSink implements BulkSink {
           for (EntityInterface entity : entityInterfaces) {
             CompletableFuture<Void> future =
                 CompletableFuture.runAsync(
-                        () -> indexTableColumns(entity, recreateIndex, reindexContext),
-                        DOC_BUILD_EXECUTOR)
+                        () -> indexTableColumns(entity, reindexContext), DOC_BUILD_EXECUTOR)
                     .exceptionally(
                         ex -> {
                           LOG.error("Failed to index columns for table {}", entity.getName(), ex);
@@ -307,10 +317,14 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+      EntityInterface entity,
+      String indexName,
+      StageStatsTracker tracker,
+      Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -350,29 +364,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       }
 
       final String indexableJson = json;
-      BulkOperation operation;
-      if (recreateIndex) {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.index(
-                        idx ->
-                            idx.index(indexName)
-                                .id(docId)
-                                .document(EsUtils.toJsonData(indexableJson))));
-      } else {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.update(
-                        upd ->
-                            upd.index(indexName)
-                                .id(docId)
-                                .action(
-                                    a ->
-                                        a.doc(EsUtils.toJsonData(indexableJson))
-                                            .docAsUpsert(true))));
-      }
+      BulkOperation operation =
+          BulkOperation.of(
+              op ->
+                  op.index(
+                      idx ->
+                          idx.index(indexName)
+                              .id(docId)
+                              .document(EsUtils.toJsonData(indexableJson))));
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
@@ -517,8 +516,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void indexTableColumns(
-      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
+  private void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -546,26 +544,14 @@ public class ElasticSearchBulkSink implements BulkSink {
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
 
-        BulkOperation operation;
-        if (recreateIndex) {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.index(
-                          idx ->
-                              idx.index(columnIndexName)
-                                  .id(docId)
-                                  .document(EsUtils.toJsonData(json))));
-        } else {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.update(
-                          upd ->
-                              upd.index(columnIndexName)
-                                  .id(docId)
-                                  .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
-        }
+        BulkOperation operation =
+            BulkOperation.of(
+                op ->
+                    op.index(
+                        idx ->
+                            idx.index(columnIndexName)
+                                .id(docId)
+                                .document(EsUtils.toJsonData(json))));
         long estimatedSize =
             (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
         columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);

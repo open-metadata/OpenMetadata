@@ -26,6 +26,7 @@ import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interf
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -39,8 +40,7 @@ import {
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -128,7 +128,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const handleVersionClick = () => {
-    navigate(getKnowledgePagePath(knowledgePage.fullyQualifiedName));
+    navigate(
+      contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName)
+    );
   };
 
   if (loading) {

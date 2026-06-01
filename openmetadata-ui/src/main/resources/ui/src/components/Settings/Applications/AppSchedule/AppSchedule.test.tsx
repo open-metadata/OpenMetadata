@@ -121,12 +121,17 @@ jest.mock('../../../../utils/SchedularUtils', () => ({
 }));
 
 describe('AppSchedule component', () => {
-  it('should render necessary elements for mockProps1', () => {
+  it('should render necessary elements for mockProps1', async () => {
     render(<AppSchedule {...mockProps1} />);
 
     expect(screen.getByText('label.schedule-type')).toBeInTheDocument();
-    expect(screen.getByText('label.schedule-interval')).toBeInTheDocument();
-    expect(screen.getByTestId('cron-string')).toBeInTheDocument();
+    // label.schedule-interval is gated on cronString being non-empty, which
+    // now resolves async after cronstrue lazy-loads (PR-7 of bundle-size
+    // follow-up). findBy* awaits the async render.
+    expect(
+      await screen.findByText('label.schedule-interval')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('cron-string')).toBeInTheDocument();
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));

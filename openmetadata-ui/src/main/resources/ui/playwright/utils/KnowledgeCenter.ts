@@ -25,7 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const KNOWLEDGE_PAGE_ROUTE = '/knowledge-center/:fqn';
+const ARTICLE_PAGE_ROUTE = '/context-center/articles/:fqn';
 const FQN_PLACEHOLDER = ':fqn';
 
 export const deletePage = async (
@@ -34,20 +34,14 @@ export const deletePage = async (
   entityFqn?: string
 ) => {
   if (!isQuickLink) {
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('delete-button').click();
+    await page.getByTestId('manage-button').first().click();
+    await page.getByTestId('delete-btn').click();
   }
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/knowledgeCenter/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -55,7 +49,9 @@ export const deletePage = async (
   const hierarchyResponse = entityFqn
     ? page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/knowledgeCenter/search/hierarchy') &&
+          response
+            .url()
+            .includes('/api/v1/contextCenter/pages/search/hierarchy') &&
           response.request().method() === 'GET'
       )
     : null;
@@ -76,7 +72,7 @@ export const deletePage = async (
 export const addTitle = async (page: Page, title: string) => {
   const updateTitleResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
 
@@ -92,7 +88,7 @@ export const updateBody = async (page: Page, body: string) => {
   await page.fill('.om-block-editor', body);
   const updateBodyResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   const res = await updateBodyResponse;
@@ -107,7 +103,7 @@ export const updateTags = async (
 ) => {
   const updateKnowledgePage = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   await page.click('[data-testid="tags-container"] [data-testid="add-tag"]');
@@ -115,7 +111,14 @@ export const updateTags = async (
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
   });
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=*${data.tag}*`) &&
+      response.request().method() === 'GET'
+  );
   await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await searchTagResponse;
   await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
   await expect(
@@ -136,7 +139,7 @@ export const updateDataAsset = async (
 ) => {
   const updateKnowledgePage = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   await page
@@ -198,7 +201,7 @@ export const readArticleData = async (
     tagFqn: string;
   }
 ) => {
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await readArticleInHierarchy(page, data.title);
 };
 
@@ -211,40 +214,39 @@ export const createQuickLink = async (
   },
   dataAsset: TopicClass
 ) => {
-  await page.locator('[data-testid="add-knowledge-page-btn"]').click();
+  await page.getByTestId('create-knowledge-page-btn').click();
+  await page.getByTestId('create-quick-link-btn').click();
+
+  const modal = page.locator('.quick-link-form-modal');
 
   await expect(
-    page.getByRole('menuitem', { name: 'Quick Link' })
+    modal.getByRole('heading', { name: 'Add Quick Link' })
   ).toBeVisible();
 
-  await page.getByRole('menuitem', { name: 'Quick Link' }).click();
+  await modal.locator('[data-testid="displayName"]').fill(data.displayName);
+  await modal.locator('[data-testid="url"]').fill(data.url);
+  await modal.locator(descriptionBox).fill(data.description);
 
-  await expect(page.locator('.ant-modal-title')).toHaveText('Add Quick Link');
-
-  await page.locator('[data-testid="displayName"]').fill(data.displayName);
-  await page.locator('[data-testid="url"]').fill(data.url);
-  await page.locator(descriptionBox).fill(data.description);
-
-  await page
+  await modal
     .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
     .click();
-  await page
+  await modal
     .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
     .fill(dataAsset.entity.name);
 
   await expect(
-    page.locator(
-      '.ant-select-item-option-content:has-text("' +
-        dataAsset.entity.name +
-        '")'
-    )
+    page.locator('.ant-select-item-option-content', {
+      hasText: dataAsset.entity.name,
+    })
   ).toBeVisible();
 
-  await page.click(
-    '.ant-select-item-option-content:has-text("' + dataAsset.entity.name + '")'
-  );
+  await page
+    .locator('.ant-select-item-option-content', {
+      hasText: dataAsset.entity.name,
+    })
+    .click();
 
-  await page.click('.ant-modal-footer > #quick-link-form');
+  await modal.getByRole('button', { name: 'Save' }).click();
 };
 
 export const readQuickLink = async (
@@ -293,28 +295,35 @@ export const updateQuickLink = async (
     )
     .click();
 
-  await expect(page.locator('.ant-modal-title')).toHaveText(
-    `Edit Quick Link ${knowledgePageQuickLink.displayName}`
-  );
+  const modal = page.locator('.quick-link-form-modal');
 
-  await page
+  await expect(
+    modal.getByRole('heading', {
+      name: `Edit Quick Link ${knowledgePageQuickLink.displayName}`,
+    })
+  ).toBeVisible();
+
+  await modal
     .locator('[data-testid="displayName"]')
     .fill(knowledgePageQuickLink.updatedDisplayName);
-  await page
+  await modal
     .locator('[data-testid="url"]')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await page
+  await modal.locator(descriptionBox).click();
+  await modal.locator(descriptionBox).press('ControlOrMeta+a');
+  await modal.locator(descriptionBox).press('Delete');
+  await modal
     .locator(descriptionBox)
-    .fill(knowledgePageQuickLink.updatedDescription);
+    .pressSequentially(knowledgePageQuickLink.updatedDescription);
 
-  await page.locator('[data-testid="tag-selector"] input').first().click();
-  await page
+  await modal.locator('[data-testid="tag-selector"] input').first().click();
+  await modal
     .locator('[data-testid="tag-selector"] input')
     .first()
     .fill(knowledgePageQuickLink.tag);
   await page.getByTestId(`tag-${knowledgePageQuickLink.tagFqn}`).click();
 
-  await page.click('.ant-modal-footer > #quick-link-form');
+  await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {
     displayName: knowledgePageQuickLink.updatedDisplayName,
@@ -486,21 +495,13 @@ export const toggleKnowledgePageBookmark = async (
   const bookmarkResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
-      url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
-    );
-  });
-  const widgetRefreshResponse = page.waitForResponse((response) => {
-    return (
-      response.url().includes('/api/v1/users') &&
-      response.url().includes('fields=follows')
+      url.includes('/api/v1/contextCenter/pages') && url.includes('/followers')
     );
   });
 
   await bookmarkBtn.click();
   const bookmarkRes = await bookmarkResponse;
-  const widgetRes = await widgetRefreshResponse;
   expect(bookmarkRes.status()).toBe(200);
-  expect(widgetRes.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   const rightPanel = page.getByTestId('knowledge-center-right-panel');
@@ -519,9 +520,11 @@ export const createNewKnowledgePageArticle = async (
   page: Page,
   articleTitle: string
 ) => {
-  const createKnowledgePage = page.waitForResponse('/api/v1/knowledgeCenter');
+  const createKnowledgePage = page.waitForResponse(
+    '/api/v1/contextCenter/pages'
+  );
 
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await page
     .locator('[data-testid="left-panel"]')
     .getByTestId('add-knowledge-page-btn')
@@ -891,11 +894,13 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   // Wait for GET API response when navigating to the article
   const getArticleResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/api/v1/knowledgeCenter/name/${articleFqn}`) &&
+      response
+        .url()
+        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
       response.status() === 200
   );
 
-  const articlePath = KNOWLEDGE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
+  const articlePath = ARTICLE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
   await page.goto(articlePath);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
@@ -907,10 +912,10 @@ export const navigateToKnowledgeCenter = async (page: Page) => {
 
   const knowledgeCenterResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter') ||
+      response.url().includes('/api/v1/contextCenter/pages') ||
       response.url().includes('/knowledge-center')
   );
 
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await knowledgeCenterResponse;
 };

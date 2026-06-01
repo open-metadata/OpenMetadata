@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
     aboutfqnhash character varying(256) GENERATED ALWAYS AS ((json ->> 'aboutFqnHash'::text)) STORED,
     createdbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'createdById'::text)) STORED,
+    approvedbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED,
     PRIMARY KEY (id),
     CONSTRAINT uk_task_fqn_hash UNIQUE (fqnhash)
 );
@@ -33,6 +34,19 @@ CREATE INDEX IF NOT EXISTS idx_task_about_fqn_hash ON task_entity (aboutfqnhash)
 CREATE INDEX IF NOT EXISTS idx_task_status_about ON task_entity (status, aboutfqnhash);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
+
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- approvedbyid generated column was added inline, attach it now. CREATE TABLE
+-- IF NOT EXISTS is a no-op on those environments so the column would never
+-- appear otherwise. Postgres supports `ADD COLUMN IF NOT EXISTS` natively.
+-- The ALTER must run before idx_task_approved_by_id is created — otherwise
+-- existing-2.0.0 deployments would fail the CREATE INDEX with "column does
+-- not exist" before the ADD COLUMN ever runs.
+ALTER TABLE task_entity
+    ADD COLUMN IF NOT EXISTS approvedbyid character varying(36)
+        GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
@@ -277,3 +291,18 @@ CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
   ON search_index_retry_queue (claimedAt);
+
+-- ContextMemory entity - reusable Context Center memory.
+CREATE TABLE IF NOT EXISTS context_memory (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
+);
+CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);

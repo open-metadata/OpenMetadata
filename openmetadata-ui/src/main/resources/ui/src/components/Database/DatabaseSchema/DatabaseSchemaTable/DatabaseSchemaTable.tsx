@@ -59,7 +59,7 @@ import {
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,

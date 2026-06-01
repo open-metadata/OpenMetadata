@@ -18,10 +18,9 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { EntityType } from '../../../enums/entity.enum';
 
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -56,7 +55,7 @@ import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePagePath,
+  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -67,6 +66,8 @@ import {
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {
@@ -110,6 +111,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [votesLoading, setVotesLoading] = useState<{
     votedUp: boolean;
     votedDown: boolean;
@@ -160,7 +162,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   const isFollowing = Boolean(followers?.some(({ id }) => id === USERId));
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
-    : getKnowledgePagePath(knowledgePage.fullyQualifiedName);
+    : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
@@ -316,7 +318,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           target={isQuickLink ? '_blank' : '_self'}
           to={path}
           onClick={handleQuickLinkRecentView}>
-          <Space direction="vertical" size={8}>
+          <Space className="tw:w-full" direction="vertical" size={8}>
             <div className="flex items-center gap-2">
               {isQuickLink ? (
                 <LinkIcon
@@ -335,7 +337,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
                 data-testid="entity-header-display-name"
                 ellipsis={{ tooltip: true }}>
-                {knowledgePage?.displayName || t('label.untitled')}
+                {getKnowledgePageName(knowledgePage, t)}
               </Typography.Text>
               {isQuickLink && !readonly && quickLinkActions}
             </div>
@@ -469,22 +471,27 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           }}
         />
       )}
-      {isDelete && (
-        <DeleteWidgetModal
-          afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={false}
-          entityId={knowledgePage.id}
-          entityName={knowledgePage.displayName || t('label.untitled')}
-          entityType={EntityType.KNOWLEDGE_CENTER}
-          isRecursiveDelete={false}
-          prepareType={false}
-          successMessage={t('server.entity-deleted-successfully', {
-            entity: t('label.quick-link'),
-          })}
-          visible={isDelete}
-          onCancel={() => setIsDelete(false)}
-        />
-      )}
+      <DeleteModal
+        entityTitle={getKnowledgePageName(knowledgePage, t)}
+        isDeleting={isDeleting}
+        message={t('message.delete-entity-permanently', {
+          entityType: t('label.quick-link'),
+        })}
+        open={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onDelete={async () => {
+          setIsDeleting(true);
+          try {
+            await deleteKnowledgePage(knowledgePage.id, false, true);
+            afterDeleteAction(false);
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+          } finally {
+            setIsDeleting(false);
+            setIsDelete(false);
+          }
+        }}
+      />
     </Row>
   );
 };

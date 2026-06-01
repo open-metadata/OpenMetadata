@@ -69,7 +69,6 @@ import {
   LINEAGE_EXPORT_SELECTOR,
 } from '../../constants/Export.constants';
 import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
-import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
@@ -1860,8 +1859,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (isTourOpen || isTourPage) {
       setInit(true);
       setLoading(false);
-      setEntityLineage(
-        mockDatasetData.entityLineage as unknown as EntityLineageResponse
+      import('../../constants/mockTourData.constants').then(
+        ({ mockDatasetData }) => {
+          setEntityLineage(
+            mockDatasetData.entityLineage as unknown as EntityLineageResponse
+          );
+        }
       );
     }
   }, [isTourOpen, isTourPage]);

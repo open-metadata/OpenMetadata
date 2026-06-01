@@ -39,7 +39,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
