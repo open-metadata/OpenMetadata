@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "ข้อเท็จจริงที่ AI ควรจำ",
+  "files-uploaded-for-ai-retrieval": "ไฟล์ที่อัปโหลดสำหรับการเรียกค้นข้อมูลของ AI",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 วัน",
@@ -2475,6 +2477,8 @@
     "zoom-in": "ขยายเข้า",
     "zoom-out": "ขยายออก"
   },
+  "last-cited-by": "อ้างอิงล่าสุดโดย",
+  "long-form-authored-versioned": "แบบฟอร์มยาว, เขียนโดย, มีการกำหนดเวอร์ชัน",
   "message": {
     "access-block-time-message": "การเข้าถึงจะถูกบล็อกเป็นมิลลิวินาทีหลังจากมีความพยายามเข้าสู่ระบบที่ล้มเหลวสูงสุด",
     "access-control-description": "ปรับให้เข้ากับโครงสร้างองค์กรและการเข้าถึงทีมด้วยบทบาทและนโยบาย",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "คุณยังสามารถตั้งค่าการนำเข้าข้อมูลเมตาได้",
     "you-can-edit-memories-you-created": "คุณสามารถแก้ไขความทรงจำที่คุณสร้างขึ้น"
   },
+  "most-cited-context-last-24h": "บริบทที่ถูกอ้างอิงมากที่สุดในทุกเอเจนต์ในช่วง 24 ชั่วโมงที่ผ่านมา",
+  "needs-attention": "ต้องให้ความสนใจ",
+  "no-ai-activity-yet": "ยังไม่มีกิจกรรมของ AI",
+  "nothing-needs-attention-right-now": "ยังไม่มีสิ่งที่ต้องให้ความสนใจในขณะนี้",
+  "published": "เผยแพร่แล้ว",
   "server": {
     "account-verify-success": "ยืนยันอีเมลสำเร็จแล้ว",
     "add-entity-error": "เกิดข้อผิดพลาดขณะเพิ่ม {{entity}}!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "เกิดข้อผิดพลาดที่ไม่คาดคิดขึ้น",
     "unexpected-response": "การตอบสนองที่ไม่คาดคิดจากเซิร์ฟเวอร์",
     "update-entity-success": "{{entity}} อัปเดตสำเร็จ"
-  }
-}
+  },
+  "stale-unused-or-failed-context": "รายการบริบทที่ล้าสมัย ไม่ได้ใช้ หรือล้มเหลว",
+  "used-by-ai": "ใช้โดย AI",
+  "view-activity": "ดูกิจกรรม",
+  "view-all-entity": "ดู {{entity}} ทั้งหมด"
+}\n

@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "עובדות אטומיות שה-AI צריך לזכור.",
+  "files-uploaded-for-ai-retrieval": "קבצים שהועלו לאחזור על ידי AI.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 יום",
@@ -2475,6 +2477,8 @@
     "zoom-in": "הגדל תצוגה",
     "zoom-out": "הקטן תצוגה"
   },
+  "last-cited-by": "צוטט לאחרונה על ידי",
+  "long-form-authored-versioned": "בפורמט ארוך, נכתב, מנוהל גרסאות.",
   "message": {
     "access-block-time-message": "הגישה תחוסם למשך מילישניות לאחר שנעשו מספר ניסיונות התחברות כושלים.",
     "access-control-description": "התאם להיררכיה הארגונית שלך וגישת הצוות עם תפקידים ומדיניות.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "תוכל גם להגדיר את ההזנה של המטה-דאטה.",
     "you-can-edit-memories-you-created": "אתה יכול לערוך זיכרונות שיצרת"
   },
+  "most-cited-context-last-24h": "ההקשר המצוטט ביותר על פני כל הסוכנים ב-24 השעות האחרונות.",
+  "needs-attention": "דורש תשומת לב",
+  "no-ai-activity-yet": "אין עדיין פעילות AI.",
+  "nothing-needs-attention-right-now": "שום דבר לא דורש תשומת לב כרגע.",
+  "published": "פורסם",
   "server": {
     "account-verify-success": "אימייל אומת בהצלחה",
     "add-entity-error": "שגיאה במהלך הוספת {{entity}}!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "אירעה שגיאה לא צפויה.",
     "unexpected-response": "תגובה לא צפויה מהשרת.",
     "update-entity-success": "{{entity}} עודכן בהצלחה."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "פריטי הקשר מיושנים, לא בשימוש או שנכשלו.",
+  "used-by-ai": "בשימוש על ידי AI",
+  "view-activity": "הצג פעילות",
+  "view-all-entity": "הצג את כל ה-{{entity}}"
+}\n

@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "AIが記憶すべき事実。",
+  "files-uploaded-for-ai-retrieval": "AI検索用にアップロードされたファイル。",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 日",
@@ -2475,6 +2477,8 @@
     "zoom-in": "ズームイン",
     "zoom-out": "ズームアウト"
   },
+  "last-cited-by": "最終引用者",
+  "long-form-authored-versioned": "長文、執筆済み、バージョン管理済み。",
   "message": {
     "access-block-time-message": "最大回数のログイン失敗後、一定時間（ミリ秒）アクセスがブロックされます。",
     "access-control-description": "組織の階層とチームのアクセス権限を、ロールとポリシーで調整します。",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "メタデータ取り込みの設定も行えます。",
     "you-can-edit-memories-you-created": "作成したメモリは編集できます"
   },
+  "most-cited-context-last-24h": "過去24時間に全エージェントで最も引用されたコンテキスト。",
+  "needs-attention": "要対応",
+  "no-ai-activity-yet": "AIのアクティビティはまだありません。",
+  "nothing-needs-attention-right-now": "現在対応が必要なものはありません。",
+  "published": "公開済み",
   "server": {
     "account-verify-success": "メールアドレスの認証に成功しました",
     "add-entity-error": "{{entity}}の追加中にエラーが発生しました！",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバーから予期しない応答が返されました。",
     "update-entity-success": "{{entity}}は正常に更新されました。"
-  }
-}
+  },
+  "stale-unused-or-failed-context": "古い、未使用、または失敗したコンテキストアイテム。",
+  "used-by-ai": "AIによって使用",
+  "view-activity": "アクティビティを表示",
+  "view-all-entity": "すべての{{entity}}を表示"
+}\n

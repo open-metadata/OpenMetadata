@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "Faits atomiques que l'IA doit mémoriser.",
+  "files-uploaded-for-ai-retrieval": "Fichiers téléchargés pour la récupération par l'IA.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 jour",
@@ -2475,6 +2477,8 @@
     "zoom-in": "Zoom Avant",
     "zoom-out": "Zoom Arrière"
   },
+  "last-cited-by": "Dernière citation par",
+  "long-form-authored-versioned": "Forme longue, par l'auteur, versionnée.",
   "message": {
     "access-block-time-message": "Nombre de millisecondes pendant lesquelles l'accès sera bloqué après le maximum de tentatives infructueuses.",
     "access-control-description": "Alignez votre hiérarchie d'organisation et l'accès des équipes avec les rôles et politiques d'accès.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "Vous pouvez également configurer l'ingestion de métadonnées.",
     "you-can-edit-memories-you-created": "Vous pouvez modifier les souvenirs que vous avez créés"
   },
+  "most-cited-context-last-24h": "Contexte le plus cité par tous les agents au cours des 24 dernières heures.",
+  "needs-attention": "Nécessite une attention",
+  "no-ai-activity-yet": "Aucune activité de l'IA pour le moment.",
+  "nothing-needs-attention-right-now": "Rien ne nécessite d'attention pour le moment.",
+  "published": "Publié",
   "server": {
     "account-verify-success": "Email vérifié avec succès",
     "add-entity-error": "Erreur lors de l'ajout de {{entity}} !",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "Une erreur inattendue est survenue.",
     "unexpected-response": "Réponse inattendue du serveur !",
     "update-entity-success": "{{entity}} mis à jour avec succès."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "Éléments de contexte obsolètes, inutilisés ou en échec.",
+  "used-by-ai": "Utilisé par l'IA",
+  "view-activity": "Voir l'activité",
+  "view-all-entity": "Voir tous les {{entity}}"
+}\n

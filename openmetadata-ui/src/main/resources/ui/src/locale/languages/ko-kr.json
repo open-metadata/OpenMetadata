@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "AI가 기억해야 할 사실.",
+  "files-uploaded-for-ai-retrieval": "AI 검색을 위해 업로드된 파일.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 일",
@@ -2475,6 +2477,8 @@
     "zoom-in": "확대",
     "zoom-out": "축소"
   },
+  "last-cited-by": "마지막으로 인용한 사람",
+  "long-form-authored-versioned": "긴 형식, 작성됨, 버전 관리됨.",
   "message": {
     "access-block-time-message": "최대 로그인 실패 시도 횟수 이후 밀리초 동안 접근이 차단됩니다.",
     "access-control-description": "역할과 정책을 통해 조직 계층 구조 및 팀 접근 권한을 조정합니다.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "메타데이터 수집을 설정할 수도 있습니다.",
     "you-can-edit-memories-you-created": "직접 만든 메모리는 편집할 수 있습니다"
   },
+  "most-cited-context-last-24h": "지난 24시간 동안 모든 에이전트에서 가장 많이 인용된 컨텍스트.",
+  "needs-attention": "주의 필요",
+  "no-ai-activity-yet": "아직 AI 활동이 없습니다.",
+  "nothing-needs-attention-right-now": "현재 주의가 필요한 항목이 없습니다.",
+  "published": "게시됨",
   "server": {
     "account-verify-success": "이메일이 성공적으로 인증되었습니다",
     "add-entity-error": "{{entity}} 추가 중 오류가 발생했습니다!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "예기치 않은 오류가 발생했습니다.",
     "unexpected-response": "서버로부터 예기치 않은 응답이 있습니다.",
     "update-entity-success": "{{entity}}가 성공적으로 업데이트되었습니다."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "오래되었거나 사용되지 않거나 실패한 컨텍스트 항목입니다.",
+  "used-by-ai": "AI가 사용함",
+  "view-activity": "활동 보기",
+  "view-all-entity": "모든 {{entity}} 보기"
+}\n

@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "Yapay zekanın hatırlaması gereken atomik gerçekler.",
+  "files-uploaded-for-ai-retrieval": "Yapay zeka alımı için yüklenen dosyalar.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 gün",
@@ -2475,6 +2477,8 @@
     "zoom-in": "Yakınlaştır",
     "zoom-out": "Uzaklaştır"
   },
+  "last-cited-by": "Son alıntılayan",
+  "long-form-authored-versioned": "Uzun form, yazarlı, sürümlü.",
   "message": {
     "access-block-time-message": "Erişim, maksimum başarısız giriş denemesinden sonra milisaniye boyunca engellenecektir.",
     "access-control-description": "Roller ve politikalarla kurumsal hiyerarşinize ve ekip erişiminize uyum sağlayın.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "Metadata alımını da ayarlayabilirsiniz.",
     "you-can-edit-memories-you-created": "Oluşturduğunuz anıları düzenleyebilirsiniz"
   },
+  "most-cited-context-last-24h": "Son 24 saat içinde tüm ajanlar arasında en çok alıntılanan bağlam.",
+  "needs-attention": "Dikkat gerektiriyor",
+  "no-ai-activity-yet": "Henüz AI etkinliği yok.",
+  "nothing-needs-attention-right-now": "Şu anda dikkat edilmesi gereken bir şey yok.",
+  "published": "Yayınlandı",
   "server": {
     "account-verify-success": "E-posta başarıyla doğrulandı",
     "add-entity-error": "{{entity}} eklenirken hata oluştu!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "Beklenmedik bir hata oluştu.",
     "unexpected-response": "Sunucudan beklenmedik yanıt.",
     "update-entity-success": "{{entity}} başarıyla güncellendi."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "Eski, kullanılmayan veya başarısız bağlam öğeleri.",
+  "used-by-ai": "Yapay Zeka tarafından kullanılıyor",
+  "view-activity": "Etkinliği görüntüle",
+  "view-all-entity": "Tüm {{entity}}'leri görüntüle"
+}\n

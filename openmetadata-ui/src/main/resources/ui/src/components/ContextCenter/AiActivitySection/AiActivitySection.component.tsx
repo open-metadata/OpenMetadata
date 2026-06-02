@@ -1,0 +1,137 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Badge,
+  Button,
+  Card,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ArrowNarrowRight, File05, Sun } from '@untitledui/icons';
+import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import {
+  ActivityItem,
+  ActivityKind,
+  AiActivitySectionProps,
+} from './AiActivitySection.interface';
+
+const KIND_ICONS: Record<ActivityKind, FC<{ className?: string }>> = {
+  memory: Sun,
+  article: File05,
+  document: FolderIcon,
+};
+
+function AiActivityRow({ item }: { readonly item: ActivityItem }) {
+  const KindIcon = KIND_ICONS[item.kind];
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:flex tw:items-center tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0">
+      <FeaturedIcon
+        className="tw:size-7 tw:rounded-md tw:shrink-0"
+        color="brand"
+        icon={KindIcon}
+        size="sm"
+        theme="light"
+      />
+      <div className="tw:flex-1 tw:min-w-0">
+        <div className="tw:flex tw:items-center tw:gap-1.5 tw:mb-0.5">
+          <Typography
+            as="span"
+            className="tw:text-quaternary tw:uppercase tw:tracking-widest tw:font-mono"
+            size="text-xs">
+            {item.kind}
+          </Typography>
+          <span className="tw:text-quaternary tw:text-xs">·</span>
+          <Badge color="brand" size="sm" type='color'>
+            {`cited ${item.count}×`}
+          </Badge>
+        </div>
+        <Typography
+          ellipsis
+          as="div"
+          className="tw:text-primary"
+          size="text-xs"
+          weight="medium">
+          {item.title}
+        </Typography>
+        <Typography
+          as="div"
+          className="tw:text-quaternary tw:mt-0.5 tw:flex tw:items-baseline tw:gap-1"
+          size="text-xs">
+          {t('label.on')}
+          <Typography
+            as="span"
+            className="tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {item.surface}
+          </Typography>
+          {` · ${t('label.last-cited-by')} ${item.who} ${item.when}`}
+        </Typography>
+      </div>
+    </div>
+  );
+}
+
+const AiActivitySection: FC<AiActivitySectionProps> = ({ items }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card className="tw:p-5">
+      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
+        <div>
+          <Typography
+            as="div"
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {t('label.used-by-ai')}
+          </Typography>
+          <Typography
+            as="div"
+            className="tw:text-quaternary tw:mt-0.5"
+            size="text-xs">
+            {t('message.most-cited-context-last-24h')}
+          </Typography>
+        </div>
+        <Button
+          color='link-color'
+          size='xs'
+          iconTrailing={ArrowNarrowRight}
+          type="button">
+          {t('label.view-activity')}
+        </Button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="tw:flex tw:items-center tw:justify-center tw:py-10">
+          <Typography as="div" className="tw:text-quaternary" size="text-xs">
+            {t('message.no-ai-activity-yet')}
+          </Typography>
+        </div>
+      ) : (
+        <div>
+          {items.map((item) => (
+            <AiActivityRow item={item} key={item.id} />
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+};
+
+export default AiActivitySection;

@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "Атомарные факты, которые должен помнить ИИ.",
+  "files-uploaded-for-ai-retrieval": "Файлы загружены для извлечения ИИ.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 день",
@@ -2475,6 +2477,8 @@
     "zoom-in": "Увеличить",
     "zoom-out": "Уменьшить"
   },
+  "last-cited-by": "Последнее цитирование",
+  "long-form-authored-versioned": "Длинный формат, авторский, версионированный.",
   "message": {
     "access-block-time-message": "Доступ заблокируется после ряда неудачных попыток (на несколько секунд).",
     "access-control-description": "Приведите в соответствие организационную иерархию и командный доступ с помощью ролей и политик.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "Вы также можете настроить прием метаданных.",
     "you-can-edit-memories-you-created": "Вы можете редактировать созданные вами воспоминания"
   },
+  "most-cited-context-last-24h": "Самый цитируемый контекст среди всех агентов за последние 24 часа.",
+  "needs-attention": "Требует внимания",
+  "no-ai-activity-yet": "Пока нет активности ИИ.",
+  "nothing-needs-attention-right-now": "В данный момент ничто не требует внимания.",
+  "published": "Опубликовано",
   "server": {
     "account-verify-success": "Электронная почта подтверждена",
     "add-entity-error": "Ошибка при добавлении объекта «{{entity}}!»",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "Произошла непредвиденная ошибка.",
     "unexpected-response": "Неожиданный ответ от сервера.",
     "update-entity-success": "Объект «{{entity}}» обновлен."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "Устаревшие, неиспользуемые или ошибочные элементы контекста.",
+  "used-by-ai": "Используется ИИ",
+  "view-activity": "Посмотреть активность",
+  "view-all-entity": "Посмотреть все {{entity}}"
+}\n

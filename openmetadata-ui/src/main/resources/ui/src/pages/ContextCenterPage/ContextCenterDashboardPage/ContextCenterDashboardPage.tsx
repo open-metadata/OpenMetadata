@@ -12,23 +12,36 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Home02, UploadCloud02 } from '@untitledui/icons';
+import {
+  ChevronDown,
+  File05,
+  Home02,
+  Sun,
+  UploadCloud02
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import AlertBar from '../../../components/AlertBar/AlertBar';
-import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
+import AiActivitySection from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.component';
+import { ActivityItem } from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
+import NeedsAttentionSection from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.component';
+import { AttentionItem } from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
-import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
+import {
+  RECENT_DASHBOARD_ARTICLES_LIMIT,
+  RECENT_DASHBOARD_DOCUMENTS_LIMIT,
+} from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,7 +56,8 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { listContextFiles } from '../../../rest/assetAPI';
+import { listContextFiles, listFolders } from '../../../rest/assetAPI';
+import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import {
   getListKnowledgePages,
   postKnowledgePage,
@@ -51,15 +65,91 @@ import {
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   contextFileToUploadedDocumentItem,
-  createArticleKnowledgePage,
-  handleAssetDownload,
-  knowledgePageToArticleItem,
+  createArticleKnowledgePage
 } from '../../../utils/ContextCenterUtils';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-const RECENT_ARTICLES_LIMIT = 20;
-const RECENT_DOCUMENTS_LIMIT = 20;
+const MOCK_AI_ACTIVITY: ActivityItem[] = [
+  {
+    id: '1',
+    kind: 'memory',
+    count: 47,
+    title: 'Revenue figures exclude refunds',
+    surface: 'Sales Agent',
+    who: 'Phoenix',
+    when: '2h ago',
+  },
+  {
+    id: '2',
+    kind: 'article',
+    count: 31,
+    title: 'Data Governance Policy',
+    surface: 'Support Bot',
+    who: 'Olivia',
+    when: '5h ago',
+  },
+  {
+    id: '3',
+    kind: 'document',
+    count: 22,
+    title: 'GDPR_Compliance_Audit.pdf',
+    surface: 'Legal Assistant',
+    who: 'Candice',
+    when: '3d ago',
+  },
+  {
+    id: '4',
+    kind: 'memory',
+    count: 28,
+    title: 'Product SKU consolidation',
+    surface: 'Analytics Agent',
+    who: 'Demi',
+    when: '6h ago',
+  },
+  {
+    id: '5',
+    kind: 'article',
+    count: 15,
+    title: 'Internal API Documentation',
+    surface: 'Dev Assistant',
+    who: 'Marcus',
+    when: '1d ago',
+  },
+];
+
+const MOCK_NEEDS_ATTENTION: AttentionItem[] = [
+  {
+    id: '1',
+    kind: 'document',
+    title: 'Q4_Revenue_Report.pdf',
+    severity: 'error',
+    reason: 'Processing failed',
+  },
+  {
+    id: '2',
+    kind: 'article',
+    title: 'Q3 Compliance Protocols v4',
+    severity: 'warning',
+    reason: 'Stale — not updated in 90d',
+  },
+  {
+    id: '3',
+    kind: 'memory',
+    title: 'Churn model v3 deprecates v2',
+    severity: 'info',
+    reason: 'Low citation rate',
+  },
+  {
+    id: '4',
+    kind: 'document',
+    title: 'Employee_Records.xlsx',
+    severity: 'warning',
+    reason: 'Unused for 60d',
+  },
+];
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
@@ -70,10 +160,16 @@ const ContextCenterDashboardPage: FC = () => {
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
-  const [articles, setArticles] = useState<ArticleCardItem[]>([]);
+  const [articles, setArticles] = useState<KnowledgePage[]>([]);
   const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [folderCount, setFolderCount] = useState(0);
+  const [memories, setMemories] = useState<
+    Array<{ title: string; meta: string }>
+  >([]);
+  const [memoriesCount, setMemoriesCount] = useState(0);
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -107,14 +203,14 @@ const ContextCenterDashboardPage: FC = () => {
           relatedEntities: formData?.relatedEntities,
           tags,
         };
-        const response = await postKnowledgePage(data);
+        const articleData = await postKnowledgePage(data);
         showSuccessToast(
           t('message.entity-saved-successfully', {
             entity: t('label.quick-link'),
           })
         );
         setArticles((prev) => [
-          knowledgePageToArticleItem(response, t('label.untitled')),
+         articleData,
           ...prev,
         ]);
       } catch (error) {
@@ -129,14 +225,14 @@ const ContextCenterDashboardPage: FC = () => {
     try {
       const response = await getListKnowledgePages({
         fields: 'tags,page',
-        limit: RECENT_ARTICLES_LIMIT,
+        limit: RECENT_DASHBOARD_ARTICLES_LIMIT,
         pageType: PageType.ARTICLE,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
       setArticles(
         response.data.map((page: KnowledgePage) =>
-          knowledgePageToArticleItem(page, t('label.untitled'))
+          page
         )
       );
     } catch (err) {
@@ -149,12 +245,42 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const files = await listContextFiles(RECENT_DOCUMENTS_LIMIT);
+      const files = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, { sortBy: 'updatedAt', sortOrder: 'desc' });
       setDocuments(files.map(contextFileToUploadedDocumentItem));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDocumentsLoading(false);
+    }
+  }, []);
+
+  const fetchFolders = useCallback(async () => {
+    try {
+      const folders = await listFolders();
+      setFolderCount(folders.length);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
+  const fetchMemories = useCallback(async () => {
+    setIsMemoriesLoading(true);
+    try {
+      const response = await getListContextMemories({
+        limit: 3,
+        sort: 'updatedAt',
+      });
+      setMemoriesCount(response.paging.total ?? response.data.length);
+      setMemories(
+        response.data.map((m) => ({
+          title: m.title ?? m.name,
+          meta: m.usageCount ? `cited ${m.usageCount}×` : '',
+        }))
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsMemoriesLoading(false);
     }
   }, []);
 
@@ -172,8 +298,10 @@ const ContextCenterDashboardPage: FC = () => {
   useEffect(() => {
     fetchRecentArticles();
     fetchDocuments();
+    fetchFolders();
+    fetchMemories();
     fetchPermission();
-  }, [fetchRecentArticles, fetchDocuments, fetchPermission]);
+  }, [fetchRecentArticles, fetchDocuments, fetchFolders, fetchMemories, fetchPermission]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
     setDocuments((prev) => [
@@ -182,9 +310,27 @@ const ContextCenterDashboardPage: FC = () => {
     ]);
   }, []);
 
+  const articlesRecentItems = useMemo(
+    () =>
+      articles.map((article) => ({
+        title: getEntityName(article),
+        meta: `${article?.owners?.[0]?.displayName || '-'} · ${getRelativeTime(article.updatedAt)}`
+      })),
+    [articles]
+  );
+
+  const documentsRecentItems = useMemo(
+    () =>
+      documents.map((d) => ({
+        title: d.name,
+        meta: `${d.updatedBy} · ${getRelativeTime(d.updatedAt)}`,
+      })),
+    [documents]
+  );
+
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
@@ -205,7 +351,6 @@ const ContextCenterDashboardPage: FC = () => {
                   iconTrailing={ChevronDown}>
                   {t('label.create')}
                 </Button>
-
                 <Dropdown.Popover className="tw:w-30">
                   <Dropdown.Menu aria-label="create knowledge page">
                     <Dropdown.Item
@@ -214,7 +359,6 @@ const ContextCenterDashboardPage: FC = () => {
                       onAction={handleCreateArticle}>
                       {t('label.article')}
                     </Dropdown.Item>
-
                     <Dropdown.Item
                       data-testid="create-quick-link-btn"
                       key={PageType.QUICK_LINK}
@@ -249,25 +393,65 @@ const ContextCenterDashboardPage: FC = () => {
         title={t('label.dashboard')}
       />
 
-      <div className="tw:flex tw:flex-col tw:gap-6">
-        <ArticleListSection
-          articles={articles}
-          isLoading={isArticlesLoading}
-          subtitle={t('message.internal-knowledge-base-agent-training')}
-          title={t('label.article-amp-quick-link-plural')}
-          onViewAll={() =>
-            navigate(contextCenterClassBase.getArticlesListPath())
-          }
-        />
+      <div className="tw:flex tw:flex-col tw:gap-6 tw:h-full">
+        <div className="tw:grid tw:grid-cols-3 tw:gap-4">
+          <ContextKnowledgePillarCard
+            cta={t('label.view-all-entity', {
+              entity: t('label.article-plural'),
+            })}
+            icon={File05}
+            recent={articlesRecentItems}
+            stat={isArticlesLoading ? '—' : String(articles.length)}
+            statSub={t('label.published')}
+            subtitle={t('message.long-form-authored-versioned')}
+            title={t('label.article-plural')}
+            tone="info"
+            trend="0 this week"
+            onClick={() =>
+              navigate(contextCenterClassBase.getArticlesListPath())
+            }
+          />
+          <ContextKnowledgePillarCard
+            cta={t('label.view-all-entity', {
+              entity: t('label.document-plural'),
+            })}
+            icon={FolderIcon}
+            recent={documentsRecentItems}
+            stat={isDocumentsLoading ? '—' : String(documents.length)}
+            statSub={t('label.file-plural')}
+            statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
+            subtitle={t('message.files-uploaded-for-ai-retrieval')}
+            title={t('label.document-plural')}
+            tone="warning"
+            trend="0 processing"
+            onClick={() =>
+              navigate(contextCenterClassBase.getDocumentsListPath())
+            }
+          />
+          <ContextKnowledgePillarCard
+            cta={t('label.view-all-entity', {
+              entity: t('label.memory-plural'),
+            })}
+            icon={Sun}
+            recent={memories}
+            stat={isMemoriesLoading ? '—' : String(memoriesCount)}
+            statSub={t('label.memory-plural')}
+            subtitle={t('message.atomic-facts-ai-should-remember')}
+            title={t('label.memory-plural')}
+            tone="success"
+            trend="0 cites today"
+            onClick={() =>
+              navigate(contextCenterClassBase.getMemoriesListPath())
+            }
+          />
+        </div>
 
-        <UploadedDocumentsSection
-          documents={documents}
-          isLoading={isDocumentsLoading}
-          onDownload={handleAssetDownload}
-          onViewAll={() =>
-            navigate(contextCenterClassBase.getDocumentsListPath())
-          }
-        />
+        <div
+          className="tw:grid tw:gap-4 tw:h-full"
+          style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+          <AiActivitySection items={[]} />
+          <NeedsAttentionSection items={[]} />
+        </div>
       </div>
 
       <UploadDocumentModal

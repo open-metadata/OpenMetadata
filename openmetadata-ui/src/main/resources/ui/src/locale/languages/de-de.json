@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "Atomare Fakten, an die sich die KI erinnern sollte.",
+  "files-uploaded-for-ai-retrieval": "Dateien für den KI-Abruf hochgeladen.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 Tag",
@@ -2475,6 +2477,8 @@
     "zoom-in": "Vergrößern",
     "zoom-out": "Verkleinern"
   },
+  "last-cited-by": "Zuletzt zitiert von",
+  "long-form-authored-versioned": "Lange Form, verfasst, versioniert.",
   "message": {
     "access-block-time-message": "Der Zugriff wird für einige Millisekunden gesperrt, nachdem die maximale Anzahl fehlgeschlagener Anmeldeversuche erreicht wurde.",
     "access-control-description": "Richten Sie sich nach Ihrer Organisationshierarchie und dem Teamzugriff mithilfe von Rollen und Richtlinien aus.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "Sie können auch die Metadateninhalation einrichten.",
     "you-can-edit-memories-you-created": "Sie können von Ihnen erstellte Erinnerungen bearbeiten"
   },
+  "most-cited-context-last-24h": "Am häufigsten zitierter Kontext aller Agenten in den letzten 24 Stunden.",
+  "needs-attention": "Benötigt Aufmerksamkeit",
+  "no-ai-activity-yet": "Noch keine KI-Aktivität.",
+  "nothing-needs-attention-right-now": "Derzeit benötigt nichts Aufmerksamkeit.",
+  "published": "Veröffentlicht",
   "server": {
     "account-verify-success": "E-Mail erfolgreich verifiziert",
     "add-entity-error": "Fehler beim Hinzufügen von {{entity}}!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "Ein unerwarteter Fehler ist aufgetreten.",
     "unexpected-response": "Unerwartete Antwort vom Server.",
     "update-entity-success": "{{entity}} erfolgreich aktualisiert."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "Veraltete, ungenutzte oder fehlgeschlagene Kontextelemente.",
+  "used-by-ai": "Von KI verwendet",
+  "view-activity": "Aktivität anzeigen",
+  "view-all-entity": "Alle {{entity}} anzeigen"
+}\n

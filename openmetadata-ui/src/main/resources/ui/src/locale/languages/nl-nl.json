@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "Atoomfeiten die de AI moet onthouden.",
+  "files-uploaded-for-ai-retrieval": "Bestanden geüpload voor AI-opvraging.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 dag",
@@ -2475,6 +2477,8 @@
     "zoom-in": "Inzoomen",
     "zoom-out": "Uitzoomen"
   },
+  "last-cited-by": "Laatst geciteerd door",
+  "long-form-authored-versioned": "Lange vorm, geschreven, geversioneerd.",
   "message": {
     "access-block-time-message": "Toegang wordt geblokkeerd voor milliseconden nadat het maximale aantal mislukte aanmeldpogingen is uitgevoerd.",
     "access-control-description": "Stem af op je organisatiehiërarchie en teamtoegang met rollen en beleidsregels.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "Je kunt ook de metadataingestie instellen.",
     "you-can-edit-memories-you-created": "U kunt herinneringen bewerken die u hebt gemaakt"
   },
+  "most-cited-context-last-24h": "Meest geciteerde context over alle agenten in de afgelopen 24u.",
+  "needs-attention": "Aandacht vereist",
+  "no-ai-activity-yet": "Nog geen AI-activiteit.",
+  "nothing-needs-attention-right-now": "Niets vereist op dit moment aandacht.",
+  "published": "Gepubliceerd",
   "server": {
     "account-verify-success": "E-mail succesvol geverifieerd",
     "add-entity-error": "Fout bij het toevoegen van {{entity}}!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "Er is een onverwachte fout opgetreden.",
     "unexpected-response": "Onverwachte respons van de server.",
     "update-entity-success": "{{entity}} succesvol bijgewerkt."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "Verouderde, ongebruikte of mislukte contextitems.",
+  "used-by-ai": "Gebruikt door AI",
+  "view-activity": "Activiteit bekijken",
+  "view-all-entity": "Bekijk alle {{entity}}"
+}\n

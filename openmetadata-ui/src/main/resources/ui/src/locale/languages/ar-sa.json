@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "الحقائق الذرية التي يجب على الذكاء الاصطناعي تذكرها.",
+  "files-uploaded-for-ai-retrieval": "الملفات التي تم تحميلها لاسترجاعها بواسطة الذكاء الاصطناعي.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "يوم واحد",
@@ -2475,6 +2477,8 @@
     "zoom-in": "تكبير",
     "zoom-out": "تصغير"
   },
+  "last-cited-by": "آخر استشهاد بواسطة",
+  "long-form-authored-versioned": "نموذج طويل، مؤلف، ومسجل بإصدار.",
   "message": {
     "access-block-time-message": "سيتم حظر الوصول لـ مللي ثانية بعد الوصول إلى الحد الأقصى لمحاولات تسجيل الدخول الفاشلة.",
     "access-control-description": "قم بالمواءمة مع التسلسل الهرمي التنظيمي وصول الفريق من خلال الأدوار والسياسات.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "يمكنك أيضًا إعداد استيعاب البيانات الوصفية.",
     "you-can-edit-memories-you-created": "يمكنك تعديل الذكريات التي قمت بإنشائها"
   },
+  "most-cited-context-last-24h": "السياق الأكثر استشهادًا عبر جميع الوكلاء في آخر 24 ساعة.",
+  "needs-attention": "يحتاج إلى انتباه",
+  "no-ai-activity-yet": "لا يوجد نشاط للذكاء الاصطناعي حتى الآن.",
+  "nothing-needs-attention-right-now": "لا شيء يحتاج إلى انتباه الآن.",
+  "published": "منشور",
   "server": {
     "account-verify-success": "تم التحقق من البريد الإلكتروني بنجاح",
     "add-entity-error": "خطأ أثناء إضافة {{entity}}!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "حدث خطأ غير متوقع.",
     "unexpected-response": "استجابة غير متوقعة من الخادم.",
     "update-entity-success": "تم تحديث {{entity}} بنجاح."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "عناصر السياق القديمة أو غير المستخدمة أو الفاشلة.",
+  "used-by-ai": "مستخدم بواسطة الذكاء الاصطناعي",
+  "view-activity": "عرض النشاط",
+  "view-all-entity": "عرض كل {{entity}}"
+}\n

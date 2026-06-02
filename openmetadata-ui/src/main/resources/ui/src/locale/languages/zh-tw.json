@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "AI應該記住的基本事實。",
+  "files-uploaded-for-ai-retrieval": "為AI檢索上傳的檔案。",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 天",
@@ -2475,6 +2477,8 @@
     "zoom-in": "放大",
     "zoom-out": "縮小"
   },
+  "last-cited-by": "最後引用者",
+  "long-form-authored-versioned": "長篇，經過編寫的，帶版本控制的。",
   "message": {
     "access-block-time-message": "達到最大登入失敗次數後，存取將被封鎖數毫秒。",
     "access-control-description": "透過角色和政策，使團隊存取權限與您的組織層級結構保持一致。",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "您也可以設定元資料擷取。",
     "you-can-edit-memories-you-created": "您可以編輯您創建的記憶"
   },
+  "most-cited-context-last-24h": "過去24小時內所有代理中被引用最多的上下文。",
+  "needs-attention": "需要注意",
+  "no-ai-activity-yet": "暫無AI活動。",
+  "nothing-needs-attention-right-now": "目前不需要注意任何事情。",
+  "published": "已發佈",
   "server": {
     "account-verify-success": "電子郵件驗證成功",
     "add-entity-error": "新增 {{entity}} 時發生錯誤！",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "發生未預期的錯誤。",
     "unexpected-response": "來自伺服器的未預期回應。",
     "update-entity-success": "{{entity}} 更新成功。"
-  }
-}
+  },
+  "stale-unused-or-failed-context": "過時、未使用或失敗的上下文項目。",
+  "used-by-ai": "AI使用",
+  "view-activity": "查看活動",
+  "view-all-entity": "查看所有{{entity}}"
+}\n

@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "AI ने लक्षात ठेवण्याजोगे तथ्य.",
+  "files-uploaded-for-ai-retrieval": "AI पुनर्प्राप्तीसाठी अपलोड केलेल्या फाईल्स.",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 दिवस",
@@ -2475,6 +2477,8 @@
     "zoom-in": "झूम इन",
     "zoom-out": "झूम आउट"
   },
+  "last-cited-by": "शेवटचे उद्धृत केलेले",
+  "long-form-authored-versioned": "दीर्घ स्वरूप, लिखित, आवृत्तीबद्ध.",
   "message": {
     "access-block-time-message": "कमाल अयशस्वी लॉगिन प्रयत्नांनंतर प्रवेश काही काळासाठी अवरोधित केला जाईल.",
     "access-control-description": "आपल्या संस्थात्मक श्रेणी आणि टीम प्रवेशासह भूमिका आणि धोरणांसह संरेखित करा.",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "तुम्ही मेटाडेटा अंतर्ग्रहण देखील सेट करू शकता.",
     "you-can-edit-memories-you-created": "तुम्ही तयार केलेल्या स्मृती संपादित करू शकता"
   },
+  "most-cited-context-last-24h": "गेल्या 24 तासांत सर्व एजंट्समध्ये सर्वाधिक उद्धृत केलेला संदर्भ.",
+  "needs-attention": "लक्ष देण्याची गरज आहे",
+  "no-ai-activity-yet": "अद्याप कोणतीही AI अॅक्टिव्हिटी नाही.",
+  "nothing-needs-attention-right-now": "सध्या कशाकडेही लक्ष देण्याची गरज नाही.",
+  "published": "प्रकाशित",
   "server": {
     "account-verify-success": "ईमेल यशस्वीरित्या सत्यापित केले",
     "add-entity-error": "{{entity}} जोडताना त्रुटी!",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "अप्रत्याशित त्रुटी आली.",
     "unexpected-response": "सर्व्हरकडून अप्रत्याशित प्रतिसाद.",
     "update-entity-success": "{{entity}} यशस्वीरित्या अद्यतनित केले."
-  }
-}
+  },
+  "stale-unused-or-failed-context": "जुने, न वापरलेले किंवा अयशस्वी संदर्भ आयटम.",
+  "used-by-ai": "AI द्वारे वापरलेले",
+  "view-activity": "अॅक्टिव्हिटी पहा",
+  "view-all-entity": "सर्व {{entity}} पहा"
+}\n

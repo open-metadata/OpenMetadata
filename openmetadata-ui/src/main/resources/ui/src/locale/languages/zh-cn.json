@@ -1,4 +1,6 @@
 {
+  "atomic-facts-ai-should-remember": "AI应该记住的基本事实。",
+  "files-uploaded-for-ai-retrieval": "为AI检索上传的文件。",
   "label": {
     "-with-colon": "{{text}}:",
     "1-day": "1 天",
@@ -2475,6 +2477,8 @@
     "zoom-in": "放大",
     "zoom-out": "缩小"
   },
+  "last-cited-by": "最后引用者",
+  "long-form-authored-versioned": "长篇，经过编写的，带版本控制的。",
   "message": {
     "access-block-time-message": "在最多尝试登录失败后, 访问将被阻止(毫秒)",
     "access-control-description": "根据角色和策略调整组织层级和团队访问权限",
@@ -3482,6 +3486,11 @@
     "you-can-also-set-up-the-metadata-ingestion": "您还可以设置元数据提取作业",
     "you-can-edit-memories-you-created": "您可以编辑您创建的记忆"
   },
+  "most-cited-context-last-24h": "过去24小时内所有代理中被引用最多的上下文。",
+  "needs-attention": "需要注意",
+  "no-ai-activity-yet": "暂无AI活动。",
+  "nothing-needs-attention-right-now": "目前不需要注意任何事情。",
+  "published": "已发布",
   "server": {
     "account-verify-success": "邮箱验证成功",
     "add-entity-error": "添加{{entity}}时发生错误！",
@@ -3566,5 +3575,9 @@
     "unexpected-error": "发生意外错误",
     "unexpected-response": "服务器返回意外响应！",
     "update-entity-success": "{{entity}}已成功更新"
-  }
-}
+  },
+  "stale-unused-or-failed-context": "陈旧、未使用或失败的上下文项。",
+  "used-by-ai": "AI使用",
+  "view-activity": "查看活动",
+  "view-all-entity": "查看所有{{entity}}"
+}\n
