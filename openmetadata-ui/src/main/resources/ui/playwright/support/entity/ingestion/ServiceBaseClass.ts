@@ -28,9 +28,11 @@ import {
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
+  advanceToServiceConnectionStep,
   deleteService,
   getServiceCategoryFromService,
   makeRetryRequest,
+  selectServiceConnector,
   Services,
   testConnection,
   waitForServiceConnectionForm,
@@ -106,6 +108,7 @@ class ServiceBaseClass {
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
+    await advanceToServiceConnectionStep(page);
     await ipPromise;
     await waitForServiceConnectionForm(page);
 
@@ -157,9 +160,7 @@ class ServiceBaseClass {
   }
 
   async serviceStep1(serviceType: string, page: Page) {
-    // Selecting a connector advances straight to the Configure & Connect step
-    await page.click(`[data-testid="${serviceType}"]`);
-    await page.getByTestId('service-name').waitFor();
+    await selectServiceConnector(page, serviceType);
   }
 
   async serviceStep2(serviceName: string, page: Page) {

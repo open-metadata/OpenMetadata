@@ -35,6 +35,7 @@ import {
   mockSuccessfulTestConnection,
   selectServiceConnector,
   testConnectionIfRequired,
+  waitForServiceConnectionForm,
 } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
@@ -162,6 +163,7 @@ test.describe(
       await selectServiceConnector(page, 'Mysql');
 
       const serviceName = `pw-user-owned-service-${uuid()}`;
+      await mockSuccessfulTestConnection(page);
       await page.getByTestId('service-name').fill(serviceName);
       await advanceToServiceConnectionStep(page);
 
@@ -169,7 +171,6 @@ test.describe(
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
-      await mockSuccessfulTestConnection(page);
       await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
       await page.getByTestId('submit-btn').click();
@@ -245,7 +246,9 @@ test.describe(
       );
 
       await page.getByRole('tab', { name: 'Connection' }).click();
+      await mockSuccessfulTestConnection(page);
       await page.getByTestId('edit-connection-button').click();
+      await waitForServiceConnectionForm(page);
 
       await page.locator('#root\\/username').clear();
       await page.locator('#root\\/username').fill('updated_user');
@@ -254,7 +257,6 @@ test.describe(
         response.url().includes('/api/v1/services/databaseServices')
       );
 
-      await mockSuccessfulTestConnection(page);
       await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
       await page.getByTestId('submit-btn').click();

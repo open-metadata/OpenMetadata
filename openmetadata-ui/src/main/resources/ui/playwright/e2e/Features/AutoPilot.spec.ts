@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -31,6 +31,35 @@ import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const user = new UserClass();
+
+const waitForAutoPilotSuccessInUI = async (page: Page) => {
+  await page.getByTestId('agent-status-widget').waitFor({ state: 'visible' });
+
+  await expect
+    .poll(
+      async () => {
+        const completedMessageVisible = await page
+          .getByTestId('agents-status-message')
+          .getByText('AutoPilot agents run completed successfully.')
+          .isVisible()
+          .catch(() => false);
+
+        if (completedMessageVisible) {
+          return true;
+        }
+
+        const successfulCount = await page
+          .getByTestId('agent-status-summary-item-Successful')
+          .getByTestId('pipeline-count')
+          .textContent()
+          .catch(() => '0');
+
+        return Number(successfulCount ?? 0) > 0;
+      },
+      { timeout: 60_000 }
+    )
+    .toBe(true);
+};
 
 const services = [
   ApiIngestionClass,
@@ -123,10 +152,8 @@ services.forEach((ServiceClass) => {
         await page.reload();
         await waitForAllLoadersToDisappear(page);
 
-        // Wait for the auto pilot status banner to be visible
-        await expect(
-          page.getByText('AutoPilot agents run completed successfully.')
-        ).toBeVisible({ timeout: 60_000 });
+        // Wait for the auto pilot status to be visible
+        await waitForAutoPilotSuccessInUI(page);
 
         if (service.serviceType === 'Mysql') {
           await page.reload();

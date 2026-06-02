@@ -13,30 +13,65 @@
 import { expect, Page } from '@playwright/test';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
 
-const selectConnectionType = async (page: Page, connectionType: string) => {
-  const connectionTab = page
-    .locator('[data-field-id="root/connection"]')
-    .getByRole('tab', {
-      name: connectionType,
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getOneOfOptionLabels = (optionName: string) => {
+  const spacedLabel = optionName.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+
+  return [...new Set([optionName, spacedLabel])];
+};
+
+export const selectOneOfOption = async (
+  page: Page,
+  fieldId: string,
+  selectTestId: string,
+  optionName: string
+) => {
+  const field = page.locator(`[data-field-id="${fieldId}"]`);
+
+  for (const optionLabel of getOneOfOptionLabels(optionName)) {
+    const tab = field.getByRole('tab', {
+      name: new RegExp(`^${escapeRegExp(optionLabel)}$`, 'i'),
     });
 
-  if (await connectionTab.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await connectionTab.click();
+    if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await tab.click();
+
+      return;
+    }
+  }
+
+  const selectWidget = page.getByTestId(selectTestId);
+
+  if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const combobox = selectWidget.getByRole('combobox');
+
+    if (await combobox.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await combobox.click({
+        // eslint-disable-next-line playwright/no-force-option -- some oneOf selectors are partially covered by the field wrapper
+        force: true,
+      });
+    } else {
+      await selectWidget.click();
+    }
+
+    const option = page.getByRole('option', { name: optionName });
+
+    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await option.click();
+
+      return;
+    }
+
+    await page.click(`.ant-select-dropdown:visible [title="${optionName}"]`);
 
     return;
   }
 
-  await page.getByTestId('select-widget-root/connection__oneof_select').click();
-
-  const option = page.getByRole('option', { name: connectionType });
-
-  if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await option.click();
-
-    return;
-  }
-
-  await page.click(`.ant-select-dropdown:visible [title="${connectionType}"]`);
+  throw new Error(
+    `Unable to select oneOf option "${optionName}" for field "${fieldId}"`
+  );
 };
 
 export const fillSupersetFormDetails = async ({
@@ -55,7 +90,12 @@ export const fillSupersetFormDetails = async ({
   await page.fill(String.raw`#root\/hostPort`, hostPort);
 
   if (connectionType === 'SupersetApiConnection') {
-    await selectConnectionType(page, connectionType);
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
+    );
 
     if (provider) {
       await page.getByTestId('select-widget-root/connection/provider').click();
@@ -65,7 +105,12 @@ export const fillSupersetFormDetails = async ({
     connectionType === 'PostgresConnection' ||
     connectionType === 'MysqlConnection'
   ) {
-    await selectConnectionType(page, connectionType);
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
+    );
 
     if (connectionHostPort) {
       await page.locator(String.raw`#root\/connection\/hostPort`).clear();

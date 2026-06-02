@@ -30,10 +30,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
+import {
+  fillSupersetFormDetails,
+  selectOneOfOption,
+} from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   selectServiceConnector,
+  waitForServiceConnectionForm,
 } from '../../utils/serviceIngestion';
 
 const SERVICE_NAMES = {
@@ -363,9 +367,7 @@ test.describe(
         await databaseService.create(apiContext);
         await afterAction();
 
-        await page.getByRole('link', { name: 'Database Services' }).click();
-        await waitForAllLoadersToDisappear(page);
-        await page.getByTestId('add-service-button').click();
+        await page.goto('/databaseServices/add-service');
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Databricks');
 
@@ -426,10 +428,12 @@ test.describe(
           lookerFormDetails.hostPort
         );
 
-        await page
-          .getByTestId('select-widget-root/gitCredentials__oneof_select')
-          .click();
-        await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
+        await selectOneOfOption(
+          page,
+          'root/gitCredentials',
+          'select-widget-root/gitCredentials__oneof_select',
+          'Local Path'
+        );
 
         await page.locator(String.raw`#root\/gitCredentials`).waitFor({
           state: 'visible',
@@ -517,6 +521,7 @@ test.describe(
         await page.getByRole('tab', { name: 'Connection' }).click();
         await page.getByTestId('edit-connection-button').click();
         await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
 
         const suffixInput = page.locator(
           String.raw`#root\/schemaRegistryTopicSuffixName`
@@ -556,6 +561,7 @@ test.describe(
         // Reopen the edit form and verify the cleared value persisted.
         await page.getByTestId('edit-connection-button').click();
         await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
 
         await expect(
           page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)

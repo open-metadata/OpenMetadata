@@ -247,10 +247,13 @@ export const mockSuccessfulTestConnection = async (page: Page) => {
 };
 
 export const testConnectionIfRequired = async (page: Page) => {
+  await waitForServiceConnectionForm(page);
+
   const submitButton = page.getByTestId('submit-btn');
 
   if (await submitButton.isDisabled({ timeout: 1000 }).catch(() => false)) {
     await testConnection(page);
+    await expect(submitButton).toBeEnabled({ timeout: 30_000 });
   }
 };
 
@@ -291,6 +294,20 @@ export const waitForServiceConnectionForm = async (page: Page) => {
     .getByTestId('connection-schema-loader')
     .waitFor({ state: 'detached', timeout: 60_000 })
     .catch(() => null);
+
+  await page
+    .locator(
+      [
+        '[data-testid="test-connection-btn"]:visible',
+        '[data-testid="test-connection-button"]:visible',
+        '[data-testid="no-config-available"]:visible',
+        '[data-field-id^="root/"]:visible',
+        'input[id^="root/"]:not([type="hidden"]):visible',
+        'textarea[id^="root/"]:visible',
+      ].join(', ')
+    )
+    .first()
+    .waitFor({ state: 'visible', timeout: 60_000 });
 
   await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
 };
