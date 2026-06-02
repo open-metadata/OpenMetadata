@@ -3010,6 +3010,41 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(paginatedColumns, before, after, total);
   }
 
+  public Column enrichSingleColumnFields(
+      Table table,
+      Column column,
+      String fieldsParam,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("customMetrics")) {
+      column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+    }
+    if (fieldsParam.contains("profile")) {
+      setColumnProfile(singleton);
+      if (!fieldsParam.contains("tags")) {
+        populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+      }
+      if (piiOwners != null) {
+        PIIMasker.getTableProfile(piiOwners, singleton, authorizer, securityContext);
+      } else {
+        PIIMasker.getTableProfile(
+            table.getFullyQualifiedName(), singleton, authorizer, securityContext);
+      }
+    }
+    return column;
+  }
+
   private static void validateTableColumns(List<Column> columns) {
     if (columns == null) return;
 

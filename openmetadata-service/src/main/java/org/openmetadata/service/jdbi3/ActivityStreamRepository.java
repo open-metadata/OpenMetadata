@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import io.micrometer.core.instrument.Metrics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -26,11 +27,13 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -42,6 +45,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ActivityStreamRepository {
   private static final int MAX_STORED_SUMMARY_LENGTH = 500;
+  private static final String UNRESOLVED_ACTOR_METRIC = "activity_stream.unresolved_actor";
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -144,10 +148,12 @@ public class ActivityStreamRepository {
       domainsJson = JsonUtils.pojoToJson(domainIds);
     }
 
-    String aboutFqnHash = null;
-    if (event.getAbout() != null) {
-      aboutFqnHash = FullyQualifiedName.buildHash(event.getAbout());
-    }
+    // about is an EntityLink, not an FQN — parse first, then hash the FQN portion.
+    String aboutFqnHash =
+        nullOrEmpty(event.getAbout())
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
 
     activityStreamDAO.insert(
         event.getId().toString(),
@@ -159,8 +165,10 @@ public class ActivityStreamRepository {
             : null,
         event.getAbout(),
         aboutFqnHash,
-        event.getActor().getId().toString(),
-        event.getActor().getName(),
+        event.getActor() != null && event.getActor().getId() != null
+            ? event.getActor().getId().toString()
+            : null,
+        event.getActor() != null ? event.getActor().getName() : null,
         event.getTimestamp(),
         truncateSummaryForStorage(event.getSummary()),
         event.getFieldName(),
@@ -296,7 +304,11 @@ public class ActivityStreamRepository {
 
   /** List activity events by EntityLink (about field). */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> jsonList = activityStreamDAO.listByAbout(aboutFqnHash, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
@@ -308,7 +320,11 @@ public class ActivityStreamRepository {
       return listByAbout(entityLink, afterTimestamp, limit);
     }
 
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
     String domainJson = JsonUtils.pojoToJson(domainIdStrings);
     List<String> jsonList =
@@ -458,15 +474,20 @@ public class ActivityStreamRepository {
   }
 
   private EntityReference buildActorReference(String userName) {
+    EntityReference result = null;
     if (nullOrEmpty(userName)) {
-      return new EntityReference().withType(Entity.USER).withName("system");
+      Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "system_event").increment();
+    } else {
+      try {
+        // Include.ALL keeps soft-deleted users resolvable with their real id.
+        result = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (EntityNotFoundException ignored) {
+        // Hard-deleted: keep the name for display, actorId stays null (no FK target).
+        Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "hard_deleted").increment();
+        result = new EntityReference().withType(Entity.USER).withName(userName);
+      }
     }
-    try {
-      return Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    } catch (Exception e) {
-      // User might not exist (e.g., system operations)
-      return new EntityReference().withType(Entity.USER).withName(userName);
-    }
+    return result;
   }
 
   private String buildSummary(

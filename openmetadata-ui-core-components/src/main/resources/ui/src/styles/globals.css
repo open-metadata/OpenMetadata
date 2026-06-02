@@ -87,9 +87,9 @@
   --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
 
-  --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
+  --shadow-skeuomorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
     0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset;
-  --shadow-xs-skeumorphic: theme(--shadow-skeumorphic), theme(--shadow-xs);
+  --shadow-xs-skeuomorphic: theme(--shadow-skeuomorphic), theme(--shadow-xs);
 
   --shadow-modern-mockup-inner-lg: 0px 0px 3.765px 1.255px
       rgba(10, 13, 18, 0.08) inset,
@@ -1375,6 +1375,22 @@
   );
   background-size: 200% 100%;
   animation: skeleton-wave 1.5s ease-in-out infinite;
+}
+
+/* Copy-link burst ring animation. */
+@keyframes copy-link-ring-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+.copy-link-ring-pulse {
+  animation: copy-link-ring-pulse 0.55s ease-out forwards;
 }
 
 /* Let the consumer generate utilities for classes used inside the packaged
