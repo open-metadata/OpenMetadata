@@ -1943,8 +1943,6 @@ public class ColumnBulkUpdateIT {
             .withColumns(List.of(col));
     Table table = client.tables().create(createTable);
 
-    TimeUnit.SECONDS.sleep(3);
-
     Awaitility.await("Column must appear in grid before soft-delete")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -1958,7 +1956,6 @@ public class ColumnBulkUpdateIT {
             });
 
     client.tables().delete(table.getId().toString(), Map.of());
-    TimeUnit.SECONDS.sleep(3);
 
     Awaitility.await("Soft-deleted table columns must not appear in grid")
         .atMost(30, TimeUnit.SECONDS)
