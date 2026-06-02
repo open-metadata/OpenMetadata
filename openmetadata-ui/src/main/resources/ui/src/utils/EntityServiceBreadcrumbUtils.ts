@@ -63,13 +63,12 @@ export const getBreadcrumbForDatabaseService = (
 
 export const getBreadcrumbForDatabase = (entity: Database) => [
   ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  ...getBreadcrumbForEntitiesWithServiceOnly(entity as unknown as any),
+  ...getBreadcrumbForEntitiesWithServiceOnly(entity),
   {
     name: entity.name,
     url: getEntityLinkFromType(
       entity.fullyQualifiedName ?? '',
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-        EntityType.DATABASE
+      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
     ),
   },
 ];

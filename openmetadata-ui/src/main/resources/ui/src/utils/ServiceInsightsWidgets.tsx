@@ -18,7 +18,7 @@ import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/Meta
 
 export const getDefaultInsightsWidgets = (): Record<
   string,
-  React.ComponentType<any>
+  React.ComponentType<Record<string, unknown>>
 > => ({
   AgentsStatusWidget,
   PlatformInsightsWidget,
@@ -27,7 +27,7 @@ export const getDefaultInsightsWidgets = (): Record<
 
 export const getDefaultAgentsTabWidgets = (): Record<
   string,
-  React.ComponentType<any>
+  React.ComponentType<Record<string, unknown>>
 > => ({
   MetadataAgentsWidget,
 });

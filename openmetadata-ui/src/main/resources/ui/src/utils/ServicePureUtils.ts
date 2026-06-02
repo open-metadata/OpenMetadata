@@ -19,11 +19,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import {
-  ADMONITION_BLOCK_REGEX,
-  MARKDOWN_MATCH_ID,
-  SECTION_BLOCK_REGEX,
-} from '../constants/regex.constants';
-import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
@@ -39,10 +34,6 @@ import { DriveServiceType } from '../generated/entity/services/driveService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { DatabaseServiceSearchSource } from '../interface/search.interface';
-import { searchService } from '../rest/serviceAPI';
-import entityUtilClassBase from './EntityUtilClassBase';
-import { MarkdownToHTMLConverter } from './FeedUtils';
 import { t } from './i18next/LocalUtil';
 import { getSettingPath } from './RouterUtils';
 import { replaceAllSpacialCharWith_ } from './StringUtils';
@@ -287,38 +278,6 @@ export const getEntityTypeFromServiceCategory = (
   }
 };
 
-export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
-  switch (serviceCategory) {
-    case ServiceCategory.MESSAGING_SERVICES:
-      return entityUtilClassBase.getEntityLink(SearchIndex.TOPIC, fqn);
-
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return entityUtilClassBase.getEntityLink(SearchIndex.DASHBOARD, fqn);
-
-    case ServiceCategory.PIPELINE_SERVICES:
-      return entityUtilClassBase.getEntityLink(SearchIndex.PIPELINE, fqn);
-
-    case ServiceCategory.ML_MODEL_SERVICES:
-      return entityUtilClassBase.getEntityLink(SearchIndex.MLMODEL, fqn);
-
-    case ServiceCategory.STORAGE_SERVICES:
-      return entityUtilClassBase.getEntityLink(EntityType.CONTAINER, fqn);
-
-    case ServiceCategory.SEARCH_SERVICES:
-      return entityUtilClassBase.getEntityLink(EntityType.SEARCH_INDEX, fqn);
-
-    case ServiceCategory.API_SERVICES:
-      return entityUtilClassBase.getEntityLink(EntityType.API_COLLECTION, fqn);
-
-    case ServiceCategory.DRIVE_SERVICES:
-      return entityUtilClassBase.getEntityLink(EntityType.DIRECTORY, fqn);
-
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
-  }
-};
-
 export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
   query: {
     bool: {
@@ -391,122 +350,4 @@ export const getAddServiceEntityBreadcrumb = (
       activeTitle: true,
     },
   ];
-};
-
-export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
-  const mapping: Partial<Record<string, SearchIndex>> = {
-    [ServiceCategory.DATABASE_SERVICES]: SearchIndex.DATABASE_SERVICE,
-    [ServiceCategory.DASHBOARD_SERVICES]: SearchIndex.DASHBOARD_SERVICE,
-    [ServiceCategory.MESSAGING_SERVICES]: SearchIndex.MESSAGING_SERVICE,
-    [ServiceCategory.PIPELINE_SERVICES]: SearchIndex.PIPELINE_SERVICE,
-    [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
-    [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
-    [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
-    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE,
-    [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
-    [ServiceCategory.METADATA_SERVICES]: SearchIndex.METADATA_SERVICE,
-  };
-
-  return mapping[serviceName] ?? SearchIndex.DATABASE_SERVICE;
-};
-
-export const searchServiceByExactName = async (
-  name: string,
-  serviceName: string
-) => {
-  try {
-    const {
-      hits: { hits },
-    } = await searchService({
-      search: name,
-      searchIndex: getSearchIndexFromService(serviceName),
-    });
-
-    const services = hits.map(
-      ({ _source }) => _source as DatabaseServiceSearchSource
-    );
-
-    return services;
-  } catch {
-    return [];
-  }
-};
-
-export const validateServiceName = async (
-  name: string,
-  serviceName: string
-): Promise<string | null> => {
-  if (!name || !serviceName) {
-    return null;
-  }
-  const searchedServices = await searchServiceByExactName(name, serviceName);
-
-  const isServiceNamePresent = searchedServices.some(
-    (service) => service.name === name
-  );
-
-  if (isServiceNamePresent) {
-    return t('message.entity-already-exists', {
-      entity: t('label.name'),
-    });
-  }
-
-  return null;
-};
-
-const convertAdmonitionsToHtml = (markdown: string): string => {
-  ADMONITION_BLOCK_REGEX.lastIndex = 0;
-
-  return markdown.replace(
-    ADMONITION_BLOCK_REGEX,
-    (_match, type: string, content: string) =>
-      `<div data-admonition="${type}">${MarkdownToHTMLConverter.makeHtml(
-        content.trim()
-      )}</div>`
-  );
-};
-
-/**
- * Converts markdown with $$section and $$note/warning/etc. admonition blocks into
- * sanitizable HTML. Used by both ServiceDocPanel and SSODocPanel.
- */
-export const processDocMarkdown = (markdown: string): string => {
-  const withAdmonitions = convertAdmonitionsToHtml(markdown);
-
-  const parts: string[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  SECTION_BLOCK_REGEX.lastIndex = 0;
-
-  while ((match = SECTION_BLOCK_REGEX.exec(withAdmonitions)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(
-        MarkdownToHTMLConverter.makeHtml(
-          withAdmonitions.slice(lastIndex, match.index)
-        )
-      );
-    }
-
-    const sectionContent = match[1];
-    const idMatch = MARKDOWN_MATCH_ID.exec(sectionContent);
-    const id = idMatch ? idMatch[1] : '';
-    const cleanContent = sectionContent.replace(MARKDOWN_MATCH_ID, '').trim();
-
-    parts.push(
-      `<section data-id="${id}" data-highlighted="false">${MarkdownToHTMLConverter.makeHtml(
-        cleanContent
-      )}</section>`
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < withAdmonitions.length) {
-    parts.push(
-      MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex))
-    );
-  }
-
-  return parts.join('\n');
 };
