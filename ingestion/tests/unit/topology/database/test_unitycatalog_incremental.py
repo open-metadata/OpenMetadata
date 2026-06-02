@@ -14,7 +14,7 @@ Unit tests for Unity Catalog incremental metadata extraction.
 """
 
 from threading import RLock
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -128,6 +128,8 @@ class TestUnityCatalogIncrementalSource:
         """
         source = Mock()
         source._state_lock = RLock()
+        # Listing methods iterate through the real failure-isolation wrapper
+        source._iterate_listing = MethodType(UnitycatalogSource._iterate_listing, source)
         return source
 
     def test_init_configures_threads_from_source_config(self):
