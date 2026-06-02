@@ -1768,6 +1768,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void create_tableWithMultipleTags_persistsAllTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    List<TagLabel> expectedTags = List.of(personalDataTagLabel(), piiSensitiveTagLabel(), tier2Tag);
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("multi_tag_create_table"), ns).withTags(expectedTags);
+    Table created = createEntity(createRequest);
+
+    Table fetched = client.tables().get(created.getId().toString(), "tags");
+    Set<String> persistedTagFQNs =
+        fetched.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          persistedTagFQNs.contains(expected.getTagFQN()),
+          "Multi-tag create should persist tag " + expected.getTagFQN());
+    }
+  }
+
+  @Test
   void put_tableUpdatePreservesDataModel(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
