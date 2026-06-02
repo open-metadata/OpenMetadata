@@ -74,8 +74,8 @@ SET json = jsonb_set(
 WHERE serviceType = 'Snowflake'
   AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
 
--- Databricks: same target shape as Snowflake — enabled/Full/Masked default to true,
--- Column stays false. Three guarded flips + one full-object write for legacy rows.
+-- Databricks: enabled/Full default to true, Column and Masked stay false.
+-- Two guarded flips + one full-object write for legacy rows.
 UPDATE dbservice_entity
 SET json = jsonb_set(
     json::jsonb,
@@ -97,65 +97,28 @@ WHERE serviceType = 'Databricks'
 UPDATE dbservice_entity
 SET json = jsonb_set(
     json::jsonb,
-    '{connection,config,policyAgentConfig,supportsMaskedAccess}',
-    to_jsonb(true)
-)
-WHERE serviceType = 'Databricks'
-  AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'false'::jsonb;
-
-UPDATE dbservice_entity
-SET json = jsonb_set(
-    json::jsonb,
     '{connection,config,policyAgentConfig}',
-    '{"enabled":true,"supportsColumnAccess":false,"supportsFullAccess":true,"supportsMaskedAccess":true}'::jsonb,
+    '{"enabled":true,"supportsColumnAccess":false,"supportsFullAccess":true,"supportsMaskedAccess":false}'::jsonb,
     true
 )
 WHERE serviceType = 'Databricks'
   AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
 
--- Postgres: all four flags default to true. Four guarded flips + one full-object write.
-UPDATE dbservice_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{connection,config,policyAgentConfig,enabled}',
-    to_jsonb(true)
-)
-WHERE serviceType = 'Postgres'
-  AND json::jsonb #> '{connection,config,policyAgentConfig,enabled}' = 'false'::jsonb;
-
-UPDATE dbservice_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{connection,config,policyAgentConfig,supportsColumnAccess}',
-    to_jsonb(true)
-)
-WHERE serviceType = 'Postgres'
-  AND json::jsonb #> '{connection,config,policyAgentConfig,supportsColumnAccess}' = 'false'::jsonb;
-
-UPDATE dbservice_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{connection,config,policyAgentConfig,supportsFullAccess}',
-    to_jsonb(true)
-)
-WHERE serviceType = 'Postgres'
-  AND json::jsonb #> '{connection,config,policyAgentConfig,supportsFullAccess}' = 'false'::jsonb;
-
+-- Corrective heal for instances that already ran the earlier version of this script.
+-- Earlier the Databricks block forced supportsMaskedAccess to true; the intended
+-- default is false. Reset it on every Databricks row that currently has it true.
 UPDATE dbservice_entity
 SET json = jsonb_set(
     json::jsonb,
     '{connection,config,policyAgentConfig,supportsMaskedAccess}',
-    to_jsonb(true)
+    to_jsonb(false)
 )
-WHERE serviceType = 'Postgres'
-  AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'false'::jsonb;
+WHERE serviceType = 'Databricks'
+  AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'true'::jsonb;
 
+-- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
+-- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
-SET json = jsonb_set(
-    json::jsonb,
-    '{connection,config,policyAgentConfig}',
-    '{"enabled":true,"supportsColumnAccess":true,"supportsFullAccess":true,"supportsMaskedAccess":true}'::jsonb,
-    true
-)
+SET json = (json::jsonb #- '{connection,config,policyAgentConfig}')
 WHERE serviceType = 'Postgres'
-  AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
+  AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NOT NULL;
