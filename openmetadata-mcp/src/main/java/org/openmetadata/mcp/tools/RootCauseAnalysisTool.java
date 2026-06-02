@@ -68,15 +68,17 @@ public class RootCauseAnalysisTool implements McpTool {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(entityType));
 
+    RcaRequest request =
+        new RcaRequest(
+            fqn.trim(),
+            entityType,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            includeDeleted,
+            includeColumns);
     try {
-      return analyze(
-          fqn.trim(),
-          entityType,
-          upstreamDepth,
-          downstreamDepth,
-          queryFilter,
-          includeDeleted,
-          includeColumns);
+      return analyze(request);
     } catch (IOException e) {
       LOG.error("IOException during root cause analysis for entity: {}", fqn, e);
       throw new RuntimeException("Failed to perform root cause analysis: " + e.getMessage(), e);
@@ -87,25 +89,31 @@ public class RootCauseAnalysisTool implements McpTool {
     }
   }
 
-  private Map<String, Object> analyze(
+  /** Bundles the parsed and validated tool arguments for a single root cause analysis run. */
+  private record RcaRequest(
       String fqn,
       String entityType,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      boolean includeColumns)
-      throws IOException {
+      boolean includeColumns) {}
+
+  private Map<String, Object> analyze(RcaRequest request) throws IOException {
     Map<String, Object> result = new HashMap<>();
-    result.put("fqn", fqn);
-    result.put("upstreamDepth", upstreamDepth);
-    result.put("downstreamDepth", downstreamDepth);
+    result.put("fqn", request.fqn());
+    result.put("upstreamDepth", request.upstreamDepth());
+    result.put("downstreamDepth", request.downstreamDepth());
 
     Response upstreamResponse =
         Entity.getSearchRepository()
-            .searchDataQualityLineage(fqn, upstreamDepth, queryFilter, includeDeleted);
+            .searchDataQualityLineage(
+                request.fqn(),
+                request.upstreamDepth(),
+                request.queryFilter(),
+                request.includeDeleted());
     Map<String, Object> upstreamAnalysis =
-        buildUpstreamAnalysis(upstreamResponse.getEntity(), includeColumns);
+        buildUpstreamAnalysis(upstreamResponse.getEntity(), request.includeColumns());
     result.put("upstreamAnalysis", upstreamAnalysis);
 
     int failureCount =
@@ -113,16 +121,13 @@ public class RootCauseAnalysisTool implements McpTool {
     boolean hasFailures = failureCount > 0;
     result.put(
         "downstreamAnalysis",
-        hasFailures
-            ? buildDownstreamAnalysis(
-                fqn, entityType, downstreamDepth, queryFilter, includeDeleted, includeColumns)
-            : noFailuresDownstream());
+        hasFailures ? buildDownstreamAnalysis(request) : noFailuresDownstream());
     result.put("status", hasFailures ? "failed" : "success");
     result.put(
         "summary",
         String.format(
             "Analyzed upstream causes and downstream impacts for '%s'. Found %d upstream failure(s).",
-            fqn, failureCount));
+            request.fqn(), failureCount));
     return enforceSizeBudget(result);
   }
 
@@ -147,32 +152,26 @@ public class RootCauseAnalysisTool implements McpTool {
     return upstreamAnalysis;
   }
 
-  private Map<String, Object> buildDownstreamAnalysis(
-      String fqn,
-      String entityType,
-      int downstreamDepth,
-      String queryFilter,
-      boolean includeDeleted,
-      boolean includeColumns) {
+  private Map<String, Object> buildDownstreamAnalysis(RcaRequest request) {
     Map<String, Object> downstreamAnalysis = new HashMap<>();
     downstreamAnalysis.put(
         "description", "Downstream entities that may be impacted by the identified failures");
     try {
       SearchLineageRequest downstreamRequest =
           new SearchLineageRequest()
-              .withFqn(fqn)
+              .withFqn(request.fqn())
               .withDirection(LineageDirection.DOWNSTREAM)
               .withUpstreamDepth(0)
-              .withDownstreamDepth(downstreamDepth)
-              .withQueryFilter(queryFilter)
-              .withIsConnectedVia(isConnectedVia(entityType))
-              .withIncludeDeleted(includeDeleted);
+              .withDownstreamDepth(request.downstreamDepth())
+              .withQueryFilter(request.queryFilter())
+              .withIsConnectedVia(isConnectedVia(request.entityType()))
+              .withIncludeDeleted(request.includeDeleted());
       SearchLineageResult downstreamResult =
           Entity.getSearchRepository().searchLineageWithDirection(downstreamRequest);
       addDownstreamNodes(downstreamAnalysis, downstreamResult);
-      addDownstreamEdges(downstreamAnalysis, downstreamResult, includeColumns);
+      addDownstreamEdges(downstreamAnalysis, downstreamResult, request.includeColumns());
     } catch (Exception e) {
-      LOG.warn("Failed to perform downstream impact analysis for entity: {}", fqn, e);
+      LOG.warn("Failed to perform downstream impact analysis for entity: {}", request.fqn(), e);
       downstreamAnalysis.put("error", "Failed to analyze downstream impact: " + e.getMessage());
     }
     return downstreamAnalysis;
