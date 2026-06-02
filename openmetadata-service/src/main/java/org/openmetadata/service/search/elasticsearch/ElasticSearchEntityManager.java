@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
+import es.co.elastic.clients.elasticsearch._types.Conflicts;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
@@ -959,6 +960,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_DATA_PRODUCT_FQN_SCRIPT))
@@ -1024,6 +1026,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1100,6 +1103,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(indexName)
                       .query(idsQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1163,6 +1167,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(domainIndexName)
                       .query(combinedQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1207,8 +1212,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           oldFqn,
           newFqn);
 
-      // Use match_all query - the script will filter and update only matching documents
-      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+      Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
 
       Map<String, JsonData> params =
           Map.of(
@@ -1219,7 +1223,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               req ->
                   req.index(indexName)
-                      .query(matchAllQuery)
+                      .query(matchingDomainQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1248,6 +1253,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     } catch (Exception e) {
       LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
+  }
+
+  private Query buildDomainFqnPrefixQuery(String oldFqn) {
+    Query prefixOnField =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnKeyword =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
+    return Query.of(
+        q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
   }
 
   @Override
