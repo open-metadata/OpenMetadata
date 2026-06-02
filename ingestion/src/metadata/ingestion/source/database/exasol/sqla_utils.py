@@ -29,7 +29,6 @@ def get_table_comment(
     return ReflectedTableComment(text=table_comment.get("text"))
 
 
-@reflection.cache
 def get_columns(
     self,
     connection: Connection,
