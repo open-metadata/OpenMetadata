@@ -221,11 +221,13 @@ public class RootCauseAnalysisTool implements McpTool {
   private static Map<String, Object> slimNodeInformation(Object nodeInfo) {
     Map<String, Object> info = JsonUtils.getMap(nodeInfo);
     Map<String, Object> slim = new LinkedHashMap<>();
-    Object entity = info.get("entity");
-    if (entity instanceof Map) {
-      slim.put("entity", slimNodeEntity(castMap(entity)));
+    if (info != null) {
+      Object entity = info.get("entity");
+      if (entity instanceof Map) {
+        slim.put("entity", slimNodeEntity(castMap(entity)));
+      }
+      putIfPresent(slim, "nodeDepth", info.get("nodeDepth"));
     }
-    putIfPresent(slim, "nodeDepth", info.get("nodeDepth"));
     return slim;
   }
 
@@ -267,16 +269,21 @@ public class RootCauseAnalysisTool implements McpTool {
   @VisibleForTesting
   static Map<String, Object> slimEdge(Map<String, Object> edge, boolean includeColumns) {
     Map<String, Object> slim = new LinkedHashMap<>();
-    putIfPresent(slim, "fromEntity", slimRef(edge.get("fromEntity")));
-    putIfPresent(slim, "toEntity", slimRef(edge.get("toEntity")));
-    slim.put("relationshipType", relationshipType(edge.get("pipeline")));
-    putIfPresent(slim, "source", edge.get("source"));
-    putIfPresent(slim, "assetEdges", edge.get("assetEdges"));
-    putIfPresent(slim, "tempLineageTables", edge.get("tempLineageTables"));
-    applyDescription(slim, edge.get("description"));
-    applySqlQuery(slim, edge.get("sqlQuery"));
-    if (includeColumns) {
-      putIfPresent(slim, "columns", edge.get("columns"));
+    if (edge != null) {
+      putIfPresent(slim, "fromEntity", slimRef(edge.get("fromEntity")));
+      putIfPresent(slim, "toEntity", slimRef(edge.get("toEntity")));
+      slim.put("relationshipType", relationshipType(edge.get("pipeline")));
+      putIfPresent(slim, "source", edge.get("source"));
+      putIfPresent(slim, "assetEdges", edge.get("assetEdges"));
+      putIfPresent(slim, "tempLineageTables", edge.get("tempLineageTables"));
+      applyDescription(slim, edge.get("description"));
+      applySqlQuery(slim, edge.get("sqlQuery"));
+      // For deduplicated SQL the backend empties sqlQuery and stores a pointer into the parent
+      // doc's lineageSqlQueries map; carry the pointer so shared SQL isn't silently lost.
+      putIfPresent(slim, "sqlQueryKey", edge.get("sqlQueryKey"));
+      if (includeColumns) {
+        putIfPresent(slim, "columns", edge.get("columns"));
+      }
     }
     return slim;
   }
@@ -344,6 +351,8 @@ public class RootCauseAnalysisTool implements McpTool {
   private static Map<String, Object> oversizedHint(Map<String, Object> result) {
     Map<String, Object> hint = new LinkedHashMap<>();
     putIfPresent(hint, "fqn", result.get("fqn"));
+    putIfPresent(hint, "upstreamDepth", result.get("upstreamDepth"));
+    putIfPresent(hint, "downstreamDepth", result.get("downstreamDepth"));
     putIfPresent(hint, "status", result.get("status"));
     putIfPresent(hint, "summary", result.get("summary"));
     hint.put("truncated", Boolean.TRUE);

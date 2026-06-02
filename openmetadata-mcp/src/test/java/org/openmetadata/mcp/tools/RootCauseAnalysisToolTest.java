@@ -183,6 +183,33 @@ class RootCauseAnalysisToolTest {
     assertThat(RootCauseAnalysisTool.slimEdge(edgeMap, true)).containsKey("columns");
   }
 
+  @Test
+  void slimEdgeCarriesSqlQueryKeyForDeduplicatedSql() {
+    Map<String, Object> edge = edgeWithSql("");
+    edge.put("sqlQueryKey", "3");
+
+    Map<String, Object> slim = RootCauseAnalysisTool.slimEdge(edge, false);
+
+    assertThat(slim.get("sqlQueryKey")).isEqualTo("3");
+    assertThat(slim).doesNotContainKey("sqlQuery");
+  }
+
+  @Test
+  void slimEdgeHandlesNullEdgeWithoutThrowing() {
+    assertThat(RootCauseAnalysisTool.slimEdge(null, false)).isEmpty();
+  }
+
+  @Test
+  void slimDownstreamNodesHandlesNullNodeInfoWithoutThrowing() {
+    Map<String, Object> withNull = new LinkedHashMap<>();
+    withNull.put("node-id", null);
+
+    Map<String, Object> slim = RootCauseAnalysisTool.slimDownstreamNodes(withNull);
+
+    assertThat(slim).containsOnlyKeys("node-id");
+    assertThat(asMap(slim.get("node-id"))).isEmpty();
+  }
+
   @SuppressWarnings("unchecked")
   private static Map<String, Object> asMap(Object value) {
     return (Map<String, Object>) value;
@@ -205,10 +232,13 @@ class RootCauseAnalysisToolTest {
     result.put("summary", "Found 1 upstream failure(s).");
     result.put("downstreamAnalysis", Map.of("blob", "z".repeat(200_000)));
 
+    result.put("upstreamDepth", 3);
+    result.put("downstreamDepth", 3);
     Map<String, Object> output = RootCauseAnalysisTool.enforceSizeBudget(result);
 
     assertThat(output.get("truncated")).isEqualTo(Boolean.TRUE);
-    assertThat(output).containsKeys("fqn", "status", "summary", "message");
+    assertThat(output)
+        .containsKeys("fqn", "upstreamDepth", "downstreamDepth", "status", "summary", "message");
     assertThat(output).doesNotContainKey("downstreamAnalysis");
   }
 }
