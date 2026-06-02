@@ -132,7 +132,7 @@ class DatabricksClient:
         """
         start_index = 1
         while True:
-            params = {"startIndex": start_index, "count": PAGE_SIZE}
+            params: dict[str, str | int] = {"startIndex": start_index, "count": PAGE_SIZE}
             if filter_expression:
                 params["filter"] = filter_expression
             response = self.client.get(
