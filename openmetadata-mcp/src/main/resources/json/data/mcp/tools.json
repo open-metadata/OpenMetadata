@@ -162,7 +162,7 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name. IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
@@ -295,7 +295,7 @@
     },
     {
       "name": "get_entity_lineage",
-      "description": "Get detailed information about lineage (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), with long SQL truncated. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -317,6 +317,11 @@
             "type": "integer",
             "description": "Number of downstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
             "default": 3
+          },
+          "includeColumnLineage": {
+            "type": "boolean",
+            "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
+            "default": false
           }
         },
         "required": [
@@ -543,6 +548,217 @@
           }
         },
         "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
+      }
+    },
+    {
+      "name": "create_classification",
+      "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the classification. Becomes the root segment of tag FQNs (e.g. 'PII' -> 'PII.Sensitive'). Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the classification in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the classification."
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "If true, an entity can only carry one tag from this classification at a time. Immutable after creation; ignored on update (returns a '_warning')."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of domains this classification belongs to. Each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_tag",
+      "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the tag (the leaf segment, e.g. 'Sensitive'). Must be unique within its parent."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the tag in Markdown format."
+          },
+          "classification": {
+            "type": "string",
+            "description": "Name of the classification this tag belongs to (e.g. 'PII'). Must already exist. Optional if 'parent' is provided (derived from its root segment)."
+          },
+          "parent": {
+            "type": "string",
+            "description": "FQN of the parent tag for a nested tag (e.g. 'PII.PersonalData'). Must already exist. Omit for a top-level tag."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the tag."
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "If true, child tags under this tag are mutually exclusive on an entity."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of domains this tag belongs to. Each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_domain",
+      "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the domain. Becomes the root segment of the FQN for child domains. Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the domain in Markdown format."
+          },
+          "domainType": {
+            "type": "string",
+            "description": "Type of the domain. Defaults to 'Aggregate' if omitted.",
+            "enum": ["Source-aligned", "Consumer-aligned", "Aggregate"]
+          },
+          "parent": {
+            "type": "string",
+            "description": "FQN of an existing parent domain when creating a child domain. The parent must already exist. Omit for a top-level domain."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the domain."
+          },
+          "experts": {
+            "type": "array",
+            "description": "OpenMetadata login names of domain experts (e.g. 'john.doe'). Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this domain (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_data_product",
+      "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the data product. Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the data product in Markdown format."
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this data product belongs to (e.g. 'Finance', 'Marketing'). Required, at least one; each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "experts": {
+            "type": "array",
+            "description": "OpenMetadata login names of data product experts (e.g. 'john.doe'). Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the data product."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this data product (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description", "domains"]
       }
     },
     {

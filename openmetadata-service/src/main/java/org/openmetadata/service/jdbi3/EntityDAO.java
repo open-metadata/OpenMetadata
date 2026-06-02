@@ -193,10 +193,47 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
     if (!getNameHashColumn().equals("fqnHash")) {
-      return java.util.Collections.emptyList();
+      return List.of();
     }
     String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
     return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  /**
+   * Like {@link #listIdFqnByPrefixHash} but excludes soft-deleted rows. Used by the bulk
+   * stale-deletion path which only considers currently-live entities when deciding what the
+   * connector no longer reports.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (JSON_EXTRACT(json, '$.deleted') IS NULL "
+              + "OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.deleted')) = 'false')",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (json->>'deleted' IS NULL OR json->>'deleted' = 'false')",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityIdFqnPairMapper.class)
+  List<EntityIdFqnPair> listIdFqnByPrefixHashNonDeleted(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix);
+
+  /**
+   * List (id, fullyQualifiedName) pairs for all non-deleted descendants of {@code scopeFqn}.
+   * Returns an empty list for entity types whose name-hash column is not {@code fqnHash} - those
+   * types do not participate in scope-based stale deletion.
+   */
+  default List<EntityIdFqnPair> listDescendantIdFqnByPrefixNonDeleted(String scopeFqn) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return List.of();
+    }
+    String prefixPattern = FullyQualifiedName.buildHash(scopeFqn) + ".%";
+    return listIdFqnByPrefixHashNonDeleted(getTableName(), getNameHashColumn(), prefixPattern);
   }
 
   final class EntityIdFqnPair {

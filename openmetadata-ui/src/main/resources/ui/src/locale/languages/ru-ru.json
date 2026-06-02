@@ -2871,7 +2871,7 @@
     "feed-asset-action-header": "{{action}} <0>объект данных</0>",
     "feed-custom-property-header": "обновлены дополнительные поля для",
     "feed-entity-action-header": "{{action}} <0>объект данных</0>",
-    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> для объекта «{{entity}}»",
+    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> для",
     "feed-filter-all": "События по вашим объектам и подпискам",
     "feed-filter-following": "События по объектам, на которые вы подписаны",
     "feed-filter-owner": "События по объектам, которыми вы владеете",
