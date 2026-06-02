@@ -1192,11 +1192,6 @@
           "field": "mlFeatures.description",
           "boost": 1.0,
           "matchType": "standard"
-        },
-        {
-          "field": "fieldNamesFuzzy",
-          "boost": 1.5,
-          "matchType": "standard"
         }
       ],
       "aggregations": [

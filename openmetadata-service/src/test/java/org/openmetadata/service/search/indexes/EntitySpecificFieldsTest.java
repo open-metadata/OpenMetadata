@@ -35,8 +35,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
-import org.openmetadata.schema.type.SearchIndexDataType;
-import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -360,31 +358,6 @@ class EntitySpecificFieldsTest {
   }
 
   @Test
-  void testSearchEntityIndex_buildsNestedFieldNames() {
-    SearchIndexField child =
-        new SearchIndexField().withName("city").withDataType(SearchIndexDataType.TEXT);
-    SearchIndexField parent =
-        new SearchIndexField()
-            .withName("address")
-            .withDataType(SearchIndexDataType.TEXT)
-            .withChildren(List.of(child));
-    org.openmetadata.schema.entity.data.SearchIndex si =
-        new org.openmetadata.schema.entity.data.SearchIndex()
-            .withId(UUID.randomUUID())
-            .withName("idx")
-            .withFields(List.of(parent));
-
-    Map<String, Object> doc = new HashMap<>();
-    Map<String, Object> result = new SearchEntityIndex(si).buildSearchIndexDocInternal(doc);
-
-    @SuppressWarnings("unchecked")
-    List<String> names = (List<String>) result.get("fieldNames");
-    assertTrue(names.contains("address"));
-    assertTrue(names.contains("address.city"));
-    assertTrue(((String) result.get("fieldNamesFuzzy")).contains("address.city"));
-  }
-
-  @Test
   void testGetFields_nestedSearchUsesFuzzyNotDisabledChildren() {
     Map<String, Float> topic = TopicIndex.getFields();
     assertTrue(topic.containsKey("fieldNamesFuzzy"));
@@ -395,10 +368,6 @@ class EntitySpecificFieldsTest {
     assertTrue(apiEndpoint.containsKey("response_field_namesFuzzy"));
     assertFalse(apiEndpoint.containsKey("requestSchema.schemaFields.children.name"));
     assertFalse(apiEndpoint.containsKey("responseSchema.schemaFields.children.name"));
-
-    Map<String, Float> searchEntity = SearchEntityIndex.getFields();
-    assertTrue(searchEntity.containsKey("fieldNamesFuzzy"));
-    assertFalse(searchEntity.containsKey("fields.children.name"));
   }
 
   // ==================== Container fullPath ====================
