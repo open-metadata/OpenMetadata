@@ -13,8 +13,8 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
-import { BRAND_NAME } from '../../utils/BrandData/BrandConstants';
 import enUS from '../../locale/languages/en-us.json';
+import { BRAND_NAME } from '../../utils/BrandData/BrandConstants';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({

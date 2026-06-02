@@ -202,8 +202,7 @@ export const LDAP_UI_SCHEMA = {
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
       'ui:widget': 'LdapRoleMappingWidget',
-      'ui:help':
-        `Map LDAP groups to ${BRAND_NAME} roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.`,
+      'ui:help': `Map LDAP groups to ${BRAND_NAME} roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.`,
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',

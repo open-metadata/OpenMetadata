@@ -28,8 +28,8 @@ import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
-import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { BRAND_NAME } from '../../../utils/BrandData/BrandConstants';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

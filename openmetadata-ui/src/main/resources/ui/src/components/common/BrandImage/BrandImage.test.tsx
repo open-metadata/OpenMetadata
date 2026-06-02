@@ -20,6 +20,7 @@ jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
   getLogo: jest.fn().mockReturnValue({
     src: '/default-logo.svg',
   }),
+  getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
 }));
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
