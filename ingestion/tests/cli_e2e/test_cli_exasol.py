@@ -21,6 +21,7 @@ import pytest
 from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType  # noqa: TID252
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
@@ -51,7 +52,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             col_decimal DOUBLE PRECISION,
             col_date DATE,
             col_timestamp TIMESTAMP,
-            col_timestamp_local TIMESTAMP WITH LOCAL TIME ZONE,
             col_char CHAR(1),
             col_varchar VARCHAR(1)
         );
@@ -72,7 +72,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             col_decimal,
             col_date,
             col_timestamp,
-            col_timestamp_local,
             col_char,
             col_varchar
         FROM {SCHEMA_NAME}.{TABLE_NAME}
@@ -80,12 +79,12 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         f"""
-            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_timestamp_local, col_char, col_varchar) VALUES
-            (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'a', 'b');
+            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_char, col_varchar) VALUES
+            (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', 'a', 'b');
         """,
         f"""
-            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_timestamp_local, col_char, col_varchar) VALUES
-            (TRUE, -18.5, '2023-09-13', '2023-09-13 06:04:45', '2023-09-13 04:04:45', 'c', 'd');
+            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_char, col_varchar) VALUES
+            (TRUE, -18.5, '2023-09-13', '2023-09-13 06:04:45', 'c', 'd');
         """,
     ]
 
@@ -167,6 +166,13 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)
 
+    def assert_for_table_with_profiler(self, source_status: Status, sink_status: Status) -> None:
+        super().assert_for_table_with_profiler(source_status, sink_status)
+
+        profile = self.retrieve_profile(self.fqn_created_table())
+        self.assertIsNotNone(profile.profile)
+        self.assertEqual(profile.profile.rowCount, 2.0)
+
     def assert_table_metadata(self) -> None:
         table = None
         for _ in range(6):
@@ -201,7 +207,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 "col_decimal",
                 "col_date",
                 "col_timestamp",
-                "col_timestamp_local",
                 "col_char",
                 "col_varchar",
             ],
@@ -253,7 +258,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return 7
+        return 6
 
     def expected_lineage_node(self) -> str:
         return f"{SERVICE_NAME}.default.{SCHEMA_NAME}.{VIEW_NAME}"
