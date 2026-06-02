@@ -65,7 +65,7 @@ export const styles = sortCx({
   colors: {
     primary: {
       root: [
-        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
@@ -76,7 +76,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
         // Icon styles
@@ -110,7 +110,7 @@ export const styles = sortCx({
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
@@ -121,7 +121,7 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         // Disabled styles
         'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
         // Icon styles
