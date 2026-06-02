@@ -1030,7 +1030,7 @@ test.describe('Context Center', () => {
       const modal = page.getByRole('dialog', { name: /upload documents/i });
       await expect(modal).toBeVisible();
 
-      // Set file on the input via testId; wait for attached (not visible) since it is sr-only
+      // Set file on the input via testId; wait for attached (not visible)
       const fileInput = page.getByTestId('file-upload-input');
       await fileInput.waitFor({ state: 'attached' });
       await fileInput.setInputFiles({
