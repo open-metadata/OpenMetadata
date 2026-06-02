@@ -252,8 +252,10 @@ const CoreOneOfField = (props: FieldProps) => {
   return (
     <div
       className={classNames(
-        'core-one-of-field tw:flex tw:flex-col tw:gap-3',
-        shouldRenderInlineSelectedBranch && 'core-one-of-field-inline-selected'
+        'core-one-of-field',
+        shouldRenderInlineSelectedBranch
+          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+          : 'tw:flex tw:flex-col tw:gap-4'
       )}
       data-field-id={idSchema.$id}>
       {hasMultipleOptions && shouldRenderAsTabs && (
@@ -300,7 +302,11 @@ const CoreOneOfField = (props: FieldProps) => {
 
       {hasMultipleOptions && !shouldRenderAsTabs && (
         <Select
-          className="core-one-of-field-select"
+          className={classNames(
+            'core-one-of-field-select',
+            shouldRenderInlineSelectedBranch &&
+              'tw:col-start-1 tw:self-stretch tw:w-full'
+          )}
           data-testid={`select-widget-${idSchema.$id}${
             schema.oneOf ? '__oneof_select' : '__anyof_select'
           }`}

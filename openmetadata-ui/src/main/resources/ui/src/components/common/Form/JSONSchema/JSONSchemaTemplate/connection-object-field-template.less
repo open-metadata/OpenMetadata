@@ -11,21 +11,11 @@
  *  limitations under the License.
  */
 .connection-grouped-form {
-  color: var(--color-text-primary, #181d27);
-
   .connection-section-card {
     transition: border-color 120ms ease;
   }
 
-  .connection-section-card-active {
-    border-color: #1570ef !important;
-  }
-
   .connection-section-header {
-    border: 0;
-    padding: 0;
-    cursor: pointer;
-
     &:focus,
     &:focus-visible {
       outline: 0;
@@ -37,13 +27,7 @@
     min-width: 0;
   }
 
-  .connection-section-wide-property {
-    width: 100%;
-    min-width: 0;
-  }
-
   .connection-section-field-grid > .property-wrapper .design-field-label {
-    min-height: 34px;
     align-items: flex-start;
     line-height: 16px;
   }
@@ -56,471 +40,59 @@
   .connection-section-field-grid {
     input,
     textarea {
-      color: var(--color-text-primary, #181d27) !important;
+      color: var(--tw-color-text-primary);
       font-size: 13px;
-      -webkit-text-fill-color: var(--color-text-primary, #181d27);
-    }
-  }
-
-  .connection-section-field-grid {
-    grid-auto-flow: row dense;
-  }
-
-  .connection-nested-object {
-    width: 100%;
-    min-width: 0;
-
-    .core-object-field-template-credential-block {
-      width: 100%;
-      min-width: 0;
-      gap: 10px;
-      padding: 0;
-      border-radius: 0;
-      background-color: transparent !important;
-    }
-
-    .core-object-field-template-body-grid {
-      display: grid !important;
-      grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 18px 20px !important;
-      align-items: start;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-object-field-template-body-grid
-      > .core-object-field-template-property {
-      min-width: 0;
-      padding: 0;
-      border-radius: 0;
-      background-color: transparent !important;
-      justify-self: stretch;
-    }
-
-    .core-object-field-template-credential-block
-      > .core-object-field-template-body-grid {
-      display: grid !important;
-      grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 18px 20px !important;
-      align-items: start;
-    }
-
-    .core-object-field-template-credential-block
-      > .core-object-field-template-body-grid
-      > .core-object-field-template-property {
-      min-width: 0;
-      padding: 0;
-      border-radius: 0;
-      background-color: transparent !important;
-    }
-
-    .core-object-field-template-credential-block
-      > .core-object-field-template-body-grid
-      > .core-object-field-template-property-full-width {
-      grid-column-start: 1;
-      grid-column-end: -1;
-    }
-
-    .core-object-field-template-body-grid
-      > .core-object-field-template-property-full-width,
-    .core-object-field-template-body-grid
-      > .core-object-field-template-property-gcpConfig,
-    .core-object-field-template-body-grid
-      > .core-object-field-template-property-projectId,
-    .core-object-field-template-body-grid
-      > .core-object-field-template-property:has(> .core-one-of-field) {
-      grid-column-start: 1;
-      grid-column-end: -1;
-      justify-self: stretch;
-      width: 100%;
-    }
-
-    .core-object-field-template-property-gcpConfig,
-    .core-one-of-field-selected .core-object-field-template-property-projectId {
-      grid-column-start: 1 !important;
-      grid-column-end: -1 !important;
-      justify-self: stretch !important;
-      width: 100% !important;
-    }
-
-    .core-one-of-field-selected .core-object-field-template-property-projectId {
-      order: -10;
-    }
-
-    .core-object-field-template-property-gcpConfig > .core-one-of-field,
-    .core-one-of-field-selected
-      .core-object-field-template-property-projectId
-      > .core-one-of-field {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-object-field-template-property-gcpConfig
-      > .core-one-of-field
-      > .core-one-of-field-select {
-      align-self: flex-start !important;
-      width: min(520px, 100%) !important;
-      max-width: 520px !important;
-      margin-left: 0 !important;
-    }
-
-    .core-one-of-field-selected
-      .core-object-field-template-property-projectId
-      .core-one-of-field-select {
-      margin-left: 0 !important;
-    }
-
-    .core-object-field-template-credential-block .design-field-label {
-      min-height: 34px;
-      align-items: flex-start;
-      line-height: 16px;
-    }
-
-    .core-object-field-template-credential-block .design-field-label label {
-      line-height: 16px;
-    }
-
-    .core-one-of-field-selected,
-    .core-one-of-field-selected > .connection-nested-object {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-one-of-field-select,
-    .core-select-widget {
-      align-self: flex-start;
-      width: min(680px, 100%);
-      max-width: 100%;
-    }
-
-    .core-one-of-field-inline-selected {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 18px 20px !important;
-      align-items: start;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-one-of-field-inline-selected > .core-one-of-field-select {
-      grid-column: 1;
-      align-self: stretch;
-      width: 100%;
-    }
-
-    .core-one-of-field-inline-selected
-      > .core-one-of-field-selected-description {
-      grid-column: 1;
-    }
-
-    .core-one-of-field-inline-selected > .core-one-of-field-selected {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-    }
-
-    .core-object-field-template-credential-advanced {
-      width: 100%;
-      min-width: 0;
-      margin-top: 4px;
-    }
-
-    .core-object-field-template-credential-advanced-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 28px;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      color: #155eef;
-      cursor: pointer;
-      font-size: 13.5px;
-      font-weight: 600;
-      line-height: 18px;
-    }
-
-    .core-object-field-template-credential-advanced-toggle:focus-visible {
-      border-radius: 6px;
-      outline: 2px solid #1570ef;
-      outline-offset: 2px;
-    }
-
-    .core-object-field-template-credential-advanced-toggle-icon {
-      flex-shrink: 0;
-      transition: transform 120ms ease;
-      transform: rotate(-90deg);
-    }
-
-    .core-object-field-template-credential-advanced-toggle-icon-open {
-      transform: rotate(0);
-    }
-
-    .core-object-field-template-credential-advanced-panel {
-      margin-top: 16px;
-      padding: 0 !important;
-      background: transparent !important;
-    }
-
-    .core-object-field-template-advanced-grid {
-      display: grid !important;
-      grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 18px 20px !important;
-      align-items: start;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-object-field-template-advanced-grid
-      > .core-object-field-template-property {
-      min-width: 0;
-      padding: 0;
-      border-radius: 0;
-      background-color: transparent !important;
-    }
-
-    .core-object-field-template-advanced-grid
-      > .core-object-field-template-property-full-width {
-      grid-column-start: 1;
-      grid-column-end: -1;
-    }
-
-    .core-object-field-template-gated-credential-block {
-      > .core-object-field-template-body-gated {
-        display: flex !important;
-        flex-direction: column;
-        gap: 16px !important;
-        width: 100%;
-        min-width: 0;
-      }
-
-      .core-object-field-template-credential-field-grid {
-        display: grid !important;
-        grid-auto-flow: row dense;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 18px 20px !important;
-        align-items: start;
-        width: 100%;
-        min-width: 0;
-      }
-
-      .core-object-field-template-credential-field-grid
-        > .core-object-field-template-property {
-        min-width: 0;
-        padding: 0;
-        border-radius: 0;
-        background-color: transparent !important;
-      }
-
-      .core-object-field-template-credential-field-grid
-        > .core-object-field-template-property-full-width {
-        grid-column-start: 1;
-        grid-column-end: -1;
-      }
-
-      .core-object-field-template-property-toggle-banner {
-        padding: 0 0 14px !important;
-        border-bottom: 1px solid var(--tw-color-border-secondary, #e9eaeb);
-        border-radius: 0 !important;
-        background: transparent !important;
-      }
-
-      .core-object-field-template-property-toggle-banner .design-boolean-field {
-        min-height: 0 !important;
-        gap: 12px !important;
-        padding: 0 !important;
-        border: 0 !important;
-        border-radius: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-      }
-
-      .core-object-field-template-property-toggle-banner
-        .design-boolean-field
-        label {
-        color: #181d27 !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        line-height: 18px !important;
-      }
-
-      .core-object-field-template-property-toggle-banner
-        .design-boolean-field
-        label
-        + div {
-        display: -webkit-box;
-        max-width: 760px;
-        overflow: hidden;
-        color: #535862 !important;
-        font-size: 12.5px !important;
-        line-height: 18px !important;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 1;
-      }
-
-      .design-field-label + div + div {
-        display: -webkit-box;
-        overflow: hidden;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 1;
-      }
-
-      .core-object-field-template-credential-advanced-header {
-        padding: 12px 0 0 !important;
-        border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
-        background: transparent !important;
-        color: #414651 !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        line-height: 18px !important;
-      }
-
-      .core-object-field-template-credential-advanced-panel {
-        padding: 16px 0 0 !important;
-        background: transparent !important;
-      }
-
-      .core-object-field-template-advanced-grid {
-        display: grid !important;
-        grid-auto-flow: row dense;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 18px 20px !important;
-        align-items: start;
-      }
-
-      .core-object-field-template-advanced-grid
-        > .core-object-field-template-property {
-        min-width: 0;
-        padding: 0;
-        border-radius: 0;
-        background-color: transparent !important;
-      }
-
-      .core-object-field-template-advanced-grid
-        > .core-object-field-template-property-full-width {
-        grid-column-start: 1;
-        grid-column-end: -1;
-      }
-
-      .core-object-field-template-credential-field-grid .design-field-label,
-      .core-object-field-template-advanced-grid .design-field-label {
-        min-height: 18px !important;
-        flex-wrap: nowrap;
-        gap: 6px;
-        margin-bottom: 6px !important;
-      }
-
-      .core-object-field-template-credential-field-grid
-        .design-field-label
-        label,
-      .core-object-field-template-advanced-grid .design-field-label label {
-        overflow-wrap: normal;
-        white-space: nowrap;
-        word-break: normal;
-      }
-
-      .core-object-field-template-credential-field-grid
-        .design-field-label
-        .tw\:text-gray-400,
-      .core-object-field-template-advanced-grid
-        .design-field-label
-        .tw\:text-gray-400 {
-        flex-shrink: 0;
-        white-space: nowrap;
-      }
+      -webkit-text-fill-color: var(--tw-color-text-primary);
     }
   }
 
   .connection-section-card-scope {
     .connection-section-boolean-grid {
-      gap: 28px 48px !important;
+      gap: 28px 48px;
     }
 
     .connection-section-boolean-grid .design-boolean-field {
-      min-height: 0 !important;
-      gap: 18px !important;
-      padding: 0 !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
+      min-height: 0;
+      gap: 18px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
     }
 
     .connection-section-boolean-grid .design-boolean-field label {
-      color: #181d27 !important;
-      font-size: 14px !important;
-      font-weight: 600 !important;
-      line-height: 18px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 18px;
     }
 
     .connection-section-boolean-grid .design-boolean-field label + div {
-      margin-top: 2px !important;
-      color: #535862 !important;
-      font-size: 12.5px !important;
-      line-height: 16px !important;
+      margin-top: 2px;
+      color: var(--tw-color-text-tertiary);
+      font-size: 12.5px;
+      line-height: 16px;
     }
   }
 
   .connection-section-card-advanced {
-    padding: 0 !important;
-    overflow: hidden;
-
     .connection-section-header {
       min-height: 68px;
       padding: 16px 18px;
     }
 
     .connection-section-header-title {
-      color: #181d27 !important;
-      font-size: 15px !important;
-      font-weight: 600 !important;
-      line-height: 20px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 20px;
     }
 
     .connection-section-header-description {
-      color: #535862 !important;
-      font-size: 12.5px !important;
-      line-height: 18px !important;
-    }
-
-    .connection-section-divider {
-      margin: 0 !important;
-    }
-
-    .connection-advanced-section-fields {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      padding: 18px;
-    }
-
-    .connection-advanced-primary-grid {
-      display: grid;
-      grid-auto-flow: row dense;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px;
-      align-items: start;
-    }
-
-    .connection-advanced-secondary-grid {
-      display: grid;
-      grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
-      align-items: start;
-    }
-
-    .connection-advanced-full-rows {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .connection-advanced-full-row {
-      padding-top: 18px;
-      border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
+      color: var(--tw-color-text-tertiary);
+      font-size: 12.5px;
+      line-height: 18px;
     }
 
     .property-wrapper {
@@ -532,30 +104,30 @@
       min-height: 0;
       align-items: flex-start;
       flex-wrap: wrap;
-      margin-bottom: 6px !important;
+      margin-bottom: 6px;
       line-height: 17px;
     }
 
     .design-field-label label,
     [data-label='true'] {
-      color: #181d27 !important;
-      font-size: 13.5px !important;
-      font-weight: 600 !important;
-      line-height: 17px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 17px;
       white-space: normal;
       overflow-wrap: break-word;
       word-break: normal;
     }
 
     .design-field-label .tw\:text-gray-400 {
-      color: #a4a7ae !important;
-      font-size: 12px !important;
-      line-height: 16px !important;
+      color: var(--tw-color-text-quaternary);
+      font-size: 12px;
+      line-height: 16px;
       white-space: nowrap;
     }
 
     .design-field-label + div {
-      min-height: 40px !important;
+      min-height: 40px;
     }
 
     [data-label='true'] + button {
@@ -565,9 +137,9 @@
 
     [slot='description'],
     .design-field-label + div + div {
-      color: #535862 !important;
-      font-size: 12.5px !important;
-      line-height: 18px !important;
+      color: var(--tw-color-text-tertiary);
+      font-size: 12.5px;
+      line-height: 18px;
       max-width: 100%;
       overflow-wrap: anywhere;
       word-break: normal;
@@ -576,10 +148,10 @@
     .design-control-input,
     input,
     textarea {
-      color: #181d27 !important;
-      font-size: 13px !important;
-      line-height: 18px !important;
-      -webkit-text-fill-color: #181d27;
+      color: var(--tw-color-text-primary);
+      font-size: 13px;
+      line-height: 18px;
+      -webkit-text-fill-color: var(--tw-color-text-primary);
     }
 
     .design-boolean-field {
@@ -596,7 +168,7 @@
     }
 
     .design-boolean-field label {
-      color: #181d27 !important;
+      color: var(--tw-color-text-primary);
       font-size: 14px;
       font-weight: 600;
       line-height: 17px;
@@ -606,7 +178,7 @@
 
     .design-boolean-field label + div,
     .design-boolean-field .tw\:text-tertiary {
-      color: #535862 !important;
+      color: var(--tw-color-text-tertiary);
       font-size: 12.5px;
       line-height: 18px;
       overflow-wrap: anywhere;
@@ -617,28 +189,8 @@
       min-width: 0;
     }
 
-    .connection-nested-object {
-      width: 100%;
-      min-width: 0;
-      padding-top: 0;
-    }
-
-    .core-object-field-template {
-      width: 100%;
-      min-width: 0;
-      gap: 10px;
-      background-color: transparent !important;
-    }
-
-    .core-object-field-template-body,
-    .core-object-field-template-property,
     .core-one-of-field {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-one-of-field {
-      gap: 12px !important;
+      gap: 12px;
     }
 
     .core-one-of-field-select,
@@ -677,33 +229,33 @@
       > .core-one-of-field-select,
     [data-testid^='select-widget-root/sampleDataStorageConfig/config__'],
     [data-testid^='select-widget-root/sampleDataStorageConfig/config/storageConfig__'] {
-      align-self: flex-start !important;
-      width: min(520px, 100%) !important;
-      max-width: 100% !important;
+      align-self: flex-start;
+      width: min(520px, 100%);
+      max-width: 100%;
     }
 
     .core-one-of-field-select button,
     .core-select-widget button {
-      min-height: 40px !important;
-      border-radius: 8px !important;
+      min-height: 40px;
+      border-radius: 8px;
     }
 
     .core-one-of-field-select button p,
     .core-select-widget button p {
-      color: #181d27 !important;
-      font-size: 13.5px !important;
-      font-weight: 500 !important;
-      line-height: 18px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 18px;
     }
 
     [data-field-name='gcpConfig'],
     .core-one-of-field[data-field-id$='/gcpConfig']
       > .core-one-of-field-selected
       [data-field-name='projectId'] {
-      grid-column-start: 1 !important;
-      grid-column-end: -1 !important;
-      justify-self: stretch !important;
-      width: 100% !important;
+      grid-column-start: 1;
+      grid-column-end: -1;
+      justify-self: stretch;
+      width: 100%;
     }
 
     .core-one-of-field[data-field-id$='/gcpConfig'] {
@@ -713,10 +265,10 @@
 
     .core-one-of-field[data-field-id$='/gcpConfig']
       > .core-one-of-field-select {
-      align-self: flex-start !important;
-      width: min(520px, 100%) !important;
-      max-width: 520px !important;
-      margin-left: 0 !important;
+      align-self: flex-start;
+      width: min(520px, 100%);
+      max-width: 520px;
+      margin-left: 0;
     }
 
     .core-one-of-field[data-field-id$='/gcpConfig']
@@ -728,26 +280,26 @@
     .core-one-of-field[data-field-id$='/gcpConfig']
       > .core-one-of-field-selected
       .core-object-field-template-body-grid {
-      display: grid !important;
+      display: grid;
       grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 20px 18px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px 18px;
       align-items: start;
     }
 
     .core-one-of-field[data-field-id$='/gcpConfig']
       > .core-one-of-field-selected
       [data-field-name='projectId'] {
-      grid-column-start: 1 !important;
-      grid-column-end: -1 !important;
+      grid-column-start: 1;
+      grid-column-end: -1;
       order: -10;
     }
 
     .core-one-of-field[data-field-id$='/gcpConfig']
       > .core-one-of-field-selected
       [data-field-name='privateKey'] {
-      grid-column-start: 1 !important;
-      grid-column-end: -1 !important;
+      grid-column-start: 1;
+      grid-column-end: -1;
     }
 
     .core-one-of-field[data-field-id$='/gcpConfig']
@@ -763,24 +315,19 @@
       [data-field-name='projectId']
       > .core-one-of-field
       > .core-one-of-field-select {
-      margin-left: 0 !important;
+      margin-left: 0;
     }
 
     .core-one-of-field-select-popover [slot='label'],
     .core-select-widget-popover [slot='label'] {
-      color: #181d27 !important;
-      font-size: 13.5px !important;
-      font-weight: 500 !important;
-      line-height: 18px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 18px;
     }
 
     .core-one-of-field-selected:empty {
       display: none;
-    }
-
-    .core-object-field-template-property,
-    .tw\:bg-utility-gray-blue-50 {
-      background-color: transparent !important;
     }
 
     .core-object-field-template-header-description {
@@ -788,93 +335,43 @@
     }
 
     .core-object-field-template-title {
-      color: #181d27 !important;
-      font-size: 13.5px !important;
-      font-weight: 600 !important;
-      line-height: 18px !important;
-    }
-
-    .core-object-field-template-title-icon {
-      flex-shrink: 0;
-      color: #1570ef;
-      stroke-width: 2;
+      color: var(--tw-color-text-primary);
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 18px;
     }
 
     .core-object-field-template-body {
       gap: 8px;
     }
 
-    .core-object-field-template-sample-data-config,
-    .core-object-field-template-storage-config {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 18px;
-      border: 1px solid var(--tw-color-border-secondary, #e9eaeb);
-      border-radius: 12px;
-      background-color: #fff !important;
-    }
-
-    .core-object-field-template-sample-data-config {
-      margin-top: 18px;
-      border-color: #eaecf5;
-    }
-
-    .core-object-field-template-storage-config {
-      margin-top: 16px;
-      gap: 16px;
-    }
-
     [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
       .core-object-field-template-body-gated {
-      display: flex !important;
+      display: flex;
       flex-direction: column;
-      gap: 16px !important;
+      gap: 16px;
       width: 100%;
       min-width: 0;
     }
 
     [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
       .core-object-field-template-credential-field-grid {
-      display: grid !important;
+      display: grid;
       grid-auto-flow: row dense;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 18px 20px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 20px;
       align-items: start;
       width: 100%;
       min-width: 0;
     }
 
-    .core-object-field-template-sample-data-config
-      > .core-object-field-template-header {
-      display: none;
-    }
-
     [data-field-id$='/sampleDataStorageConfig/config']
       > .core-object-field-template-body,
     [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
-      > .core-object-field-template-body,
-    .core-object-field-template-body-grid {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 20px 18px !important;
-    }
-
-    [data-field-id$='/sampleDataStorageConfig/config']
-      > .core-object-field-template-body
-      > .core-object-field-template-property,
-    [data-field-id$='/sampleDataStorageConfig/config/storageConfig']
-      > .core-object-field-template-body
-      > .core-object-field-template-property,
-    .core-object-field-template-sample-data-config
-      > .core-object-field-template-body
-      > .core-object-field-template-property,
-    .core-object-field-template-storage-config
-      > .core-object-field-template-body
-      > .core-object-field-template-property {
-      min-width: 0;
-      padding: 0;
-      border-radius: 0;
-      background-color: transparent !important;
+      > .core-object-field-template-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px 18px;
     }
 
     .core-object-field-template-sample-data-config .design-field-label,
@@ -890,11 +387,9 @@
     }
 
     .core-object-field-template-property-disabled {
-      opacity: 0.58;
-
       &,
       * {
-        cursor: not-allowed !important;
+        cursor: not-allowed;
       }
     }
 
@@ -946,8 +441,8 @@
     .core-object-field-template-storage-config
       > .core-object-field-template-body
       > .core-object-field-template-property-assumeRoleSourceIdentity {
-      grid-column-start: 1 !important;
-      grid-column-end: -1 !important;
+      grid-column-start: 1;
+      grid-column-end: -1;
     }
 
     [data-field-id$='/sampleDataStorageConfig/config']
@@ -963,149 +458,43 @@
       > .core-object-field-template-body
       > .core-object-field-template-property-storageConfig {
       padding-top: 18px;
-      border-top: 1px solid var(--tw-color-border-secondary, #e9eaeb);
-    }
-
-    .core-object-field-template-additional-header {
-      min-height: 24px;
-      align-items: center;
-    }
-
-    .core-object-field-template-additional-label {
-      color: #414651 !important;
-      font-size: 13px !important;
-      font-weight: 600 !important;
-      line-height: 17px !important;
-    }
-
-    .core-object-field-template-empty {
-      color: #717680 !important;
-      font-size: 12.5px !important;
-      line-height: 18px !important;
-    }
-
-    .core-object-field-template-add-button {
-      min-width: 28px !important;
-      width: 28px !important;
-      height: 28px !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 0 !important;
-      border-radius: 6px !important;
-      line-height: 0 !important;
-    }
-
-    .core-object-field-template-add-button [data-icon],
-    .core-wrap-if-additional-remove-button [data-icon] {
-      width: 16px !important;
-      height: 16px !important;
-      margin: 0 !important;
-      display: block !important;
-      flex-shrink: 0;
-    }
-
-    .core-wrap-if-additional-template {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-wrap-if-additional-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 40px;
-      gap: 10px;
-      align-items: center;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .core-wrap-if-additional-key,
-    .core-wrap-if-additional-value {
-      min-width: 0;
+      border-top: 1px solid var(--tw-color-border-secondary);
     }
 
     .core-wrap-if-additional-key [data-input-wrapper],
     .core-wrap-if-additional-value [data-input-wrapper] {
-      gap: 0 !important;
+      gap: 0;
     }
 
     .core-wrap-if-additional-key [data-label='true'],
     .core-wrap-if-additional-value [data-label='true'],
     .core-wrap-if-additional-value .design-field-label {
-      display: none !important;
+      display: none;
     }
 
-    .core-wrap-if-additional-separator {
-      color: #535862;
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 38px;
-    }
-
-    .core-wrap-if-additional-remove-button {
-      min-width: 38px !important;
-      width: 38px !important;
-      height: 38px !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 0 !important;
-      border-radius: 8px !important;
-      line-height: 0 !important;
-    }
-
-    .design-boolean-field .ant-switch {
-      min-width: 42px !important;
-      width: 42px !important;
-      height: 24px !important;
-      background: #f2f4f7 !important;
-      border: 1px solid #d0d5dd !important;
-      box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.02) !important;
-    }
-
-    .design-boolean-field .ant-switch .ant-switch-handle {
-      top: 2px !important;
-      left: 2px !important;
-      width: 18px !important;
-      height: 18px !important;
-    }
-
-    .design-boolean-field .ant-switch .ant-switch-handle::before {
-      border-radius: 999px !important;
-      background: #fff !important;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18),
-        0 1px 3px rgba(16, 24, 40, 0.1) !important;
-    }
-
-    .design-boolean-field .ant-switch.ant-switch-checked {
-      background: #1570ef !important;
-      border-color: #1570ef !important;
-    }
-
-    .design-boolean-field .ant-switch.ant-switch-checked .ant-switch-handle {
-      left: calc(100% - 20px) !important;
+    .core-object-field-template-add-button [data-icon],
+    .core-wrap-if-additional-remove-button [data-icon] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      display: block;
+      flex-shrink: 0;
     }
   }
 
   .connection-additional-object {
-    padding-top: 2px;
-
     label[id$='__title'] {
       font-size: 14px;
       font-weight: 600;
       line-height: 20px;
-    }
-
-    .tw\:bg-utility-gray-blue-50 {
-      background-color: transparent !important;
     }
   }
 }
 
 .core-one-of-field-select-popover [slot='label'],
 .core-select-widget-popover [slot='label'] {
-  color: #181d27 !important;
-  font-size: 13.5px !important;
-  font-weight: 500 !important;
-  line-height: 18px !important;
+  color: var(--tw-color-text-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 18px;
 }

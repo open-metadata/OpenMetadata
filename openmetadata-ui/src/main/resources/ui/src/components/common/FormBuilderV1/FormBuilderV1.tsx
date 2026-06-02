@@ -149,7 +149,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         onChange={handleFormChange}
         onSubmit={onSubmit}>
         {children}
-        <div className="tw:mt-4 tw:flex tw:justify-end tw:gap-2">
+        <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
           {!hideCancelButton && (
             <Button
               color="secondary"

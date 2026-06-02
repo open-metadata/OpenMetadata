@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { Eye, EyeOff, InfoCircle, UploadCloud01 } from '@untitledui/icons';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Eye,
+  EyeOff,
+  HelpCircle,
+  InfoCircle,
+  UploadCloud01,
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import { ChangeEvent, ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import './design-controls.less';
+
+const HINT_TOOLTIP_THRESHOLD = 100;
 
 const PEM_PRIVATE_KEY = /-----BEGIN (?:RSA |ENCRYPTED )?PRIVATE KEY-----/;
 
@@ -25,32 +34,38 @@ export const isValidPrivateKey = (value?: string): boolean =>
 
 export const FieldLabel = ({
   id,
+  hint,
   label,
   required,
   rightSlot,
 }: {
   id?: string;
+  hint?: ReactNode;
   label: ReactNode;
   required?: boolean;
   rightSlot?: ReactNode;
 }) => {
-  const { t } = useTranslation();
+  const isLongHint =
+    typeof hint === 'string' && hint.length > HINT_TOOLTIP_THRESHOLD;
 
   return (
     <div className="design-field-label tw:mb-1.5 tw:flex tw:flex-wrap tw:items-baseline tw:gap-x-1.5 tw:gap-y-0.5">
       <label
-        className="tw:min-w-0 tw:max-w-full tw:text-[13px] tw:font-medium tw:leading-[17px] tw:text-secondary"
+        className="tw:min-w-0 tw:max-w-full tw:text-sm tw:font-medium tw:leading-[17px] tw:text-secondary"
         htmlFor={id}>
         {label}
       </label>
-      {required ? (
-        <span className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:leading-[17px] tw:text-error-primary">
+      {required && (
+        <span className="tw:shrink-0 tw:text-sm tw:font-semibold tw:leading-[17px] tw:text-error-primary">
           *
         </span>
-      ) : (
-        <span className="tw:shrink-0 tw:text-[12.5px] tw:leading-[17px] tw:text-gray-400">
-          {t('label.optional')}
-        </span>
+      )}
+      {isLongHint && (
+        <Tooltip title={hint as string}>
+          <TooltipTrigger className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 hover:tw:text-fg-quaternary_hover">
+            <HelpCircle className="tw:size-3.5" />
+          </TooltipTrigger>
+        </Tooltip>
       )}
       {rightSlot && <span className="tw:ml-auto">{rightSlot}</span>}
     </div>
@@ -67,7 +82,7 @@ export const FieldHint = ({
   error || hint ? (
     <div
       className={classNames(
-        'tw:mt-1.5 tw:text-[12.5px] tw:leading-[18px]',
+        'tw:mt-1.5 tw:text-xs tw:leading-[18px]',
         error ? 'tw:text-error-primary' : 'tw:text-tertiary'
       )}>
       {error || hint}
@@ -150,9 +165,12 @@ export const DesignTextControl = ({
 }: DesignControlProps) => {
   const [focused, setFocused] = useState(false);
 
+  const isLongHint =
+    typeof hint === 'string' && hint.length > HINT_TOOLTIP_THRESHOLD;
+
   return (
     <div>
-      <FieldLabel id={id} label={label} required={required} />
+      <FieldLabel hint={hint} id={id} label={label} required={required} />
       <div
         className={frameClass(
           focused,
@@ -164,7 +182,7 @@ export const DesignTextControl = ({
           autoFocus={autofocus}
           className={classNames(
             'design-control-input tw:w-full tw:flex-1 tw:border-0',
-            'tw:bg-transparent tw:p-0 tw:text-[13px] tw:text-primary',
+            'tw:bg-transparent tw:p-0 tw:text-sm tw:text-primary',
             'tw:outline-none tw:placeholder:text-placeholder'
           )}
           data-testid={testId}
@@ -191,7 +209,8 @@ export const DesignTextControl = ({
           </span>
         )}
       </div>
-      <FieldHint error={error} hint={hint} />
+      {!isLongHint && <FieldHint error={error} hint={hint} />}
+      {isLongHint && <FieldHint error={error} />}
     </div>
   );
 };
@@ -234,16 +253,20 @@ export const DesignSecretControl = ({
     }
   };
 
+  const isLongHint =
+    typeof hint === 'string' && hint.length > HINT_TOOLTIP_THRESHOLD;
+
   return (
     <div>
       <FieldLabel
+        hint={hint}
         id={id}
         label={label}
         required={required}
         rightSlot={
           allowUpload && (
             <button
-              className="tw:flex tw:cursor-pointer tw:items-center tw:gap-1 tw:text-[12px] tw:font-medium tw:text-brand-secondary"
+              className="tw:flex tw:cursor-pointer tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:text-brand-secondary"
               type="button"
               onClick={() => fileRef.current?.click()}>
               <UploadCloud01 size={13} />
@@ -265,7 +288,7 @@ export const DesignSecretControl = ({
             className={classNames(
               'design-control-textarea tw:w-full tw:flex-1 tw:resize-none',
               'tw:border-0 tw:bg-transparent tw:p-0 tw:font-mono',
-              'tw:text-[13px] tw:text-primary tw:outline-none',
+              'tw:text-sm tw:text-primary tw:outline-none',
               'tw:placeholder:text-placeholder'
             )}
             disabled={disabled || readonly}
@@ -288,7 +311,7 @@ export const DesignSecretControl = ({
             autoFocus={autofocus}
             className={classNames(
               'design-control-input tw:w-full tw:flex-1 tw:border-0',
-              'tw:bg-transparent tw:p-0 tw:text-[13px] tw:text-primary',
+              'tw:bg-transparent tw:p-0 tw:text-sm tw:text-primary',
               'tw:outline-none tw:placeholder:text-placeholder'
             )}
             disabled={disabled || readonly}
@@ -322,13 +345,14 @@ export const DesignSecretControl = ({
           onChange={handleFile}
         />
       )}
-      <FieldHint error={error} hint={hint} />
+      {!isLongHint && <FieldHint error={error} hint={hint} />}
+      {isLongHint && <FieldHint error={error} />}
     </div>
   );
 };
 
 export const SingleCredentialNote = ({ method }: { method: string }) => (
-  <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-[12px]">
+  <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-xs">
     <InfoCircle className="tw:text-fg-quaternary" size={14} />
     <span className="tw:text-tertiary">
       <Transi18next

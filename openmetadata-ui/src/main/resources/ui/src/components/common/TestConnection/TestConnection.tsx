@@ -58,7 +58,6 @@ import {
 } from '../../../utils/ServiceUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import Loader from '../Loader/Loader';
-import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
@@ -655,70 +654,98 @@ const TestConnection: FC<TestConnectionProps> = ({
     <>
       {showDetails ? (
         <div
-          className={classNames('test-connection-card', {
-            'test-connection-card-success':
-              testStatus === StatusType.Successful,
-            'test-connection-card-failed': testStatus === StatusType.Failed,
-            'test-connection-card-warning': testStatus === 'Warning',
-            'test-connection-card-running': isTestingConnection,
-            'test-connection-card-ready': isReadyToTestCard,
-          })}
+          className={classNames(
+            'tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-5 tw:mt-3.5 tw:border tw:border-gray-200 tw:rounded-xl tw:bg-primary tw:p-[14px_20px] tw:font-[Inter,sans-serif]',
+            {
+              'tw:border-utility-success-200 tw:bg-utility-success-50':
+                testStatus === StatusType.Successful,
+              'tw:border-utility-error-200 tw:bg-utility-error-50':
+                testStatus === StatusType.Failed,
+              'tw:border-utility-warning-200 tw:bg-utility-warning-50':
+                testStatus === 'Warning',
+              'tw:border-utility-brand-200 tw:bg-utility-brand-50':
+                isTestingConnection,
+              'tw:border-utility-brand-300 tw:bg-utility-brand-50 tw:p-[22px_24px] tw:shadow-[0_0_0_6px_#e8f4ff]':
+                isReadyToTestCard,
+            }
+          )}
           data-testid="test-connection-card">
           <div
-            className="test-connection-card-message"
+            className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3"
             data-testid="message-container">
             {(isTestingConnection || testStatus || isReadyToTestCard) && (
               <div
-                className={classNames('test-connection-card-icon', {
-                  'test-connection-card-icon-success':
-                    testStatus === StatusType.Successful,
-                  'test-connection-card-icon-failed':
-                    testStatus === StatusType.Failed,
-                  'test-connection-card-icon-warning': testStatus === 'Warning',
-                  'test-connection-card-icon-ready': isReadyToTestCard,
-                })}>
+                className={classNames(
+                  'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[10px] tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-600',
+                  {
+                    'tw:border-utility-success-200 tw:bg-utility-success-100 tw:text-utility-success-600':
+                      testStatus === StatusType.Successful,
+                    'tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-600':
+                      testStatus === StatusType.Failed,
+                    'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:text-utility-warning-600':
+                      testStatus === 'Warning',
+                    'tw:size-12 tw:basis-12 tw:rounded-xl tw:border-[#c9e4ff] tw:bg-[#dbeeff] tw:text-[#2563eb]':
+                      isReadyToTestCard,
+                  }
+                )}>
                 {isTestingConnection && <Loader size="small" />}
                 {isReadyToTestCard && (
                   <Zap
-                    className="status-icon"
+                    className="tw:size-[18px]"
                     data-testid="ready-badge"
                     size={20}
                   />
                 )}
                 {testStatus === StatusType.Successful && (
                   <CheckCircle
-                    className="status-icon"
+                    className="tw:size-[18px]"
                     data-testid="success-badge"
                     size={18}
                   />
                 )}
                 {testStatus === StatusType.Failed && (
                   <XCircle
-                    className="status-icon"
+                    className="tw:size-[18px]"
                     data-testid="fail-badge"
                     size={18}
                   />
                 )}
                 {testStatus === 'Warning' && (
                   <AlertTriangle
-                    className="status-icon"
+                    className="tw:size-[18px]"
                     data-testid="warning-badge"
                     size={18}
                   />
                 )}
               </div>
             )}
-            <div
-              className="test-connection-card-copy"
-              data-testid="messag-text">
-              <div className="test-connection-card-title">
+            <div className="tw:min-w-0" data-testid="messag-text">
+              <div
+                className={classNames(
+                  'tw:text-[15px] tw:font-semibold tw:leading-[22px] tw:text-primary',
+                  {
+                    'tw:text-base tw:font-bold tw:leading-6': isReadyToTestCard,
+                  }
+                )}>
                 {connectionCardTitle}
               </div>
-              <div className="test-connection-card-description">
+              <div
+                className={classNames(
+                  'tw:mt-0.5 tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:text-sm tw:leading-[18px] tw:text-quaternary',
+                  {
+                    'tw:text-utility-success-700 tw:font-medium':
+                      testStatus === StatusType.Successful,
+                    'tw:text-utility-warning-700': testStatus === 'Warning',
+                    'tw:text-utility-error-700':
+                      testStatus === StatusType.Failed,
+                    'tw:text-[15px] tw:leading-[22px] tw:text-[#2563eb]':
+                      isReadyToTestCard,
+                  }
+                )}>
                 {connectionCardDescription}
                 {(testStatus || isTestingConnection) && (
                   <Button
-                    className="p-0 test-connection-message-btn"
+                    className="p-0 [&>span]:tw:underline"
                     color="link-color"
                     data-testid="test-connection-details-btn"
                     size="sm"
@@ -731,9 +758,16 @@ const TestConnection: FC<TestConnectionProps> = ({
           </div>
           <Tooltip title={buttonTooltipTitle}>
             <Button
-              className={classNames('test-connection-card-button', {
-                'test-connection-card-button-primary': isReadyToTestCard,
-              })}
+              className={classNames(
+                'tw:h-[42px] tw:min-w-[160px] tw:shrink-0 tw:rounded-lg tw:border tw:border-gray-300',
+                'tw:bg-primary tw:px-[22px] tw:text-sm tw:font-semibold tw:text-utility-brand-600',
+                'tw:shadow-sm tw:cursor-pointer hover:tw:border-utility-brand-200',
+                'hover:tw:bg-utility-brand-50 hover:tw:text-utility-brand-700',
+                {
+                  'tw:h-12 tw:min-w-[184px] tw:border-blue-600 tw:bg-blue-600 tw:text-white tw:text-base hover:tw:border-blue-700 hover:tw:bg-blue-700':
+                    isReadyToTestCard,
+                }
+              )}
               color="secondary"
               data-testid="test-connection-btn"
               isDisabled={isTestConnectionDisabled}

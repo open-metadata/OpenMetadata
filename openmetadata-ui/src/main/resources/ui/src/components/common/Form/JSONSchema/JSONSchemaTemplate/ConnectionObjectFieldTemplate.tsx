@@ -157,7 +157,7 @@ const SectionHeader = ({
   onFocus?: () => void;
 }) => (
   <button
-    className="connection-section-header tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:bg-transparent tw:text-left"
+    className="connection-section-header tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
     type="button"
     onClick={() => {
       onFocus?.();
@@ -178,7 +178,7 @@ const SectionHeader = ({
         {badge}
       </span>
       {description && (
-        <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-[12.5px] tw:leading-[18px] tw:text-tertiary">
+        <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-xs tw:leading-[18px] tw:text-tertiary">
           {description}
         </span>
       )}
@@ -343,28 +343,32 @@ const SectionFields = ({
     );
 
     return (
-      <div className="connection-advanced-section-fields">
+      <div className="connection-advanced-section-fields tw:flex tw:flex-col tw:gap-[18px] tw:p-[18px]">
         {hiddenProperties.map((element, index) =>
           renderProperty(element, index, 'tw:hidden')
         )}
         {primaryProperties.length > 0 && (
-          <div className="connection-advanced-primary-grid">
+          <div className="connection-advanced-primary-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:gap-5 tw:items-start">
             {primaryProperties.map((element, index) =>
               renderProperty(element, index)
             )}
           </div>
         )}
         {scalarProperties.length > 0 && (
-          <div className="connection-advanced-secondary-grid">
+          <div className="connection-advanced-secondary-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:gap-5 tw:items-start">
             {scalarProperties.map((element, index) =>
               renderProperty(element, index)
             )}
           </div>
         )}
         {fullRowProperties.length > 0 && (
-          <div className="connection-advanced-full-rows">
+          <div className="connection-advanced-full-rows tw:flex tw:flex-col tw:gap-5">
             {fullRowProperties.map((element, index) =>
-              renderProperty(element, index, 'connection-advanced-full-row')
+              renderProperty(
+                element,
+                index,
+                'connection-advanced-full-row tw:pt-[18px] tw:border-t tw:border-secondary'
+              )
             )}
           </div>
         )}
@@ -380,7 +384,7 @@ const SectionFields = ({
       {orderedFieldGroups.map((group, groupIndex) =>
         group.type === 'grid' ? (
           <div
-            className="connection-section-field-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]"
+            className="connection-section-field-grid tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]"
             key={`grid-${groupIndex}`}>
             {group.properties.map((element, index) =>
               renderProperty(element, index)
@@ -390,14 +394,14 @@ const SectionFields = ({
           renderProperty(
             group.property,
             groupIndex,
-            'connection-section-wide-property'
+            'connection-section-wide-property tw:w-full tw:min-w-0'
           )
         )
       )}
       {booleanProperties.length > 0 && (
         <>
           {orderedFieldGroups.length > 0 && (
-            <div className="tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
+            <div className="tw:h-px tw:bg-secondary" />
           )}
           <div className="connection-section-boolean-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]">
             {booleanProperties.map((element, index) =>
@@ -548,9 +552,10 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
   return (
     <div
       className={classNames(
-        'connection-section-card tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4 tw:shadow-xs',
+        'connection-section-card tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs',
         `connection-section-card-${section.key}`,
-        active && 'connection-section-card-active'
+        section.key === 'advanced' ? 'tw:p-0 tw:overflow-hidden' : 'tw:p-4',
+        active && 'tw:[border-color:var(--tw-color-border-brand)]'
       )}
       data-testid={`connection-section-${section.key}`}
       onBlurCapture={handleBlur}
@@ -570,7 +575,12 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
       />
       {showBody && (
         <>
-          <div className="connection-section-divider tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
+          <div
+            className={classNames(
+              'connection-section-divider tw:h-px tw:bg-secondary',
+              section.key !== 'advanced' && 'tw:my-3'
+            )}
+          />
           {section.key === 'authentication' &&
           hasAuthTabs(section.properties) ? (
             <AuthTabs properties={section.properties} />
@@ -617,10 +627,16 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
   if (!isRootConnectionObject(props)) {
     rendered = (
       <div
-        className={classNames('connection-nested-object', {
-          'connection-additional-object': schema.additionalProperties,
+        className={classNames('tw:flex tw:flex-col tw:gap-4', {
+          'connection-additional-object tw:pt-0.5': schema.additionalProperties,
         })}>
-        <CoreObjectFieldTemplate {...props} />
+        <CoreObjectFieldTemplate
+          {...props}
+          formContext={{
+            ...(props.formContext as object),
+            flatPropertyLayout: true,
+          }}
+        />
       </div>
     );
   } else if (isEmpty(schema.properties)) {
@@ -693,10 +709,9 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       (property) => !property.hidden && property.name !== SERVICE_TYPE_PROPERTY
     ).length;
 
-    const sections: SectionConfig[] = [
+    const rawSections: SectionConfig[] = [
       {
         key: 'connection',
-        index: 1,
         title: t('label.connection'),
         description: t('message.connection-section-description'),
         properties: connectionProperties,
@@ -722,7 +737,6 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
         ? [
             {
               key: 'authentication',
-              index: 2,
               title: t('label.authentication'),
               description: t('message.authentication-section-description'),
               properties: authProperties,
@@ -748,7 +762,6 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
         ? [
             {
               key: 'scope',
-              index: 3,
               title: t('label.scope-and-option-plural'),
               description: t('message.scope-section-description'),
               properties: scopeProperties,
@@ -789,9 +802,15 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
         : []),
     ];
 
+    let sectionCounter = 0;
+    const sections = rawSections.map((section) => ({
+      ...section,
+      index: section.key !== 'advanced' ? ++sectionCounter : undefined,
+    }));
+
     rendered = (
       <div
-        className="connection-grouped-form tw:flex tw:flex-col tw:gap-3"
+        className="connection-grouped-form tw:flex tw:flex-col tw:gap-3 tw:text-primary"
         data-testid="connection-grouped-form">
         <HiddenFields properties={hiddenUnsectionedProperties} />
         {sections.map((section) => (

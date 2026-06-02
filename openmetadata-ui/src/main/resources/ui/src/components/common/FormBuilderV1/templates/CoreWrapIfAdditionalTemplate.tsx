@@ -41,8 +41,8 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
   }
 
   return (
-    <div className="core-wrap-if-additional-template tw:rounded-lg">
-      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:items-center tw:gap-2 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+    <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
             id={`${id}-key`}
@@ -52,7 +52,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
             onChange={setKeyValue}
           />
         </div>
-        <span className="core-wrap-if-additional-separator tw:text-sm tw:font-semibold tw:text-tertiary">
+        <span className="core-wrap-if-additional-separator tw:text-[13px] tw:font-semibold tw:leading-[38px] tw:text-tertiary">
           =
         </span>
         <div className="core-wrap-if-additional-value tw:min-w-0">
@@ -60,7 +60,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
         </div>
         <Button
           aria-label={t('label.remove')}
-          className="core-wrap-if-additional-remove-button tw:shrink-0"
+          className="core-wrap-if-additional-remove-button tw:inline-flex tw:h-[38px] tw:w-[38px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
           color="secondary"
           isDisabled={disabled || readonly}
           size="sm"

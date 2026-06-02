@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ChevronLeft } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
@@ -294,37 +293,34 @@ const AddServicePage = () => {
         className="service-flow-breadcrumb"
         titleLinks={serviceBreadcrumb}
       />
-      <div className="add-service-page-header">
+      <div className="tw:mt-[22px]">
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
-            <div className="add-service-page-title-row">
+            <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
               {getServiceLogo(
                 serviceConfig.serviceType || '',
-                'add-service-page-title-logo'
+                'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
               )}
-              <h1 className="add-service-page-title" data-testid="header">
+              <h1
+                className="tw:m-0 tw:font-[Inter,sans-serif] tw:text-[22px] tw:font-semibold tw:leading-[26px] tw:text-primary"
+                data-testid="header">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
               </h1>
-              <button
-                className="add-service-page-change-button"
-                type="button"
-                onClick={handleConnectorChangeClick}>
-                <ChevronLeft size={14} />
-                {t('label.change')}
-              </button>
             </div>
           ) : (
-            <h1 className="add-service-page-title" data-testid="header">
+            <h1
+              className="tw:m-0 tw:font-[Inter,sans-serif] tw:text-[22px] tw:font-semibold tw:leading-[26px] tw:text-primary"
+              data-testid="header">
               {t('label.add-new-entity', { entity: t('label.service') })}
             </h1>
           )}
 
           <ServiceFlowStepper
             activeStep={activeServiceStep}
-            className="add-service-page-stepper"
+            className="tw:mt-6"
             steps={translatedSteps}
           />
-          <div className="add-service-page-step-body">
+          <div className="tw:mt-[30px]">
             {activeServiceStep === 1 && (
               <SelectServiceType
                 handleServiceTypeClick={handleServiceTypeClick}
@@ -402,7 +398,7 @@ const AddServicePage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'add-service-page-card max-width-md m-x-auto',
+        cardClassName: 'add-service-page-card max-width-lg m-x-auto',
         allowScroll: true,
       }}
       hideSecondPanel={hideSecondPanel}

@@ -76,7 +76,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   return (
     <div className="tw:border-b-[0.6px] tw:border-tertiary tw:px-4 tw:pb-4">
       <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
-        <span className="tw:text-[13px] tw:font-semibold tw:text-primary">
+        <span className="tw:text-sm tw:font-semibold tw:text-primary">
           {t(getNestedSectionTitle(entityType))}
         </span>
 

@@ -245,6 +245,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   title,
   description,
   formData,
+  formContext,
   onAddClick,
   schema,
   properties,
@@ -253,6 +254,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 }) => {
   const { t } = useTranslation();
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const flatPropertyLayout =
+    (formContext as { flatPropertyLayout?: boolean } | undefined)
+      ?.flatPropertyLayout ?? false;
 
   const isRoot = idSchema.$id === 'root';
   const isSampleDataSection = idSchema.$id.endsWith(
@@ -300,12 +304,15 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     toggleBanner?: boolean
   ) =>
     classNames(
-      'core-object-field-template-property tw:rounded-xl tw:bg-utility-gray-blue-50',
+      'core-object-field-template-property tw:min-w-0',
       `core-object-field-template-property-${name}`,
-      isRoot && 'tw:p-4',
-      fullWidth && 'core-object-field-template-property-full-width',
+      !flatPropertyLayout && 'tw:rounded-xl tw:bg-utility-gray-blue-50',
+      !flatPropertyLayout && isRoot && 'tw:p-4',
+      fullWidth &&
+        'core-object-field-template-property-full-width tw:[grid-column:1/-1] tw:justify-self-stretch tw:w-full',
       toggleBanner && 'core-object-field-template-property-toggle-banner',
-      disabled && 'core-object-field-template-property-disabled'
+      disabled &&
+        'core-object-field-template-property-disabled tw:opacity-[0.58]'
     );
   const getPropertyContent = (element: (typeof properties)[number]) => {
     if (
@@ -322,7 +329,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const addButton = schema.additionalProperties ? (
     <Button
       aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button"
+      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       id={`${idSchema.$id}`}
@@ -473,31 +480,29 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const advancedPropertiesContent = orderedAdvancedProperties.length > 0 && (
     <>
       {isCredentialAdvancedDisclosure ? (
-        <div
-          className={classNames(
-            'core-object-field-template-credential-advanced',
-            isGatedCredentialConfig &&
-              'core-object-field-template-gated-credential-advanced',
-            isGenericNestedConfig &&
-              'core-object-field-template-generic-credential-advanced'
-          )}>
-          <button
+        <div className="tw:mt-0">
+          <Button
             aria-expanded={advancedOpen}
-            className="core-object-field-template-credential-advanced-toggle"
-            type="button"
+            className="tw:flex tw:items-center tw:gap-1"
+            color="link-color"
+            iconLeading={
+              <ChevronDown
+                className={classNames(
+                  'tw:transition-transform',
+                  !advancedOpen && 'tw:-rotate-90'
+                )}
+                size={16}
+              />
+            }
             onClick={() => setAdvancedOpen((value) => !value)}>
-            <ChevronDown
-              className={classNames(
-                'core-object-field-template-credential-advanced-toggle-icon',
-                advancedOpen &&
-                  'core-object-field-template-credential-advanced-toggle-icon-open'
-              )}
-              size={16}
-            />
-            <span>{getAdvancedHeaderLabel(advancedOpen)}</span>
-          </button>
+            {getAdvancedHeaderLabel(advancedOpen)}
+          </Button>
           {advancedOpen && (
-            <div className="core-object-field-template-credential-advanced-panel core-object-field-template-advanced-grid">
+            <div
+              className={classNames(
+                'core-object-field-template-advanced-grid tw:mt-4 tw:grid tw:grid-flow-row-dense',
+                'tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+              )}>
               {orderedAdvancedProperties.map(renderProperty)}
             </div>
           )}
@@ -527,14 +532,14 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           isGatedCredentialConfig
             ? 'core-object-field-template-body-gated'
             : isNestedConfigGrid
-            ? 'core-object-field-template-body-grid'
+            ? 'core-object-field-template-body-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
             : 'tw:flex tw:flex-col tw:gap-4'
         )}>
         {!isRoot && schema.additionalProperties && (
-          <div className="core-object-field-template-additional-header tw:flex tw:items-center tw:justify-between tw:gap-3">
+          <div className="core-object-field-template-additional-header tw:flex tw:min-h-6 tw:items-center tw:justify-between tw:gap-4">
             <Typography
               as="label"
-              className="core-object-field-template-additional-label tw:text-secondary"
+              className="core-object-field-template-additional-label tw:text-[13px] tw:font-semibold tw:leading-[17px] tw:text-secondary"
               size="text-xs"
               weight="semibold">
               {t('label.additional-property-plural')}
@@ -546,7 +551,11 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           <>
             {gatedCredentialToggleProperties.map(renderProperty)}
             {gatedCredentialFieldProperties.length > 0 && (
-              <div className="core-object-field-template-credential-field-grid">
+              <div
+                className={classNames(
+                  'core-object-field-template-credential-field-grid tw:grid tw:grid-flow-row-dense',
+                  'tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+                )}>
                 {gatedCredentialFieldProperties.map(renderProperty)}
               </div>
             )}
@@ -559,7 +568,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           normalProperties.length === 0 && (
             <Typography
               as="span"
-              className="core-object-field-template-empty tw:text-tertiary"
+              className="core-object-field-template-empty tw:text-[12.5px] tw:leading-[18px] tw:text-tertiary"
               size="text-xs">
               {t('message.no-properties-added')}
             </Typography>
@@ -583,11 +592,15 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     return (
       <div
         className={classNames(
-          'core-object-field-template core-object-field-template-non-root tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:bg-utility-gray-blue-50',
+          'core-object-field-template core-object-field-template-non-root tw:flex tw:flex-col tw:w-full tw:min-w-0',
+          'tw:gap-4',
+          !flatPropertyLayout && 'tw:rounded-xl tw:bg-utility-gray-blue-50',
           isSampleDataSection &&
             'core-object-field-template-sample-data-section',
-          isSampleDataConfig && 'core-object-field-template-sample-data-config',
-          isAwsS3StorageConfig && 'core-object-field-template-storage-config',
+          isSampleDataConfig &&
+            'core-object-field-template-sample-data-config tw:mt-[18px] tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-[18px]',
+          isAwsS3StorageConfig &&
+            'core-object-field-template-storage-config tw:mt-4 tw:gap-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-[18px]',
           isGatedCredentialConfig &&
             'core-object-field-template-gated-credential-block',
           isGenericNestedConfig && 'core-object-field-template-credential-block'
@@ -596,7 +609,11 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           schema.additionalProperties ? 'true' : undefined
         }
         data-field-id={idSchema.$id}>
-        <div className="core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-3">
+        <div
+          className={classNames(
+            'core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-4',
+            isSampleDataConfig && 'tw:hidden'
+          )}>
           <div
             className={classNames(
               'tw:flex tw:min-w-0',
@@ -606,7 +623,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             )}>
             {isAwsS3StorageConfig && (
               <Hexagon01
-                className="core-object-field-template-title-icon"
+                className="core-object-field-template-title-icon tw:shrink-0 tw:text-brand-secondary tw:[stroke-width:2]"
                 data-testid="storage-config-title-icon"
                 size={18}
               />

@@ -30,7 +30,7 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
 
   const sectionClassName =
     'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
-  const titleClassName = 'tw:text-[13px] tw:font-semibold tw:mb-1.5';
+  const titleClassName = 'tw:text-sm tw:font-semibold tw:mb-1.5';
 
   return (
     <div className={sectionClassName}>

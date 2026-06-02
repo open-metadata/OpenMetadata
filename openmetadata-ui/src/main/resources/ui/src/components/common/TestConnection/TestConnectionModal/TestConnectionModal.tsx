@@ -36,7 +36,6 @@ import {
 } from '../../../../utils/TestConnectionModalUtils';
 import { partitionConnectionSteps } from '../../../../utils/TestConnectionUtils';
 import InlineAlert from '../../InlineAlert/InlineAlert';
-import './test-connection-modal.less';
 import { TestConnectionModalProps } from './TestConnectionModal.interface';
 
 const TestConnectionModal = ({
@@ -141,7 +140,7 @@ const TestConnectionModal = ({
   const serviceLogo = useMemo(
     () =>
       connectionType
-        ? getServiceLogo(connectionType, 'test-connection-service-logo-img')
+        ? getServiceLogo(connectionType, 'tw:size-7 tw:object-contain')
         : null,
     [connectionType]
   );
@@ -195,20 +194,20 @@ const TestConnectionModal = ({
           aria-label={t('label.connection-status')}
           className="test-connection-status-modal"
           width={920}>
-          <div className="test-connection-modal-header">
-            <div className="test-connection-modal-service-icon">
+          <div className="tw:flex tw:items-center tw:gap-3 tw:border-b tw:border-primary tw:px-6 tw:pt-5 tw:pb-4">
+            <div className="tw:flex tw:size-11 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-primary tw:bg-primary tw:shadow-xs">
               {serviceLogo}
             </div>
-            <div className="test-connection-modal-title-group">
-              <div className="test-connection-modal-title">
+            <div className="tw:min-w-0 tw:flex-1">
+              <div className="tw:text-lg tw:font-semibold tw:leading-[26px] tw:text-primary">
                 {t('label.connection-status')}
               </div>
-              <div className="test-connection-modal-subtitle">
+              <div className="tw:overflow-hidden tw:text-sm tw:leading-[18px] tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap">
                 {connectionDisplayName}
               </div>
             </div>
             <Button
-              className="test-connection-modal-close"
+              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-quaternary"
               color="tertiary"
               data-testid="test-connection-close"
               iconLeading={<XClose size={18} />}
@@ -216,7 +215,7 @@ const TestConnectionModal = ({
               onClick={handleModalClose}
             />
           </div>
-          <div className="test-connection-modal-body">
+          <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-6 tw:py-5">
             {errorMessage && (
               <InlineAlert
                 description={errorMessage.description}
@@ -228,15 +227,17 @@ const TestConnectionModal = ({
 
             {isConnectionTimeout ? (
               <div
-                className="timeout-widget"
+                className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:border tw:border-primary tw:bg-primary tw:p-12 tw:text-center"
                 data-testid="test-connection-timeout-widget">
                 <IconTimeOut height={100} width={100} />
-                <div className="test-connection-timeout-title">
+                <div className="tw:text-base tw:font-semibold tw:leading-6 tw:text-primary">
                   {t('label.connection-timeout')}
                 </div>
-                <div className="test-connection-timeout-message">{message}</div>
+                <div className="tw:max-w-[520px] tw:text-sm tw:leading-5 tw:text-quaternary">
+                  {message}
+                </div>
                 <Button
-                  className="try-again-button"
+                  className="tw:flex tw:items-center tw:gap-1.5"
                   color="primary"
                   data-testid="try-again-button"
                   iconLeading={<IconTimeOutButton height={14} width={14} />}
@@ -291,7 +292,7 @@ const TestConnectionModal = ({
               </>
             )}
           </div>
-          <div className="test-connection-modal-footer">
+          <div className="test-connection-modal-footer tw:flex tw:items-center tw:justify-end tw:gap-2.5 tw:border-t tw:border-primary tw:bg-primary tw:px-6 tw:pt-4 tw:pb-5">
             <ConnectionFooterActions
               isConnectionTimeout={isConnectionTimeout}
               isTestingConnection={isTestingConnection}

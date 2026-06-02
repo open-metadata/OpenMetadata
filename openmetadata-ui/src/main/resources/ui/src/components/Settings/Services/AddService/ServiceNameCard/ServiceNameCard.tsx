@@ -48,7 +48,7 @@ const ServiceNameCard = ({
       <div className="tw:text-[15px] tw:font-semibold tw:leading-5 tw:text-primary">
         {t('label.name-this-service')}
       </div>
-      <div className="tw:mt-0.5 tw:text-[12.5px] tw:leading-[18px] tw:text-tertiary">
+      <div className="tw:mt-0.5 tw:text-xs tw:leading-[18px] tw:text-tertiary">
         {t('message.name-this-service-description', { serviceType })}
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
@@ -69,14 +69,14 @@ const ServiceNameCard = ({
       {showDescription ? (
         <div className="tw:mt-4">
           <label
-            className="tw:mb-1.5 tw:block tw:text-[13px] tw:font-medium tw:leading-[17px] tw:text-secondary"
+            className="tw:mb-1.5 tw:block tw:font-medium tw:leading-[17px] tw:text-secondary"
             htmlFor="service-description">
             {t('label.description')}
           </label>
           <textarea
             className={classNames(
               'tw:min-h-[88px] tw:w-full tw:rounded-lg tw:border tw:border-primary tw:bg-primary',
-              'tw:p-3 tw:text-[13px] tw:text-primary tw:shadow-xs tw:outline-none',
+              'tw:p-3 tw:text-primary tw:shadow-xs tw:outline-none',
               'tw:placeholder:text-placeholder focus:tw:border-brand focus:tw:ring-4 focus:tw:ring-brand'
             )}
             data-testid="service-description"
@@ -89,7 +89,7 @@ const ServiceNameCard = ({
         </div>
       ) : (
         <button
-          className="tw:mt-3 tw:flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
+          className="tw:mt-3 tw:flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:font-semibold tw:text-brand-secondary"
           data-testid="add-description-button"
           tabIndex={-1}
           type="button"

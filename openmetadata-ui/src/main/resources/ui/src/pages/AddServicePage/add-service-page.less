@@ -11,105 +11,28 @@
  *  limitations under the License.
  */
 
-.add-service-page {
-  font-family: Inter, sans-serif;
-
-  &.resizable-panels-layout {
-    background: var(--tw-color-bg-secondary);
-  }
-
-  .add-service-page-card {
-    max-width: 1000px;
-    border-color: var(--tw-color-border-secondary);
-    border-radius: 16px;
-    box-shadow: none;
-
-    > .ant-card-body {
-      padding: 26px 36px 80px;
-    }
-  }
-
-  .add-service-page-header {
-    margin-top: 22px;
-  }
-
-  .add-service-page-title-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 0;
-  }
-
-  .add-service-page-title-logo {
-    width: 40px !important;
-    height: 40px !important;
-    max-width: 40px;
-    max-height: 40px;
-    object-fit: contain;
-  }
-
-  .add-service-page-title {
-    margin: 0;
-    color: var(--tw-color-text-primary);
+.breadcrumb-container.service-flow-breadcrumb {
+  ol {
+    color: var(--tw-color-text-tertiary);
     font-family: Inter, sans-serif;
-    font-size: 22px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0;
-    line-height: 26px !important;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: normal;
   }
 
-  .add-service-page-change-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: 4px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--tw-color-text-brand-secondary);
-    cursor: pointer;
-    font-family: Inter, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 18px;
-
-    &:hover {
-      color: var(--tw-color-text-brand-secondary);
-      text-decoration: underline;
-    }
+  .link-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: normal;
   }
 
-  .add-service-page-stepper {
-    margin-top: 24px;
+  .inactive-link.inactive-link {
+    color: var(--tw-color-text-secondary);
   }
 
-  .add-service-page-step-body {
-    margin-top: 30px;
-  }
-
-  .breadcrumb-container.service-flow-breadcrumb {
-    ol {
-      color: var(--tw-color-text-tertiary);
-      font-family: Inter, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      line-height: normal;
-    }
-
-    .link-title {
-      font-size: 14px;
-      font-weight: 500;
-      line-height: normal;
-    }
-
-    .inactive-link {
-      color: var(--tw-color-text-secondary) !important;
-    }
-
-    .text-grey-muted {
-      color: var(--tw-color-text-tertiary) !important;
-      font-size: 14px;
-      line-height: normal;
-    }
+  .text-grey-muted.text-grey-muted {
+    color: var(--tw-color-text-tertiary);
+    font-size: 14px;
+    line-height: normal;
   }
 }

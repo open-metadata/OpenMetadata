@@ -115,14 +115,9 @@ export function getConnectionStatusIcon(
   let icon = null;
 
   if (isWarning) {
-    icon = (
-      <AlertTriangle
-        className="test-connection-status-icon warning"
-        size={18}
-      />
-    );
+    icon = <AlertTriangle className="tw:text-utility-warning-600" size={18} />;
   } else if (isSuccessful) {
-    icon = <CheckCircle className="test-connection-status-icon" size={18} />;
+    icon = <CheckCircle className="tw:text-utility-success-600" size={18} />;
   }
 
   return icon;
@@ -219,7 +214,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'passed') {
     return (
       <CheckCircle
-        className="test-connection-state-icon"
+        className="tw:text-utility-success-600"
         data-testid="success-badge"
         size={18}
       />
@@ -229,7 +224,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'failed') {
     return (
       <XCircle
-        className="test-connection-state-icon"
+        className="tw:text-utility-error-600"
         data-testid="fail-badge"
         size={18}
       />
@@ -239,14 +234,16 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'warning') {
     return (
       <AlertTriangle
-        className="test-connection-state-icon"
+        className="tw:text-utility-warning-600"
         data-testid="warning-badge"
         size={18}
       />
     );
   }
 
-  return <span className="test-connection-state-icon queued" />;
+  return (
+    <span className="tw:size-2.5 tw:rounded-full tw:border-2 tw:border-gray-300" />
+  );
 }
 
 export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
@@ -261,42 +258,67 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
     statusLabel,
   } = props;
 
+  const resultTextClass = classNames(
+    'tw:min-w-12 tw:text-right tw:text-xs tw:font-medium tw:leading-[18px] tw:text-quaternary',
+    {
+      'tw:text-utility-success-700': state === 'passed',
+      'tw:text-utility-error-700': state === 'failed',
+      'tw:min-w-[210px] tw:text-quaternary': state === 'skipped',
+    }
+  );
+
   return (
     <div
-      className={classNames('test-connection-check-row', {
-        [`test-connection-check-row-${state}`]: state,
-        'test-connection-check-row-expanded': isExpanded,
-      })}
+      className={classNames(
+        'test-connection-check-row [&:not(:first-child)]:tw:border-t [&:not(:first-child)]:tw:border-gray-200',
+        {
+          [`test-connection-check-row-${state}`]: state,
+          'test-connection-check-row-expanded': isExpanded,
+        }
+      )}
       data-testid={`test-connection-step-${step.name}`}
       key={step.name}>
       <button
-        className="test-connection-check-row-button"
+        className="tw:grid tw:w-full tw:grid-cols-[28px_minmax(0,1fr)_auto] tw:items-center tw:gap-3 tw:border-0 tw:bg-transparent tw:px-[18px] tw:py-3.5 tw:text-left tw:cursor-pointer"
         type="button"
         onClick={onToggleExpand}>
-        <div className="test-connection-check-status">
+        <div className="tw:flex tw:items-center tw:justify-center">
           {getConnectionStepIcon(state)}
         </div>
-        <div className="test-connection-check-copy">
-          <div className="test-connection-check-title-row">
-            <span className="test-connection-check-title">{label}</span>
-            <span className="test-connection-method-chip">{step.name}</span>
+        <div className="tw:min-w-0">
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5">
+            <span className="tw:overflow-hidden tw:text-sm tw:font-medium tw:leading-5 tw:text-primary tw:text-ellipsis tw:whitespace-nowrap">
+              {label}
+            </span>
+            <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-2 tw:text-[11px] tw:font-semibold tw:leading-4 tw:text-quaternary">
+              {step.name}
+            </span>
             {step.mandatory && (
-              <span className="test-connection-required-chip">
+              <span
+                className={classNames(
+                  'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
+                  'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-[7px]',
+                  'tw:text-[11px] tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-brand-700'
+                )}>
                 {requiredLabel}
               </span>
             )}
           </div>
         </div>
-        <div className="test-connection-check-meta">
-          <span className="test-connection-result-text">{statusLabel}</span>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <span className={resultTextClass}>{statusLabel}</span>
           {isExpanded ? (
-            <ChevronDown className="test-connection-chevron" size={18} />
+            <ChevronDown className="tw:text-gray-400" size={18} />
           ) : (
-            <ChevronRight className="test-connection-chevron" size={18} />
+            <ChevronRight className="tw:text-gray-400" size={18} />
           )}
         </div>
       </button>
-      {isExpanded && <pre className="test-connection-step-log">{details}</pre>}
+      {isExpanded && (
+        <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:leading-[18px] tw:text-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[54px]">
+          {details}
+        </pre>
+      )}
     </div>
   );
 }
@@ -324,18 +346,24 @@ export function ConnectionStatusBanner(
     totalCount,
   } = props;
 
+  const bannerClass = classNames(
+    'tw:grid tw:grid-cols-[minmax(0,1fr)_180px] tw:items-center tw:gap-[18px] tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
+    {
+      'tw:border-utility-brand-200 tw:bg-utility-brand-50':
+        !isSuccessful && !isWarning && !isFailed,
+      'tw:flex tw:border-utility-success-200 tw:bg-utility-success-50':
+        isSuccessful,
+      'tw:border-utility-warning-200 tw:bg-utility-warning-50': isWarning,
+      'tw:border-utility-error-200 tw:bg-utility-error-50': isFailed,
+    }
+  );
+
   return (
-    <div
-      className={classNames('test-connection-status-banner', {
-        'test-connection-status-banner-success': isSuccessful,
-        'test-connection-status-banner-warning': isWarning,
-        'test-connection-status-banner-failed': isFailed,
-        'test-connection-status-banner-running': isTestingConnection,
-      })}>
+    <div className={bannerClass}>
       <div>
-        <div className="test-connection-status-title-row">
+        <div className="tw:flex tw:items-center tw:gap-2.5">
           {getConnectionStatusIcon(isWarning, isSuccessful)}
-          <span className="test-connection-status-title">
+          <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
             {getConnectionStatusText({
               isTestingConnection,
               isWarning,
@@ -347,7 +375,7 @@ export function ConnectionStatusBanner(
           </span>
         </div>
         {!isSuccessful && (
-          <div className="test-connection-status-subtitle">
+          <div className="tw:mt-0.5 tw:leading-[18px] tw:text-secondary">
             {t('message.test-connection-checks-passed-count', {
               passed: passedCount,
               total: totalCount,
@@ -356,9 +384,11 @@ export function ConnectionStatusBanner(
         )}
       </div>
       {!isSuccessful && (
-        <div className="test-connection-progress-bar tw:flex tw:items-center tw:gap-2">
+        <div className="tw:flex tw:items-center tw:gap-2">
           <ProgressBarBase className="tw:flex-1" value={progressPercent} />
-          <span data-testid="progress-bar-value">{`${progressPercent}%`}</span>
+          <span
+            className="tw:min-w-[40px] tw:font-semibold tw:text-secondary"
+            data-testid="progress-bar-value">{`${progressPercent}%`}</span>
         </div>
       )}
     </div>
@@ -377,27 +407,41 @@ export function ConnectionGateCard(
   const { gateDescription, gateResult, isGateExpanded, onToggleGate, t } =
     props;
 
+  const gateCardClass = classNames(
+    'tw:overflow-hidden tw:rounded-xl tw:border',
+    {
+      'tw:border-gray-300':
+        !gateResult?.passed && !(gateResult && !gateResult.passed),
+      'tw:border-utility-success-200 tw:bg-utility-success-50':
+        gateResult?.passed,
+      'tw:border-utility-error-200 tw:bg-utility-error-50':
+        gateResult && !gateResult.passed,
+    }
+  );
+
   return (
-    <div
-      className={classNames('test-connection-gate-card', {
-        'test-connection-gate-card-passed': gateResult?.passed,
-        'test-connection-gate-card-failed': gateResult && !gateResult.passed,
-      })}
-      data-testid="connection-gate-phase">
+    <div className={gateCardClass} data-testid="connection-gate-phase">
       <button
-        className="test-connection-gate-main"
+        className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-4 tw:border-0 tw:bg-transparent tw:px-4 tw:py-3.5 tw:text-left"
         type="button"
         onClick={onToggleGate}>
-        <div className="test-connection-gate-copy">
-          <div className="test-connection-gate-title">
+        <div className="tw:min-w-0">
+          <div className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
             {t('label.establish-connection')}
           </div>
-          <div className="test-connection-gate-description">
+          <div className="tw:mt-0.5 tw:leading-[18px] tw:text-secondary">
             {gateDescription}
           </div>
         </div>
-        <div className="test-connection-gate-meta">
-          <span className="test-connection-gate-chip">{t('label.gate')}</span>
+        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
+          <span
+            className={classNames(
+              'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
+              'tw:border-utility-success-200 tw:bg-[#dcfae6] tw:px-2',
+              'tw:text-[11px] tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-success-700'
+            )}>
+            {t('label.gate')}
+          </span>
           {getConnectionStepIcon(getGateState(gateResult))}
           {isGateExpanded ? (
             <ChevronDown size={18} />
@@ -407,11 +451,19 @@ export function ConnectionGateCard(
         </div>
       </button>
       {isGateExpanded && (
-        <div className="test-connection-gate-pills">
-          <span>{t('label.resolve-host')}</span>
-          <span>{t('label.open-socket')}</span>
-          <span>{t('label.authenticate')}</span>
-          <span>{t('label.open-session')}</span>
+        <div className="tw:flex tw:flex-wrap tw:gap-2 tw:px-4 tw:pb-3.5">
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+            {t('label.resolve-host')}
+          </span>
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+            {t('label.open-socket')}
+          </span>
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+            {t('label.authenticate')}
+          </span>
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+            {t('label.open-session')}
+          </span>
         </div>
       )}
     </div>
@@ -449,9 +501,9 @@ export function ConnectionCapabilitySection(
 
   return (
     <div
-      className="test-connection-capability-section"
+      className="tw:flex tw:flex-col tw:gap-2"
       data-testid="capability-checks-phase">
-      <div className="test-connection-section-header">
+      <div className="tw:flex tw:items-center tw:justify-between tw:text-[11px] tw:font-bold tw:uppercase tw:leading-4 tw:tracking-[0.04em] tw:text-quaternary">
         <span>{t('label.capability-check-plural')}</span>
         <span>
           {t('message.test-connection-checks-passed-count', {
@@ -462,7 +514,7 @@ export function ConnectionCapabilitySection(
           })}
         </span>
       </div>
-      <div className="test-connection-check-list">
+      <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-gray-200 tw:bg-white">
         {capabilitySteps.map((step) => {
           const result = getConnectionStepResult(step);
           const state = getStepState(
@@ -526,9 +578,13 @@ export function ConnectionRawLogSection(
       });
 
   return (
-    <div className="raw-connection-log">
+    <div className="tw:flex tw:flex-col tw:items-stretch tw:gap-3">
       <button
-        className="raw-connection-log-toggle"
+        className={classNames(
+          'tw:inline-flex tw:max-w-full tw:w-max tw:cursor-pointer tw:items-center tw:gap-1',
+          'tw:border-0 tw:bg-transparent tw:p-0 tw:font-medium tw:leading-[18px]',
+          'tw:text-utility-brand-600 tw:text-left tw:whitespace-nowrap'
+        )}
         type="button"
         onClick={() => setShowRawLog((current) => !current)}>
         {showRawLog ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -536,7 +592,7 @@ export function ConnectionRawLogSection(
       </button>
       {showRawLog && (
         <pre
-          className="raw-connection-log-content"
+          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:leading-[18px] tw:text-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
           data-testid="raw-connection-log">
           {rawLog}
         </pre>
@@ -596,7 +652,7 @@ export function ConnectionFooterActions(
   return (
     <>
       <Button
-        className="test-connection-modal-copy-button"
+        className="tw:mr-auto"
         color="secondary"
         data-testid="copy-log-button"
         iconLeading={<Copy01 size={16} />}

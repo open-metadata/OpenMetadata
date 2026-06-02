@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Select } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import {
   CheckCircle,
@@ -50,7 +51,6 @@ import {
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
-import './filters-config-form.less';
 import { FiltersConfigFormProps } from './FiltersConfigForm.interface';
 
 type IconComponent = ComponentType<
@@ -649,10 +649,13 @@ function PreviewRuleChip({
 }>) {
   return (
     <span
-      className={`filters-config-form__preview-rule filters-config-form__preview-rule--${tone}`}>
-      <span className="filters-config-form__preview-rule-operator">
-        {operatorLabel}
-      </span>
+      className={cx(
+        'tw:inline-flex tw:max-w-full tw:items-center tw:gap-1 tw:rounded-full tw:px-2 tw:py-[3px] tw:text-[11.5px] tw:font-semibold tw:leading-[18px]',
+        tone === 'include'
+          ? 'tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
+          : 'tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-700'
+      )}>
+      <span className="tw:font-medium tw:text-quaternary">{operatorLabel}</span>
       <span>{condition.value}</span>
     </span>
   );
@@ -673,14 +676,17 @@ function ConditionChip({
 }>) {
   return (
     <span
-      className={`filters-config-form__chip filters-config-form__chip--${tone}`}>
-      <span className="filters-config-form__chip-operator">
-        {operatorLabel}
-      </span>
+      className={cx(
+        'tw:inline-flex tw:max-w-full tw:items-center tw:gap-1 tw:rounded-full tw:px-2 tw:py-1 tw:text-xs tw:font-semibold tw:leading-[18px]',
+        tone === 'include'
+          ? 'tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
+          : 'tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-700'
+      )}>
+      <span className="tw:text-quaternary tw:font-medium">{operatorLabel}</span>
       <span>{condition.value}</span>
       <button
         aria-label={removeLabel}
-        className="filters-config-form__chip-remove"
+        className="tw:inline-grid tw:size-4 tw:cursor-pointer tw:place-items-center tw:border-0 tw:bg-transparent tw:p-0 tw:text-current"
         type="button"
         onClick={onRemove}>
         <XClose size={12} />
@@ -699,18 +705,15 @@ function OperatorSelect({
   const { t } = useTranslation();
 
   return (
-    <span className="filters-config-form__operator-select-wrap">
-      <select
-        className="filters-config-form__operator-select"
+    <span className="tw:relative tw:flex-[0_0_148px]">
+      <Select
+        size="sm"
         value={value}
-        onChange={(event) => onChange(event.target.value as FilterOperator)}>
+        onChange={(key) => onChange(key as FilterOperator)}>
         {Object.entries(OPERATOR_LABEL_KEYS).map(([operator, labelKey]) => (
-          <option key={operator} value={operator}>
-            {t(labelKey)}
-          </option>
+          <Select.Item id={operator} key={operator} label={t(labelKey)} />
         ))}
-      </select>
-      <ChevronDown className="filters-config-form__operator-select-icon" />
+      </Select>
     </span>
   );
 }
@@ -756,12 +759,14 @@ function ConditionComposer({
   };
 
   return (
-    <div className="filters-config-form__composer">
+    <div className="tw:flex tw:items-center tw:gap-2">
       <OperatorSelect value={operator} onChange={setOperator} />
       <input
         className={cx(
-          'filters-config-form__composer-input',
-          isRegex && 'filters-config-form__composer-input--mono'
+          'tw:h-[38px] tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-primary tw:bg-primary',
+          'tw:px-3 tw:text-sm tw:text-primary tw:shadow-xs tw:outline-0',
+          'placeholder:tw:text-disabled focus:tw:border-utility-brand-500',
+          isRegex && 'tw:font-mono'
         )}
         placeholder={isRegex ? '^prefix.*$' : placeholder}
         value={value}
@@ -771,7 +776,16 @@ function ConditionComposer({
         onKeyDown={handleKeyDown}
       />
       <button
-        className={`filters-config-form__composer-add filters-config-form__composer-add--${tone}`}
+        className={cx(
+          'tw:inline-flex tw:h-[38px] tw:shrink-0 tw:items-center tw:justify-center',
+          'tw:gap-1.5 tw:rounded-lg tw:border tw:border-transparent tw:px-3.5',
+          'tw:font-semibold tw:text-white tw:shadow-xs tw:cursor-pointer',
+          'disabled:tw:cursor-default disabled:tw:border-secondary',
+          'disabled:tw:bg-secondary disabled:tw:text-disabled disabled:tw:shadow-none',
+          tone === 'exclude'
+            ? 'tw:bg-utility-error-600'
+            : 'tw:bg-utility-brand-600'
+        )}
         disabled={!trimmedValue}
         type="button"
         onClick={commit}>
@@ -794,14 +808,14 @@ function RulePreview({
   const excludeCount = filter.excludes.length;
 
   return (
-    <div className="filters-config-form__preview">
-      <div className="filters-config-form__preview-header">
-        <Eye className="filters-config-form__preview-icon" size={15} />
-        <span className="filters-config-form__preview-title">
+    <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
+      <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
+        <Eye className="tw:text-utility-brand-600" size={15} />
+        <span className="tw:text-xs] tw:font-semibold tw:leading-[18px] tw:text-primary">
           {t('label.preview')}
         </span>
       </div>
-      <p className="filters-config-form__preview-text">
+      <p className="tw:m-0 tw:font-normal tw:leading-5 tw:text-tertiary">
         {t(getScopeSummaryKey(filter), {
           entity: section.label.toLowerCase(),
           excludeCount,
@@ -811,13 +825,13 @@ function RulePreview({
         })}
       </p>
       {includeCount > 0 && (
-        <div className="filters-config-form__preview-rule-group">
-          <span className="filters-config-form__preview-rule-label">
+        <div className="tw:mt-3 tw:grid tw:gap-1.5">
+          <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
             {t('label.include-entity', {
               entity: t(getRuleLabelKey(includeCount)),
             })}
           </span>
-          <div className="filters-config-form__preview-rule-row">
+          <div className="tw:flex tw:flex-wrap tw:gap-1.5">
             {filter.includes.map((condition, index) => (
               <PreviewRuleChip
                 condition={condition}
@@ -830,13 +844,13 @@ function RulePreview({
         </div>
       )}
       {excludeCount > 0 && (
-        <div className="filters-config-form__preview-rule-group">
-          <span className="filters-config-form__preview-rule-label">
+        <div className="tw:mt-3 tw:grid tw:gap-1.5">
+          <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
             {t('label.exclude-entity', {
               entity: t(getRuleLabelKey(excludeCount)),
             })}
           </span>
-          <div className="filters-config-form__preview-rule-row">
+          <div className="tw:flex tw:flex-wrap tw:gap-1.5">
             {filter.excludes.map((condition, index) => (
               <PreviewRuleChip
                 condition={condition}
@@ -867,15 +881,15 @@ function RegexDisclosure({
   }
 
   return (
-    <div className="filters-config-form__regex">
+    <div className="tw:-mt-1.5">
       <button
-        className="filters-config-form__regex-toggle"
+        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-utility-brand-700 tw:cursor-pointer"
         type="button"
         onClick={() => setIsOpen((currentValue) => !currentValue)}>
         <ChevronRight
           className={cx(
-            'filters-config-form__regex-toggle-icon',
-            isOpen && 'filters-config-form__regex-toggle-icon--open'
+            'tw:transition-transform tw:duration-150',
+            isOpen && 'tw:rotate-90'
           )}
           size={13}
         />
@@ -884,17 +898,17 @@ function RegexDisclosure({
           : t('label.show-equivalent-regex')}
       </button>
       {isOpen && (
-        <div className="filters-config-form__regex-block">
+        <div className="tw:mt-2 tw:grid tw:gap-1.5 tw:rounded-[10px] tw:bg-gray-900 tw:p-3">
           {includes.map((regex) => (
             <code
-              className="filters-config-form__regex-line filters-config-form__regex-line--include"
+              className="tw:font-mono tw:text-xs tw:font-medium tw:leading-[18px] tw:text-blue-300"
               key={`include-${regex}`}>
               {t('message.includes-regex-line', { regex })}
             </code>
           ))}
           {excludes.map((regex) => (
             <code
-              className="filters-config-form__regex-line filters-config-form__regex-line--exclude"
+              className="tw:font-mono tw:text-xs tw:font-medium tw:leading-[18px] tw:text-red-300"
               key={`exclude-${regex}`}>
               {t('message.excludes-regex-line', { regex })}
             </code>
@@ -975,49 +989,55 @@ function FilterSectionCard({
 
   return (
     <section
-      className="filters-config-form__section"
+      className="tw:overflow-hidden tw:rounded-2xl tw:border tw:border-primary tw:bg-primary tw:shadow-xs"
       data-testid={`filter-section-${section.fieldName}`}>
       <button
         className={cx(
-          'filters-config-form__section-header',
-          isOpen && 'filters-config-form__section-header--open'
+          'tw:flex tw:w-full tw:items-center tw:gap-3 tw:border-0 tw:bg-primary tw:px-[18px] tw:py-4 tw:text-left tw:cursor-pointer',
+          isOpen && 'tw:bg-secondary'
         )}
         type="button"
         onClick={() => {
           onFocus(section.fieldName);
           onToggle();
         }}>
-        <span className="filters-config-form__section-icon">
+        <span className="tw:grid tw:size-[34px] tw:shrink-0 tw:place-items-center tw:rounded-[9px] tw:bg-utility-brand-50 tw:text-utility-brand-600">
           <Icon size={18} />
         </span>
-        <span className="filters-config-form__section-title">
+        <span className="tw:text-[15px] tw:font-semibold tw:leading-[22px] tw:text-primary">
           {section.label}
         </span>
         <span
-          className={`filters-config-form__summary-pill filters-config-form__summary-pill--${summary.tone}`}>
-          <span className="filters-config-form__summary-dot" />
+          className={cx(
+            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-[11.5px] tw:font-semibold tw:leading-[18px]',
+            summary.tone === 'success'
+              ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700'
+              : 'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
+          )}>
+          <span className="tw:size-1.5 tw:rounded-full tw:bg-current" />
           {t(summary.textKey, summary.values)}
         </span>
         <ChevronDown
           className={cx(
-            'filters-config-form__section-chevron',
-            isOpen && 'filters-config-form__section-chevron--open'
+            'tw:ml-auto tw:shrink-0 tw:text-quaternary tw:transition-transform tw:duration-150',
+            isOpen && 'tw:rotate-180'
           )}
           size={18}
         />
       </button>
 
       {isOpen && (
-        <div className="filters-config-form__section-body">
+        <div className="tw:grid tw:gap-[18px] tw:border-t tw:border-secondary tw:p-[18px]">
           <div>
-            <div className="filters-config-form__field-label">
+            <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
               {t('label.what-to-scan')}
             </div>
-            <div className="filters-config-form__segmented-control">
+            <div className="tw:inline-grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
               <button
                 className={cx(
-                  'filters-config-form__segment',
-                  !filter.restrict && 'filters-config-form__segment--active'
+                  'tw:rounded-[7px] tw:border tw:border-transparent tw:bg-transparent tw:px-4 tw:py-2 tw:font-medium tw:leading-[18px] tw:text-tertiary tw:cursor-pointer',
+                  !filter.restrict &&
+                    'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
                 )}
                 type="button"
                 onClick={() =>
@@ -1033,8 +1053,9 @@ function FilterSectionCard({
               </button>
               <button
                 className={cx(
-                  'filters-config-form__segment',
-                  filter.restrict && 'filters-config-form__segment--active'
+                  'tw:rounded-[7px] tw:border tw:border-transparent tw:bg-transparent tw:px-4 tw:py-2 tw:font-medium tw:leading-[18px] tw:text-tertiary tw:cursor-pointer',
+                  filter.restrict &&
+                    'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
                 )}
                 type="button"
                 onClick={() =>
@@ -1052,13 +1073,13 @@ function FilterSectionCard({
 
           {filter.restrict && (
             <div>
-              <div className="filters-config-form__include-title">
+              <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-utility-brand-700">
                 {t('message.include-only-entities-where-name', {
                   entity: section.label.toLowerCase(),
                 })}
               </div>
               {filter.includes.length > 0 && (
-                <div className="filters-config-form__chip-row">
+                <div className="tw:mb-2.5 tw:flex tw:flex-wrap tw:gap-1.5">
                   {filter.includes.map((condition, index) => (
                     <ConditionChip
                       condition={condition}
@@ -1093,17 +1114,19 @@ function FilterSectionCard({
             </div>
           )}
 
-          <div className="filters-config-form__exclude-area">
-            <div className="filters-config-form__exclude-header">
-              <span className="filters-config-form__exclude-title">
+          <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
+            <div className="tw:my-3.5 tw:mb-2 tw:flex tw:items-center tw:gap-2.5">
+              <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-utility-error-700">
                 {t('label.always-exclude')}
               </span>
               {hasSystemExcludes && (
                 <button
                   className={cx(
-                    'filters-config-form__system-button',
+                    'tw:ml-auto tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-[7px]',
+                    'tw:border tw:border-primary tw:bg-primary tw:px-2.5 tw:py-[5px]',
+                    'tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary tw:cursor-pointer',
                     hasSystemExcludesEnabled &&
-                      'filters-config-form__system-button--active'
+                      'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
                   )}
                   type="button"
                   onClick={toggleSystemExcludes}>
@@ -1120,7 +1143,7 @@ function FilterSectionCard({
             </div>
 
             {filter.excludes.length > 0 && (
-              <div className="filters-config-form__chip-row">
+              <div className="tw:mb-2.5 tw:flex tw:flex-wrap tw:gap-1.5">
                 {filter.excludes.map((condition, index) => (
                   <ConditionChip
                     condition={condition}
@@ -1324,33 +1347,35 @@ function FiltersConfigForm({
   const connectionHost = getConnectionDisplayHost(validConfig, serviceType);
 
   return (
-    <div className="filters-config-form" data-testid={FORM_TEST_ID}>
+    <div
+      className="tw:grid tw:gap-4 tw:font-[Inter,sans-serif]"
+      data-testid={FORM_TEST_ID}>
       <div>
-        <h2 className="filters-config-form__title">
+        <h2 className="tw:m-0 tw:text-lg tw:font-semibold tw:leading-7 tw:text-primary">
           {t('label.what-should-we-ingest')}
         </h2>
-        <p className="filters-config-form__description">
+        <p className="tw:mt-1 tw:text-sm tw:font-normal tw:leading-5 tw:text-tertiary">
           {t('message.what-to-ingest-description')}
         </p>
       </div>
 
-      <div className="filters-config-form__success-banner">
-        <span className="filters-config-form__success-icon">
+      <div className="tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
+        <span className="tw:grid tw:size-[30px] tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-white tw:text-utility-success-600">
           <CheckCircle size={17} />
         </span>
         <div>
-          <div className="filters-config-form__success-title">
+          <div className="tw:font-semibold tw:leading-5 tw:text-primary">
             {t('message.connected-to-host', {
               host: connectionHost,
             })}
           </div>
-          <div className="filters-config-form__success-description">
+          <div className="tw:mt-px tw:text-xs tw:font-normal tw:leading-[18px] tw:text-tertiary">
             {t('message.connection-verified-ingestion-scope')}
           </div>
         </div>
       </div>
 
-      <div className="filters-config-form__sections">
+      <div className="tw:grid tw:gap-3">
         {filterSections.map((section) => {
           const filter = filters[section.fieldName];
 
@@ -1377,7 +1402,7 @@ function FiltersConfigForm({
 
       {isEmpty(filterSections) && (
         <div
-          className="filters-config-form__empty"
+          className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-6 tw:text-center tw:font-medium tw:leading-5 tw:text-tertiary"
           data-testid="no-config-available">
           {t('message.no-filter-patterns-available')}
         </div>
@@ -1387,23 +1412,25 @@ function FiltersConfigForm({
         <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
       )}
 
-      <div className="filters-config-form__actions">
+      <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-2 tw:flex tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
         {onCancel && (
-          <button
-            className="filters-config-form__back"
-            disabled={isSaving}
+          <Button
+            color="secondary"
+            isDisabled={isSaving}
+            size="sm"
             type="button"
             onClick={onCancel}>
             {backText}
-          </button>
+          </Button>
         )}
-        <button
-          className="filters-config-form__submit"
-          disabled={isSaving}
+        <Button
+          color="primary"
+          isDisabled={isSaving}
+          size="sm"
           type="button"
           onClick={handleSubmit}>
           {submitText}
-        </button>
+        </Button>
       </div>
     </div>
   );
