@@ -94,6 +94,26 @@
     }
   }
 
+  .ant-btn.ant-btn-icon-only.bordered {
+    border-color: @border-light;
+    background-color: transparent;
+
+    &:hover,
+    &:focus {
+      border-color: @border-light;
+      background-color: transparent;
+    }
+
+    svg {
+      color: @de-active-color;
+    }
+
+    &:hover svg,
+    &:focus svg {
+      color: @de-active-color;
+    }
+  }
+
   // Editable fields (Domain · Owners · Tier · Certification · Retention) get a 20px label
   // row from the edit pencil (.icon-button-sm). Entity-extra fields (Type, Usage, …) have
   // a bare text label, so their value floats up out of line. When the pencils are shown,
