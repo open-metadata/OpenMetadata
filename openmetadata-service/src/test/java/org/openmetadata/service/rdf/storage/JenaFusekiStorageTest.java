@@ -16,11 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
 /**
  * Unit tests for the package-private helpers on {@link JenaFusekiStorage}.
@@ -34,6 +43,165 @@ import org.junit.jupiter.api.Test;
  */
 @DisplayName("JenaFusekiStorage helper tests")
 class JenaFusekiStorageTest {
+
+  @Nested
+  @DisplayName("configuration defaults")
+  class ConfigurationDefaultTests {
+
+    @Test
+    @DisplayName("unset values use production-safe defaults")
+    void unsetValuesUseDefaults() {
+      RdfConfiguration config = new RdfConfiguration();
+
+      assertEquals(
+          JenaFusekiStorage.DEFAULT_CONNECT_TIMEOUT_MS,
+          JenaFusekiStorage.resolveConnectTimeoutMs(config));
+      assertEquals(
+          JenaFusekiStorage.DEFAULT_REQUEST_TIMEOUT_MS,
+          JenaFusekiStorage.resolveRequestTimeoutMs(config));
+      assertEquals(
+          JenaFusekiStorage.DEFAULT_WRITE_MAX_RETRIES,
+          JenaFusekiStorage.resolveWriteMaxRetries(config));
+      assertEquals(
+          JenaFusekiStorage.DEFAULT_WRITE_RETRY_INITIAL_BACKOFF_MS,
+          JenaFusekiStorage.resolveWriteRetryInitialBackoffMs(config));
+      assertEquals(
+          JenaFusekiStorage.DEFAULT_WRITE_RETRY_MAX_BACKOFF_MS,
+          JenaFusekiStorage.resolveWriteRetryMaxBackoffMs(config));
+    }
+
+    @Test
+    @DisplayName("positive configured values override defaults")
+    void configuredValuesOverrideDefaults() {
+      RdfConfiguration config =
+          new RdfConfiguration()
+              .withConnectTimeoutMs(1234)
+              .withRequestTimeoutMs(9876)
+              .withWriteMaxRetries(4)
+              .withWriteRetryInitialBackoffMs(55)
+              .withWriteRetryMaxBackoffMs(777);
+
+      assertEquals(1234, JenaFusekiStorage.resolveConnectTimeoutMs(config));
+      assertEquals(9876, JenaFusekiStorage.resolveRequestTimeoutMs(config));
+      assertEquals(4, JenaFusekiStorage.resolveWriteMaxRetries(config));
+      assertEquals(55, JenaFusekiStorage.resolveWriteRetryInitialBackoffMs(config));
+      assertEquals(777, JenaFusekiStorage.resolveWriteRetryMaxBackoffMs(config));
+    }
+  }
+
+  @Nested
+  @DisplayName("request timeout classification")
+  class RequestTimeoutClassificationTests {
+
+    @Test
+    @DisplayName("CompletableFuture timeout wrappers count as circuit-breaker failures")
+    void timeoutExceptionCountsAsCircuitBreakerFailure() {
+      RuntimeException wrapped =
+          new RuntimeException("bulkStoreEntities timed out", new TimeoutException());
+
+      assertTrue(JenaFusekiStorage.isCircuitBreakerFailure(wrapped));
+    }
+
+    @Test
+    @DisplayName("payload failures do not count as circuit-breaker failures")
+    void payloadFailureDoesNotCountAsCircuitBreakerFailure() {
+      assertFalse(
+          JenaFusekiStorage.isCircuitBreakerFailure(new IllegalArgumentException("bad RDF")));
+    }
+  }
+
+  @Nested
+  @DisplayName("write retry policy")
+  class WriteRetryPolicyTests {
+
+    @Test
+    @DisplayName("non-transient write failures are not retried or delayed")
+    void nonTransientWriteFailuresAreNotRetriedOrDelayed() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+      AtomicLong delayMs = new AtomicLong();
+      IllegalArgumentException failure = new IllegalArgumentException("bad RDF payload");
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  JenaFusekiStorage.runWriteWithRetry(
+                      () -> {
+                        attempts.incrementAndGet();
+                        throw failure;
+                      },
+                      "testWrite",
+                      2,
+                      250,
+                      2_000,
+                      delayMs::addAndGet,
+                      () -> {},
+                      () -> {},
+                      failureRecords::incrementAndGet,
+                      () -> false));
+
+      assertSame(failure, thrown);
+      assertEquals(1, attempts.get());
+      assertEquals(0, failureRecords.get());
+      assertEquals(0, delayMs.get());
+    }
+
+    @Test
+    @DisplayName("transient write failures are retried with injected delay")
+    void transientWriteFailuresAreRetriedWithInjectedDelay() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger successes = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+      AtomicLong delayMs = new AtomicLong();
+
+      JenaFusekiStorage.runWriteWithRetry(
+          () -> {
+            if (attempts.incrementAndGet() <= 2) {
+              throw new RuntimeException("timed out", new TimeoutException());
+            }
+          },
+          "testWrite",
+          2,
+          250,
+          2_000,
+          delayMs::addAndGet,
+          () -> {},
+          successes::incrementAndGet,
+          failureRecords::incrementAndGet,
+          () -> false);
+
+      assertEquals(3, attempts.get());
+      assertEquals(1, successes.get());
+      assertEquals(2, failureRecords.get());
+      assertEquals(750, delayMs.get());
+    }
+  }
+
+  @Nested
+  @DisplayName("entity upsert query")
+  class EntityUpsertQueryTests {
+
+    @Test
+    @DisplayName("storeEntity helper emits one DELETE + INSERT DATA update")
+    void entityUpsertCombinesDeleteAndInsert() {
+      UUID entityId = UUID.randomUUID();
+      String entityUri = "https://open-metadata.org/entity/table/" + entityId;
+      Model model = ModelFactory.createDefaultModel();
+      model
+          .createResource(entityUri)
+          .addProperty(
+              model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), "orders");
+
+      String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
+
+      assertTrue(update.contains("DELETE { GRAPH <https://open-metadata.org/graph/knowledge>"));
+      assertTrue(
+          update.contains("INSERT DATA { GRAPH <https://open-metadata.org/graph/knowledge>"));
+      assertTrue(update.indexOf("DELETE") < update.indexOf("INSERT DATA"));
+      assertTrue(update.contains("orders"));
+    }
+  }
 
   @Nested
   @DisplayName("parseDatasetEndpoint")
