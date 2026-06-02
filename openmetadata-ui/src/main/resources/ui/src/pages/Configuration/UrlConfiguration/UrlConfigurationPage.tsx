@@ -29,6 +29,7 @@ import { OpenMetadataBaseURLConfiguration } from '../../../generated/configurati
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import { BRAND_NAME } from '../../../utils/BrandData/BrandConstants';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -44,7 +45,7 @@ const UrlConfigurationPage = () => {
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
         })
       ),
     []
@@ -117,7 +118,7 @@ const UrlConfigurationPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.open-metadata-url')}
+                {t('label.open-metadata-url', { brandName: BRAND_NAME })}
               </Typography.Text>
             </Col>
             <Col span={24}>

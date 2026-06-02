@@ -39,7 +39,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       <Row className="text-center" gutter={[16, 16]}>
         <Col className="mt-4" span={24}>
           <Icon
-            alt={t('label.open-metadata-logo')}
+            alt={`${brandClassBase.getPageTitle()} Logo`}
             className="align-middle"
             component={LogoMonogram}
             data-testid="omd-logo"

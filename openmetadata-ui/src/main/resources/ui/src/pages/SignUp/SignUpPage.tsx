@@ -119,7 +119,7 @@ const SignUp = () => {
           <OMDLogo
             data-testid="om-logo"
             height={50}
-            name={t('label.open-metadata-logo')}
+            name={`${brandClassBase.getPageTitle()} Logo`}
             width={50}
           />
           <Typography.Title

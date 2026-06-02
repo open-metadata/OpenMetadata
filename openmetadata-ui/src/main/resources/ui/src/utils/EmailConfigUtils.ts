@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import i18n from '../utils/i18next/LocalUtil';
+import { BRAND_NAME } from '../utils/BrandData/BrandConstants';
 
 export const getEmailConfigFieldLabels = (fieldName: string) => {
   switch (fieldName) {
@@ -19,7 +20,7 @@ export const getEmailConfigFieldLabels = (fieldName: string) => {
     case 'enableSmtpServer':
       return i18n.t('label.enable-smtp-server');
     case 'openMetadataUrl':
-      return i18n.t('label.open-metadata-url');
+      return i18n.t('label.open-metadata-url', { brandName: BRAND_NAME });
     case 'password':
       return i18n.t('label.password');
     case 'senderMail':

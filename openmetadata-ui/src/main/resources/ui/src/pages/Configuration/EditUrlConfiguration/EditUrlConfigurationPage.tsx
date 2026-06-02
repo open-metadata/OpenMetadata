@@ -36,6 +36,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import { BRAND_NAME } from '../../../utils/BrandData/BrandConstants';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -72,7 +73,7 @@ const EditUrlConfigurationPage = () => {
       },
       {
         name: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -82,7 +83,7 @@ const EditUrlConfigurationPage = () => {
       {
         name: t('label.edit-entity', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+            entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
           }),
         }),
         url: '',
@@ -106,7 +107,7 @@ const EditUrlConfigurationPage = () => {
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+            entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
           }),
         })
       );
@@ -138,7 +139,7 @@ const EditUrlConfigurationPage = () => {
           setActiveField(e.target.id);
         }}>
         <Item
-          label={t('label.open-metadata-url')}
+          label={t('label.open-metadata-url', { brandName: BRAND_NAME })}
           name="openMetadataUrl"
           rules={[{ required: true }]}>
           <Input
@@ -194,7 +195,7 @@ const EditUrlConfigurationPage = () => {
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
         }),
       })}
       secondPanel={{

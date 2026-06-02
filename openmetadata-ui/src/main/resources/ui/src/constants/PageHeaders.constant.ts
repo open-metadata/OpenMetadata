@@ -226,7 +226,7 @@ export const PAGE_HEADERS = {
   },
   OM_URL_CONFIG: {
     header: 'label.entity-configuration',
-    headerParams: { entity: 'label.open-metadata-url' },
+    headerParams: { entity: `${brandClassBase.getPageTitle()} URL` },
     subHeader: 'message.om-url-configuration-message',
     subHeaderParams: { brandName: brandClassBase.getPageTitle() },
   },
