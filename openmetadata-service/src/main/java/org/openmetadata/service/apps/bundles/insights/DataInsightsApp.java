@@ -55,10 +55,47 @@ import org.quartz.JobExecutionContext;
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
   private static final String DATA_INSIGHTS_LOG_PREFIX = "[Data Insights]";
+  private static final String UNKNOWN_TRIGGER_TYPE = "unknown";
+  private static final String PHASE_COMPLETED_LOG =
+      "{} Phase completed: phase={}, elapsedMs={}, total={}, success={}, failed={}";
+  private static final String PHASE_COMPLETED_WITH_ERRORS_LOG =
+      "{} Phase completed with errors: phase={}, elapsedMs={}, total={}, success={}, failed={}, failureCount={}";
+  private static final String RUN_COMPLETED_LOG =
+      "{} Lifecycle run completed: status={}, elapsedMs={}, total={}, success={}, failed={}";
+  private static final String RUN_FAILED_LOG =
+      "{} Lifecycle run finished with failure: status={}, elapsedMs={}, total={}, success={}, failed={}";
+  private static final String RUN_STOPPED_LOG =
+      "{} Lifecycle run stopped: status={}, elapsedMs={}, total={}, success={}, failed={}";
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
+
+  private record LogSummary(long elapsedMs, int totalRecords, int successRecords, int failedRecords) {
+    private Object[] phaseArgs(String phaseName) {
+      return new Object[] {
+        DATA_INSIGHTS_LOG_PREFIX, phaseName, elapsedMs, totalRecords, successRecords, failedRecords
+      };
+    }
+
+    private Object[] phaseErrorArgs(String phaseName, int failureCount) {
+      return new Object[] {
+        DATA_INSIGHTS_LOG_PREFIX,
+        phaseName,
+        elapsedMs,
+        totalRecords,
+        successRecords,
+        failedRecords,
+        failureCount
+      };
+    }
+
+    private Object[] runArgs(EventPublisherJob.Status status) {
+      return new Object[] {
+        DATA_INSIGHTS_LOG_PREFIX, status, elapsedMs, totalRecords, successRecords, failedRecords
+      };
+    }
+  }
 
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
@@ -259,7 +296,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     long runStartedAt = System.currentTimeMillis();
-    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+    String runType =
+        Optional.ofNullable(
+                (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"))
+            .orElse(UNKNOWN_TRIGGER_TYPE);
 
     try {
       initializeJob();
@@ -376,9 +416,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      LOG.error("{} Phase failed: costAnalysis", DATA_INSIGHTS_LOG_PREFIX, ex);
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
+      recordSearchIndexFailure(ex);
     }
 
     return workflowStats;
@@ -401,9 +439,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      LOG.error("{} Phase failed: dataAssets", DATA_INSIGHTS_LOG_PREFIX, ex);
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
+      recordSearchIndexFailure(ex);
     } finally {
       this.activeDataAssetsWorkflow = null;
     }
@@ -426,13 +462,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       try {
         workflow.process();
       } catch (SearchIndexException ex) {
-        LOG.error(
-            "{} Phase failed: dataQuality, entityType={}",
-            DATA_INSIGHTS_LOG_PREFIX,
-            entityType,
-            ex);
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-        jobData.setFailure(ex.getIndexingError());
+        recordSearchIndexFailure(ex);
       }
     }
 
@@ -475,69 +505,53 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   private void logWorkflowPhaseSummary(
       String phaseName, WorkflowStats workflowStats, long phaseStartedAt) {
-    StepStats workflowSummary = workflowStats.getWorkflowStats();
-    int totalRecords = getStepStatValue(workflowSummary.getTotalRecords());
-    int successRecords = getStepStatValue(workflowSummary.getSuccessRecords());
-    int failedRecords = getStepStatValue(workflowSummary.getFailedRecords());
-    long elapsedMs = System.currentTimeMillis() - phaseStartedAt;
-
+    LogSummary summary = buildLogSummary(workflowStats.getWorkflowStats(), phaseStartedAt);
     if (workflowStats.hasFailed()) {
       LOG.warn(
-          "{} Phase completed with errors: phase={}, elapsedMs={}, total={}, success={}, failed={}, failureCount={}",
-          DATA_INSIGHTS_LOG_PREFIX,
-          phaseName,
-          elapsedMs,
-          totalRecords,
-          successRecords,
-          failedRecords,
-          workflowStats.getFailures().size());
-    } else {
-      LOG.info(
-          "{} Phase completed: phase={}, elapsedMs={}, total={}, success={}, failed={}",
-          DATA_INSIGHTS_LOG_PREFIX,
-          phaseName,
-          elapsedMs,
-          totalRecords,
-          successRecords,
-          failedRecords);
+          PHASE_COMPLETED_WITH_ERRORS_LOG,
+          summary.phaseErrorArgs(phaseName, workflowStats.getFailures().size()));
+      return;
     }
+    LOG.info(PHASE_COMPLETED_LOG, summary.phaseArgs(phaseName));
   }
 
   private void logFinalRunSummary(long runStartedAt) {
-    StepStats jobStats = jobData.getStats() != null ? jobData.getStats().getJobStats() : null;
-    int totalRecords = jobStats != null ? getStepStatValue(jobStats.getTotalRecords()) : 0;
-    int successRecords = jobStats != null ? getStepStatValue(jobStats.getSuccessRecords()) : 0;
-    int failedRecords = jobStats != null ? getStepStatValue(jobStats.getFailedRecords()) : 0;
-    long elapsedMs = System.currentTimeMillis() - runStartedAt;
-
-    if (jobData.getStatus() == EventPublisherJob.Status.FAILED) {
-      LOG.error(
-          "{} Lifecycle run finished with failure: status={}, elapsedMs={}, total={}, success={}, failed={}",
-          DATA_INSIGHTS_LOG_PREFIX,
-          jobData.getStatus(),
-          elapsedMs,
-          totalRecords,
-          successRecords,
-          failedRecords);
-    } else if (jobData.getStatus() == EventPublisherJob.Status.STOPPED) {
-      LOG.info(
-          "{} Lifecycle run stopped: status={}, elapsedMs={}, total={}, success={}, failed={}",
-          DATA_INSIGHTS_LOG_PREFIX,
-          jobData.getStatus(),
-          elapsedMs,
-          totalRecords,
-          successRecords,
-          failedRecords);
-    } else {
-      LOG.info(
-          "{} Lifecycle run completed: status={}, elapsedMs={}, total={}, success={}, failed={}",
-          DATA_INSIGHTS_LOG_PREFIX,
-          jobData.getStatus(),
-          elapsedMs,
-          totalRecords,
-          successRecords,
-          failedRecords);
+    LogSummary summary = buildLogSummary(getJobStats(), runStartedAt);
+    EventPublisherJob.Status status = jobData.getStatus();
+    if (status == EventPublisherJob.Status.FAILED) {
+      LOG.error(RUN_FAILED_LOG, summary.runArgs(status));
+      return;
     }
+    if (status == EventPublisherJob.Status.STOPPED) {
+      LOG.info(RUN_STOPPED_LOG, summary.runArgs(status));
+      return;
+    }
+    LOG.info(RUN_COMPLETED_LOG, summary.runArgs(status));
+  }
+
+  private void recordSearchIndexFailure(SearchIndexException ex) {
+    jobData.setStatus(EventPublisherJob.Status.FAILED);
+    jobData.setFailure(ex.getIndexingError());
+  }
+
+  private LogSummary buildLogSummary(StepStats stats, long startedAt) {
+    if (stats == null) {
+      return buildEmptyLogSummary(startedAt);
+    }
+    long elapsedMs = System.currentTimeMillis() - startedAt;
+    return new LogSummary(
+        elapsedMs,
+        getStepStatValue(stats.getTotalRecords()),
+        getStepStatValue(stats.getSuccessRecords()),
+        getStepStatValue(stats.getFailedRecords()));
+  }
+
+  private LogSummary buildEmptyLogSummary(long startedAt) {
+    return new LogSummary(System.currentTimeMillis() - startedAt, 0, 0, 0);
+  }
+
+  private StepStats getJobStats() {
+    return jobData.getStats() != null ? jobData.getStats().getJobStats() : null;
   }
 
   private String formatBackfill() {
