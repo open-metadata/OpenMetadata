@@ -180,6 +180,19 @@ def test_owner_resolver_ignores_scim_results_that_do_not_match_owner():
     metadata.get_reference_by_name.assert_called_once_with(name="100000")
 
 
+def test_owner_resolver_skips_group_lookup_for_unresolved_uuid_owner():
+    api_client = Mock()
+    api_client.list_service_principals.return_value = []
+    metadata = Mock()
+    metadata.get_reference_by_name.return_value = "owner-ref"
+    resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
+
+    assert resolver.get_owner_ref(_APP_ID) == "owner-ref"
+    api_client.list_service_principals.assert_called_once()
+    api_client.list_groups.assert_not_called()
+    metadata.get_reference_by_name.assert_called_once_with(name=_APP_ID)
+
+
 def test_owner_resolver_caches_resolved_owners():
     api_client = Mock()
     api_client.list_groups.return_value = [{"id": "100000", "displayName": "Data Platform"}]
@@ -226,7 +239,7 @@ def test_owner_resolver_falls_back_to_raw_owner_when_scim_fails():
 
     assert resolver.get_owner_ref(_APP_ID) == "owner-ref"
     api_client.list_service_principals.assert_called_once()
-    api_client.list_groups.assert_called_once()
+    api_client.list_groups.assert_not_called()
     metadata.get_reference_by_name.assert_called_once_with(name=_APP_ID)
 
 

@@ -116,6 +116,11 @@ class DatabricksOwnerResolver:
         return None
 
     def _resolve_group(self, owner: str) -> ResolvedDatabricksOwner | None:
+        # Group IDs are numeric and display names are never UUIDs, so skip the
+        # SCIM lookup for UUID owners that failed service-principal resolution.
+        if self._is_service_principal_id(owner):
+            return None
+
         owner_key = owner.casefold()
         filter_attribute = "id" if owner.isdigit() else "displayName"
         try:
