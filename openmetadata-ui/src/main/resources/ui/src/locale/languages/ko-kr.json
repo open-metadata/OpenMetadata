@@ -2823,7 +2823,7 @@
     "feed-asset-action-header": "<0>데이터 자산</0> {{action}}",
     "feed-custom-property-header": "사용자 정의 속성 업데이트됨:",
     "feed-entity-action-header": "<0>{{entity}}</0> {{action}}",
-    "feed-field-action-entity-header": "{{entity}}에 대한 <0>{{field}}</0> {{action}}",
+    "feed-field-action-entity-header": "<0>{{field}}</0> {{action}}",
     "feed-filter-all": "소유하고 팔로우하는 모든 데이터 자산에 대한 피드",
     "feed-filter-following": "팔로우하는 모든 데이터 자산에 대한 피드",
     "feed-filter-owner": "소유한 모든 데이터 자산에 대한 피드",
