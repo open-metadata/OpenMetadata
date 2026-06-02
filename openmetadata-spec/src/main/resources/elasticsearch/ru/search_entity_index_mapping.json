@@ -197,6 +197,13 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fieldNames": {
+        "type": "keyword"
+      },
+      "fieldNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "fields": {
         "properties": {
           "name": {
