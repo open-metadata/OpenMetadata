@@ -54,7 +54,7 @@ VERSIONS = {
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableauserverclient>=0.37,<1",  # >=0.37 uses urllib3>=2.x, aligned with collate-data-diff 0.11.11
+    "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
