@@ -85,7 +85,7 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {

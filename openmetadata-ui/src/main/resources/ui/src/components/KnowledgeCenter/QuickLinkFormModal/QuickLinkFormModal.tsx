@@ -39,7 +39,7 @@ import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   generateFormFields,
   getPopupContainer,

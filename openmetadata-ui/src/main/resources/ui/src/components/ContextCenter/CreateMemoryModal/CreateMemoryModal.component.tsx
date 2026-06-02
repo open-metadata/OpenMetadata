@@ -43,7 +43,15 @@ import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -54,7 +62,6 @@ import {
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
-import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
 import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
@@ -82,7 +89,15 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+
+const TagSelectForm = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
+  )
+);
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;

@@ -38,7 +38,7 @@ jest.mock('../EntityUtils', () => ({
     { name: 'Parent', url: '/parent', activeTitle: false },
     { name: entity.name, url: `/entity/${entity.fullyQualifiedName}` },
   ]),
-  getEntityName: jest.fn((entity) => entity.name),
+  getEntityLabel: jest.fn((entity) => entity.name),
 }));
 jest.mock('../RouterUtils', () => ({
   getGlossaryPath: jest.fn((fqn) => (fqn ? `/glossary/${fqn}` : '/glossary')),

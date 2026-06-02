@@ -18,7 +18,7 @@ import { DataProduct } from '../../../../../generated/entity/domains/dataProduct
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import {
   getClassificationTags,

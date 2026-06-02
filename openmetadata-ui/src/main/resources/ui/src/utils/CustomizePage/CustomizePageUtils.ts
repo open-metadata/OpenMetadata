@@ -24,7 +24,6 @@ import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
-import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -35,7 +34,7 @@ import dataMarketplaceClassBase from '../DataMarketplace/DataMarketplaceClassBas
 import dataProductClassBase from '../DataProduct/DataProductClassBase';
 import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
-import { getEntityName } from '../EntityUtils';
+import { getEntityName } from '../EntityNameUtils';
 import fileClassBase from '../FileClassBase';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
@@ -48,6 +47,7 @@ import tableClassBase from '../TableClassBase';
 import tagClassBase from '../TagClassBase';
 import topicClassBase from '../TopicClassBase';
 import worksheetClassBase from '../WorksheetClassBase';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -147,12 +147,6 @@ export const getGlossaryDefaultTabs = () => {
       editable: false,
     },
   ];
-};
-
-export const getTabLabelFromId = (tab: EntityTabs): string => {
-  const labelKey = TAB_LABEL_MAP[tab];
-
-  return labelKey ? i18n.t(labelKey) : tab;
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {
@@ -825,8 +819,5 @@ export const updateWidgetHeightRecursively = (
   }, [] as WidgetConfig[]);
 
 export const getTabDisplayName = (item: Tab) => {
-  return (
-    item.displayName ??
-    customizeDetailPageClassBase.getTabLabelFromId(item.name as EntityTabs)
-  );
+  return item.displayName ?? getTabLabelFromId(item.name as EntityTabs);
 };

@@ -40,11 +40,9 @@ import {
   deleteIngestionPipelineById,
   getRunHistoryForPipeline,
 } from '../../../../../rest/ingestionPipelineAPI';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
@@ -247,7 +245,7 @@ function IngestionListTable({
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const handleDeleteConfirm = useCallback(async () => {
-    await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
+    await handleDelete(deleteSelection.id, getEntityLabel(deleteSelection));
     afterDeleteAction?.();
   }, [handleDelete, deleteSelection]);
 
@@ -431,7 +429,7 @@ function IngestionListTable({
           <span className="font-medium" data-testid="entityName" />
         }
         values={{
-          entityName: getEntityName(deleteSelection),
+          entityName: getEntityLabel(deleteSelection),
         }}
       />
     ),
@@ -483,7 +481,7 @@ function IngestionListTable({
 
       <EntityDeleteModal
         bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
+        entityName={getEntityLabel(deleteSelection)}
         entityType={t('label.ingestion-lowercase')}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}

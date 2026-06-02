@@ -66,7 +66,7 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {

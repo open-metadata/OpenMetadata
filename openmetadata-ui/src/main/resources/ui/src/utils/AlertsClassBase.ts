@@ -36,7 +36,7 @@ import {
   getRandomizedAlertName,
 } from './Alerts/AlertsUtil';
 import { HandleAlertSaveProps } from './AlertsClassBase.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
 import { showSuccessToast } from './ToastUtils';

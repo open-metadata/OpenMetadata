@@ -20,7 +20,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
 export const DataProductDomainWidget = () => {

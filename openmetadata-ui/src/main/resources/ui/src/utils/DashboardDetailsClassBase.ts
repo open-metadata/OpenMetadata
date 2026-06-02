@@ -20,14 +20,14 @@ import {
   KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
-import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constnats';
+import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import {
   getDashboardDetailPageTabs,
   getDashboardWidgetsFromKey,

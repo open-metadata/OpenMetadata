@@ -100,7 +100,7 @@ import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { filterSelectOptions } from '../../../../utils/FilterQueryUtils';
 import {
   createScrollToErrorHandler,

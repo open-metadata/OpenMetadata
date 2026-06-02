@@ -34,7 +34,7 @@ import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';
 import advancedSearchClassBase from '../../utils/AdvancedSearchClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DataInsightContextType,
   DataInsightProviderProps,

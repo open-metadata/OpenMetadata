@@ -42,10 +42,8 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -124,7 +122,7 @@ function FileDetails({
       ...fileDetails,
       tier: getTierTags(fileDetails.tags ?? []),
       fileTags: getTagsWithoutTier(fileDetails.tags ?? []),
-      entityName: getEntityName(fileDetails),
+      entityName: getEntityLabel(fileDetails),
     }),
     [fileDetails]
   );

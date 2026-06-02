@@ -30,8 +30,11 @@ export {
   TaskPriority,
   TaskType as TaskEntityType,
 } from '../generated/api/tasks/createTask';
+export type { CreateTask } from '../generated/api/tasks/createTask';
 export { ResolutionType as TaskResolutionType } from '../generated/api/tasks/resolveTask';
+export type { ResolveTask } from '../generated/api/tasks/resolveTask';
 export { TaskStatus as TaskEntityStatus } from '../generated/entity/tasks/task';
+export type { Task } from '../generated/entity/tasks/task';
 export type { TaskComment } from '../generated/entity/tasks/task';
 export type { GenericTaskPayload as TaskPayload } from '../generated/type/genericTaskPayload';
 

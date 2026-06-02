@@ -165,7 +165,7 @@ jest.mock('../../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest
+  getEntityLabel: jest
     .fn()
     .mockImplementation(
       (tag: TagLabel) => tag.displayName || tag.name || tag.tagFQN
@@ -217,7 +217,7 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 }));
 
 jest.requireMock('../../../utils/ToastUtils');
-const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityLabel } = jest.requireMock('../../../utils/EntityUtils');
 
 const baseGlossaryTags = [
   {
@@ -353,7 +353,7 @@ describe('GlossaryTermsSection', () => {
       expect(
         container.querySelector('.glossary-terms-list')
       ).toBeInTheDocument();
-      expect(getEntityName).toHaveBeenCalled();
+      expect(getEntityLabel).toHaveBeenCalled();
       expect(screen.getAllByTestId('book-icon').length).toBeGreaterThan(0);
 
       expect(screen.getByText('Customer')).toBeInTheDocument();

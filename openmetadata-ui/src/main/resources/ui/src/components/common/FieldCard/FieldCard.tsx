@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getDataTypeString,
   prepareConstraintIcon,

@@ -82,13 +82,11 @@ import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBas
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-  hasEditAccess,
-} from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { hasEditAccess } from '../../../utils/EntityPermissionUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,

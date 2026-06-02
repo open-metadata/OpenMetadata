@@ -38,10 +38,8 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  hasLineageTab,
-} from '../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
+import { hasLineageTab } from '../../utils/EntityPermissionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';

@@ -59,26 +59,43 @@ const TagPage = withSuspenseFallback(
 );
 
 const DomainRouter = withSuspenseFallback(
-  React.lazy(() => import('./DomainRouter'))
+  React.lazy(() => import(/* webpackChunkName: "domain" */ './DomainRouter'))
 );
 const DataProductListPage = withSuspenseFallback(
   React.lazy(() => import('../DataProduct/DataProductListPage'))
 );
 const SettingsRouter = withSuspenseFallback(
-  React.lazy(() => import('./SettingsRouter'))
+  React.lazy(
+    () => import(/* webpackChunkName: "settings" */ './SettingsRouter')
+  )
 );
 const EntityRouter = withSuspenseFallback(
-  React.lazy(() => import('./EntityRouter'))
+  React.lazy(
+    () => import(/* webpackChunkName: "entity-pages" */ './EntityRouter')
+  )
 );
 const ClassificationRouter = withSuspenseFallback(
-  React.lazy(() => import('./ClassificationRouter'))
+  React.lazy(
+    () =>
+      import(/* webpackChunkName: "classification" */ './ClassificationRouter')
+  )
 );
 const GlossaryRouter = withSuspenseFallback(
-  React.lazy(() => import('./GlossaryRouter/GlossaryRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "glossary" */ './GlossaryRouter/GlossaryRouter'
+      )
+  )
 );
 
 const GlossaryTermRouter = withSuspenseFallback(
-  React.lazy(() => import('./GlossaryTermRouter/GlossaryTermRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "glossary-term" */ './GlossaryTermRouter/GlossaryTermRouter'
+      )
+  )
 );
 
 const MyDataPage = withSuspenseFallback(

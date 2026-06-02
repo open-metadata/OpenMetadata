@@ -41,10 +41,8 @@ import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDataModelColumnsByFQN } from '../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import {
-  getEntityName,
-  highlightSearchArrayElement,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { highlightSearchArrayElement } from '../../../utils/EntitySearchUtils';
 import Fqn from '../../../utils/Fqn';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
@@ -54,7 +52,7 @@ import {
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import AntTable from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 
@@ -416,7 +414,7 @@ export const ContractSchemaFormTab: React.FC<{
         key: TABLE_COLUMNS_KEYS.NAME,
         render: (_, record: Column) => (
           <Typography.Text className="schema-table-name">
-            {getEntityName(record)}
+            {getEntityLabel(record)}
           </Typography.Text>
         ),
       },

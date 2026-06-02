@@ -10,17 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
-import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityImportRouter from './EntityImportRouter';
+
+const EntityVersionPage = lazy(
+  () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
+);
 
 const EntityRouter = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -43,14 +46,22 @@ const EntityRouter = () => {
       />
 
       <Route
-        element={<EntityVersionPage />}
+        element={
+          <Suspense fallback={null}>
+            <EntityVersionPage />
+          </Suspense>
+        }
         path={ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB.replace(
           PLACEHOLDER_ROUTE_ENTITY_TYPE,
           ''
         )}
       />
       <Route
-        element={<EntityVersionPage />}
+        element={
+          <Suspense fallback={null}>
+            <EntityVersionPage />
+          </Suspense>
+        }
         path={ROUTES.ENTITY_VERSION_DETAILS.replace(
           PLACEHOLDER_ROUTE_ENTITY_TYPE,
           ''

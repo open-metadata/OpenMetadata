@@ -27,10 +27,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -106,7 +104,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
       const total = response.hits.total.value;
 
       const data = hits.map(({ _source }) => {
-        const entityName = getEntityName(_source);
+        const entityName = getEntityLabel(_source);
         const entityRef = getEntityReferenceFromEntity(
           _source as EntityReference,
           _source.entityType as EntityType

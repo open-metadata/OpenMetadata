@@ -47,7 +47,7 @@ import {
   dashboardDataModelQueryKey,
 } from '../../rest/queries/dashboardDataModelQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { updateTierTag } from '../../utils/TagsUtils';

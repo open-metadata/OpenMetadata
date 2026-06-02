@@ -13,7 +13,14 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';
@@ -22,13 +29,22 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
+import { getTaskCounts, Task, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
-import { TaskTabNew } from '../../../Entity/Task/TaskTab/TaskTabNew.component';
 import './test-case-incident-tab.style.less';
+
+type TaskFilter = 'open' | 'close';
+
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 const TestCaseIncidentTab = () => {
   const { t } = useTranslation();
@@ -54,7 +70,8 @@ const TestCaseIncidentTab = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [closedTasksCount, setClosedTasksCount] = useState(0);
 
-  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
+  const statusGroup =
+    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {

@@ -21,10 +21,8 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
-import {
-  getFrequentlyJoinedColumns,
-  searchInColumns,
-} from '../../../utils/EntityUtils';
+import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,

@@ -56,10 +56,8 @@ import { searchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
@@ -197,7 +195,7 @@ const mapEntityReferenceToOption = (
   reference: EntityReference
 ): DomainFormSelectItem => ({
   id: reference.id,
-  label: getEntityName(reference),
+  label: getEntityLabel(reference),
   supportingText: reference.fullyQualifiedName || reference.type,
   value: reference,
 });
@@ -360,7 +358,7 @@ const AddDomainForm = ({
       const userOptions = usersResponse.hits.hits.map((hit) => {
         const source = hit._source;
 
-        const name = getEntityName(source);
+        const name = getEntityLabel(source);
         const { color, backgroundColor, character } = getRandomColor(
           source.displayName ?? source.name ?? ''
         );

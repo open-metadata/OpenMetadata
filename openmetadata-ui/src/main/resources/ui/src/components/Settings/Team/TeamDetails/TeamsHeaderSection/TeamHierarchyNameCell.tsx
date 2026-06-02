@@ -14,10 +14,8 @@ import { Tooltip } from 'antd';
 import { FC, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringUtils';
 
@@ -30,7 +28,7 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
   record,
   searchTerm = '',
 }) => {
-  const displayName = getEntityName(record);
+  const displayName = getEntityLabel(record);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 

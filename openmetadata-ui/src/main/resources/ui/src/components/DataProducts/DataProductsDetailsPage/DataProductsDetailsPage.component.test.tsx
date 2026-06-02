@@ -47,7 +47,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Test Data Product'),
+  getEntityLabel: jest.fn().mockReturnValue('Test Data Product'),
   getEntityVoteStatus: jest.fn().mockReturnValue('unVoted'),
   hasEditAccess: jest.fn().mockReturnValue(false),
   getEntityFeedLink: jest.fn().mockReturnValue(''),

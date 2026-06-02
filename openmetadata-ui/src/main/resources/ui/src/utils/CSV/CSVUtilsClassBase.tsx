@@ -13,8 +13,9 @@
 
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, toString } from 'lodash';
-import { ReactNode, useRef } from 'react';
+import { lazy, ReactNode, useRef } from 'react';
 import type { RenderEditCellProps } from 'react-data-grid';
+import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
@@ -26,7 +27,6 @@ import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -39,6 +39,14 @@ import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { removeOuterEscapes } from '../StringUtils';
 import { getCustomPropertyEntityType } from './CSV.utils';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {

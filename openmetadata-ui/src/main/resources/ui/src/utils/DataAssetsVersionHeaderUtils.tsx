@@ -26,12 +26,9 @@ import { Metric, UnitOfMeasurement } from '../generated/entity/data/metric';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Topic } from '../generated/entity/data/topic';
 import { ChangeDescription } from '../generated/entity/type';
-import { getEntityName } from './EntityUtils';
-import {
-  getChangedEntityName,
-  getDiffByFieldName,
-  getEntityVersionByField,
-} from './EntityVersionUtils';
+import { getChangedEntityName, getDiffByFieldName } from './EntityDiffUtils';
+import { getEntityName } from './EntityNameUtils';
+import { getEntityVersionByField } from './EntityVersionUtils';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringUtils';
 

@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export {
+  createScrollToErrorHandler,
+  getPopupContainer,
+  handleEntityCreationError,
+  setInlineErrorValue,
+  transformErrors,
+} from './formPureUtils';
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
-import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
   Checkbox,
@@ -28,60 +34,154 @@ import {
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compact, isString, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
-import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
+import { isString, startCase, toString } from 'lodash';
+import React, { Fragment, lazy, ReactNode } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { MUIColorPicker } from '../components/common/ColorPicker';
-import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
-import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
-import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import { MUIIconPicker } from '../components/common/IconPicker';
-import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
-import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
-import MUISelect from '../components/common/MUISelect/MUISelect';
-import MUITextField from '../components/common/MUITextField/MUITextField';
-import MUIUserTeamSelect, {
-  MUIUserTeamSelectProps,
-} from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
-import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
+import type { MUIUserTeamSelectProps } from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
-import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
-import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
-} from '../components/common/TagSuggestion/TagSuggestion';
-import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
+import { TagSuggestionProps } from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
-import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
-import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
-import MUIAutocomplete, {
-  MUIAutocompleteProps,
-} from '../components/form/MUIAutocomplete';
-import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
+import { MUIAutocompleteProps } from '../components/form/MUIAutocomplete/MUIAutocomplete.interface';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import AntDTagSuggestion, {
-  TagSuggestionProps as AntDTagSuggestionProps,
-} from '../pages/TasksPage/shared/TagSuggestion';
+import { TagSuggestionProps as AntDTagSuggestionProps } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
-import { getErrorText } from './StringUtils';
+
+const AsyncSelectList = withSuspenseFallback(
+  lazy(() => import('../components/common/AsyncSelectList/AsyncSelectList'))
+);
+
+const TreeAsyncSelectList = withSuspenseFallback(
+  lazy(() => import('../components/common/AsyncSelectList/TreeAsyncSelectList'))
+);
+
+const MUIColorPicker = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/ColorPicker').then((module) => ({
+      default: module.MUIColorPicker,
+    }))
+  )
+);
+
+const ColorPicker = withSuspenseFallback(
+  lazy(() => import('../components/common/ColorPicker/ColorPicker.component'))
+);
+
+const MUICoverImageUpload = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CoverImageUpload').then((module) => ({
+      default: module.MUICoverImageUpload,
+    }))
+  )
+);
+
+const DomainSelectableList = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/common/DomainSelectableList/DomainSelectableList.component'
+      )
+  )
+);
+
+const FilterPattern = withSuspenseFallback(
+  lazy(() => import('../components/common/FilterPattern/FilterPattern'))
+);
+
+const MUIIconPicker = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/IconPicker').then((module) => ({
+      default: module.MUIIconPicker,
+    }))
+  )
+);
+
+const MUIDomainSelect = withSuspenseFallback(
+  lazy(() => import('../components/common/MUIDomainSelect/MUIDomainSelect'))
+);
+
+const MUIGlossaryTagSuggestion = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion'
+      )
+  )
+);
+
+const MUISelect = withSuspenseFallback(
+  lazy(() => import('../components/common/MUISelect/MUISelect'))
+);
+
+const MUITextField = withSuspenseFallback(
+  lazy(() => import('../components/common/MUITextField/MUITextField'))
+);
+
+const MUIUserTeamSelect = withSuspenseFallback(
+  lazy(() => import('../components/common/MUIUserTeamSelect/MUIUserTeamSelect'))
+);
+
+const RichTextEditor = withSuspenseFallback(
+  lazy(() => import('../components/common/RichTextEditor/RichTextEditor'))
+);
+
+const SanitizedInput = withSuspenseFallback(
+  lazy(() => import('../components/common/SanitizedInput/SanitizedInput'))
+);
+
+const SliderWithInput = withSuspenseFallback(
+  lazy(() => import('../components/common/SliderWithInput/SliderWithInput'))
+);
+
+const TagSuggestion = withSuspenseFallback(
+  lazy(() => import('../components/common/TagSuggestion/TagSuggestion'))
+);
+
+const UserSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/common/UserSelectableList/UserSelectableList.component'
+    ).then((module) => ({ default: module.UserSelectableList }))
+  )
+);
+
+const UserTeamSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((module) => ({ default: module.UserTeamSelectableList }))
+  )
+);
+
+const UserTeamSelectableListSearchInput = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component'
+      )
+  )
+);
+
+const MUIAutocomplete = withSuspenseFallback(
+  lazy(() => import('../components/form/MUIAutocomplete'))
+);
+
+const AntDTagSuggestion = withSuspenseFallback(
+  lazy(() => import('../pages/TasksPage/shared/TagSuggestion'))
+);
 
 export const getField = (field: FieldProp) => {
   const {
@@ -557,205 +657,4 @@ export const generateFormFields = (fields: FieldProp[]) => {
       ))}
     </>
   );
-};
-
-export const transformErrors: ErrorTransformer = (errors) => {
-  const errorRet = errors.map((error) => {
-    const { property, params, name } = error;
-
-    /**
-     * For nested fields we have to check if it's property start with "."
-     * else we will just prepend the root to property
-     */
-    const id = property?.startsWith('.')
-      ? 'root' + property?.replaceAll('.', '/')
-      : `root/${property}`;
-
-    // If element is not present in DOM, ignore error
-    if (document.getElementById(id)) {
-      const fieldName = startCase(property?.split('/').pop() ?? '');
-
-      const errorMessages = {
-        required: () => ({
-          message: t('message.field-text-is-required', {
-            fieldText: startCase(params?.missingProperty),
-          }),
-        }),
-        minimum: () => ({
-          message: t('message.value-must-be-greater-than', {
-            field: fieldName,
-            minimum: params?.limit,
-          }),
-        }),
-      };
-
-      const errorHandler = errorMessages[name as keyof typeof errorMessages];
-      if (errorHandler && params) {
-        error.message = errorHandler().message;
-
-        return error;
-      }
-    }
-
-    return null;
-  });
-
-  return compact(errorRet);
-};
-
-export const setInlineErrorValue = (
-  description: string,
-  serverAPIError: string,
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
-) => {
-  setInlineAlertDetails({
-    type: 'error',
-    heading: t('label.error'),
-    description,
-    subDescription: serverAPIError,
-    onClose: () => setInlineAlertDetails(undefined),
-  });
-};
-
-export const handleEntityCreationError = ({
-  error,
-  setInlineAlertDetails,
-  entity,
-  entityLowercase,
-  entityLowercasePlural,
-  name,
-  defaultErrorType,
-}: {
-  error: AxiosError;
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
-  entity: string;
-  entityLowercase?: string;
-  entityLowercasePlural?: string;
-  name: string;
-  defaultErrorType?: 'create';
-}) => {
-  if (error.response?.status === HTTP_STATUS_CODE.CONFLICT) {
-    setInlineErrorValue(
-      t('server.entity-already-exist', {
-        entity,
-        entityPlural: entityLowercasePlural ?? entity,
-        name: name,
-      }),
-      getErrorText(error, t('server.unexpected-error')),
-      setInlineAlertDetails
-    );
-
-    return;
-  }
-
-  if (error.response?.status === HTTP_STATUS_CODE.LIMIT_REACHED) {
-    setInlineErrorValue(
-      t('server.entity-limit-reached', {
-        entity,
-      }),
-      getErrorText(error, t('server.unexpected-error')),
-      setInlineAlertDetails
-    );
-
-    return;
-  }
-
-  setInlineErrorValue(
-    defaultErrorType === 'create'
-      ? t(`server.entity-creation-error`, {
-          entity: entityLowercase ?? entity,
-        })
-      : getErrorText(error, t('server.unexpected-error')),
-    getErrorText(error, t('server.unexpected-error')),
-    setInlineAlertDetails
-  );
-};
-
-export const getPopupContainer = (triggerNode: HTMLElement) =>
-  triggerNode.parentElement || document.body;
-
-/**
- * Configuration options for custom scroll-to-error behavior
- */
-export interface ScrollToErrorOptions {
-  /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
-  scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
-  errorSelector?: string;
-  /** Offset from top in pixels for better visibility. Defaults to 100 */
-  offsetTop?: number;
-  /** Delay in milliseconds before scrolling. Defaults to 100 */
-  delay?: number;
-  /** Scroll behavior. Defaults to 'smooth' */
-  behavior?: ScrollBehavior;
-}
-
-/**
- * Creates a reusable scroll-to-error handler for forms in complex layouts
- *
- * This utility is particularly useful when:
- * - Form is inside a drawer or modal with custom scroll containers
- * - Ant Design's built-in scrollToFirstError doesn't work due to layout complexity
- * - Form is nested within grid layouts or other complex structures
- *
- * @param options - Configuration options for scroll behavior
- * @returns Function to be used as onFinishFailed handler for Ant Design forms
- *
- * @example
- * ```tsx
- * // Basic usage for drawer forms
- * const scrollToError = createScrollToErrorHandler();
- *
- * <Form onFinishFailed={scrollToError}>
- *   // form content
- * </Form>
- *
- * // Custom configuration
- * const scrollToError = createScrollToErrorHandler({
- *   scrollContainer: '.my-custom-scroll-container',
- *   offsetTop: 150,
- *   delay: 50
- * });
- * ```
- */
-export const createScrollToErrorHandler = (
-  options: ScrollToErrorOptions = {}
-) => {
-  const {
-    scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
-    offsetTop = 100,
-    delay = 100,
-    behavior = 'smooth',
-  } = options;
-
-  return () => {
-    setTimeout(() => {
-      const firstError = document.querySelector(errorSelector);
-      if (firstError) {
-        const scrollableContainer = document.querySelector(scrollContainer);
-        if (scrollableContainer) {
-          const errorRect = firstError.getBoundingClientRect();
-          const containerRect = scrollableContainer.getBoundingClientRect();
-          const scrollTop =
-            scrollableContainer.scrollTop +
-            errorRect.top -
-            containerRect.top -
-            offsetTop;
-
-          scrollableContainer.scrollTo({
-            top: Math.max(0, scrollTop), // Ensure we don't scroll to negative values
-            behavior,
-          });
-        } else {
-          // Fallback to standard scrollIntoView if container not found
-          firstError.scrollIntoView({
-            behavior,
-            block: 'center',
-            inline: 'nearest',
-          });
-        }
-      }
-    }, delay);
-  };
 };

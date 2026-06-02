@@ -42,10 +42,8 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -122,7 +120,7 @@ function SpreadsheetDetails({
       ...spreadsheetDetails,
       tier: getTierTags(spreadsheetDetails.tags ?? []),
       spreadsheetTags: getTagsWithoutTier(spreadsheetDetails.tags ?? []),
-      entityName: getEntityName(spreadsheetDetails),
+      entityName: getEntityLabel(spreadsheetDetails),
     }),
     [spreadsheetDetails]
   );

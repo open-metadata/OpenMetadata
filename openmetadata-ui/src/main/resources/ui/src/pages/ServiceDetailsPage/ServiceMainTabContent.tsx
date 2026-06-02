@@ -55,7 +55,7 @@ import { ServicesType } from '../../interface/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityLinkUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,

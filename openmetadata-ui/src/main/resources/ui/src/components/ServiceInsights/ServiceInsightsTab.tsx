@@ -46,7 +46,8 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink, getEntityNameLabel } from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityLinkUtils';
+import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   filterDistributionChartItem,
   getAssetsByServiceType,
@@ -54,6 +55,7 @@ import {
   getFormattedTotalAssetsDataFromSocketData,
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabUtils';
+import { getDefaultInsightsWidgets } from '../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,
@@ -95,7 +97,11 @@ const ServiceInsightsTab = ({
 
   const serviceName = serviceDetails.name;
 
-  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+  const defaultInsightsWidgets = getDefaultInsightsWidgets();
+  const widgets = {
+    ...defaultInsightsWidgets,
+    ...serviceUtilClassBase.getInsightsTabWidgets(serviceCategory),
+  };
 
   const getDataAssetsCount = useCallback(async () => {
     try {

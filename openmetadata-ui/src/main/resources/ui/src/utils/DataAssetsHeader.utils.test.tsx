@@ -52,7 +52,7 @@ jest.mock('./DataAssetsHeader.utils', () => ({
   ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
 }));
 jest.mock('./EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('entityName'),
+  getEntityLabel: jest.fn().mockReturnValue('entityName'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
     {
       name: 'entityName',

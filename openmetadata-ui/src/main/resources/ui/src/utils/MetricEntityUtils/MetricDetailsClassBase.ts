@@ -28,7 +28,7 @@ import { Metric } from '../../generated/entity/data/metric';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import i18n from '../i18next/LocalUtil';
 import {
   getMetricDetailsPageTabs,

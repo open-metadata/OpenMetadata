@@ -40,7 +40,7 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline,
 } from '../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';

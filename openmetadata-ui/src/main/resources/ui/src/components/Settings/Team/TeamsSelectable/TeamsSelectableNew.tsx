@@ -20,7 +20,7 @@ import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';

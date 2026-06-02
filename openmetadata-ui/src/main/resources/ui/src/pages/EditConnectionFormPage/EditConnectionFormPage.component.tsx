@@ -45,7 +45,7 @@ import {
   getEntityMissingError,
   getServiceLogo,
 } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';

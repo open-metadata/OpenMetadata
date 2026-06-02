@@ -42,10 +42,8 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
 export interface MUIUserTeamSelectProps {
@@ -95,7 +93,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
 
   const selectedOptions = useMemo(() => {
     return value.map((entity) => ({
-      label: getEntityName(entity),
+      label: getEntityLabel(entity),
       value: entity.id || '',
       entity,
       isTeam: entity.type === EntityType.TEAM,
@@ -126,7 +124,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
 
     setUserOptions(
       users.map((user) => ({
-        label: getEntityName(user),
+        label: getEntityLabel(user),
         value: user.id,
         entity: user as unknown as EntityReference,
         isTeam: false,
@@ -158,7 +156,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
 
     setTeamOptions(
       teams.map((team) => ({
-        label: getEntityName(team),
+        label: getEntityLabel(team),
         value: team.id,
         entity: team as unknown as EntityReference,
         isTeam: true,
@@ -321,7 +319,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
             sx={{ marginRight: '4px' }}
           />
         )}
-        <span>{getEntityName(entity)}</span>
+        <span>{getEntityLabel(entity)}</span>
       </Box>
     );
   };
@@ -353,7 +351,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
           color="secondary"
           deleteIcon={<XClose size={12} />}
           key={entity.id}
-          label={getEntityName(entity)}
+          label={getEntityLabel(entity)}
           size="small"
           sx={{
             borderRadius: '8px',

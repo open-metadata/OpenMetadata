@@ -74,12 +74,10 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-  hasEditAccess,
-} from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { hasEditAccess } from '../../../utils/EntityPermissionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';

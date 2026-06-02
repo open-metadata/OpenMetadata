@@ -52,7 +52,7 @@ import {
 } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';

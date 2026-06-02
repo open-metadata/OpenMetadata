@@ -31,7 +31,7 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';

@@ -23,7 +23,7 @@ import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { updateCertificationTag } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../IconButtons/EditIconButton';

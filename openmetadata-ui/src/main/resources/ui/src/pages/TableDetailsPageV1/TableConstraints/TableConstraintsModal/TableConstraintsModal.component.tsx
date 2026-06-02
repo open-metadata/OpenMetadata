@@ -31,7 +31,7 @@ import {
   TableConstraint,
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
+import { getBreadcrumbsFromFqn } from '../../../../utils/EntityDataBreadcrumbUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {

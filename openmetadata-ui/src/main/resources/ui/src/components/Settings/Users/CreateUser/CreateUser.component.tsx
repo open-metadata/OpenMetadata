@@ -65,10 +65,8 @@ import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -153,7 +151,7 @@ const CreateUser = ({
       try {
         const roles = await searchRoles(searchText);
         const nextOptions = map(roles, (role) => ({
-          label: getEntityName(role),
+          label: getEntityLabel(role),
           value: role.id,
         }));
 
@@ -194,7 +192,7 @@ const CreateUser = ({
 
       return {
         data: personaRefs.map((persona) => ({
-          label: getEntityName(persona),
+          label: getEntityLabel(persona),
           value: persona.id,
           data: persona,
         })),

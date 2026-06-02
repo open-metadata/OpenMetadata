@@ -47,14 +47,14 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
+  getEntityLabel: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
 const { getDataTypeString, prepareConstraintIcon } = jest.requireMock(
   '../../../utils/TableUtils'
 );
 
-const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityLabel } = jest.requireMock('../../../utils/EntityUtils');
 
 const mockTags = [
   {
@@ -195,10 +195,10 @@ describe('FieldCard', () => {
     it('calls getEntityName for each tag', () => {
       render(<FieldCard {...baseProps} />);
 
-      expect(getEntityName).toHaveBeenCalledWith(
+      expect(getEntityLabel).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.PII.Sensitive' })
       );
-      expect(getEntityName).toHaveBeenCalledWith(
+      expect(getEntityLabel).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.Security.Public' })
       );
     });
@@ -263,7 +263,7 @@ describe('FieldCard', () => {
     it('calls getEntityName for each glossary term', () => {
       render(<FieldCard {...baseProps} />);
 
-      expect(getEntityName).toHaveBeenCalledWith(
+      expect(getEntityLabel).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Glossary.Customer' })
       );
     });
@@ -412,7 +412,7 @@ describe('FieldCard', () => {
 
       render(<FieldCard {...baseProps} tags={tagsWithoutDisplayName} />);
 
-      expect(getEntityName).toHaveBeenCalledWith(
+      expect(getEntityLabel).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'NoDisplayName' })
       );
       expect(screen.getByText('NoDisplayName')).toBeInTheDocument();
@@ -430,7 +430,7 @@ describe('FieldCard', () => {
 
       render(<FieldCard {...baseProps} tags={tagsWithoutNames} />);
 
-      expect(getEntityName).toHaveBeenCalledWith(
+      expect(getEntityLabel).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.Empty' })
       );
     });

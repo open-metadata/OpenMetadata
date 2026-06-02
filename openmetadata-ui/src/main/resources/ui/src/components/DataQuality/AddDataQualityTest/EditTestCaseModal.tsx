@@ -38,10 +38,8 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import {
   generateFormFields,

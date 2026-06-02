@@ -24,19 +24,19 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -57,12 +57,12 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
 import {
-  getColumnSorter,
-  getEntityName,
   highlightSearchArrayElement,
   highlightSearchText,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntitySearchUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
@@ -80,6 +80,14 @@ import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
 } from './SearchIndexFieldsTable.interface';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,
@@ -296,7 +304,7 @@ const SearchIndexFieldsTable = ({
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
               {stringToHTML(
-                highlightSearchText(getEntityName(record), searchText)
+                highlightSearchText(getEntityLabel(record), searchText)
               )}
             </span>
             <CopyLinkButton
@@ -465,7 +473,7 @@ const SearchIndexFieldsTable = ({
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.field'),
-            })}: "${getEntityName(editField.field)}"`}
+            })}: "${getEntityLabel(editField.field)}"`}
             placeholder={t('label.enter-field-description', {
               field: t('label.field'),
             })}

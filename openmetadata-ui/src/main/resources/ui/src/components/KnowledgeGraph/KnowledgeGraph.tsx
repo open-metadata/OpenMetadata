@@ -39,6 +39,7 @@ import { toPng } from 'html-to-image';
 import { isArray } from 'lodash';
 import Qs from 'qs';
 import React, {
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -66,7 +67,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
-import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
   applyInitialFocus,
   assignRadialPorts,
@@ -77,12 +78,11 @@ import {
   transformToG6Format,
 } from '../../utils/KnowledgeGraph.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
-
+import type { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
 import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
@@ -107,6 +107,12 @@ import {
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () => import('../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 register(ExtensionCategory.NODE, 'react-node', AntVReactNode);
 

@@ -15,7 +15,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
 import {
-  getEntityName,
+  getEntityLabel,
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
@@ -46,7 +46,7 @@ jest.mock('antd', () => {
 });
 
 jest.mock('../../../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(),
+  getEntityLabel: jest.fn(),
   highlightSearchText: jest.fn((text: string) => text),
 }));
 
@@ -58,8 +58,8 @@ jest.mock('../../../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 
-const mockGetEntityName = getEntityName as jest.MockedFunction<
-  typeof getEntityName
+const mockGetEntityName = getEntityLabel as jest.MockedFunction<
+  typeof getEntityLabel
 >;
 const mockHighlightSearchText = highlightSearchText as jest.MockedFunction<
   typeof highlightSearchText

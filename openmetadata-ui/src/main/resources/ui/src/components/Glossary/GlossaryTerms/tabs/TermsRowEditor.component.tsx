@@ -22,10 +22,8 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import {
   TermItem,
   TermSelectItem,
@@ -82,7 +80,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       .filter((term) => term.fullyQualifiedName !== excludeFQN)
       .map((term) => ({
         id: term.fullyQualifiedName ?? '',
-        label: getEntityName(term),
+        label: getEntityLabel(term),
       }));
 
     if (isSearchActive && items.length === 0) {
@@ -145,7 +143,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       if (term) {
         const updated = [
           ...selectedTerms,
-          { id: term.fullyQualifiedName ?? '', label: getEntityName(term) },
+          { id: term.fullyQualifiedName ?? '', label: getEntityLabel(term) },
         ];
         setSelectedTerms(updated);
         onTermsChange(rowId, toTermItems(updated));

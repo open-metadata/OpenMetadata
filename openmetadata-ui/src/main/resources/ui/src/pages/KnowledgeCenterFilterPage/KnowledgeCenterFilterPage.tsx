@@ -34,7 +34,8 @@ import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch'
 import { useElementInView } from '../../hooks/useElementInView';
 import { KnowledgePage } from '../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
-import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

@@ -43,11 +43,9 @@ import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringUtils';
 import {
@@ -139,7 +137,7 @@ const DataModelTable = ({
         width: 300,
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record: ServicePageData) => {
-          const dataModelDisplayName = getEntityName(record);
+          const dataModelDisplayName = getEntityLabel(record);
 
           return (
             <div className="d-inline-flex w-max-90">

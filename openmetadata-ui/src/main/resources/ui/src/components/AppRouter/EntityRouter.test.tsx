@@ -26,13 +26,15 @@ jest.mock('../../utils/ApplicationRoutesClassBase', () => {
 });
 
 jest.mock('../../utils/EntityUtilClassBase', () => ({
-  getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
-    if (entityType === 'table') {
-      return () => <>EntityDetails</>;
-    }
+  default: {
+    getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
+      if (entityType === 'table') {
+        return () => <>EntityDetails</>;
+      }
 
-    return null;
-  }),
+      return null;
+    }),
+  },
 }));
 
 jest.mock('../../utils/useRequiredParams', () => ({

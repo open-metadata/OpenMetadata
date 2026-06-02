@@ -28,12 +28,14 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
+} from '../../../utils/EntityDiffUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';

@@ -75,7 +75,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,

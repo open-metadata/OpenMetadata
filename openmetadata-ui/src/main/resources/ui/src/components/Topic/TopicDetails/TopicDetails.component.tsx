@@ -37,10 +37,8 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -116,7 +114,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ...topicDetails,
       tier: getTierTags(topicDetails.tags ?? []),
       topicTags: getTagsWithoutTier(topicDetails.tags ?? []),
-      entityName: getEntityName(topicDetails),
+      entityName: getEntityLabel(topicDetails),
     }),
     [topicDetails]
   );

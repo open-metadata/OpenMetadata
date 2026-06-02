@@ -32,11 +32,9 @@ import { useTableFilters } from '../../../../hooks/useTableFilters';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringUtils';
 import {
@@ -124,7 +122,7 @@ function SpreadsheetsTable({
         width: 300,
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record: ServicePageData) => {
-          const spreadsheetDisplayName = getEntityName(record);
+          const spreadsheetDisplayName = getEntityLabel(record);
 
           return (
             <div className="d-inline-flex w-max-90">

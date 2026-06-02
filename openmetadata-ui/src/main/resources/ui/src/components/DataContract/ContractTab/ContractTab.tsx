@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -28,12 +28,23 @@ import {
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import AddDataContract from '../AddDataContract/AddDataContract';
-import { ContractDetail } from '../ContractDetailTab/ContractDetail';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-tab.less';
+
+const AddDataContract = withSuspenseFallback(
+  lazy(() => import('../AddDataContract/AddDataContract'))
+);
+
+const ContractDetail = withSuspenseFallback(
+  lazy(() =>
+    import('../ContractDetailTab/ContractDetail').then((m) => ({
+      default: m.ContractDetail,
+    }))
+  )
+);
 
 export const ContractTab = () => {
   const { data: entityData } = useGenericContext();

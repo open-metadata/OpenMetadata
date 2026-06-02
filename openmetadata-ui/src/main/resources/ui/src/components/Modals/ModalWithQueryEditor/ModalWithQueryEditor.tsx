@@ -13,13 +13,17 @@
 import { Button, Form, Modal, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithQueryEditorProps } from './ModalWithQueryEditor.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 export const ModalWithQueryEditor = ({
   header,

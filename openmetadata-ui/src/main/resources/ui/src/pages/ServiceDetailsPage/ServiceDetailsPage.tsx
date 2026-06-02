@@ -131,11 +131,9 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
@@ -151,6 +149,7 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getDefaultAgentsTabWidgets } from '../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
@@ -312,7 +311,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, currentUser]
   );
   const { CollateAIAgentsWidget } = useMemo(
-    () => serviceUtilClassBase.getAgentsTabWidgets(),
+    () => ({
+      ...getDefaultAgentsTabWidgets(),
+      ...serviceUtilClassBase.getAgentsTabWidgets(),
+    }),
     []
   );
   const isDBService = useMemo(

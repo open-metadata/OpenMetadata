@@ -44,10 +44,8 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import directoryClassBase from '../../../utils/DirectoryClassBase';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -128,7 +126,7 @@ function DirectoryDetails({
       ...directoryDetails,
       tier: getTierTags(directoryDetails.tags ?? []),
       directoryTags: getTagsWithoutTier(directoryDetails.tags ?? []),
-      entityName: getEntityName(directoryDetails),
+      entityName: getEntityLabel(directoryDetails),
     }),
     [directoryDetails]
   );

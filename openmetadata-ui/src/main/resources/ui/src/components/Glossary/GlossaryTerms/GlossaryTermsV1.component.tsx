@@ -55,10 +55,8 @@ import { getTermQuery } from '../../../utils/SearchUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import {
-  GenericProvider,
-  useGenericContext,
-} from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';

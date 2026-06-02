@@ -40,7 +40,7 @@ import {
   getWidgetFromKey,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';

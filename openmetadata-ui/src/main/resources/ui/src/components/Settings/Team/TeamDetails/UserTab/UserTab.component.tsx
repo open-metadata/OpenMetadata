@@ -45,10 +45,8 @@ import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../utils/SearchUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
@@ -354,7 +352,7 @@ export const UserTab = ({
             {!isTeamDeleted && (
               <ManageButton
                 canDelete={false}
-                displayName={getEntityName(currentTeam)}
+                displayName={getEntityLabel(currentTeam)}
                 entityName={currentTeam.name}
                 entityType={EntityType.USER}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -373,7 +371,7 @@ export const UserTab = ({
     ) : (
       <ErrorPlaceHolder
         placeholderText={t('message.no-user-part-of-team', {
-          team: getEntityName(currentTeam),
+          team: getEntityLabel(currentTeam),
         })}
       />
     );
@@ -413,7 +411,7 @@ export const UserTab = ({
                 )}
                 <ManageButton
                   canDelete={false}
-                  displayName={getEntityName(currentTeam)}
+                  displayName={getEntityLabel(currentTeam)}
                   entityName={currentTeam.name}
                   entityType={EntityType.USER}
                   extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -448,7 +446,7 @@ export const UserTab = ({
         onOk={handleRemoveUser}>
         {t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
-            entity: getEntityName(deletingUser),
+            entity: getEntityLabel(deletingUser),
           }),
         })}
       </Modal>

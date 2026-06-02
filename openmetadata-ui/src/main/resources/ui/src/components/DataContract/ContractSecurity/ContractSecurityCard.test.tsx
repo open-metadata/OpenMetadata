@@ -18,7 +18,7 @@ import {
   RowFilter,
 } from '../../../generated/entity/data/dataContract';
 import { DataType, Table } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../utils/EntityUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ContractSecurityCard from './ContractSecurityCard.component';
 
@@ -29,7 +29,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(),
+  getEntityLabel: jest.fn(),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
@@ -100,7 +100,7 @@ describe('ContractSecurityCard', () => {
     (useGenericContext as jest.Mock).mockReturnValue({
       data: mockTableData,
     });
-    (getEntityName as jest.Mock).mockImplementation(
+    (getEntityLabel as jest.Mock).mockImplementation(
       (entity) => entity.displayName || entity.name
     );
   });

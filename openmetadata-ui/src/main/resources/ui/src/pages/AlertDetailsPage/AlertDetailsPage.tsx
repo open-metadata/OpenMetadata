@@ -60,7 +60,7 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {

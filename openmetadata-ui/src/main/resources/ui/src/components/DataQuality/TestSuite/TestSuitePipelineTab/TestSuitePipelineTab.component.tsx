@@ -55,7 +55,7 @@ import {
   getRunHistoryForPipeline,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,

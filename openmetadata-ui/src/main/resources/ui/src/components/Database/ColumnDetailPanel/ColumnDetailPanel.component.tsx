@@ -37,8 +37,8 @@ import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -58,7 +58,7 @@ import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTerm
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';

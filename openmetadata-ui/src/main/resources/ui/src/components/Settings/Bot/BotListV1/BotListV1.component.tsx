@@ -38,10 +38,8 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import {
@@ -280,7 +278,7 @@ const BotListV1 = ({
         key: 'displayName',
         width: 200,
         render: (_, record) => {
-          const name = getEntityName(record);
+          const name = getEntityLabel(record);
           const fqn = record.fullyQualifiedName || record.name || '';
 
           return (
@@ -539,7 +537,7 @@ const BotListV1 = ({
         afterDeleteAction={handleDeleteAction}
         allowSoftDelete={!showDeleted}
         entityId={selectedUser?.id || ''}
-        entityName={getEntityName(selectedUser)}
+        entityName={getEntityLabel(selectedUser)}
         entityType={EntityType.BOT}
         visible={Boolean(selectedUser)}
         onCancel={() => {

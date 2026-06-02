@@ -21,7 +21,7 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   getClassificationTags,
