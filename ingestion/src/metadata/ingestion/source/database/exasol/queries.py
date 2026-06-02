@@ -63,16 +63,16 @@ EXASOL_GET_COLUMN_COMMENTS = textwrap.dedent(
 EXASOL_SYSTEM_METRICS_QUERY = textwrap.dedent(
     """
     SELECT
-      '{database_name}' AS "database",
-      '{schema}' AS "schema",
-      '{table}' AS "table",
+      :database_name AS "database",
+      :schema AS "schema",
+      :table AS "table",
       s.start_time AS "starttime",
       s.row_count AS "rows"
     FROM EXA_DBA_AUDIT_SQL s
-    WHERE s.command_name IN ({operations})
+    WHERE s.command_name = :operation
       AND s.success = TRUE
       AND s.start_time >= ADD_DAYS(SYSTIMESTAMP, -1)
-      AND UPPER(s.sql_text) LIKE UPPER('%{schema}.{table}%')
+      AND UPPER(s.sql_text) LIKE :table_match_pattern
       AND s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
 """

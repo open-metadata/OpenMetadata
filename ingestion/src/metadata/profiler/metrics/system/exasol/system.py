@@ -5,6 +5,7 @@ Exasol system metrics implementation.
 from typing import List  # noqa: UP035
 
 from pydantic import TypeAdapter
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import SystemProfile
@@ -44,7 +45,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.INSERT.value}",
-            self._get_insert_queries,
+            self._get_queries,
             operation=DatabaseDMLOperations.INSERT.value,
         )
         return get_metric_result(queries, self.table)
@@ -52,7 +53,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.DELETE.value}",
-            self._get_delete_queries,
+            self._get_queries,
             operation=DatabaseDMLOperations.DELETE.value,
         )
         return get_metric_result(queries, self.table)
@@ -60,33 +61,40 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.UPDATE.value}",
-            self._get_update_queries,
+            self._get_queries,
             operation=DatabaseDMLOperations.UPDATE.value,
         )
         return get_metric_result(queries, self.table)
 
-    def _get_insert_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
-        return self._get_queries(operation, [DatabaseDMLOperations.INSERT.value])
+    def _get_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
+        if not self.schema or not self.table:
+            return []
 
-    def _get_delete_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
-        return self._get_queries(operation, [DatabaseDMLOperations.DELETE.value])
+        schema_name = self.schema.upper()
+        table_name = self.table.upper()
+        table_match_pattern = f"%{schema_name}.{table_name}%"
+        params = {
+            "database_name": self.database,
+            "schema": schema_name,
+            "table": table_name,
+            "operation": operation,
+            "table_match_pattern": table_match_pattern,
+        }
+        cursor = self.session.execute(text(EXASOL_SYSTEM_METRICS_QUERY), params)
 
-    def _get_update_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
-        return self._get_queries(
-            operation,
-            [
-                DatabaseDMLOperations.UPDATE.value,
-            ],
-        )
-
-    def _get_queries(self, operation: str, operations: List[str]) -> List[QueryResult]:  # noqa: UP006
-        query = EXASOL_SYSTEM_METRICS_QUERY.format(
-            database_name=self.database,
-            schema=self.schema.upper(),
-            table=self.table.upper(),
-            operations=", ".join(f"'{item}'" for item in operations),
-        )
-        return self._get_query_results(self.session, query, operation)
+        return [
+            QueryResult(
+                database_name=row.database,
+                schema_name=row.schema,
+                table_name=row.table,
+                query_text=None,
+                query_type=operation,
+                start_time=row.starttime,
+                rows=row.rows,
+            )
+            for row in cursor
+            if (row.rows is not None) and (row.rows > 0)
+        ]
 
 
 def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:  # noqa: UP006

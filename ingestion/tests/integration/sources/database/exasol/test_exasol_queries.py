@@ -10,12 +10,12 @@
 #  limitations under the License.
 
 import subprocess
+from time import monotonic, sleep
 from typing import ClassVar
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from ingestion.tests.integration.orm_profiler.system.utilities import wait_for_system_table
 from metadata.ingestion.source.database.exasol.queries import (
     EXASOL_GET_COLUMN_COMMENTS,
     EXASOL_GET_TABLE_COMMENTS,
@@ -31,6 +31,34 @@ CONTAINER_NAME = f"db_container_{CONTAINER_SUFFIX}"
 SCHEMA_NAME = "OPENMETADATA_QUERY_TEST"
 TABLE_NAME = "DATATYPES"
 VIEW_NAME = f"VIEW_{TABLE_NAME}"
+
+
+def wait_for_system_table(
+    engine: Engine,
+    query: str,
+    expected_count: int,
+    params: dict[str, object] | None = None,
+    timeout_seconds: int = 60,
+    interval_seconds: int = 5,
+) -> list[dict[str, object]]:
+    """Poll the query until the expected rows are visible and return them."""
+    deadline = monotonic() + timeout_seconds
+    last_rows: list[dict[str, object]] = []
+
+    while monotonic() < deadline:
+        with engine.connect() as connection:
+            rows = connection.execute(text(query), params or {}).mappings().all()
+
+        last_rows = list(rows)
+        if len(last_rows) >= expected_count:
+            return last_rows
+
+        sleep(interval_seconds)
+
+    raise AssertionError(
+        f"Timed out after {timeout_seconds}s waiting for {expected_count} rows. "
+        f"Last observed row count: {len(last_rows)}"
+    )
 
 
 def _prepare_exasol_objects(engine: Engine) -> None:
@@ -146,13 +174,8 @@ class TestExasolQueries:
 
     def test_connection_test_get_queries(self):
         query = EXASOL_TEST_GET_QUERIES
-        wait_for_system_table(self.engine, query, expected_count=1)
-
-        with self.engine.connect() as connection:
-            result = connection.execute(text(query))
-            result_columns = result.keys()
-            columns = {column.lower() for column in result_columns}
-            rows = result.fetchall()
+        rows = wait_for_system_table(self.engine, query, expected_count=1)
+        columns = {column.lower() for column in rows[0]}
 
         assert columns == {
             "sql_text",
@@ -172,13 +195,8 @@ class TestExasolQueries:
             result_limit=5,
         )
 
-        wait_for_system_table(self.engine, query, expected_count=5)
-
-        with self.engine.connect() as connection:
-            result = connection.execute(text(query))
-            result_columns = result.keys()
-            columns = {column.lower() for column in result_columns}
-            rows = result.mappings().all()
+        rows = wait_for_system_table(self.engine, query, expected_count=5)
+        columns = {column.lower() for column in rows[0]}
 
         assert columns == {
             "query_text",
@@ -219,19 +237,20 @@ class TestExasolQueries:
             for statement in dml_statements:
                 connection.execute(text(statement))
 
-        query = EXASOL_SYSTEM_METRICS_QUERY.format(
-            database_name="default",
-            schema=SCHEMA_NAME,
-            table=TABLE_NAME,
-            operations="'INSERT', 'UPDATE', 'DELETE'",
+        rows = wait_for_system_table(
+            self.engine,
+            EXASOL_SYSTEM_METRICS_QUERY,
+            expected_count=1,
+            params={
+                "database_name": "default",
+                "schema": SCHEMA_NAME,
+                "table": TABLE_NAME,
+                "operation": "DELETE",
+                "table_match_pattern": f"%{SCHEMA_NAME}.{TABLE_NAME}%",
+            },
+            timeout_seconds=120,
         )
-        wait_for_system_table(self.engine, query, expected_count=3, timeout_seconds=120)
-
-        with self.engine.connect() as connection:
-            result = connection.execute(text(query))
-            result_columns = result.keys()
-            columns = {column.lower() for column in result_columns}
-            rows = result.mappings().all()
+        columns = {column.lower() for column in rows[0]}
 
         assert columns == {
             "database",
@@ -240,4 +259,4 @@ class TestExasolQueries:
             "starttime",
             "rows",
         }
-        assert len(rows) == 3
+        assert len(rows) == 1
