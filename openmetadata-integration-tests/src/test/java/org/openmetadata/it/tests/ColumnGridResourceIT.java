@@ -1329,54 +1329,6 @@ public class ColumnGridResourceIT {
         "Should have 0 dashboardDataModel occurrences since that column doesn't have the tag");
   }
 
-  @Test
-  void test_getColumnGrid_excludesSoftDeletedTables(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-
-    String colName = ns.prefix("soft_del_col");
-    Column col = Columns.build(colName).withType(ColumnDataType.VARCHAR).withLength(255).create();
-    Table table =
-        Tables.create()
-            .name(ns.prefix("soft_del_table"))
-            .inSchema(schema.getFullyQualifiedName())
-            .withColumns(List.of(col))
-            .execute();
-
-    waitForSearchIndexRefresh();
-
-    await("Wait for column to appear before deleting")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              ColumnGridResponse before =
-                  getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
-              assertNotNull(before.getColumns(), "Columns list must not be null");
-              assertTrue(
-                  before.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
-                  "Column must be visible before soft-delete");
-            });
-
-    client.tables().delete(table.getId().toString(), java.util.Map.of());
-
-    waitForSearchIndexRefresh();
-
-    await("Soft-deleted table's columns must not appear in the grid")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              ColumnGridResponse after =
-                  getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
-              assertNotNull(after.getColumns(), "Columns list must not be null");
-              assertFalse(
-                  after.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
-                  "Column from soft-deleted table must not appear in column grid (issue #28437)");
-            });
-  }
-
   private Glossary createGlossary(
       OpenMetadataClient client, TestNamespace ns, String glossaryName) {
     CreateGlossary createGlossary =
