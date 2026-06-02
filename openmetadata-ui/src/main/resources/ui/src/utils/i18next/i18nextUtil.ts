@@ -13,6 +13,7 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
+import { BRAND_NAME } from '../../utils/BrandData/BrandConstants';
 import enUS from '../../locale/languages/en-us.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
@@ -35,6 +36,7 @@ export const getInitOptions = (): InitOptions => {
     },
     interpolation: {
       escapeValue: false,
+      defaultVariables: { brandName: BRAND_NAME },
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console

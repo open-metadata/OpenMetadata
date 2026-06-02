@@ -63,7 +63,7 @@ const AuthMechanismForm: FC<Props> = ({
   };
   const authOptions = useMemo(() => {
     const botValue = {
-      label: 'OpenMetadata JWT',
+      label: t('label.om-jwt-token'),
       value: 'JWT',
     };
     const accessTokenValue = {

@@ -275,7 +275,7 @@ const NavBar = () => {
         break;
       }
     }
-    const notification = new Notification('Notification From OpenMetadata', {
+    const notification = new Notification(`Notification From ${brandClassBase.getPageTitle()}`, {
       body: body,
       icon: Logo,
     });
