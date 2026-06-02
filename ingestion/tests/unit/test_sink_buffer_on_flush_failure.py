@@ -77,7 +77,7 @@ class TestBufferClearedOnFlushException:
         call_count = 0
         entities_per_call = []
 
-        def track_bulk_calls(entities, use_async=False):
+        def track_bulk_calls(entities, use_async=False, **kwargs):
             nonlocal call_count
             call_count += 1
             entities_per_call.append([e.displayName for e in entities])
@@ -142,7 +142,7 @@ class TestBufferClearedOnFlushException:
         call_count = 0
         entities_per_call = []
 
-        def track_bulk_calls(entities, use_async=False):
+        def track_bulk_calls(entities, use_async=False, **kwargs):
             nonlocal call_count
             call_count += 1
             entities_per_call.append(len(entities))
