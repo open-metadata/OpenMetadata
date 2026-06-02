@@ -501,6 +501,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (response.isCommitted()) {
+        // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
+        // already wrote the login redirect straight to the browser and committed the response.
+        // There is no redirect URL to return and nothing more to write — attempting to write here
+        // would hit a closed stream (EofException).
+        LOG.debug("SSO login redirect already initiated by provider; response committed");
       } else {
         // No redirect URL — error case where redirect_uri is invalid or client is unknown.
         // Per RFC 6749, display the error to the user instead of redirecting.
