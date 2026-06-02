@@ -22,8 +22,10 @@ on:
         default: true
 
 env:
-  # Manual runs may opt out of Slack; schedule always sends.
-  SEND_SLACK_NOTIFICATION: ${{ github.event.inputs.SEND_SLACK_NOTIFICATION || 'true' }}
+  # Manual runs may opt out of Slack; schedule (where inputs are unset) always sends.
+  # Explicit empty-check, since `||` would treat the string 'false' inconsistently when the
+  # input is typed `boolean` — only an empty string should fall back to 'true'.
+  SEND_SLACK_NOTIFICATION: ${{ github.event.inputs.SEND_SLACK_NOTIFICATION == '' && 'true' || github.event.inputs.SEND_SLACK_NOTIFICATION }}
 
 jobs:
   vulnerability-scan:
