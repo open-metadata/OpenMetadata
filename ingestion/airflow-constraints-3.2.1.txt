@@ -199,7 +199,7 @@ asn1crypto==1.5.1
 asttokens==3.0.1
 async-timeout==4.0.3
 asyncpg==0.31.0
-asyncssh==2.22.0
+asyncssh==2.23.0
 atlasclient==1.0.0
 atlassian-python-api==4.0.7
 attrs==26.1.0
