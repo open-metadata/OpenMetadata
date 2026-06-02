@@ -56,6 +56,11 @@ class MigrationUtilTest {
     assertTrue(
         insertSql.getAllValues().stream().allMatch(sql -> sql.contains(":metadata::json")),
         "PostgreSQL heal insert must cast :metadata to json");
+    // Backstop for the 1.13 reprocess: a duplicate insert must be a no-op against the unique key.
+    assertTrue(
+        insertSql.getAllValues().stream()
+            .allMatch(sql -> sql.contains("ON CONFLICT") && sql.contains("DO NOTHING")),
+        "PostgreSQL heal insert must be idempotent via ON CONFLICT DO NOTHING");
   }
 
   @Test
@@ -72,17 +77,24 @@ class MigrationUtilTest {
     assertFalse(
         insertSql.getAllValues().stream().anyMatch(sql -> sql.contains("::json")),
         "MySQL heal insert must not use the PG-only ::json cast");
+    // Backstop for the 1.13 reprocess: a duplicate insert must be a no-op against the unique key.
+    assertTrue(
+        insertSql.getAllValues().stream().allMatch(sql -> sql.contains("INSERT IGNORE")),
+        "MySQL heal insert must be idempotent via INSERT IGNORE");
   }
 
   @Test
-  void healWithNoStuckRowsIsNoOp() {
-    // Idempotency: clusters with nothing stranded (fresh installs, healthy MySQL, already-healed
-    // PG) match zero rows and must neither insert nor throw.
+  void healWithNoStuckRowsRunsNoInsertOrStrip() {
+    // This is the 1.13-upgrade case: v11210 already healed (and STRIPPED certification from the
+    // entity JSON) during the 1.12.10 run, so the SELECT now matches zero rows. The framework
+    // reprocesses v11210 and also runs v1130's heal on that upgrade, but both must issue NO insert
+    // and NO strip query — the same insert queries from 1.12.10 do not run again.
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     when(handle.createQuery(anyString()).mapToMap().list()).thenReturn(List.of());
 
     assertDoesNotThrow(
         () -> MigrationUtil.healStuckCertificationOnEntityJson(handle, ConnectionType.POSTGRES));
     verify(handle, never()).prepareBatch(anyString());
+    verify(handle, never()).createUpdate(anyString());
   }
 }
