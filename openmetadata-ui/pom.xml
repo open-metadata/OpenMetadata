@@ -154,6 +154,7 @@
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
                 <APP_VERSION>${project.version}</APP_VERSION>
+                <BRAND_NAME>${brandName}</BRAND_NAME>
               </environmentVariables>
             </configuration>
           </execution>
@@ -184,15 +185,8 @@
                 <resource>
                   <directory>src/main/resources/ui/dist</directory>
                   <filtering>true</filtering>
-                  <excludes>
-                    <exclude>**/*.gz</exclude>
-                    <exclude>**/*.br</exclude>
-                  </excludes>
                 </resource>
               </resources>
-              <delimiters>
-                <delimiter>{{{*}}}</delimiter>
-              </delimiters>
               <nonFilteredFileExtensions>
                 <nonFilteredFileExtension>gz</nonFilteredFileExtension>
                 <nonFilteredFileExtension>br</nonFilteredFileExtension>
@@ -205,6 +199,7 @@
                 <nonFilteredFileExtension>webp</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>js</nonFilteredFileExtension>
                 <nonFilteredFileExtension>css</nonFilteredFileExtension>
               </nonFilteredFileExtensions>
             </configuration>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// Maven replaces {{{brandName}}} at build time via resource filtering (pom.xml brandName property).
-// In dev mode (yarn start without Maven), this retains the literal placeholder and BrandClassBase
-// falls back to the i18n 'label.open-metadata' key.
-export const BRAND_NAME = '{{{brandName}}}';
+// process.env.BRAND_NAME is statically replaced by Vite at build time (vite.config.ts define block).
+// Maven passes the brandName property as the BRAND_NAME env variable during `yarn run build`.
+export const BRAND_NAME = process.env.BRAND_NAME ?? 'OpenMetadata';
