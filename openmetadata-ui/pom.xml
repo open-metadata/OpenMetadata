@@ -191,7 +191,7 @@
                 </resource>
               </resources>
               <delimiters>
-                <delimiter>{{*}}</delimiter>
+                <delimiter>{{{*}}}</delimiter>
               </delimiters>
               <nonFilteredFileExtensions>
                 <nonFilteredFileExtension>gz</nonFilteredFileExtension>

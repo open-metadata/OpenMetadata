@@ -16,6 +16,7 @@ import MonogramSrc, {
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
 import { t } from '../i18next/LocalUtil';
+import { BRAND_NAME } from './BrandConstants';
 
 class BrandClassBase {
   public getMonogram() {
@@ -27,10 +28,8 @@ class BrandClassBase {
   }
 
   public getPageTitle() {
-    const brandName = t('label.brand-name');
-
-    return brandName && brandName !== '{{brandName}}'
-      ? brandName
+    return BRAND_NAME && BRAND_NAME !== '{{{brandName}}}'
+      ? BRAND_NAME
       : t('label.open-metadata');
   }
 
