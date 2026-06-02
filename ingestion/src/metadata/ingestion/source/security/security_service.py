@@ -61,7 +61,6 @@ class SecurityServiceTopology(ServiceTopology):
                 processor="yield_create_request_security_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=[],  # Security services typically don't have child entities like policies, roles, etc.
