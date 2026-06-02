@@ -54,11 +54,10 @@ VERSIONS = {
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
+    "tableau": "tableauserverclient>=0.37,<1",  # >=0.37 uses urllib3>=2.x, aligned with collate-data-diff 0.11.11
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
-    "snowflake": "snowflake-sqlalchemy>=1.6.1",
-    "snowflake-connector": "snowflake-connector-python~=3.18.0",
+    "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -176,23 +175,20 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.1",
+    "collate-sqllineage>=2.1.3",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.9",
+    "collate-data-diff>=0.11.11",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
-    # TODO: Remove one once we have updated datadiff version
-    VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
 }
 
@@ -262,10 +258,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        # CVE-2026-27459 (DTLS cookie callback BoF) wants pyOpenSSL>=26.0.0, but
-        # snowflake-connector-python 3.18 (forced via base_requirements) pins
-        # pyOpenSSL<26.0.0. Dismiss until snowflake stack supports connector 4.x.
-        "pyOpenSSL>=24.3.0",
+        "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
         "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
     },
     "datalake-azure": {
