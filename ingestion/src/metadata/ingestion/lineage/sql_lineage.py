@@ -1229,9 +1229,11 @@ def get_lineage_by_procedure_graph(
                 else:
                     lineage_details = either_lineage.right.edge.lineageDetails
                 if lineage_details:
-                    lineage_details.pipeline = EntityReference(
-                        id=procedure_and_procedure_graph.procedure.id,
-                        type="storedProcedure",
+                    lineage_details.pipeline = EntityReference.model_validate(
+                        {
+                            "id": procedure_and_procedure_graph.procedure.id,
+                            "type": "storedProcedure",
+                        }
                     )
 
             yield either_lineage

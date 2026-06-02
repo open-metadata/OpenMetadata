@@ -17,7 +17,7 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
@@ -159,9 +159,11 @@ def _yield_procedure_lineage(
                 else:
                     lineage_details = either_lineage.right.edge.lineageDetails
                 if lineage_details:
-                    lineage_details.pipeline = EntityReference(
-                        id=procedure.id,
-                        type="storedProcedure",
+                    lineage_details.pipeline = EntityReference.model_validate(
+                        {
+                            "id": procedure.id,
+                            "type": "storedProcedure",
+                        }
                     )
 
             yield either_lineage
@@ -179,7 +181,7 @@ def procedure_lineage_processor(
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
     enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[LineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+) -> None:
     """
     Process the procedure and its queries to add lineage
     """
@@ -301,7 +303,7 @@ def query_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     serviceName: str,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[LineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+) -> None:
     """
     Generate lineage for a list of table queries
     """
@@ -354,7 +356,7 @@ def view_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[LineageRequest]]:
+) -> None:
     """
     Generate lineage for a list of views
     """

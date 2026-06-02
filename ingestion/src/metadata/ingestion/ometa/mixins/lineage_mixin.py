@@ -178,18 +178,22 @@ class OMetaLineageMixin(Generic[T]):
                 )
             return None
 
-    def _merge_column_lineage(self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]):  # noqa: UP006
+    def _merge_column_lineage(
+        self,
+        original: List[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
+        updated: List[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
+    ) -> list[dict[str, Any]]:
         flat_original_result = set()
         flat_updated_result = set()
+        original_data: list[dict[str, Any]] = [
+            column.model_dump() if isinstance(column, ColumnLineage) else column for column in original or []
+        ]
         try:
-            for column in original or []:
+            for column in original_data:
                 if column.get("toColumn") and column.get("fromColumns"):
                     flat_original_result.add((*column.get("fromColumns", []), column.get("toColumn")))
             for column in updated or []:
-                if not isinstance(column, dict):
-                    data = column.model_dump()
-                else:
-                    data = column
+                data = column.model_dump() if isinstance(column, ColumnLineage) else column
                 if data.get("toColumn") and data.get("fromColumns"):
                     flat_updated_result.add((*data.get("fromColumns", []), data.get("toColumn")))
         except Exception as exc:
@@ -197,7 +201,7 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.format_exc())
         union_result = flat_original_result.union(flat_updated_result)
         if flat_original_result == union_result:
-            return original
+            return original_data
         return [{"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]} for col_data in union_result]
 
     def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):  # noqa: UP006
@@ -292,7 +296,7 @@ class OMetaLineageMixin(Generic[T]):
         lineage_details: Optional[LineageDetails] = None,  # noqa: UP045
         check_patch: bool = False,
     ) -> Dict[str, Any]:  # noqa: UP006
-        lineage_details = deepcopy(lineage_details) if lineage_details else LineageDetails()
+        lineage_details = deepcopy(lineage_details) if lineage_details else LineageDetails.model_validate({})
         try:
             patch_op_success = False
             if check_patch and lineage_details:
@@ -303,25 +307,30 @@ class OMetaLineageMixin(Generic[T]):
                     to_entity_fqn,
                 )
                 if edge:
-                    original = LineageDetails()
-                    original.columnsLineage = edge["edge"].get("columnsLineage", [])
-                    original.pipeline = (
-                        EntityReference(
-                            id=edge["edge"]["pipeline"]["id"],
-                            type=edge["edge"]["pipeline"]["type"],
-                        )
+                    original_columns = cast("list[dict[str, Any]]", edge["edge"].get("columnsLineage") or [])
+                    original_pipeline = (
+                        EntityReference.model_validate(edge["edge"]["pipeline"])
                         if edge["edge"].get("pipeline")
                         else None
                     )
-                    lineage_details.columnsLineage = self._merge_column_lineage(
-                        original.columnsLineage,
-                        lineage_details.columnsLineage,
+                    original = LineageDetails.model_validate(
+                        {
+                            "columnsLineage": [
+                                ColumnLineage.model_validate(column_lineage) for column_lineage in original_columns
+                            ],
+                            "pipeline": original_pipeline,
+                        }
                     )
-
-                    lineage_details.columnsLineage = [
-                        ColumnLineage(**col_lin) for col_lin in lineage_details.columnsLineage or []
+                    updated_columns = [
+                        column_lineage.model_dump() for column_lineage in lineage_details.columnsLineage or []
                     ]
-                    original.columnsLineage = [ColumnLineage(**col_lin) for col_lin in original.columnsLineage or []]
+                    lineage_details.columnsLineage = [
+                        ColumnLineage.model_validate(column_lineage)
+                        for column_lineage in self._merge_column_lineage(
+                            original_columns,
+                            updated_columns,
+                        )
+                    ]
 
                     if original.pipeline and not lineage_details.pipeline:
                         lineage_details.pipeline = original.pipeline

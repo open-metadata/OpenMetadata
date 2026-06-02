@@ -154,7 +154,9 @@ class Lineage:
         """Create a lineage edge between two entities identified by FQN."""
         client = cast(Any, cls._get_client())  # noqa: TC006
 
-        lineage_details = LineageDetails(description=basic.Markdown(description)) if description else None
+        lineage_details = (
+            LineageDetails.model_validate({"description": basic.Markdown(description)}) if description else None
+        )
         return cast(
             "JsonDict",
             client.add_lineage_by_name(

@@ -456,9 +456,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
         if not created_lineage or created_lineage.get("error"):
             error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
-            return Either(left=StackTraceError(name="AddLineageRequestError", error=error))
+            return Either(
+                left=StackTraceError(name="AddLineageRequestError", error=error, stackTrace=None),
+                right=None,
+            )
 
-        return Either(right=created_lineage["entity"]["fullyQualifiedName"])
+        return Either(left=None, right=created_lineage["entity"]["fullyQualifiedName"])
 
     def _delete_lineage_by_source_reference(self, entity_reference: EntityReference, source: str) -> None:
         if entity_reference.id:

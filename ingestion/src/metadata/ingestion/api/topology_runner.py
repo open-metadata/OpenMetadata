@@ -544,7 +544,7 @@ class TopologyRunnerMixin(Generic[C]):
         right: OMetaFQNLineageRequest,
         stage: NodeStage,
         entity_request: Either[C],
-    ) -> Iterable[Either[Entity]]:
+    ) -> Iterable[Either[C]]:
         yield entity_request
         self.context.get().update_context_value(stage=stage, value=right.from_entity_fqn)
 
@@ -572,7 +572,7 @@ class TopologyRunnerMixin(Generic[C]):
         right: OMetaCustomProperties,
         stage: NodeStage,
         entity_request: Either[C],
-    ) -> Iterable[Either[Entity]]:
+    ) -> Iterable[Either[C]]:
         """Custom Property implementation for the context information"""
         yield entity_request
 
