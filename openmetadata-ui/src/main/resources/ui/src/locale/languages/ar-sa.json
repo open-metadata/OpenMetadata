@@ -245,6 +245,7 @@
     "bot-lowercase": "روبوت",
     "bot-plural": "روبوتات",
     "branch": "الفرع",
+    "brand-name": "{{brandName}}",
     "brand-updated": "تم تحديث {{brandName}}!",
     "broader": "أوسع",
     "broker-plural": "وسطاء",

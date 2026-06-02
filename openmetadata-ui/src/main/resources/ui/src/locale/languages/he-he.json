@@ -245,6 +245,7 @@
     "bot-lowercase": "בוט",
     "bot-plural": "בוטים",
     "branch": "ענף",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}} עודכן!",
     "broader": "רחב יותר",
     "broker-plural": "מתווך",

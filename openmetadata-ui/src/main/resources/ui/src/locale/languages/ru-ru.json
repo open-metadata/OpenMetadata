@@ -245,6 +245,7 @@
     "bot-lowercase": "бот",
     "bot-plural": "боты",
     "branch": "Ветка",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}} обновлен!",
     "broader": "Шире",
     "broker-plural": "Брокеры",

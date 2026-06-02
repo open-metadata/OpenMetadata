@@ -245,6 +245,7 @@
     "bot-lowercase": "bot",
     "bot-plural": "Bots",
     "branch": "Tak",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}} bijgewerkt!",
     "broader": "Breder",
     "broker-plural": "Brokers",

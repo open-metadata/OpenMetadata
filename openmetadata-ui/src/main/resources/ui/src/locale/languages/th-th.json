@@ -245,6 +245,7 @@
     "bot-lowercase": "บอท",
     "bot-plural": "บอทหลายตัว",
     "branch": "สาขา",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}} ได้รับการอัปเดต!",
     "broader": "กว้างกว่า",
     "broker-plural": "นายหน้า",

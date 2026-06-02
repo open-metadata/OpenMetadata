@@ -245,6 +245,7 @@
     "bot-lowercase": "机器人",
     "bot-plural": "机器人",
     "branch": "分支",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}}已更新！",
     "broader": "上位",
     "broker-plural": "经纪人",

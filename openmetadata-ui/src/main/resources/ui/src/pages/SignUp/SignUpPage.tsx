@@ -130,7 +130,7 @@ const SignUp = () => {
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
               values={{
-                entity: t('label.open-metadata'),
+                entity: brandClassBase.getPageTitle(),
               }}
             />
           </Typography.Title>

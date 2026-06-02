@@ -27,7 +27,11 @@ class BrandClassBase {
   }
 
   public getPageTitle() {
-    return t('label.open-metadata');
+    const brandName = t('label.brand-name');
+
+    return brandName && brandName !== '{{brandName}}'
+      ? brandName
+      : t('label.open-metadata');
   }
 
   public getReleaseLink(version: string) {

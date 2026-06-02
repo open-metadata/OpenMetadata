@@ -18,6 +18,7 @@
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
     <node.heap.size>6144</node.heap.size>
+    <brandName>OpenMetadata</brandName>
   </properties>
 
   <profiles>
@@ -183,8 +184,15 @@
                 <resource>
                   <directory>src/main/resources/ui/dist</directory>
                   <filtering>true</filtering>
+                  <excludes>
+                    <exclude>**/*.gz</exclude>
+                    <exclude>**/*.br</exclude>
+                  </excludes>
                 </resource>
               </resources>
+              <delimiters>
+                <delimiter>{{*}}</delimiter>
+              </delimiters>
               <nonFilteredFileExtensions>
                 <nonFilteredFileExtension>gz</nonFilteredFileExtension>
                 <nonFilteredFileExtension>br</nonFilteredFileExtension>
@@ -197,7 +205,6 @@
                 <nonFilteredFileExtension>webp</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
-                <nonFilteredFileExtension>js</nonFilteredFileExtension>
                 <nonFilteredFileExtension>css</nonFilteredFileExtension>
               </nonFilteredFileExtensions>
             </configuration>

@@ -245,6 +245,7 @@
     "bot-lowercase": "bot",
     "bot-plural": "robots",
     "branch": "Rama",
+    "brand-name": "{{brandName}}",
     "brand-updated": "{{brandName}} actualizada!",
     "broader": "Más amplio",
     "broker-plural": "Corredoras",
