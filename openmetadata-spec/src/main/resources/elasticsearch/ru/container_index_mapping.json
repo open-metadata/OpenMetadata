@@ -409,7 +409,8 @@
                 "type": "integer"
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -784,6 +785,10 @@
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "serviceType": {
         "type": "keyword",

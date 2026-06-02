@@ -313,7 +313,8 @@
                 }
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -321,6 +322,10 @@
       },
       "fieldNames": {
         "type": "keyword"
+      },
+      "fieldNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "cleanupPolicies": {
         "type": "keyword"
