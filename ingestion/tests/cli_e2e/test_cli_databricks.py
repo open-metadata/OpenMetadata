@@ -647,10 +647,9 @@ class DatabricksCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @pytest.mark.order(15)
     def test_external_table_lineage(self) -> None:
         """External table → container lineage via ExternalTableLineageMixin."""
-        external_location = os.environ.get(
-            "E2E_DATABRICKS_EXTERNAL_LOCATION",
-            DEFAULT_EXTERNAL_LOCATION,
-        )
+        # `or` instead of a get() default: CI sets the env var to "" when the
+        # secret is not configured, which must still fall back to the default.
+        external_location = os.environ.get("E2E_DATABRICKS_EXTERNAL_LOCATION") or DEFAULT_EXTERNAL_LOCATION
 
         service = self._ensure_dummy_storage_service()
         container = self._ensure_dummy_container(service, external_location)
