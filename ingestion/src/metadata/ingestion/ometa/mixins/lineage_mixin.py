@@ -352,7 +352,9 @@ class OMetaLineageMixin(Generic[T]):
             logger.error(error)
             return {"error": error}
 
-        return self.get_lineage_by_name(from_entity_type, from_entity_fqn)
+        return self.get_lineage_by_name(from_entity_type, from_entity_fqn) or {
+            "entity": {"fullyQualifiedName": from_entity_fqn}
+        }
 
     def get_lineage_edge(
         self,

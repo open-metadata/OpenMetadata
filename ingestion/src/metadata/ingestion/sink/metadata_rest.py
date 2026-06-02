@@ -454,8 +454,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             lineage_details=add_lineage.lineage_details,
             check_patch=True,
         )
-        if created_lineage.get("error"):
-            return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
+        if not created_lineage or created_lineage.get("error"):
+            error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
+            return Either(left=StackTraceError(name="AddLineageRequestError", error=error))
 
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
@@ -473,6 +474,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 entity_fqn=model_str(entity_reference.fullyQualifiedName),
                 source=source,
             )
+            return
+        logger.warning(
+            f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "
+            "has neither id nor fullyQualifiedName"
+        )
 
     @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:

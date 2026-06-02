@@ -1139,10 +1139,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+    authorizeLineageReference(securityContext, entityType, entityFQN);
     dao.deleteLineageBySourceByFQN(entityType, entityFQN, lineageSource);
     return Response.status(Status.OK).build();
   }

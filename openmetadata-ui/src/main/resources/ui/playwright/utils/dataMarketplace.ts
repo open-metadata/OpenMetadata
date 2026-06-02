@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { startCase } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -48,9 +47,7 @@ export const closeSearchPopover = async (page: Page) => {
 
 export const verifyGreetingBanner = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('marketplace-greeting')).toBeVisible();
-  await expect(page.getByTestId('greeting-text')).toContainText(
-    startCase(displayName)
-  );
+  await expect(page.getByTestId('greeting-text')).toContainText(displayName);
 };
 
 export const createAnnouncementViaApi = async (
