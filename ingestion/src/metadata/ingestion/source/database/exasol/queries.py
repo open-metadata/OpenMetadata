@@ -72,7 +72,7 @@ EXASOL_SYSTEM_METRICS_QUERY = textwrap.dedent(
     WHERE s.command_name = :operation
       AND s.success = TRUE
       AND s.start_time >= ADD_DAYS(SYSTIMESTAMP, -1)
-      AND UPPER(s.sql_text) LIKE :table_match_pattern
+      AND UPPER(s.sql_text) REGEXP_LIKE :table_match_pattern
       AND s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
 """

@@ -2,6 +2,7 @@
 Exasol system metrics implementation.
 """
 
+import re
 from typing import List  # noqa: UP035
 
 from pydantic import TypeAdapter
@@ -72,7 +73,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
         schema_name = self.schema.upper()
         table_name = self.table.upper()
-        table_match_pattern = f"%{schema_name}.{table_name}%"
+        table_match_pattern = self._get_table_match_pattern(schema_name, table_name)
         params = {
             "database_name": self.database,
             "schema": schema_name,
@@ -95,6 +96,12 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             for row in cursor
             if (row.rows is not None) and (row.rows > 0)
         ]
+
+    def _get_table_match_pattern(self, schema_name: str, table_name: str) -> str:
+        """Build a regex that matches the target schema.table as a bounded token."""
+        escaped_schema_name = re.escape(schema_name)
+        escaped_table_name = re.escape(table_name)
+        return rf"(?s).*\b{escaped_schema_name}\.{escaped_table_name}\b.*"
 
 
 def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:  # noqa: UP006

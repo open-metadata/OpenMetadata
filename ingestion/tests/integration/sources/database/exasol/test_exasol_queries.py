@@ -30,6 +30,7 @@ CONTAINER_SUFFIX = "exasolquery"
 CONTAINER_NAME = f"db_container_{CONTAINER_SUFFIX}"
 SCHEMA_NAME = "OPENMETADATA_QUERY_TEST"
 TABLE_NAME = "DATATYPES"
+SIMILAR_TABLE_NAME = f"{TABLE_NAME}_EXTRA"
 VIEW_NAME = f"VIEW_{TABLE_NAME}"
 
 
@@ -65,6 +66,7 @@ def _prepare_exasol_objects(engine: Engine) -> None:
     setup_statements = [
         f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}",
         f"DROP TABLE IF EXISTS {SCHEMA_NAME}.{TABLE_NAME}",
+        f"DROP TABLE IF EXISTS {SCHEMA_NAME}.{SIMILAR_TABLE_NAME}",
         f"DROP VIEW IF EXISTS {SCHEMA_NAME}.{VIEW_NAME}",
         f"""
                 CREATE TABLE {SCHEMA_NAME}.{TABLE_NAME} (
@@ -88,6 +90,17 @@ def _prepare_exasol_objects(engine: Engine) -> None:
                     col_char,
                     col_varchar
                 FROM {SCHEMA_NAME}.{TABLE_NAME}
+                """,
+        f"""
+                CREATE TABLE {SCHEMA_NAME}.{SIMILAR_TABLE_NAME} (
+                    col_boolean BOOLEAN,
+                    col_decimal DOUBLE PRECISION,
+                    col_date DATE,
+                    col_timestamp TIMESTAMP,
+                    col_timestamp_local TIMESTAMP WITH LOCAL TIME ZONE,
+                    col_char CHAR(1),
+                    col_varchar VARCHAR(1)
+                )
                 """,
     ]
     with engine.begin() as connection:
@@ -208,8 +221,8 @@ class TestExasolQueries:
         }
         assert len(rows) == 5
 
-    def test_system_metrics_query_returns_exasol_dml_rows(self):
-        dml_statements = [
+    def test_system_metrics_query_ignores_similarly_named_tables(self):
+        seed_rows = [
             f"""
                 INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (
                     col_boolean,
@@ -223,31 +236,50 @@ class TestExasolQueries:
                 (TRUE, 1.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'x', 'y')
                 """,
             f"""
-                UPDATE {SCHEMA_NAME}.{TABLE_NAME}
-                SET col_varchar = 'z'
-                WHERE col_char = 'x'
-                """,
-            f"""
-                DELETE FROM {SCHEMA_NAME}.{TABLE_NAME}
-                WHERE col_char = 'x'
+                INSERT INTO {SCHEMA_NAME}.{SIMILAR_TABLE_NAME} (
+                    col_boolean,
+                    col_decimal,
+                    col_date,
+                    col_timestamp,
+                    col_timestamp_local,
+                    col_char,
+                    col_varchar
+                ) VALUES
+                (TRUE, 1.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'x', 'y')
                 """,
         ]
 
         with self.engine.begin() as connection:
+            for statement in seed_rows:
+                connection.execute(text(statement))
+
+        dml_statements = [
+            f"""
+                DELETE FROM {SCHEMA_NAME}.{TABLE_NAME}
+                WHERE col_char = 'x'
+                """,
+            f"""
+                DELETE FROM {SCHEMA_NAME}.{SIMILAR_TABLE_NAME}
+                WHERE col_char = 'x'
+                """,
+        ]
+        with self.engine.begin() as connection:
             for statement in dml_statements:
                 connection.execute(text(statement))
+
+        target_params = {
+            "database_name": "default",
+            "schema": SCHEMA_NAME,
+            "table": TABLE_NAME,
+            "operation": "DELETE",
+            "table_match_pattern": rf"(?s).*\b{SCHEMA_NAME}\.{TABLE_NAME}\b.*",
+        }
 
         rows = wait_for_system_table(
             self.engine,
             EXASOL_SYSTEM_METRICS_QUERY,
             expected_count=1,
-            params={
-                "database_name": "default",
-                "schema": SCHEMA_NAME,
-                "table": TABLE_NAME,
-                "operation": "DELETE",
-                "table_match_pattern": f"%{SCHEMA_NAME}.{TABLE_NAME}%",
-            },
+            params=target_params,
             timeout_seconds=120,
         )
         columns = {column.lower() for column in rows[0]}
