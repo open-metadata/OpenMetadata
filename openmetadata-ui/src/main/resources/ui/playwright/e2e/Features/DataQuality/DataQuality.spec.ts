@@ -1240,5 +1240,85 @@ test.describe(
         await afterAction();
       }
     });
+
+    test('Editing display name does not emit a phantom tags patch op', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const phantomTagsTable = new TableClass();
+
+      try {
+        await phantomTagsTable.create(apiContext);
+        await phantomTagsTable.createTestCase(apiContext, {
+          name: `phantom_tags_test_case_${uuid()}`,
+          entityLink: `<#E::table::${phantomTagsTable.entityResponseData?.['fullyQualifiedName']}::columns::${phantomTagsTable.entity?.columns[3].name}>`,
+          parameterValues: [
+            { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
+          ],
+          testDefinition: 'columnValuesToBeInSet',
+        });
+
+        const testCaseName =
+          phantomTagsTable.testCasesResponseData[0]?.['name'];
+
+        // Drop `tags` from the list response to mimic the search-backed
+        // listing that omits relationship fields, reproducing the regression.
+        await page.route(
+          /dataQuality\/testCases\/search\/list/,
+          async (route) => {
+            const response = await route.fetch();
+            const json = await response.json();
+            json.data = (json.data ?? []).map(
+              (item: Record<string, unknown>) => {
+                const strippedItem = { ...item };
+                delete strippedItem.tags;
+
+                return strippedItem;
+              }
+            );
+            await route.fulfill({ json, response });
+          }
+        );
+
+        await visitDataQualityTab(page, phantomTagsTable);
+
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
+
+        await page.fill(
+          '[id="root\\/displayName"]',
+          'Phantom tags display name'
+        );
+
+        const updateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('update-btn').click();
+        const patchRequest = await updateResponse;
+        const patchBody = JSON.parse(
+          (await patchRequest.request().postData()) ?? '[]'
+        );
+
+        expect(
+          patchBody.some((op: { path: string }) => op.path === '/tags')
+        ).toBe(false);
+        expect(patchBody).toContainEqual({
+          op: 'replace',
+          path: '/displayName',
+          value: 'Phantom tags display name',
+        });
+      } finally {
+        await phantomTagsTable.delete(apiContext);
+        await afterAction();
+      }
+    });
   }
 );
