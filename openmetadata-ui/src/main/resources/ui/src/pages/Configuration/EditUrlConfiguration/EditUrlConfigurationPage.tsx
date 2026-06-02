@@ -73,7 +73,7 @@ const EditUrlConfigurationPage = () => {
       },
       {
         name: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -83,7 +83,7 @@ const EditUrlConfigurationPage = () => {
       {
         name: t('label.edit-entity', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
+            entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
           }),
         }),
         url: '',
@@ -107,7 +107,7 @@ const EditUrlConfigurationPage = () => {
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
+            entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
           }),
         })
       );
@@ -139,7 +139,7 @@ const EditUrlConfigurationPage = () => {
           setActiveField(e.target.id);
         }}>
         <Item
-          label={t('label.open-metadata-url', { brandName: BRAND_NAME })}
+          label={t('label.brand-name-url', { brandName: BRAND_NAME })}
           name="openMetadataUrl"
           rules={[{ required: true }]}>
           <Input
@@ -195,7 +195,7 @@ const EditUrlConfigurationPage = () => {
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
         }),
       })}
       secondPanel={{

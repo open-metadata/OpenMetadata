@@ -665,7 +665,7 @@ class GlobalSettingsClassBase {
             icon: LineageIcon,
           },
           {
-            label: t('label.open-metadata-url', {
+            label: t('label.brand-name-url', {
               brandName: brandClassBase.getPageTitle(),
             }),
             description: t('message.om-url-configuration-message', {

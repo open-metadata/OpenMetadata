@@ -45,7 +45,7 @@ const UrlConfigurationPage = () => {
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.entity-configuration', {
-          entity: t('label.open-metadata-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
         })
       ),
     []
@@ -118,7 +118,7 @@ const UrlConfigurationPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.open-metadata-url', { brandName: BRAND_NAME })}
+                {t('label.brand-name-url', { brandName: BRAND_NAME })}
               </Typography.Text>
             </Col>
             <Col span={24}>
