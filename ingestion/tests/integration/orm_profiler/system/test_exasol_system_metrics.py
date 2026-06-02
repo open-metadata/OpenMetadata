@@ -126,7 +126,9 @@ def _prepare_exasol_objects(engine) -> None:
     wait_for_system_table(engine, query, expected_count=4)
 
 
-@pytest.mark.skip(reason="Disabled by default. Should be ran manually on system metric updates")
+@pytest.mark.skip(
+    reason="Disabled by default. Should be ran manually on system metric updates and when systemProfile is activated"
+)
 class TestExasolSystem(TestCase):
     """Test class for Exasol system metrics."""
 
