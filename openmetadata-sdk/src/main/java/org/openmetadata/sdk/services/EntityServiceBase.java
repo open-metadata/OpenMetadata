@@ -2,6 +2,7 @@ package org.openmetadata.sdk.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -279,6 +280,7 @@ public abstract class EntityServiceBase<T> {
       // Remove computed/read-only fields that cannot be patched
       removeComputedFields(originalNode);
       removeComputedFields(updatedNode);
+      normalizePatchNodes(originalNode, updatedNode, entity);
 
       JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
 
@@ -341,11 +343,19 @@ public abstract class EntityServiceBase<T> {
           "followers",
           "votes");
 
+  protected void normalizePatchNodes(JsonNode originalNode, JsonNode updatedNode, T entity) {
+    // Default no-op. Subclasses can normalize entity-specific response-only fields before diffing.
+  }
+
+  protected void removeField(JsonNode node, String fieldName) {
+    if (node instanceof ObjectNode objectNode) {
+      objectNode.remove(fieldName);
+    }
+  }
+
   private void removeComputedFields(JsonNode node) {
-    if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
-      for (String field : COMPUTED_FIELDS) {
-        objectNode.remove(field);
-      }
+    for (String field : COMPUTED_FIELDS) {
+      removeField(node, field);
     }
   }
 

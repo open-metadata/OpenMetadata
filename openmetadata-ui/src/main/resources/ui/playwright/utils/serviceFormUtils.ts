@@ -10,8 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
+
+const selectConnectionType = async (page: Page, connectionType: string) => {
+  const connectionTab = page
+    .locator('[data-field-id="root/connection"]')
+    .getByRole('tab', {
+      name: connectionType,
+    });
+
+  if (await connectionTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await connectionTab.click();
+
+    return;
+  }
+
+  await page.getByTestId('select-widget-root/connection__oneof_select').click();
+
+  const option = page.getByRole('option', { name: connectionType });
+
+  if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await option.click();
+
+    return;
+  }
+
+  await page.click(`.ant-select-dropdown:visible [title="${connectionType}"]`);
+};
 
 export const fillSupersetFormDetails = async ({
   page,
@@ -29,12 +55,7 @@ export const fillSupersetFormDetails = async ({
   await page.fill(String.raw`#root\/hostPort`, hostPort);
 
   if (connectionType === 'SupersetApiConnection') {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
-    );
+    await selectConnectionType(page, connectionType);
 
     if (provider) {
       await page.getByTestId('select-widget-root/connection/provider').click();
@@ -44,12 +65,7 @@ export const fillSupersetFormDetails = async ({
     connectionType === 'PostgresConnection' ||
     connectionType === 'MysqlConnection'
   ) {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
-    );
+    await selectConnectionType(page, connectionType);
 
     if (connectionHostPort) {
       await page.locator(String.raw`#root\/connection\/hostPort`).clear();

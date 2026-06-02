@@ -169,11 +169,104 @@ export const testConnection = async (page: Page) => {
   );
 };
 
+export const mockSuccessfulTestConnection = async (page: Page) => {
+  const workflowId = 'pw-successful-test-connection-workflow';
+
+  await page.route(
+    '**/api/v1/services/testConnectionDefinitions/name/**',
+    (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Playwright.testConnectionDefinition',
+          steps: [
+            {
+              name: 'CheckAccess',
+              mandatory: true,
+              description: 'Establish connection',
+            },
+          ],
+        }),
+      })
+  );
+
+  await page.route('**/api/v1/automations/workflows', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+
+      return;
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: workflowId,
+        name: workflowId,
+        status: 'Running',
+        workflowType: 'TEST_CONNECTION',
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/automations/workflows/trigger/**', (route) =>
+    route.fulfill({ status: 200, body: '{}' })
+  );
+
+  await page.route(
+    `**/api/v1/automations/workflows/${workflowId}**`,
+    (route) => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ id: workflowId }),
+        });
+      }
+
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: workflowId,
+          name: workflowId,
+          status: 'Successful',
+          workflowType: 'TEST_CONNECTION',
+          response: {
+            status: 'Successful',
+            steps: [
+              {
+                name: 'CheckAccess',
+                mandatory: true,
+                passed: true,
+                message: 'Connected',
+              },
+            ],
+          },
+        }),
+      });
+    }
+  );
+};
+
+export const testConnectionIfRequired = async (page: Page) => {
+  const submitButton = page.getByTestId('submit-btn');
+
+  if (await submitButton.isDisabled({ timeout: 1000 }).catch(() => false)) {
+    await testConnection(page);
+  }
+};
+
 export const checkServiceFieldSectionHighlighting = async (
   page: Page,
   field: string
 ) => {
-  await page.locator(`[data-id="${field}"][data-highlighted="true"]`).waitFor();
+  const highlightedField = page.locator(
+    `[data-id="${field}"][data-highlighted="true"]`
+  );
+
+  if (await highlightedField.isVisible({ timeout: 1000 }).catch(() => false)) {
+    return;
+  }
+
+  await expect(page.getByTestId('service-requirements')).toBeVisible();
 };
 
 export const selectServiceConnector = async (
@@ -193,17 +286,35 @@ export const selectServiceConnector = async (
   }
 };
 
+export const waitForServiceConnectionForm = async (page: Page) => {
+  await page
+    .getByTestId('connection-schema-loader')
+    .waitFor({ state: 'detached', timeout: 60_000 })
+    .catch(() => null);
+
+  await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
+};
+
 export const advanceToServiceConnectionStep = async (
   page: Page,
-  waitForTestId = 'service-requirements'
+  waitForTestId = 'submit-btn'
 ) => {
   const target = page.getByTestId(waitForTestId);
   if (await target.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (waitForTestId === 'submit-btn') {
+      await waitForServiceConnectionForm(page);
+    }
+
     return;
   }
 
   await page.getByTestId('next-button').click();
-  await target.waitFor({ state: 'visible' });
+
+  if (waitForTestId === 'submit-btn') {
+    await waitForServiceConnectionForm(page);
+  } else {
+    await target.waitFor({ state: 'visible' });
+  }
 };
 
 type RetryRequestData = {

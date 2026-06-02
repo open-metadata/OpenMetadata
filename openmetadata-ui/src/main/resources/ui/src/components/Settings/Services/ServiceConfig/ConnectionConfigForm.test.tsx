@@ -198,7 +198,7 @@ jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
   },
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
     jest
       .fn()

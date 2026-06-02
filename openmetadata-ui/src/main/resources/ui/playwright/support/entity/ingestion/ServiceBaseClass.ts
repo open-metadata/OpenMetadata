@@ -33,6 +33,7 @@ import {
   makeRetryRequest,
   Services,
   testConnection,
+  waitForServiceConnectionForm,
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 
@@ -106,6 +107,7 @@ class ServiceBaseClass {
     await this.serviceStep2(this.serviceName, page);
 
     await ipPromise;
+    await waitForServiceConnectionForm(page);
 
     await page.click('[data-testid="service-requirements"]');
     await this.fillConnectionDetails(page);

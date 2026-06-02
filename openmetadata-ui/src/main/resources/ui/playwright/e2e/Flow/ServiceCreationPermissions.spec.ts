@@ -32,7 +32,9 @@ import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   advanceToServiceConnectionStep,
+  mockSuccessfulTestConnection,
   selectServiceConnector,
+  testConnectionIfRequired,
 } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
@@ -167,6 +169,8 @@ test.describe(
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
+      await mockSuccessfulTestConnection(page);
+      await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
       await page.getByTestId('submit-btn').click();
 
@@ -250,6 +254,8 @@ test.describe(
         response.url().includes('/api/v1/services/databaseServices')
       );
 
+      await mockSuccessfulTestConnection(page);
+      await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
       await page.getByTestId('submit-btn').click();
       await saveResponse;

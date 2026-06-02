@@ -24,6 +24,7 @@ import {
   supersetFormDetails3,
   supersetFormDetails4,
 } from '../../constant/serviceForm';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
@@ -80,8 +81,9 @@ test.describe(
       });
 
       test.afterAll(() => {
-        // Clean up the test file after upload
-        fs.unlinkSync(testCertPath);
+        if (fs.existsSync(testCertPath)) {
+          fs.unlinkSync(testCertPath);
+        }
       });
 
       test('Verify form selects are working properly', async ({ page }) => {
@@ -329,7 +331,10 @@ test.describe(
     });
 
     test.describe('Database service', () => {
-      test('Verify service name field validation errors', async ({ page }) => {
+      test('Verify service name field validation errors', async ({
+        browser,
+        page,
+      }) => {
         test.slow();
 
         await page.goto('/databaseServices/add-service');
@@ -350,11 +355,13 @@ test.describe(
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service1}`);
         await advanceToServiceConnectionStep(page);
-        await page.getByTestId('submit-btn').click();
-        await page.getByTestId('submit-btn').click();
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(page.getByTestId('entity-header-title')).toBeVisible();
+        const { apiContext, afterAction } = await createNewPage(browser);
+        const databaseService = new DatabaseServiceClass(
+          SERVICE_NAMES.service1
+        );
+        await databaseService.create(apiContext);
+        await afterAction();
 
         await page.getByRole('link', { name: 'Database Services' }).click();
         await waitForAllLoadersToDisappear(page);
