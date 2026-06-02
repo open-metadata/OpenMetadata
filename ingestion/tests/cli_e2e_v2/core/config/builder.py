@@ -36,12 +36,13 @@ _FILTER_KEYS: tuple[str, ...] = (
     "tableFilterPattern",
 )
 
-# Pipelines that require a `processor` block in the rendered YAML; omitting it
-# causes workflow init to crash on model_dump of a None processor.
-_PIPELINES_NEEDING_PROCESSOR: tuple[type, ...] = (
-    ProfilerPipeline,
-    AutoClassificationPipeline,
-)
+# Pipelines that require a `processor` block in the rendered YAML, and the
+# processor type each one uses. Omitting the block crashes workflow init on
+# model_dump of a None processor.
+_PROCESSOR_BY_PIPELINE: dict[type, str] = {
+    ProfilerPipeline: "orm-profiler",
+    AutoClassificationPipeline: "tag-pii-processor",
+}
 
 
 class PipelineNotSetError(RuntimeError):
@@ -104,8 +105,9 @@ class WorkflowConfig:
         base_connector = new_doc["source"]["type"].split("-", 1)[0]
         new_doc["source"]["type"] = base_connector + source_type_suffix_for(options)
 
-        if isinstance(options, _PIPELINES_NEEDING_PROCESSOR):
-            new_doc["processor"] = {"type": "orm-profiler", "config": {}}
+        processor_type = _PROCESSOR_BY_PIPELINE.get(type(options))
+        if processor_type is not None:
+            new_doc["processor"] = {"type": processor_type, "config": {}}
         else:
             new_doc.pop("processor", None)
 
