@@ -113,7 +113,7 @@ COMMONS = {
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
         VERSIONS["grpc-tools"],  # grpcio-tools already depends on grpcio. No need to add separately
-        "protobuf>=5.29.6",  # CVE-2026-0994 JSON recursion depth bypass
+        "protobuf>=6.33.5",  # CVE-2026-0994 JSON recursion depth bypass (6.30.0rc1-6.33.4 vulnerable; resolved at 6.33.6 via constraints)
     },
     "postgres": {
         VERSIONS["pymysql"],
