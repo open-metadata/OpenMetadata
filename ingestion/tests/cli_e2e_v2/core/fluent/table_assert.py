@@ -3,7 +3,8 @@
 #  you may not use this file except in compliance with the License.
 """TableAssert + ColumnAssert — fluent assertions on Table entities.
 
-ColumnAssert is synchronous; polling chains off TableAssert via .eventually().
+ColumnAssert inherits the parent TableAssert's runner, so column checks poll
+when the table is armed via `.eventually()`.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ from .profile_assert import ProfileAssert
 
 if TYPE_CHECKING:
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+    from .eventually import EventuallyRunner
 
 
 def _fk_matches(
@@ -155,7 +158,7 @@ class TableAssert(EntityAssert[Table]):
     # --- descent into column / namespaces -----------------------------
 
     def column(self, name: str) -> ColumnAssert:
-        return ColumnAssert(self._om, self._fqn, name)
+        return ColumnAssert(self._om, self._fqn, name, runner=self._eventually)
 
     @property
     def lineage(self) -> LineageAssert:
@@ -167,12 +170,16 @@ class TableAssert(EntityAssert[Table]):
 
 
 class ColumnAssert:
-    """Synchronous assertions on a named column of a Table."""
+    """Assertions on a named column of a Table; polls when armed via the parent's `.eventually()`."""
 
-    def __init__(self, om: OpenMetadata, table_fqn: str, column_name: str) -> None:
+    def __init__(self, om: OpenMetadata, table_fqn: str, column_name: str, runner: EventuallyRunner) -> None:
         self._om = om
         self._table_fqn = table_fqn
         self._column_name = column_name
+        self._eventually = runner
+
+    def _label(self, check: str) -> str:
+        return f"column({self._table_fqn}.{self._column_name}).{check}"
 
     def _fetch_column(self) -> Column:
         table = self._om.get_by_name(
@@ -188,38 +195,52 @@ class ColumnAssert:
         raise AssertionError(f"Column {self._column_name!r} not found on table {self._table_fqn}")
 
     def has_tag(self, fqn: str) -> ColumnAssert:
-        column = self._fetch_column()
-        actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
-        if fqn not in actual:
-            raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
-            )
+        def _check() -> None:
+            column = self._fetch_column()
+            actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
+            if fqn not in actual:
+                raise AssertionError(
+                    f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
+                )
+
+        self._eventually.run(_check, name=self._label(f"has_tag({fqn})"))
         return self
 
     def has_no_tag(self, fqn: str) -> ColumnAssert:
         """Assert the column does NOT carry the given tag."""
-        column = self._fetch_column()
-        actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
-        if fqn in actual:
-            raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} unexpectedly "
-                f"carries tag {fqn!r}. Actual tags: {sorted(actual)}"
-            )
+
+        def _check() -> None:
+            column = self._fetch_column()
+            actual = {model_str(t.tagFQN) for t in unwrap_root_list(column.tags)}
+            if fqn in actual:
+                raise AssertionError(
+                    f"Column {self._table_fqn}.{self._column_name} unexpectedly "
+                    f"carries tag {fqn!r}. Actual tags: {sorted(actual)}"
+                )
+
+        self._eventually.run(_check, name=self._label(f"has_no_tag({fqn})"))
         return self
 
     def has_type(self, data_type: DataType) -> ColumnAssert:
-        column = self._fetch_column()
-        if column.dataType != data_type:
-            raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} has type {column.dataType}, expected {data_type}"
-            )
+        def _check() -> None:
+            column = self._fetch_column()
+            if column.dataType != data_type:
+                raise AssertionError(
+                    f"Column {self._table_fqn}.{self._column_name} has type {column.dataType}, expected {data_type}"
+                )
+
+        self._eventually.run(_check, name=self._label(f"has_type({data_type})"))
         return self
 
     def has_description_containing(self, text: str) -> ColumnAssert:
-        column = self._fetch_column()
-        desc = model_str(column.description) if column.description else ""
-        if text not in desc:
-            raise AssertionError(
-                f"Column {self._table_fqn}.{self._column_name} description does not contain {text!r}. Actual: {desc!r}"
-            )
+        def _check() -> None:
+            column = self._fetch_column()
+            desc = model_str(column.description) if column.description else ""
+            if text not in desc:
+                raise AssertionError(
+                    f"Column {self._table_fqn}.{self._column_name} description does not contain "
+                    f"{text!r}. Actual: {desc!r}"
+                )
+
+        self._eventually.run(_check, name=self._label(f"has_description_containing({text!r})"))
         return self

@@ -25,7 +25,7 @@ Assertion catalog
   .has_owner(name)                                       # sync or eventually
   .eventually(60).has_foreign_key_constraint(column=..., referenced_table=..., referenced_column=...)
 
-  # Column (via table.column(name) -> ColumnAssert, sync only)
+  # Column (via table.column(name) -> ColumnAssert; polls when armed via table .eventually())
   .has_type(DataType.X)
   .has_tag(tag_fqn)
   .has_description_containing(text)
