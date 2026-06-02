@@ -1480,6 +1480,72 @@ class SourceConnectionTest(TestCase):
             shutil.rmtree(root, ignore_errors=True)
             shutil.rmtree(outside.parent, ignore_errors=True)
 
+    def test_oracle_mkdir_secure_within_tightens_preexisting_dirs(self):
+        # If an intermediate dir was somehow pre-created with looser permissions
+        # (e.g. by an earlier extraction that ran under a different umask), the
+        # helper must still chmod it to 0o700 instead of leaving it as-is.
+        import shutil
+        import stat
+
+        root = Path(tempfile.mkdtemp(prefix="oracle_wallet_root_"))
+        try:
+            loose = root / "loose"
+            loose.mkdir(mode=0o755)
+            loose.chmod(0o755)
+            target = loose / "leaf"
+
+            OracleConnection._mkdir_secure_within(target, root)
+
+            assert stat.S_IMODE(loose.stat().st_mode) == 0o700
+            assert stat.S_IMODE(target.stat().st_mode) == 0o700
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_oracle_safe_extract_rejects_duplicate_zip_entries(self):
+        # A malicious wallet zip could include two entries with the same path
+        # to overwrite earlier extracted files. O_EXCL on the file open prevents
+        # this.
+        import shutil
+
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "first=...")
+            zip_file.writestr("tnsnames.ora", "second=...")
+        wallet_bytes.seek(0)
+
+        target_dir = tempfile.mkdtemp(prefix="oracle_wallet_dupe_")
+        try:
+            with self.assertRaises(FileExistsError), zipfile.ZipFile(wallet_bytes) as zip_ref:
+                OracleConnection._safe_extract_wallet_archive(zip_ref, target_dir)
+            assert (Path(target_dir) / "tnsnames.ora").read_text() == "first=..."
+        finally:
+            shutil.rmtree(target_dir, ignore_errors=True)
+
+    def test_oracle_safe_extract_rejects_symlink_at_target(self):
+        # O_NOFOLLOW protects against an attacker pre-creating a symlink at
+        # the target path before extraction. We point the symlink at a sibling
+        # file *inside* the wallet root so the resolve()-based zip-slip check
+        # still passes — the protection under test here is O_NOFOLLOW, not the
+        # path-containment guard.
+        import shutil
+
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("cwallet.sso", "attacker-controlled")
+        wallet_bytes.seek(0)
+
+        target_dir = Path(tempfile.mkdtemp(prefix="oracle_wallet_sym_"))
+        try:
+            victim = target_dir / "victim"
+            victim.write_text("untouched")
+            (target_dir / "cwallet.sso").symlink_to(victim)
+
+            with self.assertRaises((FileExistsError, OSError)), zipfile.ZipFile(wallet_bytes) as zip_ref:
+                OracleConnection._safe_extract_wallet_archive(zip_ref, str(target_dir))
+            assert victim.read_text() == "untouched"
+        finally:
+            shutil.rmtree(target_dir, ignore_errors=True)
+
     @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
     def test_oracle_autonomous_wallet_content_accepts_wrapped_base64(self, mock_create_generic_db_connection):
         # macOS `base64 -i` wraps lines every 76 chars; ensure ingestion strips

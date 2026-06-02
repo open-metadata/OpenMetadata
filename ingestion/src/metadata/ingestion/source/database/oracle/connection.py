@@ -132,12 +132,17 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 continue
 
             OracleConnection._mkdir_secure_within(member_path.parent, target_root)
+            # O_EXCL: refuse to overwrite an existing file, so a malicious zip
+            # with duplicate entries cannot replace previously extracted wallet
+            # files. O_NOFOLLOW: refuse to follow a symlink at the final path
+            # component, hardening against attacker-controlled symlinks in the
+            # target directory.
             with (
                 zip_ref.open(member, "r") as source_file,
                 open(
                     member_path,
                     "wb",
-                    opener=lambda path, flags: os.open(path, flags, 0o600),
+                    opener=lambda path, flags: os.open(path, flags | os.O_EXCL | os.O_NOFOLLOW, 0o600),
                 ) as target_file,
             ):
                 shutil.copyfileobj(source_file, target_file)
@@ -156,11 +161,14 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             try:
                 current_path.mkdir(mode=0o700, exist_ok=False)
             except FileExistsError as exc:
-                if current_path.is_dir():
-                    continue
-                raise ValueError(
-                    f"Invalid walletContent. Expected directory path but found existing file: {current_path}"
-                ) from exc
+                if not current_path.is_dir():
+                    raise ValueError(
+                        f"Invalid walletContent. Expected directory path but found existing file: {current_path}"
+                    ) from exc
+            # Always chmod after we've confirmed it's a directory — covers both
+            # the just-created case (which mkdir(mode=0o700) sets correctly but
+            # umask can mask) and the pre-existing case (which may have been
+            # created with looser permissions by an earlier extraction run).
             current_path.chmod(0o700)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
