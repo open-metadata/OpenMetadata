@@ -57,7 +57,6 @@ const AppInstallVerifyCard = ({
           icon={
             <BrandImage
               isMonoGram
-              alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
               height={56}

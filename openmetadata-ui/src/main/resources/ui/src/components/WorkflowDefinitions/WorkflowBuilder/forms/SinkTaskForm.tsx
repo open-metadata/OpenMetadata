@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
+import { BRAND_NAME } from '../../../../utils/BrandData/BrandConstants';
 import {
   createNodeConfig,
   isValidString,
@@ -64,7 +65,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     token: '',
     conflictResolution: 'overwriteExternal',
     commitMessageTemplate: 'Sync {entityType}: {entityName}',
-    authorName: 'OpenMetadata Bot',
+    authorName: `${BRAND_NAME} Bot`,
     authorEmail: 'bot@openmetadata.org',
   });
 
@@ -92,7 +93,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         commitMessageTemplate:
           sinkConfig.commitConfig?.messageTemplate ||
           'Sync {entityType}: {entityName}',
-        authorName: sinkConfig.commitConfig?.authorName || 'OpenMetadata Bot',
+        authorName: sinkConfig.commitConfig?.authorName || `${BRAND_NAME} Bot`,
         authorEmail:
           sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
       });
