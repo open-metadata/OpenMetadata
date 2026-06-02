@@ -595,7 +595,7 @@ qdrant-client==1.17.1
 ray==2.55.0
 reactivex==4.1.0
 redis==6.4.0
-redshift_connector==2.1.13
+redshift_connector==2.1.14
 referencing==0.37.0
 regex==2026.4.4
 requests-file==3.0.1
