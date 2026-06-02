@@ -269,6 +269,13 @@ public class ESLineageGraphBuilder
                   hasToFqnMap.keySet(),
                   lineageRequest.getStartTime(),
                   lineageRequest.getEndTime());
+          // Time-window hard prune (point-in-time semantics): a candidate node is kept only when
+          // at least one in-window edge connects it to the current frontier. Out-of-window edges
+          // sever discovery of everything reachable only through them. This mirrors the upstream
+          // traversal, where a parent is enqueued only when its connecting edge is in-window - both
+          // directions honor the same invariant: a non-root node appears iff reached by an
+          // in-window
+          // edge. The window therefore does NOT participate in preservePaths (see schema docs).
           if (upstreamEntities.isEmpty()) {
             continue;
           }
