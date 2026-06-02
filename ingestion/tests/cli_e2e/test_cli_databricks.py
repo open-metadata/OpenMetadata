@@ -70,10 +70,9 @@ class DatabricksCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     `CREATE CATALOG` from a SQL Warehouse session.
     """
 
-    # Resolve the catalog from the same env var as the yaml so the test's
-    # SQL fixtures and the ingestion workflow target the same catalog.
-    # Falling back to `e2e_db` keeps a sensible default for fresh setups.
-    CATALOG: str = os.environ.get("E2E_DATABRICKS_CATALOG", "e2e_db")
+    # Must match the hardcoded `catalog` in database/databricks/databricks.yaml
+    # so the test's SQL fixtures and the ingestion workflow target the same catalog.
+    CATALOG: str = "e2e_db"
 
     prepare_db_setup: List[str] = [  # noqa: RUF012, UP006
         f"DROP SCHEMA IF EXISTS {CATALOG}.e2e_test CASCADE",

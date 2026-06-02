@@ -8,7 +8,7 @@ source:
       httpPath: $E2E_DATABRICKS_HTTP_PATH
       authType:
         token: $E2E_DATABRICKS_TOKEN
-      catalog: $E2E_DATABRICKS_CATALOG
+      catalog: e2e_db
       connectionTimeout: 120
       queryHistoryTable: system.query.history
       connectionOptions: {}
