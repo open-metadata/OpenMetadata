@@ -17,7 +17,6 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.21.4</org.testcontainers.version>
-    <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.15.2</azure-identity.version>
     <azure-kv.version>4.10.7</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
