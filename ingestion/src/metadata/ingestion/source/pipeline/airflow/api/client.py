@@ -87,12 +87,7 @@ class AirflowApiClient:
                     verify=verify_ssl,
                 )
             elif isinstance(auth_config, GcpServiceAccount):
-                auth_token_fn = build_gcp_token_callback(
-                    auth_config.credentials,
-                    iap_audience=auth_config.iapAudience,
-                    host=clean_uri(str(config.hostPort)),
-                    verify=verify_ssl,
-                )
+                auth_token_fn = build_gcp_token_callback(auth_config.credentials)
             else:
                 auth_token_fn = None
 

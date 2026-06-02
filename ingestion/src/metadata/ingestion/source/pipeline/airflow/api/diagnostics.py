@@ -14,7 +14,7 @@ CheckAccess diagnostics for the Airflow REST API client.
 When the underlying connection test fails, this module produces a
 managed-flavor-specific, actionable hint to surface alongside the raw error:
 
-  - Google Cloud Composer  (IAP-protected, behind googleusercontent.com)
+  - Google Cloud Composer  (IAM-protected, behind googleusercontent.com)
   - AWS MWAA              (uses invoke_rest_api with AWS IAM credentials)
   - Astronomer Cloud      (workspace API tokens against *.astronomer.run)
   - Self-hosted Airflow   (anything else)
@@ -23,8 +23,6 @@ Each probe is best-effort: failures inside the probe never raise; they return
 None and the original error is shown to the user unchanged.
 """
 
-import base64
-import json
 import re
 import traceback
 import urllib.parse
@@ -116,113 +114,69 @@ def _probe_composer(host: Optional[str], auth_config, verify: bool, original_err
         )
     elif not isinstance(auth_config, GcpServiceAccount):
         hint = (
-            "Composer Airflow is IAP-protected and only accepts Google-issued OIDC ID tokens. "
+            "Composer Airflow only accepts Google IAM credentials. "
             "Switch the auth configuration to 'GCP Service Account' and paste your service account JSON."
         )
     else:
-        hint = _composer_audience_hint(host, auth_config, verify)
+        hint = _composer_access_hint(host, auth_config, verify)
     return hint
 
 
-def _composer_audience_hint(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[str]:  # noqa: UP045
+def _composer_access_hint(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[str]:  # noqa: UP045
     """
-    Produce an actionable hint about the IAP audience. Decision order:
+    A valid GCP Service Account config that still fails CheckAccess is almost
+    always an IAM permission problem: Google rejects the request before it
+    reaches the Airflow API and returns an HTML login/denied page, which the
+    client surfaces as an unhelpful JSON parse error. Decision order:
 
-      1. Classic IAP and redirect exposed an audience -> compare with token, name both.
-      2. Composer Management API can be reached -> resolve audience from the env's
-         config (iapClientId for Composer 2 classic, airflowByoidConfig.audiences
-         for Composer 2 BYOID and Composer 3) and tell the user the exact value
-         to paste into 'IAP Audience'.
-      3. Composer-managed redirect but API probe failed -> recommend
-         `gcloud composer environments describe` as a manual fallback.
-      4. Any other auto-detect failure -> generic "set IAP Audience manually" hint.
+      1. Classic IAP redirect detected -> the environment requires OIDC ID-token
+         auth, which OpenMetadata does not support; recommend IAM-based access.
+      2. Composer Management API reachable and env found -> the SA has project
+         access but not Airflow access; name the env and the missing role.
+      3. Anything else -> generic missing-IAM-permission hint.
     """
-    expected_audience = _probe_iap_audience(host, verify)
-    actual_audience = _token_audience(auth_config, host, verify)
-
     hint = None
-    if expected_audience and actual_audience and expected_audience != actual_audience:
+    if _detect_composer_iap_model(host, verify) == "classic":
         hint = (
-            f"IAP audience mismatch. Composer expects aud='{expected_audience}' "
-            f"but the token presents aud='{actual_audience}'. "
-            "Set 'IAP Audience' to the expected value (also visible in GCP Console -> "
-            "Security -> Identity-Aware Proxy -> the Composer backend's OAuth 2.0 Client ID)."
-        )
-    elif expected_audience and not actual_audience:
-        hint = (
-            f"Could not mint an OIDC ID token to compare with the IAP audience '{expected_audience}'. "
-            "Verify the service account JSON is valid and that the SA has roles/iap.httpsResourceAccessor."
-        )
-    elif not expected_audience:
-        env_info = _probe_composer_management_api(host, auth_config, verify)
-        if env_info:
-            hint = _hint_from_env_info(env_info)
-        elif _detect_composer_iap_model(host, verify) == "composer_managed":
-            hint = (
-                "This is Composer 2/3 with the managed IAP model (the unauthenticated request "
-                "redirects through composer.cloud.google.com/_signin rather than directly to the "
-                "Google OAuth endpoint), and the service account does not have access to the "
-                "Composer Management API so OpenMetadata could not auto-resolve the audience.\n"
-                "\n"
-                "Option 1: grant the SA roles/composer.environmentAndStorageObjectViewer on the "
-                "project so future test connections can resolve the audience automatically.\n"
-                "Option 2: look up the audience manually and paste it into 'IAP Audience':\n"
-                "  gcloud composer environments describe <ENV_NAME> --location <REGION> "
-                "--format=json | jq '.config | {webServerConfig, airflowByoidConfig}'\n"
-                "  - If 'webServerConfig.iapClientId' is set, use that value.\n"
-                "  - If 'airflowByoidConfig.audiences' is non-empty, use any value from the list.\n"
-                "  - If neither is set (Composer 3 without BYOID), enable BYOID first with "
-                "`gcloud composer environments update <ENV_NAME> --location <REGION> "
-                "--airflow-byoid-audiences=<your-choice>`."
-            )
-        else:
-            hint = (
-                "Could not auto-detect the IAP audience for this Composer environment "
-                "(custom domain, blocked egress, or private IAP). Set 'IAP Audience' explicitly "
-                "to the OAuth client ID shown in GCP Console -> Security -> Identity-Aware Proxy -> "
-                "the Composer backend."
-            )
-    return hint
-
-
-def _hint_from_env_info(env_info: dict) -> str:
-    """Build a precise audience recommendation from a parsed Composer environment config."""
-    name = env_info.get("name") or "<env>"
-    version = env_info.get("version") or "unknown"
-    iap_client_id = env_info.get("iapClientId")
-    byoid_audiences = env_info.get("byoidAudiences") or []
-    region = env_info.get("region") or "<region>"
-
-    if iap_client_id:
-        result = (
-            f"Auto-detected the IAP audience for Composer environment '{name}' (image {version}). "
-            f"Set 'IAP Audience' to:\n  {iap_client_id}"
-        )
-    elif byoid_audiences:
-        joined = "\n  ".join(byoid_audiences)
-        result = (
-            f"Composer environment '{name}' (image {version}) has BYOID configured. "
-            f"Set 'IAP Audience' to one of:\n  {joined}"
+            "This Composer environment is protected by classic IAP, which requires OIDC ID-token "
+            "authentication that OpenMetadata does not support. Use a Composer 2/3 environment with "
+            "IAM-based web server access control, or expose the Airflow REST API without classic IAP."
         )
     else:
-        result = (
-            f"Composer environment '{name}' (image {version}) has no IAP client ID and no BYOID "
-            "audiences configured — Airflow REST API access is not currently enabled.\n"
-            "Enable BYOID with the audience of your choice, then paste it into 'IAP Audience':\n"
-            f"  gcloud composer environments update {name} --location {region} "
-            "--airflow-byoid-audiences=<your-chosen-audience>"
-        )
-    return result
+        env_info = _probe_composer_management_api(host, auth_config, verify)
+        if env_info:
+            hint = _composer_permission_hint(env_info)
+        else:
+            hint = (
+                "The request was rejected before reaching the Airflow API — this usually means the "
+                "service account is missing IAM permissions on the Composer environment.\n"
+                "Grant the service account the 'Composer User' role (roles/composer.user) on the "
+                "project, wait a few minutes for IAM propagation, and re-run the test connection."
+            )
+    return hint
+
+
+def _composer_permission_hint(env_info: dict) -> str:
+    """Build a permission hint that names the Composer environment the SA can already see."""
+    name = env_info.get("name") or "<env>"
+    version = env_info.get("version") or "unknown"
+    return (
+        f"The service account can see Composer environment '{name}' (image {version}) through the "
+        "Composer Management API, but the Airflow web server rejected the request.\n"
+        "Grant the service account the 'Composer User' role (roles/composer.user) on the project. "
+        "If Airflow UI Access Control is enabled for this environment, also assign the service "
+        "account an Airflow role (e.g. 'Op') in the Airflow UI."
+    )
 
 
 def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[dict]:  # noqa: UP045
     """
-    Call the Composer Management API to find the env matching this airflowUri
-    and extract the fields needed to recommend an audience.
+    Call the Composer Management API to find the env matching this airflowUri,
+    proving whether the service account has any project-level access at all.
 
-    Returns a dict {name, region, version, iapClientId, byoidAudiences} or None
-    when the API can't be reached, the SA lacks permission, the env is missing,
-    or any other failure. Diagnostics must never raise.
+    Returns a dict {name, region, version} or None when the API can't be
+    reached, the SA lacks permission, the env is missing, or any other
+    failure. Diagnostics must never raise.
 
     Note: the `verify` parameter (user-controlled Airflow verifySSL) is
     intentionally NOT forwarded to the Google Management API call. A user who
@@ -257,7 +211,7 @@ def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, ve
             env_config = env.get("config") or {}
             airflow_uri = (env_config.get("airflowUri") or "").rstrip("/").lower()
             if airflow_uri == normalized_host:
-                info = _extract_env_audience_info(env, region)
+                info = _extract_env_info(env, region)
                 break
     except Exception:
         logger.debug("Composer management probe failed: %s", traceback.format_exc())
@@ -308,9 +262,9 @@ def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optiona
     Mint an OAuth2 access token (cloud-platform scope) for the Composer
     Management API call. Returns None on any failure.
 
-    Uses the existing build_gcp_token_callback machinery (with no IAP audience)
-    to get the access-token code path. Result is not cached: the diagnostic
-    fires only on a failed CheckAccess, so a single extra token mint is cheap.
+    Uses the existing build_gcp_token_callback machinery to get the
+    access-token code path. Result is not cached: the diagnostic fires only
+    on a failed CheckAccess, so a single extra token mint is cheap.
     """
     from metadata.ingestion.source.pipeline.airflow.api.auth import (  # noqa: PLC0415
         build_gcp_token_callback,
@@ -326,29 +280,25 @@ def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optiona
     return token
 
 
-def _extract_env_audience_info(env: dict, region: str) -> dict:
-    """Pull the audience-relevant fields out of a Composer environments.get response."""
+def _extract_env_info(env: dict, region: str) -> dict:
+    """Pull the identifying fields out of a Composer environments.get response."""
     config = env.get("config") or {}
     full_name = env.get("name") or ""
     return {
         "name": full_name.split("/")[-1] if full_name else "",
         "region": region,
         "version": (config.get("softwareConfig") or {}).get("imageVersion"),
-        "iapClientId": (config.get("webServerConfig") or {}).get("iapClientId"),
-        "byoidAudiences": ((config.get("airflowByoidConfig") or {}).get("audiences")) or [],
     }
 
 
 def _detect_composer_iap_model(host: str, verify: bool) -> Optional[str]:  # noqa: UP045
     """
-    Identify which Composer IAP variant we're talking to:
+    Identify which Composer access-control variant we're talking to:
       - "classic": redirect points at accounts.google.com/o/oauth2/auth?client_id=...
+        (classic IAP — requires OIDC ID tokens, which OpenMetadata does not support)
       - "composer_managed": redirect points at composer.cloud.google.com/_signin
+        (Composer 2/3 IAM-based access — works with plain access tokens)
       - None: probe failed or response wasn't a redirect
-
-    Composer 2/3 with the managed IAP model hides the client_id behind its own
-    /_signin shim, so the audience auto-detect cannot succeed and the user must
-    supply the audience manually.
     """
     model = None
     try:
@@ -461,55 +411,4 @@ def _hostname(host: Optional[str]) -> str:  # noqa: UP045
             result = netloc.lower()
         except ValueError:
             result = ""
-    return result
-
-
-def _probe_iap_audience(host: str, verify: bool) -> Optional[str]:  # noqa: UP045
-    """
-    Make an unauthenticated request to the host and pull `client_id=` out of
-    the IAP login redirect. Cached at the auth-module level so we only do
-    one probe per process per host.
-    """
-    from metadata.ingestion.source.pipeline.airflow.api.auth import (  # noqa: PLC0415
-        resolve_iap_audience,
-    )
-
-    return resolve_iap_audience(host, verify=verify)
-
-
-def _token_audience(auth_config: GcpServiceAccount, host: str, verify: bool) -> Optional[str]:  # noqa: UP045
-    """Mint a token via the configured GCP auth and decode its `aud` claim. Returns None on any failure."""
-    from metadata.ingestion.source.pipeline.airflow.api.auth import (  # noqa: PLC0415
-        build_gcp_token_callback,
-    )
-
-    audience = None
-    try:
-        callback = build_gcp_token_callback(
-            auth_config.credentials,
-            iap_audience=auth_config.iapAudience,
-            host=host,
-            verify=verify,
-        )
-        token, _ = callback()
-        audience = _jwt_aud(token)
-    except Exception:
-        logger.debug("Token audience probe failed: %s", traceback.format_exc())
-    return audience
-
-
-def _jwt_aud(token: str) -> Optional[str]:  # noqa: UP045
-    """Decode JWT payload (no signature verification) and return its `aud` claim, or None."""
-    result = None
-    try:
-        payload_segment = token.split(".")[1]
-        padded = payload_segment + "=" * (-len(payload_segment) % 4)
-        claims = json.loads(base64.urlsafe_b64decode(padded.encode()))
-        aud = claims.get("aud")
-        if isinstance(aud, str):
-            result = aud
-        elif isinstance(aud, list) and aud:
-            result = aud[0]
-    except Exception:
-        logger.debug("Could not decode JWT aud claim: %s", traceback.format_exc())
     return result

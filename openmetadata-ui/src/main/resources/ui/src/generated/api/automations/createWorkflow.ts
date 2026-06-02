@@ -3882,16 +3882,6 @@ export interface AuthenticationConfiguration {
      */
     credentials?: GcpConfigClass;
     /**
-     * Audience claim of the OIDC ID token used to authenticate against IAP-protected Cloud
-     * Composer. Accepts either a classic IAP OAuth 2.0 Client ID (Composer 1 / older Composer 2
-     * environments) or any BYOID audience string configured via 'gcloud composer environments
-     * update --airflow-byoid-audiences=...' (Composer 2/3 with airflowByoidConfig.audiences).
-     * When omitted, OpenMetadata auto-detects it from the IAP login redirect or the Composer
-     * Admin API. Set explicitly only when both auto-detection paths are blocked (custom
-     * domains, restricted egress, service account without composer.environments.get).
-     */
-    iapAudience?: string;
-    /**
      * MWAA credentials and environment configuration.
      */
     mwaaConfig?: MWAAConfiguration;
