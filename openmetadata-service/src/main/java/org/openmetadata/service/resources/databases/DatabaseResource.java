@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RegexMode;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -401,12 +403,51 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDatabase> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @PUT
+  @Path("/deleteStale")
+  @Operation(
+      operationId = "bulkDeleteStaleDatabases",
+      summary = "Delete stale databases within a scope",
+      description =
+          "Delete entities within the given scope (service, database, or databaseSchema) "
+              + "that the ingestion connector did not report in the current run. The connector "
+              + "sends the set of FQNs it saw; entities in scope not in that set are considered "
+              + "stale. By default the deletion is soft; pass hardDelete=true to hard-delete "
+              + "instead. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
+              + "entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Stale deletion results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteStale(
+      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+    return deleteStaleEntities(securityContext, request);
   }
 
   @PATCH

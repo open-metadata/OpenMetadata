@@ -119,7 +119,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -133,6 +132,7 @@ class MetadataRestSinkConfig(ConfigModel):
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
+    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -181,7 +181,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
@@ -323,7 +322,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
+            result = self.metadata.bulk_create_or_update(
+                entities=self.buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
@@ -605,7 +608,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         entity_obj: Any = record.entity
         entity_id = entity_obj.id
         fqn = entity_obj.fullyQualifiedName.root
-        recursive = bool(record.mark_deleted_entities)
+        recursive = bool(record.recursive)
         if record.dispatch_async:
             # Server-side async cascade — returns 202 + jobId immediately so ingestion
             # doesn't block on large subtrees (issue #4003). The actual work runs on the

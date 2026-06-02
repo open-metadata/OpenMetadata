@@ -35,6 +35,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
   fetchEntityData,
@@ -326,6 +327,16 @@ const ExplorePageV1: FC<unknown> = () => {
         setSearchResults,
         setUpdatedAggregations,
         setShowIndexNotFoundAlert,
+        // Reflect NLQ-detected filters in the filters tab. State-only (no URL
+        // change, so no re-search); merged with any pre-existing URL filters so
+        // their marks are preserved.
+        onNlqAppliedFilters: (appliedQuickFilters) =>
+          setAdvancedSearchQuickFilters(
+            getCombinedQueryFilterObject(
+              getAdvancedSearchQuickFilters(),
+              appliedQuickFilters
+            )
+          ),
       });
     } finally {
       setIsLoading(false);
