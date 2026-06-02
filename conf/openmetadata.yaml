@@ -741,10 +741,12 @@ rdf:
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
-# Default: Disabled (uses NoopCacheProvider)
+# Default: redis. Falls back to NoopCacheProvider automatically if Redis is
+# unreachable at startup, so deployments without Redis keep working (degraded).
+# Set CACHE_PROVIDER=none to force the cache off.
 cache:
-  # Cache provider: none (default) or redis
-  provider: ${CACHE_PROVIDER:-none}
+  # Cache provider: redis (default) or none
+  provider: ${CACHE_PROVIDER:-redis}
 
   # TTL (Time To Live) settings in seconds
   entityTtlSeconds: ${CACHE_ENTITY_TTL:-172800}             # 48 hour for entities
