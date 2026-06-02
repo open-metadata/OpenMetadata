@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,7 +31,6 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -56,37 +54,27 @@ export const visitClassificationPage = async (
   classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
-  const classificationResponse = page.waitForResponse(
-    '/api/v1/classifications?**'
-  );
   const fetchTags = page.waitForResponse(
     `/api/v1/tags?*parent=${classificationName}**`
   );
-  await sidebarClick(page, SidebarItem.TAGS);
-  await classificationResponse;
-
-  await page.waitForLoadState('networkidle');
-
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
   await page
-    .getByTestId('data-summary-container')
-    .getByText(classificationDisplayName)
-    .click();
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
   );
 
   await fetchTags;
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector(
-    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
-    { state: 'detached' }
-  );
+  await page
+    .getByTestId('tags-container')
+    .locator('.table-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
