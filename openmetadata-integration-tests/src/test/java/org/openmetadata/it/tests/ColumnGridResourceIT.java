@@ -1353,6 +1353,7 @@ public class ColumnGridResourceIT {
             () -> {
               ColumnGridResponse before =
                   getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
+              assertNotNull(before.getColumns(), "Columns list must not be null");
               assertTrue(
                   before.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
                   "Column must be visible before soft-delete");
@@ -1369,6 +1370,7 @@ public class ColumnGridResourceIT {
             () -> {
               ColumnGridResponse after =
                   getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
+              assertNotNull(after.getColumns(), "Columns list must not be null");
               assertFalse(
                   after.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
                   "Column from soft-deleted table must not appear in column grid (issue #28437)");
