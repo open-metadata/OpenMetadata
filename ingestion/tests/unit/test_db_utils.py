@@ -166,16 +166,16 @@ class TestDbUtils(TestCase):
         # Verify the lineage has correct source and target
         for lineage_request in successful_results:
             # Check the from and to entities exist
-            self.assertIsNotNone(lineage_request.edge.fromEntity)
-            self.assertIsNotNone(lineage_request.edge.toEntity)
+            self.assertIsNotNone(lineage_request.from_entity_fqn)
+            self.assertIsNotNone(lineage_request.to_entity_fqn)
 
             # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.fullyQualifiedName,
+                lineage_request.from_entity_fqn,
                 self.source_table_entity.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.fullyQualifiedName,
+                lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )
 
@@ -235,16 +235,16 @@ class TestDbUtils(TestCase):
         # Verify the lineage has correct source and target
         for lineage_request in successful_results:
             # Check the from and to entities exist
-            self.assertIsNotNone(lineage_request.edge.fromEntity)
-            self.assertIsNotNone(lineage_request.edge.toEntity)
+            self.assertIsNotNone(lineage_request.from_entity_fqn)
+            self.assertIsNotNone(lineage_request.to_entity_fqn)
 
             # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.fullyQualifiedName,
+                lineage_request.from_entity_fqn,
                 self.source_table_entity.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.fullyQualifiedName,
+                lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )
 
@@ -369,16 +369,16 @@ class TestDbUtils(TestCase):
         # Verify the lineage has correct source and target
         for lineage_request in successful_results:
             # Check the from and to entities exist
-            self.assertIsNotNone(lineage_request.edge.fromEntity)
-            self.assertIsNotNone(lineage_request.edge.toEntity)
+            self.assertIsNotNone(lineage_request.from_entity_fqn)
+            self.assertIsNotNone(lineage_request.to_entity_fqn)
 
             # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.fullyQualifiedName,
+                lineage_request.from_entity_fqn,
                 self.source_table_entity.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.fullyQualifiedName,
+                lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )
 
@@ -507,15 +507,15 @@ class TestDbUtils(TestCase):
         # Verify the lineage has correct source and target
         for lineage_request in successful_results:
             # Check the from and to entities exist
-            self.assertIsNotNone(lineage_request.edge.fromEntity)
-            self.assertIsNotNone(lineage_request.edge.toEntity)
+            self.assertIsNotNone(lineage_request.from_entity_fqn)
+            self.assertIsNotNone(lineage_request.to_entity_fqn)
             # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.fullyQualifiedName,
+                lineage_request.from_entity_fqn,
                 self.source_table_entity_non_postgres.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.fullyQualifiedName,
+                lineage_request.to_entity_fqn,
                 self.table_entity_non_postgres.fullyQualifiedName.root,
             )
 
@@ -661,14 +661,14 @@ class TestDbUtils(TestCase):
         # Verify the lineage has correct source and target
         for lineage_request in successful_results:
             # Check the from and to entities exist
-            self.assertIsNotNone(lineage_request.edge.fromEntity)
-            self.assertIsNotNone(lineage_request.edge.toEntity)
+            self.assertIsNotNone(lineage_request.from_entity_fqn)
+            self.assertIsNotNone(lineage_request.to_entity_fqn)
             # Check that the FQNs match our expected entities
             self.assertEqual(
-                lineage_request.edge.fromEntity.fullyQualifiedName,
+                lineage_request.from_entity_fqn,
                 self.source_table_entity.fullyQualifiedName.root,
             )
             self.assertEqual(
-                lineage_request.edge.toEntity.fullyQualifiedName,
+                lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )

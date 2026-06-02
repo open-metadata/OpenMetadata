@@ -25,10 +25,15 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
-from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
@@ -55,11 +60,7 @@ class OMetaLineageMixin(Generic[T]):
 
     @staticmethod
     def _lineage_reference_cache_key(entity_reference: EntityReference) -> str:
-        if entity_reference.id:
-            return f"{entity_reference.type}:id:{model_str(entity_reference.id)}"
-        if entity_reference.fullyQualifiedName:
-            return f"{entity_reference.type}:name:{model_str(entity_reference.fullyQualifiedName)}"
-        raise ValueError("Lineage references must include id or fullyQualifiedName")
+        return f"{entity_reference.type}:id:{model_str(entity_reference.id)}"
 
     @classmethod
     def _lineage_edge_cache_key(cls, from_entity: EntityReference, to_entity: EntityReference) -> str:
@@ -67,25 +68,55 @@ class OMetaLineageMixin(Generic[T]):
 
     @staticmethod
     def _lineage_edge_path(from_entity: EntityReference, to_entity: EntityReference) -> str:
-        if from_entity.id and to_entity.id:
-            return f"{from_entity.type}/{model_str(from_entity.id)}/{to_entity.type}/{model_str(to_entity.id)}"
-        if from_entity.fullyQualifiedName and to_entity.fullyQualifiedName:
-            return (
-                f"name/{from_entity.type}/{quote(model_str(from_entity.fullyQualifiedName))}/"
-                f"{to_entity.type}/{quote(model_str(to_entity.fullyQualifiedName))}"
-            )
-        raise ValueError("Lineage edge references must both include ids or fullyQualifiedNames")
+        return f"{from_entity.type}/{model_str(from_entity.id)}/{to_entity.type}/{model_str(to_entity.id)}"
 
     @staticmethod
     def _lineage_edge_lookup_path(from_entity: EntityReference, to_entity: EntityReference) -> str:
-        if from_entity.id and to_entity.id:
-            return f"getLineageEdge/{model_str(from_entity.id)}/{model_str(to_entity.id)}"
-        if from_entity.fullyQualifiedName and to_entity.fullyQualifiedName:
-            return (
-                f"getLineageEdge/name/{from_entity.type}/{quote(model_str(from_entity.fullyQualifiedName))}/"
-                f"{to_entity.type}/{quote(model_str(to_entity.fullyQualifiedName))}"
-            )
-        raise ValueError("Lineage edge references must both include ids or fullyQualifiedNames")
+        return f"getLineageEdge/{model_str(from_entity.id)}/{model_str(to_entity.id)}"
+
+    @staticmethod
+    def _lineage_reference_name_cache_key(entity_type: str, entity_fqn: str) -> str:
+        return f"{entity_type}:name:{model_str(entity_fqn)}"
+
+    @classmethod
+    def _lineage_edge_name_cache_key(
+        cls,
+        from_entity_type: str,
+        from_entity_fqn: str,
+        to_entity_type: str,
+        to_entity_fqn: str,
+    ) -> str:
+        return (
+            f"{cls._lineage_reference_name_cache_key(from_entity_type, from_entity_fqn)}->"
+            f"{cls._lineage_reference_name_cache_key(to_entity_type, to_entity_fqn)}"
+        )
+
+    @staticmethod
+    def _lineage_edge_path_by_name(
+        from_entity_type: str,
+        from_entity_fqn: str,
+        to_entity_type: str,
+        to_entity_fqn: str,
+    ) -> str:
+        return (
+            f"{from_entity_type}/name/{quote(model_str(from_entity_fqn))}/"
+            f"{to_entity_type}/name/{quote(model_str(to_entity_fqn))}"
+        )
+
+    @classmethod
+    def _lineage_edge_lookup_path_by_name(
+        cls,
+        from_entity_type: str,
+        from_entity_fqn: str,
+        to_entity_type: str,
+        to_entity_fqn: str,
+    ) -> str:
+        return "getLineageEdge/" + cls._lineage_edge_path_by_name(
+            from_entity_type,
+            from_entity_fqn,
+            to_entity_type,
+            to_entity_fqn,
+        )
 
     def _get_lineage_edge_for_references(
         self,
@@ -110,6 +141,40 @@ class OMetaLineageMixin(Generic[T]):
                 logger.debug(traceback.format_exc())
                 logger.debug(
                     f"Error {err.status_code} trying to GET lineage edge between {from_entity} and {to_entity}: {err}"
+                )
+            return None
+
+    def get_lineage_edge_by_name(
+        self,
+        from_entity_type: str,
+        from_entity_fqn: str,
+        to_entity_type: str,
+        to_entity_fqn: str,
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        try:
+            cache_key = self._lineage_edge_name_cache_key(
+                from_entity_type,
+                from_entity_fqn,
+                to_entity_type,
+                to_entity_fqn,
+            )
+            if cache_key in search_cache:
+                return search_cache.get(cache_key)
+            res = cast(
+                "dict[str, Any]",
+                self.client.get(
+                    f"{LINEAGE_ROUTE}/"
+                    f"{self._lineage_edge_lookup_path_by_name(from_entity_type, from_entity_fqn, to_entity_type, to_entity_fqn)}"
+                ),
+            )
+            search_cache.put(cache_key, res)
+            return res  # noqa: TRY300
+        except APIError as err:
+            if err.status_code != 404:
+                logger.debug(traceback.format_exc())
+                logger.debug(
+                    f"Error {err.status_code} trying to GET lineage edge between "
+                    f"{from_entity_type}:{from_entity_fqn} and {to_entity_type}:{to_entity_fqn}: {err}"
                 )
             return None
 
@@ -148,11 +213,7 @@ class OMetaLineageMixin(Generic[T]):
         except Exception as e:
             logger.debug(f"Error while updating cache: {e}")
 
-        # discard the cache if failed to update
-        try:
-            search_cache.put(self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity), None)
-        except ValueError:
-            logger.debug("Skipping lineage cache update for unresolved lineage references")
+        search_cache.put(self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity), None)
 
     @staticmethod
     def _is_matching_lineage_target(
@@ -160,14 +221,7 @@ class OMetaLineageMixin(Generic[T]):
         downstream_edge_to_id: Optional[str],  # noqa: UP045
         response: Dict[str, Any],  # noqa: UP006
     ) -> bool:
-        if to_entity.id and model_str(to_entity.id) == downstream_edge_to_id:
-            return True
-        if not to_entity.fullyQualifiedName:
-            return False
-        for node in response.get("nodes", []) or []:
-            if node.get("id") == downstream_edge_to_id:
-                return node.get("fullyQualifiedName") == model_str(to_entity.fullyQualifiedName)
-        return False
+        return model_str(to_entity.id) == downstream_edge_to_id
 
     def add_lineage(self, data: AddLineageRequest, check_patch: bool = False) -> Dict[str, Any]:  # noqa: UP006
         """
@@ -223,18 +277,82 @@ class OMetaLineageMixin(Generic[T]):
             logger.error(error)
             return {"error": error}
 
-        from_entity_lineage = (
-            self.get_lineage_by_id(data.edge.fromEntity.type, model_str(data.edge.fromEntity.id))
-            if data.edge.fromEntity.id
-            else self.get_lineage_by_name(
-                data.edge.fromEntity.type,
-                model_str(data.edge.fromEntity.fullyQualifiedName),
-            )
-        )
+        from_entity_lineage = self.get_lineage_by_id(data.edge.fromEntity.type, model_str(data.edge.fromEntity.id))
 
         if from_entity_lineage:
             self._update_cache(data, from_entity_lineage)
         return from_entity_lineage
+
+    def add_lineage_by_name(
+        self,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+        lineage_details: Optional[LineageDetails] = None,  # noqa: UP045
+        check_patch: bool = False,
+    ) -> Dict[str, Any]:  # noqa: UP006
+        lineage_details = deepcopy(lineage_details) if lineage_details else LineageDetails()
+        try:
+            patch_op_success = False
+            if check_patch and lineage_details:
+                edge = self.get_lineage_edge_by_name(
+                    from_entity_type,
+                    from_entity_fqn,
+                    to_entity_type,
+                    to_entity_fqn,
+                )
+                if edge:
+                    original = LineageDetails()
+                    original.columnsLineage = edge["edge"].get("columnsLineage", [])
+                    original.pipeline = (
+                        EntityReference(
+                            id=edge["edge"]["pipeline"]["id"],
+                            type=edge["edge"]["pipeline"]["type"],
+                        )
+                        if edge["edge"].get("pipeline")
+                        else None
+                    )
+                    lineage_details.columnsLineage = self._merge_column_lineage(
+                        original.columnsLineage,
+                        lineage_details.columnsLineage,
+                    )
+
+                    lineage_details.columnsLineage = [
+                        ColumnLineage(**col_lin) for col_lin in lineage_details.columnsLineage or []
+                    ]
+                    original.columnsLineage = [ColumnLineage(**col_lin) for col_lin in original.columnsLineage or []]
+
+                    if original.pipeline and not lineage_details.pipeline:
+                        lineage_details.pipeline = original.pipeline
+                    patch = self.patch_lineage_edge_by_name(
+                        from_entity_fqn=from_entity_fqn,
+                        from_entity_type=from_entity_type,
+                        to_entity_fqn=to_entity_fqn,
+                        to_entity_type=to_entity_type,
+                        original=original,
+                        updated=lineage_details,
+                    )
+                    if patch:
+                        patch_op_success = True
+
+            if patch_op_success is False:
+                self.client.put(
+                    f"{LINEAGE_ROUTE}/"
+                    f"{self._lineage_edge_path_by_name(from_entity_type, from_entity_fqn, to_entity_type, to_entity_fqn)}",
+                    data=lineage_details.model_dump_json(),
+                )
+
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            error = (
+                f"Error {err.status_code} trying to PUT lineage for "
+                f"{from_entity_type}:{from_entity_fqn} -> {to_entity_type}:{to_entity_fqn}: {err!s}"
+            )
+            logger.error(error)
+            return {"error": error}
+
+        return self.get_lineage_by_name(from_entity_type, from_entity_fqn)
 
     def get_lineage_edge(
         self,
@@ -300,6 +418,38 @@ class OMetaLineageMixin(Generic[T]):
             )
         except ValueError as err:
             logger.debug(str(err))
+        return False
+
+    def patch_lineage_edge_by_name(
+        self,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+        original: LineageDetails,
+        updated: LineageDetails,
+    ) -> Optional[bool]:  # noqa: UP045
+        try:
+            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            patch = build_patch(
+                source=original,
+                destination=updated,
+                allowed_fields=allowed_fields,
+                remove_change_description=False,
+            )
+            if patch:
+                self.client.patch(
+                    f"{LINEAGE_ROUTE}/"
+                    f"{self._lineage_edge_path_by_name(from_entity_type, from_entity_fqn, to_entity_type, to_entity_fqn)}",
+                    data=str(patch),
+                )
+            return True  # noqa: TRY300
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error Patching Lineage Edge {err.status_code} for "
+                f"{from_entity_type}:{from_entity_fqn} -> {to_entity_type}:{to_entity_fqn}"
+            )
         return False
 
     def get_lineage_by_id(
@@ -380,8 +530,25 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
-        except ValueError as err:
-            logger.error(f"Error trying to DELETE lineage for {edge}: {err}")
+
+    def delete_lineage_by_name(
+        self,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+    ) -> None:
+        try:
+            self.client.delete(
+                f"{LINEAGE_ROUTE}/"
+                f"{self._lineage_edge_path_by_name(from_entity_type, from_entity_fqn, to_entity_type, to_entity_fqn)}"
+            )
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error {err.status_code} trying to DELETE lineage for "
+                f"{from_entity_type}:{from_entity_fqn} -> {to_entity_type}:{to_entity_fqn}"
+            )
 
     @functools.lru_cache(maxsize=LRU_CACHE_SIZE)  # noqa: B019
     def delete_lineage_by_source(self, entity_type: str, entity_id: str, source: str) -> None:
@@ -436,7 +603,17 @@ class OMetaLineageMixin(Generic[T]):
             )
             for lineage_request in add_lineage_request or []:
                 if lineage_request.right:
-                    resp = self.add_lineage(lineage_request.right, check_patch=check_patch)
+                    if isinstance(lineage_request.right, OMetaFQNLineageRequest):
+                        resp = self.add_lineage_by_name(
+                            from_entity_fqn=lineage_request.right.from_entity_fqn,
+                            from_entity_type=lineage_request.right.from_entity_type,
+                            to_entity_fqn=lineage_request.right.to_entity_fqn,
+                            to_entity_type=lineage_request.right.to_entity_type,
+                            lineage_details=lineage_request.right.lineage_details,
+                            check_patch=check_patch,
+                        )
+                    else:
+                        resp = self.add_lineage(lineage_request.right, check_patch=check_patch)
                     if resp.get("error"):
                         logger.error(resp["error"])
                         continue

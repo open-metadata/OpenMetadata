@@ -10,7 +10,11 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, EntityLineage
+from metadata.generated.schema.type.entityLineage import (
+    EntitiesEdge,
+    EntityLineage,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import JsonDict, OMetaClient, UuidLike, ensure_uuid
@@ -150,38 +154,17 @@ class Lineage:
         """Create a lineage edge between two entities identified by FQN."""
         client = cast(Any, cls._get_client())  # noqa: TC006
 
-        edge_description = basic.Markdown(description) if description else None
-
-        request = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=None,
-                    fullyQualifiedName=from_entity_fqn,
-                    type=from_entity_type,
-                    name=None,
-                    description=None,
-                    displayName=None,
-                    deleted=None,
-                    inherited=None,
-                    href=None,
-                ),
-                toEntity=EntityReference(
-                    id=None,
-                    fullyQualifiedName=to_entity_fqn,
-                    type=to_entity_type,
-                    name=None,
-                    description=None,
-                    displayName=None,
-                    deleted=None,
-                    inherited=None,
-                    href=None,
-                ),
-                description=edge_description,
-                lineageDetails=None,
-            )
+        lineage_details = LineageDetails(description=basic.Markdown(description)) if description else None
+        return cast(
+            "JsonDict",
+            client.add_lineage_by_name(
+                from_entity_fqn=from_entity_fqn,
+                from_entity_type=from_entity_type,
+                to_entity_fqn=to_entity_fqn,
+                to_entity_type=to_entity_type,
+                lineage_details=lineage_details,
+            ),
         )
-
-        return cast(JsonDict, client.add_lineage(request))  # noqa: TC006
 
     @classmethod
     def add_lineage_request(cls, lineage_request: AddLineageRequest) -> JsonDict:
@@ -235,32 +218,12 @@ class Lineage:
     ) -> None:
         """Remove a lineage edge between two entities identified by FQN."""
         client = cast(Any, cls._get_client())  # noqa: TC006
-        edge = EntitiesEdge(
-            fromEntity=EntityReference(
-                id=None,
-                fullyQualifiedName=from_entity_fqn,
-                type=from_entity_type,
-                name=None,
-                description=None,
-                displayName=None,
-                deleted=None,
-                inherited=None,
-                href=None,
-            ),
-            toEntity=EntityReference(
-                id=None,
-                fullyQualifiedName=to_entity_fqn,
-                type=to_entity_type,
-                name=None,
-                description=None,
-                displayName=None,
-                deleted=None,
-                inherited=None,
-                href=None,
-            ),
-            lineageDetails=None,
+        client.delete_lineage_by_name(
+            from_entity_fqn=from_entity_fqn,
+            from_entity_type=from_entity_type,
+            to_entity_fqn=to_entity_fqn,
+            to_entity_type=to_entity_type,
         )
-        client.delete_lineage_edge(edge)
 
     @classmethod
     def delete_lineage_by_source_by_name(

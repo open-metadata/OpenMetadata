@@ -93,31 +93,6 @@ class LineageRepositoryTest {
             .withFullyQualifiedName("database.schema.toTable");
   }
 
-  @Test
-  void testResolveLineageReference_ByFullyQualifiedName() {
-    EntityReference request =
-        new EntityReference().withType("table").withFullyQualifiedName("database.schema.fromTable");
-
-    mockedEntity
-        .when(() -> Entity.getEntityReference(request, Include.NON_DELETED))
-        .thenReturn(fromEntity);
-
-    EntityReference result =
-        LineageRepository.resolveLineageReference(request, Include.NON_DELETED);
-
-    assertEquals(fromEntityId, result.getId());
-    assertEquals("table", result.getType());
-  }
-
-  @Test
-  void testResolveLineageReference_MissingIdAndFqn_ThrowsException() {
-    EntityReference request = new EntityReference().withType("table");
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> LineageRepository.resolveLineageReference(request, Include.NON_DELETED));
-  }
-
   /**
    * Simulates the validateLineageDetails logic.
    * This is a direct copy of the new implementation for testing purposes.

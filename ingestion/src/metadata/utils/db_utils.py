@@ -17,7 +17,6 @@ import time
 import traceback
 from typing import Iterable, List, Union  # noqa: UP035
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -33,6 +32,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
+from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -59,7 +59,7 @@ def get_view_lineage(
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     Method to generate view lineage
     Now supports cross-database lineage by accepting a list of service names.

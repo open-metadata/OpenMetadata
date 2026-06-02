@@ -3,7 +3,6 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -68,7 +67,6 @@ import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -687,10 +685,6 @@ public class LineageResourceIT {
     }
   }
 
-  private EntityReference entityReferenceByFQN(String type, String fqn) {
-    return new EntityReference().withType(type).withFullyQualifiedName(fqn);
-  }
-
   private JsonNode getLineageEdgeByName(OpenMetadataClient client, Table from, Table to)
       throws Exception {
     String response =
@@ -710,9 +704,9 @@ public class LineageResourceIT {
   }
 
   private String lineageEdgeByNamePath(Table from, Table to) {
-    return "/name/table/"
+    return "/table/name/"
         + encodePathSegment(from.getFullyQualifiedName())
-        + "/table/"
+        + "/table/name/"
         + encodePathSegment(to.getFullyQualifiedName());
   }
 
@@ -886,30 +880,26 @@ public class LineageResourceIT {
   }
 
   @Test
-  void testAddLineageWithFQNOnlyReferences() throws Exception {
+  void testAddLineageByFQNPath() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     TestNamespace namespace = new TestNamespace("LineageResourceIT");
 
-    Table sourceTable = createTable(client, namespace, "fqn_only_source");
-    Table targetTable = createTable(client, namespace, "fqn_only_target");
-    Pipeline pipeline = createPipeline(client, namespace, "fqn_only_pipeline");
+    Table sourceTable = createTable(client, namespace, "fqn_path_source");
+    Table targetTable = createTable(client, namespace, "fqn_path_target");
+    Pipeline pipeline = createPipeline(client, namespace, "fqn_path_pipeline");
 
     LineageDetails details =
         new LineageDetails()
-            .withDescription("FQN-only lineage")
-            .withPipeline(entityReferenceByFQN("pipeline", pipeline.getFullyQualifiedName()));
+            .withDescription("FQN path lineage")
+            .withPipeline(pipeline.getEntityReference());
 
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(
-                        entityReferenceByFQN("table", sourceTable.getFullyQualifiedName()))
-                    .withToEntity(
-                        entityReferenceByFQN("table", targetTable.getFullyQualifiedName()))
-                    .withLineageDetails(details));
-
-    String result = executeAddLineage(client, addLineage);
+    String result =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                LINEAGE_PATH + lineageEdgeByNamePath(sourceTable, targetTable),
+                details);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -926,57 +916,6 @@ public class LineageResourceIT {
     deleteLineageByName(client, sourceTable, targetTable);
     cleanupPipeline(client, pipeline);
     cleanupTable(client, sourceTable);
-    cleanupTable(client, targetTable);
-  }
-
-  @Test
-  void testAddLineageBodyPrefersIdOverFQN() throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    TestNamespace namespace = new TestNamespace("LineageResourceIT");
-
-    Table sourceTable = createTable(client, namespace, "id_precedence_source");
-    Table targetTable = createTable(client, namespace, "id_precedence_target");
-
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(
-                        sourceTable.getEntityReference().withFullyQualifiedName("missing.source"))
-                    .withToEntity(
-                        targetTable.getEntityReference().withFullyQualifiedName("missing.target")));
-
-    String result = executeAddLineage(client, addLineage);
-    assertNotNull(result);
-
-    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
-    assertTrue(
-        lineage.getDownstreamEdges().stream()
-            .anyMatch(
-                edge ->
-                    edge.getFromEntity().equals(sourceTable.getId())
-                        && edge.getToEntity().equals(targetTable.getId())));
-
-    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
-    cleanupTable(client, sourceTable);
-    cleanupTable(client, targetTable);
-  }
-
-  @Test
-  void testAddLineageWithoutIdOrFQNFails() throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    TestNamespace namespace = new TestNamespace("LineageResourceIT");
-
-    Table targetTable = createTable(client, namespace, "missing_ref_target");
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(new EntityReference().withType("table"))
-                    .withToEntity(targetTable.getEntityReference()));
-
-    assertThrows(OpenMetadataException.class, () -> client.lineage().addLineage(addLineage));
-
     cleanupTable(client, targetTable);
   }
 

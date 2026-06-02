@@ -25,7 +25,6 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -41,7 +40,6 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
-    EntitiesEdge,
     LineageDetails,
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
@@ -49,6 +47,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
+from metadata.ingestion.models.ometa_lineage import (
+    LineageRequest,
+    OMetaFQNLineageRequest,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
@@ -620,7 +622,7 @@ def _build_table_lineage(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: Optional[EntityReference] = None,  # noqa: UP045
     temp_lineage_tables: Optional[List] = None,  # noqa: UP006, UP045
-) -> Either[AddLineageRequest]:
+) -> Either[LineageRequest]:
     """
     Prepare the lineage request generator
 
@@ -635,7 +637,7 @@ def _build_table_lineage(
         temp_lineage_tables (List[TempLineageTable]): lineage path through temporary tables
 
     Returns:
-        Either[AddLineageRequest] with the lineage request or an error
+        Either[LineageRequest] with the lineage request or an error
     """
     try:
         from_entity_fqn = from_entity.fullyQualifiedName
@@ -665,20 +667,13 @@ def _build_table_lineage(
             lineage_details.tempLineageTables = temp_lineage_tables
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    fullyQualifiedName=model_str(from_entity_fqn),
-                    type="table",
-                ),
-                toEntity=EntityReference(
-                    fullyQualifiedName=model_str(to_entity_fqn),
-                    type="table",
-                ),
-            )
+        lineage = OMetaFQNLineageRequest(
+            from_entity_fqn=model_str(from_entity_fqn),
+            from_entity_type="table",
+            to_entity_fqn=model_str(to_entity_fqn),
+            to_entity_type="table",
+            lineage_details=lineage_details,
         )
-        if lineage_details:
-            lineage.edge.lineageDetails = lineage_details
         return Either(right=lineage)
     except Exception as e:
         return Either(
@@ -704,7 +699,7 @@ def _create_lineage_by_table_name(
     procedure: Optional[EntityReference] = None,  # noqa: UP045
     graph: Optional[DiGraph] = None,  # noqa: UP045
     schema_fallback: bool = False,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
     """
@@ -816,7 +811,7 @@ def get_lineage_by_query(
     schema_fallback: bool = False,
     service_name: Optional[str] = None,  # backward compatibility for python sdk  # noqa: UP045
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
@@ -931,7 +926,7 @@ def get_lineage_via_table_entity(
     lineage_parser: Optional[LineageParser] = None,  # noqa: UP045
     schema_fallback: bool = False,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
 
@@ -1021,7 +1016,7 @@ def _get_lineage_for_path(
     table_chain: List[str],  # noqa: UP006
     metadata: OpenMetadata,
     merged_hops: Optional[List] = None,  # noqa: UP006, UP045
-) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+) -> Optional[Either[LineageRequest]]:  # noqa: UP045
     """
     Get lineage for a pair of FQNs in the path.
     If merged_hops is provided, uses those instead of computing from table_chain.
@@ -1068,7 +1063,7 @@ def _process_sequence(
     metadata: OpenMetadata,
     hops_map: Optional[Dict[tuple, List]] = None,  # noqa: UP006, UP045
     seen_pairs: Optional[set] = None,  # noqa: UP045
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     Process a sequence of nodes to generate lineage information.
     When hops_map is provided, uses pre-merged temp lineage hops and skips
@@ -1184,7 +1179,7 @@ def _collect_temp_lineage_hops(paths: List[List[Any]], graph: DiGraph) -> Dict[t
 def get_lineage_by_graph(
     graph: Optional[DiGraph],  # noqa: UP045
     metadata: OpenMetadata,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     Generate lineage information from a directed graph.
     This method processes a directed graph to extract lineage information by identifying
@@ -1216,7 +1211,7 @@ def get_lineage_by_graph(
 def get_lineage_by_procedure_graph(
     procedure_graph_map: Optional[Dict],  # noqa: UP006, UP045
     metadata: OpenMetadata,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """
     Generate lineage information from a directed graph.
     """
@@ -1228,10 +1223,15 @@ def get_lineage_by_procedure_graph(
             graph=procedure_and_procedure_graph.graph,
             metadata=metadata,
         ):
-            if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
-                either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
-                    id=procedure_and_procedure_graph.procedure.id,
-                    type="storedProcedure",
-                )
+            if either_lineage.left is None and either_lineage.right:
+                if isinstance(either_lineage.right, OMetaFQNLineageRequest):
+                    lineage_details = either_lineage.right.lineage_details
+                else:
+                    lineage_details = either_lineage.right.edge.lineageDetails
+                if lineage_details:
+                    lineage_details.pipeline = EntityReference(
+                        id=procedure_and_procedure_graph.procedure.id,
+                        type="storedProcedure",
+                    )
 
             yield either_lineage

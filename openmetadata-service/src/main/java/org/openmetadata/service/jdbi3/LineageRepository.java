@@ -84,6 +84,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
@@ -131,20 +132,6 @@ public class LineageRepository {
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  public static void validateLineageReference(EntityReference ref) {
-    if (ref == null
-        || nullOrEmpty(ref.getType())
-        || (ref.getId() == null && nullOrEmpty(ref.getFullyQualifiedName()))) {
-      throw new IllegalArgumentException(
-          "Lineage entity reference must include type and either id or fullyQualifiedName");
-    }
-  }
-
-  public static EntityReference resolveLineageReference(EntityReference ref, Include include) {
-    validateLineageReference(ref);
-    return Entity.getEntityReference(ref, include);
-  }
-
   @Transaction
   public void addLineage(AddLineage addLineage, String updatedBy) {
     // Validate from entity
@@ -153,11 +140,17 @@ public class LineageRepository {
             ? addLineage.getEdge().getLineageDetails()
             : new LineageDetails();
     EntityReference from =
-        resolveLineageReference(addLineage.getEdge().getFromEntity(), Include.NON_DELETED);
+        Entity.getEntityReferenceById(
+            addLineage.getEdge().getFromEntity().getType(),
+            addLineage.getEdge().getFromEntity().getId(),
+            Include.NON_DELETED);
 
     // Validate to entity
     EntityReference to =
-        resolveLineageReference(addLineage.getEdge().getToEntity(), Include.NON_DELETED);
+        Entity.getEntityReferenceById(
+            addLineage.getEdge().getToEntity().getType(),
+            addLineage.getEdge().getToEntity().getId(),
+            Include.NON_DELETED);
 
     boolean relationAlreadyExists =
         !nullOrEmpty(
@@ -167,7 +160,10 @@ public class LineageRepository {
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
       EntityReference pipeline =
-          resolveLineageReference(lineageDetails.getPipeline(), Include.NON_DELETED);
+          Entity.getEntityReferenceById(
+              lineageDetails.getPipeline().getType(),
+              lineageDetails.getPipeline().getId(),
+              Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
       lineageDetails.withPipeline(pipeline);
@@ -216,6 +212,27 @@ public class LineageRepository {
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
+  }
+
+  @Transaction
+  public void addLineageByFQN(
+      String fromEntity,
+      String fromFQN,
+      String toEntity,
+      String toFQN,
+      LineageDetails lineageDetails,
+      String updatedBy) {
+    EntityReference from =
+        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    addLineage(
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from)
+                    .withToEntity(to)
+                    .withLineageDetails(lineageDetails)),
+        updatedBy);
   }
 
   private void buildExtendedLineage(
@@ -1474,7 +1491,10 @@ public class LineageRepository {
       if (updated.getPipeline() != null) {
         // Validate pipeline entity
         EntityReference pipeline =
-            resolveLineageReference(updated.getPipeline(), Include.NON_DELETED);
+            Entity.getEntityReferenceById(
+                updated.getPipeline().getType(),
+                updated.getPipeline().getId(),
+                Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
 

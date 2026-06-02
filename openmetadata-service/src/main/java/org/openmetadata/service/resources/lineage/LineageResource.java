@@ -63,6 +63,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -98,19 +99,20 @@ public class LineageResource {
 
   private void authorizeLineageReference(
       SecurityContext securityContext, EntityReference entityReference) {
-    EntityReference resolvedReference =
-        LineageRepository.resolveLineageReference(entityReference, Include.NON_DELETED);
     authorizer.authorize(
         securityContext,
-        new OperationContext(resolvedReference.getType(), MetadataOperation.EDIT_LINEAGE),
-        new ResourceContext<>(resolvedReference.getType(), resolvedReference.getId(), null));
+        new OperationContext(entityReference.getType(), MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(
+            entityReference.getType(), entityReference.getId(), entityReference.getName()));
   }
 
   private void authorizeLineageReference(
       SecurityContext securityContext, String entityType, String entityFQN) {
-    authorizeLineageReference(
-        securityContext,
-        new EntityReference().withType(entityType).withFullyQualifiedName(entityFQN));
+    authorizeLineageReference(securityContext, getLineageReferenceByName(entityType, entityFQN));
+  }
+
+  private EntityReference getLineageReferenceByName(String entityType, String entityFQN) {
+    return Entity.getEntityReferenceByName(entityType, entityFQN, Include.NON_DELETED);
   }
 
   @GET
@@ -757,6 +759,51 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @PUT
+  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
+  @Operation(
+      operationId = "addLineageEdgeByName",
+      summary = "Add a lineage edge by entity FQNs",
+      description =
+          "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
+      })
+  public Response addLineageByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromFQN")
+          String fromFQN,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toFQN")
+          String toFQN,
+      @Valid LineageDetails lineageDetails) {
+    authorizeLineageReference(securityContext, fromEntity, fromFQN);
+    authorizeLineageReference(securityContext, toEntity, toFQN);
+    dao.addLineageByFQN(
+        fromEntity,
+        fromFQN,
+        toEntity,
+        toFQN,
+        lineageDetails,
+        securityContext.getUserPrincipal().getName());
+    return Response.status(Status.OK).build();
+  }
+
   @GET
   @Path("/getLineageEdge/{fromId}/{toId}")
   @Operation(
@@ -783,7 +830,7 @@ public class LineageResource {
   }
 
   @GET
-  @Path("/getLineageEdge/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
+  @Path("/getLineageEdge/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
   @Operation(
       operationId = "getLineageEdgeByName",
       summary = "Get a lineage edge by entity FQNs",
@@ -876,7 +923,7 @@ public class LineageResource {
   }
 
   @PATCH
-  @Path("/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
+  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
   @Operation(
       operationId = "patchLineageEdgeByName",
       summary = "Patch a lineage edge by FQNs",
@@ -978,7 +1025,7 @@ public class LineageResource {
   }
 
   @DELETE
-  @Path("/name/{fromEntity}/{fromFQN}/{toEntity}/{toFQN}")
+  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
   @Operation(
       operationId = "deleteLineageEdgeByName",
       summary = "Delete a lineage edge by FQNs",

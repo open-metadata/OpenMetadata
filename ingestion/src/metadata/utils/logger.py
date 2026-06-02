@@ -35,6 +35,7 @@ from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
@@ -267,6 +268,14 @@ def _(record: AddLineageRequest) -> str:
         identifier = "unresolved reference"
 
     return f"{type_} [{name_str}{identifier}]"
+
+
+@get_log_name.register
+def _(record: OMetaFQNLineageRequest) -> str:
+    return (
+        f"{type(record).__name__} "
+        f"[{record.from_entity_type}: {record.from_entity_fqn} -> {record.to_entity_type}: {record.to_entity_fqn}]"
+    )
 
 
 @get_log_name.register

@@ -34,6 +34,7 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -536,6 +537,16 @@ class TopologyRunnerMixin(Generic[C]):
         """
         yield entity_request
         self.context.get().update_context_name(stage=stage, right=right.edge.fromEntity)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: OMetaFQNLineageRequest,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        yield entity_request
+        self.context.get().update_context_value(stage=stage, value=right.from_entity_fqn)
 
     @yield_and_update_context.register
     def _(
