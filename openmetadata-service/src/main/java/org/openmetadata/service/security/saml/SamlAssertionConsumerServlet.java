@@ -15,6 +15,7 @@ package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI;
+import static org.openmetadata.service.security.SecurityUtil.addAuthTokenCookie;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
@@ -156,15 +157,10 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
       refreshTokenCookie.setPath("/"); // 30 days
       resp.addCookie(refreshTokenCookie);
 
-      // Redirect with JWT Token
+      // Deliver the JWT out-of-band via a secure cookie instead of a URL query parameter
+      addAuthTokenCookie(resp, jwtAuthMechanism.getJWTToken());
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
-      String url =
-          String.format(
-              "%s?id_token=%s&email=%s&name=%s",
-              (nullOrEmpty(redirectUri) ? buildBaseRequestUrl(req) : redirectUri),
-              jwtAuthMechanism.getJWTToken(),
-              nameId,
-              username);
+      String url = nullOrEmpty(redirectUri) ? buildBaseRequestUrl(req) : redirectUri;
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       resp.sendRedirect(url);
     }

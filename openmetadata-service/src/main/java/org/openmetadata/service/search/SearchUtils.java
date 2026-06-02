@@ -119,16 +119,33 @@ public final class SearchUtils {
     return aggregationJson.getString("key");
   }
 
+  /**
+   * Decides whether resource-scope RBAC filtering must be applied to a search request. This is the
+   * baseline access-control gate and is intentionally NOT tied to the {@code enableAccessControl}
+   * global setting: every authenticated non-admin, non-bot subject must have their searches scoped
+   * to the resources their policies allow. The {@code enableAccessControl} flag only toggles the
+   * advanced per-document condition evaluation (see {@link #isAdvancedRbacEnabled()}), it must never
+   * be able to disable the baseline resource filter — otherwise a user with no Allow rule for, say,
+   * {@code table_search_index} could query it directly and exfiltrate table data.
+   */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getGlobalSettings()
-                .getEnableAccessControl())
-        && subjectContext != null
+    return subjectContext != null
         && !subjectContext.isAdmin()
         && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
+  }
+
+  /**
+   * Whether advanced per-document RBAC condition evaluation (tag/owner/domain SpEL conditions) is
+   * enabled globally. The baseline resource-scope index filter always applies regardless of this
+   * flag; this only governs the additional fine-grained condition clauses.
+   */
+  public static boolean isAdvancedRbacEnabled() {
+    return Boolean.TRUE.equals(
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+            .getGlobalSettings()
+            .getEnableAccessControl());
   }
 
   public static SSLContext createElasticSearchSSLContext(

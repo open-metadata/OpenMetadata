@@ -165,6 +165,7 @@ base_requirements = {
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
     "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
+    "notebook>=7.5.6,<8",  # CVE-2026-42557 (GHSA-mqcg-5x36-vfcg) one-click command exec via HTML linker attrs; <8 keeps great-expectations transitive compatibility
     "mypy_extensions>=0.4.3",
     "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
     VERSIONS["pydantic"],
@@ -205,6 +206,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
+        "apache-airflow-core>=3.2.0",  # CVE-2026-30912 SQL stack trace exposed despite expose_stack_traces=false
         "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
@@ -312,8 +314,14 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "exasol-integration-test-docker-environment>=6.0.0,<7",
     },
     "glue": {VERSIONS["boto3"]},
-    "great-expectations": {VERSIONS["great-expectations"]},
-    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
+    "great-expectations": {
+        VERSIONS["great-expectations"],
+        "jupyter-server>=2.18.0",  # CVE-2026-40934 transitive: auth cookies valid after password reset/restart
+    },
+    "great-expectations-1xx": {
+        VERSIONS["great-expectations-1xx"],
+        "jupyter-server>=2.18.0",  # CVE-2026-40934 transitive: auth cookies valid after password reset/restart
+    },
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -477,6 +485,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
+    "jupyter-server>=2.18.0",  # CVE-2026-40934 transitive via great-expectations: cookies valid after password reset/restart
     "pytest==7.0.1",
     "pytest-cov",
     "pytest-xdist~=3.5",

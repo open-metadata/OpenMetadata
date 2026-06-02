@@ -2,13 +2,19 @@ package org.openmetadata.service.search.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -38,6 +44,11 @@ public class RBACConditionEvaluator {
   }
 
   public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
+    return evaluateConditions(subjectContext, SearchUtils.isAdvancedRbacEnabled());
+  }
+
+  public OMQueryBuilder evaluateConditions(
+      SubjectContext subjectContext, boolean advancedConditionsEnabled) {
     User user = subjectContext.user();
     spelContext.setVariable("user", user);
 
@@ -57,7 +68,7 @@ public class RBACConditionEvaluator {
           continue;
         }
 
-        OMQueryBuilder ruleQuery = buildRuleQuery(rule, user);
+        OMQueryBuilder ruleQuery = buildRuleQuery(rule, user, advancedConditionsEnabled);
         if (ruleQuery == null || ruleQuery.isEmpty()) {
           continue;
         }
@@ -92,25 +103,19 @@ public class RBACConditionEvaluator {
                 .must(Collections.singletonList(finalAllowQuery))
                 .mustNot(Collections.singletonList(finalDenyQuery));
       }
-    } else if (!denyQueries.isEmpty()) {
-      OMQueryBuilder finalDenyQuery =
-          (denyQueries.size() == 1)
-              ? denyQueries.get(0)
-              : queryBuilderFactory.boolQuery().should(denyQueries);
-
-      finalQuery =
-          queryBuilderFactory
-              .boolQuery()
-              .must(queryBuilderFactory.matchAllQuery())
-              .mustNot(Collections.singletonList(finalDenyQuery));
     } else {
-      finalQuery = queryBuilderFactory.matchAllQuery();
+      // Deny-by-default: a non-admin subject with no Allow rule covering any searchable resource
+      // must NOT see documents from unscoped indices (e.g. table_search_index). Returning a
+      // match_none query here ensures such requests yield zero hits rather than leaking every
+      // document via the previous match_all fallback.
+      finalQuery = queryBuilderFactory.matchNoneQuery();
     }
 
     return finalQuery;
   }
 
-  private OMQueryBuilder buildRuleQuery(CompiledRule rule, User user) {
+  private OMQueryBuilder buildRuleQuery(
+      CompiledRule rule, User user, boolean advancedConditionsEnabled) {
     ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
     spelContext.setVariable("user", user);
 
@@ -119,11 +124,12 @@ public class RBACConditionEvaluator {
       ruleCollector.addMust(indexFilter);
     }
 
-    if (rule.getCondition() != null && !rule.getCondition().trim().isEmpty()) {
+    boolean hasCondition = rule.getCondition() != null && !rule.getCondition().trim().isEmpty();
+    if (advancedConditionsEnabled && hasCondition) {
       SpelExpression parsedExpression =
           (SpelExpression) spelParser.parseExpression(rule.getCondition());
       preprocessExpression(parsedExpression.getAST(), ruleCollector);
-    } else {
+    } else if (!ruleCollector.hasClauses()) {
       ruleCollector.addMust(queryBuilderFactory.matchAllQuery());
     }
 

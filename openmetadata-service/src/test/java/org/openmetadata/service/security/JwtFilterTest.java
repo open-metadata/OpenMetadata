@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -235,6 +236,48 @@ class JwtFilterTest {
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(
         exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
+  }
+
+  @Test
+  void testMatrixParameterCannotBypassAuthentication() {
+    UriInfo bypassUriInfo = mock(UriInfo.class);
+    when(bypassUriInfo.getPath())
+        .thenReturn("v1;v1/users/login/policies/validation/condition/expr");
+
+    assertFalse(JwtFilter.isExcludedEndpoint(bypassUriInfo));
+
+    MultivaluedHashMap<String, String> headers = new MultivaluedHashMap<>();
+    ContainerRequestContext context = mock(ContainerRequestContext.class);
+    when(context.getUriInfo()).thenReturn(bypassUriInfo);
+    when(context.getHeaders()).thenReturn(headers);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("token not present"));
+  }
+
+  @Test
+  void testTrailingPathDoesNotMatchExcludedEndpointPrefix() {
+    UriInfo prefixUriInfo = mock(UriInfo.class);
+    when(prefixUriInfo.getPath()).thenReturn("v1/users/login/extra");
+
+    assertFalse(JwtFilter.isExcludedEndpoint(prefixUriInfo));
+  }
+
+  @Test
+  void testExcludedEndpointIsStillMatchedWithLeadingSlash() {
+    UriInfo excludedUriInfo = mock(UriInfo.class);
+    when(excludedUriInfo.getPath()).thenReturn("/v1/users/login");
+
+    assertTrue(JwtFilter.isExcludedEndpoint(excludedUriInfo));
+  }
+
+  @Test
+  void testExcludedEndpointWithMatrixParameterIsStripped() {
+    UriInfo excludedUriInfo = mock(UriInfo.class);
+    when(excludedUriInfo.getPath()).thenReturn("v1/users/login;jsessionid=abc");
+
+    assertTrue(JwtFilter.isExcludedEndpoint(excludedUriInfo));
   }
 
   @Test

@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.addAuthTokenCookie;
 import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -11,8 +12,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -50,6 +49,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String SESSION_USER_ID = "userId";
   private static final String SESSION_USERNAME = "username";
   private static final String SESSION_REDIRECT_URI = "redirectUri";
+  private static final String DEFAULT_CALLBACK_PATH = "/auth/callback";
 
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
@@ -229,17 +229,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
       LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
 
-      String callbackUrl;
-      if (redirectUri != null) {
-        callbackUrl =
-            redirectUri
-                + "?id_token="
-                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
-      } else {
-        callbackUrl =
-            "/auth/callback?id_token="
-                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
-      }
+      addAuthTokenCookie(resp, jwtAuthMechanism.getJWTToken());
+      String callbackUrl = nullOrEmpty(redirectUri) ? DEFAULT_CALLBACK_PATH : redirectUri;
       resp.sendRedirect(callbackUrl);
 
     } catch (Exception e) {

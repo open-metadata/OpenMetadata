@@ -21,6 +21,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
@@ -47,7 +48,59 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
 
+  /**
+   * Name of the short-lived cookie used to hand the access token to the SPA after an SSO callback.
+   * The token is delivered out-of-band (never as a URL query parameter) to avoid leaking it through
+   * browser history, the Referer header, or proxy/server access logs.
+   */
+  public static final String AUTH_TOKEN_COOKIE = "omAuthToken";
+
+  private static final int AUTH_TOKEN_COOKIE_MAX_AGE_SECONDS = 60;
+  private static final String SAME_SITE_ATTRIBUTE = "SameSite";
+  private static final String SAME_SITE_STRICT = "Strict";
+
   private SecurityUtil() {}
+
+  /**
+   * Canonicalizes a JAX-RS request path so that endpoint allow-list checks cannot be bypassed via
+   * matrix parameters (e.g. {@code v1/users/login;v1%2fusers%2flogin}) or stray leading/trailing
+   * slashes. Matrix parameters are stripped from every path segment and the result is anchored to
+   * the exact decoded resource path.
+   */
+  public static String normalizeRequestPath(String path) {
+    String result = StringUtils.EMPTY;
+    if (!nullOrEmpty(path)) {
+      String stripped = StringUtils.strip(path, "/");
+      String[] segments = stripped.split("/");
+      List<String> normalizedSegments = new ArrayList<>(segments.length);
+      for (String segment : segments) {
+        normalizedSegments.add(stripMatrixParameters(segment));
+      }
+      result = String.join("/", normalizedSegments);
+    }
+    return result;
+  }
+
+  private static String stripMatrixParameters(String segment) {
+    int matrixSeparatorIndex = segment.indexOf(';');
+    return matrixSeparatorIndex >= 0 ? segment.substring(0, matrixSeparatorIndex) : segment;
+  }
+
+  /**
+   * Sets the access token in a short-lived, Secure, SameSite=Strict cookie scoped to the app root.
+   * The SPA reads this cookie on the callback page and immediately removes it. Keeping the token out
+   * of the redirect URL prevents it from being persisted in browser history, leaked via the Referer
+   * header on outbound navigation, or recorded in access logs.
+   */
+  public static void addAuthTokenCookie(HttpServletResponse response, String accessToken) {
+    Cookie authTokenCookie = new Cookie(AUTH_TOKEN_COOKIE, accessToken);
+    authTokenCookie.setHttpOnly(false);
+    authTokenCookie.setSecure(true);
+    authTokenCookie.setPath("/");
+    authTokenCookie.setMaxAge(AUTH_TOKEN_COOKIE_MAX_AGE_SECONDS);
+    authTokenCookie.setAttribute(SAME_SITE_ATTRIBUTE, SAME_SITE_STRICT);
+    response.addCookie(authTokenCookie);
+  }
 
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();

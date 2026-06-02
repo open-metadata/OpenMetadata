@@ -56,7 +56,8 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
 
   protected boolean isHealthEndpoint(ContainerRequestContext containerRequestContext) {
     UriInfo uriInfo = containerRequestContext.getUriInfo();
-    return uriInfo.getPath().equalsIgnoreCase(HEALTH_END_POINT);
+    String normalizedPath = SecurityUtil.normalizeRequestPath(uriInfo.getPath());
+    return normalizedPath.equalsIgnoreCase(HEALTH_END_POINT);
   }
 
   protected String extractAuthorizedUserName(String openIdEmail) {

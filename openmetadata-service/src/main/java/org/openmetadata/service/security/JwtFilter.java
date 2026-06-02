@@ -153,8 +153,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (EXCLUDED_ENDPOINTS.stream()
-        .anyMatch(endpoint -> uriInfo.getPath().equalsIgnoreCase(endpoint))) {
+    if (isExcludedEndpoint(uriInfo)) {
       return;
     }
 
@@ -207,6 +206,12 @@ public class JwtFilter implements ContainerRequestFilter {
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
     }
+  }
+
+  @VisibleForTesting
+  static boolean isExcludedEndpoint(UriInfo uriInfo) {
+    String normalizedPath = SecurityUtil.normalizeRequestPath(uriInfo.getPath());
+    return EXCLUDED_ENDPOINTS.stream().anyMatch(normalizedPath::equalsIgnoreCase);
   }
 
   public void checkValidationsForToken(

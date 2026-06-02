@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
+import static org.openmetadata.service.security.SecurityUtil.addAuthTokenCookie;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
@@ -872,15 +873,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
     }
 
-    String url =
-        String.format(
-            "%s?id_token=%s&email=%s&name=%s",
-            redirectUri,
-            java.net.URLEncoder.encode(
-                credentials.getIdToken().getParsedString(), StandardCharsets.UTF_8),
-            java.net.URLEncoder.encode(email, StandardCharsets.UTF_8),
-            java.net.URLEncoder.encode(userName, StandardCharsets.UTF_8));
-    response.sendRedirect(url);
+    addAuthTokenCookie(response, credentials.getIdToken().getParsedString());
+    response.sendRedirect(redirectUri);
   }
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {

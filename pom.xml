@@ -74,6 +74,7 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.18.7</jackson.version>
+    <jackson3.version>3.1.1</jackson3.version>
     <dropwizard.version>5.0.0</dropwizard.version>
     <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -242,6 +243,14 @@
         <groupId>com.fasterxml.jackson.module</groupId>
         <artifactId>jackson-module-blackbird</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+      <!-- Jackson 3.x (tools.jackson.core) is a distinct coordinate from the 2.x line above.
+           Pin to patched 3.1.1 to fix GHSA-2m67-wjpj-xhg9 dragged in transitively (build/provided
+           classpath) via org.jsonschema2pojo:jsonschema2pojo-core. -->
+      <dependency>
+        <groupId>tools.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson3.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>

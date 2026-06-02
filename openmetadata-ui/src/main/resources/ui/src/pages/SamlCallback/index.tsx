@@ -12,45 +12,56 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
+import jwtDecode from 'jwt-decode';
 import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
-import { REFRESH_TOKEN_KEY } from '../../constants/constants';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import {
+  AUTH_TOKEN_COOKIE_KEY,
+  REFRESH_TOKEN_KEY,
+} from '../../constants/constants';
 import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
+interface IdTokenClaims {
+  email?: string;
+  name?: string;
+  preferred_username?: string;
+  sub?: string;
+}
+
 const SamlCallback = () => {
   const { handleSuccessfulLogin } = useAuthProvider();
-  const location = useCustomLocation();
   const { t } = useTranslation();
 
   const processLogin = useCallback(async () => {
-    // get #id_token from hash params in the URL
-    const params = new URLSearchParams(location.search);
-    const idToken = params.get('id_token');
-    const name = params.get('name');
-    const email = params.get('email');
+    // The backend delivers the access token via a short-lived secure cookie
+    // (never as a URL query parameter) to avoid leaking it through browser
+    // history, the Referer header, or access logs. Read it and remove it.
+    const idToken = cookieStorage.getItem(AUTH_TOKEN_COOKIE_KEY);
 
     if (!idToken) {
       return;
     }
 
+    cookieStorage.removeItem(AUTH_TOKEN_COOKIE_KEY);
+
     try {
       await setOidcToken(idToken);
 
+      const claims = jwtDecode<IdTokenClaims>(idToken);
       const oidcUser: OidcUser = {
         id_token: idToken,
         scope: '',
         profile: {
-          email: email || '',
-          name: name || '',
+          email: claims.email ?? '',
+          name: claims.name ?? claims.preferred_username ?? claims.sub ?? '',
           picture: '',
           locale: '',
-          sub: '',
+          sub: claims.sub ?? '',
         },
       };
 
@@ -65,7 +76,7 @@ const SamlCallback = () => {
     } catch {
       // Error handling is already done in handleSuccessfulLogin
     }
-  }, [location, handleSuccessfulLogin]);
+  }, [handleSuccessfulLogin]);
 
   useEffect(() => {
     processLogin();
