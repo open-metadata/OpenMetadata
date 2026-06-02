@@ -32,7 +32,7 @@ export const styles = sortCx({
   sizes: {
     xs: {
       root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-semibold tw:before:rounded-[5px] tw:data-icon-only:p-1',
+        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
         'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
         'tw:*:data-icon:size-4',
       ].join(' '),
@@ -40,24 +40,24 @@ export const styles = sortCx({
     },
     sm: {
       root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-2',
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
         'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
       ].join(' '),
       linkRoot: 'tw:gap-1',
     },
     md: {
       root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
+        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
         'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
       ].join(' '),
       linkRoot: 'tw:gap-1',
     },
     lg: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-3',
+      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
       linkRoot: 'tw:gap-1.5',
     },
     xl: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
+      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
       linkRoot: 'tw:gap-1.5',
     },
   },
