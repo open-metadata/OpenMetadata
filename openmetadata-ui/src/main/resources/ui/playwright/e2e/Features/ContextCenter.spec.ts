@@ -1030,8 +1030,10 @@ test.describe('Context Center', () => {
       const modal = page.getByRole('dialog', { name: /upload documents/i });
       await expect(modal).toBeVisible();
 
-      // Set file directly on the hidden input
-      await modal.locator('input[type="file"]').setInputFiles({
+      // Set file on the input via testId; wait for attached (not visible) since it is sr-only
+      const fileInput = page.getByTestId('file-upload-input');
+      await fileInput.waitFor({ state: 'attached' });
+      await fileInput.setInputFiles({
         name: 'test-upload.txt',
         mimeType: 'text/plain',
         buffer: Buffer.from('playwright test file content'),
@@ -1154,7 +1156,9 @@ test.describe('Context Center', () => {
 
       // Create a >5 MB in-memory buffer
       const bigBuffer = Buffer.alloc(6 * 1024 * 1024, 'x');
-      await modal.locator('input[type="file"]').setInputFiles({
+      const oversizedInput = page.getByTestId('file-upload-input');
+      await oversizedInput.waitFor({ state: 'attached' });
+      await oversizedInput.setInputFiles({
         name: 'too-large.bin',
         mimeType: 'application/octet-stream',
         buffer: bigBuffer,
