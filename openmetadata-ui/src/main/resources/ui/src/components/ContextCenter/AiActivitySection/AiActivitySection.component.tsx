@@ -56,7 +56,7 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
             {item.kind}
           </Typography>
           <span className="tw:text-quaternary tw:text-xs">·</span>
-          <Badge color="brand" size="sm" type='color'>
+          <Badge color="brand" size="sm" type="color">
             {`cited ${item.count}×`}
           </Badge>
         </div>
@@ -109,9 +109,9 @@ const AiActivitySection: FC<AiActivitySectionProps> = ({ items }) => {
           </Typography>
         </div>
         <Button
-          color='link-color'
-          size='xs'
+          color="link-color"
           iconTrailing={ArrowNarrowRight}
+          size="xs"
           type="button">
           {t('label.view-activity')}
         </Button>

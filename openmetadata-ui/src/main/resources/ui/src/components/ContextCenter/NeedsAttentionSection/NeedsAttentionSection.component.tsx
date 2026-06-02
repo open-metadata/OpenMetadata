@@ -36,7 +36,7 @@ const KIND_ICONS: Record<AttentionKind, FC<{ className?: string }>> = {
 };
 
 function NeedsAttentionRow({ item }: { readonly item: AttentionItem }) {
-  const {t} = useTranslation();
+  const { t } = useTranslation();
   const KindIcon = KIND_ICONS[item.kind];
 
   return (
@@ -54,15 +54,16 @@ function NeedsAttentionRow({ item }: { readonly item: AttentionItem }) {
         <div className="tw:mt-1">
           <BadgeWithDot
             color={ATTENTION_SEVERITY_BADGE_COLOR[item.severity]}
-            size="sm" type='color'>
+            size="sm"
+            type="color">
             {item.reason}
           </BadgeWithDot>
         </div>
       </div>
       <Button
-        color='link-color'
-        size='xs'
+        color="link-color"
         iconTrailing={ArrowNarrowRight}
+        size="xs"
         type="button">
         {t('label.resolve')}
       </Button>

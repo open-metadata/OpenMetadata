@@ -49,7 +49,10 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (limit = 100, params: {} = {}): Promise<ContextFile[]> => {
+export const listContextFiles = async (
+  limit = 100,
+  params: object = {}
+): Promise<ContextFile[]> => {
   const response = await APIClient.get<{ data: ContextFile[] }>(
     '/contextCenter/drive/files',
     { params: { fields: 'folder', limit, ...params } }

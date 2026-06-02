@@ -17,7 +17,7 @@ import {
   File05,
   Home02,
   Sun,
-  UploadCloud02
+  UploadCloud02,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -27,11 +27,9 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import AiActivitySection from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.component';
-import { ActivityItem } from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import NeedsAttentionSection from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.component';
-import { AttentionItem } from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import {
@@ -65,91 +63,12 @@ import {
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   contextFileToUploadedDocumentItem,
-  createArticleKnowledgePage
+  createArticleKnowledgePage,
 } from '../../../utils/ContextCenterUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-const MOCK_AI_ACTIVITY: ActivityItem[] = [
-  {
-    id: '1',
-    kind: 'memory',
-    count: 47,
-    title: 'Revenue figures exclude refunds',
-    surface: 'Sales Agent',
-    who: 'Phoenix',
-    when: '2h ago',
-  },
-  {
-    id: '2',
-    kind: 'article',
-    count: 31,
-    title: 'Data Governance Policy',
-    surface: 'Support Bot',
-    who: 'Olivia',
-    when: '5h ago',
-  },
-  {
-    id: '3',
-    kind: 'document',
-    count: 22,
-    title: 'GDPR_Compliance_Audit.pdf',
-    surface: 'Legal Assistant',
-    who: 'Candice',
-    when: '3d ago',
-  },
-  {
-    id: '4',
-    kind: 'memory',
-    count: 28,
-    title: 'Product SKU consolidation',
-    surface: 'Analytics Agent',
-    who: 'Demi',
-    when: '6h ago',
-  },
-  {
-    id: '5',
-    kind: 'article',
-    count: 15,
-    title: 'Internal API Documentation',
-    surface: 'Dev Assistant',
-    who: 'Marcus',
-    when: '1d ago',
-  },
-];
-
-const MOCK_NEEDS_ATTENTION: AttentionItem[] = [
-  {
-    id: '1',
-    kind: 'document',
-    title: 'Q4_Revenue_Report.pdf',
-    severity: 'error',
-    reason: 'Processing failed',
-  },
-  {
-    id: '2',
-    kind: 'article',
-    title: 'Q3 Compliance Protocols v4',
-    severity: 'warning',
-    reason: 'Stale — not updated in 90d',
-  },
-  {
-    id: '3',
-    kind: 'memory',
-    title: 'Churn model v3 deprecates v2',
-    severity: 'info',
-    reason: 'Low citation rate',
-  },
-  {
-    id: '4',
-    kind: 'document',
-    title: 'Employee_Records.xlsx',
-    severity: 'warning',
-    reason: 'Unused for 60d',
-  },
-];
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
@@ -209,10 +128,7 @@ const ContextCenterDashboardPage: FC = () => {
             entity: t('label.quick-link'),
           })
         );
-        setArticles((prev) => [
-         articleData,
-          ...prev,
-        ]);
+        setArticles((prev) => [articleData, ...prev]);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -230,11 +146,7 @@ const ContextCenterDashboardPage: FC = () => {
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
-      setArticles(
-        response.data.map((page: KnowledgePage) =>
-          page
-        )
-      );
+      setArticles(response.data.map((page: KnowledgePage) => page));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -245,7 +157,10 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const files = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, { sortBy: 'updatedAt', sortOrder: 'desc' });
+      const files = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, {
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
+      });
       setDocuments(files.map(contextFileToUploadedDocumentItem));
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -301,7 +216,13 @@ const ContextCenterDashboardPage: FC = () => {
     fetchFolders();
     fetchMemories();
     fetchPermission();
-  }, [fetchRecentArticles, fetchDocuments, fetchFolders, fetchMemories, fetchPermission]);
+  }, [
+    fetchRecentArticles,
+    fetchDocuments,
+    fetchFolders,
+    fetchMemories,
+    fetchPermission,
+  ]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
     setDocuments((prev) => [
@@ -314,7 +235,9 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       articles.map((article) => ({
         title: getEntityName(article),
-        meta: `${article?.owners?.[0]?.displayName || '-'} · ${getRelativeTime(article.updatedAt)}`
+        meta: `${article?.owners?.[0]?.displayName || '-'} · ${getRelativeTime(
+          article.updatedAt
+        )}`,
       })),
     [articles]
   );

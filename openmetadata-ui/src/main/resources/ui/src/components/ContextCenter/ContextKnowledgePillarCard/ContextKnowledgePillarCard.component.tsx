@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, FeaturedIcon, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight, TrendUp01 } from '@untitledui/icons';
 import { FC, useState } from 'react';
 import { PILLAR_TONE_TEXT_CLASS } from '../../../constants/ContextCenter.constants';
@@ -35,7 +40,7 @@ function RecentItem({
         showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''
       }`}>
       <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-      <div className='tw:flex tw:items-center tw:justify-between tw:w-full'>
+      <div className="tw:flex tw:items-center tw:justify-between tw:w-full">
         <Typography
           ellipsis
           as="span"
@@ -80,65 +85,68 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}>
       <div>
-      <div className="tw:flex tw:items-center tw:gap-2.5 tw:mb-3.5">
-        <FeaturedIcon
-          className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
-          color="brand"
-          icon={Icon}
-          size="sm"
-          theme="light"
-        />
-        <div className="tw:flex-1 tw:min-w-0">
+        <div className="tw:flex tw:items-center tw:gap-2.5 tw:mb-3.5">
+          <FeaturedIcon
+            className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
+            color="brand"
+            icon={Icon}
+            size="sm"
+            theme="light"
+          />
+          <div className="tw:flex-1 tw:min-w-0">
+            <Typography
+              as="div"
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {title}
+            </Typography>
+            <Typography as="div" className="tw:text-quaternary" size="text-xs">
+              {subtitle}
+            </Typography>
+          </div>
+        </div>
+
+        <div className="tw:flex tw:items-baseline tw:gap-2.5 tw:mb-1 tw:mt-1.5">
           <Typography
-            as="div"
-            className="tw:text-primary"
-            size="text-sm"
-            weight="semibold">
-            {title}
+            as="span"
+            className="tw:text-primary tw:tabular-nums tw:tracking-tight"
+            size="display-md"
+            weight="bold">
+            {stat}
           </Typography>
-          <Typography as="div" className="tw:text-quaternary" size="text-xs">
-            {subtitle}
+          <Typography as="span" className="tw:text-quaternary" size="text-xs">
+            {statSubSecondary ? `${statSub} · ${statSubSecondary}` : statSub}
           </Typography>
         </div>
-      </div>
 
-      <div className="tw:flex tw:items-baseline tw:gap-2.5 tw:mb-1 tw:mt-1.5">
-        <Typography
-          as="span"
-          className="tw:text-primary tw:tabular-nums tw:tracking-tight"
-          size="display-md"
-          weight="bold">
-          {stat}
-        </Typography>
-        <Typography as="span" className="tw:text-quaternary" size="text-xs">
-          {statSubSecondary ? `${statSub} · ${statSubSecondary}` : statSub}
-        </Typography>
-      </div>
+        <div
+          className={`tw:inline-flex tw:items-center tw:gap-1 tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}>
+          <TrendUp01 className="tw:size-3 tw:stroke-2" />
+          <Typography
+            as="span"
+            className={PILLAR_TONE_TEXT_CLASS[tone]}
+            size="text-xs">
+            {trend}
+          </Typography>
+        </div>
 
-      <div
-        className={`tw:inline-flex tw:items-center tw:gap-1 tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}>
-        <TrendUp01 className="tw:size-3 tw:stroke-2" />
-        <Typography as="span" className={PILLAR_TONE_TEXT_CLASS[tone]} size="text-xs">
-          {trend}
-        </Typography>
-      </div>
-
-      <div className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-2.5 tw:gap-0">
-        {recent.map((item, i) => (
-          <RecentItem
-            Icon={Icon}
-            item={item}
-            key={item.title}
-            showDivider={i < recent.length - 1}
-          />
-        ))}
-      </div>
+        <div className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-2.5 tw:gap-0">
+          {recent.map((item, i) => (
+            <RecentItem
+              Icon={Icon}
+              item={item}
+              key={item.title}
+              showDivider={i < recent.length - 1}
+            />
+          ))}
+        </div>
       </div>
       <div className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary tw:inline-flex tw:items-center tw:gap-1.5">
         <Button
-          color='link-color'
-          size='xs'
+          color="link-color"
           iconTrailing={ArrowNarrowRight}
+          size="xs"
           type="button">
           {cta}
         </Button>
