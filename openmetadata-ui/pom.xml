@@ -18,7 +18,6 @@
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
     <node.heap.size>6144</node.heap.size>
-    <brandName>OpenMetadata</brandName>
   </properties>
 
   <profiles>
@@ -154,7 +153,6 @@
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
                 <APP_VERSION>${project.version}</APP_VERSION>
-                <BRAND_NAME>${brandName}</BRAND_NAME>
               </environmentVariables>
             </configuration>
           </execution>
