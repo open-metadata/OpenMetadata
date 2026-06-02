@@ -105,8 +105,8 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
