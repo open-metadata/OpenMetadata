@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,7 +31,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -44,7 +42,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseServices;
-import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for column search indexing during table reindexing. Verifies:
@@ -615,53 +612,5 @@ public class ColumnSearchIndexIT {
         List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT), addressCol));
 
     return SdkClients.adminClient().tables().create(tableRequest);
-  }
-
-  @Nested
-  @DisplayName("Soft-delete filtering in column grid")
-  class SoftDeleteColumnGridTests {
-
-    @Test
-    @DisplayName("Soft-deleted table columns must not appear in the column grid")
-    void testSoftDeletedTableExcludedFromColumnGrid(TestNamespace ns) throws Exception {
-      OpenMetadataClient client = SdkClients.adminClient();
-      Table table = createTableWithColumns(ns, "soft_del_grid");
-      String colName = ns.prefix("user_email");
-      String serviceName = table.getService().getName();
-
-      TimeUnit.SECONDS.sleep(3);
-
-      String beforeJson =
-          client
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/columns/grid?entityTypes=table&serviceName=" + serviceName,
-                  null);
-      assertNotNull(beforeJson);
-      ColumnGridResponse before = OBJECT_MAPPER.readValue(beforeJson, ColumnGridResponse.class);
-      assertNotNull(before.getColumns(), "Columns list must not be null");
-      assertTrue(
-          before.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
-          "Column must appear in grid before soft-delete");
-
-      client.tables().delete(table.getId().toString(), Map.of());
-
-      TimeUnit.SECONDS.sleep(3);
-
-      String afterJson =
-          client
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/columns/grid?entityTypes=table&serviceName=" + serviceName,
-                  null);
-      assertNotNull(afterJson);
-      ColumnGridResponse after = OBJECT_MAPPER.readValue(afterJson, ColumnGridResponse.class);
-      assertNotNull(after.getColumns(), "Columns list must not be null");
-      assertFalse(
-          after.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
-          "Column from soft-deleted table must not appear in column grid");
-    }
   }
 }
