@@ -141,7 +141,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
         fields.contains(TEST_SUITE_FIELD)
-            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            ? findExecutableTestSuiteForTestCase(test.getId())
             : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -233,10 +233,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     Map<UUID, List<EntityReference>> testCaseToTestSuites = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject testSuite : testSuiteRecords) {
       UUID testCaseId = UUID.fromString(testSuite.getToId());
-      EntityReference testSuiteRef =
-          Entity.getEntityReferenceById(
-              TEST_SUITE, UUID.fromString(testSuite.getFromId()), Include.ALL);
-      testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuiteRef);
+      UUID suiteId = UUID.fromString(testSuite.getFromId());
+      try {
+        EntityReference testSuiteRef =
+            Entity.getEntityReferenceById(TEST_SUITE, suiteId, Include.ALL);
+        testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuiteRef);
+      } catch (EntityNotFoundException ex) {
+        cleanupOrphanTestSuiteRelationship(testCaseId, suiteId);
+      }
     }
 
     // Set test suites on test cases - find the basic/executable test suite
@@ -271,21 +275,39 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     Map<UUID, List<TestSuite>> testCaseToTestSuites = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : testSuiteRecords) {
       UUID testCaseId = UUID.fromString(record.getToId());
-      TestSuite testSuite =
-          Entity.<TestSuite>getEntity(
-                  TEST_SUITE,
-                  UUID.fromString(record.getFromId()),
-                  "owners,domains",
-                  Include.ALL,
-                  false)
-              .withInherited(true)
-              .withChangeDescription(null);
-      testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuite);
+      UUID suiteId = UUID.fromString(record.getFromId());
+      try {
+        TestSuite testSuite =
+            Entity.<TestSuite>getEntity(TEST_SUITE, suiteId, "owners,domains", Include.ALL, false)
+                .withInherited(true)
+                .withChangeDescription(null);
+        testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuite);
+      } catch (EntityNotFoundException ex) {
+        cleanupOrphanTestSuiteRelationship(testCaseId, suiteId);
+      }
     }
 
     for (TestCase testCase : testCases) {
       List<TestSuite> testSuiteList = testCaseToTestSuites.get(testCase.getId());
       testCase.setTestSuites(testSuiteList != null ? testSuiteList : new ArrayList<>());
+    }
+  }
+
+  private void cleanupOrphanTestSuiteRelationship(UUID testCaseId, UUID testSuiteId) {
+    LOG.warn(
+        "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+        testCaseId,
+        testSuiteId);
+    try {
+      daoCollection
+          .relationshipDAO()
+          .delete(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+    } catch (Exception ex) {
+      LOG.debug(
+          "Failed to delete orphan relationship {}->{}: {}",
+          testSuiteId,
+          testCaseId,
+          ex.getMessage());
     }
   }
 
@@ -585,23 +607,85 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             + "No executable test suite was found.");
   }
 
+  /**
+   * Resolve the executable test suite for a test case while tolerating relationships that point
+   * to a hard-deleted test suite. Returns null when no live executable suite is found; orphan
+   * relationships discovered along the way are deleted so the next read self-heals.
+   */
+  private EntityReference findExecutableTestSuiteForTestCase(UUID testCaseId) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(testCaseId, entityType, Relationship.CONTAINS, TEST_SUITE);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      TestSuite testSuite = loadTestSuiteOrCleanup(testCaseId, record.getId());
+      if (testSuite != null && Boolean.TRUE.equals(testSuite.getBasic())) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private TestSuite loadTestSuiteOrCleanup(UUID testCaseId, UUID testSuiteId) {
+    try {
+      return Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+          testCaseId,
+          testSuiteId);
+      try {
+        daoCollection
+            .relationshipDAO()
+            .delete(
+                testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+      } catch (Exception cleanupEx) {
+        LOG.debug(
+            "Failed to delete orphan relationship {}->{}: {}",
+            testSuiteId,
+            testCaseId,
+            cleanupEx.getMessage());
+      }
+      return null;
+    }
+  }
+
   private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that
     // testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
-    return records.stream()
-        .map(
-            testSuiteId ->
-                Entity.<TestSuite>getEntity(
-                        TEST_SUITE,
-                        testSuiteId.getId(),
-                        "owners,domains,reviewers",
-                        Include.ALL,
-                        false)
-                    .withInherited(true)
-                    .withChangeDescription(null))
-        .toList();
+    List<TestSuite> suites = new ArrayList<>(records.size());
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      try {
+        TestSuite suite =
+            Entity.<TestSuite>getEntity(
+                    TEST_SUITE, record.getId(), "owners,domains,reviewers", Include.ALL, false)
+                .withInherited(true)
+                .withChangeDescription(null);
+        suites.add(suite);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+            test.getId(),
+            record.getId());
+        try {
+          daoCollection
+              .relationshipDAO()
+              .delete(
+                  record.getId(),
+                  TEST_SUITE,
+                  test.getId(),
+                  TEST_CASE,
+                  Relationship.CONTAINS.ordinal());
+        } catch (Exception cleanupEx) {
+          LOG.debug(
+              "Failed to delete orphan relationship {}->{}: {}",
+              record.getId(),
+              test.getId(),
+              cleanupEx.getMessage());
+        }
+      }
+    }
+    return suites;
   }
 
   private EntityReference getTestDefinition(TestCase test) {

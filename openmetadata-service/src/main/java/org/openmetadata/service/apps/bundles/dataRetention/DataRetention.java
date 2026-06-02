@@ -29,6 +29,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
+import org.openmetadata.service.util.OrphanTestCaseCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
 import org.quartz.JobExecutionContext;
 
@@ -121,6 +122,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_mlmodel_entities", new StepStats());
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
     entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
+    entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
@@ -139,6 +141,13 @@ public class DataRetention extends AbstractNativeApplication {
     // Clean up orphaned tag usages
     LOG.info("Starting cleanup for orphaned tag usages.");
     cleanOrphanedTagUsages();
+
+    // Clean up test cases whose entityLink targets a deleted entity. Relationship cleanup above
+    // removes broken test_suite -> test_case rows, but it can't reason about the string-based
+    // entityLink that the test case carries. Run this after relationship cleanup so we don't
+    // delete a test case whose suite has just been restored from a relationship row.
+    LOG.info("Starting cleanup for orphan test cases.");
+    cleanOrphanTestCases();
 
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
@@ -266,6 +275,28 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned tag usages", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
+  }
+
+  private void cleanOrphanTestCases() {
+    try {
+      OrphanTestCaseCleanup cleanup = new OrphanTestCaseCleanup(collectionDAO, false);
+      OrphanTestCaseCleanup.OrphanTestCaseResult result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats("orphaned_test_cases", result.getOrphansDeleted(), result.getFailures());
+      LOG.info(
+          "Orphan test case cleanup completed - Scanned: {}, Found: {}, Deleted: {}, Failed: {}",
+          result.getTotalScanned(),
+          result.getOrphansFound(),
+          result.getOrphansDeleted(),
+          result.getFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphan test cases", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
         failureDetails = new HashMap<>();
         failureDetails.put("message", ex.getMessage());

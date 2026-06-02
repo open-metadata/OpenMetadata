@@ -189,6 +189,15 @@ public class McpServer implements McpServerProvider {
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
 
+      // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
+      // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
+      // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
+      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
+          (req, resp, username, email, relayState) ->
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+      LOG.info("Registered MCP SAML callback handler for SAML SSO support");
+
       // Register MCP callback servlet unconditionally — SSO availability is checked at
       // request time, not startup time. This follows the same pattern as the regular auth
       // servlets (AuthCallbackServlet, AuthLoginServlet) which are always registered and

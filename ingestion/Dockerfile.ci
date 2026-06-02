@@ -7,46 +7,52 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
 
 # Install Dependencies (listed in alphabetical order)
 RUN dpkg --configure -a \
-    && apt-get -qq update \
-    && apt-get -qq install -y \
-    alien \
-    build-essential \
-    default-libmysqlclient-dev \
-    freetds-bin \
-    freetds-dev \
-    gcc \
-    gnupg \
-    libaio1 \
-    libevent-dev \
-    libffi-dev \
-    libpq-dev \
-    librdkafka-dev \
-    libsasl2-dev \
-    libsasl2-2 \
-    libsasl2-modules \
-    libsasl2-modules-gssapi-mit \
-    libssl-dev \
-    libxml2 \
-    libkrb5-dev \
-    default-jdk \
-    openssl \
-    # To ensure compatibility with unixodbc package
-    odbcinst=2.3.11-2+deb12u1 \
-    postgresql \
-    postgresql-contrib \
-    tdsodbc \
-    unixodbc=2.3.11-2+deb12u1 \
-    unixodbc-dev=2.3.11-2+deb12u1 \
-    unzip \
-    vim \
-    git \
-    wget --no-install-recommends \
-    # Accept MSSQL ODBC License
-    && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
-    && apt-get -qq purge -y \
-      'imagemagick*' 'libmagick*' 'graphicsmagick*' \
-    && apt-get -qq autoremove -y --purge \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get -qq update \
+  && apt-get -qq install -y \
+  alien \
+  build-essential \
+  default-libmysqlclient-dev \
+  freetds-bin \
+  freetds-dev \
+  gcc \
+  gnupg \
+  libaio1 \
+  libevent-dev \
+  libffi-dev \
+  libpq-dev \
+  librdkafka-dev \
+  libsasl2-dev \
+  libsasl2-2 \
+  libsasl2-modules \
+  libsasl2-modules-gssapi-mit \
+  libssl-dev \
+  libxml2 \
+  libkrb5-dev \
+  default-jdk \
+  openssl \
+  # To ensure compatibility with unixodbc package
+  odbcinst=2.3.11-2+deb12u1 \
+  postgresql \
+  postgresql-contrib \
+  tdsodbc \
+  unixodbc=2.3.11-2+deb12u1 \
+  unixodbc-dev=2.3.11-2+deb12u1 \
+  unzip \
+  vim \
+  git \
+  wget --no-install-recommends \
+  # Accept MSSQL ODBC License
+  && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+  # Pull bookworm-security fixes for known-vulnerable packages
+  # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+  # --only-upgrade is a no-op for packages not present in the base image.
+  && apt-get -qq install -y --only-upgrade \
+       libgnutls30 libcap2 libcap2-bin openssh-client rsync \
+  && apt-get -qq purge -y \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+  && apt-get -qq autoremove -y --purge \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
 RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
