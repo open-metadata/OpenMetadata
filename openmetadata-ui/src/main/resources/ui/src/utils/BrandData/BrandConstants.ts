@@ -12,5 +12,5 @@
  */
 
 // process.env.BRAND_NAME is statically replaced by Vite at build time (vite.config.ts define block).
-// Maven passes the brandName property as the BRAND_NAME env variable during `yarn run build`.
+// Set BRAND_NAME as an environment variable or in a .env file before running `yarn build`.
 export const BRAND_NAME = process.env.BRAND_NAME ?? 'OpenMetadata';
