@@ -1,0 +1,28 @@
+# Crowdin configuration for OpenMetadata UI translations (TEMPLATE — opt-in).
+#
+# Crowdin reads the i18next JSON locale files directly, so no PO conversion is
+# needed and ICU placeholders ({{x}}) / <0>…</0> tags are protected by the
+# i18next file type. en-us.json is the source of truth; every other
+# <lang>-<country>.json is a translation target. Weblate can consume the same
+# files via its "i18next v4" format if you prefer self-hosting.
+#
+# This file has NO effect until a maintainer connects the repo to a Crowdin
+# project and runs the Crowdin CLI/GitHub action. Tune `languages_mapping` to
+# match the repo's lowercase file names (e.g. Crowdin `sv-SE` -> `sv-se.json`).
+# Docs: https://crowdin.github.io/crowdin-cli/configuration
+
+preserve_hierarchy: true
+
+files:
+  - source: /openmetadata-ui/src/main/resources/ui/src/locale/languages/en-us.json
+    translation: /openmetadata-ui/src/main/resources/ui/src/locale/languages/%locale_with_underscore%.json
+    type: i18next_json
+    # Crowdin emits locale codes like `sv-SE`; the repo uses `sv-se.json`.
+    # Map every shipped locale here so files round-trip to the right name.
+    languages_mapping:
+      locale_with_underscore:
+        sv: sv-se
+        de: de-de
+        fr: fr-fr
+        es: es-es
+        # …add the remaining shipped locales as they are connected.
