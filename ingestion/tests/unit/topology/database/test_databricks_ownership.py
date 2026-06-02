@@ -82,40 +82,115 @@ def test_scim_resource_listing_handles_pagination():
     assert client._get_auth_header.call_count == 2
 
 
+def test_scim_listing_stops_when_items_per_page_is_non_positive():
+    client = _client_with_responses(
+        [
+            ScimResponse(
+                {
+                    "Resources": [
+                        {"applicationId": "app-1", "displayName": "Job Runner"},
+                        {"applicationId": "app-2", "displayName": "Loader"},
+                    ],
+                    "itemsPerPage": "0",
+                    "startIndex": 1,
+                    "totalResults": 2,
+                }
+            ),
+        ]
+    )
+
+    assert list(client.list_service_principals()) == [
+        {"applicationId": "app-1", "displayName": "Job Runner"},
+        {"applicationId": "app-2", "displayName": "Loader"},
+    ]
+    assert client.client.get.call_count == 1
+
+
+def test_scim_listing_passes_filter_expression():
+    client = _client_with_responses(
+        [
+            ScimResponse(
+                {
+                    "Resources": [{"applicationId": "app-1", "displayName": "Job Runner"}],
+                    "itemsPerPage": 1,
+                    "startIndex": 1,
+                    "totalResults": 1,
+                }
+            ),
+        ]
+    )
+
+    assert list(client.list_service_principals(filter_expression='applicationId eq "app-1"')) == [
+        {"applicationId": "app-1", "displayName": "Job Runner"}
+    ]
+    assert client.client.get.call_args.kwargs["params"] == {
+        "startIndex": 1,
+        "count": 100,
+        "filter": 'applicationId eq "app-1"',
+    }
+
+
 def test_owner_resolver_maps_service_principal_app_id_to_display_name():
     api_client = Mock()
     api_client.list_service_principals.return_value = [{"applicationId": _APP_ID, "displayName": "Job Runner"}]
-    api_client.list_groups.return_value = []
     metadata = Mock()
     metadata.get_reference_by_name.return_value = "owner-ref"
     resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
 
     assert resolver.get_owner_ref(_APP_ID) == "owner-ref"
+    api_client.list_service_principals.assert_called_once_with(filter_expression=f'applicationId eq "{_APP_ID}"')
+    api_client.list_groups.assert_not_called()
     metadata.get_reference_by_name.assert_called_once_with(name="Job Runner")
 
 
 def test_owner_resolver_maps_group_id_to_team_owner_lookup():
     api_client = Mock()
-    api_client.list_service_principals.return_value = []
     api_client.list_groups.return_value = [{"id": "100000", "displayName": "Data Platform"}]
     metadata = Mock()
     metadata.get_reference_by_name.return_value = "team-ref"
     resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
 
     assert resolver.get_owner_ref("100000") == "team-ref"
+    api_client.list_service_principals.assert_not_called()
+    api_client.list_groups.assert_called_once_with(filter_expression='id eq "100000"')
     metadata.get_reference_by_name.assert_called_once_with(name="Data Platform", is_owner=True)
 
 
 def test_owner_resolver_classifies_group_display_name_as_team_owner():
     api_client = Mock()
-    api_client.list_service_principals.return_value = []
     api_client.list_groups.return_value = [{"id": "100000", "displayName": "Data Platform"}]
     metadata = Mock()
     metadata.get_reference_by_name.return_value = "team-ref"
     resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
 
     assert resolver.get_owner_ref("Data Platform") == "team-ref"
+    api_client.list_service_principals.assert_not_called()
+    api_client.list_groups.assert_called_once_with(filter_expression='displayName eq "Data Platform"')
     metadata.get_reference_by_name.assert_called_once_with(name="Data Platform", is_owner=True)
+
+
+def test_owner_resolver_ignores_scim_results_that_do_not_match_owner():
+    api_client = Mock()
+    api_client.list_groups.return_value = [{"id": "200000", "displayName": "Other Team"}]
+    metadata = Mock()
+    metadata.get_reference_by_name.return_value = "owner-ref"
+    resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
+
+    assert resolver.get_owner_ref("100000") == "owner-ref"
+    metadata.get_reference_by_name.assert_called_once_with(name="100000")
+
+
+def test_owner_resolver_caches_resolved_owners():
+    api_client = Mock()
+    api_client.list_groups.return_value = [{"id": "100000", "displayName": "Data Platform"}]
+    metadata = Mock()
+    metadata.get_reference_by_name.return_value = "team-ref"
+    resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
+
+    assert resolver.get_owner_ref("100000") == "team-ref"
+    assert resolver.get_owner_ref("100000") == "team-ref"
+    api_client.list_groups.assert_called_once()
+    metadata.get_reference_by_name.assert_called_once()
 
 
 def test_owner_resolver_uses_email_lookup_for_email_owner():
@@ -149,8 +224,10 @@ def test_owner_resolver_falls_back_to_raw_owner_when_scim_fails():
     metadata.get_reference_by_name.return_value = "owner-ref"
     resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
 
-    assert resolver.get_owner_ref("raw-owner") == "owner-ref"
-    metadata.get_reference_by_name.assert_called_once_with(name="raw-owner")
+    assert resolver.get_owner_ref(_APP_ID) == "owner-ref"
+    api_client.list_service_principals.assert_called_once()
+    api_client.list_groups.assert_called_once()
+    metadata.get_reference_by_name.assert_called_once_with(name=_APP_ID)
 
 
 def test_owner_resolver_skips_scim_and_lookup_when_include_owners_false():

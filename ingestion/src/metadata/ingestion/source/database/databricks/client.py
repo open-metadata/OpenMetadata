@@ -126,16 +126,19 @@ class DatabricksClient:
             "Content-Type": "application/json",
         }
 
-    def _list_scim_resources(self, path: str) -> Iterable[dict]:
+    def _list_scim_resources(self, path: str, filter_expression: str | None = None) -> Iterable[dict]:
         """
         List workspace SCIM resources using Databricks' 1-based pagination.
         """
         start_index = 1
         while True:
+            params = {"startIndex": start_index, "count": PAGE_SIZE}
+            if filter_expression:
+                params["filter"] = filter_expression
             response = self.client.get(
                 f"{self.base_url}{path}",
                 headers=self.headers,
-                params={"startIndex": start_index, "count": PAGE_SIZE},
+                params=params,
                 timeout=self.api_timeout,
             )
             if response.status_code != 200:
@@ -148,24 +151,27 @@ class DatabricksClient:
             resources = payload.get("Resources") or []
             yield from resources
 
-            items_per_page = int(payload.get("itemsPerPage") or len(resources))
+            # Guard against non-positive itemsPerPage so start_index always advances.
+            items_per_page = int(payload.get("itemsPerPage") or 0)
+            if items_per_page <= 0:
+                items_per_page = len(resources)
             total_results = int(payload.get("totalResults") or 0)
             current_start = int(payload.get("startIndex") or start_index)
             if not resources or current_start + items_per_page > total_results:
                 break
             start_index = current_start + items_per_page
 
-    def list_service_principals(self) -> Iterable[dict]:
+    def list_service_principals(self, filter_expression: str | None = None) -> Iterable[dict]:
         """
         List Databricks workspace service principals from SCIM.
         """
-        yield from self._list_scim_resources(SCIM_SERVICE_PRINCIPALS_PATH)
+        yield from self._list_scim_resources(SCIM_SERVICE_PRINCIPALS_PATH, filter_expression)
 
-    def list_groups(self) -> Iterable[dict]:
+    def list_groups(self, filter_expression: str | None = None) -> Iterable[dict]:
         """
         List Databricks workspace groups from SCIM.
         """
-        yield from self._list_scim_resources(SCIM_GROUPS_PATH)
+        yield from self._list_scim_resources(SCIM_GROUPS_PATH, filter_expression)
 
     def test_query_api_access(self) -> None:
         res = self.client.get(self.base_query_url, headers=self.headers, timeout=self.api_timeout)

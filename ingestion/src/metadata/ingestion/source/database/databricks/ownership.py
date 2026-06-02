@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import dataclass
-from threading import Lock
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
-IDENTITY_CACHE_SIZE = 10000
+OWNER_CACHE_SIZE = 1000
 EMAIL_STR_ADAPTER = TypeAdapter(EmailStr)
 
 
@@ -48,6 +48,9 @@ class ResolvedDatabricksOwner:
 class DatabricksOwnerResolver:
     """
     Resolve Databricks service principals and groups before assigning OM owners.
+
+    SCIM lookups are performed on demand per owner (filtered queries) and cached,
+    so large workspaces are never bulk-listed.
     """
 
     def __init__(
@@ -59,12 +62,7 @@ class DatabricksOwnerResolver:
         self.api_client = api_client
         self.metadata = metadata
         self.include_owners = include_owners
-        self._identity_maps_loaded = False
-        self._identity_maps_lock = Lock()
-        self._service_principal_names = LRUCache(capacity=IDENTITY_CACHE_SIZE)
-        self._group_names_by_id = LRUCache(capacity=IDENTITY_CACHE_SIZE)
-        self._group_names = LRUCache(capacity=IDENTITY_CACHE_SIZE)
-        self._owner_cache = LRUCache(capacity=IDENTITY_CACHE_SIZE)
+        self._owner_cache = LRUCache(capacity=OWNER_CACHE_SIZE)
 
     def get_owner_ref(self, owner: str | None) -> EntityReferenceList | None:
         """
@@ -97,49 +95,43 @@ class DatabricksOwnerResolver:
         if self._is_email(owner):
             return ResolvedDatabricksOwner(owner)
 
-        self._load_identity_maps()
+        return self._resolve_service_principal(owner) or self._resolve_group(owner) or ResolvedDatabricksOwner(owner)
+
+    def _resolve_service_principal(self, owner: str) -> ResolvedDatabricksOwner | None:
+        if not self._is_service_principal_id(owner):
+            return None
+
         owner_key = owner.casefold()
+        try:
+            for principal in self.api_client.list_service_principals(
+                filter_expression=f'applicationId eq "{self._escape_filter_value(owner)}"'
+            ):
+                application_id = str(principal.get("applicationId") or "")
+                display_name = principal.get("displayName")
+                if display_name and application_id.casefold() == owner_key:
+                    return ResolvedDatabricksOwner(display_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to fetch Databricks service principal [{owner}]: {exc}")
+        return None
 
-        service_principal_name = self._get_cached_value(self._service_principal_names, owner_key)
-        if service_principal_name:
-            return ResolvedDatabricksOwner(service_principal_name)
-
-        group_name = self._get_cached_value(self._group_names_by_id, owner_key) or self._get_cached_value(
-            self._group_names, owner_key
-        )
-        if group_name:
-            return ResolvedDatabricksOwner(group_name, is_group=True)
-
-        return ResolvedDatabricksOwner(owner)
-
-    def _load_identity_maps(self) -> None:
-        with self._identity_maps_lock:
-            if self._identity_maps_loaded:
-                return
-
-            self._identity_maps_loaded = True
-            try:
-                for principal in self.api_client.list_service_principals():
-                    application_id = principal.get("applicationId")
-                    display_name = principal.get("displayName")
-                    if application_id and display_name:
-                        self._service_principal_names.put(application_id.casefold(), display_name)
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to fetch Databricks service principals: {exc}")
-
-            try:
-                for group in self.api_client.list_groups():
-                    group_id = group.get("id")
-                    display_name = group.get("displayName")
-                    if not display_name:
-                        continue
-                    self._group_names.put(display_name.casefold(), display_name)
-                    if group_id:
-                        self._group_names_by_id.put(str(group_id).casefold(), display_name)
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to fetch Databricks groups: {exc}")
+    def _resolve_group(self, owner: str) -> ResolvedDatabricksOwner | None:
+        owner_key = owner.casefold()
+        filter_attribute = "id" if owner.isdigit() else "displayName"
+        try:
+            for group in self.api_client.list_groups(
+                filter_expression=f'{filter_attribute} eq "{self._escape_filter_value(owner)}"'
+            ):
+                group_id = str(group.get("id") or "")
+                display_name = group.get("displayName")
+                if not display_name:
+                    continue
+                if group_id.casefold() == owner_key or display_name.casefold() == owner_key:
+                    return ResolvedDatabricksOwner(display_name, is_group=True)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to fetch Databricks group [{owner}]: {exc}")
+        return None
 
     def _get_reference(self, owner: ResolvedDatabricksOwner) -> EntityReferenceList | None:
         if owner.is_group:
@@ -168,10 +160,14 @@ class DatabricksOwnerResolver:
             return True
 
     @staticmethod
-    def _get_cached_value(cache: LRUCache[str | None], key: str) -> str | None:
-        if key not in cache:
-            return None
+    def _is_service_principal_id(owner: str) -> bool:
         try:
-            return cache.get(key)
-        except KeyError:
-            return None
+            UUID(owner)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    @staticmethod
+    def _escape_filter_value(value: str) -> str:
+        return value.replace("\\", "\\\\").replace('"', '\\"')
