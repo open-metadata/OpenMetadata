@@ -457,6 +457,7 @@
     "created-by": "생성자",
     "created-by-me": "내가 생성함",
     "created-by-user-time-ago": "{{user}}님이 {{time}}에 생성",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "생성 날짜",
     "created-lowercase": "생성됨",
     "created-time": "생성 시간",

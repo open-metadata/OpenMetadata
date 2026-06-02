@@ -204,6 +204,33 @@ class SearchUtilsTest {
   }
 
   @Test
+  void timeWindowedLineageFilterBoundsEdgesWithOneTimestamp() {
+    EsLineageData createdOnlyPastEdge =
+        new EsLineageData().withDocId("created-only-past").withCreatedAt(500L);
+    EsLineageData updatedOnlyPastEdge =
+        new EsLineageData().withDocId("updated-only-past").withUpdatedAt(500L);
+    EsLineageData createdOnlyCurrentEdge =
+        new EsLineageData().withDocId("created-only-current").withCreatedAt(1_500L);
+    EsLineageData updatedOnlyCurrentEdge =
+        new EsLineageData().withDocId("updated-only-current").withUpdatedAt(1_500L);
+    Map<String, Object> lineageDoc =
+        Map.of(
+            SearchClient.UPSTREAM_LINEAGE_FIELD,
+            List.of(
+                createdOnlyPastEdge,
+                updatedOnlyPastEdge,
+                createdOnlyCurrentEdge,
+                updatedOnlyCurrentEdge));
+
+    List<EsLineageData> lineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+
+    assertEquals(
+        List.of("created-only-current", "updated-only-current"),
+        lineage.stream().map(EsLineageData::getDocId).toList());
+  }
+
+  @Test
   void rbacAndSslHelpersRespectConfiguration() throws Exception {
     SearchSettings enabledSettings = new SearchSettings();
     GlobalSettings enabledGlobalSettings = new GlobalSettings();

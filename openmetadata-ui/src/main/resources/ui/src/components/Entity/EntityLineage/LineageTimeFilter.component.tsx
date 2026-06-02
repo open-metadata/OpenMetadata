@@ -46,7 +46,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   startTime,
   onChange,
 }) => {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
   const [showPointInTime, setShowPointInTime] = useState<boolean>(false);
 
@@ -82,16 +82,22 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
     }
     if (isPointInTime && endTime !== undefined) {
       return t('label.as-of-date', {
-        date: DateTime.fromMillis(endTime).toFormat('LLL d, yyyy'),
+        date: DateTime.fromMillis(endTime)
+          .setLocale(i18n.language)
+          .toFormat('LLL d, yyyy'),
       });
     }
     const formatPart = (ts?: number) =>
-      ts === undefined ? '' : DateTime.fromMillis(ts).toFormat('LLL d, yyyy');
+      ts === undefined
+        ? ''
+        : DateTime.fromMillis(ts)
+            .setLocale(i18n.language)
+            .toFormat('LLL d, yyyy');
     const startLabel = formatPart(startTime);
     const endLabel = formatPart(endTime);
 
     return `${startLabel} – ${endLabel}`.trim();
-  }, [startTime, endTime, matchedPresetDays, isPointInTime, t]);
+  }, [startTime, endTime, matchedPresetDays, isPointInTime, i18n.language, t]);
 
   const handlePresetSelect = useCallback(
     (key: string) => {

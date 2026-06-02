@@ -457,6 +457,7 @@
     "created-by": "ایجاد شده توسط",
     "created-by-me": "ایجاد شده توسط من",
     "created-by-user-time-ago": "ایجاد شده توسط {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "تاریخ ایجاد",
     "created-lowercase": "ایجاد شد",
     "created-time": "زمان ایجاد",

@@ -457,6 +457,7 @@
     "created-by": "द्वारे तयार केले",
     "created-by-me": "माझ्याद्वारे तयार केले",
     "created-by-user-time-ago": "{{user}} यांनी {{time}} रोजी तयार केले",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "तयार केलेली तारीख",
     "created-lowercase": "तयार केले",
     "created-time": "तयार केलेली वेळ",

@@ -457,6 +457,7 @@
     "created-by": "Created By",
     "created-by-me": "Created by me",
     "created-by-user-time-ago": "Created by {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "Created Date",
     "created-lowercase": "created",
     "created-time": "Created Time",

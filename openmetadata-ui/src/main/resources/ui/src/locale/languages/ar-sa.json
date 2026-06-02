@@ -457,6 +457,7 @@
     "created-by": "أنشأه",
     "created-by-me": "أنشأته أنا",
     "created-by-user-time-ago": "أنشأه {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "تاريخ الإنشاء",
     "created-lowercase": "تم الإنشاء",
     "created-time": "وقت الإنشاء",

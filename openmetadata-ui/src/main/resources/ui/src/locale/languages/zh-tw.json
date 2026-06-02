@@ -457,6 +457,7 @@
     "created-by": "建立者",
     "created-by-me": "由我建立",
     "created-by-user-time-ago": "由 {{user}} 於 {{time}} 建立",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "建立日期",
     "created-lowercase": "已建立",
     "created-time": "建立時間",

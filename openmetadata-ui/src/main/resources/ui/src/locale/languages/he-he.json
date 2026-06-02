@@ -457,6 +457,7 @@
     "created-by": "נוצר על ידי",
     "created-by-me": "נוצר על ידיי",
     "created-by-user-time-ago": "נוצר על ידי {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "תאריך יצירה",
     "created-lowercase": "נוצר",
     "created-time": "זמן יצירה",

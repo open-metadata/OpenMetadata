@@ -100,8 +100,10 @@ public final class SearchUtils {
     } else {
       Long createdAt = edge.getCreatedAt();
       Long updatedAt = edge.getUpdatedAt();
-      boolean startOk = endTime == null || createdAt == null || createdAt <= endTime;
-      boolean endOk = startTime == null || updatedAt == null || updatedAt >= startTime;
+      Long effectiveCreatedAt = createdAt == null ? updatedAt : createdAt;
+      Long effectiveUpdatedAt = updatedAt == null ? createdAt : updatedAt;
+      boolean startOk = endTime == null || effectiveCreatedAt <= endTime;
+      boolean endOk = startTime == null || effectiveUpdatedAt >= startTime;
       matches = startOk && endOk;
     }
     return matches;

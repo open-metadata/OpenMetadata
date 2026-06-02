@@ -457,6 +457,7 @@
     "created-by": "Oluşturan",
     "created-by-me": "Benim Oluşturduklarım",
     "created-by-user-time-ago": "{{user}} tarafından {{time}} oluşturuldu",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "Oluşturma Tarihi",
     "created-lowercase": "oluşturuldu",
     "created-time": "Oluşturma Zamanı",

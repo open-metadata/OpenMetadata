@@ -457,6 +457,7 @@
     "created-by": "Aangemaakt door",
     "created-by-me": "Aangemaakt door mij",
     "created-by-user-time-ago": "Aangemaakt door {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "Aanmaakdatum",
     "created-lowercase": "aangemaakt",
     "created-time": "Aanmaaktijd",

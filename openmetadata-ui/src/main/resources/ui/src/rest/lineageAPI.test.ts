@@ -134,6 +134,8 @@ describe('lineageAPI', () => {
         includeDeleted: false,
         size: 50,
         from: undefined,
+        startTime: undefined,
+        endTime: undefined,
       },
     });
   });

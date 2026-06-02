@@ -457,6 +457,7 @@
     "created-by": "Создано",
     "created-by-me": "Создано мной",
     "created-by-user-time-ago": "Создано пользователем {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "Дата создания",
     "created-lowercase": "создано",
     "created-time": "Время создания",

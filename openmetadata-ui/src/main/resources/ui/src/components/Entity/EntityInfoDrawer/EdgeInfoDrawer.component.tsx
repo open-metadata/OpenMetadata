@@ -293,7 +293,7 @@ const EdgeInfoDrawer = ({
     if (edgeInfo?.createdBy || edgeInfo?.createdAt) {
       overviewData.push({
         name: t('label.created-by'),
-        value: t('label.created-by-user-time-ago', {
+        value: t('label.user-time-ago', {
           time: getRelativeTime(edgeInfo?.createdAt),
           user: edgeInfo?.createdBy ?? NO_DATA_PLACEHOLDER,
         }),
@@ -302,7 +302,7 @@ const EdgeInfoDrawer = ({
     if (edgeInfo?.updatedBy || edgeInfo?.updatedAt) {
       overviewData.push({
         name: t('label.updated-by'),
-        value: t('label.updated-by-user-time-ago', {
+        value: t('label.user-time-ago', {
           time: getRelativeTime(edgeInfo?.updatedAt),
           user: edgeInfo?.updatedBy ?? NO_DATA_PLACEHOLDER,
         }),

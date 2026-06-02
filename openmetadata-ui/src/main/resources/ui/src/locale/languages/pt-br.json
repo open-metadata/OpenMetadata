@@ -457,6 +457,7 @@
     "created-by": "Criado Por",
     "created-by-me": "Criado por mim",
     "created-by-user-time-ago": "Criado por {{user}} {{time}}",
+    "user-time-ago": "{{user}} {{time}}",
     "created-date": "Data de Criação",
     "created-lowercase": "criado",
     "created-time": "Hora de Criação",
