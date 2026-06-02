@@ -255,7 +255,7 @@ public class MigrationUtil {
         isPostgres
             ? "INSERT INTO tag_usage "
                 + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata::json) "
                 + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING"
             : "INSERT IGNORE INTO tag_usage "
                 + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
