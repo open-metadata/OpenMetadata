@@ -383,6 +383,10 @@
       "fieldNames": {
         "type": "keyword"
       },
+      "fieldNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "cleanupPolicies": {
         "type": "keyword"
       },
