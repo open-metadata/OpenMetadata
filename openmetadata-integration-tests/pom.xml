@@ -11,10 +11,10 @@
   <packaging>jar</packaging>
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
-    <maven.failsafe.version>3.1.2</maven.failsafe.version>
+    <maven.failsafe.version>3.5.6</maven.failsafe.version>
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
-    <dockerjava.version>3.4.2</dockerjava.version>
+    <dockerjava.version>3.7.1</dockerjava.version>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
     <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
@@ -37,7 +37,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-compress</artifactId>
-      <version>1.27.1</version>
+      <version>1.28.0</version>
       <scope>test</scope>
     </dependency>
     <!-- SDK client -->
@@ -162,21 +162,21 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.0</version>
+      <version>4.3.0</version>
       <scope>test</scope>
     </dependency>
     <!-- JWT signing -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
+      <version>4.5.2</version>
       <scope>test</scope>
     </dependency>
     <!-- Playwright Java for UI integration tests (*UIIT.java) -->
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>
-      <version>1.49.0</version>
+      <version>1.60.0</version>
       <scope>test</scope>
     </dependency>
     <!--
@@ -216,7 +216,7 @@
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.7</version>
+      <version>1.1.9</version>
       <scope>test</scope>
     </dependency>
     <!-- RDF support (Apache Jena) for RDF tests. Version unified with
@@ -263,13 +263,13 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>5.5.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>5.5.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
