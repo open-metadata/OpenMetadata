@@ -115,6 +115,78 @@ class DefaultToolContextTest {
         .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
   }
 
+  @Test
+  void resolveStatusCodeMapsNotFoundTo404() {
+    assertThat(
+            DefaultToolContext.resolveStatusCode(new RuntimeException("Entity not found: table x")))
+        .isEqualTo(404);
+  }
+
+  @Test
+  void resolveStatusCodeMapsValidationTo400() {
+    assertThat(DefaultToolContext.resolveStatusCode(new IllegalArgumentException("bad arg")))
+        .isEqualTo(400);
+  }
+
+  @Test
+  void validationExceptionWithNotFoundMessageStaysA400() {
+    assertThat(
+            DefaultToolContext.resolveStatusCode(
+                new IllegalArgumentException("parameter not found")))
+        .isEqualTo(400);
+    assertThat(
+            DefaultToolContext.classifyException(new IllegalArgumentException("field not found")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+  }
+
+  @Test
+  void resolveStatusCodeMapsAuthTo403() {
+    assertThat(DefaultToolContext.resolveStatusCode(new AuthorizationException("forbidden")))
+        .isEqualTo(403);
+  }
+
+  @Test
+  void resolveStatusCodeMapsRateLimitTo429() {
+    assertThat(DefaultToolContext.resolveStatusCode(new RuntimeException("rate limit exceeded")))
+        .isEqualTo(429);
+  }
+
+  @Test
+  void resolveStatusCodeMapsTimeoutTo504() {
+    assertThat(DefaultToolContext.resolveStatusCode(new RuntimeException("connection timed out")))
+        .isEqualTo(504);
+  }
+
+  @Test
+  void resolveStatusCodeFallsBackTo500() {
+    assertThat(DefaultToolContext.resolveStatusCode(new RuntimeException("kaboom"))).isEqualTo(500);
+  }
+
+  @Test
+  void resolveStatusCodeWalksCauseChain() {
+    RuntimeException root = new RuntimeException("Entity not found: table x");
+    RuntimeException wrapped = new RuntimeException("tool wrapper failed", root);
+
+    assertThat(DefaultToolContext.resolveStatusCode(wrapped)).isEqualTo(404);
+  }
+
+  @Test
+  void resolveStatusCodeTerminatesOnCyclicCauseChain() {
+    RuntimeException a = new RuntimeException("kaboom");
+    RuntimeException b = new RuntimeException("boom", a);
+    a.initCause(b);
+
+    assertThat(DefaultToolContext.resolveStatusCode(a)).isEqualTo(500);
+    assertThat(DefaultToolContext.classifyException(a))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
+  }
+
+  @Test
+  void notFoundStillBucketsAsValidationCategory() {
+    assertThat(DefaultToolContext.classifyException(new RuntimeException("Entity not found: x")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+  }
+
   private static DefaultToolContext.CallToolOutcome invokeWithToolName(String toolName) {
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
     Principal principal = mock(Principal.class);
