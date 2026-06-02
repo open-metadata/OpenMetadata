@@ -67,6 +67,8 @@ import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.generic.Body;
+import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.OpenSearchTransport;
 import os.org.opensearch.client.transport.aws.AwsSdk2Transport;
@@ -197,6 +199,20 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Object getLowLevelClient() {
     return transport;
+  }
+
+  @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    var builder = Requests.builder().method(method).endpoint(endpoint);
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      builder.json(jsonBody);
+    }
+    try (os.org.opensearch.client.opensearch.generic.Response response =
+        newClient.generic().execute(builder.build())) {
+      String body = response.getBody().map(Body::bodyAsString).orElse("");
+      return new RawSearchResponse(response.getStatus(), body);
+    }
   }
 
   @Override

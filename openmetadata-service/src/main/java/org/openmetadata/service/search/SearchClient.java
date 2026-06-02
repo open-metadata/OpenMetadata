@@ -692,6 +692,21 @@ public interface SearchClient
 
   Object getLowLevelClient();
 
+  /** Status code + raw JSON body of a low-level passthrough request to the search engine. */
+  record RawSearchResponse(int statusCode, String body) {}
+
+  /**
+   * Executes a low-level request against the search engine and returns the raw response. Backs
+   * the gated {@code /v1/test-support/search} passthrough so integration tests can inspect index
+   * internals (counts, aliases, {@code _cat/indices}) against a remote cluster without a direct
+   * {@code :9200} connection. Not part of the normal query path.
+   */
+  default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    throw new UnsupportedOperationException(
+        "rawSearchRequest is not supported by " + getClass().getSimpleName());
+  }
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }

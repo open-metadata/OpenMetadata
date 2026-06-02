@@ -19,6 +19,7 @@ public final class ServerHandle {
   private final String searchHost;
   private final int searchPort;
   private final String searchScheme;
+  private final boolean external;
 
   public ServerHandle(
       final URI baseUrl,
@@ -26,11 +27,32 @@ public final class ServerHandle {
       final String searchHost,
       final int searchPort,
       final String searchScheme) {
+    this(baseUrl, sdkClient, searchHost, searchPort, searchScheme, false);
+  }
+
+  public ServerHandle(
+      final URI baseUrl,
+      final OpenMetadataClient sdkClient,
+      final String searchHost,
+      final int searchPort,
+      final String searchScheme,
+      final boolean external) {
     this.baseUrl = Objects.requireNonNull(baseUrl, "baseUrl");
     this.sdkClient = Objects.requireNonNull(sdkClient, "sdkClient");
     this.searchHost = Objects.requireNonNull(searchHost, "searchHost");
     this.searchPort = searchPort;
     this.searchScheme = Objects.requireNonNull(searchScheme, "searchScheme");
+    this.external = external;
+  }
+
+  /**
+   * Whether this server is reached over the network (external mode) rather than booted in-JVM. In
+   * external mode the search engine isn't directly reachable, so {@link
+   * org.openmetadata.it.search.SearchClient} routes index introspection through the server's
+   * {@code /v1/test-support/search} passthrough instead of {@code searchHost:searchPort}.
+   */
+  public boolean isExternal() {
+    return external;
   }
 
   public URI baseUrl() {

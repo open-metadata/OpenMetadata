@@ -213,6 +213,37 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    int queryStart = endpoint.indexOf('?');
+    String path = queryStart >= 0 ? endpoint.substring(0, queryStart) : endpoint;
+    es.co.elastic.clients.transport.rest5_client.low_level.Request request =
+        new es.co.elastic.clients.transport.rest5_client.low_level.Request(method, path);
+    if (queryStart >= 0) {
+      for (String pair : endpoint.substring(queryStart + 1).split("&")) {
+        int eq = pair.indexOf('=');
+        if (eq > 0) {
+          request.addParameter(pair.substring(0, eq), pair.substring(eq + 1));
+        }
+      }
+    }
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      request.setJsonEntity(jsonBody);
+    }
+    es.co.elastic.clients.transport.rest5_client.low_level.Response response;
+    try {
+      response = lowLevelClient.performRequest(request);
+    } catch (es.co.elastic.clients.transport.rest5_client.low_level.ResponseException e) {
+      response = e.getResponse();
+    }
+    String body;
+    try (var is = response.getEntity().getContent()) {
+      body = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    }
+    return new RawSearchResponse(response.getStatusCode(), body);
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
     return indexManager.indexExists(indexName);
   }
