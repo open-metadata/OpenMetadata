@@ -14,7 +14,6 @@ import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
-import org.openmetadata.schema.type.TempLineageTable;
 
 /**
  * Unit tests for {@link GetLineageTool} slimming. These exercise the pure transform against
@@ -38,8 +37,6 @@ class GetLineageToolTest {
         .withSqlQuery(sql)
         .withColumnsLineage(columns)
         .withSource(LineageDetails.Source.QUERY_LINEAGE)
-        .withTempLineageTables(
-            List.of(new TempLineageTable().withFromEntity("src").withToEntity("staging")))
         .withUpdatedAt(123L)
         .withUpdatedBy("bob")
         .withAssetEdges(2);
@@ -81,7 +78,6 @@ class GetLineageToolTest {
     assertEquals("raw_orders Display", edge.get("fromName"));
     assertEquals("sql", edge.get("relationshipType"));
     assertEquals("QueryLineage", edge.get("source"));
-    assertTrue(edge.containsKey("tempLineageTables"), "temp-table path must be preserved");
     assertFalse(edge.containsKey("columnsLineage"), "column lineage must be off by default");
   }
 

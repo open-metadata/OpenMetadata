@@ -19,7 +19,6 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -68,7 +67,6 @@ public class GetLineageTool implements McpTool {
       Integer assetEdges,
       String sqlQuery,
       Boolean sqlTruncated,
-      List<TempLineageTable> tempLineageTables,
       Long updatedAt,
       String updatedBy,
       List<ColumnLineage> columnsLineage) {}
@@ -192,7 +190,6 @@ public class GetLineageTool implements McpTool {
         details != null ? details.getAssetEdges() : null,
         sql.value(),
         sql.truncated(),
-        details != null ? details.getTempLineageTables() : null,
         details != null ? details.getUpdatedAt() : null,
         details != null ? details.getUpdatedBy() : null,
         columnsLineageOf(details, includeColumns));
