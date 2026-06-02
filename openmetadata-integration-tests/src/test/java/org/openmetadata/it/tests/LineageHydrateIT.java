@@ -96,6 +96,28 @@ public class LineageHydrateIT {
   }
 
   @Test
+  void hydrateDeduplicatesRepeatedRefsBeforeCountingDrops() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageHydrateIT");
+
+    Table table = createTable(client, namespace, "hydrate_duplicate_ref");
+
+    HydrateLineageRequest request =
+        new HydrateLineageRequest()
+            .withEntities(
+                List.of(
+                    new EntityReference().withType("table").withId(table.getId()),
+                    new EntityReference().withType("table").withId(table.getId())));
+
+    JsonNode response = postHydrate(client, request);
+    JsonNode tables = response.get("entitiesByType").get("table");
+
+    assertEquals(1, tables.size(), "duplicate refs should hydrate once");
+    assertEquals(table.getId().toString(), tables.get(0).get("id").asText());
+    assertEquals(0, response.get("droppedCount").asInt(), "duplicate refs are not drops");
+  }
+
+  @Test
   void hydrateMixedTypesReturnsSeparateGroups() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     TestNamespace namespace = new TestNamespace("LineageHydrateIT");

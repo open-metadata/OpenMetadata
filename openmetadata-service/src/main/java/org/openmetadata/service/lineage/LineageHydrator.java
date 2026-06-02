@@ -84,7 +84,7 @@ public class LineageHydrator {
       throw new IllegalArgumentException("entities is required and non-empty");
     }
     Map<String, List<UUID>> idsByType = groupIdsByType(request.getEntities());
-    int requestedCount = request.getEntities().size();
+    int requestedCount = idsByType.values().stream().mapToInt(List::size).sum();
     Include include = request.getInclude() == null ? Include.NON_DELETED : request.getInclude();
     Map<String, List<Object>> entitiesByType = new LinkedHashMap<>(idsByType.size());
     int returnedCount = 0;
@@ -114,7 +114,10 @@ public class LineageHydrator {
       if (ref.getType() == null || ref.getId() == null) {
         throw new IllegalArgumentException("each entity must have non-null type and id");
       }
-      idsByType.computeIfAbsent(ref.getType(), k -> new ArrayList<>()).add(ref.getId());
+      List<UUID> ids = idsByType.computeIfAbsent(ref.getType(), k -> new ArrayList<>());
+      if (!ids.contains(ref.getId())) {
+        ids.add(ref.getId());
+      }
     }
     return idsByType;
   }
