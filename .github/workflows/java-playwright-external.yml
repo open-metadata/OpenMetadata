@@ -1,0 +1,220 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Runs the UI integration suite (*UIIT.java, `ui-it` Maven profile) against an
+# ALREADY-RUNNING external OpenMetadata cluster instead of a containerized server.
+#
+# The harness switches to external mode automatically when OM_URL + OM_ADMIN_TOKEN are
+# set (see UiTestServer.get / ExternalServer.fromEnv): no Docker image is built and no
+# testcontainers (MySQL/ES/OS) are started — both the SDK clients and the Playwright
+# browser authenticate with the JWT we acquire below. Because there's no embedded server,
+# this workflow has no build-image job, no ES/OS matrix, and no search-it job.
+#
+# Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
+# POST /api/v1/users/login (password base64-encoded) and feed the accessToken as
+# OM_ADMIN_TOKEN.
+#
+# Excluded tests:
+#   - @Tag("sso-bootstrap")  — spin up their own OM lifecycle; pointless against external.
+#   - @Tag("search-direct")  — SearchAvailable*/DistributedAutoTune*UIIT read the search
+#     engine directly on :9200 (SearchClient) / pause the ES container (EsOutageInjector),
+#     neither of which is reachable on a remote cluster. (Phase 2: route these through a
+#     test-only server-side ES/OS proxy.)
+# GoogleSsoSignInUIIT needs no exclusion — it self-skips under non-SSO backends.
+
+name: JavaUIIT Integration Tests (External Cluster)
+
+on:
+  workflow_dispatch:
+    inputs:
+      excludedGroups:
+        description: 'JUnit @Tag groups to exclude from the ui-it run'
+        required: false
+        type: string
+        default: 'sso-bootstrap,search-direct'
+      itTest:
+        description: 'Optional single class/glob to run (failsafe -Dit.test), e.g. TableDetailsSmokeUIIT. Empty = full suite.'
+        required: false
+        type: string
+        default: ''
+      simpleReindexTables:
+        description: 'SimpleReindexTriggerUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'SimpleReindexTriggerUIIT topic cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'SimpleReindexTriggerUIIT dashboard cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'SimpleReindexTriggerUIIT pipeline cohort size'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'SearchAvailableDuringReindexUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ui-it-external:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Install Playwright browsers
+        run: |
+          mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
+
+      - name: Acquire admin JWT from external cluster
+        env:
+          OM_EXTERNAL_URL: ${{ secrets.OM_EXTERNAL_URL }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          if [ -z "$OM_EXTERNAL_URL" ] || [ -z "$OM_EXTERNAL_USERNAME" ] || [ -z "$OM_EXTERNAL_PASSWORD" ]; then
+            echo "Missing OM_EXTERNAL_URL / OM_EXTERNAL_USERNAME / OM_EXTERNAL_PASSWORD secrets"
+            exit 1
+          fi
+          # OM basic-auth login expects a base64-encoded password (BasicAuthServletHandler).
+          PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
+          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
+            | jq -r '.accessToken')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login to ${OM_EXTERNAL_URL} failed — no accessToken returned"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Run UI integration tests (external cluster)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # OM_URL + OM_ADMIN_TOKEN (set by the login step) make UiTestServer use
+          # ExternalServer — no container is built or started.
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # UiSessionExtension records each test's BrowserContext to target/playwright-videos.
+          PW_VIDEO: 'true'
+        run: |
+          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
+            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
+            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
+            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
+          IT_TEST_PROP=""
+          if [ -n "${{ github.event.inputs.itTest }}" ]; then
+            IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
+          fi
+          mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
+            -Dui.it.excludedGroups="${{ github.event.inputs.excludedGroups || 'sso-bootstrap,search-direct' }}"
+
+      - name: Upload Playwright traces
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-traces
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright videos
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-videos
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright External: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}

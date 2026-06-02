@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -68,6 +69,7 @@ import org.slf4j.LoggerFactory;
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
+@Tag("search-direct")
 class SearchAvailableAllKindsDuringReindexUIIT {
 
   private static final Logger LOG =
