@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Directory;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -294,6 +296,68 @@ class EntitySpecificFieldsTest {
   }
 
   // ==================== Nested field-name search (children no longer indexed) ====================
+
+  @Test
+  void testTopicIndex_nestedFieldNames() {
+    Field leaf = new Field().withName("zztopicloyalty").withDataType(FieldDataType.STRING);
+    Field parent =
+        new Field()
+            .withName("customer")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(List.of(leaf));
+    Topic topic =
+        new Topic()
+            .withId(UUID.randomUUID())
+            .withName("events")
+            .withFullyQualifiedName("svc.events")
+            .withMessageSchema(new MessageSchema().withSchemaFields(List.of(parent)));
+
+    Map<String, Object> doc = new HashMap<>();
+    Map<String, Object> result = new TopicIndex(topic).buildSearchIndexDocInternal(doc);
+
+    @SuppressWarnings("unchecked")
+    List<String> names = (List<String>) result.get("fieldNames");
+    assertTrue(names.contains("customer"));
+    assertTrue(names.contains("customer.zztopicloyalty"));
+    assertTrue(((String) result.get("fieldNamesFuzzy")).contains("customer.zztopicloyalty"));
+  }
+
+  @Test
+  void testApiEndpointIndex_nestedFieldNames() {
+    Field reqLeaf = new Field().withName("zzapitracking").withDataType(FieldDataType.STRING);
+    Field reqParent =
+        new Field()
+            .withName("order")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(List.of(reqLeaf));
+    Field respLeaf = new Field().withName("zzapiresponsecode").withDataType(FieldDataType.STRING);
+    Field respParent =
+        new Field()
+            .withName("result")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(List.of(respLeaf));
+
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.orders")
+            .withRequestSchema(new APISchema().withSchemaFields(List.of(reqParent)))
+            .withResponseSchema(new APISchema().withSchemaFields(List.of(respParent)));
+
+    Map<String, Object> doc = new HashMap<>();
+    Map<String, Object> result = new APIEndpointIndex(endpoint).buildSearchIndexDocInternal(doc);
+
+    @SuppressWarnings("unchecked")
+    List<String> reqNames = (List<String>) result.get("request_field_names");
+    @SuppressWarnings("unchecked")
+    List<String> respNames = (List<String>) result.get("response_field_names");
+    assertTrue(reqNames.contains("order.zzapitracking"));
+    assertTrue(respNames.contains("result.zzapiresponsecode"));
+    assertTrue(((String) result.get("request_field_namesFuzzy")).contains("order.zzapitracking"));
+    assertTrue(
+        ((String) result.get("response_field_namesFuzzy")).contains("result.zzapiresponsecode"));
+  }
 
   @Test
   void testSearchEntityIndex_buildsNestedFieldNames() {
