@@ -15,19 +15,21 @@ SQL Queries used during ingestion
 import textwrap
 
 UNITY_CATALOG_GET_CATALOGS_TAGS = """
-SELECT * FROM `{database}`.information_schema.catalog_tags;
+SELECT catalog_name, tag_name, tag_value FROM `{database}`.information_schema.catalog_tags;
 """
 
 UNITY_CATALOG_GET_ALL_SCHEMA_TAGS = """
-SELECT * FROM `{database}`.information_schema.schema_tags;
+SELECT catalog_name, schema_name, tag_name, tag_value FROM `{database}`.information_schema.schema_tags;
 """
 
 UNITY_CATALOG_GET_ALL_TABLE_TAGS = """
-SELECT * FROM `{database}`.information_schema.table_tags WHERE schema_name = '{schema}';
+SELECT catalog_name, schema_name, table_name, tag_name, tag_value
+FROM `{database}`.information_schema.table_tags WHERE schema_name = '{schema}';
 """
 
 UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS = """
-SELECT * FROM `{database}`.information_schema.column_tags WHERE schema_name = '{schema}';
+SELECT catalog_name, schema_name, table_name, column_name, tag_name, tag_value
+FROM `{database}`.information_schema.column_tags WHERE schema_name = '{schema}';
 """
 
 UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
@@ -65,6 +67,7 @@ UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
     WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
         AND source_table_full_name IS NOT NULL
         AND target_table_full_name IS NOT NULL
+        AND lower(split_part(target_table_full_name, '.', 1)) = '{catalog}'
     GROUP BY source_table_full_name, target_table_full_name
     """
 )
@@ -82,6 +85,7 @@ UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
         AND target_table_full_name IS NOT NULL
         AND source_column_name IS NOT NULL
         AND target_column_name IS NOT NULL
+        AND lower(split_part(target_table_full_name, '.', 1)) = '{catalog}'
     GROUP BY
         source_table_full_name,
         source_column_name,
@@ -100,6 +104,7 @@ UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     FROM system.information_schema.tables
     WHERE table_type = 'EXTERNAL'
         AND storage_path IS NOT NULL
+        AND lower(table_catalog) = '{catalog}'
     """
 )
 

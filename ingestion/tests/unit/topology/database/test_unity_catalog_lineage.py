@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.container import (
     Container,
     ContainerDataModel,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -102,7 +103,7 @@ class TestCacheLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        lineage_source._cache_lineage()
+        lineage_source._cache_lineage("cat")
 
         assert "cat.schema.target1" in lineage_source.table_lineage_map
         assert lineage_source.table_lineage_map["cat.schema.target1"] == {
@@ -142,7 +143,7 @@ class TestCacheLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        lineage_source._cache_lineage()
+        lineage_source._cache_lineage("cat")
 
         key = ("cat.schema.src", "cat.schema.tgt")
         assert key in lineage_source.column_lineage_map
@@ -157,10 +158,49 @@ class TestCacheLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        lineage_source._cache_lineage()
+        lineage_source._cache_lineage("cat")
 
         assert len(lineage_source.table_lineage_map) == 0
         assert len(lineage_source.column_lineage_map) == 0
+
+    def test_cache_lineage_normalizes_case(self, lineage_source):
+        TableRow = namedtuple("TableRow", ["source_table_full_name", "target_table_full_name"])
+        mock_rows = [
+            TableRow("Cat.Schema.Source1", "CAT.SCHEMA.Target1"),
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_rows
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_lineage("cat")
+
+        assert lineage_source.table_lineage_map["cat.schema.target1"] == {"cat.schema.source1"}
+
+    def test_cache_lineage_query_scoped_to_catalog(self, lineage_source):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = []
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_lineage("my_catalog")
+
+        executed_queries = [str(call.args[0]) for call in mock_conn.execute.call_args_list]
+        assert len(executed_queries) == 2
+        for query in executed_queries:
+            assert "= 'my_catalog'" in query
+
+    def test_clear_lineage_caches(self, lineage_source):
+        lineage_source.table_lineage_map["cat.schema.tgt"].add("cat.schema.src")
+        lineage_source.column_lineage_map[("cat.schema.src", "cat.schema.tgt")].append(("col_a", "col_x"))
+        lineage_source.external_location_map["cat.schema.ext"] = "s3://bucket/path"
+
+        lineage_source._clear_lineage_caches()
+
+        assert len(lineage_source.table_lineage_map) == 0
+        assert len(lineage_source.column_lineage_map) == 0
+        assert len(lineage_source.external_location_map) == 0
 
 
 class TestProcessTableLineage:
@@ -265,6 +305,26 @@ class TestProcessTableLineage:
 
         assert len(results) == 0
 
+    def test_process_table_lineage_failure_yields_left(self, lineage_source):
+        lineage_source.table_lineage_map = {"cat.schema.target": {"cat.schema.source"}}
+        lineage_source.column_lineage_map = {}
+
+        target_table = Table(
+            id=uuid4(),
+            name=EntityName(root="target"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target"),
+            columns=[],
+        )
+
+        lineage_source.metadata.get_by_name.side_effect = Exception("Connection reset")
+
+        results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
+
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert results[0].right is None
+        assert "Connection reset" in results[0].left.error
+
 
 class TestColumnLineageDetails:
     def test_self_loop_prevention(self, lineage_source):
@@ -340,7 +400,7 @@ class TestExternalLocationLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        lineage_source._cache_external_locations()
+        lineage_source._cache_external_locations("cat")
 
         assert len(lineage_source.external_location_map) == 2
         assert lineage_source.external_location_map["cat.schema.ext_table1"] == "s3://bucket/path1"
@@ -352,9 +412,27 @@ class TestExternalLocationLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        lineage_source._cache_external_locations()
+        lineage_source._cache_external_locations("cat")
 
         assert len(lineage_source.external_location_map) == 0
+
+    def test_cache_external_locations_normalizes_case(self, lineage_source):
+        ExternalRow = namedtuple(
+            "ExternalRow",
+            ["table_catalog", "table_schema", "table_name", "storage_path"],
+        )
+        mock_rows = [
+            ExternalRow("Cat", "Schema", "Ext_Table", "s3://bucket/Path1"),
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_rows
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_external_locations("cat")
+
+        assert lineage_source.external_location_map == {"cat.schema.ext_table": "s3://bucket/Path1"}
 
     def test_process_external_location_lineage_from_cache(self, lineage_source):
         lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
@@ -442,6 +520,82 @@ class TestExternalLocationLineage:
         results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
 
         assert len(results) == 0
+
+    def test_process_external_location_failure_yields_left(self, lineage_source):
+        lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
+
+        table_entity = Table(
+            id=uuid4(),
+            name=EntityName(root="test_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
+            columns=[],
+        )
+
+        lineage_source.metadata.es_search_container_by_path.side_effect = Exception("Search unavailable")
+
+        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
+
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert results[0].right is None
+        assert "Search unavailable" in results[0].left.error
+
+
+class TestPerCatalogProcessing:
+    def _make_database(self, name="cat"):
+        return Database(
+            id=uuid4(),
+            name=EntityName(root=name),
+            fullyQualifiedName=FullyQualifiedEntityName(root=f"local_unitycatalog.{name}"),
+            service=EntityReference(id=uuid4(), type="databaseService"),
+        )
+
+    def test_process_catalog_lineage_scopes_and_clears_caches(self, lineage_source):
+        database = self._make_database()
+        lineage_source.metadata.list_all_entities.return_value = []
+
+        with (
+            patch.object(lineage_source, "_cache_lineage") as mock_cache_lineage,
+            patch.object(lineage_source, "_cache_external_locations") as mock_cache_locations,
+        ):
+            lineage_source.table_lineage_map["cat.schema.tgt"].add("cat.schema.src")
+            lineage_source.external_location_map["cat.schema.ext"] = "s3://bucket/path"
+
+            results = list(lineage_source._process_catalog_lineage(database))
+
+        assert results == []
+        mock_cache_lineage.assert_called_once_with("cat")
+        mock_cache_locations.assert_called_once_with("cat")
+        assert len(lineage_source.table_lineage_map) == 0
+        assert len(lineage_source.column_lineage_map) == 0
+        assert len(lineage_source.external_location_map) == 0
+
+    def test_process_catalog_lineage_lowercases_catalog_name(self, lineage_source):
+        database = self._make_database(name="MyCat")
+        lineage_source.metadata.list_all_entities.return_value = []
+
+        with (
+            patch.object(lineage_source, "_cache_lineage") as mock_cache_lineage,
+            patch.object(lineage_source, "_cache_external_locations") as mock_cache_locations,
+        ):
+            list(lineage_source._process_catalog_lineage(database))
+
+        mock_cache_lineage.assert_called_once_with("mycat")
+        mock_cache_locations.assert_called_once_with("mycat")
+
+    def test_process_catalog_lineage_clears_caches_on_error(self, lineage_source):
+        database = self._make_database()
+        lineage_source.metadata.list_all_entities.side_effect = Exception("API error")
+
+        with (
+            patch.object(lineage_source, "_cache_lineage"),
+            patch.object(lineage_source, "_cache_external_locations"),
+            pytest.raises(Exception, match="API error"),
+        ):
+            lineage_source.table_lineage_map["cat.schema.tgt"].add("cat.schema.src")
+            list(lineage_source._process_catalog_lineage(database))
+
+        assert len(lineage_source.table_lineage_map) == 0
 
 
 class TestContainerColumnLineage:
