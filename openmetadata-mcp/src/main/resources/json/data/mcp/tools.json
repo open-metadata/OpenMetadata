@@ -295,7 +295,7 @@
     },
     {
       "name": "get_entity_lineage",
-      "description": "Get detailed information about lineage (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), with long SQL truncated. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -317,6 +317,11 @@
             "type": "integer",
             "description": "Number of downstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
             "default": 3
+          },
+          "includeColumnLineage": {
+            "type": "boolean",
+            "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
+            "default": false
           }
         },
         "required": [
