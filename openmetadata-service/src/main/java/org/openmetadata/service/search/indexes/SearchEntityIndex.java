@@ -25,24 +25,25 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("indexType", searchIndex.getIndexType());
     if (!nullOrEmpty(searchIndex.getFields())) {
-      List<String> fieldNames = new ArrayList<>();
-      flattenFieldNames(searchIndex.getFields(), null, fieldNames);
-      doc.put("fieldNames", fieldNames);
-      doc.put("fieldNamesFuzzy", String.join(" ", fieldNames));
+      List<String> fieldsWithChildrenName = new ArrayList<>();
+      flattenFieldNames(searchIndex.getFields(), null, fieldsWithChildrenName);
+      doc.put("fieldNames", fieldsWithChildrenName);
+      // Add flat field names for fuzzy search to avoid array-based clause multiplication
+      doc.put("fieldNamesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
     return doc;
   }
 
   private void flattenFieldNames(
-      List<SearchIndexField> fields, String parentField, List<String> fieldNames) {
+      List<SearchIndexField> fields, String parentField, List<String> fieldsWithChildrenName) {
     for (SearchIndexField field : fields) {
       String fieldName =
           parentField == null
               ? field.getName()
               : FullyQualifiedName.add(parentField, field.getName());
-      fieldNames.add(fieldName);
+      fieldsWithChildrenName.add(fieldName);
       if (!nullOrEmpty(field.getChildren())) {
-        flattenFieldNames(field.getChildren(), field.getName(), fieldNames);
+        flattenFieldNames(field.getChildren(), field.getName(), fieldsWithChildrenName);
       }
     }
   }
