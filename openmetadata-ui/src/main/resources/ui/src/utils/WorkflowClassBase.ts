@@ -19,6 +19,7 @@ export interface WorkflowCapabilities {
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
+  allowViewModeDrag: boolean;
 }
 
 export class WorkflowClassBase {
@@ -31,6 +32,7 @@ export class WorkflowClassBase {
       allowFullStartNodeConfiguration: false,
       allowStartNodeFilterScheduleAndBatchEdit: true,
       allowScheduledTrigger: false,
+      allowViewModeDrag: false,
     };
   }
 }
