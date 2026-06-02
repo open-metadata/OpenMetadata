@@ -19,6 +19,7 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.catalog import TableType
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -46,7 +47,10 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
 from metadata.ingestion.source.database.databricks.log_filters import (
@@ -65,6 +69,78 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
 
 suppress_user_agent_entry_deprecation_log()
+
+INTERNAL_CATALOG = "__databricks_internal"
+VIEW_TABLE_TYPES = {TableType.VIEW, TableType.MATERIALIZED_VIEW}
+
+
+def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[str, str]:
+    """
+    Fail the test connection step loudly when the previous steps could not
+    resolve a catalog and schema, instead of silently passing.
+    """
+    if not (table_obj.catalog_name and table_obj.schema_name):
+        raise SourceConnectionException(
+            f"Could not resolve a catalog (got: {table_obj.catalog_name}) and schema "
+            f"(got: {table_obj.schema_name}) from the previous steps. Validate that the configured "
+            "catalog and schema exist and that the user has `USE CATALOG` and `USE SCHEMA` privileges on them."
+        )
+    return table_obj.catalog_name, table_obj.schema_name
+
+
+def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: Optional[str] = None) -> None:  # noqa: UP045
+    """
+    Resolve the catalog used by the remaining test connection steps. If a catalog is
+    configured on the connection, validate access to that exact catalog.
+    """
+    if catalog_name:
+        table_obj.catalog_name = connection.catalogs.get(catalog_name).name
+    else:
+        for catalog in connection.catalogs.list():
+            if catalog.name != INTERNAL_CATALOG:
+                table_obj.catalog_name = catalog.name
+                break
+
+
+def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: Optional[str] = None) -> None:  # noqa: UP045
+    """
+    Resolve the schema used by the remaining test connection steps. If a databaseSchema is
+    configured on the connection, validate access to that exact schema.
+    """
+    if not table_obj.catalog_name:
+        raise SourceConnectionException(
+            "Could not resolve a catalog from the previous steps. Validate that the user "
+            "has `USE CATALOG` privilege on at least one catalog."
+        )
+    if schema_name:
+        table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
+    else:
+        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+            if schema.name:
+                table_obj.schema_name = schema.name
+                break
+
+
+def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
+    """
+    Validate that tables can be listed from the resolved catalog and schema.
+    """
+    catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
+    # Only one table is needed to validate access; max_results=1 avoids
+    # downloading the schema's full table list in a single response.
+    for table in connection.tables.list(catalog_name=catalog_name, schema_name=schema_name, max_results=1):
+        table_obj.name = table.name
+        break
+
+
+def get_views(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
+    """
+    Validate that views can be listed from the resolved catalog and schema.
+    """
+    catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
+    for table in connection.tables.list(catalog_name=catalog_name, schema_name=schema_name):
+        if table.table_type in VIEW_TABLE_TYPES:
+            break
 
 
 def get_connection_url(connection: UnityCatalogConnectionConfig) -> str:
@@ -138,33 +214,9 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
         table_obj = DatabricksTable()
         engine = get_sqlalchemy_connection(service_connection)
 
-        def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
-            for catalog in connection.catalogs.list():
-                if catalog.name != "__databricks_internal":
-                    table_obj.catalog_name = catalog.name
-                    return
-
-        def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-            for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):  # pyright: ignore[reportArgumentType]
-                if schema.name:
-                    table_obj.schema_name = schema.name
-                    return
-
-        def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
-            if table_obj.catalog_name and table_obj.schema_name:
-                # Only one table is needed to validate access; max_results=1 avoids
-                # downloading the schema's full table list in a single response.
-                for table in connection.tables.list(
-                    catalog_name=table_obj.catalog_name,
-                    schema_name=table_obj.schema_name,
-                    max_results=1,
-                ):
-                    table_obj.name = table.name
-                    break
-
         def get_tags(service_connection: UnityCatalogConnectionConfig, table_obj: DatabricksTable):
             engine = get_sqlalchemy_connection(service_connection)
-            with engine.connect() as connection:
+            with engine.connect() as connection:  # noqa: PLR1704
                 connection.execute(
                     text(
                         UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(
@@ -201,10 +253,10 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
 
         test_fn = {
             "CheckAccess": connection.catalogs.list,
-            "GetDatabases": partial(get_catalogs, connection, table_obj),
-            "GetSchemas": partial(get_schemas, connection, table_obj),
+            "GetDatabases": partial(get_catalogs, connection, table_obj, service_connection.catalog),
+            "GetSchemas": partial(get_schemas, connection, table_obj, service_connection.databaseSchema),
             "GetTables": partial(get_tables, connection, table_obj),
-            "GetViews": partial(get_tables, connection, table_obj),
+            "GetViews": partial(get_views, connection, table_obj),
             "GetQueries": partial(test_lineage_tables, engine),
             "GetTags": partial(get_tags, service_connection, table_obj),
         }
