@@ -68,21 +68,17 @@ def _normalize_dml_sql(query: str) -> str:
 
     This prevents comment bodies (e.g. commented-out SQL snippets) from being
     mistaken for actual DML operations.
+
+    Note that this code does not handle comments inside of strings, and will remove
+    them if found. This function should not be used if their preservation is a
+    requirement.
     """
-    strip_block_comment = re.compile(r"^/\*.*?\*/", flags=re.DOTALL)
-    strip_single_comment = re.compile(r"^--[^\n]*")
-    query = query.strip()
-    clean_query = query
-
-    while True:
-        clean_query = re.sub(strip_block_comment, "", clean_query)
-        clean_query = re.sub(strip_single_comment, "", clean_query)
-        clean_query = clean_query.lstrip()
-
-        if clean_query == query:
-            return clean_query
-        else:
-            query = clean_query
+    # Pass 1: block comments → single space (dotall so . matches \n)
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    # Pass 2: single-line comments → remove to end of line, keep the newline
+    query = re.sub(r"--[^\n]*", "", query)
+    # Pass 3: strip leading/trailing whitespace
+    return query.strip()
 
 
 @cache.wrap(key_func=lambda query: sha256_hash(_normalize_dml_sql(query or "")))
