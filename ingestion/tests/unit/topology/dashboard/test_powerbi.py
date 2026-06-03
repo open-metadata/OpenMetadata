@@ -1,6 +1,6 @@
 import uuid
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,6 +16,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -2329,3 +2331,38 @@ class PowerBIUnitTest(TestCase):
             assert any(expected_table.lower() in t["table"].lower() for t in result), (
                 f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
             )
+
+    def test_yield_dashboard_lineage_yields_barrier_first(self):
+        """The override must emit a ``Barrier`` as its first record so the sink
+        flushes before ``super().yield_dashboard_lineage`` runs its
+        ``get_by_name`` lookups. Subsequent yields come from ``super``.
+        """
+        ws_id = "test-workspace-id"
+        mock_workspace = MagicMock()
+        mock_workspace.id = ws_id
+        mock_ctx = MagicMock()
+        mock_ctx.get.return_value = MagicMock(workspace=mock_workspace)
+
+        sentinel_super_records = [
+            Either(right=MagicMock(name="lineage-1")),
+            Either(right=MagicMock(name="lineage-2")),
+        ]
+
+        with (
+            patch.object(self.powerbi, "context", mock_ctx),
+            patch(
+                "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
+                return_value=iter(sentinel_super_records),
+            ),
+        ):
+            emitted = list(self.powerbi.yield_dashboard_lineage(MagicMock()))
+
+        # First record is a Barrier carrying the workspace id in its reason.
+        assert len(emitted) == 1 + len(sentinel_super_records)
+        first = emitted[0]
+        assert isinstance(first.right, Barrier)
+        assert ws_id in (first.right.reason or "")
+
+        # Subsequent records are exactly what super yielded, in order.
+        for actual, expected in zip(emitted[1:], sentinel_super_records, strict=True):
+            assert actual is expected

@@ -146,6 +146,17 @@
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "description": "Policy agent configuration for access control extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": false,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": false
+      }
+    },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"

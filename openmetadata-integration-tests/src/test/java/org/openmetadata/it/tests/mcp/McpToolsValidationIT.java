@@ -577,15 +577,11 @@ public class McpToolsValidationIT extends McpTestBase {
     String responseText = firstResult.get("text").asText();
 
     JsonNode lineageData = OBJECT_MAPPER.readTree(responseText);
-    assertThat(lineageData.has("entity")).isTrue();
+    assertThat(lineageData.has("root")).isTrue();
+    assertThat(lineageData.get("root").asText()).isEqualTo(expectedEntityFqn);
 
-    JsonNode entity = lineageData.get("entity");
-    assertThat(entity.has("fullyQualifiedName")).isTrue();
-    assertThat(entity.get("fullyQualifiedName").asText()).isEqualTo(expectedEntityFqn);
-
-    assertThat(lineageData.has("nodes")).isTrue();
-    assertThat(lineageData.has("upstreamEdges")).isTrue();
-    assertThat(lineageData.has("downstreamEdges")).isTrue();
+    assertThat(lineageData.has("upstream")).isTrue();
+    assertThat(lineageData.has("downstream")).isTrue();
   }
 
   private void validateDeletedFieldPresence(JsonNode result, boolean expectedDeleted)

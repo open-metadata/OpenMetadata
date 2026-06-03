@@ -1,37 +1,36 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
-import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
-import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.util.HashMap;
+import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentPipeline;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.OwnerResolver;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.SnapshotMaterializer;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionResolver;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionedWindow;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.CustomPropertiesStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.DescriptionSourcesStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.DescriptionStatsStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.IdentityProjectionStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerTeamStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TagAndTierSourcesStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TierStep;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
@@ -39,31 +38,73 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 public class DataInsightsEntityEnricherProcessor
     implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface>> {
 
+  /**
+   * Cap on {@code LOG.warn} samples per processor lifetime for entity-level failures (i.e.
+   * exceptions that escape the version resolver and lose the whole entity). Step-level failures
+   * are rate-limited separately inside {@link EnrichmentPipeline}.
+   */
+  private static final int MAX_ENTITY_LOSS_WARN_SAMPLES = 10;
+
   private final StepStats stats = new StepStats();
-  private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
+  private final AtomicInteger entityLossWarnCount = new AtomicInteger();
+
+  /**
+   * Workflow-scoped owner→team resolver with a bounded Caffeine cache. Shared by the {@link
+   * OwnerTeamStep}; one instance per processor (which is one per workflow run), so the cache
+   * lifetime matches the workflow's lifetime.
+   */
+  private final OwnerResolver ownerResolver = new OwnerResolver();
+
+  /**
+   * Step pipeline: each entity-version's enrichment runs through this list once. A step that
+   * throws produces no fields on that version's snapshot, but sibling steps still run and the
+   * entity is still emitted to the index. See {@link EnrichmentPipeline} for the failure-isolation
+   * contract.
+   *
+   * <p>Ordering is not load-bearing for correctness — no step reads keys written by sibling
+   * steps (every step reads from {@link EnrichmentTarget#entity()},
+   * {@link EnrichmentTarget#changeSummary()}, or {@link EnrichmentTarget#context()}). If a future
+   * step starts consuming another step's contribution, re-check ordering at that point.
+   */
+  private final EnrichmentPipeline pipeline =
+      new EnrichmentPipeline(
+          List.of(
+              new IdentityProjectionStep(),
+              new DescriptionSourcesStep(),
+              new TagAndTierSourcesStep(),
+              new OwnerTeamStep(ownerResolver),
+              new TierStep(),
+              new DescriptionStatsStep(),
+              new CustomPropertiesStep()));
+
+  private final VersionResolver versionResolver = new VersionResolver();
+  private final SnapshotMaterializer snapshotMaterializer = new SnapshotMaterializer();
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
+
+  /**
+   * Per-step {@link StepStats} accumulated by the pipeline across this processor's lifetime. The
+   * workflow merges these into its aggregate workflow stats so operators can attribute failures to
+   * a specific enrichment concern.
+   */
+  public Map<String, StepStats> getEntityStats() {
+    return pipeline.snapshotStats();
   }
 
   @Override
   public List<Map<String, Object>> process(
       ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
-    List<Map<String, Object>> enrichedMaps;
     try {
-      enrichedMaps =
+      EnrichmentContext context = buildAndValidateContext(contextData);
+      List<Map<String, Object>> enrichedMaps =
           input.getData().stream()
-              .flatMap(
-                  entity ->
-                      getEntityVersions(entity, contextData).stream()
-                          .flatMap(
-                              entityVersionMap ->
-                                  generateDailyEntitySnapshots(
-                                      enrichEntity(entityVersionMap, contextData))
-                                      .stream()))
+              .flatMap(entity -> enrichEntityToSnapshots(entity, context).stream())
               .toList();
       updateStats(input.getData().size(), 0);
+      return enrichedMaps;
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
@@ -74,23 +115,17 @@ public class DataInsightsEntityEnricherProcessor
               .withMessage(
                   String.format("Entities Enricher Encountered Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
-      LOG.debug(
-          "[DataInsightsEntityEnricherProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
+      logEntityLossRateLimited(null, e);
       updateStats(0, input.getData().size());
       throw new SearchIndexException(error);
     }
-    return enrichedMaps;
   }
 
   public List<Map<String, Object>> enrichSingle(
       EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
     try {
-      return getEntityVersions(entity, contextData).stream()
-          .flatMap(
-              entityVersionMap ->
-                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
-                      .stream())
-          .toList();
+      EnrichmentContext context = buildAndValidateContext(contextData);
+      return enrichEntityToSnapshots(entity, context);
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
@@ -103,147 +138,86 @@ public class DataInsightsEntityEnricherProcessor
                       "Entity Enricher Encountered Failure for entity '%s': %s",
                       entity.getFullyQualifiedName(), e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
-      LOG.debug(
-          "[DataInsightsEntityEnricherProcessor] Single entity enrichment failed. Details: {}",
-          JsonUtils.pojoToJson(error));
+      logEntityLossRateLimited(entity.getFullyQualifiedName(), e);
       updateStats(0, 1);
       throw new SearchIndexException(error);
     }
   }
 
-  private List<Map<String, Object>> getEntityVersions(
-      EntityInterface entity, Map<String, Object> contextData) {
-    String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-    Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
-    Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
-
-    // Skip version history queries for entities unchanged during the window (N+1 optimization).
-    Long updatedAt = entity.getUpdatedAt();
-    if (updatedAt != null) {
-      Long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
-      if (entityUpdatedDay < startTimestamp) {
-        Map<String, Object> versionMap = new HashMap<>();
-        versionMap.put("endTimestamp", endTimestamp);
-        versionMap.put("startTimestamp", startTimestamp);
-        versionMap.put("versionEntity", entity);
-        return List.of(versionMap);
-      }
+  /**
+   * Rate-limited {@code LOG.warn} for entity-level losses — exceptions that escape version
+   * resolution / target construction and lose every snapshot for the entity. Capped to the first
+   * {@link #MAX_ENTITY_LOSS_WARN_SAMPLES} per processor lifetime to avoid log floods on
+   * degenerate runs (matching the per-step rate-limit pattern in {@link EnrichmentPipeline}).
+   * The full {@link IndexingError} with stack trace is still attached to the thrown {@link
+   * SearchIndexException} and recorded in the workflow's failure context regardless.
+   */
+  private void logEntityLossRateLimited(String entityFqn, Throwable cause) {
+    int n = entityLossWarnCount.incrementAndGet();
+    if (n > MAX_ENTITY_LOSS_WARN_SAMPLES) {
+      return;
     }
-
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-
-    Long pointerTimestamp = endTimestamp;
-    List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
-    boolean historyDone = false;
-    int nextOffset = 0;
-
-    while (!historyDone) {
-      EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
-          entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
-      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
-      if (versions.isEmpty()) {
-        break;
-      }
-      nextOffset = entityHistoryWithOffset.nextOffset();
-
-      for (Object version : versions) {
-        EntityInterface versionEntity =
-            JsonUtils.readOrConvertValue(
-                version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-        Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
-        if (versionTimestamp > pointerTimestamp) {
-          continue;
-        } else if (versionTimestamp < startTimestamp) {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", startTimestamp);
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          historyDone = true;
-          break;
-        } else {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          pointerTimestamp =
-              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
-        }
-      }
+    String suffix =
+        n == MAX_ENTITY_LOSS_WARN_SAMPLES ? " (further samples suppressed this run)" : "";
+    if (entityFqn != null) {
+      LOG.warn(
+          "[DataInsights enricher] entity='{}' lost: {}{}", entityFqn, cause.toString(), suffix);
+    } else {
+      LOG.warn("[DataInsights enricher] batch lost: {}{}", cause.toString(), suffix);
     }
-
-    return entityVersions;
   }
 
-  private Map<String, Object> enrichEntity(
-      Map<String, Object> entityVersionMap, Map<String, Object> contextData) {
-    EntityInterface entity = (EntityInterface) entityVersionMap.get("versionEntity");
-    Long startTimestamp = (Long) entityVersionMap.get("startTimestamp");
-    Long endTimestamp = (Long) entityVersionMap.get("endTimestamp");
-
-    Map<String, Object> entityMap = JsonUtils.getMap(entity);
-    entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
-    stripNestedColumnChildren(entityMap);
-
-    String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-
-    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
-
-    // Enrich with EntityType
-    if (CommonUtil.nullOrEmpty(entityType)) {
+  private EnrichmentContext buildAndValidateContext(Map<String, Object> contextData) {
+    EnrichmentContext context = EnrichmentContext.from(contextData);
+    if (CommonUtil.nullOrEmpty(context.entityType())) {
       throw new IllegalArgumentException(
           "[EsEntitiesProcessor] entityType cannot be null or empty.");
     }
+    return context;
+  }
 
-    entityMap.put(ENTITY_TYPE_KEY, entityType);
-
-    // Enrich with Timestamp
-    entityMap.put("startTimestamp", startTimestamp);
-    entityMap.put("endTimestamp", endTimestamp);
-
-    // Process Description Source
-    entityMap.put(
-        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
-
-    // Process Tag Source
-    SearchIndexUtils.TagAndTierSources tagAndTierSources =
-        SearchIndexUtils.processTagAndTierSources(entity);
-    entityMap.put("tagSources", tagAndTierSources.getTagSources());
-    entityMap.put("tierSources", tagAndTierSources.getTierSources());
-
-    // Process Team
-    Optional.ofNullable(processTeam(entity)).ifPresent(team -> entityMap.put("team", team));
-
-    // Process Tier
-    Optional.ofNullable(processTier(entity)).ifPresent(tier -> entityMap.put("tier", tier));
-
-    // Enrich with Description Stats
-    entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
-
-    if (SearchIndexUtils.hasColumns(entity)) {
-      entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      int columnsWithDescription =
-          ((ColumnsEntityInterface) entity)
-              .getColumns().stream()
-                  .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum);
-      entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
-      entityMap.put(
-          "hasColumnDescription",
-          columnsWithDescription == ((ColumnsEntityInterface) entity).getColumns().size() ? 1 : 0);
+  /**
+   * Per-entity orchestration: resolve version windows → enrich each → fan out across days. One
+   * entity in, N daily snapshots out. The only way to lose the entity entirely is if version
+   * resolution itself throws — step failures only drop their own fields, not the entity (see
+   * {@link EnrichmentPipeline}).
+   */
+  private List<Map<String, Object>> enrichEntityToSnapshots(
+      EntityInterface entity, EnrichmentContext context) {
+    List<Map<String, Object>> snapshots = new ArrayList<>();
+    for (VersionedWindow window : versionResolver.resolve(entity, context)) {
+      EnrichmentTarget target = buildTarget(window, context);
+      enrichEntity(target);
+      snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
     }
+    return snapshots;
+  }
 
-    // Modify Custom Property key
-    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
-    oCustomProperties.ifPresent(
-        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
+  private EnrichmentTarget buildTarget(VersionedWindow window, EnrichmentContext context) {
+    EntityInterface entity = window.entity();
+    Map<String, Object> entityMap = JsonUtils.getMap(entity);
+    entityMap.keySet().retainAll(context.entityTypeFields());
+    stripNestedColumnChildren(entityMap);
+    Map<String, ChangeSummary> changeSummary = SearchIndexUtils.getChangeSummaryMap(entity);
+    return new EnrichmentTarget(
+        entity,
+        entityMap,
+        changeSummary,
+        window.windowStartTimestamp(),
+        window.windowEndTimestamp(),
+        context,
+        window.shape());
+  }
 
-    return entityMap;
+  /**
+   * Runs the enrichment pipeline against a prepared target. Only the in-class orchestrator (
+   * {@link #enrichEntityToSnapshots}) and the package-local test should call this — it exists as a
+   * seam to let the test exercise the wired-up pipeline on synthetic {@link EnrichmentTarget}s
+   * without going through the version-resolver path.
+   */
+  @VisibleForTesting
+  void enrichEntity(EnrichmentTarget target) {
+    pipeline.run(target);
   }
 
   /**
@@ -252,9 +226,12 @@ public class DataInsightsEntityEnricherProcessor
    * STRUCT/UNION column types can expand into hundreds of unique field paths per document,
    * pushing the index past OpenSearch's {@code index.mapping.total_fields.limit} of 1000.
    * Top-level column metadata (name, type, description, etc.) is preserved.
+   *
+   * <p>Static + package-private so existing reflection-based tests continue to exercise it
+   * directly; the {@code buildTarget} method calls it on every target before pipeline run.
    */
   @SuppressWarnings("unchecked")
-  private static void stripNestedColumnChildren(Map<String, Object> entityMap) {
+  static void stripNestedColumnChildren(Map<String, Object> entityMap) {
     Object columns = entityMap.get("columns");
     if (!(columns instanceof List<?> columnList)) {
       return;
@@ -264,98 +241,6 @@ public class DataInsightsEntityEnricherProcessor
         ((Map<String, Object>) columnMap).remove("children");
       }
     }
-  }
-
-  private String processTeam(EntityInterface entity) {
-    String team = null;
-    Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
-    if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
-      EntityReference entityOwner = oEntityOwners.get().get(0);
-      String ownerType = entityOwner.getType();
-      if (ownerType.equals(Entity.TEAM)) {
-        team = entityOwner.getName();
-      } else {
-        try {
-          Optional<User> oOwner =
-              Optional.ofNullable(
-                  Entity.getEntityByName(
-                      Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
-
-          if (oOwner.isPresent()) {
-            User owner = oOwner.get();
-            List<EntityReference> teams = owner.getTeams();
-
-            if (!teams.isEmpty()) {
-              team = teams.get(0).getName();
-            }
-          }
-        } catch (EntityNotFoundException ex) {
-          // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
-          // belonged.
-          LOG.debug(
-              "Owner {} for {} '{}' version '{}' not found.",
-              entityOwner.getFullyQualifiedName(),
-              Entity.getEntityTypeFromObject(entity),
-              entity.getFullyQualifiedName(),
-              entity.getVersion());
-        }
-      }
-    }
-    return team;
-  }
-
-  private String processTier(EntityInterface entity) {
-    String tier = null;
-
-    if (!NON_TIER_ENTITIES.contains(Entity.getEntityTypeFromObject(entity))) {
-      tier = "NoTier";
-    }
-
-    Optional<List<TagLabel>> oEntityTags = Optional.ofNullable(entity.getTags());
-
-    if (oEntityTags.isPresent()) {
-      Optional<String> oEntityTier =
-          getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
-      if (oEntityTier.isPresent()) {
-        tier = oEntityTier.get();
-      }
-    }
-    return tier;
-  }
-
-  private Optional<String> getEntityTier(List<String> entityTags) {
-    Optional<String> entityTier = Optional.empty();
-
-    List<String> tierTags = entityTags.stream().filter(tag -> tag.startsWith("Tier")).toList();
-
-    // We can directly get the first element if the list is not empty since there can only be ONE
-    // Tier tag.
-    if (!tierTags.isEmpty()) {
-      entityTier = Optional.of(tierTags.get(0));
-    }
-
-    return entityTier;
-  }
-
-  private List<Map<String, Object>> generateDailyEntitySnapshots(
-      Map<String, Object> entityVersionMap) {
-    Long startTimestamp = (Long) entityVersionMap.remove("startTimestamp");
-    Long endTimestamp = (Long) entityVersionMap.remove("endTimestamp");
-
-    List<Map<String, Object>> dailyEntitySnapshots = new java.util.ArrayList<>();
-
-    Long pointerTimestamp = endTimestamp;
-
-    while (pointerTimestamp >= startTimestamp) {
-      Map<String, Object> dailyEntitySnapshot = new HashMap<>(entityVersionMap);
-
-      dailyEntitySnapshot.put(
-          TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
-      dailyEntitySnapshots.add(dailyEntitySnapshot);
-
-      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
-    }
-    return dailyEntitySnapshots;
   }
 
   @Override

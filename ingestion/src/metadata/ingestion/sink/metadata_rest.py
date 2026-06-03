@@ -79,6 +79,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -118,7 +119,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -132,6 +132,7 @@ class MetadataRestSinkConfig(ConfigModel):
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
+    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -180,7 +181,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
@@ -322,7 +322,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
+            result = self.metadata.bulk_create_or_update(
+                entities=self.buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
@@ -476,6 +480,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
 
+    @_run_dispatch.register
+    def write_barrier(self, record: Barrier) -> Either[Entity]:
+        """Flush the buffer synchronously so subsequent records in the same
+        stream see committed entities."""
+        if self.buffer:
+            logger.debug(
+                "Barrier flush: %d entities, reason=%s",
+                len(self.buffer),
+                record.reason,
+            )
+            return self._flush_buffer()
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
+
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """
         Internal helper method for write_user
@@ -584,12 +601,36 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
-        self.metadata.delete(
-            entity=type(record.entity),
-            entity_id=record.entity.id,
-            recursive=record.mark_deleted_entities,
-        )
-        return Either(right=record)
+        # record.entity is declared as a bare pydantic BaseModel; the runtime value is a
+        # generated entity that exposes `id` and `fullyQualifiedName`, but basedpyright can't
+        # see those attributes through the BaseModel alias. Pull them via getattr so the type
+        # checker stays quiet without changing the runtime behavior.
+        entity_obj: Any = record.entity
+        entity_id = entity_obj.id
+        fqn = entity_obj.fullyQualifiedName.root
+        recursive = bool(record.recursive)
+        if record.dispatch_async:
+            # Server-side async cascade — returns 202 + jobId immediately so ingestion
+            # doesn't block on large subtrees (issue #4003). The actual work runs on the
+            # server's executor; we surface the jobId in the log for operator correlation.
+            response = self.metadata.delete_async(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+            job_id = (response or {}).get("jobId")
+            logger.debug(
+                "Dispatched async delete for %s (jobId=%s)",
+                fqn,
+                job_id,
+            )
+        else:
+            self.metadata.delete(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+        return Either(left=None, right=record)
 
     @_run_dispatch.register
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> Either[PipelineStatus]:

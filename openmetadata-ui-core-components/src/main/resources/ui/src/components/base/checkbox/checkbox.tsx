@@ -28,7 +28,7 @@ export const CheckboxBase = ({
         'tw:relative tw:flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary tw:ring-1 tw:ring-primary tw:ring-inset',
         size === 'md' && 'tw:size-5 tw:rounded-md',
         (isSelected || isIndeterminate) &&
-          'tw:bg-brand-solid tw:ring-bg-brand-solid',
+          'tw:bg-brand-solid tw:ring-brand-solid',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
         isFocusVisible &&

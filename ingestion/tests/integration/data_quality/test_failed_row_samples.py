@@ -203,6 +203,7 @@ FAILING_TEST_PARAMS = [
             TestCaseDefinition(
                 name="custom_sql_test",
                 testDefinitionName="tableCustomSQLQuery",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     TestCaseParameterValue(
                         name="sqlExpression",

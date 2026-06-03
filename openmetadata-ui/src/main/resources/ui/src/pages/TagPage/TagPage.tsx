@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Col,
@@ -81,11 +82,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
@@ -94,10 +91,23 @@ import { Style } from '../../generated/type/tagLabel';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
+import {
+  tagQueryFn,
+  tagQueryKey,
+  TAG_DEFAULT_FIELDS,
+} from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
-import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
-import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
+import { deleteTag, patchTag } from '../../rest/tagAPI';
+import {
+  getEntityDeleteMessage,
+  getEntityMissingError,
+} from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -118,6 +128,7 @@ const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab?: string;
   }>();
@@ -125,8 +136,6 @@ const TagPage = () => {
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.Tag
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
 
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
@@ -143,6 +152,48 @@ const TagPage = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+
+  const tagCacheKey = useMemo(
+    () => tagQueryKey(tagFqn, TAG_DEFAULT_FIELDS),
+    [tagFqn]
+  );
+
+  const {
+    data: tagItem,
+    isLoading: tagLoading,
+    error: tagError,
+  } = useQuery({
+    queryKey: tagCacheKey,
+    queryFn: tagQueryFn(tagFqn, TAG_DEFAULT_FIELDS),
+    enabled: Boolean(tagFqn),
+  });
+
+  const isError = useMemo(
+    () => (tagError as AxiosError | undefined)?.response?.status === 404,
+    [tagError]
+  );
+
+  useEffect(() => {
+    const status = (tagError as AxiosError | undefined)?.response?.status;
+    if (tagError && status !== 404) {
+      showErrorToast(tagError as AxiosError);
+    }
+  }, [tagError]);
+
+  const setTagItem = useCallback(
+    (
+      updater: Tag | undefined | ((prev: Tag | undefined) => Tag | undefined)
+    ) => {
+      queryClient.setQueryData<Tag | undefined>(tagCacheKey, updater);
+    },
+    [queryClient, tagCacheKey]
+  );
+
+  const refetchTagItem = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: tagCacheKey }),
+    [queryClient, tagCacheKey]
+  );
+
   const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
     return tagItem
       ? [
@@ -228,7 +279,7 @@ const TagPage = () => {
     [tagPermissions.EditAll, tagItem?.deleted]
   );
 
-  const fetchCurrentTagPermission = async () => {
+  const fetchCurrentTagPermission = useCallback(async () => {
     if (!tagItem?.id) {
       return;
     }
@@ -241,27 +292,7 @@ const TagPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
-
-  const getTagData = async () => {
-    try {
-      setIsLoading(true);
-      if (tagFqn) {
-        const response = await getTagByFqn(tagFqn, {
-          fields: [
-            TabSpecificField.DOMAINS,
-            TabSpecificField.OWNERS,
-            TabSpecificField.REVIEWERS,
-          ],
-        });
-        setTagItem(response);
-      }
-    } catch (e) {
-      showErrorToast(e as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [tagItem?.id, getEntityPermission]);
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
@@ -279,19 +310,22 @@ const TagPage = () => {
     }
   };
 
-  const updateTag = async (updatedData: Tag) => {
-    if (tagItem) {
-      const jsonPatch = compare(tagItem, updatedData);
+  const updateTag = useCallback(
+    async (updatedData: Tag) => {
+      if (tagItem) {
+        const jsonPatch = compare(tagItem, updatedData);
 
-      try {
-        const response = await patchTag(tagItem.id ?? '', jsonPatch);
+        try {
+          const response = await patchTag(tagItem.id ?? '', jsonPatch);
 
-        setTagItem(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+          setTagItem(response);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [tagItem, setTagItem]
+  );
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
@@ -344,7 +378,6 @@ const TagPage = () => {
           entity: t('label.tag-lowercase'),
         })
       );
-      setIsLoading(true);
 
       if (tagItem?.classification?.fullyQualifiedName) {
         navigate(
@@ -374,7 +407,7 @@ const TagPage = () => {
     navigate(ROUTES.TAGS);
   };
 
-  const fetchClassificationTagAssets = async () => {
+  const fetchClassificationTagAssets = useCallback(async () => {
     try {
       const res = await searchQuery({
         query: '',
@@ -397,7 +430,7 @@ const TagPage = () => {
       );
       setAssetCount(0);
     }
-  };
+  }, [tagFqn, t]);
 
   const fetchFeedCount = async () => {
     if (tagItem?.fullyQualifiedName) {
@@ -408,6 +441,22 @@ const TagPage = () => {
       );
     }
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    if (tagItem?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(tagItem.fullyQualifiedName, setFeedCount);
+    }
+  }, [tagItem?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (tagItem?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.TAG,
+        tagItem.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [tagItem?.fullyQualifiedName]);
 
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
@@ -604,7 +653,7 @@ const TagPage = () => {
             owners={tagItem.owners}
             subTab={ActivityFeedTabs.ALL}
             onFeedUpdate={fetchFeedCount}
-            onUpdateEntityDetails={getTagData}
+            onUpdateEntityDetails={refetchTagItem}
             onUpdateFeedCount={handleFeedCount}
           />
         ),
@@ -654,6 +703,7 @@ const TagPage = () => {
     handleAssetSave,
     handleAssetClick,
     handleFeedCount,
+    refetchTagItem,
     assetTabRef,
     t,
   ]);
@@ -714,19 +764,27 @@ const TagPage = () => {
   }, [tagItem]);
 
   useEffect(() => {
-    getTagData();
     fetchClassificationTagAssets();
-  }, [tagFqn]);
+  }, [fetchClassificationTagAssets]);
 
   useEffect(() => {
     if (tagItem) {
       fetchCurrentTagPermission();
-      fetchFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
-  }, [tagItem]);
+  }, [tagItem, fetchCurrentTagPermission, fetchTaskCounts, fetchActivityCount]);
 
-  if (isLoading || isCustomPageLoading) {
+  if (tagLoading || isCustomPageLoading) {
     return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('tag', tagFqn)}
+      </ErrorPlaceHolder>
+    );
   }
 
   if (!tagItem) {

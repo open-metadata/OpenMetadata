@@ -80,7 +80,7 @@ test('Knowledge Center ViewAll role based access validations', async ({
 
   const articleResponse = userPage.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'GET'
   );
 
@@ -147,7 +147,7 @@ testWithRolesPages(
 
     const articleResponse = dataConsumerPage.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter/') &&
+        response.url().includes('/api/v1/contextCenter/pages/') &&
         response.request().method() === 'GET'
     );
 
@@ -217,7 +217,7 @@ testWithRolesPages(
 
     const articleResponse = dataStewardPage.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter/') &&
+        response.url().includes('/api/v1/contextCenter/pages/') &&
         response.request().method() === 'GET'
     );
 

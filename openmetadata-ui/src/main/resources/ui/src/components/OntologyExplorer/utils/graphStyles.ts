@@ -14,6 +14,8 @@ import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
+  Line,
+  LineStyleProps,
   RectCombo,
   RectComboStyleProps,
   register,
@@ -94,12 +96,45 @@ import {
   RELATION_META,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
+import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
 import './ontologyComboAwarePolylineEdge';
 import {
   getCanvasContext,
   measureTextWidth,
   truncateToFit,
 } from './textMeasure';
+
+export const CARDINALITY_AWARE_LINE_EDGE_TYPE = 'cardinality-aware-line';
+
+class CardinalityAwareLine extends Line {
+  override render(
+    attributes: Required<LineStyleProps>,
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    this.drawCardinalityLabel(attributes, container, 'start');
+    this.drawCardinalityLabel(attributes, container, 'end');
+  }
+
+  private drawCardinalityLabel(
+    attributes: Required<LineStyleProps>,
+    container: Group,
+    end: 'start' | 'end'
+  ): void {
+    const endpoints = this.getEndpoints(attributes);
+    const attrs = computeCardinalityLabelAttrs(
+      attributes as Record<string, unknown>,
+      [endpoints[0] as [number, number], endpoints[1] as [number, number]],
+      end
+    );
+    this.upsert(`cardinality-${end}`, GText, attrs, container);
+  }
+}
+register(
+  ExtensionCategory.EDGE,
+  CARDINALITY_AWARE_LINE_EDGE_TYPE,
+  CardinalityAwareLine
+);
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
@@ -373,7 +408,7 @@ register(ExtensionCategory.NODE, 'data-mode-asset', DataModeAssetNode);
 
 export function formatRelationLabel(relationType: string): string {
   return relationType
-    .replace(/([A-Z])/g, ' $1')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim()
     .toUpperCase();
 }

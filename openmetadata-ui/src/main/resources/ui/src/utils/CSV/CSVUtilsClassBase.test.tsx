@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { textEditor } from 'react-data-grid';
+import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { EntityType } from '../../enums/entity.enum';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
 
@@ -162,7 +162,7 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return default textEditor for unknown columns', () => {
+    it('should return default lazyTextEditor for unknown columns', () => {
       const column = 'unknown';
       const editor = csvUtilsClassBase.getEditor(
         column,
@@ -170,7 +170,7 @@ describe('CSV utils ClassBase', () => {
         multipleOwner
       );
 
-      expect(editor).toBe(textEditor);
+      expect(editor).toBe(lazyTextEditor);
     });
 
     it('should return the editor component for the "description" column', () => {

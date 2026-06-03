@@ -367,6 +367,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field("columns"))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(false)))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -416,6 +417,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field("columns"))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(false)))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -441,13 +443,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
   private void addServiceFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getServiceName())) {
-      boolBuilder.filter(
-          Query.of(
-              q ->
-                  q.term(
-                      t ->
-                          t.field("service.name.keyword")
-                              .value(FieldValue.of(request.getServiceName())))));
+      addNameOrDisplayNameFilter(boolBuilder, "service", request.getServiceName());
     }
   }
 
@@ -462,26 +458,44 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
   private void addDatabaseFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getDatabaseName())) {
-      boolBuilder.filter(
-          Query.of(
-              q ->
-                  q.term(
-                      t ->
-                          t.field("database.name.keyword")
-                              .value(FieldValue.of(request.getDatabaseName())))));
+      addNameOrDisplayNameFilter(boolBuilder, "database", request.getDatabaseName());
     }
   }
 
   private void addSchemaFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getSchemaName())) {
-      boolBuilder.filter(
-          Query.of(
-              q ->
-                  q.term(
-                      t ->
-                          t.field("databaseSchema.name.keyword")
-                              .value(FieldValue.of(request.getSchemaName())))));
+      addNameOrDisplayNameFilter(boolBuilder, "databaseSchema", request.getSchemaName());
     }
+  }
+
+  /**
+   * Match a value against either {fieldPrefix}.name.keyword or {fieldPrefix}.displayName.keyword.
+   * The UI filter dropdowns aggregate on displayName.keyword while API consumers (and the legacy
+   * dropdown) may pass the underlying name — this matches either, so both work.
+   */
+  private void addNameOrDisplayNameFilter(
+      BoolQuery.Builder boolBuilder, String fieldPrefix, String value) {
+    FieldValue fieldValue = FieldValue.of(value);
+    boolBuilder.filter(
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.minimumShouldMatch("1")
+                            .should(
+                                Query.of(
+                                    sq ->
+                                        sq.term(
+                                            t ->
+                                                t.field(fieldPrefix + ".name.keyword")
+                                                    .value(fieldValue))))
+                            .should(
+                                Query.of(
+                                    sq ->
+                                        sq.term(
+                                            t ->
+                                                t.field(fieldPrefix + ".displayName.keyword")
+                                                    .value(fieldValue)))))));
   }
 
   private void addDomainFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {

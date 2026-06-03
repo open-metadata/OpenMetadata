@@ -25,10 +25,6 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
-import {
-  mockSearchData,
-  MOCK_EXPLORE_PAGE_COUNT,
-} from '../../constants/mockTourData.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -39,6 +35,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
   fetchEntityData,
@@ -74,6 +71,9 @@ const ExplorePageV1: FC<unknown> = () => {
   const { searchCriteria } = useApplicationStore();
 
   const [searchResults, setSearchResults] =
+    useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [tourSearchResults, setTourSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
@@ -327,16 +327,33 @@ const ExplorePageV1: FC<unknown> = () => {
         setSearchResults,
         setUpdatedAggregations,
         setShowIndexNotFoundAlert,
+        // Reflect NLQ-detected filters in the filters tab. State-only (no URL
+        // change, so no re-search); merged with any pre-existing URL filters so
+        // their marks are preserved.
+        onNlqAppliedFilters: (appliedQuickFilters) =>
+          setAdvancedSearchQuickFilters(
+            getCombinedQueryFilterObject(
+              getAdvancedSearchQuickFilters(),
+              appliedQuickFilters
+            )
+          ),
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Effect for handling tour
+  // Effect for handling tour — lazy-load the ~113 KB mock dataset only when the tour is open.
   useEffect(() => {
     if (isTourOpen) {
-      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+      import('../../constants/mockTourData.constants').then(
+        ({ mockSearchData, MOCK_EXPLORE_PAGE_COUNT }) => {
+          setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+          setTourSearchResults(
+            mockSearchData as unknown as SearchResponse<ExploreSearchIndex>
+          );
+        }
+      );
     }
   }, [isTourOpen]);
 
@@ -373,7 +390,6 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
-      handlePageChange(1);
       setAdvancedSearchQuickFilters(filter);
       handleQuickFilterChange(filter);
     },
@@ -388,11 +404,7 @@ const ExplorePageV1: FC<unknown> = () => {
       loading={isLoading && !isTourOpen}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={
-        isTourOpen
-          ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
-          : searchResults
-      }
+      searchResults={isTourOpen ? tourSearchResults : searchResults}
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}

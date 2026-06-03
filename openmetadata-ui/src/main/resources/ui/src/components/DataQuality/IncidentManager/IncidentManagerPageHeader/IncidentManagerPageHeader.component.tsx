@@ -39,13 +39,13 @@ import {
   transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
-import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTaskDisplayId } from '../../../../utils/TasksUtils';

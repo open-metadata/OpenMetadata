@@ -36,7 +36,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
   const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
-  const { setApplicationsName } = useApplicationStore();
+  const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
 
   // Create extension registry (singleton for the app lifecycle)
   const [extensionRegistry] = useState(() => new ExtensionPointRegistry());
@@ -55,6 +55,11 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       // do not handle error
     } finally {
       setLoading(false);
+      // Signal to downstream consumers (plugins, mode-aware code) that
+      // `applications` reflects server state. Set unconditionally —
+      // even on fetch error the list is "as loaded as it's going to
+      // be" and consumers should stop waiting.
+      setApplicationsLoaded(true);
     }
   }, []);
 
@@ -63,6 +68,10 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       fetchApplicationList();
     } else {
       setLoading(false);
+      // No permissions to fetch — applications stays `[]` but the
+      // "loaded" signal still needs to flip so downstream consumers
+      // gating on it don't wait forever.
+      setApplicationsLoaded(true);
     }
   }, [permissions]);
 

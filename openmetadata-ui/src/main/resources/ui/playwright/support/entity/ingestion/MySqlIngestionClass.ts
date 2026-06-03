@@ -29,6 +29,7 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { expandAdvancedConfig } from '../../../utils/profilerForm';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -137,11 +138,21 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="profiler"]')
-        .waitFor();
+      const profilerMenuItem = page
+        .locator('.ant-dropdown:visible')
+        .getByTestId('agent-item-profiler');
+      await expect(profilerMenuItem).toBeVisible();
+      await profilerMenuItem.click();
 
-      await page.click('[data-menu-id*="profiler"]');
+      await waitForAllLoadersToDisappear(page);
+      await expandAdvancedConfig(page);
+
+      const sampleConfigTypeSelect = page.getByTestId(
+        'sample-config-type-select'
+      );
+      await expect(sampleConfigTypeSelect).toBeVisible();
+      await sampleConfigTypeSelect.click();
+      await page.locator('[data-key="STATIC"]').click();
 
       await page.getByTestId('profile-sample-input').waitFor();
       await page

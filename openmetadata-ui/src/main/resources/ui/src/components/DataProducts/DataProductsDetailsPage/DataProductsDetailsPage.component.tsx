@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Avatar,
   Button as CoreButton,
   Tooltip as CoreTooltip,
@@ -72,11 +73,6 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getEntityDeleteMessage,
-  getFeedCounts,
-  hasEditAccess,
-} from '../../../utils/CommonUtils';
-import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
@@ -84,13 +80,20 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
+  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -103,6 +106,7 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -148,7 +152,8 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions: resourcePermissions } =
+    usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
@@ -180,11 +185,16 @@ const DataProductsDetailsPage = ({
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled } = useDataAccessRequest({
-    entityFqn: dataProduct.fullyQualifiedName,
-    enabled: dataProductClassBase.getShowRequestDataAccess(),
-    listenForEvents: true,
-  });
+  const { isDarDisabled, isDarGranted, isDarAwaitingGrant } =
+    useDataAccessRequest({
+      entityFqn: dataProduct.fullyQualifiedName,
+      enabled: dataProductClassBase.getShowRequestDataAccess(),
+      listenForEvents: true,
+    });
+
+  const canCreateTask = Boolean(
+    resourcePermissions?.[ResourceEntity.TASK]?.Create
+  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -197,6 +207,20 @@ const DataProductsDetailsPage = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
 
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
@@ -666,7 +690,8 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
@@ -783,10 +808,17 @@ const DataProductsDetailsPage = ({
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
                 !isOwner &&
+                !currentUser?.isAdmin &&
+                canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip
                     isDisabled={!isDarDisabled}
-                    title={t('message.data-access-request-already-exists')}>
+                    title={getDarButtonTooltip(
+                      isDarDisabled,
+                      isDarGranted,
+                      isDarAwaitingGrant,
+                      t
+                    )}>
                     <CoreButton
                       color="primary"
                       data-testid="request-data-access-button"
@@ -886,6 +918,17 @@ const DataProductsDetailsPage = ({
             </div>
           </div>
         </div>
+
+        {isDarAwaitingGrant && (
+          <div className="tw:px-5">
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </div>
+        )}
 
         <GenericProvider<DataProduct>
           muiTags

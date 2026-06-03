@@ -84,6 +84,9 @@ export interface EdgeDefinition {
  * StartEvent.
  *
  * Defines a Task for a given User to approve.
+ *
+ * Runs the Policy Agent to enforce data access on supported connectors, or falls back to a
+ * manual grant step.
  */
 export interface Definition {
     branches?: string[];
@@ -158,6 +161,14 @@ export interface NodeConfiguration {
      * Transitions available from this stage. Edge conditions should match these transition ids.
      */
     transitionMetadata?: TransitionMetadatum[];
+    /**
+     * Maximum seconds to wait for the Policy Agent pipeline to complete.
+     */
+    timeoutSeconds?: number;
+    /**
+     * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
+     */
+    waitForCompletion?: boolean;
 }
 
 /**
@@ -176,6 +187,13 @@ export interface Assignees {
      * List of specific candidates (users or teams) assigned to this task.
      */
     candidates?: EntityReference[];
+    /**
+     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+     * excluding the requester so self-approval can never happen.
+     */
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
 
 /**
@@ -232,6 +250,17 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+ * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+ * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+ * excluding the requester so self-approval can never happen.
+ */
+export enum EmptyAssigneeStrategy {
+    AssignAdmins = "assignAdmins",
+    None = "none",
 }
 
 /**

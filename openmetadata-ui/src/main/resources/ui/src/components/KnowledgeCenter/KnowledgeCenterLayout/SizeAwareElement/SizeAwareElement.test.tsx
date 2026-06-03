@@ -14,7 +14,7 @@ import { render } from '@testing-library/react';
 import {
   CENTER_PANEL_DEFAULT_WIDTH,
   CENTER_PANEL_PANEL_MARGIN,
-} from 'constants/KnowledgeCenter.constant';
+} from '../../../../constants/KnowledgeCenter.constant';
 import { SizeAwareElement } from './SizeAwareElement';
 
 describe('SizeAwareElement', () => {

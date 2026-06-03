@@ -68,7 +68,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "contextMemories")
 public class ContextMemoryResource extends EntityResource<ContextMemory, ContextMemoryRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
-  public static final String FIELDS = "owners,tags,domains";
+  public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
 

@@ -271,7 +271,7 @@ const TestSuiteDetailsPage = () => {
     try {
       await addTestCasesToLogicalTestSuiteBulk(testSuiteId ?? '', payload);
       setIsTestCaseModalOpen(false);
-      await fetchTestCases();
+      await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -280,7 +280,11 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTS,
+        ],
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -535,10 +539,6 @@ const TestSuiteDetailsPage = () => {
     t,
   ]);
 
-  const selectedTestCases = useMemo(() => {
-    return testCaseResult.map((test) => test.name);
-  }, [testCaseResult]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -609,7 +609,6 @@ const TestSuiteDetailsPage = () => {
                               '[role="dialog"]'
                             ) as HTMLElement) ?? document.body
                           }
-                          selectedTest={selectedTestCases}
                           onCancel={() => setIsTestCaseModalOpen(false)}
                           onSubmit={handleAddTestCaseSubmit}
                         />
