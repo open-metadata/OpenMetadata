@@ -202,8 +202,11 @@ test.describe(
       });
 
       await test.step('Check Type and Display Name as required; save', async () => {
-        await page.getByTestId('require-dataProductType').check();
-        await page.getByTestId('require-displayName').check();
+        // The require control is a ui-core-components (react-aria) Checkbox,
+        // which renders the testid on the wrapping label rather than a native
+        // checkbox input — click the label to toggle it.
+        await page.getByTestId('require-dataProductType').click();
+        await page.getByTestId('require-displayName').click();
 
         const createResponse = page.waitForResponse(
           (r) =>

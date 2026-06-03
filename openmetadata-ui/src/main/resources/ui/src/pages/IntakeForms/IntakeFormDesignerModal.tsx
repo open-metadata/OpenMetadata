@@ -13,25 +13,18 @@
 
 import {
   Alert,
+  Badge,
   Box,
+  Button,
   Checkbox,
-  Chip,
-  CircularProgress,
   Divider,
-  Drawer,
-  FormControlLabel,
-  Stack,
-  Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
+  Input,
+  SlideoutMenu,
+  TextArea,
+  Toggle,
   Typography,
-} from '@mui/material';
-import { Button } from '@openmetadata/ui-core-components';
+} from '@openmetadata/ui-core-components';
+import Loader from '../../components/common/Loader/Loader';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -237,47 +230,83 @@ const IntakeFormDesignerModal = ({
   );
 
   const renderFieldRow = (record: FieldRow) => (
-    <TableRow key={record.path}>
-      <TableCell sx={{ width: 90 }}>
+    <Box
+      align="center"
+      className="tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
+      key={record.path}>
+      <div className="tw:w-20">
         <Checkbox
-          checked={record.selected}
-          inputProps={
-            {
-              'aria-label': record.label,
-              'data-testid': `require-${record.path}`,
-            } as Record<string, unknown>
-          }
-          onChange={(e) =>
-            updateRow(record.path, { selected: e.target.checked })
+          aria-label={record.label}
+          data-testid={`require-${record.path}`}
+          isSelected={record.selected}
+          onChange={(isSelected) =>
+            updateRow(record.path, { selected: isSelected })
           }
         />
-      </TableCell>
-      <TableCell>
-        <Typography sx={{ fontWeight: 600 }}>{record.label}</Typography>
-        <Typography color="text.secondary" variant="caption">
+      </div>
+      <Box className="tw:flex-1" direction="col">
+        <Typography size="text-sm" weight="semibold">
+          {record.label}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
           {record.path}
         </Typography>
-      </TableCell>
-      <TableCell>
-        <TextField
-          fullWidth
-          InputProps={{
-            // MUI's InputBaseComponentProps type is narrow; cast to allow the
-            // data-testid attribute that Playwright selectors rely on.
-            inputProps: {
-              'data-testid': `error-${record.path}`,
-            } as Record<string, unknown>,
-          }}
-          disabled={!record.selected}
+      </Box>
+      <div className="tw:flex-1">
+        <Input
+          aria-label={t('label.custom-error-message')}
+          data-testid={`error-${record.path}`}
+          isDisabled={!record.selected}
           placeholder={t('message.optional-custom-error')}
-          size="small"
           value={record.errorMessage ?? ''}
-          onChange={(e) =>
-            updateRow(record.path, { errorMessage: e.target.value })
-          }
+          onChange={(value) => updateRow(record.path, { errorMessage: value })}
         />
-      </TableCell>
-    </TableRow>
+      </div>
+    </Box>
+  );
+
+  const renderFieldTable = (
+    fieldRows: FieldRow[],
+    emptyMessage: string,
+    isLoading: boolean
+  ) => (
+    <Box
+      className="tw:overflow-hidden tw:rounded-lg tw:ring-1 tw:ring-secondary"
+      direction="col">
+      <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
+        <Typography
+          className="tw:w-20 tw:text-tertiary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.required')}
+        </Typography>
+        <Typography
+          className="tw:flex-1 tw:text-tertiary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.field')}
+        </Typography>
+        <Typography
+          className="tw:flex-1 tw:text-tertiary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.custom-error-message')}
+        </Typography>
+      </Box>
+      {isLoading && (
+        <Box className="tw:justify-center tw:py-6">
+          <Loader size="small" />
+        </Box>
+      )}
+      {!isLoading && fieldRows.length === 0 && (
+        <Box className="tw:justify-center tw:py-6">
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {emptyMessage}
+          </Typography>
+        </Box>
+      )}
+      {!isLoading && fieldRows.map(renderFieldRow)}
+    </Box>
   );
 
   const title = initialValue
@@ -293,182 +322,112 @@ const IntakeFormDesignerModal = ({
       });
 
   return (
-    <Drawer
-      PaperProps={{ sx: { width: '75%' } }}
-      anchor="right"
-      data-testid="intake-form-designer-modal"
-      open={open}
-      onClose={onCancel}>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-        }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-          }}>
-          <Typography variant="h6">{title}</Typography>
-          <Stack direction="row" spacing={1}>
-            <Button
-              color="tertiary"
-              data-testid="intake-form-cancel"
-              size="sm"
-              onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="intake-form-submit"
-              size="sm"
-              onClick={handleOk}>
-              {initialValue ? t('label.save') : t('label.create')}
-            </Button>
-          </Stack>
+    <SlideoutMenu
+      isDismissable
+      isOpen={open}
+      width="75%"
+      onOpenChange={(isOpenState) => {
+        if (!isOpenState) {
+          onCancel();
+        }
+      }}>
+      <SlideoutMenu.Header onClose={onCancel}>
+        <Typography size="text-lg" weight="semibold">
+          {title}
+        </Typography>
+      </SlideoutMenu.Header>
+
+      <SlideoutMenu.Content data-testid="intake-form-designer-modal">
+        <Alert
+          title={t('message.intake-form-one-per-type-help', {
+            entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+          })}
+          variant="brand"
+        />
+
+        <Box className="tw:gap-1.5" direction="col">
+          <Typography size="text-sm" weight="semibold">
+            {t('label.description')}
+          </Typography>
+          <TextArea
+            aria-label={t('label.description')}
+            data-testid="intake-form-description"
+            placeholder={t('message.intake-form-description-placeholder')}
+            value={description}
+            onChange={setDescription}
+          />
         </Box>
 
-        {/* Body */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {t('message.intake-form-one-per-type-help', {
-              entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-            })}
-          </Alert>
+        <Box align="center" className="tw:gap-3">
+          <Typography size="text-sm" weight="semibold">
+            {t('label.enabled')}
+          </Typography>
+          <Toggle
+            aria-label={t('label.enabled')}
+            data-testid="intake-form-enabled"
+            isSelected={enabled}
+            onChange={setEnabled}
+          />
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.intake-form-enabled-help')}
+          </Typography>
+        </Box>
 
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
-              {t('label.description')}
+        <Divider />
+
+        <Box className="tw:gap-3" direction="col">
+          <Box className="tw:gap-1" direction="col">
+            <Typography size="text-md" weight="semibold">
+              {t('label.native-field-plural')}
             </Typography>
-            <TextField
-              fullWidth
-              multiline
-              InputProps={{
-                inputProps: {
-                  'data-testid': 'intake-form-description',
-                } as Record<string, unknown>,
-              }}
-              maxRows={4}
-              minRows={2}
-              placeholder={t('message.intake-form-description-placeholder')}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('message.intake-form-native-fields-help')}
+            </Typography>
           </Box>
+          {renderFieldTable(nativeRows, t('message.no-native-fields'), false)}
+        </Box>
 
-          <Stack
-            alignItems="center"
-            direction="row"
-            spacing={1.5}
-            sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 600 }}>
-              {t('label.enabled')}
-            </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={enabled}
-                  inputProps={
-                    {
-                      'data-testid': 'intake-form-enabled',
-                    } as Record<string, unknown>
-                  }
-                  onChange={(e) => setEnabled(e.target.checked)}
-                />
-              }
-              label=""
-            />
-            <Typography color="text.secondary" variant="body2">
-              {t('message.intake-form-enabled-help')}
-            </Typography>
-          </Stack>
+        <Divider />
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography sx={{ fontWeight: 600 }} variant="h6">
-            {t('label.native-field-plural')}
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">
-            {t('message.intake-form-native-fields-help')}
-          </Typography>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ width: 90 }}>
-                    {t('label.required')}
-                  </TableCell>
-                  <TableCell>{t('label.field')}</TableCell>
-                  <TableCell>{t('label.custom-error-message')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {nativeRows.length === 0 && (
-                  <TableRow>
-                    <TableCell align="center" colSpan={3}>
-                      <Typography color="text.secondary" variant="body2">
-                        {t('message.no-native-fields')}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {nativeRows.map(renderFieldRow)}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Stack alignItems="center" direction="row" spacing={1}>
-            <Typography sx={{ fontWeight: 600 }} variant="h6">
+        <Box className="tw:gap-3" direction="col">
+          <Box align="center" className="tw:gap-2">
+            <Typography size="text-md" weight="semibold">
               {t('label.custom-property-plural')}
             </Typography>
-            <Chip label={customRows.length} size="small" />
-          </Stack>
-          <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">
+            <Badge color="gray" size="sm" type="pill-color">
+              {customRows.length}
+            </Badge>
+          </Box>
+          <Typography className="tw:text-tertiary" size="text-sm">
             {t('message.intake-form-custom-properties-help')}
           </Typography>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ width: 90 }}>
-                    {t('label.required')}
-                  </TableCell>
-                  <TableCell>{t('label.field')}</TableCell>
-                  <TableCell>{t('label.custom-error-message')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loadingProps && (
-                  <TableRow>
-                    <TableCell align="center" colSpan={3}>
-                      <CircularProgress size={20} />
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!loadingProps && customRows.length === 0 && (
-                  <TableRow>
-                    <TableCell align="center" colSpan={3}>
-                      <Typography color="text.secondary" variant="body2">
-                        {t('message.no-custom-properties-defined')}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!loadingProps && customRows.map(renderFieldRow)}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {renderFieldTable(
+            customRows,
+            t('message.no-custom-properties-defined'),
+            loadingProps
+          )}
         </Box>
-      </Box>
-    </Drawer>
+      </SlideoutMenu.Content>
+
+      <SlideoutMenu.Footer>
+        <Box className="tw:justify-end tw:gap-3">
+          <Button
+            color="tertiary"
+            data-testid="intake-form-cancel"
+            size="sm"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="intake-form-submit"
+            size="sm"
+            onClick={handleOk}>
+            {initialValue ? t('label.save') : t('label.create')}
+          </Button>
+        </Box>
+      </SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };
 

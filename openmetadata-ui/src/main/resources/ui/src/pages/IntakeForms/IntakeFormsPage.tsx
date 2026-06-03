@@ -12,33 +12,23 @@
  */
 
 import {
+  Badge,
   Box,
-  Chip,
-  CircularProgress,
+  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  IconButton,
-  Menu,
-  MenuItem,
-  Stack,
-  Switch,
+  Dropdown,
+  Modal,
+  ModalOverlay,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Toggle,
   Tooltip,
   Typography,
-} from '@mui/material';
-import { Button } from '@openmetadata/ui-core-components';
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, Edit01, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../components/common/Loader/Loader';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
 import {
@@ -79,7 +69,6 @@ const IntakeFormsPage = () => {
     entityType: TargetEntityType.DataProduct,
     initialValue: null,
   });
-  const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IntakeForm | null>(null);
 
   const fetchForms = useCallback(async () => {
@@ -108,13 +97,19 @@ const IntakeFormsPage = () => {
   const allEntityTypesCovered =
     existingEntityTypes.size === Object.values(TargetEntityType).length;
 
-  const openAddMenu = (event: MouseEvent<HTMLElement>) => {
-    setAddMenuAnchor(event.currentTarget);
-  };
-  const closeAddMenu = () => setAddMenuAnchor(null);
+  const addMenuItems = useMemo(
+    () =>
+      Object.values(TargetEntityType).map((et) => ({
+        id: et,
+        label: existingEntityTypes.has(et)
+          ? `${entityTypeLabel(et)} (${t('label.already-configured')})`
+          : entityTypeLabel(et),
+        isDisabled: existingEntityTypes.has(et),
+      })),
+    [existingEntityTypes, entityTypeLabel, t]
+  );
 
   const handleCreate = (entityType: TargetEntityType) => {
-    closeAddMenu();
     setModalState({ open: true, entityType, initialValue: null });
   };
 
@@ -179,214 +174,204 @@ const IntakeFormsPage = () => {
     }
   };
 
+  const closeModal = () =>
+    setModalState({
+      open: false,
+      entityType: TargetEntityType.DataProduct,
+      initialValue: null,
+    });
+
+  const columns = [
+    { id: 'entityType', name: t('label.entity-type') },
+    { id: 'requiredFields', name: t('label.required-fields') },
+    { id: 'enabled', name: t('label.enabled') },
+    { id: 'actions', name: t('label.action-plural') },
+  ];
+
+  const renderAddButton = () => {
+    const addButton = (
+      <Button
+        color="primary"
+        data-testid="add-intake-form"
+        iconTrailing={ChevronDown}
+        isDisabled={allEntityTypesCovered}
+        size="sm">
+        {t('label.add-entity', { entity: t('label.intake-form') })}
+      </Button>
+    );
+
+    return allEntityTypesCovered ? (
+      <Tooltip title={t('message.intake-form-all-types-covered')}>
+        {addButton}
+      </Tooltip>
+    ) : (
+      <Dropdown.Root>
+        {addButton}
+        <Dropdown.Popover className="tw:w-max">
+          <Dropdown.Menu items={addMenuItems}>
+            {(item: { id: string; label: string; isDisabled: boolean }) => (
+              <Dropdown.Item
+                data-testid={`add-${item.id}`}
+                id={item.id}
+                isDisabled={item.isDisabled}
+                label={item.label}
+                onAction={() => handleCreate(item.id as TargetEntityType)}
+              />
+            )}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
+    );
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}>
+    <Box className="tw:gap-4 tw:p-6" direction="col">
+      <Box align="center" justify="between">
         <PageHeader
           data={{
             header: t('label.intake-form-plural'),
             subHeader: t('message.intake-form-plural-description'),
           }}
         />
-        <Tooltip
-          title={
-            allEntityTypesCovered
-              ? t('message.intake-form-all-types-covered')
-              : ''
-          }>
-          <span>
-            <Button
-              color="primary"
-              data-testid="add-intake-form"
-              iconTrailing={ChevronDown}
-              isDisabled={allEntityTypesCovered}
-              size="sm"
-              onClick={openAddMenu}>
-              {t('label.add-entity', { entity: t('label.intake-form') })}
-            </Button>
-          </span>
-        </Tooltip>
-        <Menu
-          anchorEl={addMenuAnchor}
-          data-testid="add-intake-form-menu"
-          open={Boolean(addMenuAnchor)}
-          onClose={closeAddMenu}>
-          {Object.values(TargetEntityType).map((et) => {
-            const alreadyExists = existingEntityTypes.has(et);
-
-            return (
-              <MenuItem
-                data-testid={`add-${et}`}
-                disabled={alreadyExists}
-                key={et}
-                onClick={() => handleCreate(et)}>
-                {alreadyExists
-                  ? `${entityTypeLabel(et)} (${t('label.already-configured')})`
-                  : entityTypeLabel(et)}
-              </MenuItem>
-            );
-          })}
-        </Menu>
+        {renderAddButton()}
       </Box>
 
-      <TableContainer>
-        <Table data-testid="intake-forms-table" size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('label.entity-type')}</TableCell>
-              <TableCell>{t('label.required-fields')}</TableCell>
-              <TableCell>{t('label.enabled')}</TableCell>
-              <TableCell>{t('label.action-plural')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell align="center" colSpan={4}>
-                  <CircularProgress data-testid="intake-forms-loading" />
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && forms.length === 0 && (
-              <TableRow>
-                <TableCell align="center" colSpan={4}>
-                  <Typography color="text.secondary" variant="body2">
-                    {t('label.none')}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading &&
-              forms.map((record) => (
-                <TableRow
-                  data-testid={`row-${record.entityType}`}
-                  key={record.id}>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>
-                      {entityTypeLabel(record.entityType)}
+      <Table
+        aria-label={t('label.intake-form-plural')}
+        data-testid="intake-forms-table">
+        <Table.Header columns={columns}>
+          {(col) => <Table.Head id={col.id} key={col.id} label={col.name} />}
+        </Table.Header>
+        <Table.Body
+          items={loading ? [] : forms}
+          renderEmptyState={() =>
+            loading ? (
+              <Loader data-testid="intake-forms-loading" size="small" />
+            ) : (
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {t('label.none')}
+              </Typography>
+            )
+          }>
+          {(record: IntakeForm) => (
+            <Table.Row data-testid={`row-${record.entityType}`} id={record.id}>
+              <Table.Cell>
+                <Typography size="text-sm" weight="semibold">
+                  {entityTypeLabel(record.entityType)}
+                </Typography>
+              </Table.Cell>
+              <Table.Cell>
+                <Box className="tw:gap-1" direction="col">
+                  {(record.requiredFields ?? []).length === 0 ? (
+                    <Typography className="tw:text-tertiary" size="text-sm">
+                      {t('label.none')}
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="column" spacing={0.5}>
-                      {(record.requiredFields ?? []).map((rf) => (
-                        <Chip
-                          color={
-                            rf.fieldKind === FieldKind.CustomProperty
-                              ? 'secondary'
-                              : 'primary'
-                          }
-                          key={rf.fieldPath}
-                          label={
-                            <>
-                              {rf.fieldLabel}
-                              <Typography
-                                className="tw:ml-1"
-                                color="text.secondary"
-                                component="span"
-                                variant="caption">
-                                ({rf.fieldPath})
-                              </Typography>
-                            </>
-                          }
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                      {(record.requiredFields ?? []).length === 0 && (
-                        <Typography color="text.secondary" variant="body2">
-                          {t('label.none')}
+                  ) : (
+                    (record.requiredFields ?? []).map((rf) => (
+                      <Badge
+                        color={
+                          rf.fieldKind === FieldKind.CustomProperty
+                            ? 'gray'
+                            : 'brand'
+                        }
+                        key={rf.fieldPath}
+                        size="sm"
+                        type="pill-color">
+                        {rf.fieldLabel}
+                        <Typography
+                          as="span"
+                          className="tw:ml-1 tw:text-tertiary"
+                          size="text-xs">
+                          ({rf.fieldPath})
                         </Typography>
-                      )}
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={record.enabled ?? false}
-                      data-testid={`toggle-${record.entityType}`}
-                      onChange={(e) =>
-                        handleToggleEnabled(record, e.target.checked)
-                      }
+                      </Badge>
+                    ))
+                  )}
+                </Box>
+              </Table.Cell>
+              <Table.Cell>
+                <Toggle
+                  aria-label={t('label.enabled')}
+                  data-testid={`toggle-${record.entityType}`}
+                  isSelected={record.enabled ?? false}
+                  onChange={(enabled) => handleToggleEnabled(record, enabled)}
+                />
+              </Table.Cell>
+              <Table.Cell>
+                <Box className="tw:gap-2">
+                  <Tooltip title={t('label.edit')}>
+                    <Button
+                      color="tertiary"
+                      data-testid={`edit-${record.entityType}`}
+                      iconLeading={Edit01}
+                      size="sm"
+                      onClick={() => handleEdit(record)}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Tooltip title={t('label.edit')}>
-                        <IconButton
-                          data-testid={`edit-${record.entityType}`}
-                          size="small"
-                          onClick={() => handleEdit(record)}>
-                          <Edit01 height={16} width={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={t('label.delete')}>
-                        <IconButton
-                          color="error"
-                          data-testid={`delete-${record.entityType}`}
-                          size="small"
-                          onClick={() => setDeleteTarget(record)}>
-                          <Trash01 height={16} width={16} />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  </Tooltip>
+                  <Tooltip title={t('label.delete')}>
+                    <Button
+                      color="tertiary-destructive"
+                      data-testid={`delete-${record.entityType}`}
+                      iconLeading={Trash01}
+                      size="sm"
+                      onClick={() => setDeleteTarget(record)}
+                    />
+                  </Tooltip>
+                </Box>
+              </Table.Cell>
+            </Table.Row>
+          )}
+        </Table.Body>
+      </Table>
 
-      <Dialog
-        data-testid="intake-form-delete-confirm"
-        open={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}>
-        <DialogTitle>
-          {t('label.delete-entity', {
-            entity: t('label.entity-intake-form', {
-              entity: deleteTarget
-                ? entityTypeLabel(deleteTarget.entityType)
-                : '',
-            }),
-          })}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t('message.delete-intake-form-confirmation')}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            color="tertiary"
-            size="sm"
-            onClick={() => setDeleteTarget(null)}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            color="primary-destructive"
-            size="sm"
-            onClick={handleDeleteConfirm}>
-            {t('label.delete')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ModalOverlay
+        isDismissable
+        isOpen={Boolean(deleteTarget)}
+        onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
+        <Modal>
+          <Dialog
+            showCloseButton
+            data-testid="intake-form-delete-confirm"
+            title={t('label.delete-entity', {
+              entity: t('label.entity-intake-form', {
+                entity: deleteTarget
+                  ? entityTypeLabel(deleteTarget.entityType)
+                  : '',
+              }),
+            })}
+            width={480}
+            onClose={() => setDeleteTarget(null)}>
+            <Dialog.Content>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {t('message.delete-intake-form-confirmation')}
+              </Typography>
+            </Dialog.Content>
+            <Dialog.Footer>
+              <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+                <Button
+                  color="tertiary"
+                  size="sm"
+                  onPress={() => setDeleteTarget(null)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary-destructive"
+                  size="sm"
+                  onPress={handleDeleteConfirm}>
+                  {t('label.delete')}
+                </Button>
+              </div>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
 
       {modalState.open && (
         <IntakeFormDesignerModal
           entityType={modalState.entityType}
           initialValue={modalState.initialValue}
           open={modalState.open}
-          onCancel={() =>
-            setModalState({
-              open: false,
-              entityType: TargetEntityType.DataProduct,
-              initialValue: null,
-            })
-          }
+          onCancel={closeModal}
           onSubmit={handleSubmit}
         />
       )}
