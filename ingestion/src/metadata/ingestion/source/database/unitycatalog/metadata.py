@@ -72,7 +72,6 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import (
     get_connection,
     get_sqlalchemy_connection,
@@ -131,7 +130,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         self._state_lock = RLock()
         self.external_location_map = {}
         self.client = get_connection(self.service_connection)
-        self.api_client = UnityCatalogClient(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
