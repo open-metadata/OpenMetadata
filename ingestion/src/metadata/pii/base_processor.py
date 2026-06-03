@@ -112,7 +112,7 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
-            column = next((c for c in columns if c.name == column_name), None)
+            column = next((c for c in columns if c.name.root == column_name.root), None)
             if not column:
                 continue
 
