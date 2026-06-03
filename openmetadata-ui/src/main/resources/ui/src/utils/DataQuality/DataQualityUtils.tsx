@@ -47,7 +47,6 @@ import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type {
   TestCase,
   TestCaseParameterValue,
