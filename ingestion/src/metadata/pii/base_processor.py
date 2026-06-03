@@ -94,26 +94,23 @@ class AutoClassificationProcessor(Processor, ABC):
         return adapter.get_columns(entity) if adapter else None
 
     @staticmethod
-    def _find_column_in_record_children(
-        columns: list[Column], column_name: str, depth: int = 0, max_depth: int = 10
-    ) -> Column | None:
+    def _find_column_by_fqn(columns: list[Column], fqn: str, depth: int = 0, max_depth: int = 10) -> Column | None:
         """
-        Recursively search for a column in RECORD field children.
-        Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
-        Used to match flattened sample data columns back to their original nested schema locations for tagging.
+        Recursively search for a column by fullyQualifiedName in nested RECORD structures.
+        FQN-based matching is robust for duplicate leaf names across different RECORD branches.
+        Used as fallback when sample data column name is an FQN (nested RECORD case).
         """
         if depth > max_depth:
             return None
         for col in columns:
+            if col.fullyQualifiedName and col.fullyQualifiedName.root == fqn:
+                return col
             if col.children:
-                for child in col.children:
-                    if child.name.root == column_name:
-                        return child
-                    found = AutoClassificationProcessor._find_column_in_record_children(
-                        [child], column_name, depth=depth + 1, max_depth=max_depth
-                    )
-                    if found:
-                        return found
+                found = AutoClassificationProcessor._find_column_by_fqn(
+                    [col for col in col.children if col], fqn, depth=depth + 1, max_depth=max_depth
+                )
+                if found:
+                    return found
         return None
 
     @final
@@ -135,9 +132,14 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
-            column = next((c for c in columns if c.name.root == column_name.root), None)
+            col_lookup = column_name.root
+            column = next(
+                (c for c in columns if c.fullyQualifiedName and c.fullyQualifiedName.root == col_lookup), None
+            )
             if not column:
-                column = self._find_column_in_record_children(columns, column_name.root)
+                column = next((c for c in columns if c.name.root == col_lookup), None)
+            if not column:
+                column = self._find_column_by_fqn(columns, col_lookup)
             if not column:
                 continue
 

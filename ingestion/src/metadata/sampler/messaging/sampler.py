@@ -81,19 +81,22 @@ class MessagingSampler(SamplerInterface):
         Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
         For flat messages where schemaFields children are top-level JSON keys, unpacking produces correct columns.
         For nested messages, unpacked child names won't match top-level JSON keys and will yield None values.
+
+        Column names use fullyQualifiedName to preserve full nesting path and avoid collisions
+        when multiple RECORD branches have fields with the same name (e.g., two 'id' fields in different records).
         """
         if depth > max_depth:
             logger.warning(
                 f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {field.name.root}"
             )
-            return [SQALikeColumn(field.name.root, field.dataType)]
+            return [SQALikeColumn(field.fullyQualifiedName.root, field.dataType)]
 
         if field.dataType == DataTypeTopic.RECORD and field.children:
             result = []
             for child in field.children:
                 result.extend(self._flatten_field(child, depth=depth + 1, max_depth=max_depth))
             return result
-        return [SQALikeColumn(field.name.root, field.dataType)]
+        return [SQALikeColumn(field.fullyQualifiedName.root, field.dataType)]
 
     @abstractmethod
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
