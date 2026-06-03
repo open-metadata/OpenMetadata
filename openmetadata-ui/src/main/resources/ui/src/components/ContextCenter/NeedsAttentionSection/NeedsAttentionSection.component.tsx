@@ -89,7 +89,7 @@ const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({ items }) => {
             as="div"
             className="tw:text-quaternary tw:mt-0.5"
             size="text-xs">
-            {t('message.stale-unused-or-failed-context')}
+            {t('label.stale-unused-or-failed-context')}
           </Typography>
         </div>
         <Badge color="warning" size="sm" type="color">
