@@ -217,7 +217,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   return (
     <Card
       className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
-      data-testid={displayName || name}>
+      data-testid={isQuickLink ? displayName || name : 'knowledge-card'}>
       <Link
         className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
         data-testid={isQuickLink ? 'knowledge-link' : 'knowledge-page-link'}
@@ -230,14 +230,17 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           <Box align="center" className="tw:max-w-[70%]" gap={2}>
             <Typography
               ellipsis
-              data-testid="entity-header-display-name"
+              data-testid="knowledge-card-title"
               size="text-lg"
               weight="semibold">
               {getKnowledgePageName(knowledgePage, t)}
             </Typography>
             {isQuickLink && !readonly && quickLinkActions}
           </Box>
-          <Typography className="tw:text-gray-500" size="text-xs">
+          <Typography
+            className="tw:text-gray-500"
+            data-testid="updated-at"
+            size="text-xs">
             {t('label.last-edited-time', {
               time: getShortRelativeTime(updatedAt),
             })}
@@ -248,7 +251,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         {description.trim() ? (
           <Typography
             className="tw:text-gray-600 tw:line-clamp-2 tw:leading-[1.55]"
-            data-testid="knowledge-description"
+            data-testid="knowledge-card-description"
             size="text-sm">
             {stripMarkdown(description)}
           </Typography>
