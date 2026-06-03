@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
+import org.openmetadata.service.search.SearchFieldLimits;
+import org.openmetadata.service.search.SearchIndexSettings;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
@@ -189,8 +191,10 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
     if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+      String contentWithLimits =
+          SearchIndexSettings.harden(indexMappingContent, SearchFieldLimits.active());
       // Transform mapping content for OpenSearch compatibility (e.g., flattened -> flat_object)
-      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent);
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(contentWithLimits);
 
       // Parse the mapping content
       JsonNode rootNode = JsonUtils.readTree(transformedContent);

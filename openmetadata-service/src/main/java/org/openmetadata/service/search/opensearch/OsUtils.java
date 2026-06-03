@@ -635,6 +635,9 @@ public class OsUtils {
                 JsonNode typeNode = fieldObj.get("type");
                 if (typeNode != null && "flattened".equals(typeNode.asText())) {
                   fieldObj.put("type", "flat_object");
+                  // flat_object does not support the ES flattened guard parameters
+                  fieldObj.remove("ignore_above");
+                  fieldObj.remove("depth_limit");
                   LOG.debug(
                       "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
                 }
