@@ -443,7 +443,8 @@ public class OpenSearchIndexManager implements IndexManagementClient {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.removeIndex(
-                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
+                              removeIndexBuilder ->
+                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
                 }
                 // Finally, add aliases to the new index
                 for (String alias : finalAliases) {
