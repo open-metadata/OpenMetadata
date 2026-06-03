@@ -14,6 +14,7 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 
+import json
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Optional, TypeVar, Union
@@ -62,7 +63,7 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndexSampleData,
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
@@ -79,7 +80,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.barrier import Barrier
@@ -993,6 +993,21 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """Container-specific sample data ingestion implementation"""
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
+            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            return True
+        return False
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Topic, sample_data: TableData) -> bool:
+        """Topic-specific sample data ingestion implementation"""
+        messages = []
+        if sample_data.rows:
+            for row in sample_data.rows:
+                row_dict = {col.name.root: row[idx] for idx, col in enumerate(sample_data.columns)}
+                messages.append(json.dumps(row_dict))
+        topic_sample_data = TopicSampleData(messages=messages)
+        result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
+        if result:
             logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
             return True
         return False
