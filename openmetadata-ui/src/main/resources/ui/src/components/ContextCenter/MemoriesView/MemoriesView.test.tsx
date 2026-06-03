@@ -14,7 +14,6 @@ import { render, screen } from '@testing-library/react';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
-
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
@@ -124,9 +123,7 @@ describe('MemoriesView', () => {
   it('renders no-data message when data is empty and not loading', () => {
     render(<MemoriesView data={[]} isLoading={false} />);
 
-    expect(
-      screen.getByText('label.no-entity-available')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {
