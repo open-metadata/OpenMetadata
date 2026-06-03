@@ -214,13 +214,13 @@ class TopicAdapter(EntityAdapter[Topic]):
     patch_fields: ClassVar[list[str]] = ["tags", "messageSchema"]
 
     def get_columns(self, entity: Topic) -> list[Column] | None:
-        if entity.messageSchema and entity.messageSchema.schemaFields:
-            return entity.messageSchema.schemaFields  # type: ignore[return-value]
+        if entity.messageSchema and hasattr(entity.messageSchema, "schemaFields"):
+            return entity.messageSchema.schemaFields
         return None
 
-    def set_columns(self, entity: Topic, columns) -> None:
+    def set_columns(self, entity: Topic, columns: list[Column]) -> None:
         if entity.messageSchema:
-            entity.messageSchema.schemaFields = columns  # type: ignore[assignment]
+            entity.messageSchema.schemaFields = columns
 
     def build_sampler_kwargs(
         self,

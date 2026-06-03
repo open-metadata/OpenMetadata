@@ -21,6 +21,7 @@ from urllib.parse import quote_plus
 from databricks.sdk import WorkspaceClient
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -62,6 +63,9 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
 
@@ -130,6 +134,18 @@ def test_connection(
     """
     table_obj = DatabricksTable()
     engine = get_sqlalchemy_connection(service_connection)
+
+    def test_database_query(engine: Engine, statement: str):
+        """
+        Method used to execute the given query and fetch a result
+        to test if user has access to the tables specified
+        in the sql statement
+        """
+        try:
+            with engine.connect() as connection:  # noqa: PLR1704
+                connection.execute(text(statement)).fetchone()
+        except DatabaseError as soe:
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
     def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
         for catalog in connection.catalogs.list():

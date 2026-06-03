@@ -28,5 +28,5 @@ class DeleteEntity(BaseModel):
     """
 
     entity: Entity
-    recursive: Optional[bool] = False  # noqa: UP045
+    mark_deleted_entities: Optional[bool] = False  # noqa: UP045
     dispatch_async: Optional[bool] = False  # noqa: UP045

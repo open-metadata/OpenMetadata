@@ -83,6 +83,7 @@ class MessagingServiceTopology(ServiceTopology):
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             )
         ],
         children=["topic"],
@@ -96,6 +97,7 @@ class MessagingServiceTopology(ServiceTopology):
                 context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=TopicSampleData,
@@ -236,7 +238,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
-                recursive=self.source_config.markDeletedTopics,
+                mark_deleted_entity=self.source_config.markDeletedTopics,
                 params={"service": self.context.get().messaging_service},
             )
 

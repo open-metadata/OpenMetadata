@@ -13,10 +13,6 @@ Pub/Sub service spec
 """
 
 from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
-from metadata.sampler.messaging.pubsub.sampler import PubSubSampler
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(
-    metadata_source_class=PubsubSource,
-    sampler_class=PubSubSampler,
-)
+ServiceSpec = BaseSpec(metadata_source_class=PubsubSource)

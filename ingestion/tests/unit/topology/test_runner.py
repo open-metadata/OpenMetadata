@@ -15,7 +15,7 @@ Check that we are properly running nodes and stages
 
 from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -28,6 +28,7 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.source_hash import generate_source_hash
 
 
@@ -102,38 +103,6 @@ class MockSource(TopologyRunnerMixin):
         yield "hello"
 
 
-class OverwriteFalseTopology(ServiceTopology):
-    """A single-stage topology whose stage is not overwritable, like a service node."""
-
-    root: Annotated[TopologyNode, Field(description="Root node")] = TopologyNode(
-        producer="get_schemas",
-        stages=[
-            NodeStage(
-                type_=MockSchema,
-                processor="yield_schemas",
-                context="schemas",
-                overwrite=False,
-            )
-        ],
-    )
-
-
-class OverwriteFalseSource(TopologyRunnerMixin):
-    topology = OverwriteFalseTopology()
-    context = TopologyContextManager(topology)
-
-    @staticmethod
-    def get_schemas():
-        yield "schema1"
-
-    @staticmethod
-    def yield_schemas(name: str):
-        yield Either(right=MockSchema(name=name))
-
-    def _is_force_overwrite_enabled(self) -> bool:
-        return False
-
-
 class TopologyRunnerTest(TestCase):
     """Validate filter patterns"""
 
@@ -154,7 +123,7 @@ class TopologyRunnerTest(TestCase):
         )
 
     def test_node_and_stage(self):
-        """Every produced entity is yielded straight to the sink with its sourceHash stamped"""
+        """The step behaves properly"""
         self.source.context = TopologyContextManager(self.source.topology)
         self.source.context.set_threads(0)
 
@@ -259,60 +228,40 @@ class TopologyRunnerTest(TestCase):
         )
         self.assertEqual(list(self.source._run_node_post_process(self.source.topology.tables)), [])
 
-    def test_no_per_entity_api_calls(self):
-        """The runner must not fetch existing entities per produced entity.
+    def test_init_hash_dict(self):
+        """We get the right cache dict"""
 
-        Change detection now lives server-side in the bulk endpoint, so a normal run must
-        never call get_by_name or list_all_entities for child entities - only the producers
-        and the sink are exercised.
-        """
         local_source = MockSource()
-        local_source.context = TopologyContextManager(local_source.topology)
-        local_source.context.set_threads(0)
-        local_source.metadata = MagicMock()
 
-        with patch(
-            "metadata.ingestion.models.topology.TopologyContextManager.pop",
-            return_value=None,
-        ):
-            list(local_source._iter())
+        # clear cache before test
+        local_source.cache.clear()
 
-        local_source.metadata.get_by_name.assert_not_called()
-        local_source.metadata.list_all_entities.assert_not_called()
+        mock_list_all_entities = [
+            MockTable(
+                name="table1",
+                fullyQualifiedName="schema1.table1",
+                sourceHash="c238b14e87fe6d54e35dbca4a97e1e83",
+                columns=["c1", "c2"],
+            ),
+            MockTable(
+                name="table2",
+                fullyQualifiedName="schema1.table2",
+                sourceHash="acd38ff1a662adc0c88225f2666ff423",
+                columns=["c1", "c2"],
+            ),
+        ]
 
-    def test_overwrite_false_skips_yield_when_entity_exists(self):
-        """A non-overwritable stage returns the existing entity from the API and yields nothing."""
-        local_source = OverwriteFalseSource()
-        local_source.context = TopologyContextManager(local_source.topology)
-        local_source.context.set_threads(0)
-        local_source.metadata = MagicMock()
-        local_source.metadata.get_by_name.return_value = MockSchema(name="schema1", fullyQualifiedName="schema1")
+        with patch.object(OpenMetadata, "list_all_entities", return_value=mock_list_all_entities):
+            local_source.metadata = OpenMetadata
 
-        with patch(
-            "metadata.ingestion.models.topology.TopologyContextManager.pop",
-            return_value=None,
-        ):
-            processed = list(local_source._iter())
+            local_source.get_fqn_source_hash_dict(parent_type=MockSchema, child_type=MockTable, entity_fqn="fqn")
 
-        self.assertEqual(processed, [])
-        local_source.metadata.get_by_name.assert_called_once()
-
-    def test_overwrite_false_yields_when_entity_missing(self):
-        """A non-overwritable stage still yields when the entity does not yet exist."""
-        local_source = OverwriteFalseSource()
-        local_source.context = TopologyContextManager(local_source.topology)
-        local_source.context.set_threads(0)
-        local_source.metadata = MagicMock()
-        local_source.metadata.get_by_name.return_value = None
-
-        with patch(
-            "metadata.ingestion.models.topology.TopologyContextManager.pop",
-            return_value=None,
-        ):
-            processed = list(local_source._iter())
-
-        yielded = [either.right for either in processed if hasattr(either, "right")]
         self.assertEqual(
-            yielded,
-            [MockSchema(name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb")],
+            dict(local_source.cache),
+            {
+                MockTable: {
+                    "schema1.table1": "c238b14e87fe6d54e35dbca4a97e1e83",
+                    "schema1.table2": "acd38ff1a662adc0c88225f2666ff423",
+                }
+            },
         )

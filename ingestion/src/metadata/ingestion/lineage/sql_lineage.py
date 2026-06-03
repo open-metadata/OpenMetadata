@@ -52,6 +52,10 @@ from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineagePa
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
@@ -100,6 +104,7 @@ search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
 
 
+@calculate_execution_time(context="GetDatabaseServiceType")
 def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Optional[str]:  # noqa: UP045
     """
     Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
@@ -174,6 +179,7 @@ def normalize_table_params_by_service(
     return database, database_schema
 
 
+@calculate_execution_time(context="SearchTableEntities")
 def search_table_entities(
     metadata: OpenMetadata,
     service_names: Union[str, List[str]],  # noqa: UP006, UP007
@@ -481,6 +487,7 @@ def __process_udf_table_names(
         )
 
 
+@calculate_execution_time_generator(context="GetSourceTableNames")
 def get_source_table_names(
     metadata: OpenMetadata,
     dialect: Dialect,
@@ -786,6 +793,7 @@ def populate_column_lineage_map(raw_column_lineage):
 
 
 # pylint: disable=too-many-locals
+@calculate_execution_time_generator(context="GetLineageByQuery")
 def get_lineage_by_query(
     metadata: OpenMetadata,
     service_names: Union[str, List[str]],  # noqa: UP006, UP007
@@ -901,6 +909,7 @@ def get_lineage_by_query(
         )
 
 
+@calculate_execution_time_generator(context="GetLineageViaTableEntity")
 def get_lineage_via_table_entity(
     metadata: OpenMetadata,
     table_entity: Table,
@@ -997,6 +1006,7 @@ def _build_temp_table_lineage(
     return hops
 
 
+@calculate_execution_time(context="GetLineageForPath")
 def _get_lineage_for_path(
     from_fqn: str,
     to_fqn: str,
@@ -1046,6 +1056,7 @@ def _get_lineage_for_path(
     return None
 
 
+@calculate_execution_time_generator(context="ProcessSequence")
 def _process_sequence(
     sequence: List[Any],  # noqa: UP006
     graph: DiGraph,
@@ -1096,6 +1107,7 @@ def _process_sequence(
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
 
 
+@calculate_execution_time(context="GetPathsFromSubtree")
 def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:  # noqa: UP006
     """
     Get all paths from root nodes to leaf nodes in a subtree
@@ -1116,6 +1128,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:  # noqa: UP006
     # Only process roots that have at least one outgoing edge
     non_isolated_roots = [node for node in root_nodes if node not in leaf_set]
 
+    @calculate_execution_time(context="ProcessRootNode")
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
     def process_root_node(root, leaf_nodes):
         """Process a single root node and return all paths to leaf nodes."""
@@ -1165,6 +1178,7 @@ def _collect_temp_lineage_hops(paths: List[List[Any]], graph: DiGraph) -> Dict[t
     return hops_map
 
 
+@calculate_execution_time_generator(context="GetLineageByGraph")
 def get_lineage_by_graph(
     graph: Optional[DiGraph],  # noqa: UP045
     metadata: OpenMetadata,
@@ -1197,6 +1211,7 @@ def get_lineage_by_graph(
             yield from _process_sequence(path, subtree, metadata, hops_map, seen_pairs)
 
 
+@calculate_execution_time_generator(context="GetLineageByProcedureGraph")
 def get_lineage_by_procedure_graph(
     procedure_graph_map: Optional[Dict],  # noqa: UP006, UP045
     metadata: OpenMetadata,

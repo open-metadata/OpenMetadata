@@ -17,6 +17,12 @@ import time
 import traceback
 from typing import Any, List  # noqa: UP035
 
+try:
+    from confluent_kafka import Consumer, KafkaException
+except ImportError:
+    Consumer = None  # type: ignore
+    KafkaException = None  # type: ignore
+
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
@@ -49,6 +55,10 @@ class KafkaSampler(MessagingSampler):
         return topic_name
 
     def _build_consumer_config(self) -> dict[str, Any]:
+        from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (  # noqa: PLC0415
+            SecurityProtocol,
+        )
+
         config = {
             "bootstrap.servers": self.service_connection_config.bootstrapServers,
             "group.id": "openmetadata-auto-classification",
@@ -61,9 +71,13 @@ class KafkaSampler(MessagingSampler):
             config["sasl.username"] = self.service_connection_config.saslUsername
         if self.service_connection_config.saslPassword:
             config["sasl.password"] = self.service_connection_config.saslPassword.get_secret_value()
-        if self.service_connection_config.saslMechanism:
+        if self.service_connection_config.saslUsername and self.service_connection_config.saslMechanism:
             config["sasl.mechanism"] = self.service_connection_config.saslMechanism.value
-        if self.service_connection_config.securityProtocol:
+        if (
+            self.service_connection_config.saslUsername
+            and self.service_connection_config.securityProtocol
+            and self.service_connection_config.securityProtocol != SecurityProtocol.PLAINTEXT
+        ):
             config["security.protocol"] = self.service_connection_config.securityProtocol.value
 
         consumer_config_ssl = getattr(self.service_connection_config, "consumerConfigSSL", None)
@@ -85,9 +99,7 @@ class KafkaSampler(MessagingSampler):
             return {"message": str(raw_value)}
 
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
-        try:
-            from confluent_kafka import Consumer, KafkaException  # noqa: PLC0415
-        except ImportError:
+        if not Consumer:
             logger.warning("confluent_kafka not installed; cannot sample Kafka topics")
             return []
 

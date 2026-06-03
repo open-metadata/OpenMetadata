@@ -22,6 +22,39 @@ class DatabricksTable(BaseModel):
     name: Optional[str] = None  # noqa: UP045
     catalog_name: Optional[str] = None  # noqa: UP045
     schema_name: Optional[str] = None  # noqa: UP045
+    table_type: Optional[str] = None  # noqa: UP045
+    lineage_timestamp: Optional[str] = None  # noqa: UP045
+
+
+class DatabricksColumn(BaseModel):
+    name: Optional[str] = None  # noqa: UP045
+    catalog_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+
+
+class FileInfo(BaseModel):
+    path: Optional[str] = None  # noqa: UP045
+    has_permission: Optional[bool] = None  # noqa: UP045
+    securable_name: Optional[str] = None  # noqa: UP045
+    storage_location: Optional[str] = None  # noqa: UP045
+    securable_type: Optional[str] = None  # noqa: UP045
+    lineage_timestamp: Optional[str] = None  # noqa: UP045
+
+
+class LineageEntity(BaseModel):
+    tableInfo: Optional[DatabricksTable] = None  # noqa: N815, UP045
+    fileInfo: Optional[FileInfo] = None  # noqa: N815, UP045
+
+
+class LineageTableStreams(BaseModel):
+    upstreams: Optional[List[LineageEntity]] = []  # noqa: UP006, UP045
+    downstreams: Optional[List[LineageEntity]] = []  # noqa: UP006, UP045
+
+
+class LineageColumnStreams(BaseModel):
+    upstream_cols: Optional[List[DatabricksColumn]] = []  # noqa: UP006, UP045
+    downstream_cols: Optional[List[DatabricksColumn]] = []  # noqa: UP006, UP045
 
 
 class ForeignConstrains(BaseModel):

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Runtime diagnostics for ingestion workflows — public API.
+Runtime diagnostics for ingestion workflows.
 
 When `workflowConfig.loggerLevel == DEBUG`, `install(workflow)` starts:
   - operation registry  (what each thread is doing right now)
@@ -17,16 +17,8 @@ When `workflowConfig.loggerLevel == DEBUG`, `install(workflow)` starts:
   - watchdog thread     (auto-detect hangs at 60s, auto-dump at 300s)
   - heartbeat thread    (one structured progress line every 30s)
   - memory tracker      (rss/cgroup on heartbeat, gc.get_objects on dump)
-  - time-accounting     (100ms sampling, end-of-run wall-time-by-method)
 
 When off, `operation()` is a no-op context manager — no threads, no overhead.
-
-Architecture
-------------
-The handler singleton, log emitter, and any module-shared state live in
-`kernel.py` — that's a dependency-free leaf module, so every collector,
-sampler, monitor, and reporter top-imports from it without risking a cycle.
-This file is a thin public API + composition entry-point on top.
 
 Output channels
 ---------------
@@ -47,25 +39,63 @@ RLocks and is not safe to call from signal context.
 """
 
 import logging
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from typing import Any
+from typing import Any, Optional
 
-from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
-from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
-from metadata.ingestion.diagnostics.kernel import (
-    emit_log,
-    get_handler,
-    set_handler,
-)
+from metadata.utils.logger import diag_logger
 
-# Back-compat alias: existing seams still import `_get_state` from the facade.
-_get_state = get_handler
+WATCHDOG_TICK_SECONDS = 10
+STUCK_WARN_SECONDS = 60
+AUTO_DUMP_SECONDS = 300
+REDUMP_THROTTLE_SECONDS = 300
+HEARTBEAT_INTERVAL_SECONDS = 30
+MEMORY_SAMPLE_INTERVAL_SECONDS = 30
+KWARGS_TRUNCATION_CHARS = 2000
+OP_STACK_DEPTH_CAP = 20
+DIAG_LOG_PREFIX = "diag"
+
+# Pre-OOM tripwire thresholds. PSI `some avg10` is a percentage 0..100
+# representing how much of the last 10 s the cgroup was stalled on
+# memory; sustained values >10% reliably predict OOMKill within tens of
+# seconds on gradual leaks (see /proc/pressure docs).
+PRESSURE_PSI_AVG10_THRESHOLD = 10.0
+# Memory-pressure tripwire dumps are throttled to one per reason per
+# 5 minutes so we don't flood the logs with snapshots while pressure is
+# sustained.
+PRESSURE_DUMP_THROTTLE_SECONDS = 300
+
+_state: Optional["_DiagnosticsState"] = None
+
+
+class _DiagnosticsState:
+    """Holds references to the singletons installed by `install()`."""
+
+    def __init__(
+        self,
+        registry: Any,
+        http_tracker: Any,
+        memory_tracker: Any,
+        watchdog: Any,
+        heartbeat: Any,
+        signals_installed: bool,
+        db_introspector: Any,
+        time_sampler: Any,
+    ) -> None:
+        self.registry = registry
+        self.http_tracker = http_tracker
+        self.memory_tracker = memory_tracker
+        self.watchdog = watchdog
+        self.heartbeat = heartbeat
+        self.signals_installed = signals_installed
+        self.db_introspector = db_introspector
+        self.time_sampler = time_sampler
 
 
 def is_active() -> bool:
     """True when diagnostics has been installed and is running."""
-    return get_handler() is not None
+    return _state is not None
 
 
 @contextmanager
@@ -73,38 +103,17 @@ def operation(name: str, **kwargs: Any) -> Iterator[None]:
     """Register the current thread as performing `name`.
 
     When diagnostics is not installed, this is a zero-overhead no-op so
-    callers can sprinkle it through hot paths without worrying. When on,
-    push/pop are wrapped so a bug in diagnostics can never propagate into
-    ingestion — the helpers log the failure and return cleanly.
+    callers can sprinkle it through hot paths without worrying.
     """
-    handler = get_handler()
-    if handler is None:
+    state = _state
+    if state is None:
         yield
         return
-    registry, token = _safe_push_operation(handler, name, kwargs)
+    token = state.registry.push(name, kwargs)
     try:
         yield
     finally:
-        _safe_pop_operation(registry, token)
-
-
-def _safe_push_operation(handler: Any, name: str, kwargs: dict) -> tuple[Any, Any]:
-    """Push the op onto the registry; on any failure log and return (None, None)."""
-    try:
-        registry = handler.aspect(OperationRegistry)
-        return registry, registry.push(name, kwargs)
-    except Exception as exc:
-        emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.operation.push.error err={exc!r}")
-        return None, None
-
-
-def _safe_pop_operation(registry: Any, token: Any) -> None:
-    if registry is None or token is None:
-        return
-    try:
-        registry.pop(token)
-    except Exception as exc:
-        emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.operation.pop.error err={exc!r}")
+        state.registry.pop(token)
 
 
 def install(workflow: Any) -> bool:
@@ -115,22 +124,73 @@ def install(workflow: Any) -> bool:
     DEBUG or installation fails. Always best-effort: a diagnostics
     failure must never bring down the workflow.
     """
-    if get_handler() is not None:
+    global _state  # noqa: PLW0603  module-level singleton
+
+    if _state is not None:
         return True
 
     if not _logger_level_is_debug(workflow):
         return False
 
+    # Imports are deferred to keep `is_active()` / no-op `operation()` callers
+    # from paying the import cost on every workflow start.
     try:
-        from metadata.ingestion.diagnostics.handler import DiagnosticsHandler  # noqa: PLC0415
+        from metadata.ingestion.diagnostics import stage_progress as _stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.heartbeat import HeartbeatThread  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.http_introspect import HttpTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.memory import MemoryTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.signals import install_signal_handlers  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.time_accounting import TimeAccountingSampler  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.watchdog import WatchdogThread  # noqa: PLC0415
 
-        handler = DiagnosticsHandler.build(workflow)
-        handler.start()
-        set_handler(handler)
+        registry = OperationRegistry()
+        http_tracker = HttpTracker()
+        memory_tracker = MemoryTracker()
+        _stage_progress.install(_stage_progress.StageProgressCollector())
+        db_introspector = DbIntrospector(registry)
+        db_introspector.install()
+        time_sampler = TimeAccountingSampler(registry)
+        time_sampler.start()
+
+        signals_installed = install_signal_handlers(
+            registry=registry,
+            http_tracker=http_tracker,
+            memory_tracker=memory_tracker,
+            workflow=workflow,
+        )
+
+        watchdog = WatchdogThread(
+            registry=registry,
+            http_tracker=http_tracker,
+            memory_tracker=memory_tracker,
+            workflow=workflow,
+        )
+        watchdog.start()
+
+        heartbeat = HeartbeatThread(
+            registry=registry,
+            http_tracker=http_tracker,
+            memory_tracker=memory_tracker,
+            workflow=workflow,
+        )
+        heartbeat.start()
+
+        _state = _DiagnosticsState(
+            registry=registry,
+            http_tracker=http_tracker,
+            memory_tracker=memory_tracker,
+            watchdog=watchdog,
+            heartbeat=heartbeat,
+            signals_installed=signals_installed,
+            db_introspector=db_introspector,
+            time_sampler=time_sampler,
+        )
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
         _log_install_failure(exc)
-        set_handler(None)
+        _state = None
         return False
     _log_install_banner()
     return True
@@ -143,12 +203,25 @@ def shutdown() -> None:
     workflow and so a subsequent `install()` (e.g. in a test) starts
     fresh.
     """
-    handler = get_handler()
-    if handler is None:
+    global _state  # noqa: PLW0603  module-level singleton
+    state = _state
+    if state is None:
         return
-    set_handler(None)
-    handler.emit_summary()
-    handler.stop()
+    _state = None
+    # Emit the time-budget summary BEFORE stopping the sampler — gives
+    # the operator one line in `kubectl logs` / S3 explaining where the
+    # workflow actually spent its wall clock.
+    with suppress(Exception):
+        emit_log(logging.INFO, state.time_sampler.summary_log_line())
+    for thread in (state.watchdog, state.heartbeat, state.time_sampler):
+        with suppress(Exception):
+            thread.stop()
+    with suppress(Exception):
+        state.db_introspector.uninstall()
+    with suppress(Exception):
+        from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+
+        stage_progress.uninstall()
 
 
 def dump(reason: str = "manual") -> None:
@@ -157,9 +230,17 @@ def dump(reason: str = "manual") -> None:
     Safe to call from any thread. Used by signal handlers and by the
     watchdog auto-dump path.
     """
-    handler = get_handler()
-    if handler is not None:
-        handler.emit_dump(reason)
+    state = _state
+    if state is None:
+        return
+    from metadata.ingestion.diagnostics.signals import emit_full_dump  # noqa: PLC0415
+
+    emit_full_dump(
+        reason=reason,
+        registry=state.registry,
+        http_tracker=state.http_tracker,
+        memory_tracker=state.memory_tracker,
+    )
 
 
 def dump_on_memory_error():
@@ -206,6 +287,26 @@ def _logger_level_is_debug(workflow: Any) -> bool:
         return False
 
 
+def emit_log(level: int, message: str) -> None:
+    """Emit a diagnostics line through the `metadata.Diagnostics` logger.
+
+    Belt-and-braces: if the logger itself fails (broken handler, lock
+    contention from the very issue we're diagnosing), fall back to a
+    raw stderr write so the line still reaches `kubectl logs`.
+
+    Must NOT be called from signal-handler context — use
+    `sys.stderr.write` directly for that.
+    """
+    try:
+        diag_logger().log(level, message)
+    except Exception:
+        try:
+            sys.stderr.write(message.rstrip("\n") + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+
 def _log_install_banner() -> None:
     emit_log(
         logging.INFO,
@@ -215,3 +316,8 @@ def _log_install_banner() -> None:
 
 def _log_install_failure(exc: BaseException) -> None:
     emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.install failed err={exc!r}")
+
+
+def _get_state() -> Optional["_DiagnosticsState"]:
+    """Test-only accessor."""
+    return _state

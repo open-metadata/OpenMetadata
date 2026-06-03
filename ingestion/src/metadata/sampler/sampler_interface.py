@@ -32,6 +32,7 @@ from metadata.utils.constants import (
     SAMPLE_DATA_DEFAULT_COUNT,
     SAMPLE_DATA_MAX_CELL_LENGTH,
 )
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -153,6 +154,7 @@ class SamplerInterface(ABC):
             return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
         return value
 
+    @calculate_execution_time(store=False)
     def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:  # noqa: UP045
         """Fetch and ingest sample data
 

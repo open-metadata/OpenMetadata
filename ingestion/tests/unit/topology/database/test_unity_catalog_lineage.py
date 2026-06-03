@@ -40,6 +40,12 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.unitycatalog.lineage import (
     UnitycatalogLineageSource,
 )
+from metadata.ingestion.source.database.unitycatalog.models import (
+    DatabricksTable,
+    FileInfo,
+    LineageEntity,
+    LineageTableStreams,
+)
 
 MOCK_CONFIG = {
     "source": {
@@ -505,3 +511,66 @@ class TestContainerColumnLineage:
         assert result.source == LineageSource.ExternalTableLineage
         assert result.columnsLineage[0].fromColumns[0].root == "service.container.id"
         assert result.columnsLineage[0].toColumn.root == "service.db.schema.test_table.id"
+
+
+class TestLineageTableStreamsModel:
+    def test_with_table_info(self):
+        upstream_table = DatabricksTable(
+            name="source_table",
+            catalog_name="demo-test-cat",
+            schema_name="test-schema",
+            table_type="TABLE",
+            lineage_timestamp="2025-10-08 11:16:26.0",
+        )
+
+        lineage_streams = LineageTableStreams(
+            upstreams=[LineageEntity(tableInfo=upstream_table)],
+            downstreams=[],
+        )
+
+        assert len(lineage_streams.upstreams) == 1
+        assert lineage_streams.upstreams[0].tableInfo.name == "source_table"
+        assert lineage_streams.upstreams[0].fileInfo is None
+
+    def test_with_file_info(self):
+        file_info = FileInfo(
+            path="s3://bucket/path/file.parquet",
+            has_permission=True,
+            securable_name="test_location",
+            storage_location="s3://bucket/path",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        lineage_streams = LineageTableStreams(upstreams=[LineageEntity(fileInfo=file_info)], downstreams=[])
+
+        assert len(lineage_streams.upstreams) == 1
+        assert lineage_streams.upstreams[0].fileInfo.path == "s3://bucket/path/file.parquet"
+        assert lineage_streams.upstreams[0].tableInfo is None
+
+    def test_mixed(self):
+        table_info = DatabricksTable(
+            name="table1",
+            catalog_name="demo-test-cat",
+            schema_name="test-schema",
+            table_type="TABLE",
+        )
+
+        file_info = FileInfo(
+            path="s3://bucket/path/file.parquet",
+            storage_location="s3://bucket/path",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        lineage_streams = LineageTableStreams(
+            upstreams=[
+                LineageEntity(tableInfo=table_info),
+                LineageEntity(fileInfo=file_info),
+            ],
+            downstreams=[],
+        )
+
+        assert len(lineage_streams.upstreams) == 2
+        assert lineage_streams.upstreams[0].tableInfo is not None
+        assert lineage_streams.upstreams[0].fileInfo is None
+        assert lineage_streams.upstreams[1].tableInfo is None
+        assert lineage_streams.upstreams[1].fileInfo is not None

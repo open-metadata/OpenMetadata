@@ -39,7 +39,7 @@ def _make_data_model(name: str) -> CreateDashboardDataModelRequest:
     )
 
 
-def _mock_bulk_success(entities, use_async=False, **kwargs):
+def _mock_bulk_success(entities, use_async=False):
     result = MagicMock()
     result.status.value = "success"
     result.numberOfRowsProcessed.root = len(entities)

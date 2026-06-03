@@ -77,6 +77,7 @@ class SearchServiceTopology(ServiceTopology):
                 processor="yield_create_request_search_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["search_index", "search_index_template"],
@@ -90,6 +91,7 @@ class SearchServiceTopology(ServiceTopology):
                 context="search_index",
                 processor="yield_search_index",
                 consumer=["search_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaIndexSampleData,
@@ -109,6 +111,7 @@ class SearchServiceTopology(ServiceTopology):
                     context="search_index_template",
                     processor="yield_search_index_template",
                     consumer=["search_service"],
+                    use_cache=True,
                 )
             ],
         )
@@ -227,7 +230,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
-                recursive=self.source_config.markDeletedSearchIndexes,
+                mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
                 params={"service": self.context.get().search_service},
             )
 

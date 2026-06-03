@@ -27,7 +27,10 @@ from sqlparse.sql import Comparison, Function, Identifier
 from sqlparse.tokens import Keyword, Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
-from metadata.utils.helpers import pretty_print_time_duration
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    pretty_print_time_duration,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -40,6 +43,7 @@ SEQUENCE_FUNCTIONS = frozenset({"NEXTVAL", "CURRVAL", "SETVAL", "LASTVAL"})
 masked_query_cache = LRUCache(maxsize=128)
 
 
+@calculate_execution_time(context="MaskLiteralsSqlParse")
 def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: Optional[str] = None):  # noqa: C901, UP045
     """
     Mask literals in a query using SqlParse.
@@ -129,6 +133,7 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: O
     return query
 
 
+@calculate_execution_time(context="MaskLiteralsSqlFluff")
 def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: Optional[str] = None) -> str:  # noqa: C901, UP045
     """
     Mask literals in a query using SqlFluff.
@@ -198,18 +203,21 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: O
     return query
 
 
+@calculate_execution_time(context="GetSqlParseLineageRunner")
 def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
     lr_sqlparse = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
     len(lr_sqlparse.source_tables)
     return lr_sqlparse
 
 
+@calculate_execution_time(context="GetSqlFluffLineageRunner")
 def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
     lr_sqlfluff = LineageRunner(query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer)
     len(lr_sqlfluff.source_tables)
     return lr_sqlfluff
 
 
+@calculate_execution_time(context="MaskQuery")
 def mask_query(
     query: str,
     dialect: str = Dialect.ANSI.value,

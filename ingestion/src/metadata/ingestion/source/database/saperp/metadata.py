@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.saperp.models import (
     TableConstraintsModel,
 )
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
@@ -252,6 +253,7 @@ class SaperpSource(CommonDbSourceService):
         )
 
     # pylint: disable=arguments-renamed
+    @calculate_execution_time_generator()
     def yield_table(self, table: SapErpTable) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.

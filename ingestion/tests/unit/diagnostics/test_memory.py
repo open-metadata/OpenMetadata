@@ -10,47 +10,11 @@
 #  limitations under the License.
 """Memory tracker behavior."""
 
-from metadata.ingestion.diagnostics.samplers.memory import (
-    MemorySample,
+from metadata.ingestion.diagnostics.memory import (
     MemoryTracker,
     format_bytes,
     format_signed_bytes,
 )
-
-_MB = 1024 * 1024
-
-
-def _mem_sample(rss_mb: int, current_mb: int, psi: float) -> MemorySample:
-    return MemorySample(
-        ts=0.0,
-        rss=rss_mb * _MB,
-        cgroup_current=current_mb * _MB,
-        cgroup_max=1000 * _MB,
-        oom_kill_count=0,
-        psi_some_avg10=psi,
-    )
-
-
-def test_mem_budget_render_summarizes_peak_growth_and_high_water_op():
-    tracker = MemoryTracker()
-    tracker.note_sample(_mem_sample(rss_mb=100, current_mb=200, psi=1.0), "source.iter")
-    tracker.note_sample(_mem_sample(rss_mb=500, current_mb=600, psi=7.0), "snowflake.query")
-    line = tracker.render_summary()
-    assert line is not None
-    assert line.startswith("diag.mem_budget\n")
-    assert "baseline=100M" in line
-    assert "peak=500M" in line
-    assert "final=500M" in line
-    assert "Δpeak=+400M" in line
-    assert "high_water_op=snowflake.query" in line
-    assert "psi_avg10_max=7.0" in line
-    assert "cgroup_headroom=400M" in line
-
-
-def test_mem_budget_render_takes_final_sample_when_empty():
-    line = MemoryTracker().render_summary()
-    assert line is not None
-    assert "peak=" in line and "final=" in line
 
 
 def test_sample_returns_nonzero_rss_in_process():

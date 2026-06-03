@@ -58,12 +58,7 @@ class MetadataWorkflow(IngestionWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.model_dump().get("config", {})
-        sink_config.setdefault("override_metadata", self._source_override_metadata())
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
-
-    def _source_override_metadata(self) -> bool:
-        source_config = self.config.source.sourceConfig.config
-        return bool(getattr(source_config, "overrideMetadata", False))
