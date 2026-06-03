@@ -26,7 +26,7 @@ import {
   FilterFunnel02,
   Home02,
   Pin01,
-  Plus
+  Plus,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -413,9 +413,7 @@ const ContextCenterMemoriesPage: FC = () => {
         value: memories.filter(
           (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
         ).length,
-        icon: (
-          <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />
-        ),
+        icon: <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />,
       },
       {
         filterKey: 'created-by-me' as const,
@@ -523,17 +521,18 @@ const ContextCenterMemoriesPage: FC = () => {
       </div>
 
       <Box align="center" className="tw:py-5" gap={3} wrap="wrap">
-          <Tabs
-            className="tw:w-max"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) =>
-              handleFilterChange(key as MemoryFilterTab)
-            }>
-            <Tabs.List
-              className="tw:gap-2"
-              items={FILTER_TABS.map((tab) => ({
-                id: tab.id,
-                label: 'icon' in tab ? (
+        <Tabs
+          className="tw:w-max"
+          selectedKey={activeFilter}
+          onSelectionChange={(key) =>
+            handleFilterChange(key as MemoryFilterTab)
+          }>
+          <Tabs.List
+            className="tw:gap-2"
+            items={FILTER_TABS.map((tab) => ({
+              id: tab.id,
+              label:
+                'icon' in tab ? (
                   <Box align="center" gap={1}>
                     <tab.icon size={12} strokeWidth={2} />
                     {t(tab.label)}
@@ -541,181 +540,184 @@ const ContextCenterMemoriesPage: FC = () => {
                 ) : (
                   t(tab.label)
                 ),
-              }))}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    classNames(
-                      'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
-                      {
-                        'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700': isSelected,
-                        'tw:border-gray-300 tw:bg-white tw:text-gray-700': !isSelected,
-                      }
-                    )
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-
-          <Box align="center" gap={2}>
-            <Dropdown.Root>
-              <AriaButton
-                className={
-                  selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography
-                  className={selectedAsset ? 'tw:text-brand-700' : 'tw:text-gray-700'}
-                  weight="medium">
-                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                    t('label.all-entity', { entity: t('label.asset-plural') })}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover className="tw:w-100">
-                <Dropdown.Menu
-                  selectedKeys={selectedAsset ? [selectedAsset] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAsset ? '' : next;
-                    setSelectedAsset(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
+            }))}
+            type="button-brand">
+            {(tab) => (
+              <Tabs.Item
+                {...tab}
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
+                    {
+                      'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
+                        isSelected,
+                      'tw:border-gray-300 tw:bg-white tw:text-gray-700':
+                        !isSelected,
                     }
-                    setCurrentPage(1);
-                  }}>
-                  {assetOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      {opt.type ? (
-                        <Box align="center" className="tw:min-w-0" gap={2}>
-                          <div className="tw:shrink-0">
-                            {searchClassBase.getEntityIcon(
-                              opt.type,
-                              'tw:w-6 tw:h-6 tw:text-gray-500'
-                            )}
-                          </div>
-                          <Box align="center" className="tw:flex-1" justify="between">
-                            <div className="tw:max-w-55">
-                              <Typography
-                                ellipsis
-                                className="tw:truncate tw:text-gray-800"
-                                size="text-sm"
-                                weight="medium">
-                                {opt.displayName}
-                              </Typography>
-                              <Typography
-                                ellipsis
-                                className="tw:text-gray-400 tw:truncate"
-                                size="text-xs">
-                                {opt.id}
-                              </Typography>
-                            </div>
-                            <Badge
-                              className="tw:shrink-0 tw:uppercase"
-                              color="gray"
-                              size="sm"
-                              type="color">
-                              {opt.type}
-                            </Badge>
-                          </Box>
-                        </Box>
-                      ) : (
-                        <span>{opt.label}</span>
-                      )}
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-
-            <Dropdown.Root>
-              <AriaButton
-                className={
-                  selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography
-                  className={selectedAuthor ? 'tw:text-brand-700' : 'tw:text-gray-700'}
-                  weight="medium">
-                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
-                    t('label.all-entity', { entity: t('label.author') })}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  selectedKeys={selectedAuthor ? [selectedAuthor] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAuthor ? '' : next;
-                    setSelectedAuthor(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
-                    }
-                    setCurrentPage(1);
-                  }}>
-                  {authorOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      <Box align="center" gap={2}>
-                        {opt.id && <ProfilePicture name={opt.id} size={20} />}
-                        <span>{opt.label}</span>
-                      </Box>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </Box>
-
-          <Box align="center" className="tw:ml-auto" gap={4}>
-            {hasActiveFilters && (
-              <Button color="link-color" size="sm" onClick={handleClearFilters}>
-                {t('label.clear-entity', { entity: t('label.all') })}
-              </Button>
+                  )
+                }
+              />
             )}
-            <Dropdown.Root>
-              <AriaButton className={FILTER_BUTTON_CLS}>
-                <FilterFunnel02 size={16} />
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {t('label.sort')}:
-                </Typography>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
-                </Typography>
-              </AriaButton>
-              <Dropdown.Popover className="tw:w-56">
-                <Dropdown.Menu
-                  selectedKeys={[sortBy]}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    setSortBy((key as MemorySortBy) ?? 'updated');
-                    setCurrentPage(1);
-                  }}>
-                  {SORT_OPTIONS.map((opt) => (
-                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </Box>
+          </Tabs.List>
+        </Tabs>
+
+        <Box align="center" gap={2}>
+          <Dropdown.Root>
+            <AriaButton
+              className={
+                selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+              }>
+              <Typography
+                className={
+                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                }
+                weight="medium">
+                {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                  t('label.all-entity', { entity: t('label.asset-plural') })}
+              </Typography>
+              <ChevronDown
+                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                size={16}
+                strokeWidth={2.5}
+              />
+            </AriaButton>
+            <Dropdown.Popover className="tw:w-100">
+              <Dropdown.Menu
+                selectedKeys={selectedAsset ? [selectedAsset] : []}
+                selectionMode="single"
+                onAction={(key) => {
+                  const next = String(key);
+                  const value = next === selectedAsset ? '' : next;
+                  setSelectedAsset(value);
+                  if (activeFilter === 'all') {
+                    setActiveFilter('');
+                  }
+                  setCurrentPage(1);
+                }}>
+                {assetOptions.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
+                    {opt.type ? (
+                      <Box align="center" className="tw:min-w-0" gap={2}>
+                        <div className="tw:shrink-0">
+                          {searchClassBase.getEntityIcon(
+                            opt.type,
+                            'tw:w-6 tw:h-6 tw:text-gray-500'
+                          )}
+                        </div>
+                        <Box
+                          align="center"
+                          className="tw:flex-1"
+                          justify="between">
+                          <div className="tw:max-w-55">
+                            <Typography
+                              ellipsis
+                              className="tw:truncate tw:text-gray-800"
+                              size="text-sm"
+                              weight="medium">
+                              {opt.displayName}
+                            </Typography>
+                            <Typography
+                              ellipsis
+                              className="tw:text-gray-400 tw:truncate"
+                              size="text-xs">
+                              {opt.id}
+                            </Typography>
+                          </div>
+                          <Badge
+                            className="tw:shrink-0 tw:uppercase"
+                            color="gray"
+                            size="sm"
+                            type="color">
+                            {opt.type}
+                          </Badge>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <span>{opt.label}</span>
+                    )}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+
+          <Dropdown.Root>
+            <AriaButton
+              className={
+                selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+              }>
+              <Typography
+                className={
+                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                }
+                weight="medium">
+                {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                  t('label.all-entity', { entity: t('label.author') })}
+              </Typography>
+              <ChevronDown
+                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                size={16}
+                strokeWidth={2.5}
+              />
+            </AriaButton>
+            <Dropdown.Popover>
+              <Dropdown.Menu
+                selectedKeys={selectedAuthor ? [selectedAuthor] : []}
+                selectionMode="single"
+                onAction={(key) => {
+                  const next = String(key);
+                  const value = next === selectedAuthor ? '' : next;
+                  setSelectedAuthor(value);
+                  if (activeFilter === 'all') {
+                    setActiveFilter('');
+                  }
+                  setCurrentPage(1);
+                }}>
+                {authorOptions.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
+                    <Box align="center" gap={2}>
+                      {opt.id && <ProfilePicture name={opt.id} size={20} />}
+                      <span>{opt.label}</span>
+                    </Box>
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
         </Box>
+
+        <Box align="center" className="tw:ml-auto" gap={4}>
+          {hasActiveFilters && (
+            <Button color="link-color" size="sm" onClick={handleClearFilters}>
+              {t('label.clear-entity', { entity: t('label.all') })}
+            </Button>
+          )}
+          <Dropdown.Root>
+            <AriaButton className={FILTER_BUTTON_CLS}>
+              <FilterFunnel02 size={16} />
+              <Typography className="tw:text-gray-700" weight="medium">
+                {t('label.sort')}:
+              </Typography>
+              <Typography className="tw:text-gray-700" weight="medium">
+                {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
+              </Typography>
+            </AriaButton>
+            <Dropdown.Popover className="tw:w-56">
+              <Dropdown.Menu
+                selectedKeys={[sortBy]}
+                selectionMode="single"
+                onAction={(key) => {
+                  setSortBy((key as MemorySortBy) ?? 'updated');
+                  setCurrentPage(1);
+                }}>
+                {SORT_OPTIONS.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
+      </Box>
       {/* Memories card with tabs */}
       <Card
         className="tw:flex tw:flex-col tw:h-auto"

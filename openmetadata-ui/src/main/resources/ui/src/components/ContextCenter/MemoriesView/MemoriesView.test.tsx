@@ -14,10 +14,6 @@ import { render, screen } from '@testing-library/react';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => jest.fn(() => <div data-testid="error-placeholder" />)
-);
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
@@ -34,6 +30,9 @@ jest.mock('../../../assets/svg/edit-new.svg', () => ({
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
+  )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
   )),
   ButtonUtility: jest.fn(
     ({
@@ -122,10 +121,12 @@ describe('MemoriesView', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the error placeholder when data is empty and not loading', () => {
+  it('renders no-data message when data is empty and not loading', () => {
     render(<MemoriesView data={[]} isLoading={false} />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.no-entity-available')
+    ).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {

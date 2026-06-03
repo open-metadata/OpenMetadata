@@ -110,7 +110,10 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
 const MemoryRowSkeleton: FC = () => (
-  <Box align="start" className="tw:px-4 tw:py-4 tw:border-b tw:border-secondary" gap={3}>
+  <Box
+    align="start"
+    className="tw:px-4 tw:py-4 tw:border-b tw:border-secondary"
+    gap={3}>
     <Skeleton height="32px" variant="circular" width="32px" />
     <Box className="tw:flex-1" direction="col" gap={2}>
       <Box align="center" gap={2}>
@@ -153,8 +156,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   const memoryUrl = useMemo(
     () =>
       memory.name
-        ? `${window.location.origin}${window.location.pathname
-        }?memory=${encodeURIComponent(memory.name)}`
+        ? `${window.location.origin}${
+            window.location.pathname
+          }?memory=${encodeURIComponent(memory.name)}`
         : window.location.href,
     [memory.name]
   );
@@ -166,9 +170,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
       style={
         pinned
           ? {
-            background:
-              'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-brand-50) 80%, transparent) 0%, transparent 60%)',
-          }
+              background:
+                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-brand-50) 80%, transparent) 0%, transparent 60%)',
+            }
           : undefined
       }
       onClick={() => onViewMemory?.(memory)}>
@@ -191,18 +195,25 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <ProfilePicture name={memory.owners?.[0]?.name || ''} />
         </div>
       )}
-      <Box align="start" className="tw:w-full tw:min-w-0" gap={2} justify="between">
-        <Box className="tw:min-w-0 tw:flex-1 tw:max-w-[75%]" direction="col" gap={1}>
+      <Box
+        align="start"
+        className="tw:w-full tw:min-w-0"
+        gap={2}
+        justify="between">
+        <Box
+          className="tw:min-w-0 tw:flex-1 tw:max-w-[75%]"
+          direction="col"
+          gap={1}>
           <Box align="center" gap={2} wrap="wrap">
             {(memory.owners?.[0]?.displayName ??
               memory.owners?.[0]?.name ??
               memory.updatedBy) && (
-                <Typography className="tw:text-gray-700" size="text-sm">
-                  {memory.owners?.[0]?.displayName ??
-                    memory.owners?.[0]?.name ??
-                    memory.updatedBy}
-                </Typography>
-              )}
+              <Typography className="tw:text-gray-700" size="text-sm">
+                {memory.owners?.[0]?.displayName ??
+                  memory.owners?.[0]?.name ??
+                  memory.updatedBy}
+              </Typography>
+            )}
             {memory.updatedAt !== undefined && (
               <>
                 <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
@@ -254,29 +265,26 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
-              <Box align="center" className="tw:mt-1" gap={1}>
-                <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
-                <Typography
-                  className="tw:text-gray-500 tw:whitespace-nowrap"
-                  size="text-xs">
-                  {memory.usageCount === undefined
-                    ? ''
-                    : t('label.cited-n-times', { count: memory.usageCount })}
-                  {memory.lastUsedAt
-                    ? ` · ${t('label.last')} ${getShortRelativeTime(
+            <Box align="center" className="tw:mt-1" gap={1}>
+              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+              <Typography
+                className="tw:text-gray-500 tw:whitespace-nowrap"
+                size="text-xs">
+                {memory.usageCount === undefined
+                  ? ''
+                  : t('label.cited-n-times', { count: memory.usageCount })}
+                {memory.lastUsedAt
+                  ? ` · ${t('label.last')} ${getShortRelativeTime(
                       memory.lastUsedAt
                     )}`
-                    : ''}
-                </Typography>
-              </Box>
-            )}
+                  : ''}
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         {/* Actions — always visible */}
-        <Box
-          align="center"
-          gap={1}
-          onClick={(e) => e.stopPropagation()}>
+        <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
           <PinButton
             animKey={pinAnimKey}
             pinned={pinned}
@@ -311,7 +319,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
           )}
         </Box>
       </Box>
-
     </div>
   );
 };
@@ -338,7 +345,12 @@ const MemoriesView: FC<MemoriesViewProps> = ({
 
   if (data.length === 0) {
     return (
-      <Box align="center" className="tw:py-12 tw:text-center" direction="col" gap={1} justify="center">
+      <Box
+        align="center"
+        className="tw:py-12 tw:text-center"
+        direction="col"
+        gap={1}
+        justify="center">
         <Typography className="tw:text-gray-700" size="text-sm" weight="medium">
           {t('label.no-entity-available', {
             entity: t('label.memory-plural'),
