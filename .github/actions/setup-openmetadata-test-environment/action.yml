@@ -96,7 +96,7 @@ runs:
       if: ${{ inputs.install-server == 'true' }}
       run: |
         if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
-          echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=200" >> "$GITHUB_ENV"
+          echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
         fi
       shell: bash
 
