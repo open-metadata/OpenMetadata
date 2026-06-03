@@ -197,57 +197,27 @@ class TestBaseWorkflow(TestCase):
 
 class TestWorkflowExecuteTeardown:
     """
-    Validates the execute() teardown contract:
-      1. close_steps() flushes step buffers before any consumer reads from the
-         step statuses. Both the persisted pipeline status (built from
-         Summary.from_step) and the printed summary share those same step
-         status objects, so the flush must happen before either reads them.
-      2. print_status() runs before stop() so the streamable logging handler
-         (torn down inside stop()) is still alive when the final summary is
-         emitted.
-      3. stop() must still run when an inner step raises so we never leak the
-         timer thread, OM client, or any step resources.
+    Validates the execute() teardown contract: status must be printed before
+    stop() tears down resources (so final records are flushed while the
+    metadata client and steps are alive), and stop() must still run when
+    print_status() raises so we never leak the timer thread or OM client.
     """
 
-    def test_close_steps_runs_before_status_publishing_and_stop(self):
+    def test_print_status_runs_before_stop(self):
         workflow = SimpleWorkflow(config=config)
         manager = MagicMock()
 
         with (
-            patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
-            patch.object(
-                workflow,
-                "build_ingestion_status",
-                wraps=workflow.build_ingestion_status,
-            ) as mock_build_ingestion_status,
-            patch.object(
-                workflow,
-                "set_ingestion_pipeline_status",
-                wraps=workflow.set_ingestion_pipeline_status,
-            ) as mock_set_ingestion_pipeline_status,
             patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
-            manager.attach_mock(mock_close_steps, "close_steps")
-            manager.attach_mock(mock_build_ingestion_status, "build_ingestion_status")
-            manager.attach_mock(mock_set_ingestion_pipeline_status, "set_ingestion_pipeline_status")
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        # `close_steps` is recorded twice: once from execute() before
-        # print_status, and once from inside stop() to keep the public
-        # cleanup contract. The second call is a no-op via _steps_closed.
-        assert ordered_names == [
-            "close_steps",
-            "build_ingestion_status",
-            "set_ingestion_pipeline_status",
-            "print_status",
-            "stop",
-            "close_steps",
-        ]
+        assert ordered_names == ["print_status", "stop"]
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)
@@ -265,75 +235,3 @@ class TestWorkflowExecuteTeardown:
 
             mock_print_status.assert_called_once()
             mock_stop.assert_called_once()
-
-    def test_pipeline_status_is_persisted_when_close_steps_raises(self):
-        """
-        Even on a catastrophic close_steps() failure, the pipeline status must
-        still be persisted to the server and stop() must still run. This
-        preserves the pre-existing "status is always sent" invariant; the
-        flushed counts may be missing in this edge case but a status record is
-        better than none.
-        """
-        workflow = SimpleWorkflow(config=config)
-
-        with (
-            patch.object(
-                workflow,
-                "close_steps",
-                side_effect=RuntimeError("flush-boom"),
-            ) as mock_close_steps,
-            patch.object(
-                workflow,
-                "set_ingestion_pipeline_status",
-                wraps=workflow.set_ingestion_pipeline_status,
-            ) as mock_set_ingestion_pipeline_status,
-            patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
-            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
-        ):
-            workflow.execute()
-
-            # close_steps is invoked twice: once from execute() before
-            # print_status and once from inside stop() (the public-cleanup
-            # contract). The invariant we care about here is that the
-            # pipeline status is still persisted, print_status still runs,
-            # and stop() still runs.
-            assert mock_close_steps.call_count == 2
-            mock_set_ingestion_pipeline_status.assert_called_once()
-            mock_print_status.assert_called_once()
-            mock_stop.assert_called_once()
-
-    def test_stop_closes_steps_when_called_standalone(self):
-        """
-        stop() is part of the public cleanup contract — callers that invoke
-        it without going through execute() (or in addition to execute()) must
-        still get step buffers flushed and step resources released. Substitute
-        a mock timer (the real one would raise on join() of an unstarted
-        thread) and stub the OM client teardown so we exercise just the
-        cleanup contract.
-        """
-        workflow = SimpleWorkflow(config=config)
-        workflow._timer = MagicMock()
-        step = workflow.steps[0]
-
-        with (
-            patch.object(workflow.metadata, "close"),
-            patch.object(step, "close", wraps=step.close) as mock_step_close,
-        ):
-            workflow.stop()
-
-            mock_step_close.assert_called_once()
-
-    def test_close_steps_is_idempotent_across_execute_and_stop(self):
-        """
-        execute() flushes via close_steps() before print_status, and stop()
-        also calls close_steps() to keep the public cleanup contract. The
-        _steps_closed flag must prevent the second call from re-running
-        step.close() (some sinks are not idempotent across repeat closes).
-        """
-        workflow = SimpleWorkflow(config=config)
-        step = workflow.steps[0]
-
-        with patch.object(step, "close", wraps=step.close) as mock_step_close:
-            workflow.execute()
-
-            mock_step_close.assert_called_once()

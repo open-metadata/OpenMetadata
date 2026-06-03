@@ -118,6 +118,7 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -140,6 +141,7 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
+                use_cache=True,
             ),
         ],
     )
@@ -355,7 +357,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                recursive=self.source_config.markDeletedContainers,
+                mark_deleted_entity=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 

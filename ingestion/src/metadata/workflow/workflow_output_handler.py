@@ -24,6 +24,7 @@ from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.lineage.models import QueryParsingFailures
 from metadata.utils.deprecation import deprecated
+from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
 from metadata.workflow.output_handler import (
@@ -109,6 +110,8 @@ class WorkflowOutputHandler:
         if debug:
             self._print_debug_summary(steps)
 
+        self._print_execution_time_summary()
+
         # In case of large query parsing error summary, this creates
         # issue of ingestion getting stuck and eventually killed.
         # Hence commenting it for now.
@@ -157,6 +160,43 @@ class WorkflowOutputHandler:
         for step in steps:
             log_ansi_encoded_string(bold=True, message=f"{step.name} Status:")
             log_ansi_encoded_string(message=step.get_status().as_string())
+
+    def _print_execution_time_summary(self):
+        """Log the ExecutionTimeTracker Summary."""
+        tracker = ExecutionTimeTracker()
+
+        summary_table: Dict[str, List[Union[str, int]]] = {  # noqa: UP006, UP007
+            "Context": [],
+            "Total Time": [],
+            "Call Count": [],
+            "Avg Time": [],
+            "Min Time": [],
+            "Max Time": [],
+        }
+
+        for key in sorted(tracker.state.state.keys()):
+            metrics = tracker.state.state[key]
+            summary_table["Context"].append(key)
+            summary_table["Total Time"].append(pretty_print_time_duration(metrics.total_time))
+            summary_table["Call Count"].append(metrics.call_count)
+            summary_table["Avg Time"].append(pretty_print_time_duration(metrics.average_time))
+            summary_table["Min Time"].append(
+                pretty_print_time_duration(metrics.min_time) if metrics.min_time is not None else "N/A"
+            )
+            summary_table["Max Time"].append(
+                pretty_print_time_duration(metrics.max_time) if metrics.max_time is not None else "N/A"
+            )
+
+        if not summary_table["Context"]:
+            return
+
+        # Build alignment list: left for Context, right for all numeric/time columns
+        col_align = ["left"] + ["right"] * (len(summary_table) - 1)
+
+        log_ansi_encoded_string(bold=True, message="Execution Time Summary")
+        log_ansi_encoded_string(
+            message=f"\n{tabulate(summary_table, headers='keys', tablefmt='grid', colalign=col_align)}"
+        )
 
     def _print_query_parsing_issues(self):
         """Log the QueryParsingFailures Summary."""

@@ -28,7 +28,6 @@ class DatabricksOrdinalPositionTest(TestCase):
         """Set up test fixtures"""
         self.mock_self = Mock()
         self.mock_connection = Mock()
-        self.mock_connection.info = {}
 
     @patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
     def test_ordinal_position_single_column(self, mock_get_column_rows):

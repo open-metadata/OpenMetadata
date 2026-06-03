@@ -48,6 +48,7 @@ TABLE_STAGE = NodeStage(
     context="table",
     processor="yield_table",
     consumer=["database_service", "database", "database_schema"],
+    use_cache=True,
 )
 
 TAGS_STAGE = NodeStage(
@@ -65,6 +66,7 @@ PROCEDURES_STAGE = NodeStage(
     consumer=["database_service", "database", "database_schema"],
     store_all_in_context=True,
     store_fqn=True,
+    use_cache=True,
 )
 
 

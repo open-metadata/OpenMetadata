@@ -58,14 +58,6 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
-from metadata.readers.archive import (
-    ArchiveEntry,
-    GCSBlobAdapter,
-    is_archive_format,
-    iter_archive_entries_with_schema,
-    open_archive_reader,
-)
-from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
@@ -224,97 +216,6 @@ class GcsSource(StorageServiceSource):
 
         return False
 
-    def _generate_inner_file_container(
-        self,
-        entry: ArchiveEntry,
-        archive_ref: EntityReference,
-        archive_prefix: str,
-        columns: list,
-        entry_format: SupportedTypes | None,
-        bucket_response: GCSBucketResponse,
-    ) -> Iterable[GCSContainerDetails]:
-        """Yield one child container for an inner archive entry."""
-        inner_name = entry.name.split("/")[-1]
-        inner_prefix = f"{archive_prefix}/{entry.name.lstrip(KEY_SEPARATOR)}"
-        try:
-            file_formats = [container.FileFormat(entry_format.value)] if entry_format else []
-        except ValueError:
-            file_formats = []
-        data_model = ContainerDataModel(isPartitioned=False, columns=columns) if columns else None
-        yield GCSContainerDetails(  # pyright: ignore[reportCallIssue]
-            name=inner_name,
-            prefix=inner_prefix,
-            size=entry.size,
-            file_formats=file_formats,
-            data_model=data_model,
-            parent=archive_ref,
-            leaf_container=True,
-            fullPath=self._get_full_path(bucket_response.name, inner_prefix),
-            sourceUrl=self._get_object_source_url(
-                bucket=bucket_response,
-                prefix=self._clean_path(inner_prefix),
-                is_file=True,
-            ),
-        )
-
-    def _generate_archive_containers(
-        self,
-        bucket_response: GCSBucketResponse,
-        metadata_entry: MetadataEntry,
-        parent: EntityReference | None = None,
-    ) -> Iterable[GCSContainerDetails]:
-        """Yield a parent container for the archive blob, then child containers for each inner file.
-
-        Schema is inferred once from the first valid inner file and reused for all children
-        (Uniform Schema Requirement).
-        """
-        bucket_name = bucket_response.name
-        archive_path = metadata_entry.dataPath.strip(KEY_SEPARATOR)
-        archive_size = self.get_size(bucket_name, bucket_response.project_id, archive_path)
-        prefix = f"{KEY_SEPARATOR}{archive_path}"
-
-        yield GCSContainerDetails(  # pyright: ignore[reportCallIssue]
-            name=archive_path,
-            prefix=prefix,
-            creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
-            size=archive_size,
-            file_formats=[],
-            data_model=None,
-            parent=parent,
-            fullPath=self._get_full_path(bucket_name, prefix),
-            sourceUrl=self._get_object_source_url(
-                bucket=bucket_response,
-                prefix=archive_path,
-                is_file=True,
-            ),
-        )
-
-        archive_fqn = fqn._build(  # pylint: disable=protected-access
-            getattr(self.context.get(), "objectstore_service"),  # noqa: B009
-            bucket_name,
-            archive_path,
-        )
-        archive_entity = self.metadata.get_by_name(entity=Container, fqn=archive_fqn)
-        if archive_entity is None:
-            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
-            return
-        archive_ref = EntityReference(id=archive_entity.id.root, type="container")  # pyright: ignore[reportCallIssue]
-
-        client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
-        bucket_client = client.bucket(bucket_name)
-        blob = GCSBlobAdapter(bucket_client, archive_path)
-        structure_format = metadata_entry.structureFormat or ""
-        with open_archive_reader(blob, structure_format) as reader:
-            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
-                yield from self._generate_inner_file_container(
-                    entry=entry,
-                    archive_ref=archive_ref,
-                    archive_prefix=prefix,
-                    columns=columns,
-                    entry_format=entry_format,
-                    bucket_response=bucket_response,
-                )
-
     def _generate_container_details(
         self,
         bucket_response: GCSBucketResponse,
@@ -405,21 +306,6 @@ class GcsSource(StorageServiceSource):
                 f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
-            if is_archive_format(metadata_entry.structureFormat):
-                try:
-                    yield from self._generate_archive_containers(
-                        bucket_response=bucket_response,
-                        metadata_entry=metadata_entry,
-                        parent=parent,
-                    )
-                except (ValueError, OSError) as exc:
-                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")
-                    logger.debug(traceback.format_exc())
-                except Exception as exc:
-                    logger.error(
-                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}", exc_info=True
-                    )
-                continue
             if metadata_entry.depth == 0:
                 structured_container: Optional[GCSContainerDetails] = self._generate_container_details(  # noqa: UP045
                     bucket_response=bucket_response,

@@ -19,6 +19,10 @@ from metadata.ingestion import diagnostics
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.api.step import BulkStep, IterStep, ReturnStep, StageStep
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -53,6 +57,7 @@ class Source(IterStep, ABC):
     def name(self) -> str:
         return "Source"
 
+    @calculate_execution_time_generator(context="Source")
     def run(self) -> Iterable[Optional[Entity]]:  # noqa: UP045
         with diagnostics.operation("source.iter"):
             yield from super().run()
@@ -65,6 +70,7 @@ class Sink(ReturnStep, ABC):
     def name(self) -> str:
         return "Sink"
 
+    @calculate_execution_time(context="Sink")
     def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
         with diagnostics.operation("sink.write", entity=get_log_name(record)):
             return super().run(record)

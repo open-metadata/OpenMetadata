@@ -44,7 +44,7 @@ Flask==3.1.3
 GitPython==3.1.50
 JayDeBeApi==1.2.3
 Jinja2==3.1.6
-Mako==1.3.12
+Mako==1.3.11
 Markdown==3.10.2
 MarkupSafe==3.0.3
 PyAthena==3.30.1
@@ -401,7 +401,7 @@ hvac==2.4.0
 hyperframe==6.1.0
 ibm-cloud-sdk-core==3.24.4
 ibmcloudant==0.11.5
-idna==3.15
+idna==3.11
 ijson==3.4.0.post0
 immutabledict==4.3.1
 importlib_metadata==8.7.1
@@ -444,7 +444,7 @@ linkify-it-py==2.1.0
 lockfile==0.12.2
 logfire-api==4.32.1
 looker_sdk==26.6.1
-lxml==6.1.0
+lxml==6.0.2
 lz4==4.4.5
 markdown-it-py==4.0.0
 marshmallow-sqlalchemy==1.5.0
@@ -460,7 +460,7 @@ microsoft-kiota-authentication-azure==1.10.1
 microsoft-kiota-http==1.10.1
 microsoft-kiota-serialization-json==1.10.1
 microsoft-kiota-serialization-text==1.10.1
-mistune==3.2.1
+mistune==3.2.0
 mmh3==5.2.1
 more-itertools==11.0.2
 msal-extensions==1.3.1
@@ -583,7 +583,7 @@ python-http-client==3.3.7
 python-jenkins==1.8.3
 python-keycloak==7.1.1
 python-ldap==3.4.5
-python-multipart==0.0.27
+python-multipart==0.0.26
 python-slugify==8.0.4
 python-telegram-bot==22.7
 python3-saml==1.16.0

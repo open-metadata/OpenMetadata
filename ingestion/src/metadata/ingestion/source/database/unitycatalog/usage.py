@@ -19,6 +19,9 @@ from metadata.ingestion.source.database.unitycatalog.query_parser import (
     UnityCatalogQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class UnitycatalogUsageSource(UnityCatalogQueryParserSource, UsageSource):

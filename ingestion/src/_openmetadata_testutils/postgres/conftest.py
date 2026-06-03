@@ -25,7 +25,7 @@ def postgres_container(tmp_path_factory):
     dvd_rental_zip = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip")  # noqa: PTH118, PTH120
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
     container = PostgresContainer("postgres:15", dbname="dvdrental")
-    container._command = [  # pyright: ignore[reportAttributeAccessIssue]
+    container._command = [
         "-c",
         "shared_preload_libraries=pg_stat_statements",
         "-c",

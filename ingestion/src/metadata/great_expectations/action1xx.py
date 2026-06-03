@@ -253,10 +253,10 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Raises:
             ValueError: if expectation is not ran against DB
         """
-        if isinstance(data_asset.execution_engine.engine, Engine):  # pyright: ignore[reportAttributeAccessIssue]
-            return data_asset.execution_engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
-        if isinstance(data_asset.execution_engine.engine, Connection):  # pyright: ignore[reportAttributeAccessIssue]
-            return data_asset.execution_engine.engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
+        if isinstance(data_asset.execution_engine.engine, Engine):
+            return data_asset.execution_engine.engine.url
+        if isinstance(data_asset.execution_engine.engine, Connection):
+            return data_asset.execution_engine.engine.engine.url
         raise ValueError("Type is not supported. Make sur you ran your expectations against a relational database")
 
     def _create_ometa_connection(self) -> OpenMetadata:

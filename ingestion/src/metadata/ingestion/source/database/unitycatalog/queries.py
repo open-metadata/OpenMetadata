@@ -50,6 +50,10 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
+UNITY_CATALOG_SQL_STATEMENT_TEST = """
+ SELECT statement_text from  system.query.history LIMIT 1
+"""
+
 UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
 
 UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
@@ -96,28 +100,6 @@ UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     FROM system.information_schema.tables
     WHERE table_type = 'EXTERNAL'
         AND storage_path IS NOT NULL
-    """
-)
-
-UNITY_CATALOG_GET_CHANGED_TABLES = textwrap.dedent(
-    """
-    SELECT
-        table_schema,
-        table_name
-    FROM `{catalog}`.information_schema.tables
-    WHERE last_altered >= timestamp_millis({start_timestamp})
-    """
-)
-
-UNITY_CATALOG_GET_DELETED_TABLES = textwrap.dedent(
-    """
-    SELECT DISTINCT request_params.full_name_arg AS table_full_name
-    FROM system.access.audit
-    WHERE service_name = 'unityCatalog'
-        AND action_name = 'deleteTable'
-        AND event_date >= date(timestamp_millis({start_timestamp}))
-        AND event_time >= timestamp_millis({start_timestamp})
-        AND substring_index(request_params.full_name_arg, '.', 1) = '{catalog}'
     """
 )
 

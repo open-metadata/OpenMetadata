@@ -12,18 +12,14 @@
 
 import contextlib
 import logging
-import sys
-import threading
 import time
 import unittest
-import warnings
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import streamable_logger as streamable_logger_mod
 from metadata.utils.streamable_logger import (
     StreamableLogHandler,
     StreamableLogHandlerManager,
@@ -62,22 +58,24 @@ def _make_handler(enable_streaming=False, pipeline_fqn="test.pipeline", run_id=N
 class TestStreamableLogHandlerManager(unittest.TestCase):
     def tearDown(self):
         StreamableLogHandlerManager._instance = None
-        root = logging.getLogger()
-        root.handlers = [h for h in root.handlers if not isinstance(h, StreamableLogHandler)]
 
-    def test_set_handler_removes_previous_from_root_logger(self):
-        """set_handler must detach the old handler from the root logger
+    def test_set_handler_removes_previous_from_metadata_logger(self):
+        """set_handler must detach the old handler from the metadata logger
         before closing it - otherwise records can still route at it during
         close, and a closed handler stays attached after."""
+        from metadata.utils.logger import METADATA_LOGGER
+
         first = _make_handler(enable_streaming=False)
         second = _make_handler(enable_streaming=False)
-        root = logging.getLogger()
-        root.addHandler(first)
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        metadata_logger.addHandler(first)
 
         StreamableLogHandlerManager.set_handler(first)
         StreamableLogHandlerManager.set_handler(second)
 
-        self.assertNotIn(first, root.handlers, "previous handler must be removed before being closed")
+        self.assertNotIn(first, metadata_logger.handlers, "previous handler must be removed before being closed")
+        # Cleanup.
+        metadata_logger.handlers = [h for h in metadata_logger.handlers if not isinstance(h, StreamableLogHandler)]
 
     def test_cleanup_clears_singleton(self):
         handler = _make_handler(enable_streaming=False)
@@ -85,23 +83,15 @@ class TestStreamableLogHandlerManager(unittest.TestCase):
         StreamableLogHandlerManager.cleanup()
         self.assertIsNone(StreamableLogHandlerManager.get_handler())
 
-    def test_cleanup_removes_handler_from_root(self):
-        """cleanup_streamable_logging must detach the handler from the root
-        logger so subsequent records don't route at the closed handler."""
-        handler = _make_handler(enable_streaming=False)
-        root = logging.getLogger()
-        root.addHandler(handler)
-        StreamableLogHandlerManager.set_handler(handler)
-
-        cleanup_streamable_logging()
-
-        self.assertNotIn(handler, root.handlers)
-
 
 class TestStreamableLoggingSetup(unittest.TestCase):
     def tearDown(self):
-        root = logging.getLogger()
-        root.handlers = [h for h in root.handlers if not isinstance(h, (Mock, StreamableLogHandler))]
+        from metadata.utils.logger import METADATA_LOGGER
+
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        metadata_logger.handlers = [
+            h for h in metadata_logger.handlers if not isinstance(h, (Mock, StreamableLogHandler))
+        ]
         StreamableLogHandlerManager._instance = None
 
     @patch("logging.getLogger")
@@ -208,31 +198,6 @@ class FakeOMeta:
     def send_close_best_effort(self, pipeline_fqn, run_id, timeout=None, client=None):
         self.close_calls.append((pipeline_fqn, str(run_id)))
         return True
-
-
-@pytest.fixture(autouse=True)
-def _restore_global_capture_state():
-    """Snapshot & restore process-global state mutated by setup_streamable_*.
-
-    Production never restores excepthooks (one-shot process), so tests must.
-    Covers: sys.excepthook, threading.excepthook, warnings.showwarning,
-    root logger handlers, and the module-level install-once flag.
-    """
-    prev_sys_hook = sys.excepthook
-    prev_thread_hook = threading.excepthook
-    prev_show_warning = warnings.showwarning
-    root = logging.getLogger()
-    prev_root_handlers = list(root.handlers)
-    prev_installed_flag = streamable_logger_mod._global_capture_installed
-
-    yield
-
-    sys.excepthook = prev_sys_hook
-    threading.excepthook = prev_thread_hook
-    warnings.showwarning = prev_show_warning
-    root.handlers = prev_root_handlers
-    streamable_logger_mod._global_capture_installed = prev_installed_flag
-    StreamableLogHandlerManager._instance = None
 
 
 @pytest.fixture
@@ -606,166 +571,3 @@ def test_end_to_end_emit_lifecycle(make_v2, fake_ometa):
     assert handler.flush_timed_out == 0
     assert handler.shutdown_timed_out == 0
     assert handler.shipped_records == 200
-
-
-# ============================================================================
-# Group 7: global capture installed by setup_streamable_logging_for_workflow
-#
-# Verifies that setup() ships records from arbitrary loggers (root attach),
-# from the warnings module (captureWarnings), and from unhandled exceptions
-# (sys.excepthook + threading.excepthook). All via the same FakeOMeta path.
-# ============================================================================
-
-
-@pytest.fixture
-def installed_handler(fake_ometa, fake_atexit, fake_rest, fast_constants):
-    """Run the real setup() so root attach + excepthooks + captureWarnings
-    fire. The autouse _restore_global_capture_state fixture undoes all of it
-    after each test, regardless of failure."""
-    handler = setup_streamable_logging_for_workflow(
-        metadata=fake_ometa,
-        pipeline_fqn="test.pipeline",
-        run_id=uuid4(),
-        enable_streaming=True,
-    )
-    assert handler is not None
-    yield handler
-    with contextlib.suppress(Exception):
-        handler.shutdown(timeout=1.0)
-
-
-def test_setup_attaches_to_root_logger(installed_handler):
-    """Handler must be on the root logger, not the metadata logger only.
-    Without root attach, third-party loggers (tableauserverclient, urllib3)
-    are invisible."""
-    assert installed_handler in logging.getLogger().handlers
-
-
-def test_setup_ships_records_from_third_party_logger(installed_handler, fake_ometa):
-    """A logger that isn't in the metadata.* tree (e.g. tableauserverclient)
-    must reach the shipped batch via root propagation."""
-    third_party = logging.getLogger("tableauserverclient")
-    third_party.setLevel(logging.INFO)
-    third_party.info("401001 fake auth failure")
-
-    installed_handler.flush(timeout=2.0)
-
-    joined = "\n".join(fake_ometa.shipped_batches)
-    assert "401001 fake auth failure" in joined
-
-
-def test_setup_enables_capture_warnings(installed_handler):
-    """setup() must call logging.captureWarnings(True) so warnings emitted
-    in production reach the logger. Verified via stdlib's tracker variable
-    (pytest's per-test catch_warnings would mask a behavioral assertion)."""
-    assert logging._warnings_showwarning is not None, (
-        "captureWarnings(True) did not run during setup_streamable_logging_for_workflow"
-    )
-
-
-def test_py_warnings_logger_records_reach_handler(installed_handler, fake_ometa):
-    """Once captureWarnings is on, warnings.warn() funnels into the
-    py.warnings logger. Verify records on that logger propagate through
-    root to our handler. (We emit directly on the logger to bypass
-    pytest's warning capture, which intercepts warnings.warn calls.)"""
-    logging.getLogger("py.warnings").warning("pydantic shadow warning")
-
-    installed_handler.flush(timeout=2.0)
-
-    joined = "\n".join(fake_ometa.shipped_batches)
-    assert "pydantic shadow warning" in joined
-
-
-def test_sys_excepthook_ships_traceback_and_chains(installed_handler, fake_ometa):
-    """Uncaught exception must (a) be logged with exc_info so traceback
-    reaches the batch, and (b) chain to the previous excepthook so Argo
-    stderr still gets it as a backup."""
-    chained = []
-    prev = sys.excepthook
-    sys.excepthook = lambda *args: chained.append(args)
-    # Re-install our hook AFTER the chain-spy, so our hook calls into spy.
-    streamable_logger_mod._global_capture_installed = False
-    streamable_logger_mod._install_global_capture(installed_handler)
-
-    def _raise_boom():
-        raise RuntimeError("boom from main thread")
-
-    try:
-        _raise_boom()
-    except RuntimeError:
-        sys.excepthook(*sys.exc_info())
-
-    installed_handler.flush(timeout=2.0)
-
-    joined = "\n".join(fake_ometa.shipped_batches)
-    assert "Workflow terminated with uncaught exception" in joined
-    assert "RuntimeError" in joined
-    assert "boom from main thread" in joined
-    assert len(chained) == 1, "previous sys.excepthook must be chained"
-
-    # Restore the spy hook so the autouse fixture's snapshot is what it expects.
-    sys.excepthook = prev
-
-
-def test_threading_excepthook_skips_when_thread_is_worker(installed_handler):
-    """Worker thread crash must NOT re-enter the logger (it can't ship
-    anyway) - the hook short-circuits to the previous handler instead."""
-    chained = []
-    prev = threading.excepthook
-    threading.excepthook = chained.append
-    streamable_logger_mod._global_capture_installed = False
-    streamable_logger_mod._install_global_capture(installed_handler)
-
-    fake_args = type("_A", (), {})()
-    fake_args.thread = installed_handler._worker
-    fake_args.exc_type = RuntimeError
-    fake_args.exc_value = RuntimeError("worker died")
-    fake_args.exc_traceback = None
-    pre_shipped_count = len(installed_handler._buffer.queue) + installed_handler.shipped_records
-
-    threading.excepthook(fake_args)
-
-    # No record was enqueued for the worker crash; only the prev hook ran.
-    post_shipped_count = len(installed_handler._buffer.queue) + installed_handler.shipped_records
-    assert post_shipped_count == pre_shipped_count
-    assert len(chained) == 1
-
-    threading.excepthook = prev
-
-
-def test_threading_excepthook_logs_for_non_worker_thread(installed_handler, fake_ometa):
-    """A non-worker thread crash must be logged (with exc_info) and chained."""
-    chained = []
-    prev = threading.excepthook
-    threading.excepthook = chained.append
-    streamable_logger_mod._global_capture_installed = False
-    streamable_logger_mod._install_global_capture(installed_handler)
-
-    fake_thread = threading.Thread(target=lambda: None, name="random-worker")
-    fake_args = type("_A", (), {})()
-    fake_args.thread = fake_thread
-    fake_args.exc_type = ValueError
-    fake_args.exc_value = ValueError("connector died")
-    fake_args.exc_traceback = None
-
-    threading.excepthook(fake_args)
-    installed_handler.flush(timeout=2.0)
-
-    joined = "\n".join(fake_ometa.shipped_batches)
-    assert "Uncaught exception in thread random-worker" in joined
-    assert len(chained) == 1, "previous threading.excepthook must be chained"
-
-    threading.excepthook = prev
-
-
-def test_install_global_capture_is_idempotent(installed_handler):
-    """Second call must not double-wrap excepthooks. Without the guard,
-    each setup() during a retry would chain on top of its own previous
-    install and grow a stack of hooks."""
-    sys_hook_after_first = sys.excepthook
-    thread_hook_after_first = threading.excepthook
-
-    streamable_logger_mod._install_global_capture(installed_handler)
-
-    assert sys.excepthook is sys_hook_after_first
-    assert threading.excepthook is thread_hook_after_first

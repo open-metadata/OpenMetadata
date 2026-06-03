@@ -21,7 +21,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -45,14 +44,12 @@ from metadata.utils.filters import (
     filter_by_container,
     filter_by_schema,
     filter_by_table,
-    filter_by_topic,
     validate_regex,
 )
 from metadata.utils.fqn import split
 
 FIELDS = ["tableProfilerConfig", "columns", "customMetrics", "tags"]
 CONTAINER_FIELDS = ["dataModel", "tags"]
-TOPIC_FIELDS = ["messageSchema", "tags"]
 
 
 class RegexFilter(BaseModel):
@@ -445,81 +442,6 @@ class StorageFetcherStrategy(FetcherStrategy):
                 left=StackTraceError(
                     name=self.config.source.serviceName,
                     error=f"Error listing source and entities for storage service due to [{exc}]",
-                    stackTrace=traceback.format_exc(),
-                ),
-                right=None,
-            )
-
-
-class MessagingFetcherStrategy(FetcherStrategy):
-    """Fetcher strategy for Topic entities in messaging services."""
-
-    def __init__(
-        self,
-        config: OpenMetadataWorkflowConfig,
-        metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
-        status: Status,
-    ) -> None:
-        super().__init__(config, metadata, global_profiler_config, status)
-
-    def _filter_by_topic_pattern(self, topic: Topic) -> bool:
-        """Return True if the topic should be excluded by the topic filter pattern."""
-        topic_filter_pattern = getattr(self.source_config, "topicFilterPattern", None)
-        if not topic_filter_pattern:
-            return False
-        use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
-        fqn = topic.fullyQualifiedName
-        topic_name = fqn.root if (use_fqn_for_filtering and fqn) else topic.name.root
-        if filter_by_topic(topic_filter_pattern, topic_name):
-            self.status.filter(topic_name, "Topic pattern not allowed")
-            return True
-        return False
-
-    def _has_classifiable_schema(self, topic: Topic) -> bool:
-        """Return True if the topic has a schema with fields that can be classified."""
-        return topic.messageSchema is not None and bool(topic.messageSchema.schemaFields)
-
-    def _filter_entities(self, topics: Iterable[Topic]) -> Iterable[Topic]:
-        return [
-            topic
-            for topic in topics
-            if not self._filter_by_topic_pattern(topic)
-            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(topic))  # pyright: ignore[reportAttributeAccessIssue,reportOptionalMemberAccess]
-            and self._has_classifiable_schema(topic)
-        ]
-
-    def _get_topic_entities(self) -> Iterable[Topic]:
-        return self.metadata.list_all_entities(
-            entity=Topic,
-            fields=TOPIC_FIELDS,
-            params={"service": self.config.source.serviceName or ""},
-        )
-
-    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
-        """Fetch topic entities from messaging service."""
-        service_name = self.config.source.serviceName or ""
-        try:
-            profiler_source = profiler_source_factory.create(
-                self.config.source.type.lower(),
-                self.config,
-                None,
-                self.metadata,
-                self.global_profiler_config,
-            )
-            for topic in self._filter_entities(self._get_topic_entities()):
-                yield Either(
-                    left=None,
-                    right=ProfilerSourceAndEntity(
-                        profiler_source=profiler_source,
-                        entity=topic,
-                    ),
-                )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=service_name,
-                    error=f"Error listing source and entities for messaging service due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,

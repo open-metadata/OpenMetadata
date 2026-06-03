@@ -14,11 +14,9 @@ Pub/Sub service spec
 
 from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
-from metadata.sampler.messaging.pubsub.sampler import PubSubSampler
 from metadata.utils.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(
     metadata_source_class=PubsubSource,
     connection_class=PubSubConnection,
-    sampler_class=PubSubSampler,
 )  # pyright: ignore[reportArgumentType]

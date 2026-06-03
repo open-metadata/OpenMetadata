@@ -14,9 +14,6 @@ Mixin class containing Topic specific methods
 To be used by OpenMetadata class
 """
 
-import traceback
-from typing import Optional
-
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
@@ -45,22 +42,3 @@ class OMetaTopicMixin:
             data=sample_data.model_dump_json(),
         )
         return TopicSampleData(**resp["sampleData"])
-
-    def get_sample_data(self, topic: Topic) -> Optional[Topic]:  # noqa: UP045
-        """
-        GET call for the /sampleData endpoint for a given Topic
-
-        Returns a Topic entity with TopicSampleData (sampleData informed)
-        """
-        resp = None
-        try:
-            resp = self.client.get(
-                f"{self.get_suffix(Topic)}/{topic.id.root}/sampleData",
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Error trying to GET sample data for %s: %s", topic.fullyQualifiedName.root, exc)
-
-        if resp:
-            return Topic(**{**topic.model_dump(), "sampleData": resp.get("sampleData")})
-        return None

@@ -20,7 +20,6 @@ source:
 
   sourceConfig:
     config:
-      threads: 10
       type: DatabaseMetadata
 sink:
   type: metadata-rest
