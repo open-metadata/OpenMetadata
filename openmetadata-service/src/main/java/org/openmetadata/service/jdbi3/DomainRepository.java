@@ -345,19 +345,34 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private BulkResponse buildDryRunImpactResponse(
       UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
-    EntityReference currentDomain =
-        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-    List<EntityReference> affectedDataProducts =
-        getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
-    boolean isMove =
-        isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
-    boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
-    String message =
-        buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
-    return new BulkResponse()
-        .withRequest(ref)
-        .withMessage(message)
-        .withHasSideEffects(hasSideEffects);
+    BulkResponse response;
+    try {
+      EntityReference currentDomain =
+          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+      List<EntityReference> affectedDataProducts =
+          getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+      boolean isMove =
+          isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
+      boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
+      String message =
+          buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage(message)
+              .withHasSideEffects(hasSideEffects);
+    } catch (Exception e) {
+      // Dry-run is a best-effort preview — a single asset whose impact can't be
+      // computed (e.g. a dangling relationship) must not abort the whole batch.
+      // Surface the failure on that asset's response and keep going.
+      LOG.warn("Failed to compute dry-run impact for asset {}", ref.getId(), e);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage("Impact could not be computed: " + e.getMessage())
+              .withHasSideEffects(false);
+    }
+    return response;
   }
 
   private List<EntityReference> getAffectedDataProductsForDryRun(
