@@ -30,12 +30,18 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -124,11 +130,13 @@ import {
   DataAssetsWithFollowersField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
+import { FollowStarIcon } from './FollowStarIcon.component';
 
 type StatItemProps = {
-  icon: FC<{ className?: string }>;
+  icon?: FC<{ className?: string }>;
+  iconNode?: ReactNode;
   iconClassName?: string;
-  count: string | number;
+  count?: string | number;
   tooltip: string;
   testId: string;
   onClick?: () => void;
@@ -140,6 +148,7 @@ type StatItemProps = {
 
 const StatItem = ({
   icon: Icon,
+  iconNode,
   iconClassName = 'tw:size-5',
   count,
   tooltip,
@@ -154,14 +163,19 @@ const StatItem = ({
     <span
       className={classNames(
         'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
-        isActive ? 'tw:text-brand-secondary' : 'tw:text-tertiary',
+        isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
         onClick && !disabled
           ? 'tw:cursor-pointer tw:hover:text-secondary'
           : 'tw:cursor-default'
       )}
       data-testid={testId}>
-      <Icon className={classNames(iconClassName, 'tw:text-current')} />
-      <span className="tw:text-quaternary">{count}</span>
+      {iconNode ??
+        (Icon && (
+          <Icon className={classNames(iconClassName, 'tw:text-current')} />
+        ))}
+      {count !== undefined && (
+        <span className="tw:text-quaternary tw:text-sm">{count}</span>
+      )}
       {srLabel && <span className="tw:sr-only">{srLabel}</span>}
     </span>
   );
@@ -287,25 +301,21 @@ export const DataAssetsHeader = ({
 
   const hasFollowers = 'followers' in dataAsset;
 
-  const { entityName, tier, isFollowing, version, followers, votes, deleted } =
-    useMemo(
-      () => ({
-        isFollowing: hasFollowers
-          ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
-              ({ id }) => id === USER_ID
-            )
-          : false,
-        followers: hasFollowers
-          ? (dataAsset as DataAssetsWithFollowersField).followers?.length
-          : 0,
-        tier: getTierTags(dataAsset.tags ?? []),
-        entityName: getEntityName(dataAsset),
-        version: dataAsset.version,
-        deleted: dataAsset.deleted,
-        votes: (dataAsset as DataAssetsWithFollowersField).votes,
-      }),
-      [dataAsset, USER_ID]
-    );
+  const { entityName, tier, isFollowing, version, votes, deleted } = useMemo(
+    () => ({
+      isFollowing: hasFollowers
+        ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
+            ({ id }) => id === USER_ID
+          )
+        : false,
+      tier: getTierTags(dataAsset.tags ?? []),
+      entityName: getEntityName(dataAsset),
+      version: dataAsset.version,
+      deleted: dataAsset.deleted,
+      votes: (dataAsset as DataAssetsWithFollowersField).votes,
+    }),
+    [dataAsset, USER_ID]
+  );
 
   const voteStatus = useMemo(
     () => getEntityVoteStatus(USER_ID, votes),
@@ -824,6 +834,24 @@ export const DataAssetsHeader = ({
             />
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
+            {!excludeEntityService &&
+              !deleted &&
+              !isCustomizedView &&
+              onFollowClick && (
+                <StatItem
+                  iconNode={
+                    <FollowStarIcon
+                      className="tw:size-[29px]"
+                      selected={isFollowing}
+                    />
+                  }
+                  loading={isFollowingLoading}
+                  srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                  testId="entity-follow-button"
+                  tooltip={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                  onClick={handleFollowingClick}
+                />
+              )}
             {onUpdateVote && (
               <>
                 <StatItem
@@ -866,43 +894,27 @@ export const DataAssetsHeader = ({
                 onClick={onVersionClick}
               />
             )}
-            {!excludeEntityService &&
-              !deleted &&
-              !isCustomizedView &&
-              onFollowClick && (
-                <StatItem
-                  count={followers ?? 0}
-                  icon={StarFilledIcon}
-                  iconClassName="tw:size-6"
-                  isActive={isFollowing}
-                  loading={isFollowingLoading}
-                  srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  testId="entity-follow-button"
-                  tooltip={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  onClick={handleFollowingClick}
-                />
-              )}
           </div>
         </div>
 
         {/* Row 2 — Title + actions */}
         <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
+            {serviceLogoUrl && (
+              <div
+                className={classNames(
+                  'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
+                  'tw:justify-center tw:overflow-hidden tw:rounded-full',
+                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                )}>
+                <img
+                  alt={get(dataAsset, 'service.displayName', '')}
+                  className="tw:size-5 tw:object-contain"
+                  src={serviceLogoUrl}
+                />
+              </div>
+            )}
             <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-              {serviceLogoUrl && (
-                <div
-                  className={classNames(
-                    'tw:relative tw:flex tw:size-8 tw:shrink-0 tw:items-center',
-                    'tw:justify-center tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                  )}>
-                  <img
-                    alt={get(dataAsset, 'service.displayName', '')}
-                    className="tw:size-4.5 tw:object-contain"
-                    src={serviceLogoUrl}
-                  />
-                </div>
-              )}
               <Typography
                 as="h2"
                 className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
@@ -934,11 +946,11 @@ export const DataAssetsHeader = ({
                   </button>
                 </TooltipTrigger>
               </Tooltip>
+              <LearningIcon pageId={entityType} />
             </div>
             {badge}
             {statusBadge}
             {dqFailureAlert}
-            <LearningIcon pageId={entityType} />
           </div>
 
           <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
@@ -951,6 +963,7 @@ export const DataAssetsHeader = ({
               afterDeleteAction={afterDeleteAction}
               allowRename={allowRename}
               allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
+              buttonClassName="data-assets-header-manage-button"
               canDelete={permissions.Delete}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}

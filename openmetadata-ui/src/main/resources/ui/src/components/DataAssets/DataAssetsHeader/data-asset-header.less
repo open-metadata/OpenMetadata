@@ -114,12 +114,11 @@
     }
   }
 
-  // Editable fields (Domain · Owners · Tier · Certification · Retention) get a 20px label
-  // row from the edit pencil (.icon-button-sm). Entity-extra fields (Type, Usage, …) have
-  // a bare text label, so their value floats up out of line. When the pencils are shown,
-  // reserve the same 20px label row so the values share the metadata strip baseline.
-  // Gated by .has-editable-metadata so read-only views (no pencils) keep their natural
-  // text-height alignment.
+  .data-assets-header-manage-button.ant-btn {
+    height: 36px;
+    padding: 0 9px;
+  }
+
   &.has-editable-metadata {
     .header-extra-info-field > :first-child {
       display: inline-flex;
