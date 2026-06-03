@@ -536,7 +536,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
         DATA_INSIGHTS_LOG_PREFIX,
         System.lineSeparator(),
         indexingError.getMessage());
-    setJobFailed(indexingError);
+    setJobFailedIfUnset(indexingError);
   }
 
   private IndexingError buildWorkflowFailureError(List<WorkflowStats> workflowStats) {
@@ -582,6 +582,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void setJobFailed(IndexingError indexingError) {
     jobData.setStatus(EventPublisherJob.Status.FAILED);
     jobData.setFailure(indexingError);
+  }
+
+  private void setJobFailedIfUnset(IndexingError indexingError) {
+    jobData.setStatus(EventPublisherJob.Status.FAILED);
+    if (jobData.getFailure() == null) {
+      jobData.setFailure(indexingError);
+    }
   }
 
   private LogSummary buildLogSummary(StepStats stats, long startedAt) {
