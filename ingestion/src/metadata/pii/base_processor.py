@@ -94,23 +94,30 @@ class AutoClassificationProcessor(Processor, ABC):
         return adapter.get_columns(entity) if adapter else None
 
     @staticmethod
-    def _find_column_by_fqn(columns: list[Column], fqn: str, depth: int = 0, max_depth: int = 10) -> Column | None:
+    def _find_column_by_dotted_path(
+        columns: list[Column], dotted_path: str, depth: int = 0, max_depth: int = 10
+    ) -> Column | None:
         """
-        Recursively search for a column by fullyQualifiedName in nested RECORD structures.
-        FQN-based matching is robust for duplicate leaf names across different RECORD branches.
-        Used as fallback when sample data column name is an FQN (nested RECORD case).
+        Recursively search for a column using dotted path notation (e.g., 'parent.child.field').
+        Uniquely identifies columns in nested RECORD structures without collisions.
+        Compatible with the sampler's dotted-path column naming scheme.
         """
         if depth > max_depth:
             return None
+
+        parts = dotted_path.split(".", 1)
+        first_part = parts[0]
+
         for col in columns:
-            if col.fullyQualifiedName and col.fullyQualifiedName.root == fqn:
-                return col
-            if col.children:
-                found = AutoClassificationProcessor._find_column_by_fqn(
-                    [col for col in col.children if col], fqn, depth=depth + 1, max_depth=max_depth
-                )
-                if found:
-                    return found
+            if col.name.root == first_part:
+                if len(parts) == 1:
+                    return col
+                if col.children:
+                    found = AutoClassificationProcessor._find_column_by_dotted_path(
+                        [c for c in col.children if c], parts[1], depth=depth + 1, max_depth=max_depth
+                    )
+                    if found:
+                        return found
         return None
 
     @final
@@ -133,13 +140,7 @@ class AutoClassificationProcessor(Processor, ABC):
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
             col_lookup = column_name.root
-            column = next(
-                (c for c in columns if c.fullyQualifiedName and c.fullyQualifiedName.root == col_lookup), None
-            )
-            if not column:
-                column = next((c for c in columns if c.name.root == col_lookup), None)
-            if not column:
-                column = self._find_column_by_fqn(columns, col_lookup)
+            column = self._find_column_by_dotted_path(columns, col_lookup)
             if not column:
                 continue
 
