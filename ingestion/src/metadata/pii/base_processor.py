@@ -93,6 +93,15 @@ class AutoClassificationProcessor(Processor, ABC):
         adapter = adapter_for(entity)
         return adapter.get_columns(entity) if adapter else None
 
+    @staticmethod
+    def _find_column_in_record_children(columns: list[Column], column_name: str) -> Column | None:
+        for col in columns:
+            if col.children:
+                for child in col.children:
+                    if child.name.root == column_name:
+                        return child
+        return None
+
     @final
     def _run(self, record: SamplerResponse) -> Either[SamplerResponse]:
         """
@@ -113,6 +122,8 @@ class AutoClassificationProcessor(Processor, ABC):
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
             column = next((c for c in columns if c.name.root == column_name.root), None)
+            if not column:
+                column = self._find_column_in_record_children(columns, column_name.root)
             if not column:
                 continue
 
