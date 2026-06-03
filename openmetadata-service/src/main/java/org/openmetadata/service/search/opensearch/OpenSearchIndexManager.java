@@ -407,35 +407,43 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot swap aliases.");
       return false;
     }
-    if (aliases == null || aliases.isEmpty()) {
-      LOG.debug("No aliases to swap for index {}", newIndex);
+    Set<String> finalAliases = aliases == null ? Set.of() : aliases;
+    Set<String> finalIndicesToRemove = indicesToRemove == null ? Set.of() : indicesToRemove;
+    if (finalAliases.isEmpty() && finalIndicesToRemove.isEmpty()) {
+      LOG.debug("No aliases to swap and no indices to remove for index {}", newIndex);
       return true;
     }
-    if (oldIndices == null) {
-      oldIndices = new HashSet<>();
-    }
-
-    Set<String> finalOldIndices = oldIndices;
+    Set<String> finalOldIndices = oldIndices == null ? new HashSet<>() : oldIndices;
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
                 // First, remove aliases from all old indices
                 for (String oldIndex : finalOldIndices) {
-                  for (String alias : aliases) {
+                  for (String alias : finalAliases) {
                     updateBuilder.actions(
                         actionBuilder ->
                             actionBuilder.remove(
                                 removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
                   }
                 }
-                // Then, add aliases to the new index
-                for (String alias : aliases) {
+                // Then delete any concrete index sharing the alias name, atomically, so the alias
+                // add below cannot race a separate delete and orphan the canonical name.
+                for (String indexToRemove : finalIndicesToRemove) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.removeIndex(
+                              removeIndexBuilder ->
+                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
+                }
+                // Finally, add aliases to the new index
+                for (String alias : finalAliases) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
@@ -447,25 +455,18 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       if (response.acknowledged()) {
         LOG.info(
-            "Atomically swapped aliases {} from indices {} to index {}",
-            aliases,
-            finalOldIndices,
-            newIndex);
+            "Atomically swapped aliases {} to index {} (removed indices {}, detached from {})",
+            finalAliases,
+            newIndex,
+            finalIndicesToRemove,
+            finalOldIndices);
         return true;
       } else {
-        LOG.warn(
-            "Alias swap from indices {} to index {} was not acknowledged",
-            finalOldIndices,
-            newIndex);
+        LOG.warn("Alias swap to index {} was not acknowledged", newIndex);
         return false;
       }
     } catch (Exception e) {
-      LOG.error(
-          "Failed to swap aliases {} from indices {} to index {}",
-          aliases,
-          finalOldIndices,
-          newIndex,
-          e);
+      LOG.error("Failed to swap aliases {} to index {}", finalAliases, newIndex, e);
       return false;
     }
   }

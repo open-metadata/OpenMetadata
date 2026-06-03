@@ -42,11 +42,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     String entityType = context.getEntityType();
     String canonicalIndex = context.getCanonicalIndex();
-    String activeIndex = context.getActiveIndex();
     String stagedIndex = context.getStagedIndex();
-    Set<String> existingAliases = context.getExistingAliases();
-    String canonicalAlias = context.getCanonicalAliases();
-    Set<String> parentAliases = context.getParentAliases();
+    Set<String> aliasesFromMapping = context.getExistingAliases();
 
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
@@ -91,21 +88,20 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     if (shouldPromote) {
       try {
+        // The alias set was derived from indexMapping.json at recreate time via
+        // getAliasesFromMapping; finalize just attaches that captured set. Nothing is read from the
+        // live cluster, so the set is deterministic and matches the distributed promotion path.
         Set<String> aliasesToAttach = new HashSet<>();
-
-        existingAliases.stream()
-            .filter(alias -> alias != null && !alias.isBlank())
-            .forEach(aliasesToAttach::add);
-
-        if (!nullOrEmpty(canonicalAlias)) {
-          aliasesToAttach.add(canonicalAlias);
+        if (aliasesFromMapping != null) {
+          aliasesFromMapping.stream()
+              .filter(alias -> alias != null && !alias.isBlank())
+              .forEach(aliasesToAttach::add);
         }
 
-        parentAliases.stream()
-            .filter(alias -> alias != null && !alias.isBlank())
-            .forEach(aliasesToAttach::add);
-
-        aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
+        if (aliasesToAttach.isEmpty()) {
+          abortPromotionWithoutAliases(entityType, stagedIndex);
+          return;
+        }
 
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
         Set<String> oldIndicesToDelete = new HashSet<>();
@@ -115,30 +111,26 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
+        Set<String> concreteToRemove =
+            resolveCanonicalRemoval(searchClient, canonicalIndex, oldIndicesToDelete);
+
         LOG.debug(
-            "finalizeReindex entity '{}': aliases={}, oldIndices={}, stagedIndex={}",
+            "finalizeReindex entity '{}': aliases={}, oldIndices={}, stagedIndex={}, "
+                + "concreteToRemove={}",
             entityType,
             aliasesToAttach,
             oldIndicesToDelete,
-            stagedIndex);
+            stagedIndex,
+            concreteToRemove);
 
-        if (oldIndicesToDelete.contains(canonicalIndex)) {
-          if (searchClient.indexExists(canonicalIndex)) {
-            searchClient.deleteIndexWithBackoff(canonicalIndex);
-            oldIndicesToDelete.remove(canonicalIndex);
-            LOG.info("Cleaned up old index '{}' for entity '{}'.", canonicalIndex, entityType);
-          }
-        }
-
-        if (!aliasesToAttach.isEmpty()) {
-          boolean swapSuccess =
-              searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
-          if (!swapSuccess) {
-            LOG.error(
-                "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
-                entityType);
-            return;
-          }
+        boolean swapSuccess =
+            searchClient.swapAliases(
+                oldIndicesToDelete, stagedIndex, aliasesToAttach, concreteToRemove);
+        if (!swapSuccess) {
+          LOG.error(
+              "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
+              entityType);
+          return;
         }
 
         LOG.info(
@@ -261,6 +253,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
+      if (aliasesToAttach.isEmpty()) {
+        abortPromotionWithoutAliases(entityType, stagedIndex);
+        return;
+      }
+
       Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
       Set<String> oldIndicesToDelete = new HashSet<>();
       for (String oldIndex : allEntityIndices) {
@@ -269,36 +266,29 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
       }
 
+      Set<String> concreteToRemove =
+          resolveCanonicalRemoval(searchClient, canonicalIndex, oldIndicesToDelete);
+
       LOG.debug(
-          "promoteEntityIndex '{}': aliases={}, oldIndices={}, stagedIndex={}",
+          "promoteEntityIndex '{}': aliases={}, oldIndices={}, stagedIndex={}, concreteToRemove={}",
           entityType,
           aliasesToAttach,
           oldIndicesToDelete,
-          stagedIndex);
+          stagedIndex,
+          concreteToRemove);
 
-      if (oldIndicesToDelete.contains(canonicalIndex)) {
-        if (searchClient.indexExists(canonicalIndex)) {
-          searchClient.deleteIndexWithBackoff(canonicalIndex);
-          oldIndicesToDelete.remove(canonicalIndex);
-          LOG.info("Cleaned up old index '{}' for entity '{}'.", canonicalIndex, entityType);
-        }
-      }
-
-      if (!aliasesToAttach.isEmpty()) {
-        boolean swapSuccess =
-            searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
-        if (!swapSuccess) {
-          LOG.error(
-              "Failed to atomically swap aliases for entity '{}'. "
-                  + "oldIndices={}, stagedIndex={}, aliases={}",
-              entityType,
-              oldIndicesToDelete,
-              stagedIndex,
-              aliasesToAttach);
-          return;
-        }
-      } else {
-        LOG.warn("Entity '{}': aliasesToAttach is empty, skipping alias swap", entityType);
+      boolean swapSuccess =
+          searchClient.swapAliases(
+              oldIndicesToDelete, stagedIndex, aliasesToAttach, concreteToRemove);
+      if (!swapSuccess) {
+        LOG.error(
+            "Failed to atomically swap aliases for entity '{}'. "
+                + "oldIndices={}, stagedIndex={}, aliases={}",
+            entityType,
+            oldIndicesToDelete,
+            stagedIndex,
+            aliasesToAttach);
+        return;
       }
 
       LOG.info(
@@ -332,6 +322,60 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         promoteMetrics.recordPromotionFailure(entityType);
       }
     }
+  }
+
+  /**
+   * Aborts promotion when no aliases resolved for the staged index. Critically this skips the
+   * old-index cleanup: deleting the previously serving index while no alias points at the staged
+   * index would orphan the canonical alias and surface to users as
+   * "Failed to find index openmetadata_*_search_index". The staged index is retained (its routing
+   * is cleared by the caller's finally block) so a subsequent reindex can recover.
+   */
+  private void abortPromotionWithoutAliases(String entityType, String stagedIndex) {
+    LOG.error(
+        "Entity '{}': no aliases resolved for staged index '{}'. Skipping alias swap and old-index "
+            + "cleanup to avoid orphaning the canonical alias. Staged index retained; reindex must "
+            + "be retried.",
+        entityType,
+        stagedIndex);
+    ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+    if (metrics != null) {
+      metrics.recordPromotionFailure(entityType);
+    }
+  }
+
+  /**
+   * Resolves how the canonical index name participates in the alias swap and prunes it from {@code
+   * oldIndicesToDelete}.
+   *
+   * <ul>
+   *   <li><b>Concrete index sharing the alias name</b> (the first-install / post-orphan shape): it
+   *       is returned so the caller hands it to {@link SearchClient#swapAliases(Set, String, Set,
+   *       Set)} for an atomic {@code remove_index}. Deleting it in a separate step before the swap
+   *       opens a window where the index is gone but the alias is not yet attached — if the alias
+   *       add then fails (e.g. the delete has not propagated, so OS/ES still sees an index with the
+   *       alias name), the canonical name resolves to nothing and users hit "Failed to find index
+   *       openmetadata_*_search_index".
+   *   <li><b>Already an alias</b>: it is simply dropped from the delete set — the swap moves it
+   *       atomically, and a delete-by-name on an alias would fail ("matches an alias") and burn
+   *       retry backoff.
+   * </ul>
+   *
+   * @return the concrete indices (0 or 1) to remove atomically within the swap
+   */
+  private Set<String> resolveCanonicalRemoval(
+      SearchClient searchClient, String canonicalIndex, Set<String> oldIndicesToDelete) {
+    Set<String> concreteToRemove = new HashSet<>();
+    if (oldIndicesToDelete.contains(canonicalIndex)) {
+      boolean isConcreteIndex =
+          searchClient.getIndicesByAlias(canonicalIndex).isEmpty()
+              && searchClient.indexExists(canonicalIndex);
+      if (isConcreteIndex) {
+        concreteToRemove.add(canonicalIndex);
+      }
+      oldIndicesToDelete.remove(canonicalIndex);
+    }
+    return concreteToRemove;
   }
 
   /**
@@ -414,18 +458,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String stagedIndexName = buildStagedIndexName(canonicalIndexName);
     searchClient.createIndex(stagedIndexName, mappingContent);
 
-    Set<String> existingAliases =
-        activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();
-
-    // Add the default index
-    existingAliases.add(indexMapping.getAlias(clusterAlias));
-    existingAliases.add(indexMapping.getIndexName(clusterAlias));
+    // Aliases to attach come solely from indexMapping.json (short alias + parent aliases + raw
+    // canonical index name) — never from whatever happens to be on the live index in ES. Reading
+    // existing aliases off the cluster is non-deterministic (it propagates stray/leftover aliases),
+    // adds a cluster round-trip and failure point, and diverges from the distributed promotion path
+    // (promoteEntityIndex). Both paths now funnel through the same getAliasesFromMapping helper.
+    Set<String> aliasesFromMapping = getAliasesFromMapping(indexMapping, clusterAlias);
     context.add(
         entityType,
         canonicalIndexName,
         activeIndexName,
         stagedIndexName,
-        existingAliases,
+        aliasesFromMapping,
         indexMapping.getAlias(clusterAlias),
         indexMapping.getParentAliases(clusterAlias));
 
