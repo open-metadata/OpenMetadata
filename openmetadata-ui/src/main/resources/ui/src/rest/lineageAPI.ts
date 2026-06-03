@@ -222,11 +222,11 @@ export const exportLineageByEntityCountAsync = async (params: {
  * are silently dropped from `entitiesByType` and counted in `droppedCount` so the UI can
  * surface "N items hidden by permissions" if it wants.
  *
- * The inner value type is `any` (per the generated schema) because the server returns
- * heterogeneous full entity objects (Table, Dashboard, Container, Pipeline, …) keyed by
- * `entityType` and OpenMetadata does not have a discriminated-union JSON schema for
- * `EntityInterface`. Callers should narrow per-type at the call-site — e.g.
- * `entitiesByType.table as Table[]` — once they know which key they're consuming.
+ * Treat each map value as `unknown[]` because the server returns heterogeneous full entity
+ * objects (Table, Dashboard, Container, Pipeline, …) keyed by `entityType` and OpenMetadata
+ * does not have a discriminated-union JSON schema for `EntityInterface`. Callers should narrow
+ * per-type at the call-site — e.g. `entitiesByType.table as Table[]` — once they know which key
+ * they're consuming.
  */
 export const hydrateLineageEntities = async (
   params: HydrateLineageRequest

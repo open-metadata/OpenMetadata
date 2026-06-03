@@ -251,9 +251,9 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     if (acceptEncoding == null || acceptEncoding.isEmpty()) {
       return false;
     }
-    String target = encoding.toLowerCase();
+    String target = encoding.toLowerCase(Locale.ROOT);
     boolean wildcardEnabled = false;
-    for (String enc : acceptEncoding.toLowerCase().split(",")) {
+    for (String enc : acceptEncoding.toLowerCase(Locale.ROOT).split(",")) {
       String[] parts = enc.trim().split(";");
       String name = parts[0].trim();
       boolean isTarget = name.equals(target);
@@ -449,7 +449,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       return true;
     }
 
-    String extension = fileName.substring(dotIndex + 1).toLowerCase();
+    String extension = fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
     return !STATIC_FILE_EXTENSIONS.contains(extension);
   }
 }
