@@ -28,6 +28,22 @@ import {
 import { getEntityDetailsPath } from './RouterUtils';
 
 // Re-exports from EntityNameUtils (backward compat)
+// Re-export EntityLabel component as getEntityLabel (backward compat)
+export { default as getEntityLabel } from '../components/Entity/EntityLabel/EntityLabel.component';
+// Re-exports from EntityBreadcrumbUtils (backward compat)
+export {
+  getBreadCrumbForAPICollection,
+  getBreadCrumbForAPIEndpoint,
+  getBreadcrumbForChart,
+  getBreadcrumbForEntitiesWithServiceOnly,
+  getBreadcrumbForEntityWithParent,
+  getBreadCrumbForKpi,
+  getBreadcrumbForTable,
+  getBreadcrumbForTestCase,
+  getBreadcrumbForTestSuite,
+  getEntityBreadcrumbs,
+  getEntityLinkFromType,
+} from './EntityBreadcrumbUtils';
 export {
   EntityTypeName,
   getDomainDisplayName,
@@ -35,13 +51,13 @@ export {
   getEntityNameLabel,
   getPluralizeEntityName,
 } from './EntityNameUtils';
-
 // Re-exports from EntityPureUtils (backward compat)
 export {
   checkIfJoinsAvailable,
   columnSorter,
   DRAWER_NAVIGATION_OPTIONS,
   ENTITY_LINK_SEPARATOR,
+  getBreadcrumbsFromFqn,
   getColumnNameFromEntityLink,
   getColumnSorter,
   getEntityBulkEditPath,
@@ -62,24 +78,6 @@ export {
   searchInColumns,
   updateNodeType,
 } from './EntityPureUtils';
-
-// Re-exports from EntityBreadcrumbUtils (backward compat)
-export {
-  getBreadCrumbForAPICollection,
-  getBreadCrumbForAPIEndpoint,
-  getBreadCrumbForKpi,
-  getBreadcrumbForChart,
-  getBreadcrumbForEntitiesWithServiceOnly,
-  getBreadcrumbForEntityWithParent,
-  getBreadcrumbForTable,
-  getBreadcrumbForTestCase,
-  getBreadcrumbForTestSuite,
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-} from './EntityBreadcrumbUtils';
-
-// Re-export EntityLabel component as getEntityLabel (backward compat)
-export { default as getEntityLabel } from '../components/Entity/EntityLabel/EntityLabel.component';
 
 export const getFrequentlyJoinedColumns = (
   columnName: string,

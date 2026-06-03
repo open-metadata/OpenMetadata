@@ -27,9 +27,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
-import {
-  SearchIndexField,
-} from '../generated/entity/data/searchIndex';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   ColumnJoins,
