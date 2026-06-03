@@ -600,7 +600,7 @@ class DefaultRecreateHandlerTest {
                 .canonicalIndex("table_search_index")
                 .activeIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(List.of("legacyAlias", "", " ")))
+                .existingAliases(new HashSet<>(List.of("legacyAlias", "table", "all", "", " ")))
                 .canonicalAliases("table")
                 .parentAliases(new HashSet<>(List.of("all", "", " ")))
                 .build();
@@ -740,7 +740,7 @@ class DefaultRecreateHandlerTest {
                 .canonicalIndex("table_search_index")
                 .activeIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(Set.of("table", "table_search_index")))
+                .existingAliases(new HashSet<>(Set.of("table", "table_search_index", "all")))
                 .canonicalAliases("table")
                 .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
@@ -778,7 +778,7 @@ class DefaultRecreateHandlerTest {
                 .canonicalIndex("table_search_index")
                 .activeIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(Set.of("table", "table_search_index")))
+                .existingAliases(new HashSet<>(Set.of("table", "table_search_index", "all")))
                 .canonicalAliases("table")
                 .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
@@ -885,12 +885,11 @@ class DefaultRecreateHandlerTest {
   class RecreateIndexFromMappingTests {
 
     @Test
-    @DisplayName("Should resolve existing alias targets and populate context")
+    @DisplayName("Should derive aliases from the mapping only, never from the live index in ES")
     void testRecreateIndexFromMappingUsesAliasTargetAsActiveIndex() {
       SearchClient client = mock(SearchClient.class);
       when(client.indexExists("table_search_index")).thenReturn(false);
       when(client.getIndicesByAlias("table")).thenReturn(Set.of("table_search_index_v1"));
-      when(client.getAliases("table_search_index_v1")).thenReturn(new HashSet<>(Set.of("legacy")));
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getClusterAlias()).thenReturn("");
@@ -914,7 +913,9 @@ class DefaultRecreateHandlerTest {
 
       assertEquals("table_search_index", context.getCanonicalIndex("table").orElseThrow());
       assertEquals("table_search_index_v1", context.getOriginalIndex("table").orElseThrow());
-      assertTrue(context.getExistingAliases("table").contains("legacy"));
+      // Aliases come purely from the mapping (short alias + raw index name); stray aliases on the
+      // live index are never read or carried forward.
+      verify(client, never()).getAliases(anyString());
       assertTrue(context.getExistingAliases("table").contains("table"));
       assertTrue(context.getExistingAliases("table").contains("table_search_index"));
       assertTrue(context.getParentAliases("table").contains("all"));

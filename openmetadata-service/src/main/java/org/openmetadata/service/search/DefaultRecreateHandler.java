@@ -86,11 +86,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     String entityType = context.getEntityType();
     String canonicalIndex = context.getCanonicalIndex();
-    String activeIndex = context.getActiveIndex();
     String stagedIndex = context.getStagedIndex();
-    Set<String> existingAliases = context.getExistingAliases();
-    String canonicalAlias = context.getCanonicalAliases();
-    Set<String> parentAliases = context.getParentAliases();
+    Set<String> aliasesFromMapping = context.getExistingAliases();
 
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
@@ -147,21 +144,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       //                         is strictly worse than the writes going back to the canonical
       //                         alias target. Operators need to retry the reindex either way.
       try {
+        // The alias set was derived from indexMapping.json at recreate time via
+        // getAliasesFromMapping; finalize just attaches that captured set. Nothing is read from the
+        // live cluster, so the set is deterministic and matches the distributed promotion path.
         Set<String> aliasesToAttach = new HashSet<>();
-
-        existingAliases.stream()
-            .filter(alias -> alias != null && !alias.isBlank())
-            .forEach(aliasesToAttach::add);
-
-        if (!nullOrEmpty(canonicalAlias)) {
-          aliasesToAttach.add(canonicalAlias);
+        if (aliasesFromMapping != null) {
+          aliasesFromMapping.stream()
+              .filter(alias -> alias != null && !alias.isBlank())
+              .forEach(aliasesToAttach::add);
         }
-
-        parentAliases.stream()
-            .filter(alias -> alias != null && !alias.isBlank())
-            .forEach(aliasesToAttach::add);
-
-        aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
 
         if (aliasesToAttach.isEmpty()) {
           abortPromotionWithoutAliases(entityType, stagedIndex);
@@ -549,18 +540,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     applyBulkBuildSettings(searchClient, stagedIndexName, entityType);
     searchRepository.registerStagedIndex(entityType, stagedIndexName);
 
-    Set<String> existingAliases =
-        activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();
-
-    // Add the default index
-    existingAliases.add(indexMapping.getAlias(clusterAlias));
-    existingAliases.add(indexMapping.getIndexName(clusterAlias));
+    // Aliases to attach come solely from indexMapping.json (short alias + parent aliases + raw
+    // canonical index name) — never from whatever happens to be on the live index in ES. Reading
+    // existing aliases off the cluster is non-deterministic (it propagates stray/leftover aliases),
+    // adds a cluster round-trip and failure point, and diverges from the distributed promotion path
+    // (promoteEntityIndex). Both paths now funnel through the same getAliasesFromMapping helper.
+    Set<String> aliasesFromMapping = getAliasesFromMapping(indexMapping, clusterAlias);
     context.add(
         entityType,
         canonicalIndexName,
         activeIndexName,
         stagedIndexName,
-        existingAliases,
+        aliasesFromMapping,
         indexMapping.getAlias(clusterAlias),
         indexMapping.getParentAliases(clusterAlias));
 
