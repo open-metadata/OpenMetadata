@@ -1195,6 +1195,7 @@
     "last-7-days": "最近7天",
     "last-activity": "最后活动",
     "last-activity-n-minutes-ago": "{{count}}分钟前的最后活动",
+    "last-edited": "最后编辑",
     "last-edited-by": "最后编辑者",
     "last-error": "最近错误",
     "last-failed-at": "最近失败时间",

@@ -1195,6 +1195,7 @@
     "last-7-days": "過去 7 天",
     "last-activity": "最後活動",
     "last-activity-n-minutes-ago": "最後活動於 {{count}} 分鐘前",
+    "last-edited": "最後編輯",
     "last-edited-by": "最後編輯者",
     "last-error": "最後錯誤",
     "last-failed-at": "上次失敗於",

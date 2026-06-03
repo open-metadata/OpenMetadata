@@ -1195,6 +1195,7 @@
     "last-7-days": "Últimos 7 días",
     "last-activity": "Última actividad",
     "last-activity-n-minutes-ago": "Última actividad hace {{count}} minutos",
+    "last-edited": "Última edición",
     "last-edited-by": "Última edición por",
     "last-error": "Último error",
     "last-failed-at": "Último fallo en",

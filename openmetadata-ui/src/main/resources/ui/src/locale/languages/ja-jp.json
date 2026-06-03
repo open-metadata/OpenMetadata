@@ -1195,6 +1195,7 @@
     "last-7-days": "過去7日間",
     "last-activity": "最終アクティビティ",
     "last-activity-n-minutes-ago": "最終アクティビティは{{count}}分前",
+    "last-edited": "最終編集",
     "last-edited-by": "最終編集者",
     "last-error": "最新のエラー",
     "last-failed-at": "最後の失敗日時",
