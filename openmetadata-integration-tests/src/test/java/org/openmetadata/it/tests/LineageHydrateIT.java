@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -191,7 +192,7 @@ public class LineageHydrateIT {
             .withEntities(
                 List.of(
                     new EntityReference().withType("table").withId(table.getId()),
-                    new EntityReference().withType("table").withId(java.util.UUID.randomUUID())));
+                    new EntityReference().withType("table").withId(UUID.randomUUID())));
 
     JsonNode response = postHydrate(client, request);
 
@@ -221,6 +222,21 @@ public class LineageHydrateIT {
   }
 
   @Test
+  void hydrateRejectsBlankEntityType() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    HydrateLineageRequest request =
+        new HydrateLineageRequest()
+            .withEntities(List.of(new EntityReference().withType("   ").withId(UUID.randomUUID())));
+    Exception thrown = assertThrows(Exception.class, () -> postHydrate(client, request));
+    String msg = thrown.getMessage() == null ? "" : thrown.getMessage();
+    assertTrue(
+        msg.contains("400")
+            || msg.toLowerCase().contains("non-blank")
+            || msg.toLowerCase().contains("type"),
+        "blank entity type must yield a clear 4xx, got: " + msg);
+  }
+
+  @Test
   void hydrateUnknownTypeFailsCleanly() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     HydrateLineageRequest request =
@@ -229,7 +245,7 @@ public class LineageHydrateIT {
                 List.of(
                     new EntityReference()
                         .withType("nonexistent_type_xyz")
-                        .withId(java.util.UUID.randomUUID())));
+                        .withId(UUID.randomUUID())));
     Exception thrown = assertThrows(Exception.class, () -> postHydrate(client, request));
     String msg = thrown.getMessage() == null ? "" : thrown.getMessage();
     assertTrue(

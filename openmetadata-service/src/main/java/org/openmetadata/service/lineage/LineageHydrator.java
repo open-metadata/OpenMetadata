@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,7 +77,7 @@ public class LineageHydrator {
    * Validate, group, hydrate, authorize.
    *
    * @throws IllegalArgumentException if {@code request} is null, the entities list is empty, or
-   *     any entry is missing {@code type} / {@code id}.
+   *     any entry has a blank {@code type} or missing {@code id}.
    */
   public HydrateLineageResponse hydrate(
       UriInfo uriInfo, SecurityContext securityContext, HydrateLineageRequest request) {
@@ -109,16 +110,15 @@ public class LineageHydrator {
   }
 
   private static Map<String, List<UUID>> groupIdsByType(List<EntityReference> refs) {
-    Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
+    Map<String, LinkedHashSet<UUID>> uniqueIdsByType = new LinkedHashMap<>();
     for (EntityReference ref : refs) {
-      if (ref.getType() == null || ref.getId() == null) {
-        throw new IllegalArgumentException("each entity must have non-null type and id");
+      if (ref == null || ref.getType() == null || ref.getType().isBlank() || ref.getId() == null) {
+        throw new IllegalArgumentException("each entity must have non-blank type and non-null id");
       }
-      List<UUID> ids = idsByType.computeIfAbsent(ref.getType(), k -> new ArrayList<>());
-      if (!ids.contains(ref.getId())) {
-        ids.add(ref.getId());
-      }
+      uniqueIdsByType.computeIfAbsent(ref.getType(), k -> new LinkedHashSet<>()).add(ref.getId());
     }
+    Map<String, List<UUID>> idsByType = new LinkedHashMap<>(uniqueIdsByType.size());
+    uniqueIdsByType.forEach((type, ids) -> idsByType.put(type, new ArrayList<>(ids)));
     return idsByType;
   }
 

@@ -26,6 +26,10 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -378,24 +382,31 @@ public class OpenMetadataAssetServlet extends AssetServlet {
    * Append a value to the {@code Vary} response header without clobbering any existing one.
    *
    * <p>Browsers and shared caches treat {@code Vary} as a comma-separated list (RFC 7231
-   * §7.1.4). Calling {@code setHeader} would discard a {@code Vary: Origin} that an upstream
-   * CORS filter may already have set; we instead merge. Dedupe is per-token (split on comma,
-   * trim, case-insensitive equals) — a substring check would falsely match {@code Accept} against
-   * {@code Accept-Encoding} and would also miss duplicates separated by inconsistent whitespace.
+   * §7.1.4). Reading one header and then calling {@code setHeader} would discard a {@code Vary:
+   * Origin} that an upstream CORS filter may already have set; we instead merge all header lines.
+   * Dedupe is per-token (split on comma, trim, case-insensitive equals) — a substring check would
+   * falsely match {@code Accept} against {@code Accept-Encoding} and would also miss duplicates
+   * separated by inconsistent whitespace.
    */
   private static void appendVaryHeader(HttpServletResponse resp, String value) {
-    String existing = resp.getHeader("Vary");
-    if (existing == null || existing.isEmpty()) {
-      resp.setHeader("Vary", value);
-      return;
-    }
     String target = value.trim();
-    for (String token : existing.split(",")) {
-      if (token.trim().equalsIgnoreCase(target)) {
-        return;
+    Map<String, String> tokens = new LinkedHashMap<>();
+    Collection<String> existingHeaders = resp.getHeaders("Vary");
+    if (existingHeaders != null) {
+      for (String header : existingHeaders) {
+        if (header == null || header.isBlank()) {
+          continue;
+        }
+        for (String token : header.split(",")) {
+          String trimmed = token.trim();
+          if (!trimmed.isEmpty()) {
+            tokens.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+          }
+        }
       }
     }
-    resp.setHeader("Vary", existing + ", " + value);
+    tokens.putIfAbsent(target.toLowerCase(Locale.ROOT), target);
+    resp.setHeader("Vary", String.join(", ", tokens.values()));
   }
 
   /**

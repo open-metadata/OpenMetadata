@@ -9,7 +9,13 @@
     "entitiesByType": {
       "description": "Hydrated entities keyed by entityType (table, dashboard, pipeline, topic, ...). Only types with at least one authorized entity are present in the map.",
       "type": "object",
-      "existingJavaType": "java.util.Map<String, java.util.List<Object>>"
+      "existingJavaType": "java.util.Map<String, java.util.List<Object>>",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
     },
     "droppedCount": {
       "description": "Number of requested entities that were silently dropped because the caller does not have VIEW_BASIC permission on them. Includes ids that did not resolve to any entity. Lets the UI surface 'N items hidden by permissions' instead of silently swallowing them.",

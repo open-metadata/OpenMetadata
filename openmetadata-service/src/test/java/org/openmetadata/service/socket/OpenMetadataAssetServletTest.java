@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -206,6 +207,26 @@ public class OpenMetadataAssetServletTest {
     servlet.doGet(request, response);
 
     verify(response).setHeader("Vary", "Accept-Encoding");
+  }
+
+  @Test
+  public void testServeCompressedMergesAllVaryHeaders() throws Exception {
+    String path = "/test.js";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn("gzip, br");
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(servletContext.getMimeType(anyString())).thenReturn("application/javascript");
+    when(response.getHeaders("Vary")).thenReturn(List.of("Origin", "Accept-Language, origin"));
+
+    servlet.doGet(request, response);
+
+    verify(response).setHeader("Vary", "Origin, Accept-Language, Accept-Encoding");
   }
 
   @Test
