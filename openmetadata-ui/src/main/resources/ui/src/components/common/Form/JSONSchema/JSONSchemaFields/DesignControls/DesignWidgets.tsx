@@ -26,7 +26,7 @@ const getLabel = (props: WidgetProps): string =>
   props.label || props.schema.title || startCase(props.id.split('/').pop());
 
 const getHint = (props: WidgetProps): string | undefined =>
-  props.schema.description || (props.options?.help as string | undefined);
+  props.schema.description || props.options?.help;
 
 export const DesignTextWidget = (props: WidgetProps) => {
   const { schema, options } = props;

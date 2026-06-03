@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Input,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import {
   Eye,
   EyeOff,
@@ -163,52 +167,35 @@ export const DesignTextControl = ({
   onFocus,
   onBlur,
 }: DesignControlProps) => {
-  const [focused, setFocused] = useState(false);
-
   const isLongHint =
     typeof hint === 'string' && hint.length > HINT_TOOLTIP_THRESHOLD;
 
   return (
     <div>
       <FieldLabel hint={hint} id={id} label={label} required={required} />
-      <div
-        className={frameClass(
-          focused,
-          !!error,
-          false,
-          disabled || readonly || false
-        )}>
-        <input
-          autoFocus={autofocus}
-          className={classNames(
-            'design-control-input tw:w-full tw:flex-1 tw:border-0',
-            'tw:bg-transparent tw:p-0 tw:text-sm tw:text-primary',
-            'tw:outline-none tw:placeholder:text-placeholder'
-          )}
-          data-testid={testId}
-          disabled={disabled || readonly}
-          id={id}
-          inputMode={inputMode}
-          placeholder={placeholder}
-          value={value ?? ''}
-          onBlur={() => {
-            setFocused(false);
-            onBlur?.();
-          }}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            onChange(e.target.value)
-          }
-          onFocus={() => {
-            setFocused(true);
-            onFocus?.();
-          }}
-        />
-        {suffix && (
-          <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-quaternary">
-            {suffix}
-          </span>
+
+      <Input
+        autoFocus={autofocus}
+        className={classNames(
+          'design-control-input tw:w-full tw:flex-1 tw:border-0',
+          'tw:bg-transparent tw:p-0 tw:text-sm tw:text-primary',
+          'tw:outline-none tw:placeholder:text-placeholder'
         )}
-      </div>
+        data-testid={testId}
+        id={id}
+        inputMode={inputMode}
+        isDisabled={disabled || readonly}
+        placeholder={placeholder}
+        value={value ?? ''}
+        onBlur={onBlur}
+        onChange={onChange}
+        onFocus={onFocus}
+      />
+      {suffix && (
+        <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-quaternary">
+          {suffix}
+        </span>
+      )}
       {!isLongHint && <FieldHint error={error} hint={hint} />}
       {isLongHint && <FieldHint error={error} />}
     </div>
@@ -307,15 +294,15 @@ export const DesignSecretControl = ({
             }}
           />
         ) : (
-          <input
+          <Input
             autoFocus={autofocus}
             className={classNames(
               'design-control-input tw:w-full tw:flex-1 tw:border-0',
               'tw:bg-transparent tw:p-0 tw:text-sm tw:text-primary',
               'tw:outline-none tw:placeholder:text-placeholder'
             )}
-            disabled={disabled || readonly}
             id={id}
+            isDisabled={disabled || readonly}
             placeholder={placeholder}
             type={reveal ? 'text' : 'password'}
             value={value ?? ''}
@@ -323,7 +310,7 @@ export const DesignSecretControl = ({
               setFocused(false);
               onBlur?.();
             }}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
             onFocus={() => {
               setFocused(true);
               onFocus?.();
