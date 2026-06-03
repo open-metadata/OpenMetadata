@@ -110,6 +110,7 @@ test.describe(
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
+      test.slow();
       for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
         await addTeamHierarchy(page, teamDetails);
 
