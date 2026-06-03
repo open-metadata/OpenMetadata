@@ -295,7 +295,13 @@ public class ElasticSearchSourceBuilderFactory
     ElasticHighlightBuilder hb = new ElasticHighlightBuilder();
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
-    for (String field : listOrEmpty(fields)) {
+    List<String> safeFields = SearchSourceBuilderFactory.filterHighlightSafeFields(fields);
+    if (fields != null && safeFields.size() < fields.size()) {
+      LOG.debug(
+          "Dropping highlight fields with no associated analyzer (flattened subfields): {}",
+          fields.stream().filter(SearchSourceBuilderFactory::isHighlightUnsafeField).toList());
+    }
+    for (String field : safeFields) {
       hb.field(field, MAX_ANALYZED_OFFSET);
     }
     return hb.build();

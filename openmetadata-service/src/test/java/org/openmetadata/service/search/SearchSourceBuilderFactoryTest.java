@@ -467,6 +467,90 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testFlattenedFieldsAreDroppedFromConfiguredHighlights() {
+    // SearchSettings can be configured with highlight fields targeting flattened/flat_object
+    // subfields (custom properties under `extension.*`, struct columns under `columns.children.*`,
+    // etc.). Those subfields have no analyzer, so sending them to the search engine in a
+    // highlight clause fails the highlight phase at the shard level — the symptom customers see
+    // is "Field [extension.foundry_rid] has no associated analyzer / all shards failed". The
+    // factories must silently drop these fields and keep the search query valid.
+    searchSettings.getGlobalSettings().setHighlightFields(List.of());
+    tableConfig.setHighlightFields(
+        List.of(
+            "name",
+            "displayName",
+            "extension",
+            "extension.foundry_rid",
+            "columns.extension.tier",
+            "columns.children.foo",
+            "description"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+
+    assertHighlightFields(osBuilder, "name", "displayName", "description");
+    assertHighlightFields(esBuilder, "name", "displayName", "description");
+  }
+
+  @Test
+  public void testFlattenedFieldsAreDroppedFromGlobalHighlightFallback() {
+    // Same guarantee, but exercising the fallback path where `assetConfig.highlightFields` is
+    // empty and the factory uses `globalSettings.highlightFields`. Customers can hit this when
+    // they configure the bad field on the default/global settings instead of a specific asset
+    // type.
+    searchSettings
+        .getGlobalSettings()
+        .setHighlightFields(
+            List.of(
+                "name",
+                "extension.foundry_rid",
+                "description",
+                "responseSchema.schemaFields.children.x"));
+    tableConfig.setHighlightFields(null);
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, false);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, false);
+
+    assertHighlightFields(osBuilder, "name", "description");
+    assertHighlightFields(esBuilder, "name", "description");
+  }
+
+  @Test
+  public void testHighlightFieldSafetyClassifierCoversKnownFlattenedRoots() {
+    // Guard the contract of the classifier directly so that any future change to the flattened
+    // path set (or to `isHighlightUnsafeField` itself) keeps these representative cases covered.
+    assertTrue(SearchSourceBuilderFactory.isHighlightUnsafeField("extension"));
+    assertTrue(SearchSourceBuilderFactory.isHighlightUnsafeField("extension.foundry_rid"));
+    assertTrue(SearchSourceBuilderFactory.isHighlightUnsafeField("columns.extension.tier"));
+    assertTrue(SearchSourceBuilderFactory.isHighlightUnsafeField("columns.children.deep.nested"));
+    assertTrue(
+        SearchSourceBuilderFactory.isHighlightUnsafeField("dataModel.columns.extension.foo"));
+    assertTrue(
+        SearchSourceBuilderFactory.isHighlightUnsafeField(
+            "messageSchema.schemaFields.children.bar"));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField("name"));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField("description"));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField("columns.name"));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField("columns.description"));
+    // Path that merely shares a prefix segment with a flattened root but is not actually under it.
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField("extensionLabel"));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField(null));
+    assertFalse(SearchSourceBuilderFactory.isHighlightUnsafeField(""));
+  }
+
+  @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 

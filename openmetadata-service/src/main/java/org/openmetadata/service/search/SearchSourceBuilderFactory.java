@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -280,5 +281,67 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       return field + ".keyword";
     }
     return field;
+  }
+
+  /**
+   * Field paths that are mapped as {@code flattened} (Elasticsearch) / {@code flat_object}
+   * (OpenSearch) across the index mappings under {@code
+   * openmetadata-spec/src/main/resources/elasticsearch/}.
+   *
+   * <p>Subfields of these mappings (e.g. {@code extension.foundry_rid}, {@code
+   * columns.extension.something}) are stored as raw keywords without an analyzer. Using them in a
+   * highlight clause causes the search engine to fail the highlight phase at the shard level with
+   * {@code "Field [...] has no associated analyzer"}, which surfaces as an {@code all shards
+   * failed} error from the query endpoint and breaks any workflow (e.g. Automator) that runs that
+   * query.
+   *
+   * <p>If a new flattened field is added to any index mapping, add its dotted path here so that
+   * misconfigured highlight fields don't break search at runtime.
+   */
+  Set<String> FLATTENED_FIELD_PATHS =
+      Set.of(
+          "extension",
+          "columns.extension",
+          "columns.children",
+          "dataModel.columns.extension",
+          "dataModel.columns.children",
+          "fields.children",
+          "messageSchema.schemaFields.children",
+          "requestSchema.schemaFields.children",
+          "responseSchema.schemaFields.children");
+
+  /**
+   * Returns {@code true} when {@code field} is a flattened path or a subfield of one. Subfields of
+   * {@code flattened}/{@code flat_object} mappings have no analyzer and cannot be used in a
+   * highlight clause.
+   */
+  static boolean isHighlightUnsafeField(String field) {
+    boolean unsafe = false;
+    if (field != null && !field.isEmpty()) {
+      for (String root : FLATTENED_FIELD_PATHS) {
+        if (field.equals(root) || field.startsWith(root + ".")) {
+          unsafe = true;
+          break;
+        }
+      }
+    }
+    return unsafe;
+  }
+
+  /**
+   * Filter highlight-unsafe fields (flattened paths and their subfields) out of the configured
+   * list. The returned list preserves the original order of safe fields. Callers should compare
+   * against the input to detect — and log — dropped fields once per request.
+   */
+  static List<String> filterHighlightSafeFields(List<String> fields) {
+    List<String> safe = new ArrayList<>();
+    if (fields != null) {
+      for (String field : fields) {
+        if (!isHighlightUnsafeField(field)) {
+          safe.add(field);
+        }
+      }
+    }
+    return safe;
   }
 }
