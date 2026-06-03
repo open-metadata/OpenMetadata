@@ -52,31 +52,6 @@ public class EntityLifecycleEventDispatcher {
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
   }
 
-  /**
-   * Submit an ordered async side-effect onto the per-entity lane for {@code entityKey}. The shared
-   * {@code OrderedLaneExecutor} is the single async substrate: the entity-index handler and the
-   * {@code EntityRepository} post-commit drains (RDF / lineage-ES / rename-cascade search) all
-   * submit onto the same lanes keyed by the flushed entity id, so every async side-effect for one
-   * entity serializes on one single-consumer lane in submission order.
-   */
-  public void submitOrdered(UUID entityKey, OrderedTask task) {
-    orderedLaneExecutor.submit(entityKey, task);
-  }
-
-  /**
-   * Submit a post-commit external drain onto {@code laneKey}'s lane as a locator-CARRYING {@link
-   * OrderedLaneTask}, using {@code laneKey} itself as the entity-id locator. On lane-queue-full
-   * overflow or hard-stop the executor sheds the task to {@link SearchIndexRetryQueue} keyed by
-   * {@code laneKey} instead of running the slow external inline on the request thread or losing it —
-   * the request thread therefore never blocks and never runs the drain inline under overflow.
-   */
-  public void submitOrderedDrain(
-      UUID laneKey, String operation, String entityType, Runnable drain) {
-    OrderedLaneTask task =
-        new OrderedLaneTask(drain, operation, laneKey.toString(), null, entityType);
-    orderedLaneExecutor.submit(laneKey, task);
-  }
-
   public static EntityLifecycleEventDispatcher getInstance() {
     if (instance == null) {
       synchronized (EntityLifecycleEventDispatcher.class) {
@@ -477,8 +452,8 @@ public class EntityLifecycleEventDispatcher {
    * Net for the durability gaps: a lane task that throws (any {@link Throwable}, incl. {@link Error})
    * before reaching a self-enqueueing {@code SearchRepository} method, or a task shed because its lane
    * queue was full, lands in the entity-keyed search-index retry outbox instead of being lost. Every
-   * async handler dispatch and post-commit drain carries an {@link OrderedLaneTask} locator, so the
-   * retry worker reindexes the entity's current committed state.
+   * async handler lane task carries an {@link OrderedLaneTask} locator, so the retry worker reindexes
+   * the entity's current committed state.
    */
   private void enqueueLaneFailureRetry(OrderedTask task, Throwable failure) {
     if (task instanceof OrderedLaneTask locatorTask) {

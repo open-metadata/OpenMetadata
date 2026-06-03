@@ -41,20 +41,18 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 
 /**
- * Stage-2 async-search-index consistency contract: the write API request thread does the DB
- * transaction + the cheap SYNC cache write-through, then RETURNS — it never blocks on the ES entity
- * index. ES indexing runs off the request thread on the per-entity-ordered {@code
- * OrderedLaneExecutor}.
+ * Search-index read-your-write contract: a write commits the DB transaction, applies the sync cache
+ * write-through, then indexes the entity in Elasticsearch synchronously post-commit before the
+ * request returns. An entity is therefore searchable as soon as its create/update returns — there is
+ * no eventual-consistency window for search.
  *
  * <ul>
- *   <li><b>Read-your-write stays real-time</b>: GET /entity/&#123;id&#125; (DB + sync cache) is
- *       immediately consistent after create/update.
- *   <li><b>Search is eventually consistent</b>: the document becomes searchable shortly after,
- *       polled with Awaitility.
- *   <li><b>Same-entity ordering</b>: a create immediately followed by an update converges in search
- *       to the FINAL value (never the stale create-time value, never a 404) — the regression guard
- *       for the lane FIFO guarantee. A pre-Stage-2 unordered pool would converge to a stale/missing
- *       doc and time out.
+ *   <li><b>Read-your-write</b>: GET /entity/&#123;id&#125; (DB + sync cache) is immediately
+ *       consistent after create/update.
+ *   <li><b>Search read-your-write</b>: the document is searchable immediately after the write
+ *       returns (polled with Awaitility only to stay robust to Elasticsearch's own refresh latency).
+ *   <li><b>Same-entity ordering</b>: a create immediately followed by an update is reflected in
+ *       search as the FINAL value (never the stale create-time value, never a 404).
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -76,15 +74,9 @@ public class AsyncSearchIndexConsistencyIT {
     assertNotNull(byId, "GET by id must be immediately consistent (DB + sync cache)");
     assertEquals(table.getId(), byId.getId());
 
-    // Async boundary: ES indexing runs off the request thread on the ordered lane, so create()
-    // returns without waiting on the ES write — GET-by-id above is immediately read-your-write. We
-    // deliberately do NOT hard-assert "not searchable the instant create() returns": on a fast host
-    // the lane (a virtual thread) can index within the few ms before a same-thread search sample,
-    // so
-    // that assertion is inherently racy and would flake. The deterministic proof that indexing is
-    // dispatched async lives in the unit tests (EntityLifecycleEventDispatcherTest /
-    // OrderedLaneExecutorTest / SearchIndexHandlerTest.isAsync). The hard end-to-end guarantee here
-    // is that the doc eventually converges in search:
+    // Search indexing runs synchronously post-commit, so the entity is searchable as soon as the
+    // write returns. We still poll with Awaitility to stay robust to Elasticsearch's own refresh
+    // latency rather than asserting on the very first sample.
     awaitSearchHit(client, tableId);
   }
 

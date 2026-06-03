@@ -75,9 +75,10 @@ class SearchIndexHandlerTest {
 
   @Test
   void testIsAsync() {
-    assertTrue(
+    assertFalse(
         searchIndexHandler.isAsync(),
-        "Search indexing runs off the request thread on the per-entity-ordered lane");
+        "Search indexing runs synchronously post-commit so it is read-your-write visible in the "
+            + "same request flow (e.g. a create-then-search or a postCreate hook that updates the doc)");
   }
 
   @Test

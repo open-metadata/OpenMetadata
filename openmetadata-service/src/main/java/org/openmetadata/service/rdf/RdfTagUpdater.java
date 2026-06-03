@@ -75,8 +75,9 @@ public class RdfTagUpdater {
 
   /**
    * Remove and return the closures captured since {@link #beginDeferral} (closing the scope) without
-   * running them. The caller (an async lane task) runs them off the request thread via {@link
-   * #runDeferredClosures(List)} so the SPARQL round trips never block the write API request thread.
+   * running them. The caller drains and runs them via {@link #runDeferredClosures(List)}
+   * synchronously after the wrapped transaction commits, so the SPARQL round trips run post-commit
+   * (outside the DB transaction handle) rather than while it is held.
    */
   public static List<Runnable> drainDeferredToList() {
     List<Runnable> deferred = DEFERRED_RDF.get();

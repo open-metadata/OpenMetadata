@@ -149,11 +149,11 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public boolean isAsync() {
-    // Search indexing runs off the request thread on the OrderedLaneExecutor. Per-entity ordering
-    // is preserved because every event for one entity id hashes to the same single-consumer lane in
-    // submission order, so a postCreate hook that immediately updates the same document still
-    // applies after the create-index on that lane (never a reorder or 404).
-    return true;
+    // Search indexing must be visible to follow-up operations in the same request flow (e.g., a
+    // postCreate hook that immediately updates the indexed document, or a create-then-search). It
+    // therefore runs synchronously post-commit on the request thread — never deferred to a
+    // background lane, which would make the entity eventually consistent and break read-your-write.
+    return false;
   }
 
   public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {

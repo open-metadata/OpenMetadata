@@ -125,7 +125,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -274,34 +273,10 @@ public class SearchRepository {
       Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
     if (!deferSearchWrite(
         new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
-      runSearchWriteOffRequestThread(esWrite, operation, entityId, entityFqn, entityType);
-    }
-  }
-
-  /**
-   * No flush deferral scope is open (a non-flush cascade rewrite), so run the cascade off the request
-   * thread on the per-entity-ordered lane when a parseable entity id locator is available — ordering
-   * behind that entity's index write is preserved and a failure enqueues a durable retry. Without a
-   * UUID locator (FQN-prefix cascades) there is no lane key, so run inline as before.
-   */
-  private static void runSearchWriteOffRequestThread(
-      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
-    UUID laneKey = parseUuidOrNull(entityId);
-    if (laneKey == null) {
+      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
+      // on the request thread so the rewrite is read-your-write visible when the request returns.
       esWrite.run();
-    } else {
-      EntityLifecycleEventDispatcher.getInstance()
-          .submitOrdered(
-              laneKey, new OrderedLaneTask(esWrite, operation, entityId, entityFqn, entityType));
     }
-  }
-
-  private static UUID parseUuidOrNull(String value) {
-    UUID parsed = null;
-    if (value != null && SearchIndexRetryQueue.isUuid(value)) {
-      parsed = UUID.fromString(value);
-    }
-    return parsed;
   }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;

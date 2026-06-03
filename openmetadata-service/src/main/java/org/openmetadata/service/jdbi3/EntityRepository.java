@@ -319,10 +319,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
 
-  private static final String DRAIN_OP_RDF = "rdf-drain";
-  private static final String DRAIN_OP_LINEAGE = "lineage-drain";
-  private static final String DRAIN_OP_SEARCH_WRITE = "search-write-drain";
-
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
@@ -3208,8 +3204,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * given tag FQN. The {@code tag_usage} table only stores {@code targetFQNHash}, so we cannot
    * cheaply derive (type, id, fqn) from it; we lean on the search index instead — the same source
    * the search-side {@code updateClassificationTagByFqnPrefix} reindex uses to find affected
-   * documents. Run this BEFORE the async search reindex starts so the search query still matches
-   * documents by the old tag FQN.
+   * documents. Run this BEFORE the search reindex runs so the search query still matches documents
+   * by the old tag FQN.
    *
    * <p><b>Consistency tradeoff:</b> coverage is bounded by search-index freshness. Entities
    * tagged recently enough that the indexer hasn't picked them up are missed and fall back to
@@ -3567,7 +3563,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // the
     // handle is held).
     flushInOneTransaction(
-        () -> entities.getFirst().getId(),
         () -> {
           storeEntities(entities);
           storeExtensions(entities);
@@ -3617,7 +3612,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // invalidations issued here are recorded and drained post-commit so no Redis round trip runs
     // while the handle is held.
     flushInOneTransaction(
-        () -> updatedEntities.getFirst().getId(),
         () -> {
           updateMany(updatedEntities);
           removeExtensions(originals);
@@ -4711,7 +4705,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createNewEntityFlush(T entity) {
-    flushInOneTransaction(entity::getId, () -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(() -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
@@ -4730,24 +4724,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Run {@code flushBody} as one wrapped DB transaction with the post-commit side-effect collectors
-   * (tag RDF + domain/data-product lineage-ES) opened fresh for each deadlock-retry attempt and
-   * drained exactly once after the final successful commit. A rolled-back attempt clears its
-   * collector so a replay never double-enqueues. The collectors are (re-)opened inside the
-   * transactional runnable so each replay starts from an empty collector.
+   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + Redis-L2 cache) opened fresh
+   * for each deadlock-retry attempt and drained exactly once, synchronously on the request thread,
+   * after the final successful commit — so search/lineage stay read-your-write visible by the time
+   * the request returns. A rolled-back attempt clears its collector so a replay never double-enqueues.
+   * The collectors are (re-)opened inside the transactional runnable so each replay starts empty.
    */
   private void flushInOneTransaction(Runnable flushBody) {
-    flushInOneTransaction(null, flushBody);
-  }
-
-  /**
-   * As {@link #flushInOneTransaction(Runnable)}, but the post-commit RDF / lineage-ES / rename-cascade
-   * search drains are submitted to the {@code OrderedLaneExecutor} keyed by {@code laneKeySupplier}
-   * (the flushed entity id, resolved after the body runs) so they run off the request thread in
-   * per-entity order behind that entity's index write. Cache-L2 invalidation still drains
-   * synchronously on the request thread to preserve read-your-write. A {@code null} supplier (or one
-   * that yields {@code null}) falls back to running the externals inline on the request thread.
-   */
-  private void flushInOneTransaction(Supplier<UUID> laneKeySupplier, Runnable flushBody) {
     DeferralScope scope = new DeferralScope();
     boolean committed = false;
     try {
@@ -4758,16 +4741,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           });
       committed = true;
     } finally {
-      scope.finish(committed, resolveLaneKey(laneKeySupplier));
+      scope.finish(committed);
     }
-  }
-
-  private static UUID resolveLaneKey(Supplier<UUID> laneKeySupplier) {
-    UUID laneKey = null;
-    if (laneKeySupplier != null) {
-      laneKey = laneKeySupplier.get();
-    }
-    return laneKey;
   }
 
   /**
@@ -4841,97 +4816,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void finish(boolean committed, UUID laneKey) {
+    private void finish(boolean committed) {
       if (committed) {
-        drain(laneKey);
+        drain();
       } else {
         clear();
       }
     }
 
     /**
-     * Cache-L2 invalidation drains SYNC FIRST on the request thread so the next GET-by-id/by-name
-     * rebuilds fresh from DB (read-your-write). The RDF / lineage-ES / rename-cascade search
-     * externals are captured off their thread-locals here (they are thread-local-bound, so must be
-     * read on this thread) and their closure lists are handed to lane tasks keyed by the flushed
-     * entity id, so they run off the request thread on that entity's single-consumer lane.
-     *
-     * <p>These drains submit to the lane during the flush's {@code finally}, i.e. <em>before</em> the
-     * subsequent {@code postCreate}/{@code reactUpdate} dispatch submits this entity's own base-doc
-     * index write onto the same lane. That relative order is immaterial for correctness because the
-     * two target disjoint documents: the cascade/lineage closures rewrite <em>descendant</em> and
-     * <em>upstream/downstream</em> docs (different entity ids), while the base index rewrites this
-     * entity's own doc. The hazard the lane exists to prevent — two writes to the <em>same</em> doc
-     * (e.g. create-then-update of this entity) reordering — is still fully preserved, since both go
-     * through the dispatcher onto this lane in submission order. A {@code null} lane key (no entity in
-     * scope) runs the drains inline on the request thread as before.
+     * Drain all post-commit externals synchronously on the request thread, in order: Cache-L2
+     * invalidation first (so the next GET-by-id/by-name rebuilds fresh from DB), then the RDF /
+     * lineage-ES / rename-cascade search rewrites. Running inline post-commit keeps search and lineage
+     * read-your-write visible by the time the request returns; each runner applies per-closure
+     * try/catch and routes a failed rewrite to the durable search-index retry outbox.
      */
-    private void drain(UUID laneKey) {
+    private void drain() {
       if (ownsCache) {
         drainCacheInvalidations();
       }
-      List<Runnable> rdfClosures = ownsRdf ? RdfTagUpdater.drainDeferredToList() : List.of();
-      List<LineageUtil.DeferredLineageEsWrite> lineageClosures =
-          ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
-      List<SearchRepository.DeferredSearchWrite> searchClosures =
-          ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
-      submitExternalDrains(laneKey, rdfClosures, lineageClosures, searchClosures);
-    }
-
-    /**
-     * RDF and lineage drains rewrite disjoint documents (the SPARQL store / upstream-downstream docs)
-     * from the flushed entity, so they ride the flushed entity's lane key. The rename/move cascade
-     * search closures, however, can rewrite a non-flushed entity's OWN search document, which a later
-     * single op on that entity would also target — so each cascade closure is keyed on ITS OWN entity
-     * id (when it has a usable UUID locator) and submitted on that entity's lane, never the flushed
-     * batch's first id, so the two same-doc writes serialize on one lane in commit order.
-     */
-    private void submitExternalDrains(
-        UUID laneKey,
-        List<Runnable> rdfClosures,
-        List<LineageUtil.DeferredLineageEsWrite> lineageClosures,
-        List<SearchRepository.DeferredSearchWrite> searchClosures) {
-      if (!rdfClosures.isEmpty()) {
-        submitExternalDrain(
-            laneKey, DRAIN_OP_RDF, () -> RdfTagUpdater.runDeferredClosures(rdfClosures));
+      if (ownsRdf) {
+        RdfTagUpdater.runDeferredClosures(RdfTagUpdater.drainDeferredToList());
       }
-      if (!lineageClosures.isEmpty()) {
-        submitExternalDrain(laneKey, DRAIN_OP_LINEAGE, () -> runLineageEsClosures(lineageClosures));
+      if (ownsLineageEs) {
+        runLineageEsClosures(LineageUtil.drainLineageDeferred());
       }
-      submitSearchWriteDrainsPerEntity(laneKey, searchClosures);
-    }
-
-    private void submitSearchWriteDrainsPerEntity(
-        UUID laneKey, List<SearchRepository.DeferredSearchWrite> searchClosures) {
-      if (!searchClosures.isEmpty()) {
-        Map<UUID, List<SearchRepository.DeferredSearchWrite>> byEntity =
-            groupSearchWritesByEntity(laneKey, searchClosures);
-        for (Map.Entry<UUID, List<SearchRepository.DeferredSearchWrite>> entry :
-            byEntity.entrySet()) {
-          List<SearchRepository.DeferredSearchWrite> closures = entry.getValue();
-          submitExternalDrain(
-              entry.getKey(), DRAIN_OP_SEARCH_WRITE, () -> runSearchWriteClosures(closures));
-        }
+      if (ownsSearchWrite) {
+        runSearchWriteClosures(SearchRepository.drainSearchWriteDeferred());
       }
-    }
-
-    private Map<UUID, List<SearchRepository.DeferredSearchWrite>> groupSearchWritesByEntity(
-        UUID laneKey, List<SearchRepository.DeferredSearchWrite> searchClosures) {
-      Map<UUID, List<SearchRepository.DeferredSearchWrite>> byEntity = new LinkedHashMap<>();
-      for (SearchRepository.DeferredSearchWrite closure : searchClosures) {
-        UUID key = closureLaneKey(closure, laneKey);
-        byEntity.computeIfAbsent(key, ignored -> new ArrayList<>()).add(closure);
-      }
-      return byEntity;
-    }
-
-    private UUID closureLaneKey(SearchRepository.DeferredSearchWrite closure, UUID fallback) {
-      UUID key = fallback;
-      String closureEntityId = closure.entityId();
-      if (closureEntityId != null && SearchIndexRetryQueue.isUuid(closureEntityId)) {
-        key = UUID.fromString(closureEntityId);
-      }
-      return key;
     }
 
     private void clear() {
@@ -4947,33 +4859,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (ownsCache) {
         clearCacheInvalidations();
       }
-    }
-  }
-
-  /**
-   * Submit a post-commit external drain onto the per-entity-ordered lane keyed by {@code laneKey} so
-   * it runs off the request thread behind that entity's index write. The drain is wrapped as a
-   * locator-CARRYING ordered-lane task using {@code laneKey} (the flushed entity for rdf/lineage,
-   * {@code entry.getKey()} per-entity for search-write) as the entity-id locator, so on lane-queue
-   * overflow or hard-stop the executor SHEDS it to {@link SearchIndexRetryQueue} keyed by {@code
-   * laneKey} instead of running the slow external inline on the request thread (invariant A) or
-   * losing it against a torn-down DAO (invariant C).
-   *
-   * <p>RESIDUAL (honest, best-effort recovery): a shed/dropped drain enqueues {@code laneKey} for
-   * reindex, and the retry worker rebuilds <em>that entity's own search document and its lineage
-   * edges</em> from committed DB rows. It does NOT rebuild RDF triples in the SPARQL store, and it
-   * does NOT replay rename/move-cascade reindexes of DESCENDANT entities — those overflow/drop
-   * recoveries are best-effort only and may be lost until a full reindex. Under the normal (non-
-   * overflow) path the inner {@code runLineageEsClosures}/{@code runSearchWriteClosures}/{@code
-   * RdfTagUpdater.runDeferredClosures} run on the lane and self-enqueue per-closure durable retries
-   * on failure. A {@code null} lane key (no entity id in scope) runs the drain inline as before.
-   */
-  private void submitExternalDrain(UUID laneKey, String operation, Runnable drain) {
-    if (laneKey == null) {
-      drain.run();
-    } else {
-      EntityLifecycleEventDispatcher.getInstance()
-          .submitOrderedDrain(laneKey, operation, entityType, drain);
     }
   }
 
@@ -5053,8 +4938,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(
-          () -> chunk.getFirst().getId(), () -> createManyEntitiesFlushBody(chunk));
+      flushInOneTransaction(() -> createManyEntitiesFlushBody(chunk));
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
@@ -8281,7 +8165,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       flushInOneTransaction(
-          () -> updated.getId(),
           () -> {
             restoreUpdaterState(snapshot);
             flushUpdateBody(useOptimisticStore, importMode);
