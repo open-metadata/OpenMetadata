@@ -89,40 +89,44 @@ public class WorkflowStats {
   }
 
   private StepStats mergeStepStats(StepStats currentStats, StepStats newStats) {
-    currentStats.setTotalRecords(
-        getStepStatValue(currentStats.getTotalRecords())
-            + getStepStatValue(newStats.getTotalRecords()));
-    currentStats.setSuccessRecords(
-        getStepStatValue(currentStats.getSuccessRecords())
-            + getStepStatValue(newStats.getSuccessRecords()));
-    currentStats.setFailedRecords(
-        getStepStatValue(currentStats.getFailedRecords())
-            + getStepStatValue(newStats.getFailedRecords()));
-    currentStats.setWarningRecords(
-        getStepStatValue(currentStats.getWarningRecords())
-            + getStepStatValue(newStats.getWarningRecords()));
-    currentStats.setVectorSuccessRecords(
-        getStepStatValue(currentStats.getVectorSuccessRecords())
-            + getStepStatValue(newStats.getVectorSuccessRecords()));
-    currentStats.setVectorFailedRecords(
-        getStepStatValue(currentStats.getVectorFailedRecords())
-            + getStepStatValue(newStats.getVectorFailedRecords()));
-    currentStats.setTotalTimeMs(
-        getStepStatValue(currentStats.getTotalTimeMs())
-            + getStepStatValue(newStats.getTotalTimeMs()));
-    currentStats.setReaderTimeMs(
-        getStepStatValue(currentStats.getReaderTimeMs())
-            + getStepStatValue(newStats.getReaderTimeMs()));
-    currentStats.setProcessTimeMs(
-        getStepStatValue(currentStats.getProcessTimeMs())
-            + getStepStatValue(newStats.getProcessTimeMs()));
-    currentStats.setSinkTimeMs(
-        getStepStatValue(currentStats.getSinkTimeMs())
-            + getStepStatValue(newStats.getSinkTimeMs()));
-    currentStats.setVectorTimeMs(
-        getStepStatValue(currentStats.getVectorTimeMs())
-            + getStepStatValue(newStats.getVectorTimeMs()));
+    mergeRecordCounts(currentStats, newStats);
+    mergeVectorCounts(currentStats, newStats);
+    mergeTimings(currentStats, newStats);
     return currentStats;
+  }
+
+  private void mergeRecordCounts(StepStats currentStats, StepStats newStats) {
+    currentStats.setTotalRecords(sum(currentStats.getTotalRecords(), newStats.getTotalRecords()));
+    currentStats.setSuccessRecords(
+        sum(currentStats.getSuccessRecords(), newStats.getSuccessRecords()));
+    currentStats.setFailedRecords(
+        sum(currentStats.getFailedRecords(), newStats.getFailedRecords()));
+    currentStats.setWarningRecords(
+        sum(currentStats.getWarningRecords(), newStats.getWarningRecords()));
+  }
+
+  private void mergeVectorCounts(StepStats currentStats, StepStats newStats) {
+    currentStats.setVectorSuccessRecords(
+        sum(currentStats.getVectorSuccessRecords(), newStats.getVectorSuccessRecords()));
+    currentStats.setVectorFailedRecords(
+        sum(currentStats.getVectorFailedRecords(), newStats.getVectorFailedRecords()));
+  }
+
+  private void mergeTimings(StepStats currentStats, StepStats newStats) {
+    currentStats.setTotalTimeMs(sum(currentStats.getTotalTimeMs(), newStats.getTotalTimeMs()));
+    currentStats.setReaderTimeMs(sum(currentStats.getReaderTimeMs(), newStats.getReaderTimeMs()));
+    currentStats.setProcessTimeMs(
+        sum(currentStats.getProcessTimeMs(), newStats.getProcessTimeMs()));
+    currentStats.setSinkTimeMs(sum(currentStats.getSinkTimeMs(), newStats.getSinkTimeMs()));
+    currentStats.setVectorTimeMs(sum(currentStats.getVectorTimeMs(), newStats.getVectorTimeMs()));
+  }
+
+  private int sum(Integer currentValue, Integer newValue) {
+    return getStepStatValue(currentValue) + getStepStatValue(newValue);
+  }
+
+  private long sum(Long currentValue, Long newValue) {
+    return getStepStatValue(currentValue) + getStepStatValue(newValue);
   }
 
   private long getStepStatValue(Long value) {

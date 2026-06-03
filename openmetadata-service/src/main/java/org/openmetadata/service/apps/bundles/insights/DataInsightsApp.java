@@ -8,6 +8,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getI
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataAs
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -536,7 +538,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
         DATA_INSIGHTS_LOG_PREFIX,
         System.lineSeparator(),
         indexingError.getMessage());
-    setJobFailedIfUnset(indexingError);
+    setJobFailedWithWorkflowFailure(indexingError);
   }
 
   private IndexingError buildWorkflowFailureError(List<WorkflowStats> workflowStats) {
@@ -584,11 +586,56 @@ public class DataInsightsApp extends AbstractNativeApplication {
     jobData.setFailure(indexingError);
   }
 
-  private void setJobFailedIfUnset(IndexingError indexingError) {
+  private void setJobFailedWithWorkflowFailure(IndexingError workflowFailure) {
     jobData.setStatus(EventPublisherJob.Status.FAILED);
-    if (jobData.getFailure() == null) {
-      jobData.setFailure(indexingError);
+    jobData.setFailure(mergeWithExistingFailure(workflowFailure));
+  }
+
+  private IndexingError mergeWithExistingFailure(IndexingError workflowFailure) {
+    IndexingError existingFailure = jobData.getFailure();
+    if (existingFailure == null) {
+      return workflowFailure;
     }
+    IndexingError mergedFailure = copyIndexingError(existingFailure);
+    mergedFailure.setMessage(
+        buildMergedFailureMessage(existingFailure.getMessage(), workflowFailure.getMessage()));
+    if (mergedFailure.getErrorSource() == null) {
+      mergedFailure.setErrorSource(workflowFailure.getErrorSource());
+    }
+    return mergedFailure;
+  }
+
+  private IndexingError copyIndexingError(IndexingError indexingError) {
+    IndexingError copy =
+        new IndexingError()
+            .withErrorSource(indexingError.getErrorSource())
+            .withLastFailedCursor(indexingError.getLastFailedCursor())
+            .withMessage(indexingError.getMessage())
+            .withFailedEntities(copyFailedEntities(indexingError))
+            .withReason(indexingError.getReason())
+            .withStackTrace(indexingError.getStackTrace())
+            .withSubmittedCount(indexingError.getSubmittedCount())
+            .withSuccessCount(indexingError.getSuccessCount())
+            .withFailedCount(indexingError.getFailedCount());
+    indexingError.getAdditionalProperties().forEach(copy::setAdditionalProperty);
+    return copy;
+  }
+
+  private List<EntityError> copyFailedEntities(IndexingError indexingError) {
+    if (indexingError.getFailedEntities() == null) {
+      return null;
+    }
+    return new ArrayList<>(indexingError.getFailedEntities());
+  }
+
+  private String buildMergedFailureMessage(String existingMessage, String workflowMessage) {
+    if (existingMessage == null || existingMessage.isBlank()) {
+      return workflowMessage;
+    }
+    if (workflowMessage == null || workflowMessage.isBlank()) {
+      return existingMessage;
+    }
+    return existingMessage + System.lineSeparator() + System.lineSeparator() + workflowMessage;
   }
 
   private LogSummary buildLogSummary(StepStats stats, long startedAt) {
