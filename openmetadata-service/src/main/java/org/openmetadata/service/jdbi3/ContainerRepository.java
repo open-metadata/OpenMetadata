@@ -1064,9 +1064,15 @@ public class ContainerRepository extends EntityRepository<Container> {
    * one indexed update-by-query.
    */
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository
-        .getSearchClient()
-        .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName");
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName"),
+        "containerUpdateAssetIndexes",
+        null,
+        newFqn,
+        CONTAINER);
   }
 
   /**

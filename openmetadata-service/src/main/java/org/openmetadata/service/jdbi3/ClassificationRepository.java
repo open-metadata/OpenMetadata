@@ -267,6 +267,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
+    searchRepository.deferIfFlushScopeActive(
+        () -> runAssetIndexRewrite(oldFqn, newFqn),
+        "classificationUpdateAssetIndexes",
+        null,
+        newFqn,
+        Entity.TAG);
+  }
+
+  private void runAssetIndexRewrite(String oldFqn, String newFqn) {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
@@ -288,6 +297,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public ClassificationUpdater(
         Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Transaction
