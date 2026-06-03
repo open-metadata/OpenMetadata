@@ -471,12 +471,9 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
 
 @pytest.fixture
 def isolated_parse_query_cache():
-    """
-    Clear cache before running test to ensure no unintended
-    interactions with other tests that ran before
-    """
-    with patch.dict(cache, {}, clear=True):
-        yield
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.mark.parametrize(
