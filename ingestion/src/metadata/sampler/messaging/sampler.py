@@ -75,28 +75,30 @@ class MessagingSampler(SamplerInterface):
             return columns
         return []
 
-    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10) -> List[SQALikeColumn]:  # noqa: UP006
+    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10, parent_name: str = "") -> List[SQALikeColumn]:  # noqa: UP006
         """
         Recursively flatten RECORD fields to their leaf columns.
         Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
         For flat messages where schemaFields children are top-level JSON keys, unpacking produces correct columns.
         For nested messages, unpacked child names won't match top-level JSON keys and will yield None values.
 
-        Column names use fullyQualifiedName to preserve full nesting path and avoid collisions
-        when multiple RECORD branches have fields with the same name (e.g., two 'id' fields in different records).
+        Column names use dotted path notation (parent.child.field) to uniquely identify each leaf
+        and avoid collisions when multiple RECORD branches have fields with the same name.
         """
+        current_name = f"{parent_name}.{field.name.root}" if parent_name else field.name.root
+
         if depth > max_depth:
-            logger.warning(
-                f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {field.name.root}"
-            )
-            return [SQALikeColumn(field.fullyQualifiedName.root, field.dataType)]
+            logger.warning(f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {current_name}")
+            return [SQALikeColumn(current_name, field.dataType)]
 
         if field.dataType == DataTypeTopic.RECORD and field.children:
             result = []
             for child in field.children:
-                result.extend(self._flatten_field(child, depth=depth + 1, max_depth=max_depth))
+                result.extend(
+                    self._flatten_field(child, depth=depth + 1, max_depth=max_depth, parent_name=current_name)
+                )
             return result
-        return [SQALikeColumn(field.fullyQualifiedName.root, field.dataType)]
+        return [SQALikeColumn(current_name, field.dataType)]
 
     @abstractmethod
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
