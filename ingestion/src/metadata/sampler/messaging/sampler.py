@@ -113,7 +113,8 @@ class MessagingSampler(SamplerInterface):
         if not column_names:
             return TableData(rows=[], columns=[])
         messages = self._fetch_messages(self.sample_limit)
-        rows = [[msg.get(col) for col in column_names] for msg in messages]
+        leaf_names = [col_name.split(".")[-1] for col_name in column_names]
+        rows = [[msg.get(leaf_name) for leaf_name in leaf_names] for msg in messages]
         column_name_objs = [ColumnName(col_name) for col_name in column_names]
         return TableData(columns=column_name_objs, rows=rows)
 
