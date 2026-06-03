@@ -66,7 +66,7 @@ import {
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

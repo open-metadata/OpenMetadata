@@ -41,7 +41,7 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityLinkUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';

@@ -61,7 +61,7 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn(() => <div data-testid="delete-modal" />)
 );
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(
     (entity?: { displayName?: string; name?: string }) =>
       entity?.displayName || entity?.name || ''

@@ -112,12 +112,6 @@ const ResizablePanels = withSuspenseFallback(
   lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
 );
 
-export {
-  convertDataProductsToEntityReferences,
-  convertEntityReferencesToDataProducts,
-  getQueryFilterForDataProductPorts,
-} from './DataProductPureUtils';
-
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;
   isVersionsView: boolean;

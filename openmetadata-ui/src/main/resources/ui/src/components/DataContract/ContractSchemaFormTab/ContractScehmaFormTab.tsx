@@ -45,10 +45,8 @@ import { getEntityLabel } from '../../../utils/EntityUtils';
 import { highlightSearchArrayElement } from '../../../utils/EntitySearchUtils';
 import Fqn from '../../../utils/Fqn';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import AntTable from '../../common/Table/Table';

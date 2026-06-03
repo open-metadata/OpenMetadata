@@ -52,7 +52,7 @@ import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

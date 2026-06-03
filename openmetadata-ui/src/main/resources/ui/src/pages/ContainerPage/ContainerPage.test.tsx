@@ -184,6 +184,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   addToRecentViewed: jest.fn(),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
@@ -215,6 +216,7 @@ jest.mock('../../hooks/paging/usePaging', () => ({
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
@@ -240,8 +242,8 @@ jest.mock('../../utils/StringUtils', () => ({
     ),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
-  const actual = jest.requireActual('../../utils/TableUtils');
+jest.mock('../../utils/TablePureUtils', () => {
+  const actual = jest.requireActual('../../utils/TablePureUtils');
 
   return {
     ...actual,

@@ -20,6 +20,7 @@ import {
 } from './IngestionListTableUtils';
 
 jest.mock('./EntityUtils', () => ({
+  ...jest.requireActual('./EntityUtils'),
   getEntityLabel: jest.fn((entity) => entity?.name || ''),
   highlightSearchText: jest.fn((text, searchText) => {
     if (searchText) {

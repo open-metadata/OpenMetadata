@@ -40,7 +40,7 @@ jest.mock('./SearchUtils', () => ({
   })),
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
+jest.mock('./CustomizePage/CustomizePagePureUtils', () => ({
   getTabLabelFromId: jest.fn().mockReturnValue('Tab Label'),
 }));
 

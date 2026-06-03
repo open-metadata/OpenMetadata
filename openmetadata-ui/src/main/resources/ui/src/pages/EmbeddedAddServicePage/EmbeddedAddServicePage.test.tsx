@@ -17,7 +17,7 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
+import { getAddServiceEntityBreadcrumb } from '../../utils/ServicePureUtils';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';
 
 const mockParam = {
@@ -145,7 +145,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
   getEntityTypeFromServiceCategory: jest.fn(),
   getServiceType: jest.fn(),

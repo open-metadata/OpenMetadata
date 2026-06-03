@@ -41,11 +41,13 @@ import {
   searchTagInData,
 } from '../../../../utils/TableTags/TableTags.utils';
 import {
-  getTableExpandableConfig,
-  prepareConstraintIcon,
   pruneEmptyChildren,
   updateFieldDescription,
   updateFieldTags,
+} from '../../../../utils/TablePureUtils';
+import {
+  getTableExpandableConfig,
+  prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

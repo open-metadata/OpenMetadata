@@ -320,6 +320,7 @@ jest.mock('../../utils/AdvancedSearchUtils', () => ({
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),

@@ -33,7 +33,7 @@ import {
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCountBadge } from '../../../../utils/EntityDisplayUtils';
-import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';

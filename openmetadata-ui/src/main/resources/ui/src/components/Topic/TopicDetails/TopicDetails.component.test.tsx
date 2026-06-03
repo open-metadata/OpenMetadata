@@ -60,6 +60,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
   getEntityReferenceFromEntity: jest.fn(),
 }));
@@ -98,7 +99,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getFeedCounts: jest.fn(),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
 }));

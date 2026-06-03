@@ -48,7 +48,7 @@ import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
   getServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';

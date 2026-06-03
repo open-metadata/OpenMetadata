@@ -91,6 +91,7 @@ jest.mock('../../../utils/DomainUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity: Domain) => ({

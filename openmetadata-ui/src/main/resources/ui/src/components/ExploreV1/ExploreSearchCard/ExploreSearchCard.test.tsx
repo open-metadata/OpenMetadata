@@ -43,9 +43,12 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Mock Entity'),
-  highlightSearchText: jest.fn().mockReturnValue(''),
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityNameUtils'),
+}));
+
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../utils/EntitySearchUtils'),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -61,6 +64,13 @@ jest.mock('../../../utils/EntityUtils', () => ({
       description: highlight?.description?.[0] || source.description,
     };
   }),
+}));
+
+
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -148,7 +158,7 @@ describe('ExploreSearchCard - Domain section', () => {
 
 describe('ExploreSearchCard - Highlight functionality', () => {
   const { highlightEntityNameAndDescription } = jest.requireMock(
-    '../../../utils/EntityUtils'
+    '../../../utils/EntitySearchUtils'
   );
 
   beforeEach(() => {

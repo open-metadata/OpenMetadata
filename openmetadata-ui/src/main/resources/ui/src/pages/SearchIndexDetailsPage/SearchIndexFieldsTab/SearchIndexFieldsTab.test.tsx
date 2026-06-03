@@ -29,10 +29,9 @@ jest.mock('../../../utils/EntityUtils', () => ({
   highlightSearchText: jest.fn((text) => text),
 }));
 
-jest.mock(
-  '../../../components/Customization/GenericProvider/GenericProvider',
-  () => ({
-    useGenericContext: jest.fn(() => ({
+jest.mock('../../../components/Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../../components/Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn(() => ({
       data: {
         fields: MOCK_SEARCH_INDEX_FIELDS,
       },

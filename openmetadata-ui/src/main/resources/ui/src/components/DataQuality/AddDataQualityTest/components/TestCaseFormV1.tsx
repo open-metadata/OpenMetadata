@@ -109,13 +109,13 @@ import {
 } from '../../../../utils/formUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../../utils/ServiceUtils';
+import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import {
   escapeESReservedCharacters,
   generateUUID,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';

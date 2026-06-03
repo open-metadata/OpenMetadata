@@ -11,25 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getActiveFieldNameForAppDocs,
-  getAddServiceEntityBreadcrumb,
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getIngestionName,
-  getReadableCountString,
-  getResourceEntityFromServiceCategory,
-  getSearchIndexForService,
-  getServiceCategoryFromEntityType,
-  getServiceDisplayNameQueryFilter,
-  getServiceNameQueryFilter,
-  getServiceRouteFromServiceType,
-  getServiceType,
-  getServiceTypesFromServiceCategory,
-  getTestConnectionName,
-  shouldTestConnection,
-} from './ServicePureUtils';
-
 import { ServiceTypes } from 'Models';
 import {
   ADMONITION_BLOCK_REGEX,

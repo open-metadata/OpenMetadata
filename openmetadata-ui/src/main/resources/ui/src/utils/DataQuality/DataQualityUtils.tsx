@@ -53,7 +53,7 @@ import {
 import { getColumnNameFromEntityLink } from '../EntityLinkUtils';
 import { getEntityFQN } from '../FeedUtils';
 import { getDataQualityPagePath } from '../RouterUtils';
-import { generateEntityLink } from '../TableUtils';
+import { generateEntityLink } from '../TablePureUtils';
 import {
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,

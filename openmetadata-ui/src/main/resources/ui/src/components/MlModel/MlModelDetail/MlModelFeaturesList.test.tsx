@@ -116,6 +116,7 @@ const mockData = {
 };
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));
@@ -143,7 +144,8 @@ jest.mock(
 
 const mockHandleFeaturesUpdate = jest.fn();
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockData,
     permissions: DEFAULT_ENTITY_PERMISSION,

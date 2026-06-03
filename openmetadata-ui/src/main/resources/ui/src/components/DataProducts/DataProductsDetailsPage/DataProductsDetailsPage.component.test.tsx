@@ -16,7 +16,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
-import { hasEditAccess } from '../../../utils/EntityUtils';
+import { hasEditAccess } from '../../../utils/EntityPermissionUtils';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -47,9 +47,19 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityLabel: jest.fn().mockReturnValue('Test Data Product'),
-  getEntityVoteStatus: jest.fn().mockReturnValue('unVoted'),
+}));
+
+jest.mock('../../../utils/EntityPermissionUtils', () => ({
   hasEditAccess: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
+  getEntityVoteStatus: jest.fn().mockReturnValue('unVoted'),
+}));
+
+jest.mock('../../../utils/EntityLinkUtils', () => ({
   getEntityFeedLink: jest.fn().mockReturnValue(''),
 }));
 

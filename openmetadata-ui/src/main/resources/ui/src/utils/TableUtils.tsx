@@ -11,57 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  buildColumnBreadcrumbPath,
-  createTableConstraintObject,
-  extractColumnsFromData,
-  extractTableColumns,
-  fieldExistsByFQN,
-  findColumnByEntityLink,
-  findFieldByFQN,
-  findOriginalColumnIndex,
-  findParentColumn,
-  flattenColumns,
-  generateEntityLink,
-  getAllRowKeysByKeyName,
-  getCertificationTag,
-  getColumnOptionsFromTableColumn,
-  getDataTypeDisplay,
-  getDataTypeString,
-  getExpandAllKeysToDepth,
-  getHighlightedRowClassName,
-  getJoinsFromTableJoins,
-  getNestedSectionTitle,
-  getParentKeysToExpand,
-  getSafeExpandAllKeys,
-  getSchemaDepth,
-  getSchemaFieldCount,
-  getTagsWithoutCertification,
-  getTagsWithoutTier,
-  getTierTags,
-  getUpdatedTags,
-  getUsagePercentile,
-  isCertificationTag,
-  isLargeSchema,
-  isTierTag,
-  makeData,
-  mergeTagsWithGlossary,
-  normalizeTags,
-  pruneEmptyChildren,
-  searchInFields,
-  shouldCollapseSchema,
-  updateColumnInNestedStructure,
-  updateFieldDescription,
-  updateFieldDisplayName,
-  updateFieldExtension,
-  updateFieldTags,
-} from './TablePureUtils';
-export { ExtraTableDropdownOptions } from './TableDropdownOptions';
-export {
-  getTableDetailPageBaseTabs,
-  getTableWidgetFromKey,
-} from './TableTabsUtils';
-
 import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';

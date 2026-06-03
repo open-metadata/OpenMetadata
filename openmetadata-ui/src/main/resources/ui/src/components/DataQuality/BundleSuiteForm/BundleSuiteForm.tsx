@@ -61,7 +61,7 @@ import {
 } from '../../../utils/formUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../utils/ServiceUtils';
+import { getIngestionName } from '../../../utils/ServicePureUtils';
 import {
   generateUUID,
   replaceAllSpacialCharWith_,

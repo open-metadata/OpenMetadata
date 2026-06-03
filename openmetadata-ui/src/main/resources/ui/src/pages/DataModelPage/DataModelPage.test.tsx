@@ -138,7 +138,7 @@ jest.mock('../../utils/DataModelsUtils', () => ({
   getSortedDataModelColumnTags: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
+jest.mock('../../utils/TablePureUtils', () => {
   return {
     getTierTags: jest.fn().mockImplementation((tags) => tags),
   };
@@ -157,7 +157,7 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
 }));
 

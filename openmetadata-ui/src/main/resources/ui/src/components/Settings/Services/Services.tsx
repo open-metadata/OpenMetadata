@@ -52,10 +52,10 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
-  getOptionalFields,
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
-} from '../../../utils/ServiceUtils';
+} from '../../../utils/ServicePureUtils';
+import { getOptionalFields } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,

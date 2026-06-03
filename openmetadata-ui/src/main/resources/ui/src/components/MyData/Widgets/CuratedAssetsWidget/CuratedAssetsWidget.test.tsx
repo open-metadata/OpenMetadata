@@ -65,7 +65,7 @@ jest.mock('../../../../utils/EntityUtilClassBase', () => ({
   getEntityLink: jest.fn().mockReturnValue('/test-link'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity.name || 'Test Entity'),

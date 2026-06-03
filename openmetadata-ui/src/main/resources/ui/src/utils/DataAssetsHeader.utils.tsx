@@ -75,7 +75,7 @@ import {
 import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 export { ExtraInfoLabel, ExtraInfoLink } from './DataAssetsHeaderExtraInfo';
 export {

@@ -26,23 +26,6 @@
 import { Space, Typography } from 'antd';
 import { getEntityName } from './EntityNameUtils';
 
-export { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-export { getBreadcrumbForTestSuite } from './EntityGovernanceBreadcrumbUtils';
-export { getEntityFeedLink, getEntityLinkFromType } from './EntityLinkUtils';
-export { getDomainDisplayName } from './EntityNameUtils';
-export {
-  hasCustomPropertiesTab,
-  hasEditAccess,
-  hasLineageTab,
-  hasSchemaTab,
-} from './EntityPermissionUtils';
-export {
-  highlightEntityNameAndDescription,
-  highlightSearchArrayElement,
-  highlightSearchText,
-} from './EntitySearchUtils';
-export { columnSorter, getColumnSorter } from './EntitySortUtils';
-
 // getEntityLabel renders JSX using Antd — kept here since it's a lightweight inline component
 // and moving it would require updating all imports to EntityDisplayUtils.tsx
 export const getEntityLabel = (entity: {

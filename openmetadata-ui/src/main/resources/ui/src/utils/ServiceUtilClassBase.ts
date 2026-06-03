@@ -75,10 +75,8 @@ import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
-import {
-  getSearchIndexFromService,
-  getTestConnectionName,
-} from './ServiceUtils';
+import { getTestConnectionName } from './ServicePureUtils';
+import { getSearchIndexFromService } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
 

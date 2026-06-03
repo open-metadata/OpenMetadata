@@ -37,6 +37,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityFeedLink: (entityType: string, entityFQN: string) =>
     `<#E::${entityType}::${entityFQN}>`,
 }));

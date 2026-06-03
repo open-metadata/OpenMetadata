@@ -158,7 +158,7 @@ import {
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

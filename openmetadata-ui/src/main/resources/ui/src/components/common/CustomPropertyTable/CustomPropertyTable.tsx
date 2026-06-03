@@ -36,8 +36,8 @@ import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
-  getUpdatedExtensionDiffFields,
-} from '../../../utils/EntityDiffUtils';
+} from '../../../utils/EntityDiffPureUtils';
+import { getUpdatedExtensionDiffFields } from '../../../utils/EntityDiffUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';

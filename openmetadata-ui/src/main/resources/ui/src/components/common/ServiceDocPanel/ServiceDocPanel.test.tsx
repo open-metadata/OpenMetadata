@@ -15,10 +15,8 @@ import { NodeViewProps } from '@tiptap/core';
 import React from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import {
-  getActiveFieldNameForAppDocs,
-  processDocMarkdown,
-} from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import CodeBlockComponent from '../../BlockEditor/Extensions/CodeBlock/CodeBlockComponent';
 import ServiceDocPanel from './ServiceDocPanel';
 
@@ -50,8 +48,11 @@ jest.mock('../../../rest/miscAPI', () => ({
   fetchMarkdownFile: jest.fn(),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getActiveFieldNameForAppDocs: jest.fn(),
+}));
+
+jest.mock('../../../utils/ServiceUtils', () => ({
   processDocMarkdown: jest.fn((content: string) => content),
 }));
 

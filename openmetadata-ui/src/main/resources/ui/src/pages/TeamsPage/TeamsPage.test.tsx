@@ -83,6 +83,7 @@ jest.mock('../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   getEntityReferenceFromEntity: jest.fn(),
 }));
 

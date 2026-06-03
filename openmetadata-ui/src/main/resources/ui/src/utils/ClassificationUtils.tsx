@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getClassificationInfo,
-  getDeleteButtonData,
-} from './ClassificationPureUtils';
-
 import {
   Toggle,
   Tooltip as UTTooltip,

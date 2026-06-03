@@ -67,7 +67,7 @@ import {
   tagTableObject,
   tierTableObject,
 } from '../../../../utils/TableColumn.util';
-import { getUsagePercentile } from '../../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

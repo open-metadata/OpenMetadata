@@ -26,10 +26,12 @@ import {
 import { EntityReference } from '../generated/entity/type';
 import { TestCaseParameterValue } from '../generated/tests/testCase';
 import {
-  getAddedDiffElement,
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+} from './EntityDiffPureUtils';
+import {
+  getAddedDiffElement,
   getDiffDisplayValue,
   getRemovedDiffElement,
   getTextDiffElements,

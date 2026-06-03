@@ -17,19 +17,6 @@ import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 
-export {
-  assetToDocumentItem,
-  contextFileToDocumentItem,
-  contextFileToUploadedDocumentItem,
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  CONTEXT_CENTER_DOCUMENTS_FQN,
-  createArticleKnowledgePage,
-  fetchContextCenterDocuments,
-  formatBytes,
-  handleAssetDownload,
-  knowledgePageToArticleItem,
-} from './ContextCenterPureUtils';
-
 export const getFileTypeIcon = (fileType: string) => {
   const commonProps = {
     width: 32,

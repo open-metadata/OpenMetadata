@@ -73,7 +73,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 

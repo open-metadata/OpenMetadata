@@ -23,12 +23,6 @@
 import { toLower } from 'lodash';
 import { TabSpecificField } from '../../enums/entity.enum';
 
-export { ExtraDatabaseDropdownOptions } from './DatabaseDropdownOptions';
-export {
-  getDatabasePageBaseTabs,
-  getDatabaseWidgetsFromKey,
-} from './DatabaseTabsUtils';
-
 export const getQueryFilterForDatabase = (
   serviceType: string,
   databaseName: string

@@ -101,7 +101,7 @@ import {
   getExplorePath,
   getVersionPath,
 } from '../../utils/RouterUtils';
-import { getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

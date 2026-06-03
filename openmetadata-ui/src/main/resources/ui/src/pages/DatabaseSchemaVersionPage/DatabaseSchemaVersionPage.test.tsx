@@ -103,10 +103,9 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
   ))
 );
 
-jest.mock(
-  '../../components/Customization/GenericProvider/GenericProvider',
-  () => ({
-    useGenericContext: jest.fn().mockImplementation(() => ({
+jest.mock('../../components/Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../components/Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn().mockImplementation(() => ({
       data: {
         tableDetails: {
           joins: [],
@@ -140,7 +139,7 @@ jest.mock('../../rest/tableAPI', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 

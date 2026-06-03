@@ -141,7 +141,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -157,7 +157,7 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
 
 const mockGetServiceType = jest.fn().mockReturnValue('database');
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
   getServiceType: jest.fn((category) => mockGetServiceType(category)),
 }));

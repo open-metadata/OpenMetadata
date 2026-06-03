@@ -26,8 +26,10 @@ import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
-  getTableExpandableConfig,
   makeData,
+} from '../../../utils/TablePureUtils';
+import {
+  getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';

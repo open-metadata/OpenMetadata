@@ -51,7 +51,7 @@ import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQu
 import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { bytesToSize } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';

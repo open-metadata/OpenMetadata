@@ -74,7 +74,7 @@ import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
-import { getTierTags } from './TableUtils';
+import { getTierTags } from './TablePureUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (

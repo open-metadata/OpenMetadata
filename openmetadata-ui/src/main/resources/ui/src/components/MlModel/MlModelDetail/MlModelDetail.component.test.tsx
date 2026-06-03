@@ -214,11 +214,11 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../utils/TableUtils', () => {
+jest.mock('../../../utils/TablePureUtils', () => {
   return {
     getTagsWithoutTier: jest.fn().mockReturnValue([]),
     getTierTags: jest.fn().mockReturnValue(undefined),

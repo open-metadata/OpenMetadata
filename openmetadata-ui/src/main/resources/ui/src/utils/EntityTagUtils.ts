@@ -15,7 +15,7 @@ import { EntityDetailUnion } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getTagsWithoutTier } from './TableUtils';
+import { getTagsWithoutTier } from './TablePureUtils';
 import { getTableTags } from './TagsUtils';
 
 export const getEntityTags = (

@@ -56,6 +56,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
   getColumnSorter: jest.fn().mockImplementation(() => undefined),
 }));

@@ -133,7 +133,8 @@ const mockGenericContextProps = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest
     .fn()
     .mockImplementation(() => mockGenericContextProps),
@@ -159,8 +160,8 @@ jest.mock('../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
 }));
 
-jest.mock('../../../utils/TableUtils', () => {
-  const actual = jest.requireActual('../../../utils/TableUtils');
+jest.mock('../../../utils/TablePureUtils', () => {
+  const actual = jest.requireActual('../../../utils/TablePureUtils');
   const flattenColumnsMock = (items: Column[]): Column[] => {
     if (!items || items.length === 0) {
       return [];
@@ -181,32 +182,36 @@ jest.mock('../../../utils/TableUtils', () => {
     getAllRowKeysByKeyName: jest.fn(),
     pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
     makeData: jest.fn().mockImplementation((value) => value),
-    prepareConstraintIcon: jest.fn(),
     updateFieldTags: jest.fn(),
     flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
-    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-        expandable ? (
-          <button
-            data-testid="expand-icon"
-            onClick={(e) => onExpand(record, e)}>
-            ExpandIcon
-          </button>
-        ) : null
-      ),
-    })),
-    getTableColumnConfigSelections: jest
-      .fn()
-      .mockReturnValue([
-        'name',
-        'description',
-        'dataTypeDisplay',
-        'tags',
-        'glossary',
-      ]),
     updateColumnInNestedStructure: actual.updateColumnInNestedStructure,
   };
 });
+
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  prepareConstraintIcon: jest.fn(),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button
+          data-testid="expand-icon"
+          onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+}));
 
 jest.mock(
   '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
@@ -357,6 +362,7 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getColumnSorter: jest.fn(),
   getEntityBulkEditPath: jest.fn(),
   getEntityName: jest
@@ -582,10 +588,10 @@ describe('Test EntityTable Component', () => {
       );
     });
 
-    it('should have updateColumnInNestedStructure available in TableUtils', () => {
+    it('should have updateColumnInNestedStructure available in TablePureUtils', () => {
       const {
         updateColumnInNestedStructure,
-      } = require('../../../utils/TableUtils');
+      } = require('../../../utils/TablePureUtils');
 
       expect(updateColumnInNestedStructure).toBeDefined();
       expect(typeof updateColumnInNestedStructure).toBe('function');

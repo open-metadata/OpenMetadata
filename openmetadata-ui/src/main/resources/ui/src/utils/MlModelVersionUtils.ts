@@ -25,8 +25,8 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  getTextDiff,
-} from './EntityDiffUtils';
+} from './EntityDiffPureUtils';
+import { getTextDiff } from './EntityDiffUtils';
 import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 

@@ -63,6 +63,7 @@ jest.mock('../../../utils/EntityLineageUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getBreadcrumbsFromFqn: jest.fn((fqn) => {
     if (!fqn) {
       return [];

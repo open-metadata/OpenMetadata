@@ -71,11 +71,11 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,

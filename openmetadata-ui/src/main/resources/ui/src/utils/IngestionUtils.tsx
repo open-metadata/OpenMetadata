@@ -26,19 +26,6 @@ import { PipelineType } from '../generated/api/services/ingestionPipelines/creat
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import i18n, { Transi18next } from './i18next/LocalUtil';
 
-export {
-  getBreadCrumbsArray,
-  getDefaultFilterPropertyFieldsFromSchema,
-  getDefaultFilterPropertyValues,
-  getDefaultIngestionSchedule,
-  getIngestionHeadingName,
-  getIngestionStatusCountData,
-  getIngestionTypes,
-  getSettingsPathFromPipelineType,
-  getSupportedPipelineTypes,
-  getTypeAndStatusMenuItems,
-} from './IngestionConfigUtils';
-
 const { t } = i18n;
 
 const getPipelineExtraInfo = (

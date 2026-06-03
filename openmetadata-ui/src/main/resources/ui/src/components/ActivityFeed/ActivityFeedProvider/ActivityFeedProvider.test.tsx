@@ -112,10 +112,12 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getListTestCaseIncidentByStateId: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityFeedLink: jest.fn(),
   getEntityReferenceListFromEntities: jest.fn(),
 }));

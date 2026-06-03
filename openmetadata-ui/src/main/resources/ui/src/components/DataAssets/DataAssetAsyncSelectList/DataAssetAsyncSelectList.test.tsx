@@ -20,6 +20,7 @@ import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/TableUtils');
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockReturnValue('Test'),
   getEntityReferenceFromEntity: jest
     .fn()

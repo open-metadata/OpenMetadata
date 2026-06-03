@@ -19,7 +19,7 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { DataType, Table } from '../../../generated/entity/data/table';
 import { getEntityLabel } from '../../../utils/EntityUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ContractSecurityCard from './ContractSecurityCard.component';
 
 jest.mock('react-i18next', () => ({
@@ -32,7 +32,8 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityLabel: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn(),
 }));
 

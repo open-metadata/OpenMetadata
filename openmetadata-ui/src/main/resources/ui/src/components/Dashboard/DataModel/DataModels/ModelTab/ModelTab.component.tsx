@@ -45,10 +45,10 @@ import {
 } from '../../../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
-} from '../../../../../utils/TableUtils';
+} from '../../../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

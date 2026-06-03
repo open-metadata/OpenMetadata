@@ -23,7 +23,7 @@ import {
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { getEntityName } from './EntityNameUtils';
 import i18n from './i18next/LocalUtil';
-import { getTagsWithoutTier } from './TableUtils';
+import { getTagsWithoutTier } from './TablePureUtils';
 
 export const getTableTags = (
   columns: Array<Partial<Column>>

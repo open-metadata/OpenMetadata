@@ -16,7 +16,7 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
 import { getEntityName } from './EntityNameUtils';
-import { getDataTypeString } from './TableUtils';
+import { getDataTypeString } from './TablePureUtils';
 
 /**
  * It searches for a given text in a given table and returns a new table with only the columns that

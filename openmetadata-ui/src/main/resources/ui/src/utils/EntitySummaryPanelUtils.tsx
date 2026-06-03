@@ -12,18 +12,6 @@
  *  limitations under the License.
  */
 
-export {
-  getHighlightOfListItem,
-  getMapOfListHighlights,
-  getSortedTagsWithHighlight,
-  getSummaryListItemType,
-  toEntityData,
-} from './EntitySummaryPanelPureUtils';
-export type {
-  ListItemHighlights,
-  SummaryListItem,
-} from './EntitySummaryPanelPureUtils';
-
 import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';

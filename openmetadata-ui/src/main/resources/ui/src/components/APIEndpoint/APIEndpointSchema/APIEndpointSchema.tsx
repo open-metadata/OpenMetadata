@@ -61,10 +61,10 @@ import {
   fieldExistsByFQN,
   getAllRowKeysByKeyName,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

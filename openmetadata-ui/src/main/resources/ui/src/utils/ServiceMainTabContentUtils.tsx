@@ -48,7 +48,7 @@ import {
   tagTableObject,
   tierTableObject,
 } from './TableColumn.util';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 export const getServiceMainTabColumns = (
   serviceCategory: ServiceTypes,

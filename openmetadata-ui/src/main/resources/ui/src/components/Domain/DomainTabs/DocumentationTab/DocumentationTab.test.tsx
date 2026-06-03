@@ -39,8 +39,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn().mockReturnValue({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../../Customization/GenericProvider/GenericContext'),
+  useGenericContextuseGenericContext: jest.fn().mockReturnValue({
     data: MOCK_DOMAIN,
     onUpdate: mockOnUpdate,
     permissions: {
@@ -51,7 +52,7 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Domain Name'),
 }));
 
@@ -167,7 +168,7 @@ describe('DocumentationTab', () => {
 
     it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', () => {
       const { useGenericContext } = jest.requireMock(
-        '../../../Customization/GenericProvider/GenericProvider'
+        '../../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockReturnValue({
         data: MOCK_DOMAIN,
@@ -193,7 +194,7 @@ describe('DocumentationTab', () => {
 
     it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', () => {
       const { useGenericContext } = jest.requireMock(
-        '../../../Customization/GenericProvider/GenericProvider'
+        '../../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockReturnValue({
         data: MOCK_DOMAIN,
@@ -219,7 +220,7 @@ describe('DocumentationTab', () => {
 
     it('should pass hasPermission=false when ViewCustomFields is undefined', () => {
       const { useGenericContext } = jest.requireMock(
-        '../../../Customization/GenericProvider/GenericProvider'
+        '../../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockReturnValue({
         data: MOCK_DOMAIN,
@@ -244,7 +245,7 @@ describe('DocumentationTab', () => {
 
     it('should not render CustomPropertyTable for DOMAIN type regardless of ViewCustomFields', () => {
       const { useGenericContext } = jest.requireMock(
-        '../../../Customization/GenericProvider/GenericProvider'
+        '../../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockReturnValue({
         data: MOCK_DOMAIN,

@@ -20,12 +20,11 @@ import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
   extractColumnsFromData,
-  ExtraTableDropdownOptions,
+  extractTableColumns,
   fieldExistsByFQN,
   findColumnByEntityLink,
   getCertificationTag,
   getColumnOptionsFromTableColumn,
-  getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getNestedSectionTitle,
@@ -33,7 +32,6 @@ import {
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
-  getTableDetailPageBaseTabs,
   getTagsWithoutCertification,
   getTagsWithoutTier,
   getTierTags,
@@ -44,10 +42,12 @@ import {
   shouldCollapseSchema,
   updateColumnInNestedStructure,
   updateFieldExtension,
-} from '../utils/TableUtils';
+} from '../utils/TablePureUtils';
+import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
+import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
+import { getEntityIcon } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
-import { extractTableColumns } from './TableUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {

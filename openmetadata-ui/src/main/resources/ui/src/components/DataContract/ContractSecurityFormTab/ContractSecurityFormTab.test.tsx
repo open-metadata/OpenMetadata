@@ -30,7 +30,8 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(() => ({ entityType: EntityType.TABLE })),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',

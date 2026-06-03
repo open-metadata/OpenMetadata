@@ -66,7 +66,7 @@ jest.mock('../date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
-jest.mock('../TableUtils', () => ({
+jest.mock('../TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
     return `<#E::table::${fqn}>`;
   }),

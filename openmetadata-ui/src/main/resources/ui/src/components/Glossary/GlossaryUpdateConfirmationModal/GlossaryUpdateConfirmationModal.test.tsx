@@ -23,6 +23,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityLinkFromType: jest.fn(),
   getEntityName: jest.fn(),
 }));

@@ -42,7 +42,7 @@ import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   contextFileToDocumentItem,
   handleAssetDownload,
-} from '../../../utils/ContextCenterUtils';
+} from '../../../utils/ContextCenterPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 

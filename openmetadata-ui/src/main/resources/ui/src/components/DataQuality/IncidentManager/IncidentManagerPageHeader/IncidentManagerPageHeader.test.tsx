@@ -107,6 +107,7 @@ jest.mock('../../../../utils/FqnUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
   getColumnNameFromEntityLink: jest
     .fn()

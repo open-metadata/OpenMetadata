@@ -52,6 +52,7 @@ jest.mock('./DataAssetsHeader.utils', () => ({
   ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
 }));
 jest.mock('./EntityUtils', () => ({
+  ...jest.requireActual('./EntityUtils'),
   getEntityLabel: jest.fn().mockReturnValue('entityName'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
     {
@@ -90,7 +91,7 @@ jest.mock('./StringUtils', () => ({
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TablePureUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('getUsagePercentile'),
 }));
 

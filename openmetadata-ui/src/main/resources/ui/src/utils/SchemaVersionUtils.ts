@@ -28,9 +28,9 @@ import {
   getChangeColumnNameFromDiffValue,
   getChangedEntityName,
   getDiffByFieldName,
-  getTextDiff,
   isEndsWithField,
-} from './EntityDiffUtils';
+} from './EntityDiffPureUtils';
+import { getTextDiff } from './EntityDiffUtils';
 import {
   getEntityDescriptionDiff,
   getEntityTagDiff,

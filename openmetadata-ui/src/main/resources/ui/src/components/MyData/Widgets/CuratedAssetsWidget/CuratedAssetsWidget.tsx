@@ -51,7 +51,7 @@ import {
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
-} from '../../../../utils/CuratedAssetsUtils';
+} from '../../../../utils/CuratedAssetsPureUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';

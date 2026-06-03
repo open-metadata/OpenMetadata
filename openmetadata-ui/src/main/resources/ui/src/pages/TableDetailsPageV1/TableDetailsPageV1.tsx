@@ -100,7 +100,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
   updateColumnInNestedStructure,
-} from '../../utils/TableUtils';
+} from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

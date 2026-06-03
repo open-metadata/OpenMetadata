@@ -26,7 +26,7 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
 /**
  * Returns a single-item breadcrumb list pointing to the service category

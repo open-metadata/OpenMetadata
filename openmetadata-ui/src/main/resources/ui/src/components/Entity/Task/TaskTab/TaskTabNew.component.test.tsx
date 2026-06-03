@@ -356,6 +356,7 @@ jest.mock('../../../../utils/FqnUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockReturnValue('Admin User'),
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));

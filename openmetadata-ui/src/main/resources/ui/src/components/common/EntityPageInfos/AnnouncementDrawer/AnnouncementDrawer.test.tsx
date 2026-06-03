@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import AnnouncementDrawer from './AnnouncementDrawer';
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   getEntityFeedLink: jest.fn(),
 }));
 

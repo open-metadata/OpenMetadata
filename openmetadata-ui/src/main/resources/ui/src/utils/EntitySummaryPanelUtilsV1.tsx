@@ -66,7 +66,7 @@ import {
 import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
 
-import { pruneEmptyChildren } from './TableUtils';
+import { pruneEmptyChildren } from './TablePureUtils';
 const { Text } = AntTypography;
 
 // Recursive component to render nested columns

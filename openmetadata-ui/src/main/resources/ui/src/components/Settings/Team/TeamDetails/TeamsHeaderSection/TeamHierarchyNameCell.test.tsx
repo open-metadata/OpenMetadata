@@ -14,10 +14,8 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
-import {
-  getEntityLabel,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
@@ -46,7 +44,11 @@ jest.mock('antd', () => {
 });
 
 jest.mock('../../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../../utils/EntityUtils'),
   getEntityLabel: jest.fn(),
+}));
+
+jest.mock('../../../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text: string) => text),
 }));
 

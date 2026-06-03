@@ -37,6 +37,7 @@ jest.mock('./JSONLogicSearchClassBase', () => ({
 }));
 
 jest.mock('./EntityUtils', () => ({
+  ...jest.requireActual('./EntityUtils'),
   getEntityLabel: jest.fn(),
 }));
 

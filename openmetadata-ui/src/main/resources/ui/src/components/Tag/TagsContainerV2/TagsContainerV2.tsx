@@ -30,7 +30,7 @@ import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTierTags } from '../../../utils/TableUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {

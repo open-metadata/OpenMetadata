@@ -11,17 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  EMPTY_QUERY_FILTER_STRINGS,
-  getExpandedResourceList,
-  getExploreURLForAdvancedFilter,
-  getExploreURLWithFilters,
-  getModifiedQueryFilterWithSelectedAssets,
-  getSimpleExploreURLForAssetTypes,
-  getTotalResourceCount,
-  isValidElasticsearchQuery,
-} from './CuratedAssetsPureUtils';
-
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Alert } from 'antd';
 import { Bucket } from 'Models';

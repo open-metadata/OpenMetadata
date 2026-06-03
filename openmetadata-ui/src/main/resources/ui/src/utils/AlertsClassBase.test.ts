@@ -80,6 +80,7 @@ jest.mock('./Alerts/AlertsUtil', () => ({
 }));
 
 jest.mock('./EntityUtils', () => ({
+  ...jest.requireActual('./EntityUtils'),
   getEntityLabel: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 

@@ -12,10 +12,9 @@
  */
 
 /**
- * Backward-compatible re-export barrel.
+ * Entity diff utilities that depend on React / DOM rendering.
  *
- * Pure entity diff accessors extracted to EntityDiffPureUtils.ts.
- * Import directly from that module for new code.
+ * Pure entity diff accessors live in EntityDiffPureUtils.ts.
  */
 
 import { Change, diffWords, diffWordsWithSpace } from 'diff';
@@ -34,17 +33,6 @@ import {
 } from './EntityDiffPureUtils';
 import { t } from './i18next/LocalUtil';
 import { getJSONFromString } from './StringUtils';
-
-export {
-  getAllChangedEntityNames,
-  getAllDiffByFieldName,
-  getChangeColumnNameFromDiffValue,
-  getChangedEntityName,
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
-  isEndsWithField,
-} from './EntityDiffPureUtils';
 
 export const getDiffValue = (oldValue: string, newValue: string) => {
   const diff = diffWordsWithSpace(oldValue, newValue);

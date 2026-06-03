@@ -220,7 +220,7 @@ jest.mock('../../../../utils/FqnUtils', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('test-entity-link'),
 }));
 
@@ -235,7 +235,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityLinkUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {

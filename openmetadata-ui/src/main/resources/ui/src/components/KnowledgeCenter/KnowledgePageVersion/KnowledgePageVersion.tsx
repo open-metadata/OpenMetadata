@@ -32,7 +32,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../utils/EntityDiffUtils';
+} from '../../../utils/EntityDiffPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,

@@ -129,6 +129,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityVoteStatus: jest.fn().mockReturnValue(QueryVoteType.votedUp),
 }));
 
@@ -176,7 +177,8 @@ const mockContext = {
   permissions: DEFAULT_ENTITY_PERMISSION,
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 

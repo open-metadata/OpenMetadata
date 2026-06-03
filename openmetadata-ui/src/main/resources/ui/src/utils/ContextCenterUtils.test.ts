@@ -18,10 +18,10 @@ import { downloadDriveFile } from '../rest/assetAPI';
 import {
   assetToDocumentItem,
   formatBytes,
-  getFileTypeIcon,
   handleAssetDownload,
   knowledgePageToArticleItem,
-} from './ContextCenterUtils';
+} from './ContextCenterPureUtils';
+import { getFileTypeIcon } from './ContextCenterUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({

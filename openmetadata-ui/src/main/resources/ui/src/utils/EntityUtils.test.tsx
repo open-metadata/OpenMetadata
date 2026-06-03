@@ -16,20 +16,21 @@ import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getBreadcrumbForTestSuite } from './EntityGovernanceBreadcrumbUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
+import { getDomainDisplayName } from './EntityNameUtils';
 import {
-  columnSorter,
-  getBreadcrumbForTestSuite,
-  getColumnSorter,
-  getDomainDisplayName,
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
   hasCustomPropertiesTab,
   hasLineageTab,
   hasSchemaTab,
+} from './EntityPermissionUtils';
+import {
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
-} from './EntityUtils';
+} from './EntitySearchUtils';
+import { columnSorter, getColumnSorter } from './EntitySortUtils';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
@@ -50,7 +51,7 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
 jest.mock('../constants/constants', () => ({
   DEFAULT_DOMAIN_VALUE: 'All Domains',
@@ -66,7 +67,7 @@ jest.mock('./RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
 }));
 
-jest.mock('./ServiceUtils', () => ({
+jest.mock('./ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
 }));
 
@@ -116,7 +117,7 @@ jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn(),
   stringToHTML: jest.fn().mockImplementation((value) => value),
 }));
-jest.mock('./TableUtils', () => ({
+jest.mock('./TablePureUtils', () => ({
   getDataTypeString: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   getTierTags: jest.fn(),

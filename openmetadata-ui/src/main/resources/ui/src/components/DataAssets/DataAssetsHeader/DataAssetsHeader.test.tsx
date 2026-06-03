@@ -89,7 +89,7 @@ jest.mock('../../../rest/applicationAPI', () => ({
   triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getEntityTypeFromServiceCategory: jest
     .fn()
     .mockImplementation(() => EntityType.DATABASE_SERVICE),
@@ -100,6 +100,7 @@ jest.mock('../../../rest/contractAPI', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityName: jest.fn().mockImplementation(() => 'name'),
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),

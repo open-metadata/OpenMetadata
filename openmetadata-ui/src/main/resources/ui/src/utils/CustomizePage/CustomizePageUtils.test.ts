@@ -21,11 +21,11 @@ import {
   getGlossaryDefaultTabs,
   getGlossaryTermDefaultTabs,
   getTabDisplayName,
-  getTabLabelFromId,
   getTabLabelMapFromTabs,
   sortTabs,
   updateWidgetHeightRecursively,
 } from './CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {

@@ -48,7 +48,7 @@ import {
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../utils/StringUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';

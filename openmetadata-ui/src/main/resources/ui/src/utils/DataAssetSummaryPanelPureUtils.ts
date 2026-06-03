@@ -19,7 +19,7 @@ import { EntityReference } from '../generated/entity/type';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { getEntityName } from './EntityNameUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
-import { getTierTags, getUsagePercentile } from './TableUtils';
+import { getTierTags, getUsagePercentile } from './TablePureUtils';
 
 export interface ColumnSearchResult {
   dataType?: string;

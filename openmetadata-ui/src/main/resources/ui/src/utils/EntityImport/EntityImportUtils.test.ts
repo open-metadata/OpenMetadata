@@ -34,6 +34,7 @@ import {
 // Mock dependencies
 jest.mock('../../rest/importExportAPI');
 jest.mock('../EntityUtils', () => ({
+  ...jest.requireActual('../EntityUtils'),
   getEntityBreadcrumbs: jest.fn((entity) => [
     { name: 'Parent', url: '/parent', activeTitle: false },
     { name: entity.name, url: `/entity/${entity.fullyQualifiedName}` },

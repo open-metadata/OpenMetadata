@@ -41,7 +41,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
+import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';

@@ -165,6 +165,7 @@ jest.mock('../../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityLabel: jest
     .fn()
     .mockImplementation(

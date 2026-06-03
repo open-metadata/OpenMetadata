@@ -49,7 +49,7 @@ import serviceUtilClassBase from './ServiceUtilClassBase';
 import {
   getReadableCountString,
   getServiceRouteFromServiceType,
-} from './ServiceUtils';
+} from './ServicePureUtils';
 
 export const getIngestionHeadingName = (
   ingestionType: string,

@@ -49,6 +49,7 @@ const mockConstraint: Table['tableConstraints'] = [
 ];
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   getBreadcrumbsFromFqn: jest
     .fn()
     .mockImplementation(() => [
@@ -60,7 +61,7 @@ jest.mock('../../../../utils/EntityUtils', () => ({
     ]),
 }));
 
-jest.mock('../../../../utils/ServiceUtils', () => ({
+jest.mock('../../../../utils/ServicePureUtils', () => ({
   getServiceNameQueryFilter: jest.fn().mockImplementation(() => ''),
 }));
 
@@ -69,7 +70,7 @@ jest.mock('../../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((value) => value),
 }));
 
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   createTableConstraintObject: jest
     .fn()
     .mockImplementation((constraints, type) =>

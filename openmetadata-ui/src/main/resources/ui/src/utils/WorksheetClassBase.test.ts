@@ -46,7 +46,7 @@ jest.mock('../constants/Worksheet.constant', () => ({
   } as Worksheet,
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
+jest.mock('./CustomizePage/CustomizePagePureUtils', () => ({
   getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
     const labelMap: Partial<Record<EntityTabs, string>> = {
       [EntityTabs.SCHEMA]: 'Schema',

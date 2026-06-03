@@ -91,10 +91,12 @@ import {
   findColumnByEntityLink,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
-  prepareConstraintIcon,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
+} from '../../../utils/TablePureUtils';
+import {
+  getTableExpandableConfig,
+  prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';

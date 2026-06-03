@@ -135,7 +135,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   extractColumnsFromData: jest.fn().mockReturnValue([]),

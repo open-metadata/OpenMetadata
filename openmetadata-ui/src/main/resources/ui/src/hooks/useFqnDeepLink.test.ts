@@ -13,10 +13,10 @@
 
 import { renderHook } from '@testing-library/react-hooks';
 
-import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
+import { findFieldByFQN, getParentKeysToExpand } from '../utils/TablePureUtils';
 import { useFqnDeepLink } from './useFqnDeepLink';
 
-jest.mock('../utils/TableUtils', () => ({
+jest.mock('../utils/TablePureUtils', () => ({
   findFieldByFQN: jest.fn(),
   getParentKeysToExpand: jest.fn(),
 }));

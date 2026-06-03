@@ -37,7 +37,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
-import { pruneEmptyChildren } from '../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';

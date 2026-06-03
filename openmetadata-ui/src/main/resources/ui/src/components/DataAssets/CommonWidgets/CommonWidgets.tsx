@@ -49,7 +49,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';

@@ -18,10 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
+import { getSimpleExploreURLForAssetTypes } from '../../../../../utils/CuratedAssetsPureUtils';
 import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
-  getSimpleExploreURLForAssetTypes,
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';

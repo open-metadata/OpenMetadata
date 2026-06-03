@@ -48,10 +48,12 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  isEndsWithField,
+} from './EntityDiffPureUtils';
+import {
   getDiffValue,
   getRemovedDiffElement,
   getTextDiff,
-  isEndsWithField,
 } from './EntityDiffUtils';
 import { getEntityName } from './EntityNameUtils';
 import {
@@ -61,7 +63,7 @@ import {
 } from './EntityVersionUtils.interface';
 import { t } from './i18next/LocalUtil';
 import { isValidJSONString } from './StringUtils';
-import { getTagsWithoutTier, getTierTags } from './TableUtils';
+import { getTagsWithoutTier, getTierTags } from './TablePureUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;
 

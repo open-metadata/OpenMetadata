@@ -24,8 +24,8 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  getDiffDisplayValue,
-} from '../../../../utils/EntityDiffUtils';
+} from '../../../../utils/EntityDiffPureUtils';
+import { getDiffDisplayValue } from '../../../../utils/EntityDiffUtils';
 import { getChangedEntityStatus } from '../../../../utils/EntityVersionUtils';
 import Loader from '../../../common/Loader/Loader';
 import QueryViewer from '../../../common/QueryViewer/QueryViewer.component';
