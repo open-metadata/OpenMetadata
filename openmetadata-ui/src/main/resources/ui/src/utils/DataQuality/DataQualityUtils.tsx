@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare, Operation } from 'fast-json-patch';
 import { t } from 'i18next';
 import {
   cloneDeep,
   isArray,
+  isEmpty,
   isNil,
   isUndefined,
   lowerCase,
   omit,
   omitBy,
   parseInt,
-  startCase,
-  uniqBy,
 } from 'lodash';
 import QueryString from 'qs';
-import { Surface } from 'recharts';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
@@ -36,6 +35,7 @@ import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
+import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
@@ -55,20 +55,17 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
-import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
   DataQualityDashboardChartFilters,
   DataQualityPageTabs,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
-import { getEntryFormattedValue } from '../DataInsightUtils';
-import { formatDate } from '../date-time/DateTimeUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';
 import { getDataQualityPagePath } from '../RouterUtils';
-import { generateEntityLink } from '../TableUtils';
+import { generateEntityLink, getTierTags } from '../TableUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
@@ -125,6 +122,52 @@ export const createTestCaseParameters = (
         return acc;
       }, [] as TestCaseParameterValue[])
     : params;
+};
+
+export interface CreateUpdatedTestCasePatchArgs {
+  testCase: TestCase;
+  value: TestCaseFormType;
+  selectedDefinition?: TestDefinition;
+  showOnlyParameter?: boolean;
+  isComputeRowCountFieldVisible: boolean;
+}
+
+export const createUpdatedTestCasePatch = ({
+  testCase,
+  value,
+  selectedDefinition,
+  showOnlyParameter,
+  isComputeRowCountFieldVisible,
+}: CreateUpdatedTestCasePatchArgs): Operation[] => {
+  const tierTag = testCase.tags ? getTierTags(testCase.tags) : undefined;
+  const rebuiltTags = [
+    ...(tierTag ? [tierTag] : []),
+    ...(value.tags ?? []),
+    ...(value.glossaryTerms ?? []),
+  ];
+  const updatedTestCase = {
+    ...testCase,
+    parameterValues: createTestCaseParameters(value.params, selectedDefinition),
+    description: showOnlyParameter
+      ? testCase.description
+      : isEmpty(value.description)
+      ? undefined
+      : value.description,
+    displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
+    computePassedFailedRowCount: isComputeRowCountFieldVisible
+      ? value.computePassedFailedRowCount
+      : testCase?.computePassedFailedRowCount,
+    // Keep original tags when empty on both sides; rebuilding to [] would
+    // diff against an absent field and emit a phantom `add /tags []` op.
+    tags:
+      showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
+        ? testCase.tags
+        : rebuiltTags,
+    dimensionColumns: value.dimensionColumns || undefined,
+    topDimensions: value.topDimensions ?? undefined,
+  };
+
+  return compare(testCase, updatedTestCase);
 };
 
 export const getTestCaseFiltersValue = (
@@ -222,6 +265,22 @@ export const buildMustEsFilterForOwner = (
   };
 };
 
+export const buildMustEsFilterForTier = (
+  tiers: string[],
+  isTestCaseResult = false
+) => {
+  const field = isTestCaseResult ? 'testCase.tier.tagFQN' : 'tier.tagFQN';
+
+  return {
+    bool: {
+      should: tiers.map((tier) => ({
+        term: { [field]: tier },
+      })),
+      minimum_should_match: 1,
+    },
+  };
+};
+
 export const buildMustEsFilterForDataProducts = (
   dataProductFqns: string[],
   testCaseFieldPrefix = ''
@@ -282,13 +341,22 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if ((filters?.tags || filters?.tier) && !isTableApi) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  if (filters?.certification) {
+    mustFilter.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tags && filters.tags.length > 0 && !isTableApi) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags));
+  }
+
+  if (filters?.tier && filters.tier.length > 0 && !isTableApi) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier));
   }
 
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
@@ -416,70 +484,6 @@ export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     icon: <ColumnIcon />,
   },
 ];
-
-export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    dateTimeFormatter = formatDate,
-    isPercentage,
-    payload = [],
-    timeStampKey = 'timestampValue',
-    transformLabel = true,
-    valueFormatter,
-    displayDateInHeader = true,
-  } = props;
-
-  if (active && payload?.length) {
-    // we need to check if the xAxis is a date or not.
-    const timestamp = displayDateInHeader
-      ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
-      : payload[0].payload[timeStampKey];
-
-    const payloadValue = uniqBy(payload, 'dataKey');
-
-    return (
-      <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
-        <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">
-          {timestamp}
-        </p>
-        <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          {payloadValue.map((entry, index) => {
-            const value = entry.value;
-
-            return (
-              <div
-                className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
-                key={`item-${index}`}>
-                <span className="tw:flex tw:items-center">
-                  <Surface
-                    className="tw:mr-2"
-                    height={14}
-                    version="1.1"
-                    width={4}>
-                    <rect fill={entry.color} height="14" rx="2" width="4" />
-                  </Surface>
-                  <span className="tw:text-tertiary tw:text-[11px]">
-                    {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
-                      : entry.name ?? (entry.dataKey as string)}
-                  </span>
-                </span>
-                <span className="tw:font-medium tw:text-primary tw:text-[11px]">
-                  {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
-                    : getEntryFormattedValue(value, isPercentage)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-};
 
 export type TestCaseCountByStatus = {
   success: number;

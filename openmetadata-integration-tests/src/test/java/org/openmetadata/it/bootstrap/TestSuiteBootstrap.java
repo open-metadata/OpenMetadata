@@ -116,7 +116,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String DEFAULT_FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
+  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
+  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
+  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
+  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
+  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
+  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
+  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -136,6 +143,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> FUSEKI_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
 
@@ -150,6 +158,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      LOG.info(
+          "TestSuiteBootstrap: skipping embedded boot (JPW_MODE={} or skip.embedded.bootstrap=true)",
+          resolveJpwMode());
+      return;
+    }
     if (!STARTED.compareAndSet(false, true)) {
       LOG.info("TestSuiteBootstrap already started, skipping initialization");
       return;
@@ -212,8 +226,25 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   @Override
   public void launcherSessionClosed(LauncherSession session) {
+    if (isEmbeddedBootstrapDisabled()) {
+      return;
+    }
     LOG.info("=== TestSuiteBootstrap: Shutting down test infrastructure ===");
     cleanup();
+  }
+
+  private static boolean isEmbeddedBootstrapDisabled() {
+    return "external".equalsIgnoreCase(resolveJpwMode())
+        || Boolean.parseBoolean(System.getProperty("skip.embedded.bootstrap", "false"));
+  }
+
+  private static String resolveJpwMode() {
+    final String fromProp = System.getProperty("JPW_MODE");
+    if (fromProp != null && !fromProp.isBlank()) {
+      return fromProp;
+    }
+    final String fromEnv = System.getenv("JPW_MODE");
+    return fromEnv != null ? fromEnv : "";
   }
 
   private void startDatabase() {
@@ -318,10 +349,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
-      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
+      // The search-it suite reindexes the full shared catalog on every test (beforeEach recreate),
+      // and heavy-seed tests (ReindexStopUnderLoadIT seeds 10k tables) leave thousands of entities
+      // in the DB that every later recreate re-indexes. With only 1g heap / 1g tmpfs the
+      // single-node
+      // engine saturates and live-index writes block until the 60s socket timeout, cascading
+      // failures
+      // into whichever test runs next. 2g heap + 2g tmpfs gives the headroom to absorb that load.
+      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms2g -Xmx2g");
       opensearch.withStartupAttempts(3);
       opensearch.withTmpFs(
-          java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g,uid=1000,gid=1000"));
+          java.util.Map.of("/usr/share/opensearch/data", "rw,size=2g,uid=1000,gid=1000"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -421,11 +459,20 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private void startFuseki() {
     String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
+    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
+    // pre-create a dataset at container start. The maintained image we use
+    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
+    // the dataset via the /$/datasets admin endpoint on first connection
+    // instead, so the test path is fine without it.
     FUSEKI_CONTAINER =
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
+            // tmpfs the TDB2 dataset dir so each container start gets a clean
+            // store and a long IT run doesn't grow the container's writable
+            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
+            // by default — mounting tmpfs there keeps writes off-disk entirely.
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -555,6 +602,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         false);
 
     createIndices();
+
+    // Start MinIO before app boot if object storage is configured to use S3 so that the
+    // S3AssetService picks up the correct endpoint.
+    if (config.getObjectStorage() != null
+        && config.getObjectStorage().isEnabled()
+        && "s3".equalsIgnoreCase(config.getObjectStorage().getProvider())) {
+      setupMinIO();
+      if (config.getObjectStorage().getS3Configuration() != null) {
+        config.getObjectStorage().getS3Configuration().setEndpoint(getMinIOEndpoint());
+      }
+    }
 
     // Start the application
     APP.before();
@@ -820,6 +878,79 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping database container", e);
     }
+
+    try {
+      if (MINIO_CONTAINER != null) {
+        MINIO_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping MinIO container", e);
+    }
+  }
+
+  // === On-demand MinIO container for object-storage tests ===
+
+  public static synchronized void setupMinIO() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      LOG.info("MinIO already running at {}", getMinIOEndpoint());
+      return;
+    }
+    LOG.info("Starting MinIO Testcontainer on-demand...");
+    // Pin the MinIO image to a known-good release so a newly-published :latest tag
+    // cannot break integration tests without a code change.
+    MINIO_CONTAINER =
+        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "minio")
+            .withEnv("MINIO_ROOT_PASSWORD", "minio123")
+            .withCommand("server /data")
+            .waitingFor(
+                Wait.forHttp("/minio/health/live")
+                    .forPort(9000)
+                    .forStatusCode(200)
+                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
+    MINIO_CONTAINER.start();
+
+    String endpoint = getMinIOEndpoint();
+
+    // Create the default test bucket so tests can upload immediately.
+    software.amazon.awssdk.services.s3.S3Client s3 =
+        software.amazon.awssdk.services.s3.S3Client.builder()
+            .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+            .credentialsProvider(
+                software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                    software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                        "minio", "minio123")))
+            .endpointOverride(java.net.URI.create(endpoint))
+            .serviceConfiguration(
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build())
+            .build();
+    try {
+      boolean exists =
+          s3.listBuckets().buckets().stream().anyMatch(b -> b.name().equals("test-bucket"));
+      if (!exists) {
+        s3.createBucket(
+            software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
+                .bucket("test-bucket")
+                .build());
+      }
+    } finally {
+      s3.close();
+    }
+
+    // Expose endpoint to tests that read a system property / env var.
+    System.setProperty("IT_MINIO_ENDPOINT", endpoint);
+
+    LOG.info("MinIO started at {}", endpoint);
+  }
+
+  public static String getMinIOEndpoint() {
+    if (MINIO_CONTAINER == null || !MINIO_CONTAINER.isRunning()) {
+      throw new IllegalStateException("MinIO container not running. Call setupMinIO() first.");
+    }
+    return "http://" + MINIO_CONTAINER.getHost() + ":" + MINIO_CONTAINER.getMappedPort(9000);
   }
 
   // === Static accessor methods for tests ===
@@ -998,6 +1129,30 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static String getBaseUrl() {
     return "http://localhost:" + getApplicationPort();
+  }
+
+  /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */
+  public static String getSearchHost() {
+    return searchHost;
+  }
+
+  /** Mapped HTTP port of the running search engine container. */
+  public static int getSearchPort() {
+    return searchPort;
+  }
+
+  /** Scheme of the running search engine container — currently always {@code http} in tests. */
+  public static String getSearchScheme() {
+    return "http";
+  }
+
+  /**
+   * Search engine testcontainer (OpenSearch or Elasticsearch). Exposed for failure-path
+   * tests that need to pause/unpause/disconnect the engine to validate retry semantics.
+   * Returns {@code null} if the bootstrap hasn't started yet.
+   */
+  public static GenericContainer<?> getSearchContainer() {
+    return SEARCH_CONTAINER;
   }
 
   /**

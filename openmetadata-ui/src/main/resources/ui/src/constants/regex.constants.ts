@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { ADMONITION_TYPES } from './BlockEditor.constants';
+export const ADMONITION_TYPES = [
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+] as const;
 
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
@@ -21,6 +28,17 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
 export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+
+/**
+ * Custom property name validation:
+ * - Must start with an alphanumeric character
+ * - Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }
+ * - Disallowed: " * & < > : ^ $ \ / ~
+ *   ( / and ~ are reserved by JSON Pointer / RFC 6901 — interpolating them
+ *   into JSON Patch paths corrupts the path. )
+ */
+export const CUSTOM_PROPERTY_NAME_REGEX =
+  /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
  * Matches any string that does NOT contain the following:
@@ -45,6 +63,9 @@ export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+export const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
 

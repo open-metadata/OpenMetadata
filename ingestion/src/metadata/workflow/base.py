@@ -21,6 +21,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
 
+from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -42,6 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -52,7 +54,6 @@ from metadata.utils.class_helper import (
     get_reference_type_from_service_type,
     get_service_class_from_service_type,
 )
-from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -106,15 +107,16 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
         self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
-
-        # Execution time tracking is always enabled for workflows regardless of the log level
-        self._execution_time_tracker = ExecutionTimeTracker(enabled=True)
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
 
         # We create the ometa client at the workflow level and pass it to the steps
-        self.metadata = create_ometa_client(self.workflow_config.openMetadataServerConfig)
+        self.metadata = create_ometa_client(
+            self.workflow_config.openMetadataServerConfig,
+            user_agent=self._build_user_agent(),
+        )
 
         # Setup streamable logging if configured
         if self.config.ingestionPipelineFQN and self.config.pipelineRunId and self.config.enableStreamableLogs:
@@ -125,6 +127,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 log_level=self.workflow_config.loggerLevel.value,
                 enable_streaming=True,
             )
+
+        # Emit after the streamable handler is installed so the line is captured.
+        self.metadata.log_server_version()
 
         self._log_workflow_execution_info()
 
@@ -137,6 +142,18 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         self.post_init()
 
+    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+        """
+        HTTP User-Agent identifying this workflow's requests to the OpenMetadata server.
+        Subclasses override this to provide more specific identifiers. Best-effort: the
+        version is dropped if it cannot be resolved, but a stable identifier is kept.
+        """
+        try:
+            return f"openmetadata-ingestion (v{get_client_version()})"
+        except Exception as exc:
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")
+            return "openmetadata-ingestion"
+
     @property
     def ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
         """Get or create the Ingestion Pipeline from the configuration"""
@@ -144,6 +161,30 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
 
         return self._ingestion_pipeline
+
+    def close_steps(self) -> None:
+        """
+        Close workflow steps so that any buffered records are flushed and
+        reflected in the step status before it is printed.
+
+        Sinks like the metadata REST sink batch entities and only flush them
+        in `close()`, where they are also added to the status counters. This
+        must run before `print_status()` so the printed counts include those
+        buffered records, while remaining separate from `stop()` so the
+        streamable logging handler stays alive during status printing.
+
+        Idempotent: `execute()` calls this before `print_status()`, and
+        `stop()` calls it again so callers using `stop()` standalone still
+        get step cleanup. The `_steps_closed` flag prevents double-flush.
+        """
+        if self._steps_closed:
+            return
+        self._steps_closed = True
+        for step in self.workflow_steps():
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
     def stop(self) -> None:
         """
@@ -153,20 +194,26 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # it can hung the workflow
         self.timer.stop()
 
-        # Cleanup streamable logging if it was configured
-        cleanup_streamable_logging()
+        # Stop diagnostics threads if they were installed. Emits the
+        # `diag.time_budget` summary line through the diag logger before
+        # the threads exit, which gets captured by the streamable
+        # handler's synchronous shutdown in `execute()`'s outer finally.
+        diagnostics.shutdown()
 
         # Reset progress and metrics tracking singletons
         ProgressTrackerState().reset()
         OperationMetricsState().reset()
 
-        self.metadata.close()
+        # Close steps before tearing down the OM client so sinks can use it
+        # for any final flush. No-op when execute() already closed steps.
+        # Wrapped defensively so a flush failure doesn't leave the timer
+        # stopped but the OM client still open.
+        try:
+            self.close_steps()
+        except Exception:
+            logger.debug("close_steps failed during stop", exc_info=True)
 
-        for step in self.workflow_steps():
-            try:
-                step.close()
-            except Exception as exc:
-                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+        self.metadata.close()
 
     @property
     def timer(self) -> RepeatedTimer:
@@ -247,8 +294,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         pipeline_state = PipelineState.success
         self.timer.trigger()
+        diagnostics.install(self)
+        # `self.config` is typed Union[Any, Dict]; getattr keeps the static
+        # checker happy without changing behavior (the Dict branch never
+        # carries this attribute at runtime).
+        pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
         try:
-            self.execute_internal()
+            with (
+                diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
+                diagnostics.dump_on_memory_error(),
+            ):
+                self.execute_internal()
 
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess
@@ -267,12 +323,28 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Force resource closing. Required for killing the threading
         finally:
-            ingestion_status = self.build_ingestion_status()
-            self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+            # Flush sink buffers first so the step statuses include records
+            # that some sinks only commit in close(). Both the persisted
+            # pipeline status (build_ingestion_status -> Summary.from_step)
+            # and the printed summary read from those same step statuses.
+            # Swallow any unexpected error here so the pipeline status is
+            # still persisted to the server even on a catastrophic flush
+            # failure (preserves the pre-existing "status is always sent"
+            # invariant).
             try:
-                self.print_status()
+                self.close_steps()
+            except Exception:
+                logger.debug("close_steps failed", exc_info=True)
+            try:
+                ingestion_status = self.build_ingestion_status()
+                self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                try:
+                    self.print_status()
+                finally:
+                    self.stop()
             finally:
-                self.stop()
+                # Must run after every other emitter so the tail is captured.
+                cleanup_streamable_logging()
 
     @property
     def run_id(self) -> str:

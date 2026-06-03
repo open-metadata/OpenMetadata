@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -301,6 +302,138 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
+  void updateStatsFromDistributedJobUsesAggregatedServerStatsWhenOnlySinkFailures()
+      throws Exception {
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDao =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000023");
+    Stats stats = createBaseStats("table", 10);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .totalRecords(10)
+            .successRecords(8)
+            .failedRecords(2)
+            .entityStats(
+                Map.of(
+                    "table",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("table")
+                        .totalRecords(10)
+                        .successRecords(0)
+                        .failedRecords(10)
+                        .build()))
+            .build();
+
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDao);
+    when(serverStatsDao.getAggregatedStats(jobId.toString()))
+        .thenReturn(
+            new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+                10, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      invokePrivate(
+          "updateStatsFromDistributedJob",
+          new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+          stats,
+          distributedJob,
+          new StepStats().withSuccessRecords(8).withFailedRecords(2));
+    }
+
+    assertEquals(0, stats.getJobStats().getSuccessRecords());
+    assertEquals(10, stats.getJobStats().getFailedRecords());
+    assertEquals(10, stats.getSinkStats().getTotalRecords());
+    assertEquals(0, stats.getSinkStats().getSuccessRecords());
+    assertEquals(10, stats.getSinkStats().getFailedRecords());
+  }
+
+  @Test
+  void updateStatsFromDistributedJobReconcilesEntityTotalToPartitionPlan() throws Exception {
+    // Reproduces the count-discrepancy bug: getEntityTotal() pre-counted 11
+    // testCaseResolutionStatus
+    // rows, but PartitionCalculator planned partitions for only 9. All 9 indexed cleanly.
+    Stats stats = createBaseStats("testCaseResolutionStatus", 11);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(UUID.fromString("00000000-0000-0000-0000-000000000041"))
+            .totalRecords(9)
+            .successRecords(9)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "testCaseResolutionStatus",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("testCaseResolutionStatus")
+                        .totalRecords(9)
+                        .successRecords(9)
+                        .failedRecords(0)
+                        .build()))
+            .build();
+
+    invokePrivate(
+        "updateStatsFromDistributedJob",
+        new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+        stats,
+        distributedJob,
+        new StepStats().withSuccessRecords(9).withFailedRecords(0));
+
+    StepStats entity =
+        stats.getEntityStats().getAdditionalProperties().get("testCaseResolutionStatus");
+    assertEquals(
+        9,
+        entity.getTotalRecords(),
+        "entity total reconciled to the partition plan, not the stale getEntityTotal pre-count");
+    assertEquals(9, entity.getSuccessRecords());
+    assertEquals(
+        9,
+        stats.getJobStats().getTotalRecords(),
+        "job total no longer carries the phantom 2-record gap");
+    assertEquals(9, stats.getJobStats().getSuccessRecords());
+    assertEquals(0, stats.getJobStats().getFailedRecords());
+  }
+
+  @Test
+  void updateStatsFromDistributedJobPropagatesEntityWarnings() throws Exception {
+    Stats stats = createBaseStats("testCaseResolutionStatus", 11);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(UUID.fromString("00000000-0000-0000-0000-000000000042"))
+            .totalRecords(11)
+            .successRecords(9)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "testCaseResolutionStatus",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("testCaseResolutionStatus")
+                        .totalRecords(11)
+                        .successRecords(9)
+                        .failedRecords(0)
+                        .warningRecords(2)
+                        .build()))
+            .build();
+
+    invokePrivate(
+        "updateStatsFromDistributedJob",
+        new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+        stats,
+        distributedJob,
+        new StepStats().withSuccessRecords(9).withFailedRecords(0));
+
+    StepStats entity =
+        stats.getEntityStats().getAdditionalProperties().get("testCaseResolutionStatus");
+    assertEquals(
+        2, entity.getWarningRecords(), "stale-relationship warnings reach the entity stats");
+    assertEquals(9, entity.getSuccessRecords());
+    assertEquals(
+        11,
+        entity.getTotalRecords(),
+        "total = success + failed + warnings when warnings genuinely occur");
+  }
+
+  @Test
   void statusHelpersReportStoppedIncompleteAndCompleteJobs() throws Exception {
     Stats complete = createBaseStats("table", 10);
     complete.getJobStats().setTotalRecords(10);
@@ -313,17 +446,30 @@ class DistributedIndexingStrategyTest {
     assertFalse(
         (Boolean) invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, complete));
 
-    Stats incomplete = createBaseStats("table", 10);
-    incomplete.getJobStats().setTotalRecords(10);
-    incomplete.getJobStats().setSuccessRecords(9);
-    incomplete.getJobStats().setFailedRecords(0);
+    Stats warningGap = createBaseStats("table", 10);
+    warningGap.getJobStats().setTotalRecords(10);
+    warningGap.getJobStats().setSuccessRecords(9);
+    warningGap.getJobStats().setFailedRecords(0);
+
+    assertEquals(
+        ExecutionResult.Status.COMPLETED,
+        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, warningGap),
+        "successRecords < totalRecords with zero failures is a warning/orphan gap, not an error");
+    assertFalse(
+        (Boolean)
+            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, warningGap));
+
+    Stats withFailures = createBaseStats("table", 10);
+    withFailures.getJobStats().setTotalRecords(10);
+    withFailures.getJobStats().setSuccessRecords(8);
+    withFailures.getJobStats().setFailedRecords(2);
 
     assertEquals(
         ExecutionResult.Status.COMPLETED_WITH_ERRORS,
-        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, incomplete));
+        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, withFailures));
     assertTrue(
         (Boolean)
-            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, incomplete));
+            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, withFailures));
 
     strategy.stop();
     assertEquals(
@@ -332,14 +478,48 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
-  void finalizeAllEntityReindexSkipsPromotedEntitiesAndUsesPerEntitySuccess() throws Exception {
+  @SuppressWarnings("unchecked")
+  void finalizeAllEntityReindexPromotesZeroRecordEntityFromInitializedStats() throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
-    RecreateIndexHandler recreateIndexHandler = mock(RecreateIndexHandler.class);
-    ReindexContext recreateContext = new ReindexContext();
-    recreateContext.add(
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext("user");
+
+    when(tracker.getPromotedEntities()).thenReturn(Set.of());
+    when(executor.getEntityTracker()).thenReturn(tracker);
+    when(executor.getJobWithFreshStats())
+        .thenReturn(SearchIndexJob.builder().entityStats(Map.of()).build());
+    setField("distributedExecutor", executor);
+    ((AtomicReference<Stats>) getField("currentStats")).set(createBaseStats("user", 0));
+
+    boolean result =
+        (Boolean)
+            invokePrivate(
+                "finalizeAllEntityReindex",
+                new Class<?>[] {RecreateIndexHandler.class, ReindexContext.class, boolean.class},
+                indexPromotionHandler,
+                stagedIndexContext,
+                true);
+
+    assertTrue(result);
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler).finalizeReindex(contextCaptor.capture(), successCaptor.capture());
+    assertEquals("user", contextCaptor.getValue().getEntityType());
+    assertEquals(Boolean.TRUE, successCaptor.getValue());
+  }
+
+  @Test
+  void finalizeAllEntityReindexSkipsPromotedEntitiesAndPromotesMissingEntityStats()
+      throws Exception {
+    DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
+    EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = new ReindexContext();
+    stagedIndexContext.add(
         "table", "table_index", "table_original", "table_staged", Set.of(), "table", List.of());
-    recreateContext.add(
+    stagedIndexContext.add(
         "user",
         "user_index",
         "user_original",
@@ -347,7 +527,7 @@ class DistributedIndexingStrategyTest {
         Set.of("user"),
         "user",
         List.of("parent"));
-    recreateContext.add(
+    stagedIndexContext.add(
         "dashboard",
         "dash_index",
         "dash_original",
@@ -378,8 +558,8 @@ class DistributedIndexingStrategyTest {
             invokePrivate(
                 "finalizeAllEntityReindex",
                 new Class<?>[] {RecreateIndexHandler.class, ReindexContext.class, boolean.class},
-                recreateIndexHandler,
-                recreateContext,
+                indexPromotionHandler,
+                stagedIndexContext,
                 true);
 
     assertTrue(result);
@@ -387,7 +567,7 @@ class DistributedIndexingStrategyTest {
     ArgumentCaptor<EntityReindexContext> contextCaptor =
         ArgumentCaptor.forClass(EntityReindexContext.class);
     ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
-    verify(recreateIndexHandler, times(2))
+    verify(indexPromotionHandler, times(2))
         .finalizeReindex(contextCaptor.capture(), successCaptor.capture());
 
     Map<String, Boolean> outcomes = new java.util.HashMap<>();
@@ -396,6 +576,12 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
+    // 084c5c2205 flipped the contract: an entity with no stats recorded means the reader
+    // did zero work (source had 0 rows, or the entity is driven by a parallel pipeline like
+    // vectorEmbedding/RecreateWithEmbeddings). Such entities are now promoted as success so
+    // the staged index gets swapped in instead of the job rolling up to FAILED on something
+    // that had nothing to fail on. `dashboard` still fails because PromotionPolicy reports its
+    // 4/5 (ratio 0.80) below the 0.95 threshold.
     assertEquals(Boolean.TRUE, outcomes.get("user"));
     assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
   }
@@ -450,12 +636,22 @@ class DistributedIndexingStrategyTest {
                         .failedRecords(0)
                         .build()))
             .build();
-    RecreateIndexHandler recreateIndexHandler = mock(RecreateIndexHandler.class);
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
+    ReindexingConfiguration reindexConfig =
+        ReindexingConfiguration.builder()
+            .entities(Set.of(Entity.TABLE))
+            .batchSize(25)
+            .maxConcurrentRequests(3)
+            .payloadSize(1024L)
+            .build();
 
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
-    when(searchRepository.createReindexHandler()).thenReturn(recreateIndexHandler);
+    when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
+    when(indexPromotionHandler.reCreateIndexes(reindexConfig.entities()))
+        .thenReturn(stagedIndexContext);
     when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
     when(bulkSink.getStats())
@@ -477,15 +673,7 @@ class DistributedIndexingStrategyTest {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
 
-      ExecutionResult result =
-          strategy.execute(
-              ReindexingConfiguration.builder()
-                  .entities(Set.of(Entity.TABLE))
-                  .batchSize(25)
-                  .maxConcurrentRequests(3)
-                  .payloadSize(1024L)
-                  .build(),
-              context(jobId));
+      ExecutionResult result = strategy.execute(reindexConfig, context(jobId));
 
       assertEquals(ExecutionResult.Status.COMPLETED, result.status());
       assertEquals(5, result.totalRecords());
@@ -497,17 +685,81 @@ class DistributedIndexingStrategyTest {
       DistributedSearchIndexExecutor constructed = executorConstruction.constructed().getFirst();
       verify(constructed).performStartupRecovery();
       verify(constructed).setAppContext(APP_ID, 1234L);
+      verify(constructed).execute(bulkSink, stagedIndexContext, reindexConfig);
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void executeNormalizesLegacyEntityAliasesBeforeDistributedSetup() {
+    @SuppressWarnings("unchecked")
+    EntityTimeSeriesRepository<?> timeSeriesRepository = mock(EntityTimeSeriesRepository.class);
+    EntityTimeSeriesDAO timeSeriesDao = mock(EntityTimeSeriesDAO.class);
+    BulkSink bulkSink = mock(BulkSink.class);
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000032");
+    SearchIndexJob completedJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.COMPLETED)
+            .totalRecords(5)
+            .successRecords(5)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    Entity.QUERY_COST_RECORD,
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType(Entity.QUERY_COST_RECORD)
+                        .totalRecords(5)
+                        .successRecords(5)
+                        .failedRecords(0)
+                        .build()))
+            .build();
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.QUERY_COST_RECORD);
+    ReindexingConfiguration reindexConfig =
+        ReindexingConfiguration.builder()
+            .entities(Set.of(SearchIndexEntityTypes.QUERY_COST_RESULT))
+            .build();
+
+    when(timeSeriesRepository.getTimeSeriesDao()).thenReturn(timeSeriesDao);
+    when(timeSeriesDao.listCount(any(ListFilter.class))).thenReturn(5);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
+    when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.QUERY_COST_RECORD)))
+        .thenReturn(stagedIndexContext);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+    when(bulkSink.flushAndAwait(60)).thenReturn(true);
+    when(bulkSink.getStats())
+        .thenReturn(new StepStats().withSuccessRecords(5).withFailedRecords(0));
+    when(bulkSink.getVectorStats()).thenReturn(new StepStats().withTotalRecords(0));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, context) -> {
+                  when(mock.createJob(
+                          any(Set.class), any(EventPublisherJob.class), eq("admin"), any()))
+                      .thenReturn(completedJob);
+                  when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                })) {
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.QUERY_COST_RECORD))
+          .thenReturn(timeSeriesRepository);
+
+      ExecutionResult result = strategy.execute(reindexConfig, context(jobId));
+
+      assertEquals(ExecutionResult.Status.COMPLETED, result.status());
+      DistributedSearchIndexExecutor constructed = executorConstruction.constructed().getFirst();
+      ArgumentCaptor<Set> entityTypesCaptor = ArgumentCaptor.forClass(Set.class);
       verify(constructed)
-          .execute(
-              bulkSink,
-              null,
-              false,
-              ReindexingConfiguration.builder()
-                  .entities(Set.of(Entity.TABLE))
-                  .batchSize(25)
-                  .maxConcurrentRequests(3)
-                  .payloadSize(1024L)
-                  .build());
+          .createJob(
+              entityTypesCaptor.capture(),
+              any(EventPublisherJob.class),
+              eq("admin"),
+              eq(reindexConfig));
+      assertEquals(Set.of(Entity.QUERY_COST_RECORD), entityTypesCaptor.getValue());
+      verify(indexPromotionHandler).reCreateIndexes(Set.of(Entity.QUERY_COST_RECORD));
     }
   }
 
@@ -549,10 +801,15 @@ class DistributedIndexingStrategyTest {
     EntityRepository entityRepository = mock(EntityRepository.class);
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
+    when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.TABLE)))
+        .thenReturn(stagedIndexContext);
     doThrow(new RuntimeException("close failed")).when(bulkSink).close();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -566,7 +823,10 @@ class DistributedIndexingStrategyTest {
                           SearchIndexJob.builder().id(UUID.randomUUID()).totalRecords(5).build());
                   org.mockito.Mockito.doThrow(new RuntimeException("execute failed"))
                       .when(mock)
-                      .execute(any(), any(), eq(false), any());
+                      .execute(
+                          any(BulkSink.class),
+                          any(ReindexContext.class),
+                          any(ReindexingConfiguration.class));
                 })) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
 
@@ -591,10 +851,15 @@ class DistributedIndexingStrategyTest {
     EntityRepository entityRepository = mock(EntityRepository.class);
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
+    when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.TABLE)))
+        .thenReturn(stagedIndexContext);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
@@ -607,7 +872,10 @@ class DistributedIndexingStrategyTest {
                           SearchIndexJob.builder().id(UUID.randomUUID()).totalRecords(5).build());
                   org.mockito.Mockito.doThrow(new RuntimeException("execute failed"))
                       .when(mock)
-                      .execute(any(), any(), eq(false), any());
+                      .execute(
+                          any(BulkSink.class),
+                          any(ReindexContext.class),
+                          any(ReindexingConfiguration.class));
                 })) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
 
@@ -638,6 +906,19 @@ class DistributedIndexingStrategyTest {
     stats.setSinkStats(new StepStats());
     stats.setVectorStats(new StepStats());
     return stats;
+  }
+
+  private ReindexContext stagedContext(String entityType) {
+    ReindexContext context = new ReindexContext();
+    context.add(
+        entityType,
+        entityType + "_index",
+        entityType + "_original",
+        entityType + "_staged",
+        Set.of(),
+        entityType,
+        List.of());
+    return context;
   }
 
   private Object invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)
@@ -679,11 +960,6 @@ class DistributedIndexingStrategyTest {
       @Override
       public UUID getAppId() {
         return APP_ID;
-      }
-
-      @Override
-      public boolean isDistributed() {
-        return true;
       }
 
       @Override

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -38,7 +39,6 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -48,24 +48,27 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   ChangeDescription,
   EntityReference,
+  TestCase,
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
-  getTestCaseByFqn,
+  testCaseQueryFn,
+  testCaseQueryKey,
+} from '../../../rest/queries/incidentManagerQuery';
+import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
-  getTestCaseDetailPagePath,
-  getTestCaseDimensionsDetailPagePath,
-  getTestCaseVersionPath,
-} from '../../../utils/RouterUtils';
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
@@ -81,6 +84,7 @@ const IncidentManagerDetailPage = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const {
     tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
@@ -96,7 +100,6 @@ const IncidentManagerDetailPage = ({
   const isDimensionPage = Boolean(dimensionKey);
 
   const {
-    isLoading,
     setIsLoading,
     setTestCase,
     testCase,
@@ -133,6 +136,70 @@ const IncidentManagerDetailPage = ({
       hasEditPermission: testCasePermission?.EditAll,
     };
   }, [testCasePermission]);
+
+  const testCaseFields = useMemo(() => testCaseClassBase.getFields(), []);
+
+  const testCaseCacheKey = useMemo(
+    () => testCaseQueryKey(testCaseFQN, testCaseFields),
+    [testCaseFQN, testCaseFields]
+  );
+
+  const {
+    data: testCaseData,
+    isLoading: testCaseLoading,
+    error: testCaseError,
+  } = useQuery({
+    queryKey: testCaseCacheKey,
+    queryFn: testCaseQueryFn(testCaseFQN, testCaseFields),
+    enabled: Boolean(testCaseFQN && hasViewPermission && !isPermissionLoading),
+  });
+
+  const setEntityDetails = useCallback(
+    (
+      updater:
+        | TestCase
+        | undefined
+        | ((prev: TestCase | undefined) => TestCase | undefined)
+    ) => {
+      queryClient.setQueryData<TestCase | undefined>(testCaseCacheKey, updater);
+    },
+    [queryClient, testCaseCacheKey]
+  );
+
+  // Mirror query data into the Zustand store so child components
+  // (TestCaseResultTab, IncidentTab, page header) — which read directly from
+  // {@code useTestCaseStore} — continue to receive updates without having to
+  // be migrated to React Query themselves.
+  useEffect(() => {
+    if (testCaseData) {
+      testCaseClassBase.setShowSqlQueryTab(
+        !isUndefined(testCaseData.inspectionQuery)
+      );
+      setTestCase(testCaseData);
+    }
+  }, [testCaseData, setTestCase]);
+
+  useEffect(() => {
+    setIsLoading(testCaseLoading);
+  }, [testCaseLoading, setIsLoading]);
+
+  useEffect(() => {
+    if (testCaseError) {
+      showErrorToast(
+        testCaseError as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.test-case') })
+      );
+    }
+  }, [testCaseError, t]);
+
+  useEffect(() => {
+    if (!isVersionPage || !testCaseData?.id) {
+      return;
+    }
+    getTestCaseVersionList(testCaseData.id)
+      .then(setVersionList)
+      .catch((error) => showErrorToast(error as AxiosError));
+  }, [isVersionPage, testCaseData?.id]);
 
   const isExpandViewSupported = useMemo(
     () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
@@ -184,30 +251,6 @@ const IncidentManagerDetailPage = ({
     }
   };
 
-  const fetchTestCaseData = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getTestCaseByFqn(testCaseFQN, {
-        fields: testCaseClassBase.getFields(),
-      });
-      testCaseClassBase.setShowSqlQueryTab(
-        !isUndefined(response.inspectionQuery)
-      );
-      if (isVersionPage) {
-        const versionResponse = await getTestCaseVersionList(response.id ?? '');
-        setVersionList(versionResponse);
-      }
-      setTestCase(response);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.test-case') })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = location.state
       ?.breadcrumbData
@@ -215,7 +258,7 @@ const IncidentManagerDetailPage = ({
       : [
           {
             name: t('label.incident-manager'),
-            url: ROUTES.INCIDENT_MANAGER,
+            url: observabilityRouterClassBase.getIncidentManagerPath(),
           },
         ];
 
@@ -224,7 +267,7 @@ const IncidentManagerDetailPage = ({
         ...data,
         {
           name: testCase?.name ?? '',
-          url: getTestCaseDetailPagePath(
+          url: observabilityRouterClassBase.getTestCaseDetailPagePath(
             testCaseFQN,
             activeTab as TestCasePageTabs
           ),
@@ -251,16 +294,19 @@ const IncidentManagerDetailPage = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       const testCaseDetailsPath = isDimensionPage
-        ? getTestCaseDimensionsDetailPagePath(
+        ? observabilityRouterClassBase.getTestCaseDimensionsDetailPagePath(
             testCaseFQN,
             dimensionKey || '',
             activeKey as TestCasePageTabs
           )
-        : getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs);
+        : observabilityRouterClassBase.getTestCaseDetailPagePath(
+            testCaseFQN,
+            activeKey as TestCasePageTabs
+          );
 
       navigate(
         isVersionPage
-          ? getTestCaseVersionPath(
+          ? observabilityRouterClassBase.getTestCaseVersionPath(
               testCaseFQN,
               version,
               activeKey as TestCasePageTabs
@@ -269,14 +315,17 @@ const IncidentManagerDetailPage = ({
       );
     }
   };
-  const updateTestCase = async (id: string, patch: PatchOperation[]) => {
-    try {
-      const res = await updateTestCaseById(id, patch);
-      setTestCase(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const updateTestCase = useCallback(
+    async (id: string, patch: PatchOperation[]) => {
+      try {
+        const res = await updateTestCaseById(id, patch);
+        setEntityDetails(res);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [setEntityDetails]
+  );
   const handleOwnerChange = async (owners?: EntityReference[]) => {
     if (testCase) {
       const updatedTestCase = {
@@ -317,6 +366,16 @@ const IncidentManagerDetailPage = ({
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
 
+  // P2-A: only `feedCount.openTaskCount` is consumed by this page (drives the tabs' open-task
+  // badge in `tabDetails` useMemo). The activity-events fetch that {@link getFeedCounts}
+  // bundles in is wasted here, so we skip it entirely — there's no Activity Feed tab on
+  // incidents (TestCasePageTabs).
+  const fetchTaskCounts = useCallback(() => {
+    if (testCaseFQN) {
+      fetchEntityTaskCountsInto(testCaseFQN, setFeedCount);
+    }
+  }, [testCaseFQN]);
+
   const handleCancelDimension = useCallback(
     () => setIsDimensionEdit(false),
     []
@@ -325,8 +384,8 @@ const IncidentManagerDetailPage = ({
   const onVersionClick = () => {
     navigate(
       isVersionPage
-        ? getTestCaseDetailPagePath(testCaseFQN)
-        : getTestCaseVersionPath(
+        ? observabilityRouterClassBase.getTestCaseDetailPagePath(testCaseFQN)
+        : observabilityRouterClassBase.getTestCaseVersionPath(
             testCaseFQN,
             toString(testCase?.version) ?? '',
             activeTab
@@ -338,7 +397,11 @@ const IncidentManagerDetailPage = ({
   const versionHandler = useCallback(
     (newVersion = version) => {
       navigate(
-        getTestCaseVersionPath(testCaseFQN, toString(newVersion), activeTab)
+        observabilityRouterClassBase.getTestCaseVersionPath(
+          testCaseFQN,
+          toString(newVersion),
+          activeTab
+        )
       );
     },
     [testCaseFQN, activeTab]
@@ -370,13 +433,9 @@ const IncidentManagerDetailPage = ({
 
   useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
-      fetchTestCaseData();
-      getEntityFeedCount();
-    } else {
-      setIsLoading(false);
+      fetchTaskCounts();
     }
 
-    // Cleanup function for unmount
     return () => {
       reset();
       testCaseClassBase.setShowSqlQueryTab(false);
@@ -412,7 +471,7 @@ const IncidentManagerDetailPage = ({
     ];
   }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
 
-  if (isLoading || isPermissionLoading) {
+  if (isPermissionLoading || testCaseLoading) {
     return <Loader />;
   }
 
@@ -482,7 +541,11 @@ const IncidentManagerDetailPage = ({
                 {!isVersionPage && (
                   <ManageButton
                     isRecursiveDelete
-                    afterDeleteAction={() => navigate(ROUTES.INCIDENT_MANAGER)}
+                    afterDeleteAction={() =>
+                      navigate(
+                        observabilityRouterClassBase.getIncidentManagerPath()
+                      )
+                    }
                     allowSoftDelete={false}
                     canDelete={hasDeletePermission}
                     displayName={testCase.displayName}
