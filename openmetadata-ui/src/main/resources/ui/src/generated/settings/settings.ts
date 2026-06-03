@@ -2748,12 +2748,13 @@ export interface SearchIndexingLimits {
      */
     mappingDepthLimit?: number;
     /**
-     * Maximum number of flattened columns indexed for a single data asset. Columns beyond this
-     * are dropped from the search document.
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
      */
     maxColumns?: number;
     /**
-     * Maximum number of elements kept in a nested-type array within a single document. Mirrors
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
      * index.mapping.nested_objects.limit.
      */
     nestedObjectsLimit?: number;
