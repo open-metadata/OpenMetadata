@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -442,6 +443,63 @@ class StorageFetcherStrategy(FetcherStrategy):
                 left=StackTraceError(
                     name=self.config.source.serviceName,
                     error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+
+class MessagingFetcherStrategy(FetcherStrategy):
+    """Messaging fetcher strategy for Topic entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],  # noqa: UP045
+        status: Status,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status)
+
+    def _get_topic_entities(self) -> Iterable[Topic]:
+        """Get all topic entities from the messaging service
+
+        Returns:
+            Iterable[Topic]: Topic entities
+        """
+        topics = self.metadata.list_all_entities(
+            entity=Topic,
+            fields=["messageSchema", "tags"],
+            params={
+                "service": self.config.source.serviceName,
+            },
+        )
+        return cast(Iterable[Topic], topics)  # noqa: TC006
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch topic entities from messaging service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for topic in self._get_topic_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=topic,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName,
+                    error=f"Error listing source and entities for messaging service due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,
