@@ -20,10 +20,7 @@ import ReactDOM from 'react-dom';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
-import {
-  EntityUrlMapType,
-  ENTITY_URL_MAP,
-} from '../constants/Feeds.constants';
+import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
