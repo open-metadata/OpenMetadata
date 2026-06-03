@@ -21,11 +21,18 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class SearchIndexHandler implements EntityLifecycleEventHandler {
+
+  private static final String OP_CREATE_INDEX = "createEntityIndex";
+  private static final String OP_UPDATE_INDEX = "updateEntityIndex";
+  private static final String OP_DELETE_INDEX = "deleteEntityIndex";
+  private static final String OP_SOFT_DELETE_INDEX = "softDeleteEntityIndex";
+  private static final String OP_RESTORE_INDEX = "restoreEntityIndex";
 
   private final SearchRepository searchRepository;
 
@@ -47,6 +54,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_CREATE_INDEX, e);
     }
   }
 
@@ -65,6 +73,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_UPDATE_INDEX, e);
     }
   }
 
@@ -82,6 +91,11 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entityRef.getType(),
           entityRef.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(
+          entityRef.getId() != null ? entityRef.getId().toString() : null,
+          entityRef.getFullyQualifiedName(),
+          entityRef.getType() == null ? "" : entityRef.getType(),
+          SearchIndexRetryQueue.failureReason(OP_UPDATE_INDEX, e));
     }
   }
 
@@ -99,6 +113,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_DELETE_INDEX, e);
     }
   }
 
@@ -118,6 +133,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, isDeleted ? OP_SOFT_DELETE_INDEX : OP_RESTORE_INDEX, e);
     }
   }
 
@@ -133,9 +149,11 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public boolean isAsync() {
-    // Search indexing must be visible to follow-up operations in the same request flow
-    // (e.g., postCreate hooks that immediately update the indexed document).
-    return false;
+    // Search indexing runs off the request thread on the OrderedLaneExecutor. Per-entity ordering
+    // is preserved because every event for one entity id hashes to the same single-consumer lane in
+    // submission order, so a postCreate hook that immediately updates the same document still
+    // applies after the create-index on that lane (never a reorder or 404).
+    return true;
   }
 
   public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {

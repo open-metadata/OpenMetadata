@@ -75,7 +75,9 @@ class SearchIndexHandlerTest {
 
   @Test
   void testIsAsync() {
-    assertFalse(searchIndexHandler.isAsync());
+    assertTrue(
+        searchIndexHandler.isAsync(),
+        "Search indexing runs off the request thread on the per-entity-ordered lane");
   }
 
   @Test

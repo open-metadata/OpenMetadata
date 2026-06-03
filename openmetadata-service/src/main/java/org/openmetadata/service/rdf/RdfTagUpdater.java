@@ -70,12 +70,24 @@ public class RdfTagUpdater {
 
   /** Run every closure captured since {@link #beginDeferral} and close the scope. */
   public static void drainDeferred() {
+    runDeferredClosures(drainDeferredToList());
+  }
+
+  /**
+   * Remove and return the closures captured since {@link #beginDeferral} (closing the scope) without
+   * running them. The caller (an async lane task) runs them off the request thread via {@link
+   * #runDeferredClosures(List)} so the SPARQL round trips never block the write API request thread.
+   */
+  public static List<Runnable> drainDeferredToList() {
     List<Runnable> deferred = DEFERRED_RDF.get();
     DEFERRED_RDF.remove();
-    if (deferred != null) {
-      for (Runnable closure : deferred) {
-        runDeferredClosure(closure);
-      }
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Run a previously-drained closure list, each guarded so one failure does not abort the rest. */
+  public static void runDeferredClosures(List<Runnable> closures) {
+    for (Runnable closure : closures) {
+      runDeferredClosure(closure);
     }
   }
 

@@ -16,15 +16,13 @@ package org.openmetadata.service.events.lifecycle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -35,24 +33,43 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Slf4j
 public class EntityLifecycleEventDispatcher {
 
+  private static final String OP_CREATED = "onEntityCreated";
+  private static final String OP_UPDATED = "onEntityUpdated";
+  private static final String OP_DELETED = "onEntityDeleted";
+  private static final String OP_SOFT_DELETE_RESTORE = "onEntitySoftDeletedOrRestored";
+
   private static volatile EntityLifecycleEventDispatcher instance;
   private final List<EntityLifecycleEventHandler> handlers;
-  private final ExecutorService asyncExecutor;
+  private final OrderedLaneExecutor orderedLaneExecutor;
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
-    int maxThreads = Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
-    ThreadPoolExecutor pool =
-        new ThreadPoolExecutor(
-            maxThreads,
-            maxThreads,
-            60L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(5000),
-            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory(),
-            new ThreadPoolExecutor.CallerRunsPolicy());
-    pool.allowCoreThreadTimeOut(true);
-    this.asyncExecutor = pool;
+    this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
+  }
+
+  /**
+   * Submit an ordered async side-effect onto the per-entity lane for {@code entityKey}. The shared
+   * {@code OrderedLaneExecutor} is the single async substrate: the entity-index handler and the
+   * {@code EntityRepository} post-commit drains (RDF / lineage-ES / rename-cascade search) all
+   * submit onto the same lanes keyed by the flushed entity id, so every async side-effect for one
+   * entity serializes on one single-consumer lane in submission order.
+   */
+  public void submitOrdered(UUID entityKey, OrderedTask task) {
+    orderedLaneExecutor.submit(entityKey, task);
+  }
+
+  /**
+   * Submit a post-commit external drain onto {@code laneKey}'s lane as a locator-CARRYING {@link
+   * OrderedLaneTask}, using {@code laneKey} itself as the entity-id locator. On lane-queue-full
+   * overflow or hard-stop the executor sheds the task to {@link SearchIndexRetryQueue} keyed by
+   * {@code laneKey} instead of running the slow external inline on the request thread or losing it —
+   * the request thread therefore never blocks and never runs the drain inline under overflow.
+   */
+  public void submitOrderedDrain(
+      UUID laneKey, String operation, String entityType, Runnable drain) {
+    OrderedLaneTask task =
+        new OrderedLaneTask(drain, operation, laneKey.toString(), null, entityType);
+    orderedLaneExecutor.submit(laneKey, task);
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {
@@ -125,13 +142,20 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity created event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(() -> handler.onEntityCreated(entity, subjectContext), handler);
+      executeHandler(
+          entity, OP_CREATED, () -> handler.onEntityCreated(entity, subjectContext), handler);
     }
   }
 
   /**
    * Dispatch bulk entity created event to all applicable handlers.
-   * Handlers that support bulk operations will receive the full list for batch processing.
+   *
+   * <p>{@code createEntitiesIndex} writes each member's OWN search document, so each member's index
+   * work must serialize on its OWN entity-id lane — never the first entity's lane. Submitting the
+   * whole batch onto the first id's lane would let a later single update to a non-first member B
+   * (which dispatches on B's lane) race B's create-index (on the first id's lane) across two lanes,
+   * clobbering B's doc with stale create-time state. So an async handler is dispatched per entity,
+   * each keyed on its own id; a sync handler still receives the whole list once for efficiency.
    */
   public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) return;
@@ -141,7 +165,27 @@ public class EntityLifecycleEventDispatcher {
         "Dispatching bulk entity created event for {} {} entities", entityType, entities.size());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
+      dispatchBulkCreate(handler, entities, subjectContext);
+    }
+  }
+
+  /**
+   * Slice an async bulk create one lane task per entity id (each member's create-index lands on its
+   * own single-consumer lane in submission order) so a later single update to a non-first member can
+   * never reorder ahead of that member's create-index across lanes. A sync handler runs the whole
+   * batch once.
+   */
+  private void dispatchBulkCreate(
+      EntityLifecycleEventHandler handler,
+      List<EntityInterface> entities,
+      SubjectContext subjectContext) {
+    if (handler.isAsync()) {
+      for (EntityInterface entity : entities) {
+        executeHandler(
+            entity, OP_CREATED, () -> handler.onEntityCreated(entity, subjectContext), handler);
+      }
+    } else {
+      runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
     }
   }
 
@@ -157,7 +201,10 @@ public class EntityLifecycleEventDispatcher {
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          () -> handler.onEntityUpdated(entity, changeDescription, subjectContext), handler);
+          entity,
+          OP_UPDATED,
+          () -> handler.onEntityUpdated(entity, changeDescription, subjectContext),
+          handler);
     }
   }
 
@@ -180,7 +227,35 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug(
         "Dispatching bulk entity updated event for {} ({} entities)", entityType, entities.size());
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(
+      dispatchBulkUpdate(handler, entities, changeDescription, subjectContext);
+    }
+  }
+
+  /**
+   * Same-document update races matter for the update path, so a bulk update is sliced one lane task
+   * per distinct entity id (each entity's doc rebuild lands on its own lane in submission order)
+   * rather than submitting the whole batch onto one arbitrary lane. A sync handler still runs the
+   * whole batch once for efficiency.
+   */
+  private void dispatchBulkUpdate(
+      EntityLifecycleEventHandler handler,
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (handler.isAsync()) {
+      for (EntityInterface entity : entities) {
+        ChangeDescription change =
+            entity.getChangeDescription() != null
+                ? entity.getChangeDescription()
+                : changeDescription;
+        executeHandler(
+            entity,
+            OP_UPDATED,
+            () -> handler.onEntityUpdated(entity, change, subjectContext),
+            handler);
+      }
+    } else {
+      runInline(
           () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext), handler);
     }
   }
@@ -195,7 +270,11 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entityReference.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(() -> handler.onEntityUpdated(entityReference, subjectContext), handler);
+      executeHandler(
+          entityReference,
+          OP_UPDATED,
+          () -> handler.onEntityUpdated(entityReference, subjectContext),
+          handler);
     }
   }
 
@@ -209,7 +288,8 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity deleted event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(() -> handler.onEntityDeleted(entity, subjectContext), handler);
+      executeHandler(
+          entity, OP_DELETED, () -> handler.onEntityDeleted(entity, subjectContext), handler);
     }
   }
 
@@ -229,7 +309,10 @@ public class EntityLifecycleEventDispatcher {
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          () -> handler.onEntitySoftDeletedOrRestored(entity, isDeleted, subjectContext), handler);
+          entity,
+          OP_SOFT_DELETE_RESTORE,
+          () -> handler.onEntitySoftDeletedOrRestored(entity, isDeleted, subjectContext),
+          handler);
     }
   }
 
@@ -243,35 +326,97 @@ public class EntityLifecycleEventDispatcher {
         .toList();
   }
 
-  private void executeHandler(Runnable handlerExecution, EntityLifecycleEventHandler handler) {
+  private void executeHandler(
+      EntityInterface entity,
+      String operation,
+      Runnable handlerExecution,
+      EntityLifecycleEventHandler handler) {
     if (handler.isAsync()) {
-      CompletableFuture.runAsync(
-          () -> {
-            try {
-              handlerExecution.run();
-            } catch (Exception e) {
-              LOG.error("Async entity lifecycle handler '{}' failed", handler.getHandlerName(), e);
-            }
-          },
-          asyncExecutor);
+      orderedLaneExecutor.submit(entity.getId(), laneTask(entity, operation, handlerExecution));
     } else {
-      try {
-        handlerExecution.run();
-      } catch (Exception e) {
-        LOG.error("Sync entity lifecycle handler '{}' failed", handler.getHandlerName(), e);
-        // For sync handlers, we could choose to re-throw the exception
-        // to prevent the main operation from completing, but for now we just log
-      }
+      runInline(handlerExecution, handler);
+    }
+  }
+
+  private void executeHandler(
+      EntityReference reference,
+      String operation,
+      Runnable handlerExecution,
+      EntityLifecycleEventHandler handler) {
+    if (handler.isAsync()) {
+      orderedLaneExecutor.submit(
+          reference.getId(), laneTask(reference, operation, handlerExecution));
+    } else {
+      runInline(handlerExecution, handler);
     }
   }
 
   /**
-   * Shutdown the dispatcher and its async executor.
-   * Should be called during application shutdown.
+   * Wrap the async handler run in an {@link OrderedLaneTask} carrying the entity locator so a {@link
+   * Throwable} (including an {@link Error}) escaping the handler's own catch lands the side-effect in
+   * the durable, entity-keyed search-index retry outbox via {@link #enqueueLaneFailureRetry} instead
+   * of only logging — and so a lane-queue-full shed routes the same locator to the outbox.
+   */
+  private OrderedLaneTask laneTask(
+      EntityInterface entity, String operation, Runnable handlerExecution) {
+    EntityReference reference = entity.getEntityReference();
+    return new OrderedLaneTask(
+        handlerExecution,
+        operation,
+        entity.getId() != null ? entity.getId().toString() : null,
+        entity.getFullyQualifiedName(),
+        reference != null ? reference.getType() : null);
+  }
+
+  private OrderedLaneTask laneTask(
+      EntityReference reference, String operation, Runnable handlerExecution) {
+    return new OrderedLaneTask(
+        handlerExecution,
+        operation,
+        reference.getId() != null ? reference.getId().toString() : null,
+        reference.getFullyQualifiedName(),
+        reference.getType());
+  }
+
+  private void runInline(Runnable handlerExecution, EntityLifecycleEventHandler handler) {
+    try {
+      handlerExecution.run();
+    } catch (Exception e) {
+      LOG.error("Sync entity lifecycle handler '{}' failed", handler.getHandlerName(), e);
+    }
+  }
+
+  /**
+   * Net for the durability gaps: a lane task that throws (any {@link Throwable}, incl. {@link Error})
+   * before reaching a self-enqueueing {@code SearchRepository} method, or a task shed because its lane
+   * queue was full, lands in the entity-keyed search-index retry outbox instead of being lost. Every
+   * async handler dispatch and post-commit drain carries an {@link OrderedLaneTask} locator, so the
+   * retry worker reindexes the entity's current committed state.
+   */
+  private void enqueueLaneFailureRetry(OrderedTask task, Throwable failure) {
+    if (task instanceof OrderedLaneTask locatorTask) {
+      LOG.warn(
+          "Async ordered-lane task '{}' failed or was shed; enqueuing durable retry",
+          locatorTask.operation(),
+          failure);
+      SearchIndexRetryQueue.enqueue(
+          locatorTask.entityId(),
+          locatorTask.entityFqn(),
+          locatorTask.entityType() == null ? "" : locatorTask.entityType(),
+          SearchIndexRetryQueue.failureReason(locatorTask.operation(), failure));
+    } else {
+      LOG.error("Async entity lifecycle lane task failed with no locator; cannot enqueue", failure);
+    }
+  }
+
+  /**
+   * Shutdown the dispatcher and its ordered-lane executor, draining in-flight async work and
+   * flushing anything still queued at hard-stop to the search-index retry outbox so the
+   * {@code SearchIndexRetryWorker} recovers it. Should be called during application shutdown.
    */
   public void shutdown() {
     LOG.info("Shutting down EntityLifecycleEventDispatcher");
-    asyncExecutor.shutdown();
+    orderedLaneExecutor.close();
   }
 
   /**
