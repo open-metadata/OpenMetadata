@@ -28,8 +28,11 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -176,6 +179,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     cacheProvider = System.getProperty("cacheProvider", "none");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
+    System.setProperty("user.timezone", "UTC");
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    LOG.info("Test JVM timezone set to {}", TimeZone.getDefault().getID());
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
@@ -552,8 +558,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     config.setDataSourceFactory(dataSourceFactory);
 
     String projectRoot = System.getProperty("user.dir");
-    if (projectRoot.endsWith("openmetadata-integration-tests")) {
-      projectRoot = projectRoot.substring(0, projectRoot.lastIndexOf("/"));
+    Path projectRootPath = Paths.get(projectRoot);
+    if (projectRootPath.endsWith("openmetadata-integration-tests")
+        && projectRootPath.getParent() != null) {
+      projectRoot = projectRootPath.getParent().toString();
     }
     String flyWayMigrationScriptsLocation =
         projectRoot + "/bootstrap/sql/migrations/flyway/" + DATABASE_CONTAINER.getDriverClassName();
