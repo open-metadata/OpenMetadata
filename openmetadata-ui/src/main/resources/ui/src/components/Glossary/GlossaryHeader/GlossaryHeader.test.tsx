@@ -33,9 +33,21 @@ const mockGlossaryTermPermission = {
   EditCustomFields: true,
 };
 
+const mockGlossaryPermission = {
+  All: true,
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
+      glossary: mockGlossaryPermission,
       glossaryTerm: mockGlossaryTermPermission,
     },
   })),
@@ -181,6 +193,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 describe('GlossaryHeader component', () => {
+  beforeEach(() => {
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission.EditAll = true;
+    mockGlossaryPermission.All = true;
+    mockGlossaryPermission.EditAll = true;
+    mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+    mockContext.type = EntityType.GLOSSARY;
+  });
+
   it('should render name of Glossary', () => {
     render(
       <GlossaryHeader
@@ -194,6 +215,7 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render import and export dropdown menu items only for glossary', async () => {
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, All: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -206,8 +228,8 @@ describe('GlossaryHeader component', () => {
       fireEvent.click(screen.getByTestId('manage-button'));
     });
 
-    expect(screen.queryByText('label.import')).toBeInTheDocument();
-    expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(await screen.findByText('label.import')).toBeInTheDocument();
+    expect(await screen.findByText('label.export')).toBeInTheDocument();
 
     expect(
       screen.queryByText('label.change-parent-entity')
@@ -218,6 +240,8 @@ describe('GlossaryHeader component', () => {
   it('should not render import and export dropdown menu items if no permission', async () => {
     mockGlossaryTermPermission.All = false;
     mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryPermission.All = false;
+    mockGlossaryPermission.EditAll = false;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -227,6 +251,29 @@ describe('GlossaryHeader component', () => {
     );
 
     expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+  });
+
+  it('should render import and export dropdown menu items when global permission is false but contextual entity permission is true', async () => {
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryPermission.All = false;
+    mockGlossaryPermission.EditAll = false;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+    mockContext.type = EntityType.GLOSSARY;
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('manage-button'));
+    });
+
+    expect(await screen.findByText('label.import')).toBeInTheDocument();
+    expect(await screen.findByText('label.export')).toBeInTheDocument();
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
@@ -268,6 +315,8 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render ChangeParentHierarchy component after clicking dropdown menu item', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -294,6 +343,8 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should not render ChangeParentHierarchy component after onCancel call', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
