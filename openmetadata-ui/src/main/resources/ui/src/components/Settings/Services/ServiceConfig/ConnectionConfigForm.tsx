@@ -14,7 +14,6 @@
 import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 
 import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
 import {
@@ -272,16 +271,9 @@ const ConnectionConfigForm = ({
       return missingRequiredFieldsCount > 0 || !isConnectionTestSuccessful;
     }
 
-    return (
-      !validator.isValid(
-        schemaWithoutDefaultFilterPatternFields,
-        currentFormData,
-        schemaWithoutDefaultFilterPatternFields
-      ) ||
-      hasMissingRequiredFlatCredential(
-        schemaWithoutDefaultFilterPatternFields,
-        currentFormData
-      )
+    return hasMissingRequiredFlatCredential(
+      schemaWithoutDefaultFilterPatternFields,
+      currentFormData
     );
   }, [
     connSch.schema,

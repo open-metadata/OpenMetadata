@@ -59,7 +59,6 @@ const ServiceNameCard = ({
         hint={t('message.service-name-rule')}
         id="service-name"
         label={t('label.service-name')}
-        placeholder={t('label.service-name')}
         testId="service-name"
         value={name}
         onChange={onNameChange}

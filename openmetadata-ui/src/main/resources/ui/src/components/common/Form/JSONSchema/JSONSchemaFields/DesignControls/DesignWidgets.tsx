@@ -62,7 +62,8 @@ export const DesignTextWidget = (props: WidgetProps) => {
 };
 
 export const DesignSecretWidget = (props: WidgetProps) => {
-  const isKey = KEY_FIELD.test(props.id);
+  const isKey =
+    KEY_FIELD.test(props.id) || props.schema.uiFieldType === 'fileOrInput';
   const pemError =
     isKey && !isValidPrivateKey(props.value)
       ? i18n.t('message.invalid-private-key-format')
@@ -70,6 +71,7 @@ export const DesignSecretWidget = (props: WidgetProps) => {
 
   return (
     <DesignSecretControl
+      acceptedFileTypes={props.schema.accept}
       allowUpload={isKey}
       autofocus={props.autofocus}
       disabled={props.disabled}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
@@ -164,7 +164,7 @@ test.describe(
 
       const serviceName = `pw-user-owned-service-${uuid()}`;
       await mockSuccessfulTestConnection(page);
-      await page.getByTestId('service-name').fill(serviceName);
+      await page.locator('#service-name').fill(serviceName);
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
@@ -173,7 +173,7 @@ test.describe(
 
       await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
       await expect(page.getByTestId('entity-header-title')).toContainText(
         serviceName
@@ -259,7 +259,7 @@ test.describe(
 
       await testConnectionIfRequired(page);
       await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await saveResponse;
 
       const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =

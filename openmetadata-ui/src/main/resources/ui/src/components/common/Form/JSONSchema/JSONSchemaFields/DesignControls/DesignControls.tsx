@@ -13,6 +13,7 @@
 
 import {
   Input,
+  TextArea,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -88,7 +89,8 @@ export const FieldHint = ({
       className={classNames(
         'tw:mt-1.5 tw:text-xs tw:leading-[18px]',
         error ? 'tw:text-error-primary' : 'tw:text-tertiary'
-      )}>
+      )}
+      data-testid="field-hint">
       {error || hint}
     </div>
   ) : null;
@@ -205,6 +207,7 @@ export const DesignTextControl = ({
 export interface DesignSecretControlProps extends DesignControlProps {
   multiline?: boolean;
   allowUpload?: boolean;
+  acceptedFileTypes?: Array<string>;
 }
 
 export const DesignSecretControl = ({
@@ -220,6 +223,7 @@ export const DesignSecretControl = ({
   error,
   multiline = false,
   allowUpload = false,
+  acceptedFileTypes,
   onChange,
   onFocus,
   onBlur,
@@ -262,6 +266,7 @@ export const DesignSecretControl = ({
           )
         }
       />
+
       <div
         className={frameClass(
           focused,
@@ -270,7 +275,7 @@ export const DesignSecretControl = ({
           disabled || readonly || false
         )}>
         {multiline ? (
-          <textarea
+          <TextArea
             autoFocus={autofocus}
             className={classNames(
               'design-control-textarea tw:w-full tw:flex-1 tw:resize-none',
@@ -278,8 +283,8 @@ export const DesignSecretControl = ({
               'tw:text-sm tw:text-primary tw:outline-none',
               'tw:placeholder:text-placeholder'
             )}
-            disabled={disabled || readonly}
             id={id}
+            isDisabled={disabled || readonly}
             placeholder={placeholder}
             rows={4}
             value={value ?? ''}
@@ -287,7 +292,7 @@ export const DesignSecretControl = ({
               setFocused(false);
               onBlur?.();
             }}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
             onFocus={() => {
               setFocused(true);
               onFocus?.();
@@ -317,15 +322,17 @@ export const DesignSecretControl = ({
             }}
           />
         )}
-        <RevealButton
-          alignTop={multiline}
-          reveal={reveal}
-          onToggle={() => setReveal((v) => !v)}
-        />
+        {!multiline && (
+          <RevealButton
+            alignTop={multiline}
+            reveal={reveal}
+            onToggle={() => setReveal((v) => !v)}
+          />
+        )}
       </div>
       {allowUpload && (
         <input
-          accept=".pem,.key,.txt"
+          accept={acceptedFileTypes?.join(',') ?? '.pem,.key,.txt'}
           className="tw:hidden"
           ref={fileRef}
           type="file"

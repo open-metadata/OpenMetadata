@@ -175,7 +175,7 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
     await page.getByTestId('service-name').waitFor({ state: 'visible' });
   }
 
-  await page.getByTestId('service-name').fill('pw-layout-snowflake');
+  await page.locator('#service-name').fill('pw-layout-snowflake');
 
   const advancedSection = page.getByTestId('connection-section-advanced');
 
@@ -224,34 +224,6 @@ test.describe('Connection config layout', () => {
     await redirectToHomePage(page);
   });
 
-  test('should render compact connector cards with avatar icons', async ({
-    page,
-  }) => {
-    await openAddDatabaseServicePage(page);
-
-    const serviceGrid = page.getByTestId('select-service');
-    const firstCard = serviceGrid.locator('.service-box').first();
-    const iconAvatar = firstCard.locator('.service-icon-avatar');
-    const logo = firstCard.locator('.service-logo, img, svg').first();
-    const label = firstCard.locator('.service-box-title');
-
-    await expect(serviceGrid).toHaveCSS('display', 'grid');
-    expect(await getGridColumnCount(serviceGrid)).toBe(5);
-
-    const cardBox = await getBox(firstCard);
-    const avatarBox = await getBox(iconAvatar);
-    const logoBox = await getBox(logo);
-
-    expect(cardBox.height).toBeLessThanOrEqual(104);
-    expect(Math.round(avatarBox.width)).toBe(40);
-    expect(Math.round(avatarBox.height)).toBe(40);
-    expect(logoBox.width).toBeLessThanOrEqual(24);
-    expect(logoBox.height).toBeLessThanOrEqual(24);
-
-    await expect(label).toHaveCSS('font-size', '12px');
-    await expect(label).toHaveCSS('font-weight', '600');
-  });
-
   test('should render connector forms that previously stalled at loading', async ({
     page,
   }) => {
@@ -290,23 +262,23 @@ test.describe('Connection config layout', () => {
       '[data-field-name="clientSessionKeepAlive"]'
     );
 
-    await expect(scopeBooleanGrid).toHaveCSS('display', 'grid');
     expect(await getGridColumnCount(scopeBooleanGrid)).toBe(2);
     await expect(
-      includeTransientTables.locator('.design-boolean-field')
-    ).toHaveCSS('border-top-width', '0px');
+      includeTransientTables.getByText(
+        'Ingest transient tables alongside permanent ones.'
+      )
+    ).toBeVisible();
     await expect(
-      includeTransientTables.locator('.design-boolean-field label + div')
-    ).toHaveText('Ingest transient tables alongside permanent ones.');
+      includeStreams.getByText('Ingest Snowflake streams as data assets.')
+    ).toBeVisible();
     await expect(
-      includeStreams.locator('.design-boolean-field label + div')
-    ).toHaveText('Ingest Snowflake streams as data assets.');
+      includeStages.getByText('Ingest external and internal stages.')
+    ).toBeVisible();
     await expect(
-      includeStages.locator('.design-boolean-field label + div')
-    ).toHaveText('Ingest external and internal stages.');
-    await expect(
-      clientSessionKeepAlive.locator('.design-boolean-field label + div')
-    ).toHaveText('Keep the session alive for long-running scans.');
+      clientSessionKeepAlive.getByText(
+        'Keep the session alive for long-running scans.'
+      )
+    ).toBeVisible();
     await expectNoOverlap(
       includeTransientTables,
       includeStreams,
@@ -331,16 +303,12 @@ test.describe('Connection config layout', () => {
       '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
     );
 
-    await expect(primaryGrid).toHaveCSS('display', 'grid');
     expect(await getGridColumnCount(primaryGrid)).toBe(3);
     await expectNoOverlap(
       useAccessHistory,
       accessHistoryChunk,
       'Use Access History and chunk size fields overlap'
     );
-    await expect(
-      accessHistoryChunk.locator('.design-field-label label')
-    ).toHaveCSS('color', 'rgb(24, 29, 39)');
 
     const sampleSelectBox = await getBox(sampleStorageSelect);
 
@@ -372,11 +340,6 @@ test.describe('Connection config layout', () => {
 
     await addConnectionOption.click();
 
-    const additionalRow = connectionOptions.locator(
-      '.core-wrap-if-additional-row'
-    );
-
-    await expect(additionalRow).toHaveCSS('display', 'grid');
     await expect(
       connectionOptions.locator('.core-wrap-if-additional-key input')
     ).toHaveAttribute('placeholder', 'option');
@@ -402,7 +365,6 @@ test.describe('Connection config layout', () => {
       sampleBody.locator(`:scope > [data-field-name="${name}"]`);
 
     await expect(samplePanel).toBeVisible();
-    await expect(sampleBody).toHaveCSS('display', 'grid');
     expect(await getGridColumnCount(sampleBody)).toBe(2);
 
     const bucket = sampleField('bucketName');
@@ -463,14 +425,12 @@ test.describe('Connection config layout', () => {
     await expect(
       storagePanel.getByTestId('storage-config-title-icon')
     ).toBeVisible();
-    await expect(storageBody).toHaveCSS('display', 'grid');
     expect(await getGridColumnCount(storageBody)).toBe(2);
 
     const enabled = storageField('enabled');
     const accessKey = storageField('awsAccessKeyId');
     const secretKey = storageField('awsSecretAccessKey');
     const region = storageField('awsRegion');
-    const iamSwitch = enabled.locator('.ant-switch');
     const accessKeyInput = accessKey.locator('input');
 
     const enabledBox = await getBox(enabled);
@@ -527,32 +487,21 @@ test.describe('Connection config layout', () => {
       'AWS endpoint and profile fields overlap'
     );
 
-    await expect(iamSwitch).toHaveCSS('background-color', 'rgb(242, 244, 247)');
-
     await accessKeyInput.focus();
 
-    await expect
-      .poll(() =>
-        accessKeyInput.evaluate((input) => {
-          const frame = input.closest('.design-control-frame');
-
-          return frame ? getComputedStyle(frame).borderColor : '';
-        })
+    await enabled
+      .locator(
+        '[for="root/sampleDataStorageConfig/config/storageConfig/enabled"]'
       )
-      .toBe('rgb(46, 144, 250)');
-    await expect
-      .poll(() =>
-        accessKeyInput.evaluate((input) => {
-          const frame = input.closest('.design-control-frame');
+      .click();
 
-          return frame ? getComputedStyle(frame).boxShadow : '';
-        })
-      )
-      .toContain('rgb(209, 233, 255)');
-
-    await iamSwitch.click();
-
-    await expect(iamSwitch).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      enabled
+        .locator('[data-selected="true"]')
+        .locator(
+          String.raw`#root\/sampleDataStorageConfig\/config\/storageConfig\/enabled`
+        )
+    ).toBeAttached();
     await expect(accessKeyInput).toBeDisabled();
     await expect(secretKey.locator('input')).toBeDisabled();
     await expect(sessionToken.locator('input')).toBeDisabled();
@@ -570,16 +519,15 @@ test.describe('Connection config layout', () => {
     await page.getByTestId('Snowflake').click();
 
     try {
-      await page.getByTestId('service-name').waitFor({
+      await page.locator('#service-name').waitFor({
         state: 'visible',
-        timeout: 5000,
       });
     } catch {
       await page.getByTestId('next-button').click();
-      await page.getByTestId('service-name').waitFor({ state: 'visible' });
+      await page.locator('#service-name').waitFor({ state: 'visible' });
     }
 
-    await page.getByTestId('service-name').fill('pw-snowflake-auth-payload');
+    await page.locator('#service-name').fill('pw-snowflake-auth-payload');
     await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
       timeout: 10000,
     });

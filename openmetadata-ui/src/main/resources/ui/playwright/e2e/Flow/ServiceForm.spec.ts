@@ -97,7 +97,7 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
-        await page.fill('[data-testid="service-name"]', 'test-superset');
+        await page.fill('#service-name', 'test-superset');
         await advanceToServiceConnectionStep(page);
 
         // Fill superset form details - 1
@@ -126,18 +126,9 @@ test.describe(
           '/api/v1/automations/workflows/*?hardDelete=true'
         );
 
-        await page
-          .getByTestId('test-connection-modal')
-          .getByRole('button', { name: 'Cancel' })
-          .click();
+        await page.getByRole('button', { name: 'Cancel' }).click();
 
         await endTestConnection1;
-
-        await page
-          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
-          .waitFor({
-            state: 'detached',
-          });
 
         // Fill superset form details - 2
         await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -165,18 +156,9 @@ test.describe(
           '/api/v1/automations/workflows/*?hardDelete=true'
         );
 
-        await page
-          .getByTestId('test-connection-modal')
-          .getByRole('button', { name: 'Cancel' })
-          .click();
+        await page.getByRole('button', { name: 'Cancel' }).click();
 
         await endTestConnection2;
-
-        await page
-          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
-          .waitFor({
-            state: 'detached',
-          });
 
         // Fill superset form details - 3
         await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -210,18 +192,9 @@ test.describe(
           '/api/v1/automations/workflows/*?hardDelete=true'
         );
 
-        await page
-          .getByTestId('test-connection-modal')
-          .getByRole('button', { name: 'Cancel' })
-          .click();
+        await page.getByRole('button', { name: 'Cancel' }).click();
 
         await endTestConnection3;
-
-        await page
-          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
-          .waitFor({
-            state: 'detached',
-          });
 
         // Fill superset form details - 4
         await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -256,51 +229,27 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
-        await page.fill('[data-testid="service-name"]', 'test-superset');
+        await page.fill('#service-name', 'test-superset');
         await advanceToServiceConnectionStep(page);
 
         await fillSupersetFormDetails({ page, ...supersetFormDetails1 });
 
-        await page.getByText('SupersetApiConnection Advanced Config').click();
+        await page
+          .getByRole('button', { name: 'Show advanced credential' })
+          .click();
 
         // Upload the test certificate file
-        const fileInput1 = page
-          .getByTestId(
-            'password-input-radio-group-root/connection/sslConfig/caCertificate'
-          )
-          .getByTestId('upload-file-widget');
+        const fileInput1 = page.locator(
+          '[data-field-name="caCertificate"] input[type="file"]'
+        );
         await fileInput1.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
-          state: 'visible',
-        });
-
-        await page
-          .getByTitle('Remove file')
-          .locator('[data-icon="delete"]')
-          .click();
-
-        // Wait for file removal to complete
-        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
-          state: 'hidden',
-        });
+        await expect(
+          page.getByRole('textbox', { name: 'CA Certificate' })
+        ).toHaveValue(CERT_FILE);
 
         // Verify the certificate content is sent correctly.
-
-        // Re-upload the certificate file
-        const fileInput2 = page
-          .getByTestId(
-            'password-input-radio-group-root/connection/sslConfig/caCertificate'
-          )
-          .getByTestId('upload-file-widget');
-        await fileInput2.setInputFiles(testCertPath);
-
-        // Wait for file upload to complete
-        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
-          state: 'visible',
-        });
-
         const testConnectionResponse1 = page.waitForResponse(
           'api/v1/automations/workflows'
         );
@@ -319,18 +268,9 @@ test.describe(
           '/api/v1/automations/workflows/*?hardDelete=true'
         );
 
-        await page
-          .getByTestId('test-connection-modal')
-          .getByRole('button', { name: 'Cancel' })
-          .click();
+        await page.getByRole('button', { name: 'Cancel' }).click();
 
         await endTestConnection1;
-
-        await page
-          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
-          .waitFor({
-            state: 'detached',
-          });
       });
     });
 
@@ -349,15 +289,13 @@ test.describe(
         if (await page.getByTestId('next-button').isVisible()) {
           await page.getByTestId('next-button').click();
 
-          await expect(page.locator('#name_help')).toContainText(
+          await expect(page.getByTestId('field-hint')).toContainText(
             'Name is required'
           );
         }
 
-        await page.getByTestId('service-name').click();
-        await page
-          .getByTestId('service-name')
-          .fill(`${SERVICE_NAMES.service1}`);
+        await page.locator('#service-name').click();
+        await page.locator('#service-name').fill(`${SERVICE_NAMES.service1}`);
         await advanceToServiceConnectionStep(page);
 
         const { apiContext, afterAction } = await createNewPage(browser);
@@ -371,13 +309,13 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Databricks');
 
-        await page.getByTestId('service-name').click();
-        await page
-          .getByTestId('service-name')
-          .fill(`${SERVICE_NAMES.service1}`);
+        await page.locator('#service-name').click();
+        await page.locator('#service-name').fill(`${SERVICE_NAMES.service1}`);
 
-        await expect(page.locator('#name_help')).toContainText(
-          'Name already exists.'
+        await expect(
+          page.getByTestId('service-name-card').getByTestId('field-hint')
+        ).toContainText(
+          `A database service named ${SERVICE_NAMES.service1} already exists. `
         );
       });
 
@@ -404,10 +342,8 @@ test.describe(
 
         await selectServiceConnector(page, 'Looker');
 
-        await page.getByTestId('service-name').click();
-        await page
-          .getByTestId('service-name')
-          .fill(`${SERVICE_NAMES.service2}`);
+        await page.locator('#service-name').click();
+        await page.locator('#service-name').fill(`${SERVICE_NAMES.service2}`);
         await advanceToServiceConnectionStep(page);
 
         await page.locator(String.raw`#root\/clientId`).clear();
@@ -427,6 +363,7 @@ test.describe(
           String.raw`#root\/hostPort`,
           lookerFormDetails.hostPort
         );
+        await page.getByTestId('connection-section-scope').click();
 
         await selectOneOfOption(
           page,
@@ -523,6 +460,8 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
         await waitForServiceConnectionForm(page);
 
+        await page.getByTestId('connection-section-scope').click();
+
         const suffixInput = page.locator(
           String.raw`#root\/schemaRegistryTopicSuffixName`
         );
@@ -538,7 +477,7 @@ test.describe(
         );
 
         await page.getByTestId('submit-btn').click();
-        await page.getByTestId('submit-btn').click();
+        await page.getByRole('button', { name: 'Save' }).click();
 
         const patch = await patchResponse;
         const patchBody = patch.request().postDataJSON() as Array<{
@@ -562,6 +501,8 @@ test.describe(
         await page.getByTestId('edit-connection-button').click();
         await waitForAllLoadersToDisappear(page);
         await waitForServiceConnectionForm(page);
+
+        await page.getByTestId('connection-section-scope').click();
 
         await expect(
           page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)

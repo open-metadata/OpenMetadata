@@ -98,8 +98,11 @@ export const fillSupersetFormDetails = async ({
     );
 
     if (provider) {
-      await page.getByTestId('select-widget-root/connection/provider').click();
-      await page.click(`.ant-select-dropdown:visible [title="${provider}"]`);
+      await page.getByRole('button', { name: 'db Provider *' }).click();
+      await page
+        .locator(`.core-select-widget-popover:visible`)
+        .getByRole('option', { name: provider })
+        .click();
     }
   } else if (
     connectionType === 'PostgresConnection' ||
