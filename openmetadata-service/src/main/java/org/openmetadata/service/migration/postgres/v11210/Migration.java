@@ -14,6 +14,7 @@ package org.openmetadata.service.migration.postgres.v11210;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v11210.MigrationUtil;
@@ -29,5 +30,11 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     MigrationUtil.removeFlattenedChildrenSearchSettings();
+    MigrationUtil.removeStaleFileExtensionAggregation();
+    try {
+      MigrationUtil.healStuckCertificationOnEntityJson(handle, ConnectionType.POSTGRES);
+    } catch (Exception e) {
+      LOG.error("v11210 heal of stuck certification on entity json failed", e);
+    }
   }
 }
