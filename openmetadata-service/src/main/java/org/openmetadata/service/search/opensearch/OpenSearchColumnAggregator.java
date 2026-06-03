@@ -367,6 +367,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field("columns"))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(false)))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -416,6 +417,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field("columns"))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(false)))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
