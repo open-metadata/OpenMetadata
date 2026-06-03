@@ -68,7 +68,16 @@ class MessagingSampler(SamplerInterface):
     def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         entity: Topic = self.entity
         if entity.messageSchema and entity.messageSchema.schemaFields:
-            return [SQALikeColumn(field.name.root, field.dataType) for field in entity.messageSchema.schemaFields]
+            columns = []
+            for field in entity.messageSchema.schemaFields:
+                field_name = field.name.root
+                field_type = field.dataType
+                type_str = str(field_type).upper() if field_type else ""
+                if "RECORD" in type_str and field.children:
+                    columns.extend([SQALikeColumn(child.name.root, child.dataType) for child in field.children])
+                else:
+                    columns.append(SQALikeColumn(field_name, field_type))
+            return columns
         return []
 
     @abstractmethod

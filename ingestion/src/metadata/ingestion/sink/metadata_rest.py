@@ -1003,7 +1003,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         messages = []
         if sample_data.rows:
             for row in sample_data.rows:
-                row_dict = {col.name.root: row[idx] for idx, col in enumerate(sample_data.columns)}
+                row_dict = {col.root: row[idx] for idx, col in enumerate(sample_data.columns)}
                 messages.append(json.dumps(row_dict))
         topic_sample_data = TopicSampleData(messages=messages)
         result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
