@@ -44,12 +44,9 @@ import {
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
-import {
-  ENTITY_TYPE_API_NAME,
-  IntakeFormNativeField,
-  NATIVE_FIELDS_BY_ENTITY_TYPE,
-} from './intakeFormFields';
+import { IntakeFormNativeField } from './intakeFormFields';
 
 interface FieldRow {
   path: string;
@@ -102,7 +99,9 @@ const IntakeFormDesignerModal = ({
     }
     let cancelled = false;
     setLoadingProps(true);
-    getCustomPropertiesByEntityType(ENTITY_TYPE_API_NAME[entityType])
+    getCustomPropertiesByEntityType(
+      intakeFormClassBase.getEntityTypeApiName(entityType)
+    )
       .then((props) => {
         if (!cancelled) {
           setCustomProperties(props ?? []);
@@ -128,7 +127,7 @@ const IntakeFormDesignerModal = ({
   // Rebuild rows whenever the data backing them changes
   useEffect(() => {
     const natives: IntakeFormNativeField[] =
-      NATIVE_FIELDS_BY_ENTITY_TYPE[entityType] ?? [];
+      intakeFormClassBase.getNativeFields(entityType);
     const existingSelections = new Map<string, RequiredField>(
       (initialValue?.requiredFields ?? []).map((rf) => [rf.fieldPath, rf])
     );
@@ -206,7 +205,7 @@ const IntakeFormDesignerModal = ({
     // have renamed it via API). On create, fall back to a localized default
     // of "<Entity> <IntakeForm>" so the listing shows a meaningful label
     // without forcing the user to type one.
-    const name = ENTITY_TYPE_API_NAME[entityType];
+    const name = intakeFormClassBase.getEntityTypeApiName(entityType);
     const defaultDisplayName = t('label.entity-intake-form', {
       entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
     });
