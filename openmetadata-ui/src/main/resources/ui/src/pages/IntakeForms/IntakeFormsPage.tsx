@@ -189,33 +189,42 @@ const IntakeFormsPage = () => {
   ];
 
   const renderAddButton = () => {
-    const addButton = (
-      <Button
-        color="primary"
-        data-testid="add-intake-form"
-        iconTrailing={ChevronDown}
-        isDisabled={allEntityTypesCovered}
-        size="sm">
-        {t('label.add-entity', { entity: t('label.intake-form') })}
-      </Button>
-    );
+    if (allEntityTypesCovered) {
+      return (
+        <Tooltip title={t('message.intake-form-all-types-covered')}>
+          <Button
+            isDisabled
+            color="primary"
+            data-testid="add-intake-form"
+            iconTrailing={ChevronDown}
+            size="sm">
+            {t('label.add-entity', { entity: t('label.intake-form') })}
+          </Button>
+        </Tooltip>
+      );
+    }
 
-    return allEntityTypesCovered ? (
-      <Tooltip title={t('message.intake-form-all-types-covered')}>
-        {addButton}
-      </Tooltip>
-    ) : (
+    return (
       <Dropdown.Root>
-        {addButton}
+        <Button
+          color="primary"
+          data-testid="add-intake-form"
+          iconTrailing={ChevronDown}
+          size="sm">
+          {t('label.add-entity', { entity: t('label.intake-form') })}
+        </Button>
         <Dropdown.Popover className="tw:w-max">
-          <Dropdown.Menu items={addMenuItems}>
+          <Dropdown.Menu
+            disallowEmptySelection={false}
+            items={addMenuItems}
+            selectionMode="none"
+            onAction={(key) => handleCreate(String(key) as TargetEntityType)}>
             {(item: { id: string; label: string; isDisabled: boolean }) => (
               <Dropdown.Item
                 data-testid={`add-${item.id}`}
                 id={item.id}
                 isDisabled={item.isDisabled}
                 label={item.label}
-                onAction={() => handleCreate(item.id as TargetEntityType)}
               />
             )}
           </Dropdown.Menu>

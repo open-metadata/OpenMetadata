@@ -260,7 +260,7 @@ test.describe(
       const disabledItem = menu.getByText(/Data Product.*already configured/i);
       await expect(disabledItem).toBeVisible();
 
-      // MUI disables menuitems via aria-disabled (not an AntD class)
+      // react-aria disables menuitems via aria-disabled
       const parent = menu
         .getByRole('menuitem')
         .filter({ hasText: /Data Product/ });
