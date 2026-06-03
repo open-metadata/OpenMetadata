@@ -83,6 +83,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
   highlightSearchText: jest.fn((text) => text),
 }));
 
