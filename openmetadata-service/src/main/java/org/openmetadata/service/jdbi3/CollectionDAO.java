@@ -58,6 +58,7 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -13333,6 +13334,25 @@ public interface CollectionDAO {
     }
   }
 
+  @Builder
+  record ActivityStreamRow(
+      String id,
+      String eventType,
+      String entityType,
+      String entityId,
+      String entityFqnHash,
+      String about,
+      String aboutFqnHash,
+      String actorId,
+      String actorName,
+      Long timestamp,
+      String summary,
+      String fieldName,
+      String oldValue,
+      String newValue,
+      String domains,
+      String json) {}
+
   interface ActivityStreamDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -13365,6 +13385,24 @@ public interface CollectionDAO {
         @Bind("newValue") String newValue,
         @Bind("domains") String domains,
         @Bind("json") String json);
+
+    // Batch insert for activity events - one round-trip per change event instead of one per row
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO activity_stream(id, eventType, entityType, entityId, entityFqnHash, "
+                + "about, aboutFqnHash, actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO activity_stream(id, eventtype, entitytype, entityid, entityfqnhash, "
+                + "about, aboutfqnhash, actorid, actorname, timestamp, summary, fieldname, oldvalue, newvalue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains::jsonb, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertBatch(@BindMethods List<ActivityStreamRow> rows);
 
     @ConnectionAwareSqlQuery(
         value =
