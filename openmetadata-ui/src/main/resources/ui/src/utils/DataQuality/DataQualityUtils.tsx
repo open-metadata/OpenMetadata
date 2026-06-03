@@ -46,6 +46,7 @@ import { TestCaseType } from '../../enums/TestSuite.enum';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
+import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type {
   TestCase,
   TestCaseParameterValue,
@@ -127,7 +128,7 @@ export const createTestCaseParameters = (
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
-  selectedDefinition?: TestDefinition;
+  createTestCaseObject: Partial<CreateTestCase>;
   showOnlyParameter?: boolean;
   isComputeRowCountFieldVisible: boolean;
 }
@@ -135,7 +136,7 @@ export interface CreateUpdatedTestCasePatchArgs {
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
-  selectedDefinition,
+  createTestCaseObject,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
 }: CreateUpdatedTestCasePatchArgs): Operation[] => {
@@ -147,7 +148,7 @@ export const createUpdatedTestCasePatch = ({
   ];
   const updatedTestCase = {
     ...testCase,
-    parameterValues: createTestCaseParameters(value.params, selectedDefinition),
+    ...createTestCaseObject,
     description: showOnlyParameter
       ? testCase.description
       : isEmpty(value.description)
@@ -163,8 +164,12 @@ export const createUpdatedTestCasePatch = ({
       showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
         ? testCase.tags
         : rebuiltTags,
-    dimensionColumns: value.dimensionColumns || undefined,
-    topDimensions: value.topDimensions ?? undefined,
+    dimensionColumns: isUndefined(value.dimensionColumns)
+      ? testCase.dimensionColumns
+      : value.dimensionColumns || undefined,
+    topDimensions: isUndefined(value.topDimensions)
+      ? testCase.topDimensions
+      : value.topDimensions ?? undefined,
   };
 
   return compare(testCase, updatedTestCase);
