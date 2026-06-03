@@ -338,6 +338,112 @@ class EntityLifecycleEventDispatcherTest {
         0, bulkSyncHandler.createdCallCount.get(), "Sync handler is not sliced per entity");
   }
 
+  @Test
+  void asyncHandlersShareOneSnapshotPerEntity() throws InterruptedException {
+    CountDownLatch bothRan = new CountDownLatch(2);
+    TestHandler asyncOne =
+        new TestHandler("AsyncOne", 100, true, Set.of()) {
+          @Override
+          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+            super.onEntityCreated(entity, subjectContext);
+            bothRan.countDown();
+          }
+        };
+    TestHandler asyncTwo =
+        new TestHandler("AsyncTwo", 200, true, Set.of()) {
+          @Override
+          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+            super.onEntityCreated(entity, subjectContext);
+            bothRan.countDown();
+          }
+        };
+    dispatcher.registerHandler(asyncOne);
+    dispatcher.registerHandler(asyncTwo);
+
+    EntityInterface original = createAsyncSafeEntity();
+    dispatcher.onEntityCreated(original, mockSubjectContext);
+
+    assertTrue(bothRan.await(10, TimeUnit.SECONDS), "Both async handlers should run");
+    assertNotSame(
+        original,
+        asyncOne.lastCreatedEntity,
+        "Async handler must receive a snapshot copy, not the live request POJO");
+    assertSame(
+        asyncOne.lastCreatedEntity,
+        asyncTwo.lastCreatedEntity,
+        "Entity is serialized once; the snapshot is shared across async handlers");
+  }
+
+  @Test
+  void asyncBulkCreateSharesOneSnapshotPerEntityAcrossHandlers() throws InterruptedException {
+    EntityInterface entityA = asyncSafeEntity("a");
+    EntityInterface entityB = asyncSafeEntity("b");
+    CountDownLatch allRan = new CountDownLatch(4);
+    TestHandler asyncOne =
+        new TestHandler("BulkAsyncOne", 100, true, Set.of()) {
+          @Override
+          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+            super.onEntityCreated(entity, subjectContext);
+            allRan.countDown();
+          }
+        };
+    TestHandler asyncTwo =
+        new TestHandler("BulkAsyncTwo", 200, true, Set.of()) {
+          @Override
+          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+            super.onEntityCreated(entity, subjectContext);
+            allRan.countDown();
+          }
+        };
+    dispatcher.registerHandler(asyncOne);
+    dispatcher.registerHandler(asyncTwo);
+
+    dispatcher.onEntitiesCreated(new ArrayList<>(List.of(entityA, entityB)), mockSubjectContext);
+
+    assertTrue(allRan.await(10, TimeUnit.SECONDS), "Both async handlers run for both entities");
+    assertSame(
+        snapshotFor(asyncOne, entityA.getId()),
+        snapshotFor(asyncTwo, entityA.getId()),
+        "Entity A is serialized once; both async handlers share its snapshot");
+    assertSame(
+        snapshotFor(asyncOne, entityB.getId()),
+        snapshotFor(asyncTwo, entityB.getId()),
+        "Entity B is serialized once; both async handlers share its snapshot");
+    assertNotSame(
+        snapshotFor(asyncOne, entityA.getId()),
+        snapshotFor(asyncOne, entityB.getId()),
+        "Distinct entities get distinct snapshots");
+  }
+
+  @Test
+  void snapshotFailureRoutesToOutboxInsteadOfFailingTheCommittedRequest() {
+    TestHandler asyncHandler = new TestHandler("AsyncHandler", 100, true, Set.of());
+    dispatcher.registerHandler(asyncHandler);
+
+    Table poison = new Table() {};
+    poison.setId(UUID.randomUUID());
+    poison.setName("poison_table");
+    poison.setFullyQualifiedName("service.db.schema.poison_table");
+    poison.setColumns(new ArrayList<>());
+    poison.setTags(new ArrayList<>());
+    poison.setOwners(new ArrayList<>());
+    poison.setDomains(new ArrayList<>());
+
+    assertDoesNotThrow(
+        () -> dispatcher.onEntityCreated(poison, mockSubjectContext),
+        "A post-commit snapshot failure must not surface as a 5xx for an already-committed write");
+    assertFalse(
+        asyncHandler.createdCalled,
+        "Async handler is skipped on snapshot failure; the entity is routed to the retry outbox");
+  }
+
+  private static EntityInterface snapshotFor(TestHandler handler, UUID id) {
+    return handler.receivedCreatedEntities.stream()
+        .filter(entity -> entity != null && id.equals(entity.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
   private EntityInterface asyncSafeEntity(String suffix) {
     Table entity = new Table();
     entity.setId(UUID.randomUUID());
@@ -414,6 +520,8 @@ class EntityLifecycleEventDispatcherTest {
     boolean lastIsDeleted;
     List<ChangeDescription> receivedChangeDescriptions = new ArrayList<>();
     List<UUID> perEntityCreatedIds = java.util.Collections.synchronizedList(new ArrayList<>());
+    List<EntityInterface> receivedCreatedEntities =
+        java.util.Collections.synchronizedList(new ArrayList<>());
 
     TestHandler(String name, int priority, boolean async, Set<String> supportedEntityTypes) {
       this.name = name;
@@ -427,6 +535,7 @@ class EntityLifecycleEventDispatcherTest {
       createdCalled = true;
       createdCallCount.incrementAndGet();
       lastCreatedEntity = entity;
+      receivedCreatedEntities.add(entity);
       if (entity != null && entity.getId() != null) {
         perEntityCreatedIds.add(entity.getId());
       }
