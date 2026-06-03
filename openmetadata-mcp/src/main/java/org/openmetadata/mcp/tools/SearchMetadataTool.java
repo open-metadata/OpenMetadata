@@ -87,7 +87,13 @@ public class SearchMetadataTool implements McpTool {
           "columnNamesFuzzy",
           "descriptionStatus",
           "domains",
-          "embeddings");
+          "embeddings",
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "chunkCount",
+          "chunkIndex");
 
   @Override
   public Map<String, Object> execute(
