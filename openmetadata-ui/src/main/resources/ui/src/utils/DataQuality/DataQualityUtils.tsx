@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare, Operation } from 'fast-json-patch';
 import { t } from 'i18next';
 import {
   cloneDeep,
   isArray,
+  isEmpty,
   isNil,
   isUndefined,
   lowerCase,
@@ -33,6 +35,7 @@ import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
+import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
@@ -40,6 +43,7 @@ import { TEXT_GREY_MUTED } from '../../constants/constants';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { Table } from '../../generated/entity/data/table';
 import { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
@@ -62,7 +66,7 @@ import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';
 import { getDataQualityPagePath } from '../RouterUtils';
-import { generateEntityLink } from '../TableUtils';
+import { generateEntityLink, getTierTags } from '../TableUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
@@ -119,6 +123,56 @@ export const createTestCaseParameters = (
         return acc;
       }, [] as TestCaseParameterValue[])
     : params;
+};
+
+export interface CreateUpdatedTestCasePatchArgs {
+  testCase: TestCase;
+  value: TestCaseFormType;
+  createTestCaseObject: Partial<CreateTestCase>;
+  showOnlyParameter?: boolean;
+  isComputeRowCountFieldVisible: boolean;
+}
+
+export const createUpdatedTestCasePatch = ({
+  testCase,
+  value,
+  createTestCaseObject,
+  showOnlyParameter,
+  isComputeRowCountFieldVisible,
+}: CreateUpdatedTestCasePatchArgs): Operation[] => {
+  const tierTag = testCase.tags ? getTierTags(testCase.tags) : undefined;
+  const rebuiltTags = [
+    ...(tierTag ? [tierTag] : []),
+    ...(value.tags ?? []),
+    ...(value.glossaryTerms ?? []),
+  ];
+  const updatedTestCase = {
+    ...testCase,
+    ...createTestCaseObject,
+    description: showOnlyParameter
+      ? testCase.description
+      : isEmpty(value.description)
+      ? undefined
+      : value.description,
+    displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
+    computePassedFailedRowCount: isComputeRowCountFieldVisible
+      ? value.computePassedFailedRowCount
+      : testCase?.computePassedFailedRowCount,
+    // Keep original tags when empty on both sides; rebuilding to [] would
+    // diff against an absent field and emit a phantom `add /tags []` op.
+    tags:
+      showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
+        ? testCase.tags
+        : rebuiltTags,
+    dimensionColumns: isUndefined(value.dimensionColumns)
+      ? testCase.dimensionColumns
+      : value.dimensionColumns || undefined,
+    topDimensions: isUndefined(value.topDimensions)
+      ? testCase.topDimensions
+      : value.topDimensions ?? undefined,
+  };
+
+  return compare(testCase, updatedTestCase);
 };
 
 export const getTestCaseFiltersValue = (

@@ -23,8 +23,7 @@ import {
   Space,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isArray, isEmpty, isEqual, isUndefined, pick } from 'lodash';
+import { isArray, isEqual, isUndefined, pick } from 'lodash';
 import {
   FC,
   FocusEvent,
@@ -58,6 +57,7 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../../rest/testAPI';
+import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
@@ -124,7 +124,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
 
   const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
-  const { tags, glossaryTerms, tierTag } = useMemo(() => {
+  const { tags, glossaryTerms } = useMemo(() => {
     if (!testCase?.tags) {
       return { tags: [], glossaryTerms: [], tierTag: null };
     }
@@ -285,32 +285,16 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
 
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
     setErrorMessage('');
-    const updatedTestCase = {
-      ...testCase,
-      ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
-      description: showOnlyParameter
-        ? testCase.description
-        : isEmpty(value.description)
-        ? undefined
-        : value.description,
-      displayName: showOnlyParameter
-        ? testCase?.displayName
-        : value.displayName,
-      computePassedFailedRowCount: isComputeRowCountFieldVisible
-        ? value.computePassedFailedRowCount
-        : testCase?.computePassedFailedRowCount,
-      tags: showOnlyParameter
-        ? testCase.tags
-        : [
-            ...(tierTag ? [tierTag] : []),
-            ...(value.tags ?? []),
-            ...(value.glossaryTerms ?? []),
-          ],
-      dimensionColumns: value.dimensionColumns || undefined,
-      topDimensions: value.topDimensions ?? undefined,
-    };
-
-    const jsonPatch = compare(testCase, updatedTestCase);
+    const jsonPatch = createUpdatedTestCasePatch({
+      testCase,
+      value,
+      createTestCaseObject: testCaseClassBase.getCreateTestCaseObject(
+        value,
+        selectedDefinition
+      ),
+      showOnlyParameter,
+      isComputeRowCountFieldVisible,
+    });
 
     if (jsonPatch.length) {
       try {
