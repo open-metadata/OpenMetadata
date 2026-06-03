@@ -97,6 +97,12 @@ public final class EntityLoader {
   private static final Logger LOG = LoggerFactory.getLogger(EntityLoader.class);
   private static final long FUTURE_TIMEOUT_SECONDS = 600;
 
+  // Caps the per-load create concurrency. Defaults to unbounded (the spec's own value) so embedded
+  // and local runs are unchanged; CI sets {@code -Djpw.loader.maxWorkers=N} (e.g. 8) so parallel
+  // creates against a shared, proxy-fronted external cluster don't queue past the ingress timeout
+  // and 504. Tune per run via the workflow input.
+  private static final String MAX_WORKERS_PROPERTY = "jpw.loader.maxWorkers";
+
   // Children that hang off a single parent (glossary terms → glossary, tags →
   // classification, api endpoints → collection, data products → domain) serialize on the
   // parent's relationship row lock during create. Funnelling thousands through one parent
@@ -122,12 +128,16 @@ public final class EntityLoader {
   private EntityLoader() {}
 
   public static EntityLoadSummary load(final EntityLoadSpec spec, final TestNamespace ns) {
+    final int workers = effectiveParallelWorkers(spec.parallelWorkers());
     LOG.info(
-        "EntityLoader starting: total={} parallelWorkers={}", spec.total(), spec.parallelWorkers());
+        "EntityLoader starting: total={} parallelWorkers={} (requested={})",
+        spec.total(),
+        workers,
+        spec.parallelWorkers());
     final Instant start = Instant.now();
     final EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
     final LoaderContext ctx = new LoaderContext();
-    final ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
+    final ExecutorService executor = Executors.newFixedThreadPool(workers);
     try {
       runAssetKinds(spec, ns, executor, summary, ctx);
       runTaxonomyKinds(spec, ns, executor, summary);
@@ -146,6 +156,15 @@ public final class EntityLoader {
         built.totalColumns(),
         built.totalDuration());
     return built;
+  }
+
+  /**
+   * Caps the requested worker count by {@code -Djpw.loader.maxWorkers}. Unset (embedded/local) means
+   * no cap — the spec's value is used verbatim.
+   */
+  private static int effectiveParallelWorkers(final int requested) {
+    final Integer cap = Integer.getInteger(MAX_WORKERS_PROPERTY);
+    return (cap != null && cap > 0) ? Math.min(requested, cap) : requested;
   }
 
   private static void runAssetKinds(
@@ -881,7 +900,8 @@ public final class EntityLoader {
     // <table.fqn>.testSuite name under MySQL's 256-char limit), each shard creates its
     // slice of test cases sequentially, and the shards run in parallel. No two threads
     // ever touch the same table, so the lock never contends.
-    final int shards = Math.max(1, Math.min(spec.parallelWorkers(), count));
+    final int shards =
+        Math.max(1, Math.min(effectiveParallelWorkers(spec.parallelWorkers()), count));
     final List<String> shardTableLinks = new ArrayList<>(shards);
     for (int s = 0; s < shards; s++) {
       shardTableLinks.add(

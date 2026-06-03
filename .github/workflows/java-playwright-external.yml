@@ -78,6 +78,11 @@ on:
         required: false
         type: string
         default: '300'
+      entityLoaderMaxWorkers:
+        description: 'Cap on EntityLoader create concurrency (keep low for a shared/proxied cluster to avoid 504s)'
+        required: false
+        type: string
+        default: '8'
 
 permissions:
   contents: read
@@ -177,6 +182,7 @@ jobs:
             IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
           fi
           mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
             -Dui.it.excludedGroups="${{ github.event.inputs.excludedGroups || 'sso-bootstrap,search-direct' }}"
 
       - name: Upload Playwright traces
@@ -306,7 +312,8 @@ jobs:
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
         run: |
-          mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+          mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
@@ -423,7 +430,8 @@ jobs:
         run: |
           mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.scale.tables=${{ matrix.seed }} \
-            -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }}
+            -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }} \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
 
       - name: Upload scale metrics
         if: ${{ always() }}
