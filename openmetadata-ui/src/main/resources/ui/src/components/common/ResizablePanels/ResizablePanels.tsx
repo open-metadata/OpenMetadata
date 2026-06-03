@@ -61,11 +61,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           {isFirstPanelWrapInCard ? (
             <Card
+              bodyStyle={firstPanel.cardBodyStyles}
               className={classNames(firstPanel.cardClassName, {
                 // If allowScroll is true, the card will not have a scrollbar
                 'h-full overflow-y-auto': !firstPanel.allowScroll,
-              })}
-              bodyStyle={firstPanel.cardBodyStyles}>
+              })}>
               {firstPanel.children}
             </Card>
           ) : (
