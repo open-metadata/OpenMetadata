@@ -452,6 +452,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -551,6 +552,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
