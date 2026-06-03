@@ -58,6 +58,10 @@ public class DataQualityWorkflow {
   @Getter
   private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
 
+  public static void resetWorkflowStats() {
+    workflowStats.reset();
+  }
+
   public DataQualityWorkflow(
       DataQualityConfig dataQualityConfig,
       Long timestamp,

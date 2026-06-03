@@ -399,6 +399,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processDataQuality() {
+    DataQualityWorkflow.resetWorkflowStats();
     for (String entityType : dataQualityEntities) {
       DataQualityWorkflow workflow =
           new DataQualityWorkflow(

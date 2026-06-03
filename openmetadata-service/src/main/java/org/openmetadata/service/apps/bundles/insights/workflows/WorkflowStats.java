@@ -31,6 +31,15 @@ public class WorkflowStats {
     failures.add(msg);
   }
 
+  public void reset() {
+    failures.clear();
+    workflowStepStats.clear();
+    workflowStats.setTotalRecords(0);
+    workflowStats.setSuccessRecords(0);
+    workflowStats.setFailedRecords(0);
+    workflowStats.setWarningRecords(0);
+  }
+
   public Boolean hasFailed() {
     return !failures.isEmpty();
   }
