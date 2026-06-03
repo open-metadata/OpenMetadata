@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
@@ -82,8 +83,9 @@ public class SocketAddressFilter implements Filter {
       throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-      Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
-      String requestedUserId = query.get("userId");
+      String queryString = httpServletRequest.getQueryString();
+      Map<String, String> query = hasText(queryString) ? ParseQS.decode(queryString) : Map.of();
+      String requestedUserId = trimToNull(query.get("userId"));
 
       HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
       requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
@@ -101,12 +103,24 @@ public class SocketAddressFilter implements Filter {
         }
         socketUserId = resolvedUserId.toString();
       }
-      requestWrapper.addHeader("UserId", socketUserId);
-      if (tokenPrincipal != null && tokenPrincipal.sessionId() != null) {
-        requestWrapper.addHeader("SessionId", tokenPrincipal.sessionId());
-      }
-      if (!isSessionStillActive(requestWrapper, (HttpServletResponse) response, tokenPrincipal)) {
+      SessionValidationResult sessionValidation =
+          isSessionStillActive(
+              requestWrapper, (HttpServletResponse) response, tokenPrincipal, socketUserId);
+      if (!sessionValidation.allowed()) {
         return;
+      }
+      if (!hasText(socketUserId)) {
+        socketUserId = sessionValidation.userId();
+      }
+      if (hasText(socketUserId)) {
+        requestWrapper.addHeader("UserId", socketUserId);
+      }
+      String sessionId =
+          hasText(sessionValidation.sessionId())
+              ? sessionValidation.sessionId()
+              : tokenPrincipal != null ? tokenPrincipal.sessionId() : null;
+      if (hasText(sessionId)) {
+        requestWrapper.addHeader("SessionId", sessionId);
       }
       // Goes to default servlet.
       chain.doFilter(requestWrapper, response);
@@ -128,34 +142,35 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
-  private boolean isSessionStillActive(
+  private SessionValidationResult isSessionStillActive(
       HttpServletRequest request,
       HttpServletResponse response,
-      ValidatedTokenPrincipal tokenPrincipal)
+      ValidatedTokenPrincipal tokenPrincipal,
+      String socketUserId)
       throws IOException {
     if (sessionService == null) {
-      return true;
+      return SessionValidationResult.accepted();
     }
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
       if (tokenPrincipal == null) {
-        return true;
+        return SessionValidationResult.accepted();
       }
       if (tokenPrincipal.sessionId() != null) {
         return validateSessionStillActive(
-            request, response, tokenPrincipal.sessionId(), tokenPrincipal);
+            response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
       }
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
-      return false;
+      return SessionValidationResult.rejected();
     }
-    return validateSessionStillActive(request, response, sessionId.get(), tokenPrincipal);
+    return validateSessionStillActive(response, sessionId.get(), tokenPrincipal, socketUserId);
   }
 
-  private boolean validateSessionStillActive(
-      HttpServletRequest request,
+  private SessionValidationResult validateSessionStillActive(
       HttpServletResponse response,
       String sessionId,
-      ValidatedTokenPrincipal tokenPrincipal)
+      ValidatedTokenPrincipal tokenPrincipal,
+      String socketUserId)
       throws IOException {
     Optional<UserSession> session = sessionService.getFreshSessionById(sessionId);
     if (session.isEmpty()
@@ -165,25 +180,27 @@ public class SocketAddressFilter implements Filter {
           "Rejecting WebSocket handshake: session {} is not active",
           SessionService.truncateId(sessionId));
       response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
-      return false;
+      return SessionValidationResult.rejected();
     }
     if (tokenPrincipal != null
         && session.get().getUsername() != null
         && !session.get().getUsername().equalsIgnoreCase(tokenPrincipal.userName())) {
       response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
-      return false;
+      return SessionValidationResult.rejected();
     }
     if (tokenPrincipal != null
         && tokenPrincipal.sessionId() != null
         && !tokenPrincipal.sessionId().equals(session.get().getId())) {
       response.sendError(HttpServletResponse.SC_FORBIDDEN, "Session does not match token");
-      return false;
+      return SessionValidationResult.rejected();
     }
-    HeaderRequestWrapper requestWrapper = request instanceof HeaderRequestWrapper h ? h : null;
-    if (requestWrapper != null) {
-      requestWrapper.addHeader("SessionId", session.get().getId());
+    if (hasText(socketUserId)
+        && hasText(session.get().getUserId())
+        && !socketUserId.equals(session.get().getUserId())) {
+      response.sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
+      return SessionValidationResult.rejected();
     }
-    return true;
+    return SessionValidationResult.accepted(session.get());
   }
 
   public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
@@ -218,10 +235,42 @@ public class SocketAddressFilter implements Filter {
   }
 
   private UUID getUserIdForPrincipal(String userName) {
-    EntityReference userRef =
-        Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
+    EntityReference userRef;
+    try {
+      userRef = Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      throw new AuthenticationException("Unknown WebSocket principal", ex);
+    }
+    if (userRef == null || userRef.getId() == null) {
+      throw new AuthenticationException("Unknown WebSocket principal");
+    }
     return userRef.getId();
   }
 
+  private static String trimToNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
+  }
+
+  private static boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
+
   public record ValidatedTokenPrincipal(String userName, String sessionId) {}
+
+  private record SessionValidationResult(boolean allowed, String sessionId, String userId) {
+    private static SessionValidationResult accepted() {
+      return new SessionValidationResult(true, null, null);
+    }
+
+    private static SessionValidationResult accepted(UserSession session) {
+      return new SessionValidationResult(true, session.getId(), session.getUserId());
+    }
+
+    private static SessionValidationResult rejected() {
+      return new SessionValidationResult(false, null, null);
+    }
+  }
 }

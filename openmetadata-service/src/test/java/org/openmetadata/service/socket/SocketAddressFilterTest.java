@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
@@ -33,8 +34,10 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -135,6 +138,26 @@ class SocketAddressFilterTest {
   }
 
   @Test
+  void secureSocketUnknownPrincipalReturnsUnauthorized() throws Exception {
+    mockRequest("userId=" + UUID.randomUUID(), "Bearer token");
+    mockTokenClaims("missing-user", "session-1");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(Entity.USER, "missing-user", Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byName("missing-user"));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
   void secureSocketAuthenticationFailureUsesGenericUnauthorizedResponse() throws Exception {
     mockRequest("userId=" + UUID.randomUUID(), null);
 
@@ -143,6 +166,62 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     verify(response, never()).getWriter();
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void insecureSocketWithoutUserIdDoesNotAddUserIdHeader() throws Exception {
+    SocketAddressFilter insecureFilter = insecureFilter();
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+
+    insecureFilter.doFilter(request, response, chain);
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertNull(wrappedRequest.getHeader("UserId"));
+  }
+
+  @Test
+  void insecureSocketUsesActiveSessionUserIdWhenQueryUserIdIsMissing() throws Exception {
+    SocketAddressFilter insecureFilter = insecureFilter();
+    UUID sessionUserId = UUID.randomUUID();
+    String sessionId = validSessionId('s');
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
+
+    insecureFilter.doFilter(request, response, chain);
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        sessionUserId.toString(), wrappedRequest.getHeader("UserId"));
+    org.junit.jupiter.api.Assertions.assertEquals(sessionId, wrappedRequest.getHeader("SessionId"));
+  }
+
+  @Test
+  void insecureSocketRejectsUserIdThatDoesNotMatchActiveSession() throws Exception {
+    SocketAddressFilter insecureFilter = insecureFilter();
+    UUID requestedUserId = UUID.randomUUID();
+    UUID sessionUserId = UUID.randomUUID();
+    String sessionId = validSessionId('m');
+    when(request.getQueryString()).thenReturn("userId=" + requestedUserId);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+    when(sessionService.getFreshSessionById(sessionId))
+        .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
+
+    insecureFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
     verify(chain, never()).doFilter(any(), any());
   }
 
@@ -163,14 +242,28 @@ class SocketAddressFilterTest {
   }
 
   private UserSession activeSession(String sessionId, String username) {
+    return activeSession(sessionId, username, null);
+  }
+
+  private UserSession activeSession(String sessionId, String username, String userId) {
     long now = System.currentTimeMillis();
     return UserSession.builder()
         .id(sessionId)
+        .userId(userId)
         .username(username)
         .status(SessionStatus.ACTIVE)
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private SocketAddressFilter insecureFilter() {
+    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(false);
+    return new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+  }
+
+  private String validSessionId(char value) {
+    return String.valueOf(value).repeat(43);
   }
 
   private static void initializeJwtTokenGenerator() {
