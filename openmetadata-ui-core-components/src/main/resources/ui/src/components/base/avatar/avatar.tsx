@@ -170,7 +170,7 @@ export const Avatar = ({
     <div
       data-avatar
       className={cx(
-        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-avatar-bg tw:outline-transparent',
+        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
         // Focus styles
         focusable &&
           'tw:group-outline-focus-ring tw:group-focus-visible:outline-2 tw:group-focus-visible:outline-offset-2',

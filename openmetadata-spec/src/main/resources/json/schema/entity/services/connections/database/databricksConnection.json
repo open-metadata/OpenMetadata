@@ -154,7 +154,7 @@
         "enabled": true,
         "supportsColumnAccess": false,
         "supportsFullAccess": true,
-        "supportsMaskedAccess": true
+        "supportsMaskedAccess": false
       }
     },
     "sampleDataStorageConfig": {

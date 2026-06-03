@@ -299,6 +299,14 @@
           }
         }
       },
+      "request_field_namesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "response_field_namesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "requestSchema": {
         "properties": {
           "schemaFields": {
@@ -352,7 +360,8 @@
                 }
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -405,7 +414,8 @@
                 }
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
