@@ -94,12 +94,26 @@ class AutoClassificationProcessor(Processor, ABC):
         return adapter.get_columns(entity) if adapter else None
 
     @staticmethod
-    def _find_column_in_record_children(columns: list[Column], column_name: str) -> Column | None:
+    def _find_column_in_record_children(
+        columns: list[Column], column_name: str, depth: int = 0, max_depth: int = 10
+    ) -> Column | None:
+        """
+        Recursively search for a column in RECORD field children.
+        Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
+        Used to match flattened sample data columns back to their original nested schema locations for tagging.
+        """
+        if depth > max_depth:
+            return None
         for col in columns:
             if col.children:
                 for child in col.children:
                     if child.name.root == column_name:
                         return child
+                    found = AutoClassificationProcessor._find_column_in_record_children(
+                        [child], column_name, depth=depth + 1, max_depth=max_depth
+                    )
+                    if found:
+                        return found
         return None
 
     @final

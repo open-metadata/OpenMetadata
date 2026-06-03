@@ -18,6 +18,7 @@ from typing import Any, List, Optional  # noqa: UP035
 from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.messagingService import MessagingConnection
+from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.sampler_config import MessagingSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -70,15 +71,29 @@ class MessagingSampler(SamplerInterface):
         if entity.messageSchema and entity.messageSchema.schemaFields:
             columns = []
             for field in entity.messageSchema.schemaFields:
-                field_name = field.name.root
-                field_type = field.dataType
-                type_str = str(field_type).upper() if field_type else ""
-                if "RECORD" in type_str and field.children:
-                    columns.extend([SQALikeColumn(child.name.root, child.dataType) for child in field.children])
-                else:
-                    columns.append(SQALikeColumn(field_name, field_type))
+                columns.extend(self._flatten_field(field, depth=0))
             return columns
         return []
+
+    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10) -> List[SQALikeColumn]:  # noqa: UP006
+        """
+        Recursively flatten RECORD fields to their leaf columns.
+        Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
+        For flat messages where schemaFields children are top-level JSON keys, unpacking produces correct columns.
+        For nested messages, unpacked child names won't match top-level JSON keys and will yield None values.
+        """
+        if depth > max_depth:
+            logger.warning(
+                f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {field.name.root}"
+            )
+            return [SQALikeColumn(field.name.root, field.dataType)]
+
+        if field.dataType == DataTypeTopic.RECORD and field.children:
+            result = []
+            for child in field.children:
+                result.extend(self._flatten_field(child, depth=depth + 1, max_depth=max_depth))
+            return result
+        return [SQALikeColumn(field.name.root, field.dataType)]
 
     @abstractmethod
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
