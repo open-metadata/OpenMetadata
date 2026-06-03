@@ -71,7 +71,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   public record Backfill(String startDate, String endDate) {}
 
-  private record LogSummary(long elapsedMs, int totalRecords, int successRecords, int failedRecords) {
+  private record LogSummary(
+      long elapsedMs, int totalRecords, int successRecords, int failedRecords) {
     private Object[] phaseArgs(String phaseName) {
       return new Object[] {
         DATA_INSIGHTS_LOG_PREFIX, phaseName, elapsedMs, totalRecords, successRecords, failedRecords
@@ -336,8 +337,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
             System.currentTimeMillis() - recreatePhaseStartedAt);
       }
 
-      WorkflowStats webAnalyticsStats =
-          runWorkflowPhase("webAnalytics", this::processWebAnalytics);
+      WorkflowStats webAnalyticsStats = runWorkflowPhase("webAnalytics", this::processWebAnalytics);
       updateJobStatsWithWorkflowStats(webAnalyticsStats);
 
       WorkflowStats costAnalysisStats = runWorkflowPhase("costAnalysis", this::processCostAnalysis);
@@ -346,8 +346,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       WorkflowStats dataAssetsStats = runWorkflowPhase("dataAssets", this::processDataAssets);
       updateJobStatsWithWorkflowStats(dataAssetsStats);
 
-      WorkflowStats dataQualityStats =
-          runWorkflowPhase("dataQuality", this::processDataQuality);
+      WorkflowStats dataQualityStats = runWorkflowPhase("dataQuality", this::processDataQuality);
       updateJobStatsWithWorkflowStats(dataQualityStats);
 
       if (webAnalyticsStats.hasFailed()
@@ -489,8 +488,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private WorkflowStats runWorkflowPhase(
-      String phaseName, Supplier<WorkflowStats> workflowRunner) {
+  private WorkflowStats runWorkflowPhase(String phaseName, Supplier<WorkflowStats> workflowRunner) {
     long phaseStartedAt = System.currentTimeMillis();
     LOG.info("{} Phase started: {}", DATA_INSIGHTS_LOG_PREFIX, phaseName);
     try {
