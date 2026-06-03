@@ -226,7 +226,12 @@ jobs:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 
   search-it-external:
-    if: ${{ github.event.inputs.runSearchIt != 'false' }}
+    # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
+    # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
+    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
+    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    needs: [ui-it-external]
+    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -332,11 +337,16 @@ jobs:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 
   scale-it-external:
-    if: ${{ github.event.inputs.runScaleIt == 'true' }}
+    # Runs after search-it (shared instance, singleton reindex app). max-parallel: 1 so the matrix
+    # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
+    # cluster collide and the db/es counts would mix cohorts.
+    needs: [search-it-external]
+    if: ${{ always() && github.event.inputs.runScaleIt == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
     steps:
