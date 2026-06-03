@@ -19,9 +19,11 @@ from typing import Any, List  # noqa: UP035
 
 try:
     from confluent_kafka import Consumer, KafkaException
+    from confluent_kafka.schema_registry.avro import AvroDeserializer
 except ImportError:
     Consumer = None  # type: ignore
     KafkaException = None  # type: ignore
+    AvroDeserializer = None  # type: ignore
 
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -92,11 +94,27 @@ class KafkaSampler(MessagingSampler):
         return config
 
     def _try_parse_message(self, raw_value: bytes) -> dict:
+        if not raw_value:
+            return {}
+
         try:
             decoded = raw_value.decode("utf-8", errors="replace")
             return json.loads(decoded)
-        except (json.JSONDecodeError, AttributeError):
-            return {"message": str(raw_value)}
+        except (json.JSONDecodeError, AttributeError, UnicodeDecodeError):
+            pass
+
+        if AvroDeserializer and len(raw_value) > 4:
+            try:
+                client = self.get_client()
+                if client and hasattr(client, "schema_registry_client"):
+                    deserializer = AvroDeserializer(client.schema_registry_client)
+                    avro_obj = deserializer(raw_value, None)
+                    if isinstance(avro_obj, dict):
+                        return avro_obj
+            except Exception as exc:
+                logger.debug(f"Failed to deserialize Avro message: {exc}")
+
+        return {"message": str(raw_value)}
 
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
         if not Consumer:
