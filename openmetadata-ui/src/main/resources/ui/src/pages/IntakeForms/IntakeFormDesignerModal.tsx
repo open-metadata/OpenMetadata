@@ -24,10 +24,10 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import Loader from '../../components/common/Loader/Loader';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../components/common/Loader/Loader';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
 import { CustomProperty } from '../../generated/entity/type';
 import {
