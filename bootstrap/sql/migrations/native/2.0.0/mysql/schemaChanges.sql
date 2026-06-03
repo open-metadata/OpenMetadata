@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin,
     about varchar(2048),
     aboutFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin,
-    actorId varchar(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorName is the display fallback.
+    actorId varchar(36),
     actorName varchar(256),
     timestamp bigint NOT NULL,
     summary varchar(500),
