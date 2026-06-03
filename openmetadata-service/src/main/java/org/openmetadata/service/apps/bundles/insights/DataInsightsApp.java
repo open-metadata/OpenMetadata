@@ -72,31 +72,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   public record Backfill(String startDate, String endDate) {}
 
   private record LogSummary(
-      long elapsedMs, int totalRecords, int successRecords, int failedRecords) {
-    private Object[] phaseArgs(String phaseName) {
-      return new Object[] {
-        DATA_INSIGHTS_LOG_PREFIX, phaseName, elapsedMs, totalRecords, successRecords, failedRecords
-      };
-    }
-
-    private Object[] phaseErrorArgs(String phaseName, int failureCount) {
-      return new Object[] {
-        DATA_INSIGHTS_LOG_PREFIX,
-        phaseName,
-        elapsedMs,
-        totalRecords,
-        successRecords,
-        failedRecords,
-        failureCount
-      };
-    }
-
-    private Object[] runArgs(EventPublisherJob.Status status) {
-      return new Object[] {
-        DATA_INSIGHTS_LOG_PREFIX, status, elapsedMs, totalRecords, successRecords, failedRecords
-      };
-    }
-  }
+      long elapsedMs, int totalRecords, int successRecords, int failedRecords) {}
 
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
@@ -349,32 +325,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       WorkflowStats dataQualityStats = runWorkflowPhase("dataQuality", this::processDataQuality);
       updateJobStatsWithWorkflowStats(dataQualityStats);
 
-      if (webAnalyticsStats.hasFailed()
-          || costAnalysisStats.hasFailed()
-          || dataAssetsStats.hasFailed()) {
-        String errorMessage = "Errors Found:\n";
-
-        for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats, dataAssetsStats)) {
-          if (stats.hasFailed()) {
-            errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
-            for (String failure : stats.getFailures()) {
-              errorMessage = String.format("%s    - %s\n", errorMessage, failure);
-            }
-          }
-        }
-
-        IndexingError indexingError =
-            new IndexingError()
-                .withErrorSource(IndexingError.ErrorSource.JOB)
-                .withMessage(errorMessage);
-        LOG.error(
-            "{} Lifecycle run detected workflow failures:{}{}",
-            DATA_INSIGHTS_LOG_PREFIX,
-            System.lineSeparator(),
-            indexingError.getMessage());
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-        jobData.setFailure(indexingError);
-      }
+      recordWorkflowFailures(
+          List.of(webAnalyticsStats, costAnalysisStats, dataAssetsStats, dataQualityStats));
 
       updateJobStatus();
     } catch (Exception ex) {
@@ -415,7 +367,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      recordSearchIndexFailure(ex);
+      recordSearchIndexFailure("costAnalysis", workflowStats, ex);
     }
 
     return workflowStats;
@@ -438,7 +390,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      recordSearchIndexFailure(ex);
+      recordSearchIndexFailure("dataAssets", workflowStats, ex);
     } finally {
       this.activeDataAssetsWorkflow = null;
     }
@@ -461,7 +413,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       try {
         workflow.process();
       } catch (SearchIndexException ex) {
-        recordSearchIndexFailure(ex);
+        recordSearchIndexFailure(
+            "dataQuality:" + entityType, DataQualityWorkflow.getWorkflowStats(), ex);
       }
     }
 
@@ -505,31 +458,128 @@ public class DataInsightsApp extends AbstractNativeApplication {
       String phaseName, WorkflowStats workflowStats, long phaseStartedAt) {
     LogSummary summary = buildLogSummary(workflowStats.getWorkflowStats(), phaseStartedAt);
     if (workflowStats.hasFailed()) {
-      LOG.warn(
-          PHASE_COMPLETED_WITH_ERRORS_LOG,
-          summary.phaseErrorArgs(phaseName, workflowStats.getFailures().size()));
+      logPhaseCompletedWithErrors(phaseName, summary, workflowStats.getFailures().size());
       return;
     }
-    LOG.info(PHASE_COMPLETED_LOG, summary.phaseArgs(phaseName));
+    logPhaseCompleted(phaseName, summary);
   }
 
   private void logFinalRunSummary(long runStartedAt) {
     LogSummary summary = buildLogSummary(getJobStats(), runStartedAt);
     EventPublisherJob.Status status = jobData.getStatus();
     if (status == EventPublisherJob.Status.FAILED) {
-      LOG.error(RUN_FAILED_LOG, summary.runArgs(status));
+      logRunFailed(status, summary);
       return;
     }
     if (status == EventPublisherJob.Status.STOPPED) {
-      LOG.info(RUN_STOPPED_LOG, summary.runArgs(status));
+      logRunInfo(RUN_STOPPED_LOG, status, summary);
       return;
     }
-    LOG.info(RUN_COMPLETED_LOG, summary.runArgs(status));
+    logRunInfo(RUN_COMPLETED_LOG, status, summary);
   }
 
-  private void recordSearchIndexFailure(SearchIndexException ex) {
+  private void logPhaseCompleted(String phaseName, LogSummary summary) {
+    LOG.info(
+        PHASE_COMPLETED_LOG,
+        DATA_INSIGHTS_LOG_PREFIX,
+        phaseName,
+        summary.elapsedMs(),
+        summary.totalRecords(),
+        summary.successRecords(),
+        summary.failedRecords());
+  }
+
+  private void logPhaseCompletedWithErrors(String phaseName, LogSummary summary, int failureCount) {
+    LOG.warn(
+        PHASE_COMPLETED_WITH_ERRORS_LOG,
+        DATA_INSIGHTS_LOG_PREFIX,
+        phaseName,
+        summary.elapsedMs(),
+        summary.totalRecords(),
+        summary.successRecords(),
+        summary.failedRecords(),
+        failureCount);
+  }
+
+  private void logRunFailed(EventPublisherJob.Status status, LogSummary summary) {
+    LOG.error(
+        RUN_FAILED_LOG,
+        DATA_INSIGHTS_LOG_PREFIX,
+        status,
+        summary.elapsedMs(),
+        summary.totalRecords(),
+        summary.successRecords(),
+        summary.failedRecords());
+  }
+
+  private void logRunInfo(String logTemplate, EventPublisherJob.Status status, LogSummary summary) {
+    LOG.info(
+        logTemplate,
+        DATA_INSIGHTS_LOG_PREFIX,
+        status,
+        summary.elapsedMs(),
+        summary.totalRecords(),
+        summary.successRecords(),
+        summary.failedRecords());
+  }
+
+  private void recordWorkflowFailures(List<WorkflowStats> workflowStats) {
+    if (workflowStats.stream().noneMatch(WorkflowStats::hasFailed)) {
+      return;
+    }
+
+    IndexingError indexingError = buildWorkflowFailureError(workflowStats);
+    LOG.error(
+        "{} Lifecycle run detected workflow failures:{}{}",
+        DATA_INSIGHTS_LOG_PREFIX,
+        System.lineSeparator(),
+        indexingError.getMessage());
+    setJobFailed(indexingError);
+  }
+
+  private IndexingError buildWorkflowFailureError(List<WorkflowStats> workflowStats) {
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withMessage(buildWorkflowFailureMessage(workflowStats));
+  }
+
+  private String buildWorkflowFailureMessage(List<WorkflowStats> workflowStats) {
+    StringBuilder errorMessage = new StringBuilder("Errors Found:\n");
+    for (WorkflowStats stats : workflowStats) {
+      if (stats.hasFailed()) {
+        errorMessage.append("\n  ").append(stats.getName()).append("\n");
+        for (String failure : stats.getFailures()) {
+          errorMessage.append("    - ").append(failure).append("\n");
+        }
+      }
+    }
+    return errorMessage.toString();
+  }
+
+  private void recordSearchIndexFailure(
+      String phaseName, WorkflowStats workflowStats, SearchIndexException ex) {
+    LOG.error("{} Phase failed: {}", DATA_INSIGHTS_LOG_PREFIX, phaseName, ex);
+    IndexingError indexingError = getSearchIndexError(ex);
+    workflowStats.addFailure(formatSearchIndexFailure(phaseName, indexingError));
+    setJobFailed(indexingError);
+  }
+
+  private IndexingError getSearchIndexError(SearchIndexException ex) {
+    if (ex.getIndexingError() != null) {
+      return ex.getIndexingError();
+    }
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withMessage(ExceptionUtils.getMessage(ex));
+  }
+
+  private String formatSearchIndexFailure(String phaseName, IndexingError indexingError) {
+    return String.format("Failed processing %s: %s", phaseName, indexingError.getMessage());
+  }
+
+  private void setJobFailed(IndexingError indexingError) {
     jobData.setStatus(EventPublisherJob.Status.FAILED);
-    jobData.setFailure(ex.getIndexingError());
+    jobData.setFailure(indexingError);
   }
 
   private LogSummary buildLogSummary(StepStats stats, long startedAt) {
