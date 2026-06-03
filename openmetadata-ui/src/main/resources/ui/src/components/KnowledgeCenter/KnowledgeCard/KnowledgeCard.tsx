@@ -89,7 +89,6 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     owners = [],
     updatedAt,
     description = '',
-    updatedBy,
   } = knowledgePage;
 
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
@@ -228,7 +227,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         onClick={handleQuickLinkRecentView}>
         {/* Row 1: title + timestamp */}
         <Box align="center" justify="between">
-          <Box align="center" className='tw:max-w-[70%]' gap={2}>
+          <Box align="center" className="tw:max-w-[70%]" gap={2}>
             <Typography
               ellipsis
               data-testid="entity-header-display-name"
@@ -239,7 +238,9 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             {isQuickLink && !readonly && quickLinkActions}
           </Box>
           <Typography className="tw:text-gray-500" size="text-xs">
-            {t('label.last-edited')} {getShortRelativeTime(updatedAt)}
+            {t('label.last-edited-time', {
+              time: getShortRelativeTime(updatedAt),
+            })}
           </Typography>
         </Box>
 
@@ -268,26 +269,31 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             className="tw:pt-2"
             data-testid="knowledge-footer"
             gap={3}>
-            {owners?.[0] ? <UserPopOverCard
-              showUserName
-              className='tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40'
-              displayName={getEntityName(owners?.[0])}
-              profileWidth={20}
-              userName={updatedBy ?? owners?.[0]?.name ?? ''}
-            /> :
+            {owners?.[0] ? (
+              <UserPopOverCard
+                showUserName
+                className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
+                displayName={getEntityName(owners?.[0])}
+                profileWidth={20}
+                userName={getEntityName(owners?.[0])}
+              />
+            ) : (
               <Typography
                 className="tw:text-gray-700"
                 data-testid="owner-name"
                 size="text-xs"
                 weight="medium">
                 {t('label.no-entity', { entity: t('label.owner') })}
-              </Typography>}
+              </Typography>
+            )}
 
             <Dot className="tw:text-gray-400" size="micro" />
-            <div className='tw:max-w-40'>
+            <div className="tw:max-w-40">
               <Typography
                 ellipsis
-                className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
+                className={
+                  firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'
+                }
                 data-testid="domain-name"
                 size="text-xs">
                 {firstDomain?.displayName ??
@@ -300,7 +306,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
             {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
               <Badge
-                className='tw:max-w-30'
+                className="tw:max-w-30"
                 key={String(tag.tagFQN ?? '')}
                 size="md"
                 type="modern">
