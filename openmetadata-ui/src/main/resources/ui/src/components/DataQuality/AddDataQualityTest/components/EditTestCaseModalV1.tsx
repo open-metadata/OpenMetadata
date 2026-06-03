@@ -288,7 +288,10 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     const jsonPatch = createUpdatedTestCasePatch({
       testCase,
       value,
-      selectedDefinition,
+      createTestCaseObject: testCaseClassBase.getCreateTestCaseObject(
+        value,
+        selectedDefinition
+      ),
       showOnlyParameter,
       isComputeRowCountFieldVisible,
     });
