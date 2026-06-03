@@ -15,7 +15,7 @@ import {
   Box,
   Card,
   Dot,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -291,9 +291,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           <div className="tw:max-w-40">
             <Typography
               ellipsis
-              className={
-                firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'
-              }
+              className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
               data-testid="domain-name"
               size="text-xs">
               {firstDomain?.displayName ??
