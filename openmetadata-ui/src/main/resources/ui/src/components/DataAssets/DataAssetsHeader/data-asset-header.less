@@ -12,15 +12,6 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-// The data-assets-header is built with inline Tailwind utility classes on the
-// component itself. The only legacy hooks kept here cover:
-//
-//   1. fullscreen toggle, which hides the entire header
-//   2. sub-component scoped widths (DomainLabel + OwnerLabel containers) so
-//      long names truncate inside the metadata strip
-//   3. status-colored data contract pill variants applied via classNames()
-//      on the core Button rendered in DataAssetsHeader.component.tsx
-
 .full-screen-view {
   .data-assets-header-container {
     visibility: hidden;
@@ -33,11 +24,6 @@
     max-width: 220px;
   }
 
-  // Breadcrumb (Figma node 8065:5192): ancestor crumbs are gray (#414651), the
-  // current entity crumb (activeTitle => .font-medium) is the Tailwind brand
-  // (primary) blue. Scoped to the header so other breadcrumbs are unchanged.
-  // !important is required to beat the global `.breadcrumb-item .link-title`
-  // color rule in app.less, which itself uses !important.
   .breadcrumb-container {
     .link-title {
       color: @grey-700 !important;
@@ -62,11 +48,6 @@
     }
   }
 
-  // Match the Figma "Domain · Owners · Tier · Certification · …" field labels —
-  // DomainLabel, OwnerLabel (both its populated `text-brand-700` heading and the
-  // empty-state `no-owner-heading`) and RetentionPeriod's `extra-info-label-heading`
-  // all default to brand blue for use in side-panel summaries; in the header context
-  // they must render gray (#414651).
   .domain-link.ant-typography,
   .owner-label-container [class*='text-brand-700'],
   .ant-typography.no-owner-heading,

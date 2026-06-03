@@ -813,7 +813,6 @@ export const DataAssetsHeader = ({
           </Alert>
         )}
 
-        {/* Row 1 — Breadcrumb + stat bar */}
         <div
           className={classNames(
             'tw:flex tw:items-center tw:justify-between tw:gap-4 tw:flex-wrap',
@@ -897,7 +896,6 @@ export const DataAssetsHeader = ({
           </div>
         </div>
 
-        {/* Row 2 — Title + actions */}
         <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
             {serviceLogoUrl && (
@@ -993,7 +991,6 @@ export const DataAssetsHeader = ({
           />
         )}
 
-        {/* Row 3 — Metadata strip */}
         <div
           className="tw:flex tw:flex-wrap tw:items-start tw:gap-[18px]"
           data-testid="data-asset-header-metadata">

@@ -365,8 +365,6 @@ entities.forEach((EntityClass) => {
         'Store Procedure',
       ].includes(entity.getType());
 
-      // Counts include the trailing current-entity crumb the header now appends
-      // (3 ancestors + entity = 4; 1 ancestor + entity = 2).
       await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
         is3Breadcrumb ? 4 : 2
       );
