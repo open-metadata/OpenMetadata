@@ -86,7 +86,9 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   getEpochMillisForPastDays: jest
     .fn()
-    .mockImplementation((days: number) => Date.now() - days * 24 * 60 * 60 * 1000),
+    .mockImplementation(
+      (days: number) => Date.now() - days * 24 * 60 * 60 * 1000
+    ),
   getCurrentMillis: jest.fn().mockReturnValue(Date.now()),
   getShortRelativeTime: jest.fn().mockReturnValue('2 days ago'),
 }));
@@ -95,9 +97,9 @@ describe('Knowledge Card', () => {
   it('should render the knowledge card with title and description', async () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(
-      screen.getByTestId('entity-header-display-name')
-    ).toHaveTextContent('OpenMetadata 1.1.0 Release UI');
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'OpenMetadata 1.1.0 Release UI'
+    );
 
     expect(screen.getByTestId('knowledge-description')).toBeInTheDocument();
   });
@@ -114,12 +116,18 @@ describe('Knowledge Card', () => {
   it('should render domain name when domain is present', () => {
     const withDomain: KnowledgePage = {
       ...KNOWLEDGE_PAGE_MOCK_DATA,
-      domains: [{ id: 'd1', type: 'domain', name: 'Marketing', fullyQualifiedName: 'Marketing' }],
+      domains: [
+        {
+          id: 'd1',
+          type: 'domain',
+          name: 'Marketing',
+          fullyQualifiedName: 'Marketing',
+        },
+      ],
     };
-    render(
-      <KnowledgeCard {...mockProps} knowledgeItem={withDomain} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<KnowledgeCard {...mockProps} knowledgeItem={withDomain} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByTestId('domain-name')).toHaveTextContent('Marketing');
   });
@@ -169,16 +177,12 @@ describe('Knowledge Card', () => {
 
     const visibleTags = KNOWLEDGE_PAGE_TAGS.slice(0, 2);
     visibleTags.forEach((tag) => {
-      expect(
-        screen.getByText(tag.displayName ?? tag.name)
-      ).toBeInTheDocument();
+      expect(screen.getByText(tag.displayName ?? tag.name)).toBeInTheDocument();
     });
 
     const overflowCount = KNOWLEDGE_PAGE_TAGS.length - 2;
 
-    expect(
-      screen.getByText(`+${overflowCount}`)
-    ).toBeInTheDocument();
+    expect(screen.getByText(`+${overflowCount}`)).toBeInTheDocument();
   });
 
   it('should render the edit and delete button for quick link', async () => {
@@ -187,7 +191,9 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(await screen.findByTestId('edit-quick-link-btn')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('edit-quick-link-btn')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('delete-quick-link-btn')).toBeInTheDocument();
   });
 
@@ -265,7 +271,9 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(await screen.findByTestId('edit-quick-link-btn')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('edit-quick-link-btn')
+    ).toBeInTheDocument();
   });
 
   it('should not render edit and delete buttons for quick link when readonly', () => {
