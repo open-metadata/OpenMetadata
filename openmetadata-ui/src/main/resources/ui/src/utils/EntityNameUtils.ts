@@ -14,7 +14,7 @@
 import { startCase } from 'lodash';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { EntityReference } from '../generated/type/entityUsage';
+import type { EntityReference } from '../generated/type/entityUsage';
 import i18n from './i18next/LocalUtil';
 
 const { t } = i18n;

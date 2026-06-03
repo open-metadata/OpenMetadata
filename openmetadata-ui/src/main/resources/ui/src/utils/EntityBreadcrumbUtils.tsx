@@ -12,10 +12,10 @@
  */
 
 import { isUndefined, startCase } from 'lodash';
-import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { EntityWithServices } from '../components/Explore/ExplorePage.interface';
-import {
+import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import type { EntityWithServices } from '../components/Explore/ExplorePage.interface';
+import type {
   SearchedDataProps,
   SourceType,
 } from '../components/SearchedData/SearchedData.interface';
@@ -26,35 +26,35 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
-import { APICollection } from '../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container } from '../generated/entity/data/container';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Directory } from '../generated/entity/data/directory';
-import { File } from '../generated/entity/data/file';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { SearchIndex as SearchIndexAsset } from '../generated/entity/data/searchIndex';
-import { Spreadsheet } from '../generated/entity/data/spreadsheet';
-import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Worksheet } from '../generated/entity/data/worksheet';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Team } from '../generated/entity/teams/team';
+import type { Kpi } from '../generated/dataInsight/kpi/kpi';
+import type { Classification } from '../generated/entity/classification/classification';
+import type { Tag } from '../generated/entity/classification/tag';
+import type { APICollection } from '../generated/entity/data/apiCollection';
+import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Container } from '../generated/entity/data/container';
+import type { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import type { Database } from '../generated/entity/data/database';
+import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import type { Directory } from '../generated/entity/data/directory';
+import type { File } from '../generated/entity/data/file';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { SearchIndex as SearchIndexAsset } from '../generated/entity/data/searchIndex';
+import type { Spreadsheet } from '../generated/entity/data/spreadsheet';
+import type { StoredProcedure } from '../generated/entity/data/storedProcedure';
+import type { Table } from '../generated/entity/data/table';
+import type { Topic } from '../generated/entity/data/topic';
+import type { Worksheet } from '../generated/entity/data/worksheet';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { Team } from '../generated/entity/teams/team';
 import {
   AlertType,
-  EventSubscription,
+  type EventSubscription,
 } from '../generated/events/eventSubscription';
-import { TestCase, TestSuite } from '../generated/tests/testCase';
-import { EntityReference } from '../generated/type/entityUsage';
+import type { TestCase, TestSuite } from '../generated/tests/testCase';
+import type { EntityReference } from '../generated/type/entityUsage';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import {
+import type {
   SearchSourceAlias,
   TableColumnSearchSource,
 } from '../interface/search.interface';

@@ -12,32 +12,32 @@
  */
 
 import { isEmpty, isUndefined, lowerCase } from 'lodash';
-import { EntityDetailUnion } from 'Models';
-import { Node } from 'reactflow';
+import type { EntityDetailUnion } from 'Models';
+import type { Node } from 'reactflow';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   CUSTOM_PROPERTIES_TABS_SET,
   LINEAGE_TABS_SET,
   SCHEMA_TABS_SET,
 } from '../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import {
+import type { SearchIndexField } from '../generated/entity/data/searchIndex';
+import type {
   Column,
   ColumnJoins,
   JoinedWith,
   Table,
 } from '../generated/entity/data/table';
-import { User } from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/type/entityUsage';
-import { TagLabel } from '../generated/type/tagLabel';
-import { Votes } from '../generated/type/votes';
+import type { User } from '../generated/entity/teams/user';
+import type { EntityReference } from '../generated/type/entityUsage';
+import type { TagLabel } from '../generated/type/tagLabel';
+import type { Votes } from '../generated/type/votes';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';

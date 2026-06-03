@@ -16,7 +16,7 @@ import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { ColumnJoins } from '../generated/entity/data/table';
+import type { ColumnJoins } from '../generated/entity/data/table';
 import {
   checkIfJoinsAvailable,
   getFrequentlyJoinedWithColumns,
