@@ -59,16 +59,16 @@ public interface ColumnIndex extends SearchIndex {
         if (col.getTags() != null) {
           tags = col.getTags();
         }
-        addFlattenColumn(col, optParentColumn, tags, flattenColumns);
+        String columnName = addFlattenColumn(col, optParentColumn, tags, flattenColumns);
         if (col.getChildren() != null) {
-          parseColumns(col.getChildren(), flattenColumns, col.getName(), depth + 1, limits);
+          parseColumns(col.getChildren(), flattenColumns, columnName, depth + 1, limits);
         }
         index++;
       }
     }
   }
 
-  private void addFlattenColumn(
+  private String addFlattenColumn(
       Column col,
       Optional<String> optParentColumn,
       List<TagLabel> tags,
@@ -83,6 +83,7 @@ public interface ColumnIndex extends SearchIndex {
       flattenColumn.setTags(tags);
     }
     flattenColumns.add(flattenColumn);
+    return columnName;
   }
 
   default String getColumnDescriptionStatus(EntityInterface entity) {

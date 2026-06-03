@@ -96,6 +96,18 @@ class ColumnIndexLimitTest {
   }
 
   @Test
+  void parseColumns_builds_fully_qualified_names() {
+    activateLimits(20, 10000);
+    List<FlattenColumn> flattened = new ArrayList<>();
+
+    new TestColumnIndex().parseColumns(List.of(nestedChain(3)), flattened, null);
+
+    assertEquals("c1", flattened.get(0).getName());
+    assertEquals("c1.c2", flattened.get(1).getName());
+    assertEquals("c1.c2.c3", flattened.get(2).getName(), "deep path must keep full prefix");
+  }
+
+  @Test
   void parseColumns_stops_at_max_columns() {
     activateLimits(20, 4);
     List<Column> siblings = new ArrayList<>();

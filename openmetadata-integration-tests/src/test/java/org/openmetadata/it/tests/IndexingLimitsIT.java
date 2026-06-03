@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import org.openmetadata.service.search.SearchIndexSettings;
 @Execution(ExecutionMode.CONCURRENT)
 public class IndexingLimitsIT {
 
-  private static final List<String> CREATED_INDICES = new ArrayList<>();
+  private static final List<String> CREATED_INDICES = new CopyOnWriteArrayList<>();
 
   @AfterAll
   static void cleanup() {

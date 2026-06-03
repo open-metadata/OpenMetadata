@@ -101,13 +101,13 @@ public final class SearchFieldLimits {
   private static synchronized SearchFieldLimits loadActive() {
     SearchFieldLimits result = active;
     if (result == null) {
-      result = defaults();
       try {
         result = from(IndexMappingLoader.getInstance().getElasticSearchConfiguration());
+        active = result;
       } catch (IllegalStateException notInitialized) {
         LOG.debug("IndexMappingLoader not initialized; using default search field limits");
+        result = defaults();
       }
-      active = result;
     }
     return result;
   }
@@ -128,7 +128,8 @@ public final class SearchFieldLimits {
 
   private static int clampKeywordBytes(Integer value) {
     int resolved = orDefault(value, LUCENE_KEYWORD_MAX_BYTES);
-    return Math.min(resolved, LUCENE_KEYWORD_MAX_BYTES);
+    // Keep at least one UTF-8 character's worth of bytes so ignore_above (value/4) is never 0.
+    return Math.min(Math.max(resolved, MAX_UTF8_BYTES_PER_CHAR), LUCENE_KEYWORD_MAX_BYTES);
   }
 
   public boolean isHardeningEnabled() {

@@ -151,6 +151,23 @@ class SearchIndexSettingsTest {
   }
 
   @Test
+  void ignore_above_is_never_zero_for_tiny_keyword_max_bytes() {
+    SearchFieldLimits limits =
+        SearchFieldLimits.from(
+            new ElasticSearchConfiguration()
+                .withSearchIndexingLimits(new SearchIndexingLimits().withKeywordMaxBytes(1)));
+    String content = "{\"mappings\":{\"properties\":{\"fqn\":{\"type\":\"keyword\"}}}}";
+
+    int ignoreAbove =
+        properties(SearchIndexSettings.harden(content, limits))
+            .get("fqn")
+            .get("ignore_above")
+            .asInt();
+
+    assertTrue(ignoreAbove >= 1, "ignore_above must be at least 1");
+  }
+
+  @Test
   void returns_null_content_unchanged() {
     assertNull(SearchIndexSettings.harden(null, SearchFieldLimits.defaults()));
   }

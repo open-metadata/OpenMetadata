@@ -60,6 +60,18 @@ class SchemaFieldFlattenerTest {
   }
 
   @Test
+  void parseSchemaFields_builds_fully_qualified_names() {
+    activateLimits(20, 10000);
+    List<FlattenSchemaField> flattened = new ArrayList<>();
+
+    SchemaFieldFlattener.parseSchemaFields(List.of(nestedChain(3)), flattened, null);
+
+    assertEquals("f1", flattened.get(0).getName());
+    assertEquals("f1.f2", flattened.get(1).getName());
+    assertEquals("f1.f2.f3", flattened.get(2).getName(), "deep path must keep full prefix");
+  }
+
+  @Test
   void parseSchemaFields_stops_at_max_fields() {
     activateLimits(20, 4);
     List<Field> siblings = new ArrayList<>();

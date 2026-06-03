@@ -80,17 +80,16 @@ public final class SchemaFieldFlattener {
         if (field.getTags() != null) {
           tags = field.getTags();
         }
-        addFlattenField(field, optParentField, tags, flattenSchemaFields);
+        String fieldName = addFlattenField(field, optParentField, tags, flattenSchemaFields);
         if (field.getChildren() != null) {
-          parseSchemaFields(
-              field.getChildren(), flattenSchemaFields, field.getName(), depth + 1, limits);
+          parseSchemaFields(field.getChildren(), flattenSchemaFields, fieldName, depth + 1, limits);
         }
         index++;
       }
     }
   }
 
-  private static void addFlattenField(
+  private static String addFlattenField(
       Field field,
       Optional<String> optParentField,
       List<TagLabel> tags,
@@ -105,5 +104,6 @@ public final class SchemaFieldFlattener {
       flattenSchemaField.setTags(tags);
     }
     flattenSchemaFields.add(flattenSchemaField);
+    return fieldName;
   }
 }

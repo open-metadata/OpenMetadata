@@ -116,7 +116,7 @@
         "keywordMaxBytes": {
           "description": "Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe character count derived from this (value/4). The hard Lucene limit is 32766 bytes.",
           "type": "integer",
-          "minimum": 1,
+          "minimum": 4,
           "default": 32766
         },
         "mappingDepthLimit": {
@@ -126,7 +126,7 @@
           "default": 20
         },
         "nestedObjectsLimit": {
-          "description": "Maximum number of elements kept in a nested-type array within a single document. Mirrors index.mapping.nested_objects.limit.",
+          "description": "Maximum number of nested-type objects allowed in a single document before Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors index.mapping.nested_objects.limit.",
           "type": "integer",
           "minimum": 1,
           "default": 10000
@@ -138,7 +138,7 @@
           "default": 1000
         },
         "maxColumns": {
-          "description": "Maximum number of flattened columns indexed for a single data asset. Columns beyond this are dropped from the search document.",
+          "description": "Maximum number of flattened columns or schema fields indexed for a single data asset. Items beyond this are dropped from the search document.",
           "type": "integer",
           "minimum": 1,
           "default": 10000
