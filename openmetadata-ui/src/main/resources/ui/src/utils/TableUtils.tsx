@@ -147,9 +147,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  FrequentlyJoinedTables,
-} from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { FrequentlyJoinedTables } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';

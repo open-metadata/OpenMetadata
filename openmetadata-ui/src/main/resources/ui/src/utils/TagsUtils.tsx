@@ -342,9 +342,6 @@ export const createTagObject = (tags: EntityTags[]) => {
   );
 };
 
-
-
-
 /**
  * Check if a tag is a glossary tag
  */
@@ -369,7 +366,6 @@ export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
     tag.tagFQN
   );
 };
-
 
 export const getGlossaryTags = (tags: TagLabel[] | undefined): TagLabel[] =>
   tags?.filter((tag) => tag.source === TagSource.Glossary) ?? [];
