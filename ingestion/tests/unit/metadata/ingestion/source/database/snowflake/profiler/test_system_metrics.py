@@ -469,6 +469,16 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
     ]
 
 
+@pytest.fixture
+def isolated_parse_query_cache():
+    """
+    Clear cache before running test to ensure no unintended
+    interactions with other tests that ran before
+    """
+    with patch.dict(cache, {}, clear=True):
+        yield
+
+
 @pytest.mark.parametrize(
     "query, expected_identifier",
     [
@@ -599,10 +609,8 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
         ("", None),
     ],
 )
-def test_parse_query(query, expected_identifier):
+def test_parse_query(query, expected_identifier, isolated_parse_query_cache):
     """Test that _parse_query correctly extracts the target table identifier from DML queries,
     including those with leading whitespace or SQL comments."""
-    # Clear the LRU cache between parametrized runs so each query is evaluated fresh
-    cache.clear()
     result = _parse_query(query)
     assert result == expected_identifier
