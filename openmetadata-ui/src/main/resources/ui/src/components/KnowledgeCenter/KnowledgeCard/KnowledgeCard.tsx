@@ -14,9 +14,8 @@ import {
   Badge,
   Box,
   Card,
-  Divider,
   Dot,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -265,73 +264,70 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
 
         {/* Row 4: owner · dot · domain · spacer → tags */}
-        <div>
-          <Divider className="tw:mt-1" />
-          <Box
-            align="center"
-            className="tw:pt-2"
-            data-testid="knowledge-footer"
-            gap={3}>
-            {owners?.[0] ? (
-              <UserPopOverCard
-                showUserName
-                className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
-                displayName={getEntityName(owners?.[0])}
-                profileWidth={20}
-                userName={getEntityName(owners?.[0])}
-              />
-            ) : (
-              <Typography
-                className="tw:text-gray-700"
-                data-testid="owner-name"
-                size="text-xs"
-                weight="medium">
-                {t('label.no-entity', { entity: t('label.owner') })}
-              </Typography>
-            )}
+        <Box
+          align="center"
+          className="tw:pt-2"
+          data-testid="knowledge-footer"
+          gap={3}>
+          {owners?.[0] ? (
+            <UserPopOverCard
+              showUserName
+              className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
+              displayName={getEntityName(owners?.[0])}
+              profileWidth={20}
+              userName={getEntityName(owners?.[0])}
+            />
+          ) : (
+            <Typography
+              className="tw:text-gray-700"
+              data-testid="owner-name"
+              size="text-xs"
+              weight="medium">
+              {t('label.no-entity', { entity: t('label.owner') })}
+            </Typography>
+          )}
 
-            <Dot className="tw:text-gray-400" size="micro" />
-            <div className="tw:max-w-40">
+          <Dot className="tw:text-gray-400" size="micro" />
+          <div className="tw:max-w-40">
+            <Typography
+              ellipsis
+              className={
+                firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'
+              }
+              data-testid="domain-name"
+              size="text-xs">
+              {firstDomain?.displayName ??
+                firstDomain?.name ??
+                t('label.no-entity', { entity: t('label.domain') })}
+            </Typography>
+          </div>
+
+          <span className="tw:flex-1" />
+
+          {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
+            <Badge
+              className="tw:max-w-30"
+              key={String(tag.tagFQN ?? '')}
+              size="md"
+              type="modern">
               <Typography
                 ellipsis
-                className={
-                  firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'
-                }
-                data-testid="domain-name"
+                className="tw:font-mono tw:text-gray-700"
                 size="text-xs">
-                {firstDomain?.displayName ??
-                  firstDomain?.name ??
-                  t('label.no-entity', { entity: t('label.domain') })}
+                {getEntityName(tag)}
               </Typography>
-            </div>
-
-            <span className="tw:flex-1" />
-
-            {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
-              <Badge
-                className="tw:max-w-30"
-                key={String(tag.tagFQN ?? '')}
-                size="md"
-                type="modern">
-                <Typography
-                  ellipsis
-                  className="tw:font-mono tw:text-gray-700"
-                  size="text-xs">
-                  {getEntityName(tag)}
-                </Typography>
-              </Badge>
-            ))}
-            {(knowledgePage.tags ?? []).length > 2 && (
-              <Badge size="md" type="modern">
-                <Typography
-                  className="tw:font-mono tw:text-gray-700"
-                  size="text-xs">
-                  +{(knowledgePage.tags ?? []).length - 2}
-                </Typography>
-              </Badge>
-            )}
-          </Box>
-        </div>
+            </Badge>
+          ))}
+          {(knowledgePage.tags ?? []).length > 2 && (
+            <Badge size="md" type="modern">
+              <Typography
+                className="tw:font-mono tw:text-gray-700"
+                size="text-xs">
+                +{(knowledgePage.tags ?? []).length - 2}
+              </Typography>
+            </Badge>
+          )}
+        </Box>
       </Link>
 
       {showAddLinkModal && (
