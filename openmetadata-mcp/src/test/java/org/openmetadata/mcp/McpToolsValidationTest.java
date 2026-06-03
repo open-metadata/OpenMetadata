@@ -618,16 +618,11 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
 
     // Parse the response as JSON to validate lineage structure
     JsonNode lineageData = objectMapper.readTree(responseText);
-    assertThat(lineageData.has("entity")).isTrue();
+    assertThat(lineageData.has("root")).isTrue();
+    assertThat(lineageData.get("root").asText()).isEqualTo(expectedEntityFqn);
 
-    JsonNode entity = lineageData.get("entity");
-    assertThat(entity.has("fullyQualifiedName")).isTrue();
-    assertThat(entity.get("fullyQualifiedName").asText()).isEqualTo(expectedEntityFqn);
-
-    // Lineage should have upstream/downstream nodes and edges arrays
-    assertThat(lineageData.has("nodes")).isTrue();
-    assertThat(lineageData.has("upstreamEdges")).isTrue();
-    assertThat(lineageData.has("downstreamEdges")).isTrue();
+    assertThat(lineageData.has("upstream")).isTrue();
+    assertThat(lineageData.has("downstream")).isTrue();
     System.out.println("✓ Lineage response contains proper lineage graph structure");
   }
 
