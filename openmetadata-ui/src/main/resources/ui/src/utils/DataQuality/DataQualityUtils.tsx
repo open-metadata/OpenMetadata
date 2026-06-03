@@ -43,6 +43,7 @@ import { TEXT_GREY_MUTED } from '../../constants/constants';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
+import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
