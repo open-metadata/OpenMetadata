@@ -46,8 +46,7 @@ import { TestCaseType } from '../../enums/TestSuite.enum';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
-import {
+import type {
   TestCase,
   TestCaseParameterValue,
 } from '../../generated/tests/testCase';
@@ -128,7 +127,7 @@ export const createTestCaseParameters = (
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
-  createTestCaseObject: Partial<CreateTestCase>;
+  selectedDefinition?: TestDefinition;
   showOnlyParameter?: boolean;
   isComputeRowCountFieldVisible: boolean;
 }
@@ -136,7 +135,7 @@ export interface CreateUpdatedTestCasePatchArgs {
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
-  createTestCaseObject,
+  selectedDefinition,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
 }: CreateUpdatedTestCasePatchArgs): Operation[] => {
@@ -148,7 +147,7 @@ export const createUpdatedTestCasePatch = ({
   ];
   const updatedTestCase = {
     ...testCase,
-    ...createTestCaseObject,
+    parameterValues: createTestCaseParameters(value.params, selectedDefinition),
     description: showOnlyParameter
       ? testCase.description
       : isEmpty(value.description)
@@ -164,12 +163,8 @@ export const createUpdatedTestCasePatch = ({
       showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
         ? testCase.tags
         : rebuiltTags,
-    dimensionColumns: isUndefined(value.dimensionColumns)
-      ? testCase.dimensionColumns
-      : value.dimensionColumns || undefined,
-    topDimensions: isUndefined(value.topDimensions)
-      ? testCase.topDimensions
-      : value.topDimensions ?? undefined,
+    dimensionColumns: value.dimensionColumns || undefined,
+    topDimensions: value.topDimensions ?? undefined,
   };
 
   return compare(testCase, updatedTestCase);
