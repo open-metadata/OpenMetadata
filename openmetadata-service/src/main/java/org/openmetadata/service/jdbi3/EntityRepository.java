@@ -148,6 +148,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -3233,15 +3234,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * blocking ES search loop must never run while the DB transaction handle is held, and it must run
    * exactly once even when a deadlock replays the cascade. The inline (non-flush) result is the live
    * invalidated count; the deferred path returns {@code 0} because the work runs after this method
-   * returns.
+   * returns and the count is only known then (it is logged inside {@code
+   * searchTaggedEntitiesAndInvalidate}).
    */
-  private static int deferOrRunSearchBackedInvalidation(Runnable invalidation, String tagFqn) {
+  private static int deferOrRunSearchBackedInvalidation(IntSupplier invalidation, String tagFqn) {
     int result = 0;
     if (SearchRepository.isSearchWriteDeferralActive()) {
       SearchRepository.deferOrRunSearchWrite(
-          invalidation, "invalidateCacheForTaggedEntities", null, tagFqn, null);
+          invalidation::getAsInt, "invalidateCacheForTaggedEntities", null, tagFqn, null);
     } else {
-      invalidation.run();
+      result = invalidation.getAsInt();
     }
     return result;
   }

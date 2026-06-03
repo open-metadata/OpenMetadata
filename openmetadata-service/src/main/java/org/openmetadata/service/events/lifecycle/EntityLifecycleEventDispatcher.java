@@ -17,10 +17,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -142,8 +144,7 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity created event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(
-          entity, OP_CREATED, () -> handler.onEntityCreated(entity, subjectContext), handler);
+      executeHandler(entity, OP_CREATED, e -> handler.onEntityCreated(e, subjectContext), handler);
     }
   }
 
@@ -182,7 +183,7 @@ public class EntityLifecycleEventDispatcher {
     if (handler.isAsync()) {
       for (EntityInterface entity : entities) {
         executeHandler(
-            entity, OP_CREATED, () -> handler.onEntityCreated(entity, subjectContext), handler);
+            entity, OP_CREATED, e -> handler.onEntityCreated(e, subjectContext), handler);
       }
     } else {
       runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
@@ -203,7 +204,7 @@ public class EntityLifecycleEventDispatcher {
       executeHandler(
           entity,
           OP_UPDATED,
-          () -> handler.onEntityUpdated(entity, changeDescription, subjectContext),
+          e -> handler.onEntityUpdated(e, changeDescription, subjectContext),
           handler);
     }
   }
@@ -249,10 +250,7 @@ public class EntityLifecycleEventDispatcher {
                 ? entity.getChangeDescription()
                 : changeDescription;
         executeHandler(
-            entity,
-            OP_UPDATED,
-            () -> handler.onEntityUpdated(entity, change, subjectContext),
-            handler);
+            entity, OP_UPDATED, e -> handler.onEntityUpdated(e, change, subjectContext), handler);
       }
     } else {
       runInline(
@@ -288,8 +286,7 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity deleted event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(
-          entity, OP_DELETED, () -> handler.onEntityDeleted(entity, subjectContext), handler);
+      executeHandler(entity, OP_DELETED, e -> handler.onEntityDeleted(e, subjectContext), handler);
     }
   }
 
@@ -311,7 +308,7 @@ public class EntityLifecycleEventDispatcher {
       executeHandler(
           entity,
           OP_SOFT_DELETE_RESTORE,
-          () -> handler.onEntitySoftDeletedOrRestored(entity, isDeleted, subjectContext),
+          e -> handler.onEntitySoftDeletedOrRestored(e, isDeleted, subjectContext),
           handler);
     }
   }
@@ -329,12 +326,20 @@ public class EntityLifecycleEventDispatcher {
   private void executeHandler(
       EntityInterface entity,
       String operation,
-      Runnable handlerExecution,
+      Consumer<EntityInterface> handlerCall,
       EntityLifecycleEventHandler handler) {
     if (handler.isAsync()) {
-      orderedLaneExecutor.submit(entity.getId(), laneTask(entity, operation, handlerExecution));
+      // The request thread keeps mutating this same entity instance after dispatch (REST PII
+      // masking, clearFields stripping for the response, secret masking on connections) while the
+      // async lane reads it later, off the request thread, to build the search doc. Snapshot the
+      // committed state now so the indexer never persists a masked/stripped/partial document.
+      // Per-entity lane ordering does not help: the race is on the in-memory POJO, not lane order.
+      EntityInterface snapshot =
+          JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
+      orderedLaneExecutor.submit(
+          entity.getId(), laneTask(entity, operation, () -> handlerCall.accept(snapshot)));
     } else {
-      runInline(handlerExecution, handler);
+      runInline(() -> handlerCall.accept(entity), handler);
     }
   }
 
