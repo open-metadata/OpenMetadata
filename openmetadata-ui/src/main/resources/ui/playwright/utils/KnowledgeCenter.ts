@@ -17,10 +17,7 @@ import {
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
-import {
-  descriptionBox,
-  redirectToHomePage
-} from './common';
+import { descriptionBox, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 

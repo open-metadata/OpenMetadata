@@ -17,7 +17,7 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   getKnowledgePageCardByIndex,
-  getKnowledgePageCardEntityIdentifier
+  getKnowledgePageCardEntityIdentifier,
 } from '../../utils/KnowledgeCenter';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -30,10 +30,9 @@ const MIN_CARDS = 7;
 let knowledgeCenter: KnowledgeCenterClass;
 
 test.describe('Knowledge Center List', () => {
-
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    knowledgeCenter = new KnowledgeCenterClass()
+    knowledgeCenter = new KnowledgeCenterClass();
     await knowledgeCenter.create(apiContext, MIN_CARDS);
     await afterAction();
   });
@@ -76,13 +75,11 @@ test.describe('Knowledge Center List', () => {
       const knowledgePageLink = card.getByTestId('knowledge-page-link');
       await expect(knowledgePageLink).toBeVisible();
 
-
       const updatedAt = card.getByTestId('updated-at');
       await expect(updatedAt).toBeVisible();
       await expect(updatedAt).not.toBeEmpty();
     });
   });
-
 
   test('Knowledge Center List - Verify Recently Viewed widget', async ({
     page,
@@ -92,9 +89,8 @@ test.describe('Knowledge Center List', () => {
 
     const cardIdentifier = await getKnowledgePageCardEntityIdentifier(card);
     const cardDisplayText =
-      (
-        await card.getByTestId('knowledge-card-title').textContent()
-      )?.trim() ?? '';
+      (await card.getByTestId('knowledge-card-title').textContent())?.trim() ??
+      '';
 
     const knowledgePageLink = card.getByTestId('knowledge-page-link');
 
@@ -169,5 +165,4 @@ test.describe('Knowledge Center List', () => {
     const finalCardCount = await cards.count();
     expect(finalCardCount).toBeGreaterThan(initialCardCount);
   });
-
 });
