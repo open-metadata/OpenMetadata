@@ -14,13 +14,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import * as reactI18next from 'react-i18next';
 import TourEndModal from './TourEndModal';
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 const mockOnSave = jest.fn();
 
 const mockProps = {

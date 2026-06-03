@@ -39,7 +39,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
 
   const { title, welcomeScreenImg } = useMemo(() => {
     return {
-      title: brandClassBase.getPageTitle(),
+      title: t('label.brand-name'),
       welcomeScreenImg: brandClassBase.getWelcomeScreenImg(),
     };
   }, []);

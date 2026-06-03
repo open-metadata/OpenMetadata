@@ -92,13 +92,6 @@ jest.mock('../AppLogo/AppLogo.component', () =>
   jest.fn().mockImplementation(() => <>AppLogo</>)
 );
 
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 describe('MarketPlaceAppDetails component', () => {
   it('should render all necessary elements if app details fetch successfully', async () => {
     const { container } = render(<MarketPlaceAppDetails />);

@@ -34,13 +34,6 @@ jest.mock('./FilterErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
   Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
     return <span>{i18nKey}</span>;

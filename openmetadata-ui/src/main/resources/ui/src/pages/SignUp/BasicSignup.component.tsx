@@ -25,7 +25,6 @@ import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
@@ -46,7 +45,7 @@ const BasicSignUp = () => {
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
 
-  const brandName = brandClassBase.getPageTitle();
+  const brandName = t('label.brand-name');
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {

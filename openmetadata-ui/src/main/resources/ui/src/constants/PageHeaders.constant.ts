@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import brandClassBase from '../utils/BrandData/BrandClassBase';
+import i18next from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
@@ -190,14 +190,8 @@ export const PAGE_HEADERS = {
   },
   APPLICATION: {
     header: 'label.extend-open-meta-data',
-    headerParams: { brandName: brandClassBase.getPageTitle() },
+    headerParams: {},
     subHeader: 'message.application-to-improve-data',
-  },
-  CUSTOM_PAGE: {
-    header: 'label.customize-entity',
-    headerParams: { entity: 'label.landing-page' },
-    subHeader: 'message.page-sub-header-for-customize-landing-page',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
   },
   INCIDENT_MANAGER: {
     header: 'label.incident-manager',
@@ -206,7 +200,7 @@ export const PAGE_HEADERS = {
   SETTING: {
     header: 'label.setting-plural',
     subHeader: 'message.page-sub-header-for-setting',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
+    subHeaderParams: {},
   },
   LOGIN_CONFIGURATION: {
     header: 'label.login',
@@ -226,9 +220,9 @@ export const PAGE_HEADERS = {
   },
   OM_URL_CONFIG: {
     header: 'label.entity-configuration',
-    headerParams: { entity: `${brandClassBase.getPageTitle()} URL` },
+    headerParams: { entity: i18next.t('label.brand-name-url') },
     subHeader: 'message.om-url-configuration-message',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
+    subHeaderParams: {},
   },
   OM_HEALTH: {
     header: 'label.health-check',

@@ -53,13 +53,6 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 const mockProps = {
   pageTitle: 'add-policy',
 };

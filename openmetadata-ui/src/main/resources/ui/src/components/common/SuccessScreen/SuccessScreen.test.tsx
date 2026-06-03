@@ -30,13 +30,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 const mockViewService = jest.fn();
 const mockDeployService = jest.fn();
 const mockIngestService = jest.fn();

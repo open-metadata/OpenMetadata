@@ -119,7 +119,7 @@ const SignUp = () => {
           <OMDLogo
             data-testid="om-logo"
             height={50}
-            name={`${brandClassBase.getPageTitle()} Logo`}
+            name={t('label.brand-name-logo')}
             width={50}
           />
           <Typography.Title
@@ -130,7 +130,7 @@ const SignUp = () => {
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
               values={{
-                entity: brandClassBase.getPageTitle(),
+                entity: t('label.brand-name'),
               }}
             />
           </Typography.Title>

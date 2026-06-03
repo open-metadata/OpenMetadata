@@ -28,7 +28,6 @@ import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
-import { BRAND_NAME } from '../../../utils/BrandData/BrandConstants';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -45,7 +44,7 @@ const UrlConfigurationPage = () => {
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.entity-configuration', {
-          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url'),
         })
       ),
     []
@@ -118,7 +117,7 @@ const UrlConfigurationPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.brand-name-url', { brandName: BRAND_NAME })}
+                {t('label.brand-name-url')}
               </Typography.Text>
             </Col>
             <Col span={24}>

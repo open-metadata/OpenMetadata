@@ -29,13 +29,6 @@ const mockProp = {
   visible: false,
 };
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 describe('Test EntityDelete Modal Component', () => {
   it('Should render component', async () => {
     await act(async () => {

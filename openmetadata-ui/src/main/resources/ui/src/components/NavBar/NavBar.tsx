@@ -276,7 +276,7 @@ const NavBar = () => {
       }
     }
     const notification = new Notification(
-      `Notification From ${brandClassBase.getPageTitle()}`,
+      t('label.notification-from-brand-name'),
       {
         body: body,
         icon: Logo,

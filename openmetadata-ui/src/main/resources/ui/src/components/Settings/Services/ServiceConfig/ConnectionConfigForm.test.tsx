@@ -136,13 +136,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
     jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (

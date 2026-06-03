@@ -25,8 +25,8 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import {
-  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
+  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
@@ -36,7 +36,6 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
-import { BRAND_NAME } from '../../../utils/BrandData/BrandConstants';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -139,7 +138,7 @@ const EditUrlConfigurationPage = () => {
           setActiveField(e.target.id);
         }}>
         <Item
-          label={t('label.brand-name-url', { brandName: BRAND_NAME })}
+          label={t('label.brand-name-url')}
           name="openMetadataUrl"
           rules={[{ required: true }]}>
           <Input
@@ -195,7 +194,7 @@ const EditUrlConfigurationPage = () => {
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {
-          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url'),
         }),
       })}
       secondPanel={{

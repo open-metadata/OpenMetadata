@@ -15,7 +15,6 @@ import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
-import { BRAND_NAME } from './BrandConstants';
 
 class BrandClassBase {
   public getMonogram() {
@@ -24,10 +23,6 @@ class BrandClassBase {
 
   public getLogo() {
     return { src: LogoSrc, svg: Logo };
-  }
-
-  public getPageTitle() {
-    return BRAND_NAME;
   }
 
   public getReleaseLink(version: string) {

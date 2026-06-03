@@ -34,7 +34,6 @@ import {
   getMultiChartsPreviewByName,
 } from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   getEntitiesChartSummary,
   getQueryFilterForDataInsightChart,
@@ -183,7 +182,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       <Typography.Paragraph className="font-medium">
         {t('label.data-insight-summary', {
           organization:
-            getEntityName(OrganizationDetails) ?? brandClassBase.getPageTitle(),
+            getEntityName(OrganizationDetails) ?? t('label.brand-name'),
         })}
       </Typography.Paragraph>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>

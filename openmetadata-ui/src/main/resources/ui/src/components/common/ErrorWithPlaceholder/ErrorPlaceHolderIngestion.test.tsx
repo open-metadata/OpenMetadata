@@ -35,13 +35,6 @@ jest.mock(
   }
 );
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 describe('ErrorPlaceholderIngestion', () => {
   it('should show the error steps', async () => {
     await act(async () => {
