@@ -254,6 +254,28 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
         raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
 
 
+def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:
+    """
+    Call client.get_version(); on failure, attempt a managed-flavor-specific
+    diagnostic and raise SourceConnectionException with a combined message
+    ("<original error>\\n\\n<hint>"). When no hint applies, the original
+    exception is re-raised unchanged.
+    """
+    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
+        diagnose,
+    )
+
+    result = None
+    try:
+        result = client.get_version()
+    except Exception as exc:
+        hint = diagnose(host, auth_config, verify, exc)
+        if hint:
+            raise SourceConnectionException(f"{exc}\n\n{hint}") from exc
+        raise
+    return result
+
+
 def _test_api_connection(
     metadata: OpenMetadata,
     client,
@@ -261,8 +283,13 @@ def _test_api_connection(
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
+    rest_config = service_connection.connection
+    host = str(service_connection.hostPort) if getattr(service_connection, "hostPort", None) else None
+    auth_config = getattr(rest_config, "authConfig", None)
+    verify = getattr(rest_config, "verifySSL", True)
+
     test_fn = {
-        "CheckAccess": client.get_version,
+        "CheckAccess": lambda: _decorated_check_access(client, host, auth_config, verify),
         "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
         "TaskDetailAccess": lambda: True,
     }
