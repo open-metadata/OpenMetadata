@@ -105,7 +105,10 @@ test(
       );
       await expect(page.getByTestId('view-service-button')).toBeVisible();
 
+      const ingestionPipelinesListResponse2 =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse2;
     });
 
     /**
@@ -114,11 +117,6 @@ test(
      * validates the updated success messaging before returning to the service view.
      */
     await test.step('Verify test case count column displays correct values', async () => {
-      const ingestionPipelinesListResponse =
-        waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-      await ingestionPipelinesListResponse;
-
       // Verify the pipeline with selected test case shows count "1"
       const pipelineRow = page.getByRole('row', {
         name: new RegExp(pipelineName),
@@ -171,7 +169,10 @@ test(
         /has been updated and deployed successfully/
       );
 
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse;
     });
 
     /**
@@ -180,10 +181,6 @@ test(
      * then verifies the Pipeline tab shows the assignment placeholder and add CTA.
      */
     await test.step('Delete the pipeline', async () => {
-      const ingestionPipelinesListResponse =
-        waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-      await ingestionPipelinesListResponse;
       await page
         .getByRole('row', {
           name: new RegExp(pipelineName),

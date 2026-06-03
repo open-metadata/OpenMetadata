@@ -71,24 +71,19 @@ public class RdfBatchProcessor {
     String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
-    // Fast path: one combined SPARQL UPDATE for the whole batch. Per-entity
-    // storeEntity costs ~2 HTTP round trips (DELETE + GSP LOAD) — at ~75 ms RT
-    // on localhost it caps single-coordinator throughput at ~6.7 entities/s.
-    // Batching collapses those 2N round trips into 2 per batch.
+    // Fast path: combined SPARQL UPDATE requests for the batch. Batching
+    // collapses per-entity update requests and Fuseki transactions into a
+    // smaller number of storage-level chunks.
     //
-    // The bulk write is atomic at the Fuseki side (single SPARQL UPDATE +
-    // single GSP POST) — there's no mid-batch checkpoint where a stop signal
-    // could partially commit, so we check it once before issuing the call and
-    // once after, mirroring the previous per-entity loop's check-at-iteration
-    // semantics. A stop signal landing mid-HTTP-call still completes the
-    // current batch (preferable to leaving Fuseki in a half-applied state)
-    // and is honored on the next batch boundary.
+    // Each storage chunk is atomic at the Fuseki side. A stop signal landing
+    // mid-HTTP-call still completes the current chunk and is honored on the
+    // next batch boundary.
     //
     // If the bulk write fails (one bad model rolls back the whole batch), we
     // fall back to the per-entity loop so the indexer can still attribute the
     // failure to a specific entity instead of failing the whole batch with a
     // single composite error. The fallback is skipped when the storage layer
-    // has tripped its circuit breaker (connect failures, Fuseki unreachable):
+    // has tripped its circuit breaker (connect failures, request timeouts):
     // each of the N per-entity attempts would also fail-fast on the same
     // breaker, wasting time and amplifying error noise. We mark the whole
     // batch as failed instead and let the indexer move on — the breaker

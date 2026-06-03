@@ -70,7 +70,10 @@ import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interf
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 import AddTestCaseListFilters from './AddTestCaseListFilters.component';
 import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
-import { normalizeSelectedTestProp } from './AddTestCaseListForm.utils';
+import {
+  normalizeSelectedTestProp,
+  seedSelectedFromExistingTest,
+} from './AddTestCaseListForm.utils';
 
 export const AddTestCaseList = ({
   onCancel,
@@ -80,6 +83,7 @@ export const AddTestCaseList = ({
   testCaseFilters,
   columnFilters,
   selectedTest,
+  existingTest,
   onChange,
   showButton = true,
   testCaseParams,
@@ -90,7 +94,7 @@ export const AddTestCaseList = ({
   const [searchTerm, setSearchTerm] = useState<string>();
   const [items, setItems] = useState<TestCase[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>(
-    () => new Map()
+    () => seedSelectedFromExistingTest(existingTest)
   );
   const [selectAll, setSelectAll] = useState(false);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(() => new Set());
@@ -292,7 +296,9 @@ export const AddTestCaseList = ({
           testCaseStatus: filterStatus,
           testCaseType:
             filterTestType === TestCaseType.all ? undefined : filterTestType,
-          ...(entityLink && { entityLink }),
+          // includeAllTests=true: prefix-match entityFQN so column tests
+          // under the selected table are included.
+          ...(entityLink && { entityLink, includeAllTests: true }),
           ...(columnName && { columnName }),
         };
         const mergedParams = { ...testCaseParams, ...requestParams };
@@ -300,14 +306,23 @@ export const AddTestCaseList = ({
         const testCaseResponse = await getListTestCaseBySearch(mergedParams);
 
         setTotalCount(testCaseResponse.paging.total ?? 0);
-        if (selectedTestNames.length > 0 && hydrateSelectedFromProp) {
-          const hydratedMap = new Map<string, TestCase>();
-          [...items, ...testCaseResponse.data].forEach((hit) => {
-            if (selectedTestNames.includes(hit.name)) {
-              hydratedMap.set(hit.id ?? '', hit);
-            }
+        if (hydrateSelectedFromProp) {
+          setSelectedItems((prev) => {
+            const next = new Map(prev);
+            [...items, ...testCaseResponse.data].forEach((hit) => {
+              if (!hit.id) {
+                return;
+              }
+              if (next.has(hit.id)) {
+                next.set(hit.id, hit);
+              }
+              if (selectedTestNames.includes(hit.name)) {
+                next.set(hit.id, hit);
+              }
+            });
+
+            return next;
           });
-          setSelectedItems(hydratedMap);
         }
         setItems(
           page === 1
@@ -539,6 +554,24 @@ export const AddTestCaseList = ({
     },
     [selectAll, selectedItems, items, excludedIds, onChange]
   );
+
+  useEffect(() => {
+    if (!existingTest || existingTest.length === 0) {
+      return;
+    }
+    setSelectedItems((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      existingTest.forEach((ref) => {
+        if (ref.id && !next.has(ref.id)) {
+          next.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [existingTest]);
 
   useEffect(() => {
     fetchTestCases({
