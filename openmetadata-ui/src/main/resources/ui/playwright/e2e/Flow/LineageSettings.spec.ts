@@ -308,7 +308,7 @@ test.describe.serial('Lineage Settings Tests', () => {
       .then(() => true)
       .catch(() => false);
 
-    await page.getByRole('tab', { name: 'Lineage' }).click();
+    await page.getByTestId('lineage').click();
     await expect(page).not.toHaveURL(/mode=impact_analysis/);
     expect(await lineageFetchAfterViewSwitch).toBe(false);
   });
