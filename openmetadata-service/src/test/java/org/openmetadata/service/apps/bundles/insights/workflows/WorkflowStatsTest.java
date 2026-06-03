@@ -41,4 +41,40 @@ class WorkflowStatsTest {
     assertEquals(0, stats.getWorkflowStats().getFailedRecords());
     assertEquals(0, stats.getWorkflowStats().getWarningRecords());
   }
+
+  @Test
+  void mergeAggregatesFailuresStepStatsAndCounters() {
+    WorkflowStats target = new WorkflowStats("mergedWorkflow");
+    target.getWorkflowStats().setTotalRecords(4);
+    target.getWorkflowStats().setSuccessRecords(3);
+    target.getWorkflowStats().setFailedRecords(1);
+    target.updateWorkflowStepStats(
+        "existingStep",
+        new StepStats().withTotalRecords(4).withSuccessRecords(3).withFailedRecords(1));
+
+    WorkflowStats source = new WorkflowStats("sourceWorkflow");
+    source.addFailure("source failure");
+    source.getWorkflowStats().setTotalRecords(6);
+    source.getWorkflowStats().setSuccessRecords(5);
+    source.getWorkflowStats().setFailedRecords(1);
+    source.getWorkflowStats().setWarningRecords(2);
+    source.updateWorkflowStepStats(
+        "sourceStep",
+        new StepStats()
+            .withTotalRecords(6)
+            .withSuccessRecords(5)
+            .withFailedRecords(1)
+            .withWarningRecords(2));
+
+    target.merge(source);
+
+    assertTrue(target.hasFailed());
+    assertEquals("source failure", target.getFailures().get(0));
+    assertTrue(target.getWorkflowStepStats().containsKey("existingStep"));
+    assertTrue(target.getWorkflowStepStats().containsKey("sourceStep"));
+    assertEquals(10, target.getWorkflowStats().getTotalRecords());
+    assertEquals(8, target.getWorkflowStats().getSuccessRecords());
+    assertEquals(2, target.getWorkflowStats().getFailedRecords());
+    assertEquals(2, target.getWorkflowStats().getWarningRecords());
+  }
 }

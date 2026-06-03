@@ -55,12 +55,7 @@ public class DataQualityWorkflow {
   Processor entityProcessor;
   Sink searchIndexSink;
 
-  @Getter
-  private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
-
-  public static void resetWorkflowStats() {
-    workflowStats.reset();
-  }
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
 
   public DataQualityWorkflow(
       DataQualityConfig dataQualityConfig,

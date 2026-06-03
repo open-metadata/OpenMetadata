@@ -399,7 +399,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processDataQuality() {
-    DataQualityWorkflow.resetWorkflowStats();
+    WorkflowStats dataQualityStats = new WorkflowStats("DataQualityWorkflow");
     for (String entityType : dataQualityEntities) {
       DataQualityWorkflow workflow =
           new DataQualityWorkflow(
@@ -410,16 +410,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
               entityType,
               collectionDAO,
               searchRepository);
+      WorkflowStats workflowStats = workflow.getWorkflowStats();
 
       try {
         workflow.process();
       } catch (SearchIndexException ex) {
-        recordSearchIndexFailure(
-            "dataQuality:" + entityType, DataQualityWorkflow.getWorkflowStats(), ex);
+        recordSearchIndexFailure("dataQuality:" + entityType, workflowStats, ex);
       }
+      dataQualityStats.merge(workflowStats);
     }
 
-    return DataQualityWorkflow.getWorkflowStats();
+    return dataQualityStats;
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {

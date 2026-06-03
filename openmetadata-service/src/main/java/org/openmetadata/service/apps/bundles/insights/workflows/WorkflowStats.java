@@ -40,6 +40,23 @@ public class WorkflowStats {
     workflowStats.setWarningRecords(0);
   }
 
+  public void merge(WorkflowStats other) {
+    failures.addAll(other.getFailures());
+    workflowStepStats.putAll(other.getWorkflowStepStats());
+    workflowStats.setTotalRecords(
+        getStepStatValue(workflowStats.getTotalRecords())
+            + getStepStatValue(other.getWorkflowStats().getTotalRecords()));
+    workflowStats.setSuccessRecords(
+        getStepStatValue(workflowStats.getSuccessRecords())
+            + getStepStatValue(other.getWorkflowStats().getSuccessRecords()));
+    workflowStats.setFailedRecords(
+        getStepStatValue(workflowStats.getFailedRecords())
+            + getStepStatValue(other.getWorkflowStats().getFailedRecords()));
+    workflowStats.setWarningRecords(
+        getStepStatValue(workflowStats.getWarningRecords())
+            + getStepStatValue(other.getWorkflowStats().getWarningRecords()));
+  }
+
   public Boolean hasFailed() {
     return !failures.isEmpty();
   }
@@ -50,5 +67,9 @@ public class WorkflowStats {
 
   public void updateWorkflowStepStats(String stepName, StepStats newStepStats) {
     workflowStepStats.put(stepName, newStepStats);
+  }
+
+  private int getStepStatValue(Integer value) {
+    return value == null ? 0 : value;
   }
 }
