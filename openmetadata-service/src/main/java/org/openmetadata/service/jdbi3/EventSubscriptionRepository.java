@@ -155,7 +155,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
       rules.sort(Comparator.comparing(EventFilterRule::getName));
       if (!rules.isEmpty()) {
-        // Reject a bad rule combination at save time, not per event at runtime.
+        // Validate the combined condition too (each rule is validated above), so a bad
+        // combination is caught here instead of when it is first compiled at runtime.
         AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
       }
     }
