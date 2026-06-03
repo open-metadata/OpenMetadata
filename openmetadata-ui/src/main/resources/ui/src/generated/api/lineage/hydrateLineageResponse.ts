@@ -28,5 +28,5 @@ export interface HydrateLineageResponse {
      * Hydrated entities keyed by entityType (table, dashboard, pipeline, topic, ...). Only
      * types with at least one authorized entity are present in the map.
      */
-    entitiesByType: { [key: string]: any };
+    entitiesByType: { [key: string]: { [key: string]: any }[] };
 }
