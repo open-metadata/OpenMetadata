@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { performAdminLogin } from '../utils/admin';
 
 /**
@@ -52,7 +52,7 @@ setup(
 
       const subscription = await subscriptionResponse.json();
 
-      await apiContext.patch(
+      const patchResponse = await apiContext.patch(
         `/api/v1/events/subscriptions/${subscription.id}`,
         {
           data: [
@@ -61,6 +61,10 @@ setup(
           headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE },
         }
       );
+
+      // patch() does not throw on non-2xx — fail loudly so a misapplied boost
+      // surfaces here instead of as renewed ActivityAPI flakiness downstream.
+      expect(patchResponse.ok()).toBeTruthy();
     } finally {
       await afterAction();
     }
