@@ -90,7 +90,7 @@ const DropdownItem = ({
 
           <span
             className={cx(
-              'tw:grow tw:truncate tw:text-sm tw:font-semibold',
+              'tw:grow tw:truncate tw:text-sm',
               state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
               state.isFocused && 'tw:text-secondary_hover'
             )}>

@@ -1,8 +1,10 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
@@ -207,5 +209,24 @@ public class SecretsManagerLifecycleTest {
         new SecretsManager.SecretsConfig(
             null, null, List.of("random", "key:value", "random"), null);
     assertEquals(Map.of("key", "value"), SecretsManager.getTags(secretsConfig));
+  }
+
+  @Test
+  void testContextPluginConnectionSecretLifecycle() {
+    String token = "my-mcp-token";
+    basicAuth auth = new basicAuth().withPassword(token);
+    String fieldPath =
+        secretsManager.buildSecretId(true, "contextPlugin", "my-plugin") + "/password";
+
+    basicAuth encrypted =
+        (basicAuth) secretsManager.encryptContextPluginConnection(auth, "my-plugin");
+    assertNotEquals(token, encrypted.getPassword());
+    assertTrue(secretsManager.getSecretsMap().containsKey(fieldPath));
+
+    basicAuth decrypted = (basicAuth) secretsManager.decryptContextPluginConnection(encrypted);
+    assertEquals(DECRYPTED_VALUE, decrypted.getPassword());
+
+    secretsManager.deleteContextPluginConnectionSecrets(encrypted, "my-plugin");
+    assertFalse(secretsManager.getSecretsMap().containsKey(fieldPath));
   }
 }

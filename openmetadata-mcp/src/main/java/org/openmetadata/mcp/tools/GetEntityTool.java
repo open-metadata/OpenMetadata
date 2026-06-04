@@ -43,8 +43,7 @@ public class GetEntityTool implements McpTool {
           "descriptionSources",
           "columnDescriptionStatus",
           "descriptionStatus",
-          "embeddings",
-          "extension");
+          "embeddings");
 
   @Override
   public Map<String, Object> execute(
