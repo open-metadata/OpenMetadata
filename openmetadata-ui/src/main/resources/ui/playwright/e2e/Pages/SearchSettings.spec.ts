@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   mockEntitySearchSettings,
   restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -227,5 +230,207 @@ test.describe('Search Preview test', () => {
     await expect(
       cardWithDescription.getByTestId('description-text')
     ).toHaveText(table2.entity.description);
+  });
+});
+
+test.describe(
+  'Search Preview Consistency Tests',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    test.afterEach(async ({ page }) => {
+      await restoreDefaultSearchSettings(page);
+    });
+
+    test('Preview config reflects reverted n-gram weight after save', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+
+      const initialPreviewPromise = page.waitForResponse((r) =>
+        r.url().includes('/api/v1/search/preview')
+      );
+
+      await tableCard.click();
+
+      await expect(page).toHaveURL(
+        new RegExp(mockEntitySearchSettings.url + '$')
+      );
+      await waitForAllLoadersToDisappear(page);
+
+      const initialPreviewResponse = await initialPreviewPromise;
+      expect(initialPreviewResponse.status()).toBe(200);
+      const initialBody = initialPreviewResponse.request().postDataJSON();
+
+      const initialNgramBoost =
+        initialBody?.searchSettings?.assetTypeConfigurations
+          ?.find((c: { assetType: string }) => c.assetType === 'table')
+          ?.searchFields?.find(
+            (f: { field: string }) => f.field === 'name.ngram'
+          )?.boost ?? 0;
+
+      const ngramPanel = page.getByTestId(
+        'field-configuration-panel-name.ngram'
+      );
+      await ngramPanel.click();
+
+      await setSliderValue(page, 'field-weight-slider', 5);
+
+      const saveResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/system/settings') &&
+          r.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      await saveResponse;
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+
+      const revertedPreviewResponse = await page.waitForResponse((r) =>
+        r.url().includes('/api/v1/search/preview')
+      );
+      expect(revertedPreviewResponse.status()).toBe(200);
+      const revertedBody = revertedPreviewResponse.request().postDataJSON();
+
+      const revertedNgramBoost =
+        revertedBody?.searchSettings?.assetTypeConfigurations
+          ?.find((c: { assetType: string }) => c.assetType === 'table')
+          ?.searchFields?.find(
+            (f: { field: string }) => f.field === 'name.ngram'
+          )?.boost ?? 0;
+
+      expect(revertedNgramBoost).toBe(initialNgramBoost);
+    });
+
+    test('Preview config updates when restore defaults returns empty search fields', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+      await tableCard.click();
+
+      await expect(page).toHaveURL(
+        new RegExp(mockEntitySearchSettings.url + '$')
+      );
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('restore-defaults-btn').click();
+      await toastNotification(page, /Search Settings restored successfully/);
+
+      const previewPromise = page.waitForResponse('/api/v1/search/preview');
+      await page.reload();
+      const previewResponse = await previewPromise;
+      await waitForAllLoadersToDisappear(page);
+
+      const body = previewResponse.request().postDataJSON();
+
+      expect(body).not.toBeNull();
+      expect(body?.searchSettings?.assetTypeConfigurations).toBeDefined();
+    });
+  }
+);
+
+test.describe('Column Search Settings Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Configure column search field settings', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+    const columnCard = page.getByTestId('preferences.search-settings.column');
+    await columnCard.click();
+
+    await expect(page).toHaveURL(
+      /settings\/preferences\/search-settings\/column$/
+    );
+
+    const fieldContainers = page.getByTestId('field-container-header');
+    const firstFieldContainer = fieldContainers.first();
+    await firstFieldContainer.click();
+
+    const highlightToggle = page.getByTestId('highlight-field-switch');
+    const wasHighlighted =
+      (await highlightToggle.getAttribute('aria-checked')) === 'true';
+    await highlightToggle.click();
+
+    await setSliderValue(page, 'field-weight-slider', 15);
+
+    const matchTypeSelect = page.getByTestId('match-type-select');
+    await matchTypeSelect.click();
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle('Exact Match')
+      .click();
+
+    const saveSettings = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/system/settings') &&
+        response.request().method() === 'PUT'
+    );
+
+    await page.getByTestId('save-btn').click();
+    await saveSettings;
+
+    const previewResponse = page.waitForResponse('/api/v1/search/preview');
+    await page.reload();
+    await previewResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await firstFieldContainer.click();
+    await expect(highlightToggle).toHaveAttribute(
+      'aria-checked',
+      String(!wasHighlighted)
+    );
+  });
+
+  test('Search preview displays column results correctly', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const columnTable = new TableClass();
+    const uniqueColumnName = `test_column_${uuid()}`;
+
+    columnTable.entity.columns[0].name = uniqueColumnName;
+    columnTable.entity.columns[0].description = `Unique column for testing search preview`;
+
+    try {
+      await columnTable.create(apiContext);
+
+      await redirectToHomePage(page);
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const columnCard = page.getByTestId(
+        'preferences.search-settings.column'
+      );
+      await columnCard.click();
+
+      const searchInput = page.getByTestId('searchbar');
+      await searchInput.fill(uniqueColumnName);
+
+      const previewResponse = page.waitForResponse('/api/v1/search/preview');
+      await previewResponse;
+
+      const searchResultsContainer = page.locator(
+        '.search-results-container'
+      );
+      const matchedCard = searchResultsContainer
+        .locator('.search-card')
+        .filter({
+          has: page.getByTestId('entity-header-display-name').filter({
+            hasText: uniqueColumnName,
+          }),
+        });
+
+      await expect(matchedCard).toHaveCount(1);
+    } finally {
+      await columnTable.delete(apiContext);
+      await afterAction();
+    }
   });
 });

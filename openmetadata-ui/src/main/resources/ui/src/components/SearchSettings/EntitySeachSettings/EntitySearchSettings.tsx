@@ -86,7 +86,7 @@ const EntitySearchSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [searchSettings, setSearchSettings] =
     useState<EntitySearchSettingsState>({
-      searchFields: [],
+      searchFields: undefined,
       fieldValueBoosts: [],
       boostMode: BoostMode.Multiply,
       scoreMode: ScoreMode.Avg,
@@ -278,11 +278,16 @@ const EntitySearchSettings = () => {
         })
       );
 
-      setSearchSettings({
-        ...searchSettings,
-        ...updatedSearchConfig,
+      const savedEntityConfig =
+        updatedSearchConfig.assetTypeConfigurations?.find(
+          (config: AssetTypeConfiguration) => config.assetType === entityType
+        );
+
+      setSearchSettings((prev) => ({
+        ...prev,
+        ...savedEntityConfig,
         isUpdated: false,
-      });
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -582,7 +587,7 @@ const EntitySearchSettings = () => {
       ),
     };
 
-    if (searchSettings.searchFields?.length) {
+    if (searchSettings.searchFields !== undefined) {
       setPreviewSearchConfig((prev) =>
         JSON.stringify(prev) !== JSON.stringify(updatedConfig)
           ? updatedConfig
@@ -595,11 +600,13 @@ const EntitySearchSettings = () => {
     <PageLayoutV1
       className="entity-search-settings"
       mainContainerClassName="p-t-0"
-      pageTitle={t('label.search')}>
+      pageTitle={t('label.search')}
+    >
       <Row
         className="entity-search-settings-header bg-white m-b-lg p-box m-0"
         data-testid="entity-search-settings-header"
-        gutter={[0, 16]}>
+        gutter={[0, 16]}
+      >
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -607,16 +614,19 @@ const EntitySearchSettings = () => {
           <Icon className="entity-icon" component={entityData?.icon} />
           <div
             className="page-header-container"
-            data-testid="page-header-container">
+            data-testid="page-header-container"
+          >
             <Typography.Title
               className="heading"
               data-testid="heading"
-              level={5}>
+              level={5}
+            >
               {entityData?.label}
             </Typography.Title>
             <Typography.Paragraph
               className="sub-heading"
-              data-testid="sub-heading">
+              data-testid="sub-heading"
+            >
               {entityData?.description}
             </Typography.Paragraph>
           </div>
@@ -624,14 +634,16 @@ const EntitySearchSettings = () => {
       </Row>
       <Row
         className="d-flex gap-5 items-start entity-search-settings-content m-x-0"
-        gutter={0}>
+        gutter={0}
+      >
         <Col className="d-flex flex-column settings-left-panel" span={8}>
           <Collapse
             accordion
             activeKey={activeKey}
             bordered={false}
             className="w-full entity-collapse-container"
-            onChange={handleCollapseChange}>
+            onChange={handleCollapseChange}
+          >
             <Collapse.Panel
               header={
                 <CollapseHeader
@@ -640,7 +652,8 @@ const EntitySearchSettings = () => {
                   title={t('label.matching-fields')}
                 />
               }
-              key="1">
+              key="1"
+            >
               <div className="bg-white configuration-container">
                 <Row className="p-y-xs " data-testid="field-configurations">
                   {entitySearchFields.map(
@@ -712,7 +725,8 @@ const EntitySearchSettings = () => {
                   title={t('label.term-boost')}
                 />
               }
-              key="2">
+              key="2"
+            >
               <div className="bg-white border-radius-card p-box configuration-container">
                 <TermBoostList
                   className="flex-column justify-center"
@@ -732,7 +746,8 @@ const EntitySearchSettings = () => {
                   title={t('label.field-value-boost')}
                 />
               }
-              key="3">
+              key="3"
+            >
               <div className="bg-white border-radius-card p-box configuration-container">
                 <FieldValueBoostList
                   entitySearchSettingsPage
@@ -748,7 +763,8 @@ const EntitySearchSettings = () => {
         </Col>
         <Col
           className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
-          span={16}>
+          span={16}
+        >
           <SearchPreview
             disabledSave={!searchSettings.isUpdated || isSaving}
             handleRestoreDefaults={handleRestoreDefaults}
