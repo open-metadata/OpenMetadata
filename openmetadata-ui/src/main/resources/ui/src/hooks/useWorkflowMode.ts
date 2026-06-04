@@ -162,7 +162,7 @@ export const useWorkflowMode = (
       canDragNodes: isEditMode && structural,
       canDragNodesInViewMode: isViewMode && caps.allowViewModeDrag,
       canAccessSidebar: isEditMode,
-      allowStructuralGraphEdits: structural,
+      allowStructuralGraphEdits: structural && isEditMode && !isNoOpTrigger,
       showWorkflowNodePalette,
       allowFullStartNodeConfiguration,
       allowStartNodeFilterScheduleAndBatchEdit,
