@@ -135,6 +135,28 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_emptySeenFqns_withPopulatedScope_deletesNothing(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(new ArrayList<>()));
+
+    assertEquals(
+        0,
+        result.getNumberOfRowsProcessed().intValue(),
+        "an empty seenFqns must never mark a populated scope as fully stale");
+    for (String fqn : tableFqns) {
+      assertFalse(isDeleted(fqn), "table " + fqn + " must remain live when seenFqns is empty");
+    }
+  }
+
+  @Test
   void test_databaseScope_spansAllSchemas(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schemaA = DatabaseSchemaTestFactory.createSimple(ns, service);

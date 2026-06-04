@@ -8711,12 +8711,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwners() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getOwners())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Mirror updateDescription: a bot PUT (for example bulk ingestion) must not clobber
-        // user-curated owners. Use a PATCH or overrideMetadata=true to reassign ownership.
+      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
+      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
+      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
+      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
+      // force-sync (overrideMetadata=true) also bypasses this guard.
+      boolean preserveUserOwners =
+          updatedByBot()
+              && !nullOrEmpty(original.getOwners())
+              && !overrideMetadata
+              && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
+      if (preserveUserOwners) {
         updated.setOwners(original.getOwners());
         return;
       }
@@ -12525,6 +12530,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
     validateScopeRequest(request.getScopeEntityType(), request.getScopeFqn());
+    if (nullOrEmpty(request.getSeenFqns())) {
+      // An empty seen-set cannot be distinguished from a connector run that crashed or discovered
+      // nothing, so it must never be interpreted as "every entity under the scope is stale" - that
+      // would silently delete the whole service/database. Treat it as zero deletions, mirroring the
+      // scope-not-found path.
+      LOG.warn(
+          "deleteStale for scope {} '{}' received an empty seenFqns; treating as zero deletions "
+              + "rather than marking the entire scope stale",
+          request.getScopeEntityType(),
+          request.getScopeFqn());
+      return buildStaleDeletionResult(
+          Boolean.TRUE.equals(request.getDryRun()), new ArrayList<>(), new ArrayList<>());
+    }
     if (!scopeExists(request.getScopeEntityType(), request.getScopeFqn())) {
       LOG.warn(
           "deleteStale scope {} '{}' not found; nothing to delete this run",
@@ -12565,7 +12583,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Rejects a malformed request before any work runs: {@code scopeFqn} and {@code scopeEntityType}
    * must be present and {@code scopeEntityType} must resolve to a registered entity type. These are
-   * caller mistakes (typos, swapped fields) and fail with 400.
+   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} is handled
+   * separately in {@link #bulkDeleteStaleEntities} as a safe zero-deletion no-op rather than a 400,
+   * since it is a well-formed request whose intent is genuinely ambiguous.
    */
   private void validateScopeRequest(String scopeEntityType, String scopeFqn) {
     if (nullOrEmpty(scopeFqn)) {
