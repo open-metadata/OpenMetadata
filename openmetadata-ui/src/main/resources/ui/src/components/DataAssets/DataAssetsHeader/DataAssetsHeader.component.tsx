@@ -36,6 +36,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -263,6 +264,7 @@ export const DataAssetsHeader = ({
   const [upVoteLoading, setUpVoteLoading] = useState(false);
   const [downVoteLoading, setDownVoteLoading] = useState(false);
   const [copyTooltip, setCopyTooltip] = useState<string>();
+  const copyTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const { onCopyToClipBoard } = useClipboard('');
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
@@ -525,6 +527,15 @@ export const DataAssetsHeader = ({
     []
   );
 
+  useEffect(
+    () => () => {
+      if (copyTooltipTimeoutRef.current) {
+        clearTimeout(copyTooltipTimeoutRef.current);
+      }
+    },
+    []
+  );
+
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -534,7 +545,13 @@ export const DataAssetsHeader = ({
   const handleCopyEntityUrl = useCallback(async () => {
     await onCopyToClipBoard(globalThis.location.href);
     setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(undefined), 2000);
+    if (copyTooltipTimeoutRef.current) {
+      clearTimeout(copyTooltipTimeoutRef.current);
+    }
+    copyTooltipTimeoutRef.current = setTimeout(
+      () => setCopyTooltip(undefined),
+      2000
+    );
   }, [onCopyToClipBoard, t]);
 
   const {
