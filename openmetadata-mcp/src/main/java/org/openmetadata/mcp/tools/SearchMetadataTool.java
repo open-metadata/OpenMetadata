@@ -1,7 +1,6 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -102,7 +101,11 @@ public class SearchMetadataTool implements McpTool {
     LOG.info("Executing searchMetadata with params: {}", params);
     String query = params.containsKey("query") ? (String) params.get("query") : "*";
     String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
-    String index = entityType == null ? "dataAsset" : mapEntityTypesToIndexNames(entityType);
+    // Resolve the entity type to its own index alias via the authoritative index registry rather
+    // than a hand-maintained switch. Types missing from the switch silently fell back to the broad
+    // dataAsset alias and leaked other types (e.g. metric returned dashboards, #27796); types not
+    // present in dataAsset at all (e.g. databaseService) returned nothing.
+    String index = nullOrEmpty(entityType) ? "dataAsset" : entityType;
 
     int size = 10;
     if (params.containsKey("size")) {
