@@ -299,7 +299,9 @@ test.describe.serial('Lineage Settings Tests', () => {
       return url.pathname.endsWith('/api/v1/lineage/getLineage');
     };
 
-    await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+    const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
+
+    await lineageTabPanel.getByRole('tab', { name: 'Impact Analysis' }).click();
     await expect(page).toHaveURL(/mode=impact_analysis/);
     await waitForAllLoadersToDisappear(page);
 
@@ -308,7 +310,7 @@ test.describe.serial('Lineage Settings Tests', () => {
       .then(() => true)
       .catch(() => false);
 
-    await page.getByTestId('lineage').click();
+    await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
     await expect(page).not.toHaveURL(/mode=impact_analysis/);
     expect(await lineageFetchAfterViewSwitch).toBe(false);
   });
