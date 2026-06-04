@@ -13,8 +13,10 @@ NAME
     : NON_RESERVED+
     ;
 
+// A quoted name may contain any character, including the reserved '.' separator
+// and the '"' quote itself, which is escaped by doubling it ("").
 NAME_WITH_RESERVED
-    : QUOTE NON_RESERVED* (RESERVED NON_RESERVED*)+ QUOTE
+    : QUOTE ( ~["] | '""' )* QUOTE
     ;
 
 QUOTE

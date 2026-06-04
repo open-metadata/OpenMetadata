@@ -52,16 +52,46 @@ class FullyQualifiedNameTest {
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
-    // we now allow quotes
-    assertEquals("\\\"a", FullyQualifiedName.quoteName("\"a"));
-    assertEquals("a\\\"", FullyQualifiedName.quoteName("a\""));
-    assertEquals("a\\\"b", FullyQualifiedName.quoteName("a\"b"));
+    // Names containing a quote are wrapped and the internal quote is doubled ("")
+    assertEquals("\"\"\"a\"", FullyQualifiedName.quoteName("\"a")); // "a   -> """a"
+    assertEquals("\"a\"\"\"", FullyQualifiedName.quoteName("a\"")); // a"   -> "a"""
+    assertEquals("\"a\"\"b\"", FullyQualifiedName.quoteName("a\"b")); // a"b  -> "a""b"
+    // quoteName is idempotent on an already-encoded segment
+    assertEquals("\"a\"\"b\"", FullyQualifiedName.quoteName("\"a\"\"b\""));
   }
 
   @Test
   void test_unquoteName() {
     assertEquals("a", FullyQualifiedName.unquoteName("a")); // Unquoted name remains unquoted
     assertEquals("a.b", FullyQualifiedName.unquoteName("\"a.b\"")); // Leave existing valid quotes
+    assertEquals("a\"b", FullyQualifiedName.unquoteName("\"a\"\"b\"")); // Unescape doubled quote
+  }
+
+  @Test
+  void test_quotedName_roundTrip() {
+    // A name containing '"' must survive build -> split -> buildHash without bailing the parser.
+    String taskName = "si_l'agent_existe_dans_la_base_\"agents\"_alors";
+    String fqn = FullyQualifiedName.add("svc.pipeline", taskName);
+    assertEquals("svc.pipeline.\"si_l'agent_existe_dans_la_base_\"\"agents\"\"_alors\"", fqn);
+
+    String[] parts = FullyQualifiedName.split(fqn);
+    assertEquals(3, parts.length);
+    assertEquals(taskName, FullyQualifiedName.unquoteName(parts[2]));
+
+    // buildHash must not throw on an FQN whose segment contains an (escaped) quote.
+    assertEquals(FullyQualifiedName.buildHash(fqn), FullyQualifiedName.buildHash(fqn));
+  }
+
+  @Test
+  void test_validateFqnName() {
+    // Representable names (including reserved '.' and escaped '"') round-trip and are accepted.
+    FullyQualifiedName.validateFqnName("plain_name");
+    FullyQualifiedName.validateFqnName("name.with.dots");
+    FullyQualifiedName.validateFqnName("name_with_\"quotes\"");
+    FullyQualifiedName.validateFqnName("récupère_les_agents/email");
+    FullyQualifiedName.validateFqnName("a\".b");
+    // A null name is rejected up front.
+    assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.validateFqnName(null));
   }
 
   @Test

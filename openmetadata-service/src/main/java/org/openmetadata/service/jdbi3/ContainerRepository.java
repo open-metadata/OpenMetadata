@@ -390,6 +390,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
