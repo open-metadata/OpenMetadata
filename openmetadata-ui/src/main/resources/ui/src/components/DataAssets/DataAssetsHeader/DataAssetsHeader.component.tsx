@@ -789,7 +789,8 @@ export const DataAssetsHeader = ({
             href={sourceUrl}
             iconLeading={IconExternalLink}
             size="sm"
-            target="_blank">
+            target="_blank"
+            rel="noopener noreferrer"
             {t('label.view-in-service-type', {
               serviceType: get(dataAsset, 'serviceType', ''),
             })}
