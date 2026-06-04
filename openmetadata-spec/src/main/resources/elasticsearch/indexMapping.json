@@ -249,7 +249,7 @@
     "indexName": "test_case_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
-    "parentAliases": ["testSuite", "all"],
+    "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
     "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
   },
   "testCaseResult": {
@@ -263,7 +263,7 @@
     "indexName": "test_suite_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_suite_index_mapping.json",
     "alias": "testSuite",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": ["testCase", "testCaseResolutionStatus", "testCaseResult"]
   },
   "dataProduct": {
