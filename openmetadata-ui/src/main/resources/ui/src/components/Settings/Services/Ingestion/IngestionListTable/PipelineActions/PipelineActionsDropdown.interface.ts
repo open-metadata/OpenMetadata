@@ -12,6 +12,7 @@
  */
 
 import { ButtonProps } from 'antd';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SelectedRowDetails } from '../../ingestion.interface';
 
