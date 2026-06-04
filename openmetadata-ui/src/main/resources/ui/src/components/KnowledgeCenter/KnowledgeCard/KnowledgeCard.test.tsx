@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import '../../../test/unit/mocks/mui.mock';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import '../../../test/unit/mocks/mui.mock';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,
@@ -155,7 +154,9 @@ describe('Knowledge Card', () => {
       'OpenMetadata 1.1.0 Release UI'
     );
 
-    expect(screen.getByTestId('knowledge-card-description')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('knowledge-card-description')
+    ).toBeInTheDocument();
   });
 
   it('should render owner name via UserPopOverCard', () => {
