@@ -176,6 +176,33 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
+  void handleLogin_trustsServerAuthCallbackRouteForIpv6Host() {
+    when(serviceProviderConfig.getAcs()).thenReturn("http://[::1]:8585/api/v1/saml/acs");
+    when(request.getParameter("callback")).thenReturn(null);
+    when(request.getParameter("redirectUri")).thenReturn("http://[::1]:8585/auth/callback");
+    when(sessionService.createPendingSession(
+            eq(request),
+            eq(response),
+            eq("saml"),
+            eq("http://[::1]:8585/auth/callback"),
+            any(),
+            any(),
+            any()))
+        .thenReturn(new UserSession());
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+        mockStatic(SamlSettingsHolder.class)) {
+      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+
+      handler.handleLogin(request, response);
+    }
+
+    verify(sessionService)
+        .createPendingSession(
+            request, response, "saml", "http://[::1]:8585/auth/callback", null, null, null);
+  }
+
+  @Test
   void handleLogin_trustsSamlSpCallbackWhenTopLevelCallbackUrlUnset() {
     when(authConfig.getCallbackUrl()).thenReturn("");
     when(request.getParameter("callback")).thenReturn("https://saml.example.com/callback");

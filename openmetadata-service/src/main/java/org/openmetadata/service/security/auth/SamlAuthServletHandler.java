@@ -639,12 +639,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       try {
         URI uri = new URI(acs);
         if (uri.getScheme() != null && uri.getHost() != null) {
-          int port = uri.getPort();
-          String origin = uri.getScheme() + "://" + uri.getHost() + (port == -1 ? "" : ":" + port);
+          URI origin =
+              new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
           authCallback = origin + "/auth/callback";
         }
       } catch (URISyntaxException e) {
-        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs);
+        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
       }
     }
     return authCallback;
