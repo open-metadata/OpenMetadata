@@ -585,6 +585,19 @@ public class RedisCacheProvider implements CacheProvider {
     return available;
   }
 
+  /**
+   * Exposes the underlying Lettuce sync command set so callers that need primitives outside the
+   * {@link CacheProvider} abstraction (e.g. ZSET ops and Lua EVAL used by
+   * {@code RedisSessionStore}) can use them directly. Returns {@code null} when the connection
+   * has not been initialized.
+   *
+   * <p>Reuses the shared sync connection — callers must <b>not</b> mutate connection flags such as
+   * {@code setAutoFlushCommands}; do that on a dedicated connection instead.
+   */
+  public RedisCommands<String, String> getSyncCommands() {
+    return syncCommands;
+  }
+
   @Override
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new HashMap<>();

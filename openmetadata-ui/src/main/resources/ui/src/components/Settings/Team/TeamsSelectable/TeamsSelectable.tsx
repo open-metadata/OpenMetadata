@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
