@@ -117,8 +117,6 @@ class TestCaseClassBase {
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
       TabSpecificField.TAGS,
-      TabSpecificField.DATA_PRODUCTS,
-      TabSpecificField.DOMAINS,
       'inspectionQuery',
     ];
   }

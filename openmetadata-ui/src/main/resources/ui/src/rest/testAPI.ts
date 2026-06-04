@@ -83,6 +83,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   serviceName?: string;
   dataQualityDimension?: string;
   followedBy?: string;
+  dataProductFqn?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

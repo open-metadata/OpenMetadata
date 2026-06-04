@@ -389,6 +389,7 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tags: 'tags',
   service: 'serviceName',
   dimension: 'dataQualityDimension',
+  dataProduct: 'dataProductFqn',
 };
 
 export const TEST_CASE_FILTERS_LABELS: Record<
@@ -404,6 +405,7 @@ export const TEST_CASE_FILTERS_LABELS: Record<
   tags: t('label.tag-plural'),
   service: t('label.service'),
   dimension: t('label.dimension'),
+  dataProduct: t('label.data-product-plural'),
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({

@@ -44,6 +44,7 @@ export type TestCaseSearchParams = {
   tags?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  dataProductFqn?: string;
 };
 
 export type DataQualityPageParams = TestCaseSearchParams & {
