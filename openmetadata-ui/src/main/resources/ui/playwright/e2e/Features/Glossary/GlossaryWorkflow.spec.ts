@@ -332,7 +332,8 @@ test('should display correct status badge color and icon', async ({ page }) => {
 
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(statusBadge).toHaveText('In Review');
+    await expect(statusBadge).toHaveClass(/inReview/);
 
     await expect(statusBadge).toBeVisible();
   } finally {

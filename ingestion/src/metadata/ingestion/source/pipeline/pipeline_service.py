@@ -100,7 +100,6 @@ class PipelineServiceTopology(ServiceTopology):
                 processor="yield_create_request_pipeline_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["pipeline"],
@@ -120,7 +119,6 @@ class PipelineServiceTopology(ServiceTopology):
                 context="pipeline",
                 processor="yield_pipeline",
                 consumer=["pipeline_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaPipelineStatus,
@@ -419,7 +417,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
-                mark_deleted_entity=self.source_config.markDeletedPipelines,
+                recursive=self.source_config.markDeletedPipelines,
                 params={"service": self.context.get().pipeline_service},
             )
 
