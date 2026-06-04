@@ -39,13 +39,13 @@ import {
   nodeTypes,
   onNodeContextMenu,
 } from '../../utils/EntityLineageUtils';
-import Loader from '../common/Loader/Loader';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from './Lineage.interface';
+import LineageSkeleton from './LineageSkeleton.component';
 
 const Lineage = ({
   deleted,
@@ -231,9 +231,7 @@ const Lineage = ({
               </ReactFlow>
             </ReactFlowProvider>
           ) : (
-            <div className="loading-card">
-              <Loader />
-            </div>
+            <LineageSkeleton />
           )}
         </div>
       }

@@ -307,6 +307,9 @@ services:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
+      # Application connector type. Set SERVER_PROTOCOL=h2c on the host to enable
+      # cleartext HTTP/2 at Jetty. Admin connector stays HTTP/1.1 regardless.
+      SERVER_PROTOCOL: ${SERVER_PROTOCOL:-http}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
       # OpenMetadata Server Authentication Configuration
