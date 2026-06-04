@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import i18next from '../utils/i18next/LocalUtil';
-
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
     header: 'label.advanced-search',
@@ -220,7 +218,7 @@ export const PAGE_HEADERS = {
   },
   OM_URL_CONFIG: {
     header: 'label.entity-configuration',
-    headerParams: { entity: i18next.t('label.brand-name-url') },
+    headerParams: { entity: 'label.brand-name-url' },
     subHeader: 'message.om-url-configuration-message',
     subHeaderParams: {},
   },

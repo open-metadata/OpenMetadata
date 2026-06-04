@@ -42,7 +42,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       title: t('label.brand-name'),
       welcomeScreenImg: brandClassBase.getWelcomeScreenImg(),
     };
-  }, []);
+  }, [t]);
 
   return (
     <Card
@@ -60,7 +60,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       <Row className="p-md welcome-screen-full-height">
         <Col className="flex-center" span={12}>
           <img
-            alt="welcome screen image"
+            alt="welcome screen"
             className="welcome-screen-img"
             data-testid="welcome-screen-img"
             loading="lazy"

@@ -72,7 +72,7 @@ const AuthMechanismForm: FC<Props> = ({
     };
 
     return isBot ? botValue : accessTokenValue;
-  }, [isBot]);
+  }, [isBot, t]);
 
   const { authType, tokenExpiry } = useMemo(() => {
     if (isBot) {

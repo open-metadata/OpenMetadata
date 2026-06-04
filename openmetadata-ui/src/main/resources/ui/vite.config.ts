@@ -377,7 +377,7 @@ export default defineConfig(async ({ mode }) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.BRAND_NAME': JSON.stringify(
-        env.BRAND_NAME ?? 'OpenMetadata'
+        env.BRAND_NAME || 'OpenMetadata'
       ),
       global: 'globalThis',
     },

@@ -25,8 +25,8 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import {
-  OPEN_METADATA,
   OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
+  OPEN_METADATA,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';

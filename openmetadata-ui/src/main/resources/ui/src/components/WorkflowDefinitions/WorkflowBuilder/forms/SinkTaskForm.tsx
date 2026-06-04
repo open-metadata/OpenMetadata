@@ -64,7 +64,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     token: '',
     conflictResolution: 'overwriteExternal',
     commitMessageTemplate: 'Sync {entityType}: {entityName}',
-    authorName: t('label.brand-name') + ' Bot',
+    authorName: t('label.brand-name-bot'),
     authorEmail: 'bot@openmetadata.org',
   });
 
@@ -93,7 +93,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
           sinkConfig.commitConfig?.messageTemplate ||
           'Sync {entityType}: {entityName}',
         authorName:
-          sinkConfig.commitConfig?.authorName || t('label.brand-name') + ' Bot',
+          sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
         authorEmail:
           sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
       });
