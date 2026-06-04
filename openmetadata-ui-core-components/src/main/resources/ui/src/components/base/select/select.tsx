@@ -111,7 +111,7 @@ const SelectValue = ({
                 <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
                   <p
                     className={cx(
-                      'tw:truncate tw:font-medium tw:text-primary',
+                      'tw:truncate tw:text-primary',
                       fontSizeClass[fontSize]
                     )}>
                     {state.selectedItem?.label}
@@ -164,7 +164,7 @@ const Select = ({
   placeholder = 'Select',
   icon,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   children,
   items,
   label,

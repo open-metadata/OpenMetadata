@@ -225,7 +225,7 @@ jest.mock('../../utils/FileDetailsUtils', () => ({
   fileDefaultFields: 'owners,tags,followers,dataProducts,domains',
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test File'),
 }));
 

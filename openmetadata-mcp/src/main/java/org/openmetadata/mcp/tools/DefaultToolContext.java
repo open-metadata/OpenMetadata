@@ -3,9 +3,12 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
@@ -17,6 +20,13 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public class DefaultToolContext {
+  private static final int STATUS_BAD_REQUEST = 400;
+  private static final int STATUS_FORBIDDEN = 403;
+  private static final int STATUS_NOT_FOUND = 404;
+  private static final int STATUS_TOO_MANY_REQUESTS = 429;
+  private static final int STATUS_INTERNAL_ERROR = 500;
+  private static final int STATUS_GATEWAY_TIMEOUT = 504;
+
   public DefaultToolContext() {}
 
   /**
@@ -102,6 +112,19 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "create_classification":
+          result =
+              new CreateClassificationTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_tag":
+          result = new CreateTagTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_domain":
+          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "create_data_product":
+          result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               McpSchema.CallToolResult.builder()
@@ -109,7 +132,11 @@ public class DefaultToolContext {
                       List.of(
                           new McpSchema.TextContent(
                               JsonUtils.pojoToJson(
-                                  Map.of("error", "Unknown function: " + toolName)))))
+                                  Map.of(
+                                      "error",
+                                      "Unknown function: " + toolName,
+                                      "statusCode",
+                                      STATUS_BAD_REQUEST)))))
                   .isError(true)
                   .build(),
               elapsedMs(startNanos),
@@ -135,7 +162,7 @@ public class DefaultToolContext {
                                   "error",
                                   String.format("Authorization error: %s", ex.getMessage()),
                                   "statusCode",
-                                  403)))))
+                                  STATUS_FORBIDDEN)))))
               .isError(true)
               .build(),
           elapsedMs(startNanos),
@@ -152,7 +179,7 @@ public class DefaultToolContext {
                                   "error",
                                   String.format("Error executing tool: %s", ex.getMessage()),
                                   "statusCode",
-                                  500)))))
+                                  resolveStatusCode(ex))))))
               .isError(true)
               .build(),
           elapsedMs(startNanos),
@@ -166,28 +193,42 @@ public class DefaultToolContext {
    * a {@link RuntimeException}. Defaults to {@link McpToolCallUsage.ErrorCategory#INTERNAL} when
    * no specific bucket matches.
    */
-  static McpToolCallUsage.ErrorCategory classifyException(Throwable t) {
-    McpToolCallUsage.ErrorCategory result = McpToolCallUsage.ErrorCategory.INTERNAL;
+  protected static McpToolCallUsage.ErrorCategory classifyException(Throwable t) {
+    CategoryMatcher matched = matchException(t);
+    return matched != null ? matched.category() : McpToolCallUsage.ErrorCategory.INTERNAL;
+  }
+
+  /**
+   * Resolves the HTTP-style status code returned to the client for a failed tool call. Kept
+   * separate from {@link #classifyException} (which buckets for telemetry) because the wire status
+   * is a distinct concern: a missing entity is a 404 and a bad argument is a 400, even though both
+   * bucket as {@code VALIDATION}. Defaults to 500 when no specific matcher applies.
+   */
+  protected static int resolveStatusCode(Throwable t) {
+    CategoryMatcher matched = matchException(t);
+    return matched != null ? matched.statusCode() : STATUS_INTERNAL_ERROR;
+  }
+
+  private static CategoryMatcher matchException(Throwable t) {
+    CategoryMatcher result = null;
+    // Identity-based visited set bounds the walk: a malformed cause cycle (A.cause=B, B.cause=A)
+    // would otherwise spin forever. seen.add returns false on a revisit, ending the loop.
+    Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     Throwable cursor = t;
-    while (cursor != null && result == McpToolCallUsage.ErrorCategory.INTERNAL) {
-      McpToolCallUsage.ErrorCategory match = matchCategory(cursor);
-      if (match != null) {
-        result = match;
-      } else {
-        Throwable next = cursor.getCause();
-        cursor = (next == null || next == cursor) ? null : next;
-      }
+    while (cursor != null && result == null && seen.add(cursor)) {
+      result = matchSingle(cursor);
+      cursor = cursor.getCause();
     }
     return result;
   }
 
   /**
-   * Pairing of an exception (name, message) predicate with the bucket it should produce. Kept
-   * as a static table so adding a new category (or extending an existing one with a new keyword)
-   * is a one-line change rather than another {@code else if} branch.
+   * Pairing of an exception (name, message) predicate with the telemetry bucket and HTTP status it
+   * should produce. Kept as a static table so adding a new category (or extending an existing one
+   * with a new keyword) is a one-line change rather than another {@code else if} branch.
    */
   private record CategoryMatcher(
-      Predicate<ExceptionMeta> matches, McpToolCallUsage.ErrorCategory category) {}
+      Predicate<ExceptionMeta> matches, McpToolCallUsage.ErrorCategory category, int statusCode) {}
 
   /** Lower-cased name + message pair so each matcher inspects both without re-parsing. */
   private record ExceptionMeta(String name, String message) {}
@@ -203,7 +244,8 @@ public class DefaultToolContext {
       List.of(
           new CategoryMatcher(
               meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
-              McpToolCallUsage.ErrorCategory.RATE_LIMIT),
+              McpToolCallUsage.ErrorCategory.RATE_LIMIT,
+              STATUS_TOO_MANY_REQUESTS),
           new CategoryMatcher(
               meta ->
                   meta.name().contains("Authorization")
@@ -213,34 +255,43 @@ public class DefaultToolContext {
                       || meta.message().contains("unauthorized")
                       || meta.message().contains("access denied")
                       || meta.message().contains("permission denied"),
-              McpToolCallUsage.ErrorCategory.AUTH),
+              McpToolCallUsage.ErrorCategory.AUTH,
+              STATUS_FORBIDDEN),
+          // Validation by class name runs before the NotFound message heuristic below, so a
+          // bad-argument exception whose message merely contains "not found" (e.g.
+          // IllegalArgumentException("parameter not found")) stays a 400 rather than a 404.
           new CategoryMatcher(
               meta ->
                   meta.name().contains("Validation")
                       || meta.name().contains("IllegalArgument")
                       || meta.name().contains("BadRequest")
                       || meta.message().contains("invalid argument"),
-              McpToolCallUsage.ErrorCategory.VALIDATION),
+              McpToolCallUsage.ErrorCategory.VALIDATION,
+              STATUS_BAD_REQUEST),
+          new CategoryMatcher(
+              meta -> meta.name().contains("NotFound") || meta.message().contains("not found"),
+              McpToolCallUsage.ErrorCategory.VALIDATION,
+              STATUS_NOT_FOUND),
           new CategoryMatcher(
               meta ->
                   meta.name().contains("Timeout")
                       || meta.message().contains("timeout")
                       || meta.message().contains("timed out"),
-              McpToolCallUsage.ErrorCategory.TIMEOUT));
+              McpToolCallUsage.ErrorCategory.TIMEOUT,
+              STATUS_GATEWAY_TIMEOUT));
 
   /**
-   * Returns the category that matches the supplied throwable's name or message, or {@code null}
-   * when no specific bucket applies. Kept separate from {@link #classifyException} so the
+   * Returns the matcher (category + status) for the supplied throwable's name or message, or
+   * {@code null} when no specific bucket applies. Kept separate from {@link #matchException} so the
    * cause-chain walk reads as a single linear loop.
    */
-  private static McpToolCallUsage.ErrorCategory matchCategory(Throwable cursor) {
+  private static CategoryMatcher matchSingle(Throwable cursor) {
     ExceptionMeta meta =
         new ExceptionMeta(
             cursor.getClass().getSimpleName(),
             cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT));
     return CATEGORY_MATCHERS.stream()
         .filter(matcher -> matcher.matches().test(meta))
-        .map(CategoryMatcher::category)
         .findFirst()
         .orElse(null);
   }
