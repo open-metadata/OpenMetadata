@@ -87,8 +87,8 @@ server:
 
       outputBufferSize: ${SERVER_OUTPUT_BUFFER_SIZE:-32KiB}
       inputBufferSize: ${SERVER_INPUT_BUFFER_SIZE:-8KiB}
-      maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-8KiB}
-      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
+      maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-64KiB}
+      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-64KiB}
       headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}
 
       useServerHeader: false
