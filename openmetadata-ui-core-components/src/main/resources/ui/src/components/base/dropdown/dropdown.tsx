@@ -137,6 +137,7 @@ type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
   const { placement = 'bottom right', ...rest } = props;
+
   return (
     <AriaPopover
       placement={placement}
