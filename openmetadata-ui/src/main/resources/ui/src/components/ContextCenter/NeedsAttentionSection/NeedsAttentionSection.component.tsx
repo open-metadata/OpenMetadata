@@ -16,6 +16,7 @@ import {
   BadgeWithDot,
   Button,
   Card,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight, File05, Sun } from '@untitledui/icons';
@@ -71,8 +72,40 @@ function NeedsAttentionRow({ item }: { readonly item: AttentionItem }) {
   );
 }
 
-const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({ items }) => {
+function NeedsAttentionSectionSkeleton() {
+  return (
+    <Card className="tw:p-5">
+      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
+        <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <Skeleton height={14} variant="rounded" width={120} />
+          <Skeleton height={12} variant="rounded" width={180} />
+        </div>
+        <Skeleton height={22} variant="rounded" width={24} />
+      </div>
+      <div className="tw:flex tw:flex-col">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            className="tw:flex tw:items-start tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+            key={i}>
+            <Skeleton height={16} variant="rounded" width={16} />
+            <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+              <Skeleton height={12} variant="rounded" width="65%" />
+              <Skeleton height={20} variant="rounded" width={80} />
+            </div>
+            <Skeleton height={20} variant="rounded" width={56} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({ items, isLoading = false }) => {
   const { t } = useTranslation();
+
+  if (isLoading) {
+    return <NeedsAttentionSectionSkeleton />;
+  }
 
   return (
     <Card className="tw:p-5">

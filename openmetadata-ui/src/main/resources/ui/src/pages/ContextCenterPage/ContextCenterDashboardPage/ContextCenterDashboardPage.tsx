@@ -80,7 +80,9 @@ const ContextCenterDashboardPage: FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [articles, setArticles] = useState<KnowledgePage[]>([]);
+  const [articlesCount, setArticlesCount] = useState(0);
   const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [documentsCount, setDocumentsCount] = useState(0);
   const [folderCount, setFolderCount] = useState(0);
   const [memories, setMemories] = useState<
     Array<{ title: string; meta: string }>
@@ -146,7 +148,8 @@ const ContextCenterDashboardPage: FC = () => {
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
-      setArticles(response.data.map((page: KnowledgePage) => page));
+      setArticlesCount(response.paging.total ?? response.data.length);
+      setArticles(response.data);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -157,11 +160,12 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const files = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, {
+      const response = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, {
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
-      setDocuments(files.map(contextFileToUploadedDocumentItem));
+      setDocumentsCount(response.paging.total ?? response.data.length);
+      setDocuments(response.data.map(contextFileToUploadedDocumentItem));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -316,15 +320,17 @@ const ContextCenterDashboardPage: FC = () => {
         title={t('label.dashboard')}
       />
 
-      <div className="tw:flex tw:flex-col tw:gap-6 tw:h-full">
+      <div className="tw:flex tw:flex-col tw:gap-6 tw:h-full" data-testid="dashboard-detail-card">
         <div className="tw:grid tw:grid-cols-3 tw:gap-4">
           <ContextKnowledgePillarCard
             cta={t('label.view-all-entity', {
               entity: t('label.article-plural'),
             })}
+            dataTestId="article-detail-card"
             icon={File05}
+            isLoading={isArticlesLoading}
             recent={articlesRecentItems}
-            stat={isArticlesLoading ? '—' : String(articles.length)}
+            stat={String(articlesCount)}
             statSub={t('label.published')}
             subtitle={t('message.long-form-authored-versioned')}
             title={t('label.article-plural')}
@@ -338,9 +344,11 @@ const ContextCenterDashboardPage: FC = () => {
             cta={t('label.view-all-entity', {
               entity: t('label.document-plural'),
             })}
+            dataTestId="document-detail-card"
             icon={FolderIcon}
+            isLoading={isDocumentsLoading}
             recent={documentsRecentItems}
-            stat={isDocumentsLoading ? '—' : String(documents.length)}
+            stat={String(documentsCount)}
             statSub={t('label.file-plural')}
             statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
             subtitle={t('message.files-uploaded-for-ai-retrieval')}
@@ -355,9 +363,11 @@ const ContextCenterDashboardPage: FC = () => {
             cta={t('label.view-all-entity', {
               entity: t('label.memory-plural'),
             })}
+            dataTestId="memory-detail-card"
             icon={Sun}
+            isLoading={isMemoriesLoading}
             recent={memories}
-            stat={isMemoriesLoading ? '—' : String(memoriesCount)}
+            stat={String(memoriesCount)}
             statSub={t('label.memory-plural')}
             subtitle={t('message.atomic-facts-ai-should-remember')}
             title={t('label.memory-plural')}
@@ -372,8 +382,8 @@ const ContextCenterDashboardPage: FC = () => {
         <div
           className="tw:grid tw:gap-4 tw:h-full"
           style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-          <AiActivitySection items={[]} />
-          <NeedsAttentionSection items={[]} />
+          <AiActivitySection isLoading={false} items={[]} />
+          <NeedsAttentionSection isLoading={false} items={[]} />
         </div>
       </div>
 

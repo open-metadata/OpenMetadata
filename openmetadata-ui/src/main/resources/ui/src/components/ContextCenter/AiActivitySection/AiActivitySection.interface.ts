@@ -25,4 +25,5 @@ export interface ActivityItem {
 
 export interface AiActivitySectionProps {
   items: ActivityItem[];
+  isLoading?: boolean;
 }

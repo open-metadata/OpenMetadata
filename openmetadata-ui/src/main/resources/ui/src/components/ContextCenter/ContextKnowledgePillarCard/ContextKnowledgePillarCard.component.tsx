@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   FeaturedIcon,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight, TrendUp01 } from '@untitledui/icons';
@@ -59,6 +60,56 @@ function RecentItem({
   );
 }
 
+export const ContextKnowledgePillarCardSkeleton: FC<{
+  dataTestId?: string;
+}> = ({ dataTestId }) => (
+  <Card
+    className="tw:p-5 tw:flex tw:flex-col tw:justify-between"
+    data-testid={dataTestId}>
+    <div>
+      <div className="tw:flex tw:items-center tw:gap-2.5 tw:mb-3.5">
+        <Skeleton height={36} variant="rounded" width={36} />
+        <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+          <Skeleton height={14} variant="rounded" width="50%" />
+          <Skeleton height={12} variant="rounded" width="75%" />
+        </div>
+      </div>
+
+      <div className="tw:flex tw:items-baseline tw:gap-2.5 tw:mb-1 tw:mt-1.5">
+        <Skeleton height={36} variant="rounded" width={64} />
+        <Skeleton height={12} variant="rounded" width={96} />
+      </div>
+
+      <div className="tw:mb-4 tw:mt-1">
+        <Skeleton height={12} variant="rounded" width={80} />
+      </div>
+
+      <div className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-2.5 tw:gap-0">
+        {[0, 1, 2].map((i) => (
+          <div
+            className={`tw:flex tw:items-center tw:gap-2 tw:py-1.5 ${
+              i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''
+            }`}
+            key={i}>
+            <Skeleton
+              className="tw:shrink-0"
+              height={12}
+              variant="circular"
+              width={12}
+            />
+            <Skeleton className="tw:flex-1" variant="rounded" />
+            <Skeleton variant="rounded" width={48} />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary">
+      <Skeleton height={16} variant="rounded" width={80} />
+    </div>
+  </Card>
+);
+
 const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   icon: Icon,
   title,
@@ -70,13 +121,23 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   tone,
   recent,
   cta,
+  isLoading = false,
   onClick,
+  dataTestId,
 }) => {
   const [hovered, setHovered] = useState(false);
+  const statSubLabel = statSubSecondary
+    ? `${statSub} · ${statSubSecondary}`
+    : statSub;
+
+  if (isLoading) {
+    return <ContextKnowledgePillarCardSkeleton dataTestId={dataTestId} />;
+  }
 
   return (
     <Card
       className="tw:cursor-pointer tw:p-5 tw:hover:border-brand-200 tw:flex tw:flex-col tw:justify-between"
+      data-testid={dataTestId}
       style={{
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
         transition: 'transform 0.15s, border-color 0.15s',
@@ -116,7 +177,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
             {stat}
           </Typography>
           <Typography as="span" className="tw:text-quaternary" size="text-xs">
-            {statSubSecondary ? `${statSub} · ${statSubSecondary}` : statSub}
+            {statSubLabel}
           </Typography>
         </div>
 

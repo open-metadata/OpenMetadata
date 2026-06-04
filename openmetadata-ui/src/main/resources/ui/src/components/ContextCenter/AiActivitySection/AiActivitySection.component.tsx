@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   FeaturedIcon,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight, File05, Sun } from '@untitledui/icons';
@@ -87,8 +88,40 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
   );
 }
 
-const AiActivitySection: FC<AiActivitySectionProps> = ({ items }) => {
+function AiActivitySectionSkeleton() {
+  return (
+    <Card className="tw:p-5">
+      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
+        <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <Skeleton height={14} variant="rounded" width={120} />
+          <Skeleton height={12} variant="rounded" width={200} />
+        </div>
+        <Skeleton height={24} variant="rounded" width={80} />
+      </div>
+      <div className="tw:flex tw:flex-col">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            className="tw:flex tw:items-center tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+            key={i}>
+            <Skeleton height={28} variant="rounded" width={28} />
+            <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+              <Skeleton height={10} variant="rounded" width="40%" />
+              <Skeleton height={12} variant="rounded" width="70%" />
+              <Skeleton height={10} variant="rounded" width="55%" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+const AiActivitySection: FC<AiActivitySectionProps> = ({ items, isLoading = false }) => {
   const { t } = useTranslation();
+
+  if (isLoading) {
+    return <AiActivitySectionSkeleton />;
+  }
 
   return (
     <Card className="tw:p-5">

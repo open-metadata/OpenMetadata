@@ -49,16 +49,29 @@ export const deleteFolder = async (
   });
 };
 
+export interface ListContextFilesParams {
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ListContextFilesResponse {
+  data: ContextFile[];
+  paging: { total: number };
+}
+
 export const listContextFiles = async (
   limit = 100,
-  params: object = {}
-): Promise<ContextFile[]> => {
-  const response = await APIClient.get<{ data: ContextFile[] }>(
+  params: ListContextFilesParams = {}
+): Promise<ListContextFilesResponse> => {
+  const response = await APIClient.get<ListContextFilesResponse>(
     '/contextCenter/drive/files',
     { params: { fields: 'folder', limit, ...params } }
   );
 
-  return response.data.data ?? [];
+  return {
+    data: response.data.data ?? [],
+    paging: response.data.paging ?? { total: (response.data.data ?? []).length },
+  };
 };
 
 export const moveFileToFolder = async (

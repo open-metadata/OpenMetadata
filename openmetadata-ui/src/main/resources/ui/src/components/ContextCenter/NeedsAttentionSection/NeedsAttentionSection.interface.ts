@@ -24,4 +24,5 @@ export interface AttentionItem {
 
 export interface NeedsAttentionSectionProps {
   items: AttentionItem[];
+  isLoading?: boolean;
 }

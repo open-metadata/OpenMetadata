@@ -31,5 +31,7 @@ export interface ContextKnowledgePillarCardProps {
   tone: PillarTone;
   recent: PillarRecentItem[];
   cta: string;
+  isLoading?: boolean;
   onClick: () => void;
+  dataTestId?: string;
 }
