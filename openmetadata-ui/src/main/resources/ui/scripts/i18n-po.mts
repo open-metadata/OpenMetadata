@@ -18,11 +18,12 @@
  * `crowdin.yml` and `src/locale/TRANSLATING.md`; use this PO route only when
  * your toolchain needs PO.
  *
- * Uses `i18next-conv` on demand via `npx` (no committed dependency):
- *   node scripts/i18n-po.mjs to-po   sv-se   # JSON -> i18n-po/sv-se.po
- *   node scripts/i18n-po.mjs from-po sv-se   # i18n-po/sv-se.po -> JSON
- * After `from-po`, run `yarn i18n` (re-sync key order) then
- * `node scripts/i18n-validate.mjs sv-se`.
+ * Uses `i18next-conv` on demand via `npx` (no committed dependency). Runs under
+ * Node's native TypeScript type-stripping (Node >= 22.6):
+ *   node --experimental-strip-types scripts/i18n-po.ts to-po   sv-se
+ *   node --experimental-strip-types scripts/i18n-po.ts from-po sv-se
+ *   yarn i18n:to-po sv-se   /   yarn i18n:from-po sv-se
+ * After `from-po`, run `yarn i18n` then `yarn i18n:validate sv-se`.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -35,13 +36,17 @@ const ROOT = join(HERE, '..');
 const LANG_DIR = join(ROOT, 'src', 'locale', 'languages');
 const PO_DIR = join(ROOT, 'i18n-po');
 
-const [mode, code] = process.argv.slice(2);
 const MODES = new Set(['to-po', 'from-po']);
+// Locale codes are `lang-country`, e.g. `sv-se`. Validate before using the
+// value in a file path / subprocess arg to prevent traversal or arg injection.
+const LOCALE_RE = /^[a-z]{2,3}-[a-z]{2,3}$/;
+
+const [mode, code] = process.argv.slice(2);
 
 let exitCode = 0;
-if (!MODES.has(mode) || !code) {
+if (!mode || !MODES.has(mode) || !code || !LOCALE_RE.test(code)) {
   console.error(
-    'Usage: node scripts/i18n-po.mjs <to-po|from-po> <locale-code, e.g. sv-se>'
+    'Usage: node scripts/i18n-po.ts <to-po|from-po> <locale-code, e.g. sv-se>'
   );
   exitCode = 2;
 } else {
@@ -51,17 +56,17 @@ if (!MODES.has(mode) || !code) {
   const po = join(PO_DIR, `${code}.po`);
   const [source, target] = mode === 'to-po' ? [json, po] : [po, json];
 
-  execFileSync('npx', ['--yes', 'i18next-conv', '-l', lang, '-s', source, '-t', target], {
-    stdio: 'inherit',
-  });
+  execFileSync(
+    'npx',
+    ['--yes', 'i18next-conv', '-l', lang, '-s', source, '-t', target],
+    { stdio: 'inherit' }
+  );
 
-  if (mode === 'to-po') {
-    console.log(`Wrote ${po}`);
-  } else {
-    console.log(
-      `Wrote ${json} — now run \`yarn i18n\` then \`node scripts/i18n-validate.mjs ${code}\`.`
-    );
-  }
+  console.log(
+    mode === 'to-po'
+      ? `Wrote ${po}`
+      : `Wrote ${json} — now run \`yarn i18n\` then \`yarn i18n:validate ${code}\`.`
+  );
 }
 
 process.exit(exitCode);

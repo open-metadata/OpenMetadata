@@ -24,32 +24,38 @@
  * and reports translation coverage. Exits non-zero on any failure, so it can
  * gate CI once all shipped locales conform.
  *
- * Usage:
- *   node scripts/i18n-validate.mjs            # every non-primary locale
- *   node scripts/i18n-validate.mjs sv-se      # one or more specific locales
+ * Runs under Node's native TypeScript type-stripping (Node >= 22.6); no
+ * transpiler or runtime dependency. Usage:
+ *   node --experimental-strip-types scripts/i18n-validate.ts          # all locales
+ *   node --experimental-strip-types scripts/i18n-validate.ts sv-se    # specific locales
+ *   yarn i18n:validate sv-se                                          # via npm script
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+type Leaf = [string, Json];
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LANG_DIR = join(HERE, '..', 'src', 'locale', 'languages');
 const PRIMARY = 'en-us';
 
-const raw = (code) => readFileSync(join(LANG_DIR, `${code}.json`), 'utf8');
-const read = (code) => JSON.parse(raw(code));
+const raw = (code: string): string =>
+  readFileSync(join(LANG_DIR, `${code}.json`), 'utf8');
+const read = (code: string): Record<string, Json> => JSON.parse(raw(code));
 
-const flatten = (obj, prefix = '') =>
+const flatten = (obj: Record<string, Json>, prefix = ''): Leaf[] =>
   Object.entries(obj).flatMap(([k, v]) =>
-    v && typeof v === 'object'
-      ? flatten(v, `${prefix}${k}.`)
-      : [[`${prefix}${k}`, v]]
+    v !== null && typeof v === 'object' && !Array.isArray(v)
+      ? flatten(v as Record<string, Json>, `${prefix}${k}.`)
+      : [[`${prefix}${k}`, v] as Leaf]
   );
 
 const TOKEN_RE = /{{\s*[\w.-]+\s*}}|<\/?\d+>/g;
-const tokens = (s) => (String(s).match(TOKEN_RE) || []).sort();
-const sameTokens = (a, b) => {
+const tokens = (s: unknown): string[] => (String(s).match(TOKEN_RE) ?? []).sort();
+const sameTokens = (a: unknown, b: unknown): boolean => {
   const x = tokens(a);
   const y = tokens(b);
   return x.length === y.length && x.every((t, i) => t === y[i]);
@@ -57,7 +63,8 @@ const sameTokens = (a, b) => {
 
 const primaryFlat = flatten(read(PRIMARY));
 const primaryKeys = primaryFlat.map(([k]) => k);
-const primaryMap = new Map(primaryFlat);
+const primaryKeySet = new Set(primaryKeys);
+const primaryMap = new Map<string, Json>(primaryFlat);
 
 const argLocales = process.argv.slice(2).map((a) => a.replace(/\.json$/, ''));
 const targets = argLocales.length
@@ -70,15 +77,16 @@ const targets = argLocales.length
 let failed = false;
 
 for (const code of targets) {
-  const errors = [];
+  const errors: string[] = [];
   const text = raw(code);
-  const obj = JSON.parse(text);
+  const obj = JSON.parse(text) as Record<string, Json>;
   const flat = flatten(obj);
   const keys = flat.map(([k]) => k);
+  const keySet = new Set(keys);
 
   if (keys.join('|') !== primaryKeys.join('|')) {
-    const missing = primaryKeys.filter((k) => !keys.includes(k));
-    const extra = keys.filter((k) => !primaryKeys.includes(k));
+    const missing = primaryKeys.filter((k) => !keySet.has(k));
+    const extra = keys.filter((k) => !primaryKeySet.has(k));
     if (missing.length) {
       errors.push(
         `${missing.length} missing key(s): ${missing.slice(0, 5).join(', ')}${

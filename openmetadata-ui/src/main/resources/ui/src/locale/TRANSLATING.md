@@ -31,7 +31,7 @@ cp src/locale/languages/en-us.json src/locale/languages/<code>.json
 
 # 4. keep keys in sync with the primary, then validate
 yarn i18n                                  # sync keys/order with en-us
-node scripts/i18n-validate.mjs <code>      # structural + token + format checks
+yarn i18n:validate <code>                  # structural + token + format checks
 ```
 
 `<code>` is lowercase `lang-country`, e.g. `sv-se`.
@@ -57,12 +57,13 @@ Three edits make the locale selectable and lazily loaded:
 3. **Leave proper nouns / acronyms / product names in English** (API, SQL, JWT,
    FQN, Webhook, dbt, Elasticsearch, Snowflake, OpenMetadata, …).
 4. **Formatting is fixed**: 2-space JSON + trailing newline (what `yarn i18n`
-   and Prettier produce). `node scripts/i18n-validate.mjs` fails on any drift.
+   and Prettier produce). `yarn i18n:validate` fails on any drift.
 
-## Validation (`scripts/i18n-validate.mjs`)
+## Validation (`scripts/i18n-validate.mts`)
 
 Dependency-free structural check used after any locale edit (and a candidate CI
-gate). For each locale it verifies, against `en-us`:
+gate). It runs on Node's native TypeScript type-stripping (Node ≥ 22.6) — no
+transpiler or runtime dependency. For each locale it verifies, against `en-us`:
 
 - **key parity** — identical keys, identical order;
 - **token parity** — every `{{x}}` / `<n>` tag matches the primary string;
@@ -71,9 +72,10 @@ gate). For each locale it verifies, against `en-us`:
 and prints coverage. Exits non-zero on failure.
 
 ```bash
-node scripts/i18n-validate.mjs            # all locales
-node scripts/i18n-validate.mjs sv-se      # one locale
-yarn i18n:validate sv-se                  # same, via npm script
+yarn i18n:validate                  # all locales
+yarn i18n:validate sv-se            # one locale
+# under the hood (Node >= 22.6, native TS, no transpiler):
+#   node --experimental-strip-types scripts/i18n-validate.mts sv-se
 ```
 
 ## Ways to produce the translations
@@ -90,7 +92,7 @@ the TMS → pull `<code>.json` → `yarn i18n` → `i18n:validate`.
 ### B. gettext PO (Poedit / translate-toolkit / DeepL)
 
 If your toolchain prefers PO, bridge JSON ⇄ PO with
-[`scripts/i18n-po.mjs`](../../scripts/i18n-po.mjs) (uses `i18next-conv` via
+[`scripts/i18n-po.mts`](../../scripts/i18n-po.mts) (uses `i18next-conv` via
 `npx`):
 
 ```bash
