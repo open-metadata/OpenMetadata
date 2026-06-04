@@ -354,12 +354,14 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
                 }
                 // Then delete any concrete index sharing the alias name, atomically, so the alias
                 // add below cannot race a separate delete and orphan the canonical name.
+                // must_exist is intentionally omitted to stay byte-for-byte aligned with the
+                // OpenSearch path (which rejects it); it is unnecessary because
+                // resolveCanonicalRemoval only forwards indices already confirmed to exist.
                 for (String indexToRemove : finalIndicesToRemove) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.removeIndex(
-                              removeIndexBuilder ->
-                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
                 }
                 // Finally, add aliases to the new index
                 for (String alias : finalAliases) {
