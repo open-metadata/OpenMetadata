@@ -13,9 +13,9 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { isString, omit } from 'lodash';
-import { EntityTags } from 'Models';
+import type { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -25,17 +25,17 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { Classification } from '../generated/entity/classification/classification';
+import type { Tag } from '../generated/entity/classification/tag';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
-  AssetCertification,
-  Column,
-  EntityReference,
   TagSource,
+  type AssetCertification,
+  type Column,
+  type EntityReference,
 } from '../generated/entity/data/table';
-import { Paging } from '../generated/type/paging';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import type { Paging } from '../generated/type/paging';
+import { LabelType, State, type TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
 import {
   getAllClassifications,

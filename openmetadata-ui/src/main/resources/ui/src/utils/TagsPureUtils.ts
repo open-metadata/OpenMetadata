@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
+import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ResourceEntity,
