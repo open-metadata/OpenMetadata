@@ -33,6 +33,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -69,23 +70,32 @@ class HttpHeaderSizeYamlTest {
    */
   private static final long MIN_REQUEST_HEADER_BYTES = 64L * 1024L;
 
+  /**
+   * Shipped server configs. Docker dev configs under {@code docker/development/} use the same
+   * {@code SERVER_MAX_REQUEST_HEADER_SIZE} env var so they inherit the safe default; covering
+   * them here would couple this unit test to dev-only yaml layout that can change for
+   * unrelated reasons. The repo root is resolved relative to the module CWD (surefire default)
+   * but can be overridden with {@code -Drepo.root=/path} for IDE runs.
+   */
   private static final List<String> CONFIG_PATHS =
       List.of(
-          "../conf/openmetadata.yaml",
-          "../conf/openmetadata-h2-test.yaml",
-          "../docker/development/distributed-test/local/server1.yaml",
-          "../docker/development/distributed-test/local/server2.yaml",
-          "../docker/development/distributed-test/local/server3.yaml");
+          "conf/openmetadata.yaml",
+          "conf/openmetadata-h2-test.yaml",
+          "openmetadata-integration-tests/src/test/resources/openmetadata-secure-test.yaml");
+
+  private static final Path REPO_ROOT =
+      Path.of(System.getProperty("repo.root", "..")).toAbsolutePath().normalize();
 
   @Test
   void allConfigsAllowLargeOidcCallbacks() throws Exception {
-    for (String path : CONFIG_PATHS) {
-      OpenMetadataApplicationConfig config = parse(path);
+    for (String relativePath : CONFIG_PATHS) {
+      String absolutePath = REPO_ROOT.resolve(relativePath).toString();
+      OpenMetadataApplicationConfig config = parse(absolutePath);
       assertTrue(
           config.getServerFactory() instanceof DefaultServerFactory,
-          path + ": expected DefaultServerFactory");
+          relativePath + ": expected DefaultServerFactory");
       DefaultServerFactory serverFactory = (DefaultServerFactory) config.getServerFactory();
-      assertHasLargeHeaderBuffer(serverFactory.getApplicationConnectors(), path);
+      assertHasLargeHeaderBuffer(serverFactory.getApplicationConnectors(), relativePath);
     }
   }
 

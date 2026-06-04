@@ -70,7 +70,7 @@ server:
       # group claim into the `id_token` JWT and redirect to `/callback?id_token=...`,
       # so users with 60+ groups blow past Jetty's 8KiB default. See issue #28223.
       maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-64KiB}
-      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-64KiB}
+      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
       headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}  # Cache parsed headers (in bytes)
 
       # Performance settings

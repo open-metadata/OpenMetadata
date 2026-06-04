@@ -8,6 +8,9 @@ server:
     - type: http
       port: 0
       uriCompliance: UNSAFE
+      # Match production default — OIDC callbacks for users in 60+ AD groups carry id_tokens
+      # that exceed Jetty's 8KiB request header buffer. See issue #28223.
+      maxRequestHeaderSize: 64KiB
   adminConnectors:
     - type: http
       port: 0
