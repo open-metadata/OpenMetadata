@@ -15,6 +15,7 @@ Test REST/OpenAPI.
 import json
 from copy import deepcopy
 from io import BytesIO
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -52,6 +53,8 @@ from metadata.ingestion.source.api.rest.parser import (
     parse_openapi_schema_from_s3,
 )
 
+LOCAL_OPENAPI_SCHEMA_PATH = str(Path(__file__).parents[4] / "examples" / "openapi" / "sample.json")
+
 mock_rest_config = {
     "source": {
         "type": "rest",
@@ -59,7 +62,7 @@ mock_rest_config = {
         "serviceConnection": {
             "config": {
                 "type": "Rest",
-                "openAPISchemaConnection": {"openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json"},
+                "openAPISchemaConnection": {"openAPISchemaFilePath": LOCAL_OPENAPI_SCHEMA_PATH},
                 "docURL": "https://petstore3.swagger.io/",
             }
         },
@@ -136,25 +139,6 @@ EXPECTED_COLLECTION_REQUEST = [
 ]
 MOCK_STORE_URL = AnyUrl("https://petstore3.swagger.io/#/store")
 MOCK_STORE_ORDER_URL = AnyUrl("https://petstore3.swagger.io/#/store/placeOrder")
-MOCK_JSON_RESPONSE = {
-    "paths": {
-        "/user/login": {
-            "get": {
-                "tags": ["user"],
-                "summary": "Logs user into the system",
-                "operationId": "loginUser",
-            }
-        }
-    },
-    "tags": [
-        {
-            "name": "pet",
-            "description": "Everything about your Pets",
-        },
-        {"name": "store", "description": "Access to Petstore orders"},
-        {"name": "user", "description": "Operations about user"},
-    ],
-}
 
 # Mock data for testing process_schema_fields
 MOCK_SCHEMA_RESPONSE_SIMPLE = {
@@ -426,12 +410,8 @@ MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful oper
 
 
 class RESTTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.api.api_service.get_connection",
-        return_value=MOCK_JSON_RESPONSE,
-    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def __init__(self, methodName, test_connection, get_connection) -> None:  # noqa: N803
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_rest_config)
@@ -482,12 +462,8 @@ class RESTTest(TestCase):
         endpoint_url = self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT)
         assert endpoint_url == MOCK_STORE_ORDER_URL
 
-    @patch(
-        "metadata.ingestion.source.api.api_service.get_connection",
-        return_value=MOCK_JSON_RESPONSE,
-    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_collection_filter_pattern(self, test_connection, get_connection):
+    def test_collection_filter_pattern(self, test_connection):
         """test collection filter pattern"""
         test_connection.return_value = False
         # Test with include pattern
@@ -1028,12 +1004,8 @@ class RESTTest(TestCase):
         # When no items key exists, children is None
         assert result.children is None
 
-    @patch(
-        "metadata.ingestion.source.api.api_service.get_connection",
-        return_value=MOCK_JSON_RESPONSE,
-    )
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_endpoint_filter_pattern(self, test_connection, get_connection):
+    def test_endpoint_filter_pattern(self, test_connection):
         """test endpoint filter pattern"""
         test_connection.return_value = False
 
