@@ -303,6 +303,9 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
+        if (hit.containsKey("_score")) {
+          cleanedSource.put("similarityScore", hit.get("_score"));
+        }
         cleanedResults.add(cleanedSource);
       }
     }
