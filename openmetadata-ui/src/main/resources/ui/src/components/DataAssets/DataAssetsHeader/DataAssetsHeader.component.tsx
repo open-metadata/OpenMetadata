@@ -805,9 +805,9 @@ export const DataAssetsHeader = ({
             data-testid="source-url-button"
             href={sourceUrl}
             iconLeading={IconExternalLink}
-            size="sm"
-            target="_blank"
             rel="noopener noreferrer"
+            size="sm"
+            target="_blank">
             {t('label.view-in-service-type', {
               serviceType: get(dataAsset, 'serviceType', ''),
             })}
