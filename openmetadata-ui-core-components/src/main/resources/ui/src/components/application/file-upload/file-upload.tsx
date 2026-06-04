@@ -241,8 +241,8 @@ export const FileUploadDropZone = ({
       <div className="tw:flex tw:flex-col tw:gap-1 tw:text-center">
         <div className="tw:flex tw:justify-center tw:gap-1 tw:text-center">
           <input
-            hidden
             accept={accept}
+            className="tw:peer tw:sr-only"
             data-testid={inputDataTestId}
             disabled={isDisabled}
             id={id}
