@@ -190,6 +190,13 @@ jest.mock('../Entity/EntityLineage/LineageLayers/LineageLayers', () => ({
   default: jest.fn(() => <div data-testid="lineage-layers">Layers</div>),
 }));
 
+jest.mock('./LineageSkeleton.component', () => ({
+  __esModule: true,
+  default: jest.fn(() => (
+    <div data-testid="lineage-skeleton">LineageSkeleton</div>
+  )),
+}));
+
 jest.mock('reactflow', () => ({
   __esModule: true,
   default: jest.fn(
@@ -300,7 +307,7 @@ describe('Lineage Component', () => {
       expect(screen.getByTestId('react-flow-minimap')).toBeInTheDocument();
     });
 
-    it('should render loader when init is false', () => {
+    it('should render skeleton when init is false', () => {
       (useLineageProvider as jest.Mock).mockReturnValue({
         ...mockLineageProviderValues,
         init: false,
@@ -308,7 +315,7 @@ describe('Lineage Component', () => {
 
       render(<Lineage {...defaultProps} />);
 
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(screen.getByTestId('lineage-skeleton')).toBeInTheDocument();
       expect(
         screen.queryByTestId('react-flow-component')
       ).not.toBeInTheDocument();

@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(UserMetricsResourceIT.class);
-  private static final long LAST_ACTIVITY_MAX_AGE_SECONDS = 1800;
+  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(30);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
@@ -259,9 +259,9 @@ public class UserMetricsResourceIT {
       Instant now = Instant.now();
       long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
       assertTrue(
-          secondsSinceActivity < LAST_ACTIVITY_MAX_AGE_SECONDS,
+          secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
           "Last activity should be within last "
-              + Duration.ofSeconds(LAST_ACTIVITY_MAX_AGE_SECONDS).toMinutes()
+              + MAX_LAST_ACTIVITY_AGE.toMinutes()
               + " minutes, but was "
               + secondsSinceActivity
               + " seconds ago");
@@ -329,9 +329,9 @@ public class UserMetricsResourceIT {
     Instant now = Instant.now();
     long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
     assertTrue(
-        secondsSinceActivity < LAST_ACTIVITY_MAX_AGE_SECONDS,
+        secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
         "Last activity should be within last "
-            + Duration.ofSeconds(LAST_ACTIVITY_MAX_AGE_SECONDS).toMinutes()
+            + MAX_LAST_ACTIVITY_AGE.toMinutes()
             + " minutes, but was "
             + secondsSinceActivity
             + " seconds ago");
