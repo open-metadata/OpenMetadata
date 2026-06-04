@@ -33,7 +33,6 @@ import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
 import iomete from '../assets/img/service-icon-iomete.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
-import microsoftFabric from '../assets/img/service-icon-microsoftfabric.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -181,7 +180,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,
-  microsoftfabric: microsoftFabric,
 
   // Messaging services
   kafka: kafka,
@@ -225,7 +223,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
-  microsoftfabricpipeline: microsoftFabric,
 
   // ML Model services
   mlflow: mlflow,
