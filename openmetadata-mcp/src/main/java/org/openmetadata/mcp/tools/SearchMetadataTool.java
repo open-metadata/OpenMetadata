@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
@@ -188,6 +189,8 @@ public class SearchMetadataTool implements McpTool {
     if (params.containsKey("queryFilter")) {
       queryFilter = (String) params.get("queryFilter");
       JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
+
+      validateQuerySafety(queryNode);
 
       if (!queryNode.has("query")) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
@@ -493,5 +496,67 @@ public class SearchMetadataTool implements McpTool {
   @SuppressWarnings("unchecked")
   private static List<Object> safeGetList(Object obj) {
     return (obj instanceof List) ? (List<Object>) obj : null;
+  }
+
+  /**
+   * Elasticsearch query types that allow arbitrary code execution or template expansion.
+   * These must never be allowed in user-supplied query filters as they can bypass
+   * RBAC constraints or cause denial-of-service.
+   *
+   * <ul>
+   *   <li>script — inline or stored scripts (painless/groovy)</li>
+   *   <li>script_score — script-based scoring</li>
+   *   <li>percolator — reverse query matching</li>
+   *   <li>wrapper — base64-encoded queries (can hide nested dangerous types)</li>
+   *   <li>scripted_metric — script-based aggregation (checked at root level)</li>
+   * </ul>
+   */
+  @VisibleForTesting
+  static final Set<String> BLOCKED_QUERY_TYPES =
+      Set.of(
+          "script",
+          "script_score",
+          "percolator",
+          "wrapper",
+          "scripted_metric",
+          "function_score",
+          "runtime_mappings");
+
+  /**
+   * Recursively validates that a parsed JSON query tree does not contain any blocked
+   * Elasticsearch query types (script, script_score, percolator, wrapper, scripted_metric).
+   *
+   * @param node the parsed JSON query node to validate
+   * @throws IOException if a blocked query type is found
+   */
+  @VisibleForTesting
+  static void validateQuerySafety(JsonNode node) throws IOException {
+    if (node == null || !node.isObject()) {
+      return;
+    }
+
+    for (String blockedType : BLOCKED_QUERY_TYPES) {
+      if (node.has(blockedType)) {
+        throw new IOException(
+            "queryFilter contains blocked query type '" + blockedType + "'. "
+                + "This query type is not allowed for security reasons.");
+      }
+    }
+
+    // Recurse into child objects (bool clauses, nested queries, etc.)
+    var iterator = node.fields();
+    while (iterator.hasNext()) {
+      Map.Entry<String, JsonNode> field = iterator.next();
+      JsonNode child = field.getValue();
+      if (child.isObject()) {
+        validateQuerySafety(child);
+      } else if (child.isArray()) {
+        for (JsonNode element : child) {
+          if (element.isObject()) {
+            validateQuerySafety(element);
+          }
+        }
+      }
+    }
   }
 }
