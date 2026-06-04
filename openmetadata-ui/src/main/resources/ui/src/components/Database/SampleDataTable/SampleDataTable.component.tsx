@@ -58,6 +58,9 @@ import {
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
+const SAMPLE_DATA_CHILDREN_COLUMN_NAME =
+  '__openmetadata_sample_data_children__';
+
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
@@ -337,6 +340,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       </Space>
 
       <TableComponent
+        childrenColumnName={SAMPLE_DATA_CHILDREN_COLUMN_NAME}
         columns={sampleData?.columns}
         data-testid="sample-data-table"
         dataSource={slicedRows}
