@@ -26,6 +26,14 @@ jest.mock('../../../../hooks/authHooks', () => ({
     onLogoutHandler: jest.fn(),
   }),
 }));
+jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getUserProfileExtraItems: jest
+      .fn()
+      .mockReturnValue([{ key: 'app-mode', label: 'app-mode-extra-item' }]),
+  },
+}));
 const translationState = {
   language: 'en',
 };
@@ -153,6 +161,18 @@ describe('UserProfileIcon', () => {
     );
 
     expect(screen.getByRole('button')).toBeInTheDocument();
+  });
+
+  it('should render extra profile menu items provided by the navbar util', () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    openDropdown();
+
+    expect(screen.getByText('app-mode-extra-item')).toBeInTheDocument();
   });
 
   it('should display personas with pagination and sorting', async () => {
