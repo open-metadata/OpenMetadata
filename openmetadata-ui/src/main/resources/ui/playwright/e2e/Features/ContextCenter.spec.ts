@@ -727,7 +727,9 @@ test.describe('Context Center', () => {
       await modal.getByRole('button', { name: /save/i }).click();
       await createResPromise;
 
-      const card = page.locator(`[data-testid="knowledge-card-${testQuickLinkTitle}"]`);
+      const card = page.locator(
+        `[data-testid="knowledge-card-${testQuickLinkTitle}"]`
+      );
       await expect(card).toBeVisible();
     });
 
@@ -736,7 +738,9 @@ test.describe('Context Center', () => {
     }) => {
       await navigateToArticles(page);
 
-      const card = page.locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`).first();
+      const card = page
+        .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+        .first();
       await card.scrollIntoViewIfNeeded();
       await expect(card).toBeVisible();
 
@@ -893,7 +897,9 @@ test.describe('Context Center', () => {
     test('deleting quick link removes it from the list', async ({ page }) => {
       await navigateToArticles(page);
 
-      const card = page.locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`).first();
+      const card = page
+        .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+        .first();
       await card.scrollIntoViewIfNeeded();
       await expect(card).toBeVisible();
 
@@ -907,7 +913,9 @@ test.describe('Context Center', () => {
       expect(deleteRes.status()).toBe(200);
 
       await expect(
-        page.locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`).first()
+        page
+          .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+          .first()
       ).not.toBeVisible();
     });
 
