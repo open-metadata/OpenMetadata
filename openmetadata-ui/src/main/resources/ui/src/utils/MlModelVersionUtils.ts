@@ -27,8 +27,8 @@ import {
   getDiffByFieldName,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
-import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtilsPure';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtilsPure';
 
 const handleFeatureDescriptionChangeDiff = (
   colList: Mlmodel['mlFeatures'],

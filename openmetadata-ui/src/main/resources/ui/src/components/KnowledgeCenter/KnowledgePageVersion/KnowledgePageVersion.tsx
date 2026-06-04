@@ -34,12 +34,12 @@ import {
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { stringToHTML } from '../../../utils/StringUtils';

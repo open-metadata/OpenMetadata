@@ -68,7 +68,6 @@ export {
   getDiffByFieldName,
   isEndsWithField,
 } from './EntityDiffPureUtils';
-
 // Re-export everything from EntityDiffUtils for backward compatibility
 export {
   getAddedDiffElement,
@@ -81,7 +80,6 @@ export {
   getTextDiffElements,
   getUpdatedExtensionDiffFields,
 } from './EntityDiffUtils';
-
 // Re-export everything from EntityVersionUtilsPure for backward compatibility
 export {
   addDeletedColumnsDiff,

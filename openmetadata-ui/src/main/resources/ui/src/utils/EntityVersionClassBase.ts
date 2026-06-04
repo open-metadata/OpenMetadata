@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  ComponentType,
-  FC,
-  lazy,
-  LazyExoticComponent,
-} from 'react';
+import { ComponentType, FC, lazy, LazyExoticComponent } from 'react';
 import { EntityType } from '../enums/entity.enum';
 import entityUtilClassBase from './EntityUtilClassBase';
 

@@ -27,8 +27,8 @@ import {
   isEndsWithField,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
-import { getTagsDiff } from './EntityVersionUtilsPure';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getTagsDiff } from './EntityVersionUtilsPure';
 
 const handleTaskDescriptionChangeDiff = (
   tasksDiff: EntityDiffProps,
