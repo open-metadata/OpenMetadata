@@ -464,7 +464,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     assertNotNull(spreadsheetWithWorksheets.getWorksheets());
     long getWorksheetCount =
         spreadsheetWithWorksheets.getWorksheets().stream()
-            .filter(ws -> ws.getName().startsWith(ns.prefix("sheet")))
+            .filter(ws -> ws.getName().startsWith("sheet"))
             .count();
     assertEquals(3, getWorksheetCount, "Single GET should return 3 worksheets");
 
@@ -487,7 +487,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         listedSpreadsheet.getWorksheets(), "List path must populate worksheets (silently dropped)");
     long listWorksheetCount =
         listedSpreadsheet.getWorksheets().stream()
-            .filter(ws -> ws.getName().startsWith(ns.prefix("sheet")))
+            .filter(ws -> ws.getName().startsWith("sheet"))
             .count();
     assertEquals(3, listWorksheetCount, "List path should return 3 worksheets");
     assertNotNull(listedSpreadsheet.getService(), "List path must populate service");
