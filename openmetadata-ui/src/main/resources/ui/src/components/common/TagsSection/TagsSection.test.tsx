@@ -227,7 +227,7 @@ jest.mock('../Loader/Loader', () => ({
 jest.mock('../../../rest/tableAPI', () => ({
   patchTableDetails: jest.fn(),
 }));
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(

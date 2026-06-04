@@ -26,7 +26,7 @@ const mockData = {
   data: { name: 'Test Gateway' },
 };
 
-jest.mock('../../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((entity) => entity.name),
 }));
 
