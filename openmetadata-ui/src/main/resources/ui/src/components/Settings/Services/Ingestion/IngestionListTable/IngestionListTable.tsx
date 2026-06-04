@@ -239,7 +239,9 @@ function IngestionListTable({
           handleEditClick={handleEditClick}
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-          ingestionPipelinePermissions={ingestionPipelinePermissions}
+          ingestionPipelinePermissions={
+            ingestionPipelinePermissions?.[record.name]
+          }
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}

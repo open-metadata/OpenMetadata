@@ -54,14 +54,12 @@ function PipelineActions({
 
   const { editPermission, deletePermission, editStatusPermission } =
     useMemo(() => {
-      const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
-
       return {
-        editPermission: pipelinePermission?.[Operation.EditAll],
-        deletePermission: pipelinePermission?.[Operation.Delete],
+        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
         editStatusPermission:
-          pipelinePermission?.[Operation.EditAll] ||
-          pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+          ingestionPipelinePermissions?.[Operation.EditAll] ||
+          ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
       };
     }, [ingestionPipelinePermissions, pipelineName]);
 
