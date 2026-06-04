@@ -44,7 +44,7 @@ import {
   mlModelQueryKey,
 } from '../../rest/queries/mlModelQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

@@ -27,7 +27,7 @@ import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
 
