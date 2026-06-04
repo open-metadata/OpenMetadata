@@ -24,6 +24,8 @@ import {
 } from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
+import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
 
@@ -204,6 +206,34 @@ export const exportLineageByEntityCountAsync = async (params: {
         type: undefined,
       },
     }
+  );
+
+  return response.data;
+};
+
+/**
+ * Batch-hydrate a set of lineage nodes (entityType + id pairs) into full entity objects in a
+ * single round-trip. Server replies with {@link HydrateLineageResponse} — an
+ * `entitiesByType` map keyed by entityType plus a `droppedCount` of entries the caller could
+ * not see.
+ *
+ * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
+ * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
+ * are silently dropped from `entitiesByType` and counted in `droppedCount` so the UI can
+ * surface "N items hidden by permissions" if it wants.
+ *
+ * Treat each map value as `unknown[]` because the server returns heterogeneous full entity
+ * objects (Table, Dashboard, Container, Pipeline, …) keyed by `entityType` and OpenMetadata
+ * does not have a discriminated-union JSON schema for `EntityInterface`. Callers should narrow
+ * per-type at the call-site — e.g. `entitiesByType.table as Table[]` — once they know which key
+ * they're consuming.
+ */
+export const hydrateLineageEntities = async (
+  params: HydrateLineageRequest
+): Promise<HydrateLineageResponse> => {
+  const response = await APIClient.post<HydrateLineageResponse>(
+    `/lineage/hydrate`,
+    params
   );
 
   return response.data;
