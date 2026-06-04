@@ -138,8 +138,9 @@ const GlossaryHeader = ({
         Operation.EditAll,
         ResourceEntity.GLOSSARY_TERM,
         globalPermissions
-      ),
-    [globalPermissions]
+      ) ||
+      permissions.EditAll,
+    [globalPermissions, permissions]
   );
 
   // To fetch the latest glossary data
