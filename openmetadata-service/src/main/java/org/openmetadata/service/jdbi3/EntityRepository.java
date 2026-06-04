@@ -7644,6 +7644,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
     @Setter private boolean overrideMetadata;
+
+    // Set only on the bulk ingestion path. The bulk endpoint authorizes with the coarse EDIT_ALL
+    // operation, which does not intersect the field-level EditDisplayName policy deny, so it needs
+    // the in-code displayName guard to stand in for the bypassed policy. A non-bulk bot PUT (for
+    // example the SCIM bot syncing identity attributes through the repository) is governed by the
+    // policy layer instead and must not be caught by that guard. See updateDisplayName().
+    @Setter private boolean bulkOperation;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
@@ -8152,16 +8159,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDisplayName())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Mirror updateDescription: a bot PUT (for example bulk ingestion) must not clobber a
-        // user-curated displayName. Use a PATCH or overrideMetadata=true to change it.
+      // A bot bulk re-ingestion must not clobber a user-curated displayName. This guard is scoped
+      // to the bulk path on purpose: the per-entity PUT/PATCH path is governed by policy
+      // (DisplayName-Deny), so a bot the policy allows - for example the SCIM bot syncing identity
+      // attributes through the repository - can still update displayName. On the bulk path,
+      // overrideMetadata=true force-syncs it.
+      boolean preserveUserDisplayName =
+          bulkOperation
+              && !nullOrEmpty(original.getDisplayName())
+              && updatedByBot()
+              && !overrideMetadata;
+      if (preserveUserDisplayName) {
         updated.setDisplayName(original.getDisplayName());
-        return;
+      } else {
+        recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
       }
-      recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
     private void updateEntityStatus(boolean consolidatingChanges) {
@@ -11540,6 +11552,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
           updater.setOverrideMetadata(overrideMetadata);
+          updater.setBulkOperation(true);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (Exception e) {

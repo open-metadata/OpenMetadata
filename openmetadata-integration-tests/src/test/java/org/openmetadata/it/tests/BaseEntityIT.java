@@ -4845,6 +4845,54 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: A bot's single-entity PUT (createOrUpdate) MUST be able to update {@code displayName}.
+   *
+   * <p>This is the path the SCIM bot uses to sync identity attributes: it applies the change to the
+   * entity and calls the repository's createOrUpdate (PUT) as a bot, bypassing the per-entity
+   * authorization (it is authorized at the SCIM layer instead). A single-entity PUT is an explicit
+   * write that should apply, so the bot-preservation guard in {@code EntityRepository#updateDisplayName}
+   * must NOT revert it.
+   *
+   * <p>Regression: PR #28155 added an in-code guard that reverted displayName for ANY bot PUT, which
+   * silently broke SCIM displayName sync - the SCIM PATCH returned 200 but the value never changed.
+   * The fix scopes that guard to the bulk path; the per-entity path is governed by policy
+   * ({@code DisplayName-Deny} denies the ingestion bot on PATCH, while the SCIM bot's policy allows
+   * it). Contrast with {@link #test_bulkUpdate_bot_preservesUserDisplayName}: the same bot going
+   * through the bulk endpoint MUST instead preserve the user value.
+   *
+   * <p>A per-entity PUT on an existing entity authorizes with the coarse {@code EDIT_ALL} operation,
+   * which does not intersect the field-level {@code EditDisplayName} deny - so the ingestion bot used
+   * here reaches the repository guard exactly as the SCIM bot does.
+   */
+  @Test
+  void test_singleEntityPut_bot_canUpdateDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    K request = createRequest(ns.prefix("put_botdn_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    String botDisplayName = "SCIM Bot Updated Display Name";
+    invoke(request, "setDisplayName", String.class, botDisplayName);
+    HttpResponse<String> response = putAsBot(request);
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should succeed: " + response.statusCode() + " " + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        botDisplayName,
+        result.getDisplayName(),
+        "Bot single-entity PUT must update displayName (SCIM sync path): " + fqn);
+  }
+
+  /**
    * Test: A bot bulk-update merges new tags with existing user-added tags (PUT semantics).
    *
    * <p>Legacy connector behavior with {@code overrideMetadata=true} permitted REPLACE operations
@@ -4961,6 +5009,31 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return BulkApi.upsert(getBulkCollection(), requests, overrideMetadata, BulkApi.botToken());
     } catch (Exception e) {
       throw new RuntimeException("Bulk upsert as bot failed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Single-entity createOrUpdate (PUT) over raw HTTP using the ingestion-bot JWT. Models the SCIM
+   * bot's per-entity write - the SDK fluent clients always authenticate as admin, so the raw call is
+   * how a test drives a single-entity PUT as a bot.
+   */
+  protected HttpResponse<String> putAsBot(K request) {
+    try {
+      String url = SdkClients.getServerUrl() + getResourcePath();
+      if (url.endsWith("/")) {
+        url = url.substring(0, url.length() - 1);
+      }
+      java.net.http.HttpRequest httpRequest =
+          java.net.http.HttpRequest.newBuilder()
+              .uri(java.net.URI.create(url))
+              .header("Authorization", "Bearer " + BulkApi.botToken())
+              .header("Content-Type", "application/json")
+              .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+              .build();
+      return java.net.http.HttpClient.newHttpClient()
+          .send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      throw new RuntimeException("Single-entity PUT as bot failed: " + e.getMessage(), e);
     }
   }
 
