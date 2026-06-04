@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 
-import { ComponentType, FC, lazy, LazyExoticComponent } from 'react';
+import {
+  ComponentType,
+  FC,
+  lazy,
+  LazyExoticComponent,
+} from 'react';
 import { EntityType } from '../enums/entity.enum';
 import entityUtilClassBase from './EntityUtilClassBase';
 
+type VersionComponentType = LazyExoticComponent<
+  ComponentType<Record<string, unknown>>
+>;
+
 class EntityVersionClassBase {
-  protected componentMap: Partial<
-    Record<EntityType, LazyExoticComponent<ComponentType<any>>>
-  > = {
+  protected componentMap: Partial<Record<EntityType, VersionComponentType>> = {
     [EntityType.TABLE]: lazy(
       () => import('../components/Database/TableVersion/TableVersion.component')
     ),
@@ -115,7 +122,7 @@ class EntityVersionClassBase {
 
   public getEntityVersionComponent(
     entityType: string
-  ): LazyExoticComponent<ComponentType<any>> | null {
+  ): VersionComponentType | null {
     return this.componentMap[entityType as EntityType] ?? null;
   }
 
