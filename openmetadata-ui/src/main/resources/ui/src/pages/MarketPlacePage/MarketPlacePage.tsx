@@ -31,7 +31,8 @@ import { AppMarketPlaceDefinition } from '../../generated/entity/applications/ma
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getMarketPlaceAppDetailsPath,
@@ -158,20 +159,29 @@ const MarketPlacePage = () => {
       <Row className="m-t-lg" justify="center">
         <Col span={20}>
           <Row className="marketplace-card-container" gutter={[20, 20]}>
-            {applicationData?.map((item) => (
-              <Col key={item.fullyQualifiedName} lg={8} md={12} sm={24}>
-                <ApplicationCard
-                  appName={item.fullyQualifiedName ?? ''}
-                  description={item.description ?? ''}
-                  key={uniqueId()}
-                  linkTitle={t('label.read-type', {
-                    type: t('label.more'),
-                  })}
-                  title={getEntityName(item)}
-                  onClick={() => viewAppDetails(item)}
-                />
-              </Col>
-            ))}
+            {applicationData?.map((item) => {
+              const disabledReason =
+                item.enabled === false && isCacheWarmupApplication(item.name)
+                  ? t('message.cache-service-not-configured-message')
+                  : undefined;
+
+              return (
+                <Col key={item.fullyQualifiedName} lg={8} md={12} sm={24}>
+                  <ApplicationCard
+                    appName={item.fullyQualifiedName ?? ''}
+                    description={item.description ?? ''}
+                    disabled={item.enabled === false}
+                    disabledReason={disabledReason}
+                    key={uniqueId()}
+                    linkTitle={t('label.read-type', {
+                      type: t('label.more'),
+                    })}
+                    title={getEntityName(item)}
+                    onClick={() => viewAppDetails(item)}
+                  />
+                </Col>
+              );
+            })}
           </Row>
         </Col>
         <Col span={18}>

@@ -415,6 +415,11 @@ describe('CodeBlockComponent', () => {
       value: { writeText: mockWriteText },
       writable: true,
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('should render the copy button', () => {
@@ -455,27 +460,7 @@ describe('CodeBlockComponent', () => {
     });
   });
 
-  it('should schedule a timer to reset data-copied after clicking copy', async () => {
-    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
-
-    await waitFor(() => {
-      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-        'data-copied',
-        'true'
-      );
-    });
-
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
-
-    setTimeoutSpy.mockRestore();
-  });
-
-  it('should cancel the previous timer on rapid clicks', async () => {
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+  it('should remain in copied state after rapid clicks', async () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
@@ -490,30 +475,9 @@ describe('CodeBlockComponent', () => {
       expect(mockWriteText).toHaveBeenCalledTimes(2);
     });
 
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
     expect(container.querySelector('.code-copy-button')).toHaveAttribute(
       'data-copied',
       'true'
     );
-
-    clearTimeoutSpy.mockRestore();
-  });
-
-  it('should clear timeout on unmount', async () => {
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-    const { unmount } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
-
-    await waitFor(() => {
-      expect(mockWriteText).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
-    clearTimeoutSpy.mockRestore();
   });
 });

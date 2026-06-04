@@ -22,11 +22,11 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BORDER_COLOR } from '../../../../constants/constants';
 import {
-  BORDER_COLOR,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
-} from '../../../../constants/constants';
-import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
+  LINEAGE_COLUMN_NODE_SUPPORTED,
+} from '../../../../constants/Lineage.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   EntityReference,
@@ -35,7 +35,7 @@ import {
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 

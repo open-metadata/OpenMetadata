@@ -85,17 +85,21 @@ class OMetaServerMixin:
     def validate_versions(self) -> None:
         """
         Validate Server & Client versions. They should match.
-        Otherwise, raise VersionMismatchException
+        Otherwise, raise VersionMismatchException.
         """
-        logger.info(
-            f"OpenMetadata client running with Server version [{self.server_version}] and Client version [{self.client_version}]"
-        )
-
         if not match_versions(self.server_version, self.client_version):
             raise VersionMismatchException(
                 f"Server version is {self.server_version} vs. Client version {self.client_version}."
                 f" Major and minor versions should match."
             )
+
+    def log_server_version(self) -> None:
+        """Emit the server/client version line."""
+        logger.info(
+            "OpenMetadata client running with Server version [%s] and Client version [%s]",
+            self.server_version,
+            self.client_version,
+        )
 
     def create_or_update_settings(self, settings: Settings) -> Settings:
         """Create of update setting

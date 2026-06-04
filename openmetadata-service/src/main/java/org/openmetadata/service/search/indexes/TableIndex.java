@@ -49,6 +49,11 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     // "columns" is fields-gated in TableRepository; without it column-level tags are not
     // hydrated, breaking tag merge in the search doc.
     fields.add("columns");
+    // "usageSummary" is fields-gated too (TableRepository.clearFields nulls it when not
+    // requested). Live indexing fetches the full entity so it's present, but reindex only
+    // fetches the declared fields — without this it's dropped from _source on reindex,
+    // breaking Explore's "Sort by Weekly Usage" (reads usageSummary.weeklyStats.count).
+    fields.add("usageSummary");
     return java.util.Collections.unmodifiableSet(fields);
   }
 
@@ -95,7 +100,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 3.0f);
+    fields.put("columnNamesFuzzy", 3.0f);
     return fields;
   }
 }

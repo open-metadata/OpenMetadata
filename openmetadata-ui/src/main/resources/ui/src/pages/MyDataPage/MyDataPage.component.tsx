@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/common/Loader/Loader';
+import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
@@ -45,6 +45,7 @@ import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
+import MyDataPageSkeleton from './MyDataPageSkeleton.component';
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
@@ -159,14 +160,40 @@ const MyDataPage = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
-        </div>
-      )),
+      layout.map((widget) => {
+        const widgetNode = getWidgetFromKey({
+          widgetConfig: widget,
+          currentLayout: layout,
+        });
+
+        // P1.3: defer below-fold widgets. The landing-page grid spans three rows on a typical
+        // viewport; rows at y=0 and y=1 are reliably visible on first paint, row y=2 is
+        // typically below the fold on common desktop resolutions. Wrapping only y>=2 widgets
+        // saves their data-fetch effects on initial load while keeping above-fold widgets
+        // eager (no wasted IO callback round-trip).
+        //
+        // {@link DeferredWidget} reserves the widget's pixel height so the page layout
+        // doesn't shift when the real content mounts, exposes a {@code data-testid} so
+        // Playwright can locate the slot before the child tree mounts, and falls back to
+        // immediate mount if {@code IntersectionObserver} isn't available (Jest, SSR).
+        const isBelowFold = widget.y >= 2;
+        const reservedHeight =
+          widget.h * customizePageClassBase.landingPageRowHeight;
+
+        return (
+          <div data-grid={widget} key={widget.i}>
+            {isBelowFold ? (
+              <DeferredWidget
+                data-testid={`deferred-widget-${widget.i}`}
+                minHeight={reservedHeight}>
+                {widgetNode}
+              </DeferredWidget>
+            ) : (
+              widgetNode
+            )}
+          </div>
+        );
+      }),
     [layout, isAnnouncementLoading, announcements]
   );
 
@@ -247,7 +274,7 @@ const MyDataPage = () => {
   useGridLayoutDirection(isLoading);
 
   if (isLoading) {
-    return <Loader fullScreen />;
+    return <MyDataPageSkeleton />;
   }
 
   if (showWelcomeScreen) {
@@ -273,9 +300,11 @@ const MyDataPage = () => {
         <div className="grid-wrapper" dir="ltr">
           <CustomiseLandingPageHeader
             overlappedContainer
+            announcements={announcements}
             backgroundColor={backgroundColor}
             dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
+            isAnnouncementLoading={isAnnouncementLoading}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />

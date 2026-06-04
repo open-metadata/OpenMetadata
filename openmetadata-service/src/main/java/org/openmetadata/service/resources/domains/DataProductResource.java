@@ -262,24 +262,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -486,7 +470,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(repository.bulkAddInputPorts(name, request));
+    return buildBulkOperationResponse(
+        repository.bulkAddInputPorts(name, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -524,7 +509,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(repository.bulkRemoveInputPorts(name, request));
+    return buildBulkOperationResponse(
+        repository.bulkRemoveInputPorts(
+            name, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -562,7 +549,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(repository.bulkAddOutputPorts(name, request));
+    return buildBulkOperationResponse(
+        repository.bulkAddOutputPorts(name, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -600,7 +588,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(repository.bulkRemoveOutputPorts(name, request));
+    return buildBulkOperationResponse(
+        repository.bulkRemoveOutputPorts(
+            name, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -640,7 +630,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(repository.bulkAddInputPorts(fqn, request));
+    return buildBulkOperationResponse(
+        repository.bulkAddInputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -680,7 +671,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(repository.bulkRemoveInputPorts(fqn, request));
+    return buildBulkOperationResponse(
+        repository.bulkRemoveInputPorts(
+            fqn, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -720,7 +713,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(repository.bulkAddOutputPorts(fqn, request));
+    return buildBulkOperationResponse(
+        repository.bulkAddOutputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PUT
@@ -760,7 +754,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(repository.bulkRemoveOutputPorts(fqn, request));
+    return buildBulkOperationResponse(
+        repository.bulkRemoveOutputPorts(
+            fqn, request, securityContext.getUserPrincipal().getName()));
   }
 
   @PATCH

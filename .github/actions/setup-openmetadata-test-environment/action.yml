@@ -84,7 +84,7 @@ runs:
         source env/bin/activate
         uv pip install "setuptools<81"
         uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-        uv pip install --no-deps "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+        uv pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
@@ -92,6 +92,14 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
+    - name: Configure Test Session Limit
+      if: ${{ inputs.install-server == 'true' }}
+      run: |
+        if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
+          echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
+        fi
+      shell: bash
+
     - name: Start Server and Ingest Sample Data
       if: ${{ inputs.install-server == 'true' }}
       uses: nick-fields/retry@v3.0.2

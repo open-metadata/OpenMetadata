@@ -43,7 +43,7 @@ test(
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
-    await table.visitEntityPage(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.displayName);
     const testCaseName = `multi-pipeline-test-${uuid()}`;
     const pipelineName = `test suite pipeline 2`;
 
@@ -105,7 +105,10 @@ test(
       );
       await expect(page.getByTestId('view-service-button')).toBeVisible();
 
+      const ingestionPipelinesListResponse2 =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse2;
     });
 
     /**
@@ -114,11 +117,6 @@ test(
      * validates the updated success messaging before returning to the service view.
      */
     await test.step('Verify test case count column displays correct values', async () => {
-      const ingestionPipelinesListResponse =
-        waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-      await ingestionPipelinesListResponse;
-
       // Verify the pipeline with selected test case shows count "1"
       const pipelineRow = page.getByRole('row', {
         name: new RegExp(pipelineName),
@@ -149,7 +147,9 @@ test(
         )
         .click();
 
-      await expect(page.getByRole('checkbox').first()).toBeVisible();
+      await expect(
+        page.getByTestId('week-segment-day-option-container')
+      ).toBeVisible();
 
       await page
         .getByTestId('week-segment-day-option-container')
@@ -169,7 +169,10 @@ test(
         /has been updated and deployed successfully/
       );
 
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
       await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse;
     });
 
     /**
@@ -178,10 +181,6 @@ test(
      * then verifies the Pipeline tab shows the assignment placeholder and add CTA.
      */
     await test.step('Delete the pipeline', async () => {
-      const ingestionPipelinesListResponse =
-        waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByRole('tab', { name: 'Pipeline' }).click();
-      await ingestionPipelinesListResponse;
       await page
         .getByRole('row', {
           name: new RegExp(pipelineName),
@@ -249,7 +248,7 @@ test(
       apiContext,
       testCaseNames
     );
-    await table.visitEntityPage(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.displayName);
     await page.getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
@@ -304,11 +303,9 @@ test(
       /has been updated and deployed successfully/
     );
 
-    await page.getByTestId('view-service-button').click();
-
     const ingestionPipelinesListResponse2 =
       waitForTestSuiteIngestionPipelinesListResponse(page);
-    await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await page.getByTestId('view-service-button').click();
     await ingestionPipelinesListResponse2;
 
     // Verify the pipeline now shows count "1" after unchecking one test case

@@ -24,7 +24,8 @@ jest.mock('./EntityUtils', () => ({
   ),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
+  ...jest.requireActual('./FqnUtils'),
   getNameFromFQN: jest.fn((fqn: string) => {
     const parts = fqn.split('.');
 

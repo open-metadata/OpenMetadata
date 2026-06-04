@@ -13,10 +13,11 @@
 import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
-import { Column, textEditor } from 'react-data-grid';
+import type { Column } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { useGridEditController } from '../../../../hooks/useGridEditController';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { lazyTextEditor } from '../../DataGrid/LazyDataGrid';
 import { KeyDownStopPropagationWrapper } from '../../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
@@ -32,7 +33,7 @@ export const getGridColumns = (columns: string[]) => {
     resizable: true,
     cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
     editable: true,
-    renderEditCell: textEditor,
+    renderEditCell: lazyTextEditor,
     minWidth: 180,
   })) as Column<Record<string, string>[]>[];
 };

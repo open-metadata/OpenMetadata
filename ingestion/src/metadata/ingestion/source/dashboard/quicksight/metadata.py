@@ -91,7 +91,7 @@ class QuicksightSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
-        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion
+        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion  # pyright: ignore[reportAttributeAccessIssue]
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
             "MaxResults": QUICKSIGHT_MAX_RESULTS,

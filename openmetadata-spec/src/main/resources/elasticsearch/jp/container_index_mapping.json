@@ -461,6 +461,10 @@
               },
               "ordinalPosition": {
                 "type": "integer"
+              },
+              "children": {
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -722,6 +726,10 @@
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "serviceType": {
         "type": "keyword",

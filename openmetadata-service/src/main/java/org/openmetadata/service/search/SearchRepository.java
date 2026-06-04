@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -32,7 +33,6 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENT
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -129,6 +129,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
@@ -136,12 +137,14 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -641,13 +644,59 @@ public class SearchRepository {
     return false;
   }
 
+  /**
+   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
+   * query. Handles four shapes:
+   *
+   * <ul>
+   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
+   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
+   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
+   *       and expand it to every index that has that alias attached, including
+   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
+   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
+   *       query for tables only hits the table index.
+   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
+   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
+   *       resolves it natively across the entities that have registered the alias. This is the
+   *       intended behavior — searching {@code dataAsset} should surface every data-asset
+   *       entity.
+   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
+   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
+   *       the legacy behavior.
+   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
+   *       internal code paths that hand back a resolved value don't double-prefix.
+   * </ul>
+   *
+   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
+   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
+   * is empty the original input is returned unchanged so downstream ES surfaces a normal
+   * "unknown index" error instead of an empty-target failure.
+   */
   public String getIndexOrAliasName(String name) {
-    if (clusterAlias == null || clusterAlias.isEmpty()) {
+    if (nullOrEmpty(name)) {
       return name;
     }
-    return Arrays.stream(name.split(","))
-        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
-        .collect(Collectors.joining(","));
+    String prefix =
+        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
+    String resolved =
+        Arrays.stream(name.split(","))
+            .map(String::trim)
+            .filter(t -> !t.isEmpty())
+            .map(t -> resolveSingleAliasToken(t, prefix))
+            .collect(Collectors.joining(","));
+    return resolved.isEmpty() ? name : resolved;
+  }
+
+  private String resolveSingleAliasToken(String token, String clusterPrefix) {
+    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+      return token;
+    }
+    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping != null) {
+      return mapping.getIndexName(clusterAlias);
+    }
+    return clusterPrefix == null ? token : clusterPrefix + token;
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
@@ -1336,8 +1385,16 @@ public class SearchRepository {
 
   public void updateEntity(EntityReference entityReference) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    // Fetch only the fields this entity's search index needs, never "*". For container
+    // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
+    // large catalogs — and can OOM the server on a single live update. The required-field
+    // set is the same one the reindex pipeline uses, so live updates and reindex stay
+    // consistent and bounded.
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -1413,6 +1470,7 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
         bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
       } catch (Exception e) {
@@ -1769,6 +1827,47 @@ public class SearchRepository {
 
     AssetCertification certification = getCertificationFromEntity(entity);
     updateEntityCertificationInSearch(entity, certification);
+    cascadeCertificationToChildren(entity, certification);
+  }
+
+  // Pushes the cert change onto every child search doc denormalized from this
+  // entity. Without this the cert filter on the DQ dashboard (which queries
+  // children like test_case/test_case_result/test_case_resolution_status by
+  // `certification.tagLabel.tagFQN`) would silently use the stale cert until a
+  // reindex. RAW_REPLACE in PropagationDescriptor can't be used because it
+  // restores the old value on delete; we drive a dedicated script instead.
+  private void cascadeCertificationToChildren(
+      EntityInterface entity, AssetCertification certification) {
+    String type = entity.getEntityReference().getType();
+    if (!Entity.TABLE.equalsIgnoreCase(type)) {
+      // Scope: Table only. Dashboard/ApiCollection children also have cert in
+      // their mappings; extend here when those denormalization paths are added.
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(Entity.TABLE);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("certification", certification); // null when cert was removed
+
+    Pair<String, String> parentMatch = new ImmutablePair<>("table.id", entity.getId().toString());
+
+    try {
+      searchClient.updateChildren(
+          childAliases, parentMatch, new ImmutablePair<>(CASCADE_CERTIFICATION_SCRIPT, params));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to cascade certification for table [{}]: {}",
+          entity.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
   }
 
   private boolean isCertificationUpdated(ChangeDescription change) {
@@ -1965,12 +2064,16 @@ public class SearchRepository {
             String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        return;
       }
     }
     script.append(" ");
@@ -2021,7 +2124,10 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getOldValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        return;
       }
     }
     script.append(" ");
@@ -2074,7 +2180,8 @@ public class SearchRepository {
         data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case NESTED_FIELD -> {
         data.put(field.getName(), field.getNewValue().toString());
@@ -2084,7 +2191,10 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        return;
       }
     }
     script.append(" ");
@@ -2153,7 +2263,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateDeleteTagLabelListScript() {
@@ -2168,7 +2279,8 @@ public class SearchRepository {
             }
           }
         }
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
@@ -2201,7 +2313,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
@@ -2342,10 +2455,11 @@ public class SearchRepository {
       return;
     }
     IndexMapping indexMapping = entityIndexMap.get(entityType);
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
-      searchClient.softDeleteOrRestoreEntity(getWriteIndexName(indexMapping), entityId, scriptTxt);
+      searchClient.softDeleteOrRestoreEntity(
+          getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
 
       if (Entity.TABLE.equals(entityType)) {
@@ -2372,12 +2486,12 @@ public class SearchRepository {
       return;
     }
 
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     try {
       searchClient.updateChildren(
           List.of(columnIndexMapping.getIndexName(clusterAlias)),
           new ImmutablePair<>("table.id", table.getId().toString()),
-          new ImmutablePair<>(scriptTxt, null));
+          new ImmutablePair<>(script.painless(), null));
     } catch (Exception e) {
       LOG.error(
           "Issue soft deleting/restoring columns for table [{}]: {}",
@@ -2445,6 +2559,12 @@ public class SearchRepository {
           Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
+        // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
+        // not via a parent.id field on the child doc. A recursive hard-delete on the
+        // parent must therefore also remove every descendant from search by FQN
+        // prefix; otherwise stale child docs survive in the index and re-appear in
+        // hierarchy / search results until a full reindex.
+      case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -2458,32 +2578,28 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    String docId = entityReference.getId().toString();
-    String entityType = entityReference.getType();
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
-    switch (entityType) {
-      case Entity.DASHBOARD_SERVICE,
-          Entity.DATABASE_SERVICE,
-          Entity.MESSAGING_SERVICE,
-          Entity.PIPELINE_SERVICE,
-          Entity.MLMODEL_SERVICE,
-          Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE,
-          Entity.SECURITY_SERVICE,
-          Entity.DRIVE_SERVICE -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>("service.id", docId)));
-      default -> {
-        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
-        if (!indexNames.isEmpty()) {
-          searchClient.softDeleteOrRestoreChildren(
-              indexMapping.getChildAliases(clusterAlias),
-              scriptTxt,
-              List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        }
-      }
+    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
+    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
+    List<String> targets =
+        indexMapping.getChildAliases().stream()
+            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
+            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
+            .toList();
+    if (targets.isEmpty()) {
+      return;
     }
+    String entityType = entityReference.getType();
+    // Service entities propagate child deletions through a shared service.id field; everything
+    // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
+    // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
+    String parentIdField =
+        SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
+    searchClient.softDeleteOrRestoreChildren(
+        targets,
+        script.painless(),
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
   }
 
   public String getScriptWithParams(
@@ -3180,6 +3296,13 @@ public class SearchRepository {
               "OpenAI configuration is required when using openai provider");
         }
         yield new OpenAIEmbeddingClient(esConfig);
+      }
+      case "google" -> {
+        if (config.getGoogle() == null) {
+          throw new IllegalStateException(
+              "Google configuration is required when using google provider");
+        }
+        yield new GoogleEmbeddingClient(esConfig);
       }
       case "djl" -> {
         if (config.getDjl() == null) {

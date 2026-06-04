@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.1.7-python3.10
+FROM apache/airflow:3.2.1-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -43,6 +43,12 @@ RUN dpkg --configure -a \
   wget --no-install-recommends \
   # Accept MSSQL ODBC License
   && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+  # Pull bookworm-security fixes for known-vulnerable packages
+  # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+  # --only-upgrade is a no-op for packages not present in the base image.
+  && apt-get -qq install -y --only-upgrade \
+       libgnutls30 libcap2 libcap2-bin openssh-client rsync \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
@@ -61,11 +67,16 @@ RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess Driver
-RUN if [ $(uname -m) = "x86_64" ]; \
-  then \
-  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
-  && apt update \
-  && apt install ibm-iaccess; \
+# Mirrored on cdn.getcollate.io to decouple builds from IBM's CDN availability.
+# Use dpkg --force-depends because the .deb declares old Debian package names
+# (libodbc1, odbcinst1debian2) that don't exist in Debian 12; the actual
+# libraries (unixodbc, odbcinst) are installed earlier. SHA256 pinned to v29.
+RUN if [ $(uname -m) = "x86_64" ]; then \
+  wget -q https://cdn.getcollate.io/deps/ingestion/ibm/ibm-iaccess-1.1.0.29-1.0.amd64.deb -O /tmp/ibm-iaccess.deb \
+  && echo "e60e968d2cee96b2851964456f5b31ab990b1aa47d8f2399607809f7d4514f58  /tmp/ibm-iaccess.deb" | sha256sum -c - \
+  && dpkg -i --force-depends /tmp/ibm-iaccess.deb \
+  && apt-get install -f -y --no-install-recommends \
+  && rm -f /tmp/ibm-iaccess.deb; \
   fi
 
 # Required for Starting Ingestion Container in Docker Compose
@@ -80,7 +91,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-3.1.7.txt /home/airflow/airflow-constraints-3.1.7.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.2.1.txt /home/airflow/airflow-constraints-3.2.1.txt
 
 USER airflow
 
@@ -98,17 +109,17 @@ RUN pip install --upgrade pip "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
-RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.1.7.txt" || true
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.2.1.txt" || true
 
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.1.7.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.2.1.txt"
 
 WORKDIR /home/airflow/ingestion
 
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
 RUN pip install "datamodel-code-generator==0.25.6"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
@@ -137,5 +148,10 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
+# Airflow 3.2.1 requires universal-pathlib>=0.3.8, but prior installs in this image
+# can leave stale 0.2.6 `upath` module files in site-packages that cause import
+# errors at runtime. Force-remove the stale registration then pin to the required version.
+RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
+
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db

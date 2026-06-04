@@ -49,7 +49,7 @@ import {
   getEpochMillisForPastDays,
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -123,18 +123,15 @@ const AppRunsHistory = forwardRef(
         return appRunsHistoryData;
       }
 
-      return [
-        {
-          id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
-          appId: appData.id,
-          appName: appData.name,
-          config: appData.appConfiguration ?? {},
-          isSynthetic: true,
-          runType: 'CurrentConfig',
-          startTime: appData.updatedAt,
-          timestamp: appData.updatedAt,
-        },
-      ];
+      const syntheticRecord: AppRunRecordWithId = {
+        id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+        appId: appData.id,
+        appName: appData.name,
+        config: (appData.appConfiguration as { [key: string]: unknown }) ?? {},
+        isSynthetic: true,
+      };
+
+      return [syntheticRecord];
     }, [appData, appRunsHistoryData, isExternalApp]);
 
     const handleRowExpandable = useCallback(
@@ -210,7 +207,8 @@ const AppRunsHistory = forwardRef(
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {record.status !== Status.Success &&
+            {!record.isSynthetic &&
+              record.status !== Status.Success &&
               record.status !== Status.Failed &&
               record.status !== Status.Stopped &&
               record.status !== Status.Completed &&
@@ -244,6 +242,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'timestamp',
           key: 'timestamp',
           render: (_, record) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             return isExternalApp
               ? formatDateTime(record.startTime)
               : formatDateTime(record.timestamp);
@@ -253,8 +255,12 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-type'),
           dataIndex: 'runType',
           key: 'runType',
-          render: (runType) => (
-            <Typography.Text>{runType ?? NO_DATA_PLACEHOLDER}</Typography.Text>
+          render: (runType, record) => (
+            <Typography.Text>
+              {record.isSynthetic
+                ? NO_DATA_PLACEHOLDER
+                : runType ?? NO_DATA_PLACEHOLDER}
+            </Typography.Text>
           ),
         },
         {
@@ -262,6 +268,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             if (isExternalApp && record.executionTime) {
               return formatDurationToHHMMSS(record.executionTime);
             }

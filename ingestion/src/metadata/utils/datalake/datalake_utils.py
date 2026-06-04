@@ -18,6 +18,7 @@ import ast
 import json
 import random
 import traceback
+from collections import Counter
 from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -31,6 +32,54 @@ from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_rea
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+# Explicit type precedence so mixed-type object columns are not mis-typed by lexicographic max().
+# dict > list > datetime > numeric > str, matching _data_formats priority.
+_TYPE_PRECEDENCE = (
+    "dict",
+    "list",
+    "datetime64[ns]",
+    "datetime",
+    "timedelta[ns]",
+    "float64",
+    "float32",
+    "float",
+    "int64",
+    "int32",
+    "int",
+    "bool",
+    "str",
+    "bytes",
+)
+
+
+def _resolve_col_type(type_list: List[str]) -> str:  # noqa: UP006
+    """Pick the dominant type from type_list.
+
+    Frequency-first: the most common type in the sample wins.
+    Ties are broken by _TYPE_PRECEDENCE order.
+    This prevents a small number of date-parseable tokens (e.g. the surname "May")
+    from overriding a column that is overwhelmingly strings.
+    """
+    if not type_list:
+        return "str"
+    counts = Counter(type_list)
+    max_count = max(counts.values())
+    top_types = {t for t, c in counts.items() if c == max_count}
+    for t in _TYPE_PRECEDENCE:
+        if t in top_types:
+            return t
+    return type_list[0]
+
+
+class _ArrayOfStruct:
+    """Marker for a JSON value observed as a list of dicts. Carries the merged struct shape
+    so downstream column construction can render it as ARRAY<STRUCT<...>>."""
+
+    __slots__ = ("struct",)
+
+    def __init__(self, struct: Dict):  # noqa: UP006
+        self.struct = struct
 
 
 def fetch_dataframe_generator(
@@ -297,6 +346,10 @@ class GenericDataFrameColumnParser:
                     }
                     if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
+                        struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
+                        if struct_children:
+                            parsed_string["arrayDataType"] = DataType.STRUCT
+                            parsed_string["children"] = struct_children
 
                     if data_type == DataType.JSON:
                         parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
@@ -320,14 +373,20 @@ class GenericDataFrameColumnParser:
         """
         data_type = None  # default to string
         try:
-            if data_frame[column_name].dtypes.name == "object" and any(data_frame[column_name].dropna().values):
+            col_series = data_frame[column_name]
+            col_non_null = col_series.dropna()
+            if col_series.dtypes.name == "object" and len(col_non_null) > 0:
                 try:
-                    # Safely evaluate the input string
-                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    df_row_val_list = col_non_null.values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
                         try:
-                            parsed_object_datatype_list.append(type(ast.literal_eval(str(df_row_val))).__name__.lower())
+                            if isinstance(df_row_val, (dict, list)):
+                                parsed_object_datatype_list.append(type(df_row_val).__name__.lower())
+                            else:
+                                parsed_object_datatype_list.append(
+                                    type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                                )
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
@@ -340,11 +399,11 @@ class GenericDataFrameColumnParser:
                                 if not str(df_row_val).isnumeric():
                                     # check if the row value is time
                                     try:
-                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        datetime.strptime(str(df_row_val), "%H:%M:%S").time()
                                         dtype_ = "timedelta[ns]"
                                     except (ValueError, TypeError):
                                         # check if the row value is date / time / datetime
-                                        type(parse(df_row_val)).__name__.lower()
+                                        type(parse(str(df_row_val))).__name__.lower()
                                         dtype_ = "datetime64[ns]"
                                 parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
@@ -355,8 +414,7 @@ class GenericDataFrameColumnParser:
                             )
                             parsed_object_datatype_list.append("str")
 
-                    data_type = max(parsed_object_datatype_list)
-                    # Determine the data type of the parsed object
+                    data_type = _resolve_col_type(parsed_object_datatype_list)
 
                 except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
@@ -364,10 +422,10 @@ class GenericDataFrameColumnParser:
                         f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
                         f"Falling back to string."
                     )
-                    data_type = "string"
+                    data_type = "str"
 
             data_type = cls._data_formats.get(
-                data_type or data_frame[column_name].dtypes.name,
+                data_type or col_series.dtypes.name,
             )
             if not data_type:
                 logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
@@ -398,6 +456,11 @@ class GenericDataFrameColumnParser:
                     result[key] = cls.unique_json_structure(
                         [nested_json if isinstance(nested_json, dict) else {}, value]
                     )
+                elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                    merged_struct = cls.unique_json_structure(value)
+                    existing = result.get(key)
+                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
                 else:
                     result[key] = value
         return result
@@ -412,13 +475,19 @@ class GenericDataFrameColumnParser:
         children = []
         for key, value in json_column.items():
             column = {}
-            type_ = type(value).__name__.lower()
-            column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
-            column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
             column["name"] = truncate_column_name(key)
             column["displayName"] = key
-            if isinstance(value, dict):
-                column["children"] = cls.construct_json_column_children(value)
+            if isinstance(value, _ArrayOfStruct):
+                column["dataType"] = DataType.ARRAY.value
+                column["dataTypeDisplay"] = DataType.ARRAY.value
+                column["arrayDataType"] = DataType.STRUCT
+                column["children"] = cls.construct_json_column_children(value.struct)
+            else:
+                type_ = type(value).__name__.lower()
+                column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                if isinstance(value, dict):
+                    column["children"] = cls.construct_json_column_children(value)
             children.append(column)
 
         return children
@@ -434,17 +503,55 @@ class GenericDataFrameColumnParser:
         from pandas import Series  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         json_column = cast(Series, json_column)  # noqa: TC006
-        try:
-            json_column = json_column.apply(json.loads)
-        except TypeError as exc:
-            # if values are not strings, we will assume they are already json objects
-            # based on the read class logic
-            logger.debug(
-                f"TypeError while parsing JSON column children: {exc}. Assuming values are already JSON objects."
-            )
-        json_structure = cls.unique_json_structure(json_column.values.tolist())
 
+        dict_values = []
+        for value in json_column.dropna().values:
+            if isinstance(value, dict):
+                dict_values.append(value)
+            elif isinstance(value, str):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, dict):
+                        dict_values.append(parsed)
+                    else:
+                        logger.debug(
+                            "Skipping non-object JSON value while extracting column children: "
+                            f"parsed type is {type(parsed).__name__}"
+                        )
+                except (TypeError, json.JSONDecodeError) as exc:
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+            else:
+                logger.debug(
+                    "Skipping non-string, non-dict value while extracting column children: "
+                    f"type is {type(value).__name__}"
+                )
+
+        if not dict_values:
+            return []
+
+        json_structure = cls.unique_json_structure(dict_values)
         return cls.construct_json_column_children(json_structure)
+
+    @classmethod
+    def _get_array_struct_children(cls, array_column: Any) -> List[Dict]:  # noqa: UP006
+        """For an ARRAY column whose elements are dicts, infer the merged struct shape and
+        return it as children. Returns an empty list when elements are not dicts.
+        """
+        flattened = []
+        for value in array_column.values.tolist():
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)  # noqa: PLW2901
+                except (TypeError, ValueError):
+                    continue
+            if isinstance(value, dict):
+                flattened.append(value)
+            elif isinstance(value, list):
+                flattened.extend(item for item in value if isinstance(item, dict))
+        if not flattened:
+            return []
+        merged_struct = cls.unique_json_structure(flattened)
+        return cls.construct_json_column_children(merged_struct)
 
 
 # pylint: disable=import-outside-toplevel

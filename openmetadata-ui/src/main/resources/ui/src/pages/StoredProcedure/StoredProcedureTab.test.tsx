@@ -60,7 +60,7 @@ jest.mock('../../utils/EntityUtils', () => ({
   getColumnSorter: jest.fn().mockImplementation(() => undefined),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 

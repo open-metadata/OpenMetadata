@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -35,21 +36,22 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
   updatePipelinesVotes,
 } from '../../rest/pipelineAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+  pipelineQueryFn,
+  pipelineQueryKey,
+} from '../../rest/queries/pipelineQuery';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -58,18 +60,13 @@ const PipelineDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { entityFqn: decodedPipelineFQN } = useFqn({
     type: EntityType.PIPELINE,
   });
-  const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
-    {} as Pipeline
-  );
 
-  const [isLoading, setLoading] = useState<boolean>(true);
-
-  const [isError, setIsError] = useState(false);
-
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [paging] = useState<Paging>({} as Paging);
 
   const [pipelinePermissions, setPipelinePermissions] = useState(
@@ -77,46 +74,6 @@ const PipelineDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-
-  const { followers = [] } = pipelineDetails;
-
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.PIPELINE,
-        entityFqn
-      );
-      setPipelinePermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const { pipelineId, currentVersion } = useMemo(() => {
-    return {
-      pipelineId: pipelineDetails.id,
-      currentVersion: pipelineDetails.version + '',
-    };
-  }, [pipelineDetails]);
-
-  const saveUpdatedPipelineData = useCallback(
-    (updatedData: Pipeline) => {
-      const jsonPatch = compare(
-        omitBy(pipelineDetails, isUndefined),
-        updatedData
-      );
-
-      return patchPipelineDetails(pipelineId, jsonPatch);
-    },
-    [pipelineDetails]
-  );
 
   const viewUsagePermission = useMemo(
     () =>
@@ -127,87 +84,218 @@ const PipelineDetailsPage = () => {
     [pipelinePermissions]
   );
 
-  const fetchPipelineDetail = async (pipelineFQN: string) => {
-    setLoading(true);
+  const canViewPipeline = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        pipelinePermissions,
+        PermissionOperation.ViewBasic
+      ) === true,
+    [pipelinePermissions]
+  );
 
+  const pipelineFields = useMemo(() => {
+    let fields = defaultFields;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
+
+    return fields;
+  }, [viewUsagePermission]);
+
+  const pipelineCacheKey = useMemo(
+    () => pipelineQueryKey(decodedPipelineFQN, pipelineFields),
+    [decodedPipelineFQN, pipelineFields]
+  );
+
+  const {
+    data: pipelineDetails,
+    isLoading: pipelineLoading,
+    error: pipelineError,
+  } = useQuery({
+    queryKey: pipelineCacheKey,
+    queryFn: pipelineQueryFn(decodedPipelineFQN, pipelineFields),
+    enabled: Boolean(
+      decodedPipelineFQN && canViewPipeline && !permissionsLoading
+    ),
+  });
+
+  const isError = useMemo(
+    () => (pipelineError as AxiosError | undefined)?.response?.status === 404,
+    [pipelineError]
+  );
+
+  useEffect(() => {
+    const status = (pipelineError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        pipelineError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.pipeline'),
+          entityName: decodedPipelineFQN,
+        })
+      );
+    }
+  }, [pipelineError, navigate, decodedPipelineFQN, t]);
+
+  useEffect(() => {
+    if (!pipelineDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(pipelineDetails),
+      entityType: EntityType.PIPELINE,
+      fqn: pipelineDetails.fullyQualifiedName ?? '',
+      serviceType: pipelineDetails.serviceType,
+      timestamp: 0,
+      id: pipelineDetails.id,
+    });
+  }, [pipelineDetails]);
+
+  const setPipelineDetails = useCallback(
+    (
+      updater:
+        | Pipeline
+        | undefined
+        | ((prev: Pipeline | undefined) => Pipeline | undefined)
+    ) => {
+      queryClient.setQueryData<Pipeline | undefined>(pipelineCacheKey, updater);
+    },
+    [queryClient, pipelineCacheKey]
+  );
+
+  const refetchPipelineDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: pipelineCacheKey }),
+    [queryClient, pipelineCacheKey]
+  );
+
+  const { pipelineId, currentVersion, followers } = useMemo(() => {
+    return {
+      pipelineId: pipelineDetails?.id,
+      currentVersion:
+        pipelineDetails?.version !== undefined
+          ? pipelineDetails.version + ''
+          : '',
+      followers: pipelineDetails?.followers ?? [],
+    };
+  }, [pipelineDetails]);
+
+  const isFollowing = useMemo(
+    () => followers.some(({ id }) => id === USERId),
+    [followers, USERId]
+  );
+
+  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setPermissionsLoading(true);
     try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const res = await getPipelineByFqn(pipelineFQN, {
-        fields,
-      });
-      const { id, fullyQualifiedName, serviceType } = res;
-
-      setPipelineDetails(res);
-
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.PIPELINE,
-        fqn: fullyQualifiedName ?? '',
-        serviceType: serviceType,
-        timestamp: 0,
-        id: id,
-      });
-    } catch (error) {
-      if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.pipeline'),
-            entityName: decodedPipelineFQN,
-          })
-        );
-      }
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.PIPELINE,
+        entityFqn
+      );
+      setPipelinePermissions(entityPermission);
+    } catch {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: entityFqn })
+      );
     } finally {
-      setLoading(false);
+      setPermissionsLoading(false);
     }
   };
 
-  const followPipeline = useCallback(async () => {
-    try {
-      const res = await addFollower(pipelineId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setPipelineDetails((prev) => {
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
+  const saveUpdatedPipelineData = useCallback(
+    (updatedData: Pipeline) => {
+      if (!pipelineDetails || !pipelineId) {
+        return Promise.reject(new Error('Pipeline not loaded'));
+      }
+      const jsonPatch = compare(
+        omitBy(pipelineDetails, isUndefined),
+        updatedData
+      );
+
+      return patchPipelineDetails(pipelineId, jsonPatch);
+    },
+    [pipelineDetails, pipelineId]
+  );
+
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Pipeline | undefined }
+  >({
+    mutationFn: async () => {
+      if (!pipelineId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(pipelineId, USERId);
+      } else {
+        await addFollower(pipelineId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: pipelineCacheKey });
+      const previous = queryClient.getQueryData<Pipeline | undefined>(
+        pipelineCacheKey
+      );
+      queryClient.setQueryData<Pipeline | undefined>(
+        pipelineCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USERId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USERId, type: 'user' },
+            ] as Pipeline['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Pipeline | undefined>(
+          pipelineCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(pipelineDetails),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(pipelineDetails),
+            })
       );
-    }
-  }, [followers, USERId]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: pipelineCacheKey });
+    },
+  });
+
+  const followPipeline = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const unFollowPipeline = useCallback(async () => {
-    try {
-      const res = await removeFollower(pipelineId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setPipelineDetails((prev) => ({
-        ...prev,
-        followers: followers.filter(
-          (follower) => follower.id !== oldValue[0].id
-        ),
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  }, [followers, USERId]);
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
@@ -225,6 +313,10 @@ const PipelineDetailsPage = () => {
     try {
       const response = await saveUpdatedPipelineData(updatedPipeline);
       setPipelineDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
         return {
           ...previous,
           version: response.version,
@@ -251,6 +343,9 @@ const PipelineDetailsPage = () => {
   };
 
   const onTaskUpdate = async (jsonPatch: Array<Operation>) => {
+    if (!pipelineId) {
+      return;
+    }
     try {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
       setPipelineDetails(response);
@@ -261,15 +356,14 @@ const PipelineDetailsPage = () => {
 
   const versionHandler = () => {
     navigate(
-      getVersionPath(
-        EntityType.PIPELINE,
-        decodedPipelineFQN,
-        currentVersion as string
-      )
+      getVersionPath(EntityType.PIPELINE, decodedPipelineFQN, currentVersion)
     );
   };
 
   const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
+    if (!pipelineDetails) {
+      return;
+    }
     try {
       const data = await saveUpdatedPipelineData({
         ...pipelineDetails,
@@ -303,14 +397,7 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const details = await getPipelineByFqn(decodedPipelineFQN, {
-        fields,
-      });
-      setPipelineDetails(details);
+      await queryClient.invalidateQueries({ queryKey: pipelineCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -319,31 +406,19 @@ const PipelineDetailsPage = () => {
   const updatePipelineDetailsState = useCallback(
     (data: DataAssetWithDomains) => {
       const updatedData = data as Pipeline;
-
-      setPipelineDetails((data) => ({
-        ...(updatedData ?? data),
+      setPipelineDetails((prev) => ({
+        ...(updatedData ?? prev),
         version: updatedData.version,
       }));
     },
-    []
+    [setPipelineDetails]
   );
-
-  useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        pipelinePermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
-      fetchPipelineDetail(decodedPipelineFQN);
-    }
-  }, [pipelinePermissions, decodedPipelineFQN]);
 
   useEffect(() => {
     fetchResourcePermission(decodedPipelineFQN);
   }, [decodedPipelineFQN]);
 
-  if (isLoading) {
+  if (permissionsLoading || pipelineLoading) {
     return <Loader />;
   }
 
@@ -367,10 +442,14 @@ const PipelineDetailsPage = () => {
     );
   }
 
+  if (!pipelineDetails) {
+    return <Loader />;
+  }
+
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
-      fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
+      fetchPipeline={refetchPipelineDetails}
       followPipelineHandler={followPipeline}
       handleToggleDelete={handleToggleDelete}
       paging={paging}

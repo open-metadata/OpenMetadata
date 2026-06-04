@@ -26,7 +26,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type ListDataModelParams = {
@@ -40,13 +40,10 @@ export type ListDataModelParams = {
 
 const BASE_URL = '/dashboards';
 
-export const getDashboardVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDashboardVersions = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

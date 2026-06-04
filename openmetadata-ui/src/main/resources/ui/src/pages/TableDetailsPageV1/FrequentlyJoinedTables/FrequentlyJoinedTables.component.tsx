@@ -21,7 +21,7 @@ import { LIST_SIZE } from '../../../constants/constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith, Table } from '../../../generated/entity/data/table';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getJoinsFromTableJoins } from '../../../utils/TableUtils';
 import './frequently-joined-tables.style.less';

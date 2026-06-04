@@ -425,30 +425,21 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
-
-    // Validate all to be users
     validateAllRefUsers(request.getAssets());
-
-    for (EntityReference asset : request.getAssets()) {
-      if (!Objects.equals(asset.getType(), Entity.USER)) {
-        throw new IllegalArgumentException("Only users can be added to a Team");
-      }
-    }
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
   public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssets request, String userName) {
-    Team team = getByName(null, domainName, getFields("id"));
-
-    // Validate all to be users
+      String teamName, BulkAssets request, String userName) {
+    Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return;
+    }
     for (EntityReference asset : refs) {
       if (!Objects.equals(asset.getType(), Entity.USER)) {
         throw new IllegalArgumentException("Only users can be added to a Team");

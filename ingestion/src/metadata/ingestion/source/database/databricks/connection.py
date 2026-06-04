@@ -16,6 +16,7 @@ Source connection handler
 from copy import deepcopy
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -42,6 +43,9 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -57,6 +61,8 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+suppress_user_agent_entry_deprecation_log()
 
 
 class DatabricksEngineWrapper:
@@ -129,7 +135,11 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
-    return f"{connection.scheme.value}://{connection.hostPort}"
+    scheme = connection.scheme.value if connection.scheme else "databricks"
+    url = f"{scheme}://{connection.hostPort}"
+    if connection.catalog:
+        url = f"{url}?catalog={quote_plus(connection.catalog)}"
+    return url
 
 
 def get_connection(connection: DatabricksConnection) -> Engine:

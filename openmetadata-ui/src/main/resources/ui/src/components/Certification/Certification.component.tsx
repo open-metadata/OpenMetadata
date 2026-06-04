@@ -28,9 +28,9 @@ import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certifi
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getTagImageSrc } from '../../utils/IconUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';

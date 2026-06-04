@@ -29,13 +29,17 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -179,6 +183,22 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityTaskCountsInto(decodedApiEndpointFqn, setFeedCount);
+    }
+  }, [decodedApiEndpointFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.API_ENDPOINT,
+        decodedApiEndpointFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedApiEndpointFqn]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     [navigate]
@@ -209,7 +229,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
   const tabs = useMemo(() => {
