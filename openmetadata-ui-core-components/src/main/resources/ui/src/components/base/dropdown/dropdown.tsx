@@ -136,8 +136,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
-  const { placement = 'top right', ...rest } = props;
-
+  const { placement = 'bottom right', ...rest } = props;
   return (
     <AriaPopover
       placement={placement}
