@@ -528,11 +528,14 @@ export const DataAssetsHeader = ({
     []
   );
 
-  const handleFollowingClick = useCallback(async () => {
-    setIsFollowingLoading(true);
+const handleFollowingClick = useCallback(async () => {
+  setIsFollowingLoading(true);
+  try {
     await onFollowClick?.();
+  } finally {
     setIsFollowingLoading(false);
-  }, [onFollowClick]);
+  }
+}, [onFollowClick]);
 
   const handleCopyEntityUrl = useCallback(async () => {
     await onCopyToClipBoard(globalThis.location.href);
