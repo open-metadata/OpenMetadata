@@ -9,6 +9,31 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# ============================================================================
+# DEV / LOCAL-TEST CONFIG — DO NOT USE IN PRODUCTION
+#
+# Derived from conf/openmetadata.yaml. Only the `server.applicationConnectors`
+# block differs: it defaults `SERVER_PROTOCOL` to `h2` (HTTP/2 over TLS) and points
+# at a self-signed keystore under openmetadata-service/src/test/resources/localhost-h2.p12.
+# Everything else mirrors conf/openmetadata.yaml — if you change connector,
+# logging, or auth behavior in that file, mirror the change here.
+#
+# Used by:
+#   * `PW_PROTOCOL=h2 yarn playwright:run` (see openmetadata-ui playwright.config.ts)
+#   * Manual local validation of the dropwizard-http2 wiring against a browser.
+#
+# The keystore is regenerable with:
+#   keytool -genkeypair -alias openmetadata-h2 -keyalg RSA -keysize 2048 \
+#     -storetype PKCS12 -storepass openmetadata -keypass openmetadata \
+#     -validity 3650 -dname "CN=localhost,OU=Test,O=OpenMetadata,L=Test,ST=Test,C=US" \
+#     -ext "san=dns:localhost,ip:127.0.0.1" \
+#     -keystore openmetadata-service/src/test/resources/localhost-h2.p12
+#
+# The keystore password "openmetadata" is intentional. The cert is self-signed,
+# scoped to CN=localhost, valid only on the developer's machine. It is NOT a
+# production secret.
+# ============================================================================
+
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
 
@@ -25,63 +50,61 @@ server:
   applicationContextPath: ${BASE_PATH:-/}
   rootPath: /api/*
   applicationConnectors:
-    #
-    # Connector protocol. Two supported values:
-    #
-    #   - http   (default): HTTP/1.1 only. Compatible with every load balancer and proxy
-    #            ever shipped. Pick this if you front Jetty with an HTTP/2-terminating LB
-    #            (AWS ALB / CloudFront / nginx / Caddy) — those speak HTTP/2 to the browser
-    #            but downgrade to HTTP/1.1 on the upstream hop anyway, so HTTP/2 on Jetty
-    #            buys nothing.
-    #
-    #   - h2c    HTTP/2 cleartext on the same TCP port. Jetty 12 accepts both h1 clients
-    #            (via h1 protocol) and h2 clients (via h2c-upgrade or h2c-prior-knowledge),
-    #            so this is backwards-compatible. Worth flipping on when browsers hit Jetty
-    #            directly (Docker Compose, on-prem single-node, local dev) — multiplexing
-    #            removes the h1 6-connections-per-origin cap, which materially helps cold
-    #            first-paint on SPAs that load 30+ chunks.
-    #
-    # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file —
-    # that path requires a keystore and isn't env-var-driven from here.
-    #
-    # Requires the dropwizard-http2 module (already pulled in by openmetadata-service).
-    - type: ${SERVER_PROTOCOL:-http}
+    # Connector protocol. Defaults to HTTP/2 over TLS (`h2`) for this local test config,
+    # but can be overridden with SERVER_PROTOCOL. HTTP/1.1 clients are still accepted on
+    # the same port via TLS handshake fallback when using `h2`.
+    - type: ${SERVER_PROTOCOL:-h2}
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
 
-      # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
-      # Required for backward compatibility with entity names containing /, ", etc.
+      # Keystore: self-signed cert checked in under openmetadata-service/src/test/resources/.
+      # Path is relative to the working directory the server is launched from (repo root).
+      keyStorePath: ${SERVER_H2_KEYSTORE_PATH:-./openmetadata-service/src/test/resources/localhost-h2.p12}
+      keyStorePassword: ${SERVER_H2_KEYSTORE_PASSWORD:-openmetadata}
+      keyStoreType: PKCS12
+      certAlias: openmetadata-h2
+
+      supportedProtocols: [TLSv1.2, TLSv1.3]
+      # RFC 7540 §9.2.2 — h2 requires the cipher list to include AEAD suites.
+      supportedCipherSuites:
+        - TLS_AES_256_GCM_SHA384
+        - TLS_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+
+      # HTTP/2 tuning — match defaults documented in conf/openmetadata.yaml comments.
+      maxConcurrentStreams: 1024
+      initialStreamRecvWindow: 65535
+
+      # Jetty 12 URI Compliance — same as the default http connector.
       uriCompliance: UNSAFE
 
-      # Jetty Acceptor and Selector threads for high concurrency
-      acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
-      selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
+      acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}
+      selectorThreads: ${SERVER_SELECTOR_THREADS:-8}
 
-      # Connection settings - relaxed for Docker/local development
-      acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-256}  # OS-level connection backlog
-      idleTimeout: ${SERVER_IDLE_TIMEOUT:-60 seconds}  # Close idle connections (increased from 30s)
+      acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-256}
+      idleTimeout: ${SERVER_IDLE_TIMEOUT:-60 seconds}
 
-      # Buffer sizes for better throughput
       outputBufferSize: ${SERVER_OUTPUT_BUFFER_SIZE:-32KiB}
       inputBufferSize: ${SERVER_INPUT_BUFFER_SIZE:-8KiB}
       maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-8KiB}
       maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
-      headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}  # Cache parsed headers (in bytes)
+      headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}
 
-      # Performance settings
-      useServerHeader: false  # Don't send server version header
+      useServerHeader: false
       useDateHeader: true
-      useForwardedHeaders: ${SERVER_USE_FORWARDED_HEADERS:-false}  # Enable if behind proxy
+      useForwardedHeaders: ${SERVER_USE_FORWARDED_HEADERS:-false}
 
-      # Data rate limits (prevent slow loris attacks)
-      minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}  # 0B = disabled
-      minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}  # 0B = disabled
+      minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}
+      minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}
 
   adminConnectors:
+    # Admin endpoint stays HTTP/1.1 cleartext — ops scrapers don't need HTTP/2, and
+    # keeping it cleartext avoids the TLS cost on every health-check probe.
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
-      acceptorThreads: 1  # Admin endpoint needs minimal resources
+      acceptorThreads: 1
       selectorThreads: 1
 
   # Response compression for entity GETs / list endpoints — Dropwizard delegates to Jetty's
@@ -785,13 +808,6 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
-  connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
-  requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
-  writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}
-  writeRetryInitialBackoffMs: ${RDF_WRITE_RETRY_INITIAL_BACKOFF_MS:-250}
-  writeRetryMaxBackoffMs: ${RDF_WRITE_RETRY_MAX_BACKOFF_MS:-2000}
-  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-50}
-  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-25}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
