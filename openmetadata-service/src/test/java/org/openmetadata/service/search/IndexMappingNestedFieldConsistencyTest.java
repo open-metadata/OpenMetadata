@@ -122,6 +122,25 @@ class IndexMappingNestedFieldConsistencyTest {
             + ". RBAC nested queries will fail on these indices.");
   }
 
+  @Test
+  void allIndexMappingsMustDisableDynamic() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      JsonNode dynamic = entry.getValue().path("mappings").path("dynamic");
+      if (dynamic.isMissingNode() || dynamic.asBoolean(true)) {
+        violations.add(
+            entry.getKey() + " (dynamic=" + (dynamic.isMissingNode() ? "missing" : dynamic) + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every index mapping must set \"dynamic\": false at the mappings root so unexpected fields "
+            + "(e.g. pipelineStatuses.config.appConfig) are stored but never auto-typed. Otherwise a "
+            + "string value followed by an object value triggers a mapper_parsing_exception at "
+            + "reindex time, and arbitrary keys can explode the field count. Violations: "
+            + violations);
+  }
+
   private static void findExtensionTypeViolations(
       JsonNode properties, String currentPath, List<String> violations, String entity) {
     Iterator<String> fieldNames = properties.fieldNames();

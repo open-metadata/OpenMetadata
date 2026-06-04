@@ -91,6 +91,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "fingerprint": {
         "type": "keyword"

@@ -39,6 +39,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "id": {
         "type": "text"
