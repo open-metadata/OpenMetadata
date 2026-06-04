@@ -53,11 +53,11 @@ import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import DataProductsSectionV1 from '../../../common/DataProductsSection/DataProductsSection';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
-import DataProductsSectionV1 from '../../../common/DataProductsSection/DataProductsSection';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
@@ -590,16 +590,18 @@ const TestCaseResultTab = () => {
                 onSelectionChange={handleTagSelection}
               />
             </div>
-            <div className="tw:w-full">
-              <DataProductsSectionV1
-                activeDomains={testCaseData?.domains ?? []}
-                dataProducts={testCaseData?.dataProducts ?? []}
-                entityId={testCaseData?.id ?? ''}
-                entityType={EntityType.TEST_CASE}
-                hasPermission={false}
-                showEditButton={false}
-              />
-            </div>
+            {!!testCaseData?.domains?.length && (
+              <div className="tw:w-full">
+                <DataProductsSectionV1
+                  activeDomains={testCaseData?.domains ?? []}
+                  dataProducts={testCaseData?.dataProducts ?? []}
+                  entityId={testCaseData?.id ?? ''}
+                  entityType={EntityType.TEST_CASE}
+                  hasPermission={false}
+                  showEditButton={false}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
