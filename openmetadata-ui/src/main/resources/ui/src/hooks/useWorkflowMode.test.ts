@@ -284,4 +284,3 @@ describe('useWorkflowMode — view mode restrictions', () => {
     expect(result.current.canDelete).toBe(true);
   });
 });
-
