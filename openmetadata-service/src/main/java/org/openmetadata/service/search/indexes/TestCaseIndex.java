@@ -93,6 +93,12 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         && linkedTable.getCertification() != null) {
       doc.put("certification", linkedTable.getCertification());
     }
+
+    if (nullOrEmpty(testCase.getDataProducts())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDataProducts())) {
+      doc.put("dataProducts", getEntitiesWithDisplayName(linkedTable.getDataProducts()));
+    }
   }
 
   private EntityInterface denormalizeTestSuiteParents(Map<String, Object> doc, TestCase testCase) {
