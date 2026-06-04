@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test as setup } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import { performAdminLogin } from '../utils/admin';
 
 /**
@@ -62,9 +62,14 @@ setup(
         }
       );
 
-      // patch() does not throw on non-2xx — fail loudly so a misapplied boost
-      // surfaces here instead of as renewed ActivityAPI flakiness downstream.
-      expect(patchResponse.ok()).toBeTruthy();
+      // Best-effort: this setup gates the whole `chromium` project, so a failed boost must
+      // not skip every test. Log loudly and continue; the worst case is renewed ActivityAPI
+      // flakiness, scoped to those tests.
+      if (!patchResponse.ok()) {
+        console.error(
+          `[activity-config] Could not boost ActivityFeedAlert pollInterval (HTTP ${patchResponse.status()})`
+        );
+      }
     } finally {
       await afterAction();
     }
