@@ -171,6 +171,30 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("version") String version);
 
   /**
+   * Optimistic content-based compare-and-swap. Rewrites the row only when its stored json still
+   * equals {@code expectedJson} (the snapshot last read). Returns the number of rows updated (0
+   * when another writer changed the row in the meantime, 1 on success). Lets background rewrites
+   * detect lost-update races without bumping the entity version or writing version history.
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = CAST(:expectedJson AS JSON)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = (:expectedJson :: jsonb)",
+      connectionType = POSTGRES)
+  int updateIfMatches(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("expectedJson") String expectedJson);
+
+  /**
    * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
    * oldPrefixHash}. Used by rename cascade flows to enumerate which children need cache
    * invalidation before an {@link #updateFqn} bulk rewrite.
@@ -758,6 +782,16 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
+  default int updateIfMatches(EntityInterface entity, String expectedJson) {
+    return updateIfMatches(
+        getTableName(),
+        getNameHashColumn(),
+        entity.getFullyQualifiedName(),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity),
+        expectedJson);
+  }
+
   default String getCondition(Include include) {
     if (!supportsSoftDelete()) {
       return "";
@@ -767,6 +801,10 @@ public interface EntityDAO<T extends EntityInterface> {
       return "AND deleted = FALSE";
     }
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
+  }
+
+  default String findJsonById(UUID id, Include include) {
+    return findById(getTableName(), id, getCondition(include));
   }
 
   default T findEntityById(UUID id, Include include) {
