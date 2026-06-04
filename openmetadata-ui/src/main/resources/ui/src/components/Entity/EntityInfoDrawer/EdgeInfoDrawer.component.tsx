@@ -40,6 +40,12 @@ import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWit
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
 
+const getUserTimeValue = (user?: string, timestamp?: number) => {
+  const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
+
+  return valueParts.length > 0 ? valueParts.join(' ') : NO_DATA_PLACEHOLDER;
+};
+
 const EdgeInfoDrawer = ({
   edge,
   visible,
@@ -293,19 +299,13 @@ const EdgeInfoDrawer = ({
     if (edgeInfo?.createdBy || edgeInfo?.createdAt) {
       overviewData.push({
         name: t('label.created-by'),
-        value: t('label.user-time-ago', {
-          time: getRelativeTime(edgeInfo?.createdAt),
-          user: edgeInfo?.createdBy ?? NO_DATA_PLACEHOLDER,
-        }),
+        value: getUserTimeValue(edgeInfo?.createdBy, edgeInfo?.createdAt),
       });
     }
     if (edgeInfo?.updatedBy || edgeInfo?.updatedAt) {
       overviewData.push({
         name: t('label.updated-by'),
-        value: t('label.user-time-ago', {
-          time: getRelativeTime(edgeInfo?.updatedAt),
-          user: edgeInfo?.updatedBy ?? NO_DATA_PLACEHOLDER,
-        }),
+        value: getUserTimeValue(edgeInfo?.updatedBy, edgeInfo?.updatedAt),
       });
     }
 
