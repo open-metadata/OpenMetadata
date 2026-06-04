@@ -12,8 +12,8 @@
  */
 
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { ChangeDescription } from '../generated/entity/services/databaseService';
-import {
+import type { ChangeDescription } from '../generated/entity/services/databaseService';
+import type {
   EntityDiffProps,
   EntityDiffWithMultiChanges,
 } from '../interface/EntityVersion.interface';

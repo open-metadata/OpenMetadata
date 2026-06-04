@@ -13,18 +13,19 @@
 
 import { Divider, Space, Typography } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
-import { Fragment, lazy, ReactNode } from 'react';
+import { Fragment, lazy } from 'react';
+import type { ReactNode } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import {
+import type {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
-import { EntityReference } from '../generated/entity/type';
-import { TestCaseParameterValue } from '../generated/tests/testCase';
+import type { EntityReference } from '../generated/entity/type';
+import type { TestCaseParameterValue } from '../generated/tests/testCase';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,

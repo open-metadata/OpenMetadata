@@ -15,7 +15,7 @@ import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
-import { FC, useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
@@ -25,7 +25,7 @@ import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContain
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import type { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import {
@@ -34,7 +34,7 @@ import {
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,

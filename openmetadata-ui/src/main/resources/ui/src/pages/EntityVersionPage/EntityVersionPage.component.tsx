@@ -13,12 +13,12 @@
 
 import { isEmpty } from 'lodash';
 import {
-  FunctionComponent,
   Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
+  type FunctionComponent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,31 +26,31 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
+import type {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Chart } from '../../generated/entity/data/chart';
-import { Container } from '../../generated/entity/data/container';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Directory } from '../../generated/entity/data/directory';
-import { File } from '../../generated/entity/data/file';
-import { Metric } from '../../generated/entity/data/metric';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex } from '../../generated/entity/data/searchIndex';
-import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
-import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
-import { Table } from '../../generated/entity/data/table';
-import { Topic } from '../../generated/entity/data/topic';
-import { Worksheet } from '../../generated/entity/data/worksheet';
-import { EntityHistory } from '../../generated/type/entityHistory';
+import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import type { Chart } from '../../generated/entity/data/chart';
+import type { Container } from '../../generated/entity/data/container';
+import type { Dashboard } from '../../generated/entity/data/dashboard';
+import type { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import type { Directory } from '../../generated/entity/data/directory';
+import type { File } from '../../generated/entity/data/file';
+import type { Metric } from '../../generated/entity/data/metric';
+import type { Mlmodel } from '../../generated/entity/data/mlmodel';
+import type { Pipeline } from '../../generated/entity/data/pipeline';
+import type { SearchIndex } from '../../generated/entity/data/searchIndex';
+import type { Spreadsheet } from '../../generated/entity/data/spreadsheet';
+import type { StoredProcedure } from '../../generated/entity/data/storedProcedure';
+import type { Table } from '../../generated/entity/data/table';
+import type { Topic } from '../../generated/entity/data/topic';
+import type { Worksheet } from '../../generated/entity/data/worksheet';
+import type { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
+import type { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiEndPointByFQN,
