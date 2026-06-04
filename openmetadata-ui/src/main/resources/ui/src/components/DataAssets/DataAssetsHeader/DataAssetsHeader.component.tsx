@@ -785,9 +785,7 @@ const handleFollowingClick = useCallback(async () => {
 
   const sourceUrlButton = useMemo(() => {
     const sourceUrl =
-      (dataAsset as Table).sourceUrl ??
-      (dataAsset as APICollection | APIEndpoint).endpointURL;
-
+      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL');
     if (!sourceUrl) {
       return null;
     }
