@@ -99,8 +99,8 @@ public class SearchMetadataTool implements McpTool {
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
     LOG.info("Executing searchMetadata with params: {}", params);
-    String query = params.containsKey("query") ? (String) params.get("query") : "*";
-    String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
+    String query = stringParam(params, "query", "*");
+    String entityType = stringParam(params, "entityType", null);
     String index = resolveIndex(entityType);
 
     int size = 10;
@@ -172,21 +172,25 @@ public class SearchMetadataTool implements McpTool {
     }
 
     List<String> requestedFields = new ArrayList<>();
-    if (params.containsKey("fields")) {
-      String fieldsParam = (String) params.get("fields");
-      if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
-        requestedFields =
-            List.of(fieldsParam.split(",")).stream()
-                .map(String::trim)
-                .filter(field -> !field.isEmpty())
-                .collect(Collectors.toList());
-      }
+    String fieldsParam = stringParam(params, "fields", null);
+    if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
+      requestedFields =
+          List.of(fieldsParam.split(",")).stream()
+              .map(String::trim)
+              .filter(field -> !field.isEmpty())
+              .collect(Collectors.toList());
     }
 
     String queryFilter = null;
-    if (params.containsKey("queryFilter")) {
-      queryFilter = (String) params.get("queryFilter");
-      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
+    Object queryFilterParam = params.get("queryFilter");
+    if (queryFilterParam != null) {
+      // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
+      // non-string input back to JSON rather than failing on a cast.
+      String rawFilter =
+          queryFilterParam instanceof String stringValue
+              ? stringValue
+              : JsonUtils.pojoToJson(queryFilterParam);
+      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(rawFilter);
 
       if (!queryNode.has("query")) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
@@ -424,6 +428,16 @@ public class SearchMetadataTool implements McpTool {
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Reads a parameter as a string without assuming the caller sent a string. LLM callers sometimes
+   * send numbers or other scalars (e.g. {@code "entityType": 123}); {@code toString} keeps the tool
+   * tolerant instead of failing on a class cast.
+   */
+  private static String stringParam(Map<String, Object> params, String key, String defaultValue) {
+    Object value = params.get(key);
+    return value == null ? defaultValue : value.toString();
   }
 
   /**

@@ -22,6 +22,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -171,6 +172,53 @@ class SearchMetadataToolTest {
   void testNullEntityTypeUsesDataAsset() {
     assertEquals("dataAsset", SearchMetadataTool.resolveIndex(null));
     assertEquals("dataAsset", SearchMetadataTool.resolveIndex(""));
+  }
+
+  @Test
+  void testNonStringEntityTypeDoesNotThrow() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("entityType", 123);
+
+      when(searchRepository.getIndexMapping("123")).thenReturn(null);
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+      assertNotNull(result);
+      verify(searchRepository).getIndexOrAliasName("dataAsset");
+    }
+  }
+
+  @Test
+  void testQueryFilterAsJsonObjectIsSerialized() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      Response mockResponse = mock(Response.class);
+      when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
+      when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
+          .thenReturn(mockResponse);
+
+      Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
+
+      assertNotNull(result);
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).searchWithDirectQuery(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          "table",
+          JsonUtils.readTree(captor.getValue().getQueryFilter())
+              .at("/query/term/entityType")
+              .asText());
+    }
   }
 
   @Test
