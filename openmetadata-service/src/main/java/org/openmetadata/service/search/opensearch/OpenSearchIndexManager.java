@@ -91,11 +91,13 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
+      String hardenedContent =
+          SearchIndexSettings.harden(indexMappingContent, SearchFieldLimits.active());
 
       String transformedContent =
-          (indexMappingContent != null && !indexMappingContent.isEmpty())
-              ? OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent)
-              : indexMappingContent;
+          (hardenedContent != null && !hardenedContent.isEmpty())
+              ? OsUtils.enrichIndexMappingForOpenSearch(hardenedContent)
+              : hardenedContent;
 
       PutMappingRequest request =
           PutMappingRequest.of(

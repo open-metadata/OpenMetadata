@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
  *       the byte-safe character threshold are stored but not indexed, instead of throwing an
  *       immense-term error;
  *   <li>adds {@code ignore_malformed} to numeric, date and boolean fields so a malformed value is
- *       skipped instead of rejecting the whole document;
+ *       skipped instead of rejecting the whole document (OpenSearch does not support
+ *       {@code ignore_malformed} on {@code boolean}, so {@code OsUtils} strips it from boolean fields
+ *       when transforming the mapping for OpenSearch);
  *   <li>injects the tunable {@code index.mapping.*.limit} guardrails (depth, nested objects, total
  *       fields) into the index settings.
  * </ul>

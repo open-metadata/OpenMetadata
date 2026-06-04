@@ -88,13 +88,15 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
+      String hardenedContent =
+          SearchIndexSettings.harden(indexMappingContent, SearchFieldLimits.active());
 
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
+                if (hardenedContent != null) {
+                  builder.withJson(new StringReader(hardenedContent));
                 }
                 return builder;
               });

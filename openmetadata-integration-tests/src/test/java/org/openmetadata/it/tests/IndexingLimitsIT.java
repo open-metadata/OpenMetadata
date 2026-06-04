@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchIndexSettings;
+import org.openmetadata.service.search.opensearch.OsUtils;
 
 /**
  * Proves the engine-native hardening in {@link SearchIndexSettings} prevents documents from being
@@ -80,7 +81,13 @@ public class IndexingLimitsIT {
   }
 
   private String harden(String mapping) {
-    return SearchIndexSettings.harden(mapping, SearchFieldLimits.defaults());
+    String hardened = SearchIndexSettings.harden(mapping, SearchFieldLimits.defaults());
+    // Mirror the production OpenSearch path: harden() then enrichIndexMappingForOpenSearch()
+    // (e.g. strips ignore_malformed from boolean, which OpenSearch rejects).
+    if ("opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch"))) {
+      hardened = OsUtils.enrichIndexMappingForOpenSearch(hardened);
+    }
+    return hardened;
   }
 
   private boolean rejects(String index, String mapping, String doc) throws Exception {
