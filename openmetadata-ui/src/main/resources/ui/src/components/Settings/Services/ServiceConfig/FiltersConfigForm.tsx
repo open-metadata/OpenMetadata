@@ -530,7 +530,7 @@ const getOrderedFilterEntries = (properties: Record<string, unknown>) => {
   );
 
   return fieldNames
-    .sort((first, second) => {
+    .toSorted((first, second) => {
       const firstKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
         first as ServiceConnectionFilterPatternFields
       );
@@ -550,7 +550,7 @@ const getOrderedFilterEntries = (properties: Record<string, unknown>) => {
     })
     .map((fieldName) => [
       fieldName,
-      (knownFilterFields[fieldName] ?? properties[fieldName]) as unknown,
+      knownFilterFields[fieldName] ?? properties[fieldName],
     ]);
 };
 
@@ -681,12 +681,16 @@ function ConditionChip({
         tone === 'include'
           ? 'tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
           : 'tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-700'
-      )}>
-      <span className="tw:text-quaternary tw:font-medium">{operatorLabel}</span>
-      <span>{condition.value}</span>
+      )}
+      data-testid={`${tone}-chip-${conditionKey(condition)}`}>
+      <span className="tw:text-quaternary tw:font-medium" data-testid="label">
+        {operatorLabel}
+      </span>
+      <span data-testid="value">{condition.value}</span>
       <button
         aria-label={removeLabel}
         className="tw:inline-grid tw:size-4 tw:cursor-pointer tw:place-items-center tw:border-0 tw:bg-transparent tw:p-0 tw:text-current"
+        data-testid="remove-button"
         type="button"
         onClick={onRemove}>
         <XClose size={12} />
@@ -707,6 +711,7 @@ function OperatorSelect({
   return (
     <span className="tw:relative tw:flex-[0_0_148px]">
       <Select
+        data-testid="relation-selector"
         size="sm"
         value={value}
         onChange={(key) => onChange(key as FilterOperator)}>
@@ -768,6 +773,7 @@ function ConditionComposer({
           'placeholder:tw:text-disabled focus:tw:border-utility-brand-500',
           isRegex && 'tw:font-mono'
         )}
+        data-testid={`${tone}-filter-input`}
         placeholder={isRegex ? '^prefix.*$' : placeholder}
         value={value}
         onBlur={() => onFocus('')}
@@ -786,6 +792,7 @@ function ConditionComposer({
             ? 'tw:bg-utility-error-600'
             : 'tw:bg-utility-brand-600'
         )}
+        data-testid={`${tone}-add-button`}
         disabled={!trimmedValue}
         type="button"
         onClick={commit}>
@@ -1039,6 +1046,7 @@ function FilterSectionCard({
                   !filter.restrict &&
                     'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
                 )}
+                data-testid={`${section.fieldName}-scan-all-button`}
                 type="button"
                 onClick={() =>
                   onChange({
@@ -1057,6 +1065,7 @@ function FilterSectionCard({
                   filter.restrict &&
                     'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
                 )}
+                data-testid={`${section.fieldName}-only-specific-button`}
                 type="button"
                 onClick={() =>
                   onChange({
@@ -1128,6 +1137,7 @@ function FilterSectionCard({
                     hasSystemExcludesEnabled &&
                       'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
                   )}
+                  data-testid={`${section.fieldName}-exclude-system-filters`}
                   type="button"
                   onClick={toggleSystemExcludes}>
                   {hasSystemExcludesEnabled ? (
@@ -1231,36 +1241,38 @@ function FiltersConfigForm({
       unknown
     >;
 
-    return getOrderedFilterEntries(properties).map(([fieldName, property]) => {
-      const schemaProperty = property as FilterSchemaProperty;
-      const field = fieldName as ServiceConnectionFilterPatternFields;
-      const cleanedTitle = cleanSchemaTitle(
-        schemaProperty.title ?? '',
-        fieldName
-      );
-      const labelKey = FILTER_LABEL_KEYS[field];
-      const singleLabelKey = FILTER_SINGLE_LABEL_KEYS[field];
-      const label = labelKey
-        ? t(labelKey)
-        : pluralizeFallback(cleanedTitle || startCase(fieldName));
-      const singleLabel = singleLabelKey
-        ? t(singleLabelKey)
-        : singularizeFallback(label);
-      const defaultExcludes = addSnowflakeSystemExcludes(
-        serviceType,
-        fieldName,
-        schemaProperty.default?.excludes ?? []
-      );
+    return (getOrderedFilterEntries(properties) as [string, unknown][]).map(
+      ([fieldName, property]) => {
+        const schemaProperty = property as FilterSchemaProperty;
+        const field = fieldName as ServiceConnectionFilterPatternFields;
+        const cleanedTitle = cleanSchemaTitle(
+          schemaProperty.title ?? '',
+          fieldName
+        );
+        const labelKey = FILTER_LABEL_KEYS[field];
+        const singleLabelKey = FILTER_SINGLE_LABEL_KEYS[field];
+        const label = labelKey
+          ? t(labelKey)
+          : pluralizeFallback(cleanedTitle || startCase(fieldName));
+        const singleLabel = singleLabelKey
+          ? t(singleLabelKey)
+          : singularizeFallback(label);
+        const defaultExcludes = addSnowflakeSystemExcludes(
+          serviceType,
+          fieldName,
+          schemaProperty.default?.excludes ?? []
+        );
 
-      return {
-        description: schemaProperty.description,
-        fieldName,
-        icon: getSectionIcon(fieldName),
-        label,
-        singleLabel,
-        systemExcludes: defaultExcludes.map(parseRegexPattern),
-      };
-    });
+        return {
+          description: schemaProperty.description,
+          fieldName,
+          icon: getSectionIcon(fieldName),
+          label,
+          singleLabel,
+          systemExcludes: defaultExcludes.map(parseRegexPattern),
+        };
+      }
+    );
   }, [connSch.schema.properties, serviceType, t]);
 
   useEffect(() => {

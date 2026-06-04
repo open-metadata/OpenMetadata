@@ -120,9 +120,9 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.getByTestId('add-service-button').click();
     await page.getByTestId('Rest').click();
-    await page.getByTestId('service-name').waitFor();
+    await page.locator('#service-name').waitFor();
 
-    await page.getByTestId('service-name').fill(apiServiceConfig.name);
+    await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
     await page
       .getByTestId('service-description')

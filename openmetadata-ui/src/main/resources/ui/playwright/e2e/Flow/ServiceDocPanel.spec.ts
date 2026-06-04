@@ -34,7 +34,7 @@ const goToMysqlConnectionStep = async (page: Page, serviceName: string) => {
   });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
-  await page.getByTestId('service-name').fill(serviceName);
+  await page.locator('#service-name').fill(serviceName);
   await advanceToServiceConnectionStep(page);
 };
 
@@ -98,7 +98,7 @@ test.describe('ServiceDocPanel', () => {
       });
       await waitForAllLoadersToDisappear(page);
       await selectServiceConnector(page, 'Mssql');
-      await page.getByTestId('service-name').fill('pw-doc-panel-mssql-img');
+      await page.locator('#service-name').fill('pw-doc-panel-mssql-img');
       await advanceToServiceConnectionStep(page);
 
       const docPanel = page.getByTestId('service-requirements');
@@ -166,7 +166,7 @@ test.describe('ServiceDocPanel', () => {
         docPanel.getByRole('heading', { name: 'Username', level: 1 })
       ).toBeVisible();
 
-      await page.getByTestId('service-name').focus();
+      await page.locator('#service-name').focus();
 
       await expect(
         docPanel.getByRole('heading', { name: 'Requirements', level: 1 })

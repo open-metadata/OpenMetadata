@@ -166,7 +166,7 @@ class ServiceBaseClass {
   async serviceStep2(serviceName: string, page: Page) {
     // Service name + connection details now share the Configure & Connect step;
     // the connection form's submit button advances to the next step.
-    await page.fill('[data-testid="service-name"]', serviceName);
+    await page.fill('#service-name', serviceName);
   }
 
   async fillConnectionDetails(_page: Page) {
@@ -272,7 +272,7 @@ class ServiceBaseClass {
         request.method() === 'POST'
     );
 
-    await page.getByTestId('submit-btn').getByText('Save').click();
+    await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
     const savedService = (await saveServiceResponse).response();
 

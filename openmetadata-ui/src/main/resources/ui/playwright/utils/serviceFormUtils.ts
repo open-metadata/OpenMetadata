@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
 
 const escapeRegExp = (value: string) =>
@@ -64,7 +65,10 @@ export const selectOneOfOption = async (
       return;
     }
 
-    await page.click(`.ant-select-dropdown:visible [title="${optionName}"]`);
+    await page
+      .getByLabel(startCase(optionName), { exact: true })
+      .getByText(startCase(optionName))
+      .click();
 
     return;
   }
