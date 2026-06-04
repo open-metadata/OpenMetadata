@@ -1,0 +1,127 @@
+{
+  "name": "AIAssetIntakeWorkflow",
+  "fullyQualifiedName": "AIAssetIntakeWorkflow",
+  "displayName": "AI Asset Intake Workflow",
+  "description": "Triggered when an AI Application, LLM Model, or MCP Server is created or updated with registrationStatus=PendingApproval. Creates a Risk Council approval task; the AI Governance convenience endpoints handle the actual registrationStatus transition on approve/reject.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "events": ["Created", "Updated"],
+      "exclude": [],
+      "include": [],
+      "filter": {}
+    },
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "AIAssetSubmitted",
+      "displayName": "AI Asset Submitted for Review"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfPendingApproval",
+      "displayName": "Check if Registration Status is PendingApproval",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"governanceMetadata.registrationStatus\"},\"PendingApproval\"]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "NotPendingApprovalEnd",
+      "displayName": "Asset is not pending approval — no task created"
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "RiskCouncilReview",
+      "displayName": "Risk Council Review",
+      "description": "The Risk Council reviewers approve or reject this AI asset. On Approve, the entity's governanceMetadata.registrationStatus is set to Approved via the AI Governance convenience endpoint. On Reject, it is set to Rejected with the supplied comment.",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "risk-council-review",
+        "stageDisplayName": "Risk Council Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "AI Asset Approved by Risk Council"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "AI Asset Rejected by Risk Council"
+    }
+  ],
+  "edges": [
+    {
+      "from": "AIAssetSubmitted",
+      "to": "CheckIfPendingApproval"
+    },
+    {
+      "from": "CheckIfPendingApproval",
+      "to": "NotPendingApprovalEnd",
+      "condition": "false"
+    },
+    {
+      "from": "CheckIfPendingApproval",
+      "to": "RiskCouncilReview",
+      "condition": "true"
+    },
+    {
+      "from": "RiskCouncilReview",
+      "to": "ApprovedEnd",
+      "condition": "approve"
+    },
+    {
+      "from": "RiskCouncilReview",
+      "to": "RejectedEnd",
+      "condition": "reject"
+    }
+  ]
+}

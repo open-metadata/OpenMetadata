@@ -1,0 +1,192 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+.ai-gov-detail-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 12.5px Inter;
+  color: var(--gray-500, #717680);
+
+  svg {
+    color: var(--gray-400, #a4a7ae);
+    flex-shrink: 0;
+  }
+}
+
+.ai-gov-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--blue-700, #175cd3);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--blue-800, #1849a9);
+    text-decoration: underline;
+  }
+}
+
+.ai-gov-detail-crumb-current {
+  color: var(--gray-700, #414651);
+  font-weight: 500;
+}
+
+.ai-gov-detail-header-card.ai-gov-detail-header-card {
+  border: 1px solid var(--border-subtle, #eaecf5);
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.04);
+}
+
+.ai-gov-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ai-gov-detail-header-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-gov-detail-header-title-row,
+.ai-gov-detail-header-description {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-gov-detail-header-title.ai-gov-detail-header-title {
+  margin: 0;
+  color: var(--gray-900, #181d27);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ai-gov-detail-header-edit-button.ai-gov-detail-header-edit-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--gray-500, #717680);
+  box-shadow: none;
+}
+
+.ai-gov-detail-header-edit-button.ai-gov-detail-header-edit-button:hover {
+  border-color: var(--border-default, #d5d7da);
+  background: var(--gray-50, #f5f5f5);
+  color: var(--blue-700, #175cd3);
+}
+
+.ai-gov-detail-header-edit-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ai-gov-detail-header-pills {
+  min-height: 24px;
+}
+
+.ai-gov-detail-header-description {
+  max-width: 860px;
+
+  .ant-typography,
+  p {
+    line-height: 1.55;
+  }
+}
+
+.ai-gov-detail-header-fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(
+      220px,
+      1.4fr
+    );
+  gap: 14px;
+  max-width: 940px;
+}
+
+.ai-gov-detail-header-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle, #eaecf5);
+  border-radius: 8px;
+  background: var(--gray-25, #fcfcfd);
+}
+
+.ai-gov-detail-header-field-label.ai-gov-detail-header-field-label {
+  color: var(--gray-500, #717680);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.ai-gov-detail-header-field-value {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  color: var(--gray-800, #252b37);
+}
+
+.ai-gov-detail-header-field-value .tags-section {
+  width: 100%;
+}
+
+.ai-gov-detail-header-field-value .tags-header {
+  display: none;
+}
+
+.ai-gov-detail-header-field-value .tags-content {
+  padding: 0;
+}
+
+.ai-gov-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .ai-gov-detail-header {
+    flex-direction: column;
+  }
+
+  .ai-gov-detail-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .ai-gov-detail-header-fields {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+}
+
+// ─── Lineage tab ───────────────────────────────────────────────────────────
+.ai-gov-lineage-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle, #eaecf5);
+}
+
+.ai-gov-lineage-canvas {
+  height: 540px;
+  position: relative;
+  background: radial-gradient(circle at center, #fafafa 0%, #f4f6f8 100%);
+}

@@ -1,0 +1,228 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/auditReport.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuditReport",
+  "$comment": "@om-entity-type",
+  "description": "An asynchronously-generated evidence pack scoped to a framework, domain, or single AI asset. Bundles compliance records, control coverage, workflow history, remediation snapshot, and per-asset documents into machine-readable JSON (and optionally PDF) for auditors and regulators.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AuditReport",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "reportScope": {
+      "type": "string",
+      "description": "Breadth of the audit pack",
+      "enum": ["Estate", "Domain", "Asset"],
+      "javaType": "org.openmetadata.schema.entity.ai.AuditReportScope",
+      "javaEnums": [
+        {"name": "Estate"},
+        {"name": "Domain"},
+        {"name": "Asset"}
+      ]
+    },
+    "reportFormat": {
+      "type": "string",
+      "description": "Artifact format(s) to generate",
+      "enum": ["Json", "Pdf", "Both"],
+      "javaType": "org.openmetadata.schema.entity.ai.AuditReportFormat",
+      "javaEnums": [
+        {"name": "Json"},
+        {"name": "Pdf"},
+        {"name": "Both"}
+      ]
+    },
+    "reportStatus": {
+      "type": "string",
+      "description": "Current state of the audit pack job",
+      "enum": ["Queued", "Running", "Completed", "Failed", "Cancelled"],
+      "javaType": "org.openmetadata.schema.entity.ai.AuditReportStatus",
+      "javaEnums": [
+        {"name": "Queued"},
+        {"name": "Running"},
+        {"name": "Completed"},
+        {"name": "Failed"},
+        {"name": "Cancelled"}
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.AuditReportArtifact",
+      "description": "Single generated artifact (JSON bundle, PDF, etc.)",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/reportFormat"
+        },
+        "downloadUrl": {
+          "type": "string",
+          "description": "Resolvable URL to download the artifact"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "description": "Artifact size in bytes",
+          "minimum": 0
+        },
+        "checksum": {
+          "type": "string",
+          "description": "SHA-256 checksum of the artifact"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.AuditReportManifest",
+      "description": "Top-level inventory included in the pack",
+      "additionalProperties": false,
+      "properties": {
+        "assetCount": {
+          "type": "integer",
+          "description": "Number of AI assets in scope"
+        },
+        "frameworkCount": {
+          "type": "integer",
+          "description": "Number of frameworks covered"
+        },
+        "controlCount": {
+          "type": "integer",
+          "description": "Total controls evaluated"
+        },
+        "complianceRecordCount": {
+          "type": "integer",
+          "description": "Total compliance records included"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique short name for this report",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the audit report",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FQN that uniquely identifies the audit report",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Free-text description / notes attached to this report",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "framework": {
+      "description": "Framework this audit pack is scoped to (omit for an estate-wide multi-framework pack)",
+      "$ref": "../../type/entityReference.json"
+    },
+    "scope": {
+      "$ref": "#/definitions/reportScope",
+      "default": "Estate"
+    },
+    "scopeTarget": {
+      "description": "Reference to the domain or asset when scope is not Estate",
+      "$ref": "../../type/entityReference.json"
+    },
+    "format": {
+      "$ref": "#/definitions/reportFormat",
+      "default": "Json"
+    },
+    "status": {
+      "$ref": "#/definitions/reportStatus",
+      "default": "Queued"
+    },
+    "asOfDate": {
+      "description": "Snapshot date — the pack assembles state as it was at this time",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "includeRedacted": {
+      "type": "boolean",
+      "description": "Whether to include normally-redacted evidence (DPIAs, model cards, etc.)",
+      "default": false
+    },
+    "requestedBy": {
+      "description": "User who requested the report",
+      "$ref": "../../type/entityReference.json"
+    },
+    "requestedAt": {
+      "description": "When the report was requested",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "startedAt": {
+      "description": "When job execution started",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "completedAt": {
+      "description": "When job execution finished (success or failure)",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "failureReason": {
+      "description": "Stack/message if status=Failed",
+      "type": "string"
+    },
+    "artifacts": {
+      "description": "Generated artifacts available for download",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/artifact"
+      },
+      "default": []
+    },
+    "manifest": {
+      "$ref": "#/definitions/manifest"
+    },
+    "owners": {
+      "description": "Owners of this audit report",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this audit report",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "domains": {
+      "description": "Domains the audit report belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Custom extension JSON",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["id", "name", "scope", "format", "status"],
+  "additionalProperties": false
+}

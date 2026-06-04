@@ -29,7 +29,18 @@ root.render(
   </React.StrictMode>
 );
 
-if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
+// In dev (Vite) the asset-caching service worker only serves stale chunks and
+// fights HMR, so skip registration and proactively unregister any SW left over
+// from a previous production session.
+if (import.meta.env.DEV) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) =>
+        registrations.forEach((registration) => registration.unregister())
+      );
+  }
+} else if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
   window.addEventListener('load', () => {
     const basePath = getBasePath();
     const serviceWorkerPath = basePath

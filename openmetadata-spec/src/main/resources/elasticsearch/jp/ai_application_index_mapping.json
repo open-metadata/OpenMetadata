@@ -1,41 +1,31 @@
 {
   "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
     "analysis": {
-      "tokenizer": {
-        "n_gram_tokenizer": {
-          "type": "ngram",
-          "min_gram": 3,
-          "max_gram": 20,
-          "token_chars": [
-            "letter",
-            "digit"
-          ]
-        }
-      },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase",
-            "asciifolding"
+            "lowercase"
           ]
         }
       },
       "analyzer": {
         "om_analyzer": {
-          "tokenizer": "standard",
+          "tokenizer": "letter",
           "filter": [
-            "word_delimiter_filter",
             "lowercase",
-            "asciifolding",
-            "russian_stop",
-            "russian_snowball",
-            "english_stop",
-            "om_kstem"
+            "om_stemmer"
+          ]
+        },
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
           ]
         },
         "om_ngram": {
@@ -48,16 +38,16 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "compound_word_delimiter_graph",
             "lowercase",
+            "compound_word_delimiter_graph",
             "flatten_graph"
           ]
         }
       },
       "filter": {
-        "word_delimiter_filter": {
-          "type": "word_delimiter",
-          "preserve_original": true
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
         },
         "compound_word_delimiter_graph": {
           "type": "word_delimiter_graph",
@@ -70,26 +60,22 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
-        },
-        "russian_stop": {
-          "type": "stop",
-          "stopwords": "_russian_"
-        },
-        "english_stop": {
-          "type": "stop",
-          "stopwords": "_english_"
-        },
-        "russian_snowball": {
-          "name": "russian",
-          "type": "stemmer"
-        },
-        "om_kstem": {
-          "type": "kstem"
-        },
-        "asciifolding": {
-          "type": "asciifolding"
+        }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       }
+    },
+    "index": {
+      "max_ngram_diff": 1
     }
   },
   "mappings": {
@@ -111,7 +97,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -134,7 +120,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -157,7 +143,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "similarity": "boolean",
         "term_vector": "with_positions_offsets"
       },
@@ -717,6 +703,69 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiGovernance": {
+        "type": "object",
+        "properties": {
+          "assetSubtype": {
+            "type": "keyword"
+          },
+          "registrationStatus": {
+            "type": "keyword"
+          },
+          "riskLevel": {
+            "type": "keyword"
+          },
+          "accessesPii": {
+            "type": "boolean"
+          },
+          "accessesSensitiveData": {
+            "type": "boolean"
+          },
+          "dataCategories": {
+            "type": "keyword"
+          },
+          "detection": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "suspectedTeam": {
+                "type": "keyword"
+              },
+              "detectedAt": {
+                "type": "date",
+                "format": "strict_date_optional_time||epoch_millis"
+              },
+              "flags": {
+                "type": "keyword"
+              }
+            }
+          },
+          "complianceStatus": {
+            "type": "flattened"
+          },
+          "frameworks": {
+            "type": "keyword"
+          },
+          "euRiskClassification": {
+            "type": "keyword"
+          },
+          "regions": {
+            "type": "keyword"
+          },
+          "lastAssessedAt": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "affectedUserCount": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

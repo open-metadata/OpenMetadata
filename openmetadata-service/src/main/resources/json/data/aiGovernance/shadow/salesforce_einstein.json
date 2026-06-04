@@ -1,0 +1,24 @@
+{
+  "name": "salesforce-einstein-studio",
+  "displayName": "Salesforce Einstein Studio",
+  "description": "New deployment of Einstein Studio detected in the marketing Salesforce org. Awaiting risk classification and owner assignment.",
+  "applicationType": "Copilot",
+  "governanceMetadata": {
+    "registrationStatus": "Unregistered",
+    "riskAssessment": {
+      "riskLevel": "Medium"
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": false
+    },
+    "detection": {
+      "source": "ConnectorAudit",
+      "sourceDetails": "New deploy · marketing org",
+      "suspectedUser": "admin@",
+      "suspectedTeam": "Salesforce admins",
+      "flags": ["NewDeployment"],
+      "severity": "Medium"
+    }
+  }
+}

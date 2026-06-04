@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIApplication;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -72,6 +74,14 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
 
   public AIApplicationResource(Authorizer authorizer, Limits limits) {
     super(Entity.AI_APPLICATION, authorizer, limits);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    AIGovernanceAssetSeedLoader.loadFromResources();
+    AIGovernanceDemoSeedLoader.loadFromResources();
+    AIGovernanceLineageSeedLoader.loadFromResources();
+    ShadowAISeedLoader.loadFromResources();
   }
 
   @Override

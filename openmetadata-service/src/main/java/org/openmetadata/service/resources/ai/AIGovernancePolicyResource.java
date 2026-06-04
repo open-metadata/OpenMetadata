@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -67,6 +69,11 @@ public class AIGovernancePolicyResource
 
   public AIGovernancePolicyResource(Authorizer authorizer, Limits limits) {
     super(Entity.AI_GOVERNANCE_POLICY, authorizer, limits);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    PolicySeedLoader.loadFromResources(repository);
   }
 
   public static class AIGovernancePolicyList extends ResultList<AIGovernancePolicy> {

@@ -1,0 +1,24 @@
+{
+  "name": "notion-ai-workspace",
+  "displayName": "Notion AI workspace add-on",
+  "description": "Notion AI add-on enabled org-wide. Detected via SaaS connector audit. Volume sufficient to warrant a risk review.",
+  "applicationType": "Copilot",
+  "governanceMetadata": {
+    "registrationStatus": "Unregistered",
+    "riskAssessment": {
+      "riskLevel": "Medium"
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": false
+    },
+    "detection": {
+      "source": "ConnectorAudit",
+      "sourceDetails": "Org-wide activation",
+      "suspectedTeam": "Workspace-wide",
+      "volume7d": "~430 calls / 7d",
+      "flags": ["OrgWideEnable"],
+      "severity": "Medium"
+    }
+  }
+}
