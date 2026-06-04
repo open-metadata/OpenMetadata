@@ -65,7 +65,6 @@ public final class SchemaFieldFlattener {
       SearchFieldLimits limits) {
     Optional<String> optParentField =
         Optional.ofNullable(parentField).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
     int index = 0;
     boolean capReached = false;
     while (index < fields.size() && !capReached) {
@@ -77,9 +76,7 @@ public final class SchemaFieldFlattener {
         capReached = true;
       } else {
         Field field = fields.get(index);
-        if (field.getTags() != null) {
-          tags = field.getTags();
-        }
+        List<TagLabel> tags = field.getTags() != null ? field.getTags() : new ArrayList<>();
         String fieldName = addFlattenField(field, optParentField, tags, flattenSchemaFields);
         if (field.getChildren() != null) {
           parseSchemaFields(field.getChildren(), flattenSchemaFields, fieldName, depth + 1, limits);

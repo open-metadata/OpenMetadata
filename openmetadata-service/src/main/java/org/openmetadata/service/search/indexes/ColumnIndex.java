@@ -44,7 +44,6 @@ public interface ColumnIndex extends SearchIndex {
       SearchFieldLimits limits) {
     Optional<String> optParentColumn =
         Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
     int index = 0;
     boolean capReached = false;
     while (index < columns.size() && !capReached) {
@@ -56,9 +55,7 @@ public interface ColumnIndex extends SearchIndex {
         capReached = true;
       } else {
         Column col = columns.get(index);
-        if (col.getTags() != null) {
-          tags = col.getTags();
-        }
+        List<TagLabel> tags = col.getTags() != null ? col.getTags() : new ArrayList<>();
         String columnName = addFlattenColumn(col, optParentColumn, tags, flattenColumns);
         if (col.getChildren() != null) {
           parseColumns(col.getChildren(), flattenColumns, columnName, depth + 1, limits);

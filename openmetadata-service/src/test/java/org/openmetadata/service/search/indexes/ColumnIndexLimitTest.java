@@ -13,6 +13,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchRepository;
@@ -93,6 +95,23 @@ class ColumnIndexLimitTest {
     new TestColumnIndex().parseColumns(List.of(nestedChain(5)), flattened, null);
 
     assertEquals(3, flattened.size(), "recursion must stop at depth limit");
+  }
+
+  @Test
+  void parseColumns_does_not_leak_tags_between_siblings() {
+    activateLimits(20, 10000);
+    Column tagged =
+        new Column().withName("a").withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    Column untagged = new Column().withName("b");
+    List<FlattenColumn> flattened = new ArrayList<>();
+
+    new TestColumnIndex().parseColumns(List.of(tagged, untagged), flattened, null);
+
+    assertEquals("a", flattened.get(0).getName());
+    assertEquals(1, flattened.get(0).getTags().size(), "tagged column keeps its tag");
+    assertTrue(
+        flattened.get(1).getTags() == null || flattened.get(1).getTags().isEmpty(),
+        "untagged sibling must not inherit the previous column's tags");
   }
 
   @Test
