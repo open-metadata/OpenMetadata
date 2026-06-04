@@ -188,7 +188,6 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
   );
 };
 
-
 // ---- TreeItemContent ----------------------------------------------------
 
 export interface TreeItemContentProps {
@@ -407,6 +406,5 @@ export {
   TreeItemComponent as TreeItem,
   TreeItemContentComponent as TreeItemContent,
   TreeLoadMoreItemComponent as TreeLoadMoreItem,
-  TreeSectionComponent as TreeSection
+  TreeSectionComponent as TreeSection,
 };
-

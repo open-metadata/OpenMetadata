@@ -32,7 +32,7 @@ export const Dot = ({
   size = 'md',
   ...props
 }: HTMLAttributes<HTMLOrSVGElement> & {
-  size?: 'micro' | 'tiny' | 'xs' | 'sm' | 'md';
+  size?: 'micro' | 'tiny' | 'sm' | 'md' | 'xs';
 }) => {
   return (
     <svg

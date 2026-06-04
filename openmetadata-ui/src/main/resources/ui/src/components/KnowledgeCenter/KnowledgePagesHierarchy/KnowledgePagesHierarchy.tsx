@@ -793,7 +793,10 @@ const KnowledgePagesHierarchy = forwardRef<
             }
           }}>
           <Modal>
-            <Dialog showCloseButton data-testid="confirmation-modal" onClose={()=> setMovedPage(undefined)}>
+            <Dialog
+              showCloseButton
+              data-testid="confirmation-modal"
+              onClose={() => setMovedPage(undefined)}>
               <Dialog.Header
                 title={t('label.move-the-entity', {
                   entity: t('label.knowledge-page'),
