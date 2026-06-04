@@ -82,7 +82,7 @@ public class RunAppImpl {
       updatedApp.setAppConfiguration(config);
       wasSuccessful =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
-      deployIngestionPipeline(pipelineServiceClient, app);
+      deployIngestionPipeline(app);
     }
 
     if (!wasSuccessful) {
@@ -236,8 +236,7 @@ public class RunAppImpl {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
-  private IngestionPipeline deployIngestionPipeline(
-      PipelineServiceClientInterface pipelineServiceClient, App app) {
+  private IngestionPipeline deployIngestionPipeline(App app) {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -254,7 +253,7 @@ public class RunAppImpl {
     ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
-    pipelineServiceClient.deployPipeline(
+    repository.deployIngestionPipeline(
         ingestionPipeline,
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
 
@@ -288,7 +287,7 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    IngestionPipeline ingestionPipeline = deployIngestionPipeline(pipelineServiceClient, app);
+    IngestionPipeline ingestionPipeline = deployIngestionPipeline(app);
     return runIngestionPipeline(
         pipelineServiceClient, ingestionPipeline, waitForCompletion, startTime, timeoutMillis);
   }
