@@ -49,6 +49,23 @@ public class ExpressionValidatorTest {
     }
   }
 
+  @Test
+  void combinedBooleanWrappedConditionIsSafe() {
+    // Boolean wrappers (()/&&/||/!) only add safe nodes, so combining safe fragments stays safe.
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(matchAnyTag('Tier.Tier1')) && (!noOwner()) || (isOwner())"),
+        "Boolean-wrapped combination of safe fragments should stay safe");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(isOwner()) && (T(java.lang.Runtime).getRuntime())"),
+        "Unsafe fragment in a combined condition must still be blocked");
+  }
+
   // T( - SpEL Type Reference
   @Test
   void testTypeReference_Positive() {
