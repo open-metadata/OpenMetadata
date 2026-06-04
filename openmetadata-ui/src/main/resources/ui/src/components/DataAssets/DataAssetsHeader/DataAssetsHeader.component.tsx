@@ -118,7 +118,6 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -478,13 +477,6 @@ export const DataAssetsHeader = ({
     );
   };
 
-  const handleVoteChange = useCallback(
-    async (data: VotingDataProps) => {
-      await onUpdateVote?.(data, dataAsset.id ?? '');
-    },
-    [onUpdateVote, dataAsset.id]
-  );
-
   const handleUpVote = useCallback(async () => {
     if (!onUpdateVote) {
       return;
@@ -495,11 +487,11 @@ export const DataAssetsHeader = ({
         ? QueryVoteType.unVoted
         : QueryVoteType.votedUp;
     try {
-      await handleVoteChange({ updatedVoteType });
+      await onUpdateVote({ updatedVoteType }, dataAsset.id ?? '');
     } finally {
       setUpVoteLoading(false);
     }
-  }, [onUpdateVote, voteStatus, handleVoteChange]);
+  }, [onUpdateVote, voteStatus, dataAsset.id]);
 
   const handleDownVote = useCallback(async () => {
     if (!onUpdateVote) {
@@ -511,11 +503,11 @@ export const DataAssetsHeader = ({
         ? QueryVoteType.unVoted
         : QueryVoteType.votedDown;
     try {
-      await handleVoteChange({ updatedVoteType });
+      await onUpdateVote({ updatedVoteType }, dataAsset.id ?? '');
     } finally {
       setDownVoteLoading(false);
     }
-  }, [onUpdateVote, voteStatus, handleVoteChange]);
+  }, [onUpdateVote, voteStatus, dataAsset.id]);
 
   const handleOpenAnnouncementDrawer = useCallback(
     () => setIsAnnouncementDrawerOpen(true),
