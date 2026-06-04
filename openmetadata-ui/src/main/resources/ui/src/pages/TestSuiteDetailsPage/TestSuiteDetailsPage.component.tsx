@@ -81,7 +81,7 @@ import {
   ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../rest/testAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,

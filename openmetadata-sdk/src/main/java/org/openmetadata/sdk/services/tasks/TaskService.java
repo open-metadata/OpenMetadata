@@ -106,6 +106,12 @@ public class TaskService extends EntityServiceBase<Task> {
   public ListResponse<Task> listAssigned(
       TaskEntityStatus status, String statusGroup, String domain, String fields)
       throws OpenMetadataException {
+    return listAssigned(status, statusGroup, domain, fields, null);
+  }
+
+  public ListResponse<Task> listAssigned(
+      TaskEntityStatus status, String statusGroup, String domain, String fields, Integer limit)
+      throws OpenMetadataException {
     String path = basePath + "/assigned";
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (status != null) {
@@ -119,6 +125,9 @@ public class TaskService extends EntityServiceBase<Task> {
     }
     if (fields != null) {
       optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
     }
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
