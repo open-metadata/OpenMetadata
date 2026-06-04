@@ -11,17 +11,7 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
-import { ReactComponent as FollowStarFilled } from '../../../assets/svg/ic-follow-star-filled.svg';
-import { ReactComponent as FollowStarOutline } from '../../../assets/svg/ic-follow-star-outline.svg';
-import { FollowStarIconProps } from './FollowStarIcon.interface';
-
-export const FollowStarIcon: FC<FollowStarIconProps> = ({
-  className,
-  selected,
-}) =>
-  selected ? (
-    <FollowStarFilled className={className} />
-  ) : (
-    <FollowStarOutline className={className} />
-  );
+export interface FollowStarIconProps {
+  className?: string;
+  selected?: boolean;
+}

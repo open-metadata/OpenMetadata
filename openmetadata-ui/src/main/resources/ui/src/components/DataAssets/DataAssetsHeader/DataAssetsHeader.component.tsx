@@ -189,6 +189,7 @@ const StatItem = ({
   const interactive = onClick ? (
     <button
       aria-busy={loading || undefined}
+      aria-label={srLabel ?? tooltip}
       className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
       data-testid={testId}
       disabled={disabled}
@@ -261,7 +262,7 @@ export const DataAssetsHeader = ({
   const [upVoteLoading, setUpVoteLoading] = useState(false);
   const [downVoteLoading, setDownVoteLoading] = useState(false);
   const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(globalThis.location.href);
+  const { onCopyToClipBoard } = useClipboard('');
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
@@ -530,9 +531,9 @@ export const DataAssetsHeader = ({
   }, [onFollowClick]);
 
   const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard();
+    await onCopyToClipBoard(globalThis.location.href);
     setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
+    setTimeout(() => setCopyTooltip(undefined), 2000);
   }, [onCopyToClipBoard, t]);
 
   const {
