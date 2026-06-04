@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.QueryStringQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +28,11 @@ public class ElasticQueryBuilder {
 
   public static Query termQuery(String field, int value) {
     return Query.of(q -> q.term(t -> t.field(field).value(value)));
+  }
+
+  public static Query termsQuery(String field, Collection<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    return Query.of(q -> q.terms(t -> t.field(field).terms(tf -> tf.value(fieldValues))));
   }
 
   public static Query matchQuery(String field, String value) {
