@@ -22,7 +22,6 @@ import { EntityType } from '../enums/entity.enum';
 import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-
 export { getDatabaseConfig } from './DatabaseServicePureUtils';
 
 export const ExtraDatabaseServiceDropdownOptions = (
