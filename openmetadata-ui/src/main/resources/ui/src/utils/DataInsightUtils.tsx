@@ -22,6 +22,7 @@ import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartR
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 import { pluralize } from './StringUtils';
+
 export const getEntitiesChartSummary = (
   chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
 ) => {

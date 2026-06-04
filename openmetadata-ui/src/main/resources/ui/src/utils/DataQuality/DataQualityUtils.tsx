@@ -91,4 +91,7 @@ export {
   transformToTestCaseStatusByDimension,
   transformToTestCaseStatusObject,
 } from './DataQualityPureUtils';
-export type { CreateUpdatedTestCasePatchArgs, TestCaseCountByStatus } from './DataQualityPureUtils';
+export type {
+  CreateUpdatedTestCasePatchArgs,
+  TestCaseCountByStatus,
+} from './DataQualityPureUtils';

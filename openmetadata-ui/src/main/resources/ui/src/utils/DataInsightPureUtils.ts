@@ -23,12 +23,12 @@ import { DateTime } from 'luxon';
 import type { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from '../constants/constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
-import  {
+import {
   DataInsightChartType,
   type DataInsightChartResult,
 } from '../generated/dataInsight/dataInsightChartResult';
 import type { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
-import  {
+import {
   DataInsightTabs,
   type ChartValue,
 } from '../interface/data-insight.interface';
@@ -275,4 +275,3 @@ export const getQueryFilterForDataInsightChart = (
     },
   });
 };
-
