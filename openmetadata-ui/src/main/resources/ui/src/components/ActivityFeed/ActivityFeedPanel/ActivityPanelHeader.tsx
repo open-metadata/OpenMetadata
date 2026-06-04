@@ -18,8 +18,8 @@ import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getActivityEventHeaderText,

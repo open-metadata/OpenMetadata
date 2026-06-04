@@ -33,7 +33,7 @@ import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDataMarketplaceWidgetsFromKey } from '../../utils/DataMarketplace/DataMarketplaceUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import '../DataMarketplacePage/data-marketplace-page.less';
