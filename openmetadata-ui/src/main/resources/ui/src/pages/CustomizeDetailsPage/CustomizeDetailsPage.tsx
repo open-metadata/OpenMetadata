@@ -29,7 +29,7 @@ import {
   asyncNoop,
   getDummyDataByPage,
 } from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';
 import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';

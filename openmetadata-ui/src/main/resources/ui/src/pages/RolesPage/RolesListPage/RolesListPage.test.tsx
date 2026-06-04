@@ -66,7 +66,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 

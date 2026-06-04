@@ -25,7 +25,7 @@ import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.sv
 import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,

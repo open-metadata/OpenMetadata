@@ -40,11 +40,8 @@ import {
   removeFollower,
   updatePipelinesVotes,
 } from '../../rest/pipelineAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

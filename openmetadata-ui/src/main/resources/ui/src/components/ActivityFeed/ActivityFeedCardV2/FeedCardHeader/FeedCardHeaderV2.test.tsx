@@ -37,7 +37,7 @@ jest.mock('../../../../utils/FeedUtils', () => ({
     .mockReturnValue('getFeedHeaderTextFromCardStyle'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

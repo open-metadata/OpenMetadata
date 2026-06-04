@@ -43,11 +43,8 @@ import {
   removeMetricFollower,
   updateMetricVote,
 } from '../../../rest/metricsAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

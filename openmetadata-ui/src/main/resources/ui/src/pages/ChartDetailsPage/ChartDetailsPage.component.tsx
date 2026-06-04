@@ -41,7 +41,7 @@ import {
 } from '../../rest/chartsAPI';
 import { defaultFields } from '../../utils/ChartDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

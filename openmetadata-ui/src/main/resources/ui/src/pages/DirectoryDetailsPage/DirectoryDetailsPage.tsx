@@ -45,7 +45,7 @@ import {
 } from '../../rest/driveAPI';
 import { defaultFields } from '../../utils/DirectoryDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
