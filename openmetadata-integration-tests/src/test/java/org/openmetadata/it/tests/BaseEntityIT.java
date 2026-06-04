@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
@@ -32,8 +33,19 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -43,6 +55,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.policies.PolicyService;
+import org.openmetadata.sdk.services.teams.RoleService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -4845,31 +4860,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Test: A bot's single-entity PUT (createOrUpdate) MUST be able to update {@code displayName}.
-   *
-   * <p>This is the path the SCIM bot uses to sync identity attributes: it applies the change to the
-   * entity and calls the repository's createOrUpdate (PUT) as a bot, bypassing the per-entity
-   * authorization (it is authorized at the SCIM layer instead). A single-entity PUT is an explicit
-   * write that should apply, so the bot-preservation guard in {@code EntityRepository#updateDisplayName}
-   * must NOT revert it.
-   *
-   * <p>Regression: PR #28155 added an in-code guard that reverted displayName for ANY bot PUT, which
-   * silently broke SCIM displayName sync - the SCIM PATCH returned 200 but the value never changed.
-   * The fix scopes that guard to the bulk path; the per-entity path is governed by policy
-   * ({@code DisplayName-Deny} denies the ingestion bot on PATCH, while the SCIM bot's policy allows
-   * it). Contrast with {@link #test_bulkUpdate_bot_preservesUserDisplayName}: the same bot going
-   * through the bulk endpoint MUST instead preserve the user value.
+   * Test: A bot whose policy DENIES {@code EditDisplayName} (the ingestion bot, via
+   * {@code IngestionBotPolicy}/{@code DefaultBotPolicy}) must NOT overwrite a user-curated
+   * {@code displayName} through a single-entity PUT.
    *
    * <p>A per-entity PUT on an existing entity authorizes with the coarse {@code EDIT_ALL} operation,
-   * which does not intersect the field-level {@code EditDisplayName} deny - so the ingestion bot used
-   * here reaches the repository guard exactly as the SCIM bot does.
+   * which does not intersect the field-level {@code EditDisplayName} deny - so the bot reaches the
+   * repository, where {@code EntityRepository#updateDisplayName} re-applies that field-level deny and
+   * preserves the user value. This is the per-entity counterpart of
+   * {@link #test_bulkUpdate_bot_preservesUserDisplayName}, and the regression guard for the bug where
+   * scoping the in-code check to the bulk path let any bot clobber displayName via per-entity PUT.
    */
   @Test
-  void test_singleEntityPut_bot_canUpdateDisplayName(TestNamespace ns) {
+  void test_singleEntityPut_bot_preservesUserDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
     if (!hasField("setDisplayName", String.class)) return;
 
-    K request = createRequest(ns.prefix("put_botdn_"), ns);
+    K request = createRequest(ns.prefix("put_denydn_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
 
@@ -4878,18 +4885,65 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     entity.setDisplayName(userDisplayName);
     patchEntity(entity.getId().toString(), entity);
 
-    String botDisplayName = "SCIM Bot Updated Display Name";
-    invoke(request, "setDisplayName", String.class, botDisplayName);
-    HttpResponse<String> response = putAsBot(request);
+    invoke(request, "setDisplayName", String.class, "Bot attempted to overwrite");
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
     assertTrue(
         response.statusCode() == 200 || response.statusCode() == 201,
-        "Bot single-entity PUT should succeed: " + response.statusCode() + " " + response.body());
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        userDisplayName,
+        result.getDisplayName(),
+        "Ingestion bot (EditDisplayName denied) must NOT overwrite user displayName via PUT: "
+            + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditDisplayName} (modeling the SCIM bot, whose
+   * {@code ScimBotPolicy} carries no {@code DisplayName-Deny}) CAN update {@code displayName} through
+   * a single-entity PUT - the behavior PR #28155 inadvertently broke for all bots and this PR
+   * restores for policy-allowed bots.
+   *
+   * <p>The real SCIM bot reaches {@code EntityRepository#updateDisplayName} through the SCIM endpoint
+   * (which bypasses entity-level authorization and is enterprise-only); this test drives the same
+   * repository code path with an equivalent bot - {@code isBot=true} with a policy that allows
+   * {@code EditAll} and does not deny {@code EditDisplayName}. Contrast with
+   * {@link #test_singleEntityPut_bot_preservesUserDisplayName}: the difference is purely the bot's
+   * policy, which is exactly what the in-code guard now keys on.
+   */
+  @Test
+  void test_singleEntityPut_displayNameAllowedBot_updatesDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    K request = createRequest(ns.prefix("put_allowdn_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    String botDisplayName = "SCIM-like Bot Display Name";
+    invoke(request, "setDisplayName", String.class, botDisplayName);
+    HttpResponse<String> response = putAs(request, displayNameAllowedBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Allowed-bot single-entity PUT should succeed: "
+            + response.statusCode()
+            + " "
+            + response.body());
 
     T result = getEntityByName(fqn);
     assertEquals(
         botDisplayName,
         result.getDisplayName(),
-        "Bot single-entity PUT must update displayName (SCIM sync path): " + fqn);
+        "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
   }
 
   /**
@@ -5013,11 +5067,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Single-entity createOrUpdate (PUT) over raw HTTP using the ingestion-bot JWT. Models the SCIM
-   * bot's per-entity write - the SDK fluent clients always authenticate as admin, so the raw call is
-   * how a test drives a single-entity PUT as a bot.
+   * Single-entity createOrUpdate (PUT) over raw HTTP using the given bearer token. The SDK fluent
+   * clients always authenticate as admin, so the raw call is how a test drives a per-entity PUT as a
+   * specific bot identity.
    */
-  protected HttpResponse<String> putAsBot(K request) {
+  protected HttpResponse<String> putAs(K request, String token) {
     try {
       String url = SdkClients.getServerUrl() + getResourcePath();
       if (url.endsWith("/")) {
@@ -5026,14 +5080,97 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       java.net.http.HttpRequest httpRequest =
           java.net.http.HttpRequest.newBuilder()
               .uri(java.net.URI.create(url))
-              .header("Authorization", "Bearer " + BulkApi.botToken())
+              .header("Authorization", "Bearer " + token)
               .header("Content-Type", "application/json")
               .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
               .build();
       return java.net.http.HttpClient.newHttpClient()
           .send(httpRequest, HttpResponse.BodyHandlers.ofString());
     } catch (Exception e) {
-      throw new RuntimeException("Single-entity PUT as bot failed: " + e.getMessage(), e);
+      throw new RuntimeException("Single-entity PUT failed: " + e.getMessage(), e);
+    }
+  }
+
+  // Lazily provisioned (once per session) bot whose policy allows EditAll and does NOT deny
+  // EditDisplayName, modeling the SCIM bot. API-created bots are force-assigned DefaultBotRole
+  // (which denies EditDisplayName), so that role is stripped via a raw JSON-Patch after creation.
+  private static volatile String displayNameAllowedBotToken;
+
+  protected static synchronized String displayNameAllowedBotToken() {
+    if (displayNameAllowedBotToken == null) {
+      displayNameAllowedBotToken = provisionDisplayNameAllowedBot();
+    }
+    return displayNameAllowedBotToken;
+  }
+
+  private static String provisionDisplayNameAllowedBot() {
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String suffix = UUID.randomUUID().toString().substring(0, 8);
+      Policy policy =
+          new PolicyService(admin.getHttpClient())
+              .create(
+                  new CreatePolicy()
+                      .withName("displayNameAllowedBotPolicy_" + suffix)
+                      .withRules(
+                          List.of(
+                              new Rule()
+                                  .withName("AllowEditAll")
+                                  .withResources(List.of("All"))
+                                  .withOperations(
+                                      List.of(
+                                          MetadataOperation.EDIT_ALL,
+                                          MetadataOperation.VIEW_ALL,
+                                          MetadataOperation.CREATE))
+                                  .withEffect(Rule.Effect.ALLOW))));
+      Role role =
+          new RoleService(admin.getHttpClient())
+              .create(
+                  new CreateRole()
+                      .withName("displayNameAllowedBotRole_" + suffix)
+                      .withPolicies(List.of(policy.getName())));
+      String email = "displayname-allowed-bot-" + suffix + "@open-metadata.org";
+      User bot =
+          new UserService(admin.getHttpClient())
+              .create(
+                  new CreateUser()
+                      .withName("displayname-allowed-bot-" + suffix)
+                      .withEmail(email)
+                      .withIsBot(true)
+                      .withAuthenticationMechanism(
+                          new AuthenticationMechanism()
+                              .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                              .withConfig(
+                                  new JWTAuthMechanism()
+                                      .withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+                      .withRoles(List.of(role.getId())));
+      stripDefaultBotRole(bot.getId().toString(), role.getId().toString());
+      return JwtAuthProvider.tokenFor(email, email, new String[] {role.getName()}, 86400);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to provision displayName-allowed bot: " + e.getMessage(), e);
+    }
+  }
+
+  // Replace the bot's roles (auto-assigned DefaultBotRole + the custom role) with ONLY the custom
+  // role via a raw JSON-Patch, so its effective policy no longer denies EditDisplayName.
+  private static void stripDefaultBotRole(String botId, String roleId) throws Exception {
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/roles\",\"value\":[{\"id\":\""
+            + roleId
+            + "\",\"type\":\"role\"}]}]";
+    java.net.http.HttpRequest req =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(SdkClients.getServerUrl() + "/v1/users/" + botId))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+    HttpResponse<String> resp =
+        java.net.http.HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+    if (resp.statusCode() != 200) {
+      throw new IllegalStateException(
+          "Failed to strip DefaultBotRole: " + resp.statusCode() + " " + resp.body());
     }
   }
 

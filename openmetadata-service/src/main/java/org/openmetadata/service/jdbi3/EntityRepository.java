@@ -196,8 +196,11 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TaskType;
@@ -252,6 +255,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -7644,13 +7648,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
     @Setter private boolean overrideMetadata;
-
-    // Set only on the bulk ingestion path. The bulk endpoint authorizes with the coarse EDIT_ALL
-    // operation, which does not intersect the field-level EditDisplayName policy deny, so it needs
-    // the in-code displayName guard to stand in for the bypassed policy. A non-bulk bot PUT (for
-    // example the SCIM bot syncing identity attributes through the repository) is governed by the
-    // policy layer instead and must not be caught by that guard. See updateDisplayName().
-    @Setter private boolean bulkOperation;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
@@ -8159,16 +8156,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      // A bot bulk re-ingestion must not clobber a user-curated displayName. This guard is scoped
-      // to the bulk path on purpose: the per-entity PUT/PATCH path is governed by policy
-      // (DisplayName-Deny), so a bot the policy allows - for example the SCIM bot syncing identity
-      // attributes through the repository - can still update displayName. On the bulk path,
-      // overrideMetadata=true force-syncs it.
+      // A bot whose policy denies EditDisplayName (e.g. the ingestion bot via DefaultBotPolicy /
+      // IngestionBotPolicy) must not clobber a user-curated displayName. A PUT or bulk update
+      // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
+      // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
+      // identity attributes through the repository - fall through and update it. A bulk force-sync
+      // (overrideMetadata=true) also bypasses this guard.
       boolean preserveUserDisplayName =
-          bulkOperation
+          updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && updatedByBot()
-              && !overrideMetadata;
+              && !overrideMetadata
+              && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+              && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
         updated.setDisplayName(original.getDisplayName());
       } else {
@@ -9382,6 +9381,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final boolean updatedByBot() {
       return Boolean.TRUE.equals(updatingUser.getIsBot());
+    }
+
+    /**
+     * Whether the bot performing this update is denied {@code operation} by policy. A PUT or bulk
+     * update authorizes with the coarse EDIT_ALL operation, which does not intersect a field-level
+     * deny (e.g. DisplayName-Deny on the ingestion bot), so callers re-apply the field-level check
+     * here. Returns false for users the policy does not explicitly deny (including the SCIM bot).
+     */
+    private boolean updatingBotDeniedOperation(MetadataOperation operation) {
+      boolean denied = false;
+      if (updatingUser != null) {
+        SubjectContext subjectContext = SubjectContext.getSubjectContext(updatingUser.getName());
+        ResourcePermission permission = PolicyEvaluator.getPermission(subjectContext, entityType);
+        denied =
+            permission.getPermissions().stream()
+                .anyMatch(
+                    p ->
+                        operation.equals(p.getOperation())
+                            && Permission.Access.DENY.equals(p.getAccess()));
+      }
+      return denied;
     }
 
     @VisibleForTesting
@@ -11552,7 +11572,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
           updater.setOverrideMetadata(overrideMetadata);
-          updater.setBulkOperation(true);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (Exception e) {
