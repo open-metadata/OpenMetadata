@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
@@ -35,6 +34,10 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import org.apache.commons.text.StringSubstitutor;
+import org.apache.commons.text.lookup.StringLookup;
+import org.apache.commons.text.lookup.StringLookupFactory;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
@@ -166,16 +169,27 @@ class HttpHeaderSizeYamlTest {
   }
 
   /**
-   * Builds a path of length {@code groups * 64} simulating the URL-encoded {@code id_token}
-   * payload an OIDC provider produces for a user in {@code groups} AD groups. We use the path
-   * (not the query string) so the bytes count toward the request line and trigger the same
-   * Jetty rejection as a real callback.
+   * One URL-encoded Azure AD group claim, modelled as a 36-char GUID plus separator, doubled (74
+   * chars). A real {@code id_token} inflates each group well past the raw GUID once the JWT is
+   * signed, base64-encoded, and URL-encoded into the redirect, so we over-provision per group.
+   */
+  private static final String GROUP_CLAIM_FRAGMENT =
+      "00000000-0000-0000-0000-000000000000-".repeat(2);
+
+  /** Fragments appended per AD group; sized so 60 groups overflow 8 KiB but fit under 64 KiB. */
+  private static final int FRAGMENTS_PER_GROUP = 3;
+
+  /**
+   * Builds a synthetic callback path whose length grows linearly with {@code groups} — about
+   * {@code groups * 222} characters ({@link #FRAGMENTS_PER_GROUP} copies of the 74-char {@link
+   * #GROUP_CLAIM_FRAGMENT}) — simulating the URL-encoded {@code id_token} an OIDC provider produces
+   * for a user in that many AD groups. We append to the path, not the query string, so the bytes
+   * count toward the request line and trigger the same Jetty rejection as a real callback.
    */
   private static String buildSimulatedOidcCallback(int groups) {
     StringBuilder sb = new StringBuilder("/callback/");
-    String groupGuid = "00000000-0000-0000-0000-000000000000-".repeat(2);
-    for (int i = 0; i < groups * 3; i++) {
-      sb.append(groupGuid);
+    for (int i = 0; i < groups * FRAGMENTS_PER_GROUP; i++) {
+      sb.append(GROUP_CLAIM_FRAGMENT);
     }
     return sb.toString();
   }
@@ -234,6 +248,13 @@ class HttpHeaderSizeYamlTest {
     }
   }
 
+  /**
+   * Env vars this test must ignore so it always validates the committed {@code :-64KiB} YAML
+   * default rather than whatever an operator happens to export in the test environment.
+   */
+  private static final Set<String> IGNORED_HEADER_SIZE_VARS =
+      Set.of("SERVER_MAX_REQUEST_HEADER_SIZE", "SERVER_MAX_RESPONSE_HEADER_SIZE");
+
   private OpenMetadataApplicationConfig parse(String path) throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(
@@ -249,7 +270,23 @@ class HttpHeaderSizeYamlTest {
             "dw");
     return factory.build(
         new SubstitutingSourceProvider(
-            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+            new FileConfigurationSourceProvider(), committedDefaultsSubstitutor()),
         path);
+  }
+
+  /**
+   * Resolves every placeholder from the real environment <em>except</em> the header-size vars,
+   * which are forced to {@code null} so the {@code :-64KiB} YAML default always wins. Without this,
+   * an exported {@code SERVER_MAX_REQUEST_HEADER_SIZE} would make {@link
+   * #allConfigsAllowLargeOidcCallbacks()} assert against the operator's override instead of the
+   * committed default and fail spuriously (issue #28223).
+   */
+  private static StringSubstitutor committedDefaultsSubstitutor() {
+    StringLookup environmentLookup = StringLookupFactory.INSTANCE.environmentVariableStringLookup();
+    StringLookup defaultsForHeaderSizes =
+        key -> IGNORED_HEADER_SIZE_VARS.contains(key) ? null : environmentLookup.lookup(key);
+    StringSubstitutor substitutor = new StringSubstitutor(defaultsForHeaderSizes);
+    substitutor.setEnableUndefinedVariableException(false);
+    return substitutor;
   }
 }
