@@ -52,7 +52,8 @@ class ApiIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const openAPISchemaURL = 'https://petstore3.swagger.io/api/v3/openapi.json';
+    const openAPISchemaURL =
+      'https://sandbox-beta.open-metadata.org/swagger.json';
 
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
