@@ -192,11 +192,14 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    * Comprehensive workflow graph structure validation.
    * Performs all graph validations in a single traversal for efficiency:
    * 1. Exactly one start node (if nodes exist)
-   * 2. No cycles in the graph
-   * 3. No orphaned nodes (all nodes are reachable from start)
-   * 4. All edges reference valid nodes
-   * 5. Non-end nodes must have outgoing edges
-   * 6. End nodes must not have outgoing edges
+   * 2. No orphaned nodes (all nodes are reachable from start)
+   * 3. All edges reference valid nodes
+   * 4. Non-end nodes must have outgoing edges
+   * 5. End nodes must not have outgoing edges
+   *
+   * <p>Cycles are intentionally permitted: workflow state machines legitimately loop back (e.g. the
+   * incident-resolution New-&gt;Ack-&gt;New transition, or an Assigned self-reassign), so a back edge
+   * to an active stage is valid rather than an error.
    */
   private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
     // Skip validation if no nodes are present - allow empty workflows
@@ -293,19 +296,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
 
-    // Validation 2 & 3: Cycle detection and orphaned nodes check using DFS
+    // Orphaned-node check: every node must be reachable from the start node. Cycles are NOT
+    // rejected — workflow state machines legitimately loop back (incident New->Ack->New, Assigned
+    // self-reassign), so the traversal simply skips already-visited nodes to terminate on a cycle.
     String startNode = startNodes.iterator().next();
-    Set<String> visited = new java.util.HashSet<>();
-    Set<String> recursionStack = new java.util.HashSet<>();
+    Set<String> reachableNodes = new java.util.HashSet<>();
+    collectReachableNodes(startNode, outgoingEdges, reachableNodes);
 
-    if (hasCycleDFS(startNode, outgoingEdges, visited, recursionStack)) {
-      throw BadRequestException.of(
-          String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
-    }
-
-    // Validation 3: Check for orphaned nodes (nodes not reachable from start)
     Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
-    orphanedNodes.removeAll(visited);
+    orphanedNodes.removeAll(reachableNodes);
 
     if (!orphanedNodes.isEmpty()) {
       throw BadRequestException.of(
@@ -316,49 +315,24 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Depth-First Search to detect cycles in directed graph.
+   * Depth-first traversal collecting every node reachable from {@code node}. Already-visited nodes
+   * are not re-traversed, so cycles (which are valid in workflow state machines) terminate
+   * naturally. The resulting set drives the orphaned-node check.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
-   * @param visited Set of completely processed nodes (black nodes)
-   * @param recursionStack Set of nodes currently in the DFS path (gray nodes)
+   * @param reachable Accumulates every node reachable from the start node
    */
-  private boolean hasCycleDFS(
-      String node,
-      Map<String, List<String>> adjacencyList,
-      Set<String> visited,
-      Set<String> recursionStack) {
-
-    // If node is in current recursion path, we've found a cycle
-    if (recursionStack.contains(node)) {
-      return true;
-    }
-
-    // If node is already completely processed, skip it
-    if (visited.contains(node)) {
-      return false;
-    }
-
-    // Mark node as being processed (gray)
-    visited.add(node);
-    recursionStack.add(node);
-
-    // Recursively visit all neighbors
-    List<String> neighbors = adjacencyList.get(node);
-    if (neighbors != null) {
-      for (String neighbor : neighbors) {
-        if (neighbor.equals(node)) {
-          continue;
-        }
-        if (hasCycleDFS(neighbor, adjacencyList, visited, recursionStack)) {
-          return true;
+  private void collectReachableNodes(
+      String node, Map<String, List<String>> adjacencyList, Set<String> reachable) {
+    if (reachable.add(node)) {
+      List<String> neighbors = adjacencyList.get(node);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          collectReachableNodes(neighbor, adjacencyList, reachable);
         }
       }
     }
-
-    // Mark node as completely processed (black) by removing from recursion stack
-    recursionStack.remove(node);
-    return false;
   }
 
   public void suspendWorkflow(WorkflowDefinition workflow) {
