@@ -16,6 +16,7 @@ import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
@@ -196,6 +197,16 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
+  private static String deriveInterval(AppSchedule schedule) {
+    String result = null;
+    if (schedule != null
+        && schedule.getCronExpression() != null
+        && !schedule.getCronExpression().isBlank()) {
+      result = schedule.getCronExpression();
+    }
+    return result;
+  }
+
   protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
     if (configMap == null || configMap.isEmpty()) {
       return;
@@ -222,6 +233,7 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    updated.getAirflowConfig().withScheduleInterval(deriveInterval(this.getApp().getAppSchedule()));
     repository.update(null, original, updated, updatedBy);
   }
 
@@ -250,7 +262,7 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
+                    .withScheduleInterval(deriveInterval(this.getApp().getAppSchedule())))
             .withService(service);
 
     // Get Pipeline
