@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import '../../../test/unit/mocks/mui.mock';
-
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import '../../../test/unit/mocks/mui.mock';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
@@ -38,7 +38,31 @@ const mockProps: KnowledgeCardProps = {
   readonly: false,
 };
 
-jest.mock('components/common/PopOverCard/UserPopOverCard', () =>
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <span data-testid="badge">{children}</span>
+    )),
+  Box: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Card: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <span {...props}>{children}</span>
+    )),
+}));
+
+jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest
     .fn()
     .mockImplementation(({ userName }) => (
@@ -54,13 +78,13 @@ jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
     ),
 }));
 
-jest.mock('components/common/DeleteModal/DeleteModal', () =>
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
       Create: true,
@@ -93,15 +117,45 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getShortRelativeTime: jest.fn().mockReturnValue('2 days ago'),
 }));
 
+jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: jest.fn().mockReturnValue({
+    preferences: { recentlyViewedQuickLinks: [] },
+  }),
+}));
+
+jest.mock('../../../utils/KnowledgePageUtils', () => ({
+  addToKnowledgeCenterRecentViewed: jest.fn(),
+  updateKnowledgeCenterRecentViewed: jest.fn(),
+  getKnowledgePageName: jest
+    .fn()
+    .mockImplementation(
+      (page: { displayName?: string; name?: string }) =>
+        page.displayName ?? page.name ?? ''
+    ),
+}));
+
+jest.mock('../../../utils/ContextCenterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getArticlePath: jest
+      .fn()
+      .mockImplementation((fqn: string) => `/knowledge/${fqn}`),
+  },
+}));
+
+jest.mock('../../../rest/knowledgeCenterAPI', () => ({
+  deleteKnowledgePage: jest.fn().mockResolvedValue({}),
+}));
+
 describe('Knowledge Card', () => {
   it('should render the knowledge card with title and description', async () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+    expect(screen.getByTestId('knowledge-card-title')).toHaveTextContent(
       'OpenMetadata 1.1.0 Release UI'
     );
 
-    expect(screen.getByTestId('knowledge-description')).toBeInTheDocument();
+    expect(screen.getByTestId('knowledge-card-description')).toBeInTheDocument();
   });
 
   it('should render owner name via UserPopOverCard', () => {

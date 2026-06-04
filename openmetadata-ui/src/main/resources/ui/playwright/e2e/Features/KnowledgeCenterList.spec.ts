@@ -147,7 +147,7 @@ test.describe('Knowledge Center List', () => {
     page,
   }) => {
     const listing = page.getByTestId('knowledge-page-listing');
-    const cards = listing.getByTestId('knowledge-card');
+    const cards = listing.locator('[data-testid^="knowledge-card-"]');
     const initialCardCount = await cards.count();
 
     const observerElement = page.getByTestId('observer-element');

@@ -216,7 +216,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   return (
     <Card
       className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
-      data-testid={isQuickLink ? displayName || name : 'knowledge-card'}>
+      data-testid={`knowledge-card-${displayName || name}`}>
       <Link
         className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
         data-testid={isQuickLink ? 'knowledge-link' : 'knowledge-page-link'}

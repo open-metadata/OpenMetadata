@@ -505,7 +505,7 @@ test.describe('Context Center', () => {
       expect(searchRes.status()).toBe(200);
 
       // The pre-created article appears in results
-      const card = page.getByTestId(ARTICLE_TITLE);
+      const card = page.getByTestId(`knowledge-card-${ARTICLE_TITLE}`);
 
       await expect(card.first()).toBeVisible();
     });
@@ -553,7 +553,7 @@ test.describe('Context Center', () => {
       await searchInput.clear();
       await waitForAllLoadersToDisappear(page);
 
-      const card = page.getByTestId(ARTICLE_TITLE);
+      const card = page.getByTestId(`knowledge-card-${ARTICLE_TITLE}`);
       await expect(card.first()).toBeVisible();
     });
 
