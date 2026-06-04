@@ -4825,25 +4825,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     /**
-     * Drain all post-commit externals synchronously on the request thread, in order: Cache-L2
-     * invalidation first (so the next GET-by-id/by-name rebuilds fresh from DB), then the RDF /
-     * lineage-ES / rename-cascade search rewrites. Running inline post-commit keeps search and lineage
-     * read-your-write visible by the time the request returns; each runner applies per-closure
-     * try/catch and routes a failed rewrite to the durable search-index retry outbox.
+     * Drain all post-commit externals synchronously on the request thread: Cache-L2 invalidation
+     * first (so the next GET-by-id/by-name rebuilds fresh from DB), then the RDF / lineage-ES /
+     * rename-cascade search rewrites. Running inline post-commit keeps search and lineage
+     * read-your-write visible by the time the request returns. Every collector's thread-local is
+     * removed UP FRONT and each run step is guarded, so one failing step (e.g. a Redis round trip in
+     * {@code drainCacheInvalidations}) can never strand a later collector's thread-local on a reused
+     * request thread, which would otherwise silently drop the next request's deferred writes.
      */
     private void drain() {
+      List<Runnable> rdfClosures = ownsRdf ? RdfTagUpdater.drainDeferredToList() : List.of();
+      List<LineageUtil.DeferredLineageEsWrite> lineageClosures =
+          ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
+      List<SearchRepository.DeferredSearchWrite> searchClosures =
+          ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
       if (ownsCache) {
-        drainCacheInvalidations();
+        runGuarded(EntityRepository::drainCacheInvalidations);
       }
-      if (ownsRdf) {
-        RdfTagUpdater.runDeferredClosures(RdfTagUpdater.drainDeferredToList());
-      }
-      if (ownsLineageEs) {
-        runLineageEsClosures(LineageUtil.drainLineageDeferred());
-      }
-      if (ownsSearchWrite) {
-        runSearchWriteClosures(SearchRepository.drainSearchWriteDeferred());
-      }
+      runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
+      runGuarded(() -> runLineageEsClosures(lineageClosures));
+      runGuarded(() -> runSearchWriteClosures(searchClosures));
     }
 
     private void clear() {
@@ -4859,6 +4860,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (ownsCache) {
         clearCacheInvalidations();
       }
+    }
+  }
+
+  private static void runGuarded(Runnable drainStep) {
+    try {
+      drainStep.run();
+    } catch (Exception e) {
+      LOG.error("Post-commit deferral drain step failed", e);
     }
   }
 
