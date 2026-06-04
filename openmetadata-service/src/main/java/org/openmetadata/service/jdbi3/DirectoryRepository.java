@@ -362,12 +362,24 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                 Include.NON_DELETED);
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID parentId = UUID.fromString(record.getFromId());
-      EntityReference childRef =
-          getEntityReferenceById(childType, UUID.fromString(record.getToId()), Include.NON_DELETED);
+      EntityReference childRef = resolveChildRef(childType, UUID.fromString(record.getToId()));
       if (childRef != null) {
         childrenMap.get(parentId).add(childRef);
       }
     }
+  }
+
+  private EntityReference resolveChildRef(String childType, UUID childId) {
+    EntityReference childRef = null;
+    try {
+      childRef = getEntityReferenceById(childType, childId, Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // A soft delete flips only the entity row's deleted flag, not the CONTAINS relationship row,
+      // so findToBatch(NON_DELETED) still returns the row for a soft-deleted child. Skip it instead
+      // of letting the not-found throw abort the whole list response.
+      LOG.debug("Skipping soft-deleted {} child {} for directory statistics", childType, childId);
+    }
+    return childRef;
   }
 
   private Map<UUID, Integer> batchFetchChildSizes(Map<UUID, List<EntityReference>> childrenMap) {
