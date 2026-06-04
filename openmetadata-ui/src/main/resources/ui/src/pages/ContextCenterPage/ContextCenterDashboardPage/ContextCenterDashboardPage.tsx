@@ -160,10 +160,13 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const response = await listContextFiles(RECENT_DASHBOARD_DOCUMENTS_LIMIT, {
-        sortBy: 'updatedAt',
-        sortOrder: 'desc',
-      });
+      const response = await listContextFiles(
+        RECENT_DASHBOARD_DOCUMENTS_LIMIT,
+        {
+          sortBy: 'updatedAt',
+          sortOrder: 'desc',
+        }
+      );
       setDocumentsCount(response.paging.total ?? response.data.length);
       setDocuments(response.data.map(contextFileToUploadedDocumentItem));
     } catch (err) {
@@ -193,7 +196,7 @@ const ContextCenterDashboardPage: FC = () => {
       setMemories(
         response.data.map((m) => ({
           title: m.title ?? m.name,
-          meta: m.usageCount ? `cited ${m.usageCount}×` : '',
+          meta: `cited ${m.usageCount}×`,
         }))
       );
     } catch (err) {
@@ -237,21 +240,25 @@ const ContextCenterDashboardPage: FC = () => {
 
   const articlesRecentItems = useMemo(
     () =>
-      articles.map((article) => ({
-        title: getEntityName(article),
-        meta: `${article?.owners?.[0]?.displayName || '-'} · ${getRelativeTime(
-          article.updatedAt
-        )}`,
-      })),
+      articles.map((article) => {
+        const owner = getEntityName(article?.owners?.[0]);
+        const time = getRelativeTime(article.updatedAt);
+        const metaParts = [owner, time].filter(Boolean);
+
+        return { title: getEntityName(article), meta: metaParts.join(' · ') };
+      }),
     [articles]
   );
 
   const documentsRecentItems = useMemo(
     () =>
-      documents.map((d) => ({
-        title: d.name,
-        meta: `${d.updatedBy} · ${getRelativeTime(d.updatedAt)}`,
-      })),
+      documents.map((d) => {
+        const metaParts = [d.updatedBy, getRelativeTime(d.updatedAt)].filter(
+          Boolean
+        );
+
+        return { title: d.name, meta: metaParts.join(' · ') };
+      }),
     [documents]
   );
 
@@ -320,7 +327,9 @@ const ContextCenterDashboardPage: FC = () => {
         title={t('label.dashboard')}
       />
 
-      <div className="tw:flex tw:flex-col tw:gap-6 tw:h-full" data-testid="dashboard-detail-card">
+      <div
+        className="tw:flex tw:flex-col tw:gap-6 tw:h-full"
+        data-testid="dashboard-detail-card">
         <div className="tw:grid tw:grid-cols-3 tw:gap-4">
           <ContextKnowledgePillarCard
             cta={t('label.view-all-entity', {

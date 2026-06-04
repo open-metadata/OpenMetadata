@@ -116,7 +116,10 @@ function AiActivitySectionSkeleton() {
   );
 }
 
-const AiActivitySection: FC<AiActivitySectionProps> = ({ items, isLoading = false }) => {
+const AiActivitySection: FC<AiActivitySectionProps> = ({
+  items,
+  isLoading = false,
+}) => {
   const { t } = useTranslation();
 
   if (isLoading) {

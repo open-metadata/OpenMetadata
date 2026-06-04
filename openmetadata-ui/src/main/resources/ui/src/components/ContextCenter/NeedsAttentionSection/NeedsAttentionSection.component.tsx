@@ -100,7 +100,10 @@ function NeedsAttentionSectionSkeleton() {
   );
 }
 
-const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({ items, isLoading = false }) => {
+const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({
+  items,
+  isLoading = false,
+}) => {
   const { t } = useTranslation();
 
   if (isLoading) {

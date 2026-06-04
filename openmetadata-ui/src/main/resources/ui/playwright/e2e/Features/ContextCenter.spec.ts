@@ -328,9 +328,7 @@ test.describe('Context Center', () => {
     test('View All Articles navigates to articles page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('article-detail-card')
-        .click();
+      await page.getByTestId('article-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
@@ -338,9 +336,7 @@ test.describe('Context Center', () => {
     test('View All Documents navigates to documents page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('document-detail-card')
-        .click();
+      await page.getByTestId('document-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/documents/);
     });
@@ -348,13 +344,10 @@ test.describe('Context Center', () => {
     test('View All Memories navigates to memories page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('memory-detail-card')
-        .click();
+      await page.getByTestId('memory-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/memories/);
     });
-
   });
 
   // ─── Search ──────────────────────────────────────────────────────────────────

@@ -41,17 +41,17 @@ function RecentItem({
         showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''
       }`}>
       <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-      <div className="tw:flex tw:items-center tw:justify-between tw:w-full">
+      <div className="tw:flex tw:items-center tw:gap-4 tw:min-w-0 tw:flex-1 tw:justify-between">
         <Typography
           ellipsis
           as="span"
-          className="tw:flex-1 tw:min-w-0 tw:text-secondary"
+          className="tw:min-w-0 tw:flex-1 tw:text-secondary"
           size="text-xs">
           {item.title}
         </Typography>
         <Typography
           as="span"
-          className="tw:text-quaternary tw:font-mono tw:shrink-0"
+          className="tw:text-quaternary tw:font-mono tw:shrink-0 tw:whitespace-nowrap"
           size="text-xs">
           {item.meta}
         </Typography>
