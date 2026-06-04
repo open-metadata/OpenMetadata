@@ -74,7 +74,7 @@ jest.mock('../../../../rest/applicationMarketPlaceAPI', () => ({
     ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

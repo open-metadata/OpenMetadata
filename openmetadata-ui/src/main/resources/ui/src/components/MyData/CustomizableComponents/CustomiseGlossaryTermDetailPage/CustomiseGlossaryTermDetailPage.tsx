@@ -20,7 +20,7 @@ import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { CustomizeTabWidget } from '../../../Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { GlossaryHeaderWidget } from '../../../Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { compare, Operation } from 'fast-json-patch';
+import { compare, type Operation } from 'fast-json-patch';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -34,33 +34,34 @@ import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg'
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
-import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
-import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
-import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import type { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
+import type { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
+import type { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
+import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import type { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { TEXT_GREY_MUTED } from '../../constants/constants';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
-import { Table } from '../../generated/entity/data/table';
-import { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
-import { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import {
+import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
+import type { Table } from '../../generated/entity/data/table';
+import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
+import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
+import type {
   TestCase,
   TestCaseParameterValue,
 } from '../../generated/tests/testCase';
 import {
   DataQualityDimensions,
   TestDataType,
-  TestDefinition,
+  type TestDefinition,
 } from '../../generated/tests/testDefinition';
-import { TableSearchSource } from '../../interface/search.interface';
+import type { TableSearchSource } from '../../interface/search.interface';
 import {
-  DataQualityDashboardChartFilters,
   DataQualityPageTabs,
+  type DataQualityDashboardChartFilters,
 } from '../../pages/DataQuality/DataQualityPage.interface';
-import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';
@@ -127,7 +128,7 @@ export const createTestCaseParameters = (
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
-  selectedDefinition?: TestDefinition;
+  createTestCaseObject: Partial<CreateTestCase>;
   showOnlyParameter?: boolean;
   isComputeRowCountFieldVisible: boolean;
 }
@@ -135,7 +136,7 @@ export interface CreateUpdatedTestCasePatchArgs {
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
-  selectedDefinition,
+  createTestCaseObject,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
 }: CreateUpdatedTestCasePatchArgs): Operation[] => {
@@ -147,7 +148,7 @@ export const createUpdatedTestCasePatch = ({
   ];
   const updatedTestCase = {
     ...testCase,
-    parameterValues: createTestCaseParameters(value.params, selectedDefinition),
+    ...createTestCaseObject,
     description: showOnlyParameter
       ? testCase.description
       : isEmpty(value.description)
@@ -163,8 +164,12 @@ export const createUpdatedTestCasePatch = ({
       showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
         ? testCase.tags
         : rebuiltTags,
-    dimensionColumns: value.dimensionColumns || undefined,
-    topDimensions: value.topDimensions ?? undefined,
+    dimensionColumns: isUndefined(value.dimensionColumns)
+      ? testCase.dimensionColumns
+      : value.dimensionColumns || undefined,
+    topDimensions: isUndefined(value.topDimensions)
+      ? testCase.topDimensions
+      : value.topDimensions ?? undefined,
   };
 
   return compare(testCase, updatedTestCase);
