@@ -47,12 +47,16 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
-import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import {
+  getDataProductDetailsPath,
+  getEntityDetailsPath,
+} from '../../../../utils/RouterUtils';
 import { getTaskDisplayId } from '../../../../utils/TasksUtils';
 import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
@@ -438,6 +442,42 @@ const IncidentManagerPageHeader = ({
           </Typography>
         </Tooltip>
       </Typography>
+      {testCaseData?.domains && testCaseData.domains.length > 0 && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <DomainLabel
+            multiple
+            showDomainHeading
+            domains={testCaseData.domains}
+            entityFqn={testCaseData.fullyQualifiedName ?? ''}
+            entityId={testCaseData.id ?? ''}
+            entityType={EntityType.TEST_CASE}
+            hasPermission={false}
+          />
+        </>
+      )}
+      {testCaseData?.dataProducts && testCaseData.dataProducts.length > 0 && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography
+            as="span"
+            className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <Typography as="span" className="text-blue text-sm font-medium">
+              {t('label.data-product-plural')}
+            </Typography>
+            {testCaseData.dataProducts.map((dp) => (
+              <Link
+                className="font-medium flex-center gap-2"
+                data-testid="data-product-link"
+                key={dp.id}
+                to={getDataProductDetailsPath(dp.fullyQualifiedName ?? '')}>
+                {getEntityName(dp)}
+                <InternalLinkIcon className="text-grey-muted" width="14px" />
+              </Link>
+            ))}
+          </Typography>
+        </>
+      )}
     </Space>
   );
 };

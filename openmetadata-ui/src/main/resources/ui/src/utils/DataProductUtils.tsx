@@ -29,6 +29,7 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
+import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -292,6 +293,32 @@ export const getDataProductDetailTabs = ({
             ),
             key: EntityTabs.CONTRACT,
             children: <ContractTab />,
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.DATA_OBSERVABILITY}
+                isActive={activeTab === EntityTabs.DATA_OBSERVABILITY}
+                name={
+                  labelMap?.[EntityTabs.DATA_OBSERVABILITY] ??
+                  t('label.data-observability')
+                }
+              />
+            ),
+            key: EntityTabs.DATA_OBSERVABILITY,
+            children: (
+              <DataQualityDashboard
+                isGovernanceView
+                hiddenFilters={['dataProducts']}
+                initialFilters={
+                  dataProduct.fullyQualifiedName
+                    ? {
+                        dataProductFqns: [dataProduct.fullyQualifiedName],
+                      }
+                    : undefined
+                }
+              />
+            ),
           },
         ]),
     {

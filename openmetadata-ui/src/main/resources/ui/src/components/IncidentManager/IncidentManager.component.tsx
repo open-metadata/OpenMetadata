@@ -540,6 +540,28 @@ const IncidentManager = ({
     }
   };
 
+  const searchDataProducts = async (searchValue = WILD_CARD_CHAR) => {
+    const query =
+      searchValue === WILD_CARD_CHAR ? searchValue : `*${searchValue}*`;
+    try {
+      const response = await searchQuery({
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.DATA_PRODUCT,
+        query,
+        fetchSource: true,
+        includeFields: ['name', 'displayName', 'fullyQualifiedName'],
+      });
+
+      return response.hits.hits.map((hit) => ({
+        label: getEntityName(hit._source),
+        value: hit._source.fullyQualifiedName,
+      }));
+    } catch {
+      return [];
+    }
+  };
+
   useEffect(() => {
     if (
       commonTestCasePermission?.ViewAll ||
@@ -756,6 +778,20 @@ const IncidentManager = ({
                 </Select.Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item className="m-b-0" label={t('label.data-product-plural')}>
+            <AsyncSelect
+              allowClear
+              showArrow
+              showSearch
+              api={searchDataProducts}
+              className="w-min-20"
+              data-testid="data-product-select"
+              placeholder={t('label.data-product-plural')}
+              suffixIcon={undefined}
+              value={filters.dataProductFqn}
+              onChange={(value) => updateFilters({ dataProductFqn: value })}
+            />
           </Form.Item>
           {isDateRangePickerVisible && (
             <div className="tw:flex tw:gap-2">
