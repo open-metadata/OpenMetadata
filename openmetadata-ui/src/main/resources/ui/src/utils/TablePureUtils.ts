@@ -27,7 +27,6 @@ import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type { MlFeature } from '../generated/entity/data/mlmodel';
 import type { Task } from '../generated/entity/data/pipeline';
 import type { SearchIndexField } from '../generated/entity/data/searchIndex';
-import { DataType } from '../generated/entity/data/table';
 import type {
   Column,
   ConstraintType,
@@ -35,6 +34,7 @@ import type {
   Table,
   TableJoins,
 } from '../generated/entity/data/table';
+import { DataType } from '../generated/entity/data/table';
 import type { EntityReference } from '../generated/entity/type';
 import type { Field } from '../generated/type/schema';
 import {

@@ -16,7 +16,7 @@ import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { get, isUndefined, uniqBy } from 'lodash';
-import { type CSSProperties, Fragment, lazy, Suspense } from 'react';
+import { Fragment, lazy, Suspense, type CSSProperties } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
