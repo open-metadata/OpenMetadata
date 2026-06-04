@@ -53,7 +53,9 @@ const flatten = (obj: Record<string, Json>, prefix = ''): Leaf[] =>
       : [[`${prefix}${k}`, v] as Leaf]
   );
 
-const TOKEN_RE = /{{\s*[\w.-]+\s*}}|<\/?\d+>/g;
+// Match the full body of any `{{ interpolation }}` — including i18next format /
+// plural specifiers like `{{count, number}}` — plus numbered <0></0> Trans tags.
+const TOKEN_RE = /{{[^}]+}}|<\/?\d+>/g;
 const tokens = (s: unknown): string[] => (String(s).match(TOKEN_RE) ?? []).sort();
 const sameTokens = (a: unknown, b: unknown): boolean => {
   const x = tokens(a);
@@ -78,8 +80,17 @@ let failed = false;
 
 for (const code of targets) {
   const errors: string[] = [];
-  const text = raw(code);
-  const obj = JSON.parse(text) as Record<string, Json>;
+  let text: string;
+  let obj: Record<string, Json>;
+  try {
+    text = raw(code);
+    obj = JSON.parse(text) as Record<string, Json>;
+  } catch (err) {
+    failed = true;
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`✗ ${code}: could not read or parse locale file — ${reason}`);
+    continue;
+  }
   const flat = flatten(obj);
   const keys = flat.map(([k]) => k);
   const keySet = new Set(keys);
