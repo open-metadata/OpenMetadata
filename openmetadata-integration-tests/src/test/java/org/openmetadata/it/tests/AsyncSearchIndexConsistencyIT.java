@@ -77,7 +77,7 @@ public class AsyncSearchIndexConsistencyIT {
     // Search indexing runs synchronously post-commit, so the entity is searchable as soon as the
     // write returns. We still poll with Awaitility to stay robust to Elasticsearch's own refresh
     // latency rather than asserting on the very first sample.
-    awaitSearchHit(client, tableId);
+    awaitSearchHit(client, table.getFullyQualifiedName(), tableId);
   }
 
   @Test
@@ -96,7 +96,8 @@ public class AsyncSearchIndexConsistencyIT {
         .ignoreExceptions()
         .untilAsserted(
             () -> {
-              JsonNode source = searchSourceById(client, table.getId().toString());
+              JsonNode source =
+                  searchSourceById(client, table.getFullyQualifiedName(), table.getId().toString());
               assertNotNull(source, "Doc not yet indexed");
               assertEquals(
                   finalDescription,
@@ -105,18 +106,23 @@ public class AsyncSearchIndexConsistencyIT {
             });
   }
 
-  private void awaitSearchHit(OpenMetadataClient client, String entityId) {
+  private void awaitSearchHit(OpenMetadataClient client, String query, String entityId) {
     Awaitility.await("entity " + entityId + " becomes searchable")
         .pollInterval(SEARCH_POLL)
         .atMost(SEARCH_AT_MOST)
         .ignoreExceptions()
         .untilAsserted(
-            () -> assertNotNull(searchSourceById(client, entityId), "Doc not yet searchable"));
+            () ->
+                assertNotNull(searchSourceById(client, query, entityId), "Doc not yet searchable"));
   }
 
-  private JsonNode searchSourceById(OpenMetadataClient client, String entityId) throws Exception {
+  private JsonNode searchSourceById(OpenMetadataClient client, String query, String entityId)
+      throws Exception {
+    // Search FOR the entity (by FQN) rather than match-all: table_search_index holds every table in
+    // the cluster, so a "*" query returns an arbitrary 50-doc page that rarely contains this test's
+    // table once the suite has created thousands. Querying the FQN ranks the target first.
     String response =
-        client.search().query("*").index(TABLE_SEARCH_INDEX).size(50).deleted(false).execute();
+        client.search().query(query).index(TABLE_SEARCH_INDEX).size(50).deleted(false).execute();
     JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
     JsonNode result = null;
     for (JsonNode hit : hits) {

@@ -165,7 +165,8 @@ public class ColumnSearchIndexIT {
 
       String queryFilter =
           "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"tableColumn\"}}]}}}";
-      awaitDataAssetHasColumn(client, queryFilter, ns.prefix(""));
+      awaitDataAssetHasColumn(
+          client, ns.prefix("user_email"), queryFilter, ns.prefix("user_email"));
     }
 
     @Test
@@ -179,7 +180,8 @@ public class ColumnSearchIndexIT {
               + "{\"term\":{\"entityType\":\"tableColumn\"}},"
               + "{\"exists\":{\"field\":\"database\"}}"
               + "]}}}";
-      awaitDataAssetHasColumn(client, queryFilter, ns.prefix(""));
+      awaitDataAssetHasColumn(
+          client, ns.prefix("user_email"), queryFilter, ns.prefix("user_email"));
     }
   }
 
@@ -273,20 +275,26 @@ public class ColumnSearchIndexIT {
   }
 
   private void awaitDataAssetHasColumn(
-      OpenMetadataClient client, String queryFilter, String fqnNeedle) {
+      OpenMetadataClient client, String columnQuery, String queryFilter, String fqnNeedle) {
     Awaitility.await("tableColumn present in dataAsset index")
         .pollInterval(POLL_INTERVAL)
         .atMost(POLL_AT_MOST)
         .ignoreExceptions()
-        .untilAsserted(() -> assertTrue(dataAssetHasColumn(client, queryFilter, fqnNeedle)));
+        .untilAsserted(
+            () -> assertTrue(dataAssetHasColumn(client, columnQuery, queryFilter, fqnNeedle)));
   }
 
   private boolean dataAssetHasColumn(
-      OpenMetadataClient client, String queryFilter, String fqnNeedle) throws Exception {
+      OpenMetadataClient client, String columnQuery, String queryFilter, String fqnNeedle)
+      throws Exception {
+    // Search FOR the specific column rather than match-all: the dataAsset alias spans every
+    // tableColumn doc in the cluster, so a "*" query returns an arbitrary 50-doc page that almost
+    // never contains this test's column once the suite has indexed thousands of columns. Querying
+    // the column name ranks the target first, so a single page reliably contains it.
     String response =
         client
             .search()
-            .query("*")
+            .query(columnQuery)
             .index(DATA_ASSET_INDEX)
             .queryFilter(queryFilter)
             .size(50)
