@@ -35,7 +35,7 @@ import {
   getExplorePath,
   getGlossaryPath,
 } from './RouterUtils';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getTableTags = (
