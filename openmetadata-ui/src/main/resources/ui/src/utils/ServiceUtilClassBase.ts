@@ -12,6 +12,7 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
@@ -40,6 +41,7 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
@@ -81,7 +83,7 @@ import {
   getTestConnectionName,
 } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+import { customServiceComparator } from './StringUtils';
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -109,6 +111,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,
@@ -556,6 +560,15 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {

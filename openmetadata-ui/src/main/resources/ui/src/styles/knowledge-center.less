@@ -45,8 +45,14 @@
 }
 
 .article-detail-owner-label {
-  svg:has(+ .avatar-group) {
+  svg:has(+ .avatar-group),
+  svg:has(+ .owner-team-name-wrapper) {
     display: none;
+  }
+
+  .owner-team-name {
+    font-size: var(--text-sm);
+    font-weight: 400;
   }
 }
 

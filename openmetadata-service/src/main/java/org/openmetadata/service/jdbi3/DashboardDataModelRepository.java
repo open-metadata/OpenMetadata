@@ -410,6 +410,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     return new ResultList<>(paginatedColumns, before, after, total);
   }
 
+  public Column enrichSingleColumnFields(
+      DashboardDataModel dataModel, Column column, String fieldsParam) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+    }
+    return column;
+  }
+
   public ResultList<Column> searchDataModelColumnsById(
       UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel = get(null, id, getFields(fieldsParam), include, false);

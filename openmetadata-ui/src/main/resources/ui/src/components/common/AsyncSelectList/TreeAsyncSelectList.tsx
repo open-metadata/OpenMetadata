@@ -49,7 +49,7 @@ import {
   queryGlossaryTerms,
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
@@ -58,7 +58,7 @@ import {
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';

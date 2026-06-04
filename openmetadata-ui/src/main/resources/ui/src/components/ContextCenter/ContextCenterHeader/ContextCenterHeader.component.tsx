@@ -28,6 +28,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   breadcrumbs,
   title,
   subtitle,
+  className = '',
   hasPermission = true,
   onCreateArticle,
   onUploadFile,
@@ -76,7 +77,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
         />
       )}
 
-      <Card className="tw:mb-5 tw:p-5" style={cardStyle}>
+      <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
         {breadcrumbInsideCard && (
           <div className="tw:mb-4">
             <TitleBreadcrumb

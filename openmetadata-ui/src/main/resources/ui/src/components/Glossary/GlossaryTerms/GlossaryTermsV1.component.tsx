@@ -34,16 +34,16 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
-import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';

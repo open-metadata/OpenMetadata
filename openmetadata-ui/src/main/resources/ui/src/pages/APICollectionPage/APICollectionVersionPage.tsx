@@ -60,7 +60,7 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,

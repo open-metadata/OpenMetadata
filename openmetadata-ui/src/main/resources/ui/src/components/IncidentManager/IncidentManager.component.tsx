@@ -64,11 +64,11 @@ import {
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+} from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

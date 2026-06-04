@@ -20,7 +20,7 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getSummary,
   renderVersionButton,
@@ -199,6 +199,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
       open
       className="versions-list-container"
       closable={false}
+      data-testid="versions-list-container"
       getContainer={false}
       mask={false}
       maskClosable={false}

@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin,
     about varchar(2048),
     aboutFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin,
-    actorId varchar(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorName is the display fallback.
+    actorId varchar(36),
     actorName varchar(256),
     timestamp bigint NOT NULL,
     summary varchar(500),
@@ -354,4 +355,25 @@ CREATE TABLE IF NOT EXISTS context_memory (
   PRIMARY KEY (id),
   UNIQUE KEY unique_context_memory_name (nameHash),
   INDEX idx_context_memory_updated_at (updatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS `user_session` (
+  `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
+  `userId` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.userId'))) STORED,
+  `status` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.status'))) STORED NOT NULL,
+  `expiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.expiresAt'))) STORED NOT NULL,
+  `idleExpiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.idleExpiresAt'))) STORED NOT NULL,
+  `updatedAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) STORED NOT NULL,
+  `sessionType` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.type'))) VIRTUAL,
+  `provider` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) VIRTUAL,
+  `version` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.version'))) VIRTUAL,
+  `lastAccessedAt` bigint unsigned GENERATED ALWAYS AS (nullif(json_unquote(json_extract(`json`,_utf8mb4'$.lastAccessedAt')),'null')) VIRTUAL,
+  `refreshLeaseUntil` bigint unsigned GENERATED ALWAYS AS (nullif(json_unquote(json_extract(`json`,_utf8mb4'$.refreshLeaseUntil')),'null')) VIRTUAL,
+  `json` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_session_user_status` (`userId`,`status`),
+  KEY `user_session_expiry` (`status`,`expiresAt`),
+  KEY `user_session_idle_expiry` (`status`,`idleExpiresAt`),
+  KEY `user_session_prune` (`status`,`updatedAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

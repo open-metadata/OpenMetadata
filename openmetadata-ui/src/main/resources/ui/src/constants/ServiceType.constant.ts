@@ -239,7 +239,6 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
-  'sessionExpiry',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -267,6 +266,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [
