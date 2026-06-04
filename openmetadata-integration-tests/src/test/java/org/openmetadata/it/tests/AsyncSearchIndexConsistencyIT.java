@@ -61,7 +61,12 @@ public class AsyncSearchIndexConsistencyIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_SEARCH_INDEX = "table_search_index";
-  private static final Duration SEARCH_AT_MOST = Duration.ofSeconds(60);
+  // Search read-your-write is normally near-immediate (synchronous post-commit indexing). Under the
+  // full IT suite (~14.5k tests against one shared Elasticsearch node) a live write can be 429'd
+  // and
+  // routed to the retry outbox, so the document lands a little later; widen the window so the
+  // contention does not flake the convergence assertion.
+  private static final Duration SEARCH_AT_MOST = Duration.ofSeconds(120);
   private static final Duration SEARCH_POLL = Duration.ofMillis(500);
 
   @Test

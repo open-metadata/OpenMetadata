@@ -233,7 +233,12 @@ public class ColumnSearchIndexIT {
   // SEARCH POLLING HELPERS
   // ===================================================================
 
-  private static final Duration POLL_AT_MOST = Duration.ofSeconds(60);
+  // A live column write is normally searchable near-immediately, but under the full IT suite
+  // (~14.5k tests against one shared Elasticsearch node) it can be 429'd and retried via the
+  // outbox,
+  // so it lands a little later. Widen the window so suite-wide contention does not flake the
+  // assert.
+  private static final Duration POLL_AT_MOST = Duration.ofSeconds(120);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
   private static final String COLUMN_SEARCH_INDEX = "column_search_index";
   private static final String DATA_ASSET_INDEX = "dataAsset";
