@@ -137,6 +137,32 @@ class ImmenseTermReproTest {
         201, docResponse.statusCode(), "real hardened mapping must accept the oversized doc");
   }
 
+  @Test
+  void ingestionPipeline_pipelineStatuses_dynamicFalse_acceptsObjectConfig() throws Exception {
+    String raw;
+    try (InputStream is =
+        getClass()
+            .getClassLoader()
+            .getResourceAsStream("elasticsearch/en/ingestion_pipeline_index_mapping.json")) {
+      raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    String osMapping = OsUtils.enrichIndexMappingForOpenSearch(harden(raw));
+    assertEquals(200, put("/ingestion_pipeline_pstatus", osMapping).statusCode());
+
+    String strDoc =
+        "{\"pipelineStatuses\":{\"config\":{\"appConfig\":{\"actions\":"
+            + "{\"customProperties\":\"jointure\"}}}}}";
+    String objDoc =
+        "{\"pipelineStatuses\":{\"config\":{\"appConfig\":{\"actions\":"
+            + "{\"customProperties\":{\"columndatepivot\":\"jointure\"}}}}}}";
+
+    assertEquals(201, put("/ingestion_pipeline_pstatus/_doc/1?refresh=true", strDoc).statusCode());
+    assertEquals(
+        201,
+        put("/ingestion_pipeline_pstatus/_doc/2?refresh=true", objDoc).statusCode(),
+        "pipelineStatuses dynamic:false must accept the object config value");
+  }
+
   private String harden(String mapping) {
     return SearchIndexSettings.harden(mapping, SearchFieldLimits.defaults());
   }
