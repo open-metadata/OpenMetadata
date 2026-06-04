@@ -57,7 +57,6 @@ export type TestCaseIncidentStatusParams = ListParams & {
   offset?: number;
   originEntityFQN?: string;
   domain?: string;
-  dataProductFqn?: string;
   sortField?: string;
   sortType?: 'asc' | 'desc';
   dateField?: 'timestamp' | 'updatedAt';
