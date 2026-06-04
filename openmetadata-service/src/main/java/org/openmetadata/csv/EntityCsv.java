@@ -411,6 +411,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs;
   }
 
+  /**
+   * An empty domain column means "leave domains unchanged", not "clear domains". Returning the
+   * entity's existing domains (which the importer already loaded, including inherited ones) keeps
+   * platform rules such as "Data Product Domain Validation" from seeing an empty domain and
+   * treating it as a mismatch, without an extra inheritance lookup. Inherited references are
+   * filtered out before persistence, so they are never materialized as a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, List<EntityReference> current) {
+    List<EntityReference> parsed = getDomains(printer, csvRecord, fieldNumber);
+    return parsed != null ? parsed : current;
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
     if (!processRecord) {
