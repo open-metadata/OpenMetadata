@@ -183,10 +183,14 @@ public final class PolicyConditionUpdater {
   }
 
   /**
-   * Re-read the policy's current row, re-apply the rewriter to that fresh copy, and persist it with
-   * a content-based compare-and-swap. On a lost-update conflict (another writer changed the row),
-   * retry up to {@link #MAX_REWRITE_RETRIES} times. Avoids the EntityUpdater path so automated
-   * rewrites neither bump the version nor create version history.
+   * Re-read the policy's current row with a {@code FOR UPDATE} lock, re-apply the rewriter to that
+   * fresh copy, and persist it with a content-based compare-and-swap. The locking read is essential:
+   * this runs inside the enclosing rename/delete transaction, so under MySQL's default REPEATABLE
+   * READ a plain re-read would return the transaction's stale snapshot and the CAS could never
+   * converge. {@code FOR UPDATE} returns the latest committed row and serializes conflicting
+   * writers. On a lost-update conflict it retries up to {@link #MAX_REWRITE_RETRIES} times. Avoids
+   * the EntityUpdater path so automated rewrites neither bump the version nor create version
+   * history.
    */
   private static boolean rewriteSinglePolicy(
       EntityRepository<Policy> policyRepo, UUID policyId, UnaryOperator<String> conditionRewriter) {
@@ -196,7 +200,7 @@ public final class PolicyConditionUpdater {
     int attempt = 0;
     while (attempt < MAX_REWRITE_RETRIES && retryable && !changed) {
       attempt++;
-      String currentJson = dao.findJsonById(policyId, Include.NON_DELETED);
+      String currentJson = dao.findJsonByIdForUpdate(policyId, Include.NON_DELETED);
       Policy policy = currentJson == null ? null : JsonUtils.readValue(currentJson, Policy.class);
       if (policy == null || !rewritePolicyConditions(policy, conditionRewriter)) {
         retryable = false;

@@ -456,6 +456,10 @@ public interface EntityDAO<T extends EntityInterface> {
   String findById(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
+  String findByIdForUpdate(
+      @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(
@@ -803,8 +807,14 @@ public interface EntityDAO<T extends EntityInterface> {
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
   }
 
-  default String findJsonById(UUID id, Include include) {
-    return findById(getTableName(), id, getCondition(include));
+  /**
+   * Fetch the raw json for a row while taking a {@code FOR UPDATE} row lock. Background rewrites use
+   * this so that, inside an enclosing transaction, the re-read sees the latest committed row (a
+   * plain consistent read would return the transaction's stale snapshot under MySQL REPEATABLE
+   * READ) and concurrent writers on the same row are serialized.
+   */
+  default String findJsonByIdForUpdate(UUID id, Include include) {
+    return findByIdForUpdate(getTableName(), id, getCondition(include));
   }
 
   default T findEntityById(UUID id, Include include) {
