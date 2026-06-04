@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select, Typography } from '@openmetadata/ui-core-components';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
@@ -300,49 +300,48 @@ const CoreOneOfField = (props: FieldProps) => {
         </div>
       )}
 
-      {hasMultipleOptions && !shouldRenderAsTabs && (
-        <Select
-          className={classNames(
-            'core-one-of-field-select',
-            shouldRenderInlineSelectedBranch &&
-              'tw:col-start-1 tw:self-stretch tw:w-full'
-          )}
-          data-testid={`select-widget-${idSchema.$id}${
-            schema.oneOf ? '__oneof_select' : '__anyof_select'
-          }`}
-          fontSize="sm"
-          isDisabled={disabled || readonly}
-          isRequired={required}
-          items={optionItems}
-          label={hideLabel ? undefined : fieldLabel}
-          popoverClassName="core-one-of-field-select-popover"
-          selectedKey={selectedKey}
-          size="sm"
-          onSelectionChange={(key: Key | null) => {
-            if (key !== null) {
-              handleOptionChange(Number(key));
-            }
-          }}>
-          {(item) => (
-            <Select.Item
-              icon={item.icon}
-              id={item.id}
-              key={item.id}
-              textValue={item.label}>
-              {item.label}
-            </Select.Item>
-          )}
-        </Select>
-      )}
+      <Box direction="col" gap={1}>
+        {hasMultipleOptions && !shouldRenderAsTabs && (
+          <Select
+            className={classNames(
+              'core-one-of-field-select',
+              shouldRenderInlineSelectedBranch &&
+                'tw:col-start-1 tw:self-stretch tw:w-full'
+            )}
+            data-testid={`select-widget-${idSchema.$id}${
+              schema.oneOf ? '__oneof_select' : '__anyof_select'
+            }`}
+            fontSize="sm"
+            isDisabled={disabled || readonly}
+            isRequired={required}
+            items={optionItems}
+            label={hideLabel ? undefined : fieldLabel}
+            popoverClassName="core-one-of-field-select-popover"
+            selectedKey={selectedKey}
+            size="sm"
+            onSelectionChange={(key: Key | null) => {
+              if (key !== null) {
+                handleOptionChange(Number(key));
+              }
+            }}>
+            {(item) => (
+              <Select.Item
+                icon={item.icon}
+                id={item.id}
+                key={item.id}
+                textValue={item.label}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select>
+        )}
 
-      {selectedDescription && (
-        <Typography
-          as="span"
-          className="core-one-of-field-selected-description tw:text-tertiary"
-          size="text-sm">
-          {selectedDescription}
-        </Typography>
-      )}
+        {selectedDescription && (
+          <Typography as="span" className="tw:text-tertiary" size="text-xs">
+            {selectedDescription}
+          </Typography>
+        )}
+      </Box>
 
       <div className="core-one-of-field-selected">
         <SchemaField

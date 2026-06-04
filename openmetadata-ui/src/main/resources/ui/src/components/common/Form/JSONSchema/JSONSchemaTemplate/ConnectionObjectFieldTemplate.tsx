@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { Card, Divider } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { ChevronDown, Key01, Lock01 } from '@untitledui/icons';
+import { ChevronDown, InfoCircle, Key01, Lock01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -31,9 +32,21 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
 import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreObjectFieldTemplate';
-import { SingleCredentialNote } from '../JSONSchemaFields/DesignControls/DesignControls';
 import './connection-object-field-template.less';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
+
+const SingleCredentialNote = ({ method }: { method: string }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-xs">
+      <InfoCircle className="tw:text-fg-quaternary" size={14} />
+      <span className="tw:text-tertiary">
+        {t('message.auth-single-credential-stored', { method })}
+      </span>
+    </div>
+  );
+};
 
 const AUTH_PROPERTY = 'authType';
 const PASSWORD_METHOD = 'password';
@@ -343,7 +356,7 @@ const SectionFields = ({
     );
 
     return (
-      <div className="connection-advanced-section-fields tw:flex tw:flex-col tw:gap-[18px] tw:p-[18px]">
+      <div className="connection-advanced-section-fields tw:flex tw:flex-col tw:gap-4">
         {hiddenProperties.map((element, index) =>
           renderProperty(element, index, 'tw:hidden')
         )}
@@ -550,13 +563,13 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
   }
 
   return (
-    <div
+    <Card
       className={classNames(
-        'connection-section-card tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs',
+        'connection-section-card',
         `connection-section-card-${section.key}`,
-        section.key === 'advanced' ? 'tw:p-0 tw:overflow-hidden' : 'tw:p-4',
-        active && 'tw:[border-color:var(--tw-color-border-brand)]'
+        section.key !== 'advanced' ? 'tw:p-6' : ''
       )}
+      color={active ? 'brandOutlined' : 'default'}
       data-testid={`connection-section-${section.key}`}
       onBlurCapture={handleBlur}
       onFocusCapture={() => setActive(true)}>
@@ -575,12 +588,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
       />
       {showBody && (
         <>
-          <div
-            className={classNames(
-              'connection-section-divider tw:h-px tw:bg-secondary',
-              section.key !== 'advanced' && 'tw:my-3'
-            )}
-          />
+          <Divider className={classNames('tw:my-3')} />
           {section.key === 'authentication' &&
           hasAuthTabs(section.properties) ? (
             <AuthTabs properties={section.properties} />
@@ -603,7 +611,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
           )}
         />
       )}
-    </div>
+    </Card>
   );
 };
 

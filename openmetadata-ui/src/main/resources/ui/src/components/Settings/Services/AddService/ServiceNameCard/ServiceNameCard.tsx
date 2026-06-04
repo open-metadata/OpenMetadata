@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Button, Input } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DesignTextControl } from '../../../../common/Form/JSONSchema/JSONSchemaFields/DesignControls/DesignControls';
 
 interface ServiceNameCardProps {
   serviceType: string;
@@ -53,13 +53,14 @@ const ServiceNameCard = ({
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
 
-      <DesignTextControl
-        required
-        error={nameError}
-        hint={t('message.service-name-rule')}
+      <Input
+        isRequired
+        hint={nameError ?? t('message.service-name-rule')}
         id="service-name"
+        inputDataTestId="service-name"
+        isInvalid={!!nameError}
         label={t('label.service-name')}
-        testId="service-name"
+        placeholder={t('label.service-name')}
         value={name}
         onChange={onNameChange}
         onFocus={() => onFocus?.('serviceName')}
@@ -75,8 +76,7 @@ const ServiceNameCard = ({
           <textarea
             className={classNames(
               'tw:min-h-[88px] tw:w-full tw:rounded-lg tw:border tw:border-primary tw:bg-primary',
-              'tw:p-3 tw:text-primary tw:shadow-xs tw:outline-none',
-              'tw:placeholder:text-placeholder focus:tw:border-brand focus:tw:ring-4 focus:tw:ring-brand'
+              'tw:p-3 tw:text-primary tw:shadow-xs tw:outline-none tw:placeholder:text-placeholder focus:tw:border-brand focus:tw:ring-4 focus:tw:ring-brand'
             )}
             data-testid="service-description"
             id="service-description"
@@ -87,19 +87,20 @@ const ServiceNameCard = ({
           />
         </div>
       ) : (
-        <button
-          className="tw:mt-3 tw:flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:font-semibold tw:text-brand-secondary"
+        <Button
+          className="tw:mt-3"
+          color="link-color"
           data-testid="add-description-button"
-          tabIndex={-1}
+          size="sm"
           type="button"
-          onClick={() => {
+          onPress={() => {
             onFocus?.('serviceDescription');
             setShowDescription(true);
           }}>
           <Plus size={15} />
           {t('label.add-a-description')}
           <span className="tw:text-tertiary">({t('label.optional')})</span>
-        </button>
+        </Button>
       )}
     </div>
   );

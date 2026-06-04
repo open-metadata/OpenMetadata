@@ -31,16 +31,14 @@ import {
 } from '../../../../utils/ServiceConnectionUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
-import {
-  DesignSecretWidget,
-  DesignTextWidget,
-} from '../../../common/Form/JSONSchema/JSONSchemaFields/DesignControls/DesignWidgets';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import CoreOneOfField from '../../../common/FormBuilderV1/fields/CoreOneOfField';
 import { CoreFieldTemplate } from '../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from '../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
+import CoreInputWidget from '../../../common/FormBuilderV1/widgets/CoreInputWidget';
+import CorePasswordWidget from '../../../common/FormBuilderV1/widgets/CorePasswordWidget';
 import CoreSelectWidget from '../../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import CoreTextAreaWidget from '../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
 
@@ -123,13 +121,13 @@ const renderConnectionSchema = async (
       uiSchema={uiSchema}
       validator={validator}
       widgets={{
-        TextWidget: DesignTextWidget,
-        PasswordWidget: DesignSecretWidget,
+        TextWidget: CoreInputWidget,
+        PasswordWidget: CorePasswordWidget,
         SelectWidget: CoreSelectWidget,
         TextareaWidget: CoreTextAreaWidget,
-        EmailWidget: DesignTextWidget,
-        URLWidget: DesignTextWidget,
-        UpDownWidget: DesignTextWidget,
+        EmailWidget: CoreInputWidget,
+        URLWidget: CoreInputWidget,
+        UpDownWidget: CoreInputWidget,
       }}
     />
   );

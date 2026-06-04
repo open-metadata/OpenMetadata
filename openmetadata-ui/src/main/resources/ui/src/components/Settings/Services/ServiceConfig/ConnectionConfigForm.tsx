@@ -55,10 +55,6 @@ import {
 import { shouldTestConnection } from '../../../../utils/ServiceUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
-import {
-  DesignSecretWidget,
-  DesignTextWidget,
-} from '../../../common/Form/JSONSchema/JSONSchemaFields/DesignControls/DesignWidgets';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
@@ -381,13 +377,6 @@ const ConnectionConfigForm = ({
           ObjectFieldTemplate: ConnectionObjectFieldTemplate,
         }}
         uiSchema={uiSchema}
-        widgets={{
-          TextWidget: DesignTextWidget,
-          PasswordWidget: DesignSecretWidget,
-          EmailWidget: DesignTextWidget,
-          URLWidget: DesignTextWidget,
-          UpDownWidget: DesignTextWidget,
-        }}
         onCancel={onCancel}
         onChange={handleFormChange}
         onFocus={onFocus}

@@ -26,6 +26,7 @@ import ConnectionObjectFieldTemplate from './ConnectionObjectFieldTemplate';
 
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span data-testid="chevron" />,
+  InfoCircle: () => <span data-testid="info-circle" />,
   Key01: () => <span data-testid="key-icon" />,
   Lock01: () => <span data-testid="lock-icon" />,
 }));
@@ -36,12 +37,6 @@ jest.mock('./ObjectFieldTemplate', () => ({
 
 jest.mock('../../../FormBuilderV1/templates/CoreObjectFieldTemplate', () => ({
   CoreObjectFieldTemplate: () => <div data-testid="core-object-template" />,
-}));
-
-jest.mock('../JSONSchemaFields/DesignControls/DesignControls', () => ({
-  SingleCredentialNote: ({ method }: { method: string }) => (
-    <div data-testid="credential-note">{method}</div>
-  ),
 }));
 
 jest.mock('react-i18next', () => ({
