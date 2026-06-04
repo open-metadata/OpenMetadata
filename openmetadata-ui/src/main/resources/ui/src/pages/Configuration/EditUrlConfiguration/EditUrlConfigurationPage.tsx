@@ -25,8 +25,8 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import {
-  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
+  OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY,
 } from '../../../constants/service-guide.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
@@ -72,7 +72,7 @@ const EditUrlConfigurationPage = () => {
       },
       {
         name: t('label.entity-configuration', {
-          entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
+          entity: t('label.brand-name-url'),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -82,7 +82,7 @@ const EditUrlConfigurationPage = () => {
       {
         name: t('label.edit-entity', {
           entity: t('label.entity-configuration', {
-            entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
+            entity: t('label.brand-name-url'),
           }),
         }),
         url: '',
@@ -106,7 +106,7 @@ const EditUrlConfigurationPage = () => {
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.entity-configuration', {
-            entity: t('label.brand-name-url', { brandName: BRAND_NAME }),
+            entity: t('label.brand-name-url'),
           }),
         })
       );
