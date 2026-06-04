@@ -94,6 +94,7 @@ class PythonDialects(Enum):
     Trino = "trino"
     UnityCatalog = "unitycatalog"
     Vertica = "vertica"
+    YDB = "yql"
 
 
 class EnumAdapter(type):

@@ -303,6 +303,21 @@ def _(elements, compiler, **kw):  # pylint: disable=unused-argument
     return "PERCENTILE(%s, %d)" % (col, percentile_int)  # noqa: UP031
 
 
+@compiles(MedianFn, Dialects.YDB)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    """Median/percentile computation for YDB.
+
+    YQL exposes ``PERCENTILE(column, fraction)`` and does not support the
+    standard ``PERCENTILE_CONT(...) WITHIN GROUP (ORDER BY ...)`` form.
+    The underlying TDigest aggregate requires ``Double`` inputs, so wrap the
+    column in ``CAST(... AS Double)`` — no-op for Float/Double columns,
+    necessary for ``Decimal`` and integer types.
+    """
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "PERCENTILE(CAST(%s AS Double), %.2f)" % (col, percentile)  # noqa: UP031
+
+
 @compiles(MedianFn, Dialects.Informix)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     """Median/percentile computation for Informix.

@@ -795,6 +795,7 @@ export enum DatabaseServiceType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
+    Ydb = "YDB",
 }
 
 /**

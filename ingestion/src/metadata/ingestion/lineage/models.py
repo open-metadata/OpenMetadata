@@ -101,6 +101,9 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaType,
 )
+from metadata.generated.schema.entity.services.connections.database.ydbConnection import (
+    YDBType,
+)
 from metadata.utils.singleton import Singleton
 
 
@@ -133,6 +136,7 @@ class Dialect(Enum):
     MARIADB = "mariadb"
     TRINO = "trino"
     VERTICA = "vertica"
+    YDB = "ydb"
 
 
 MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
@@ -164,6 +168,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
     str(StarrocksType.StarRocks.value): Dialect.MYSQL,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,
     str(InformixType.Informix.value): Dialect.ANSI,
+    str(YDBType.YDB.value): Dialect.YDB,
 }
 
 

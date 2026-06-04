@@ -55,6 +55,7 @@ import timescale from '../assets/img/service-icon-timescale.png';
 import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
+import ydb from '../assets/img/service-icon-ydb.png';
 import teradata from '../assets/svg/teradata.svg';
 
 // Messaging services
@@ -156,6 +157,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   unitycatalog: unitycatalog,
   db2: ibmdb2,
   doris: doris,
+  ydb: ydb,
   starrocks: starrocks,
   druid: druid,
   dynamodb: dynamodb,

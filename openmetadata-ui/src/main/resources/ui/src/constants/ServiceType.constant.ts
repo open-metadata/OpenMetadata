@@ -194,6 +194,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  DatabaseServiceType.Ydb,
   DashboardServiceType.SapS4Hana,
 ];
 

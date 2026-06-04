@@ -411,6 +411,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    "ydb": {"ydb-sqlalchemy~=0.1.19", "ydb-sqlglot-plugin~=0.2.5"},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
