@@ -66,7 +66,6 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource-variable/inter": "^5.2.8",
-    "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",
     "@internationalized/date": "^3.11.0",

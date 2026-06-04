@@ -1,5 +1,7 @@
-import type { FC, HTMLAttributes, RefAttributes } from 'react';
+import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { cx } from '@/utils/cx';
 import { DotsVertical } from '@untitledui/icons';
+import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   MenuItemProps as AriaMenuItemProps,
@@ -17,8 +19,6 @@ import {
   Popover as AriaPopover,
   Separator as AriaSeparator,
 } from 'react-aria-components';
-import { CheckboxBase } from '@/components/base/checkbox/checkbox';
-import { cx } from '@/utils/cx';
 
 interface DropdownItemProps extends AriaMenuItemProps {
   /** The label of the item to be displayed. */
@@ -136,10 +136,12 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
+  const { placement = 'bottom right', ...rest } = props;
+
   return (
     <AriaPopover
-      placement="bottom right"
-      {...props}
+      placement={placement}
+      {...rest}
       className={(state) =>
         cx(
           'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-auto tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:will-change-transform',
