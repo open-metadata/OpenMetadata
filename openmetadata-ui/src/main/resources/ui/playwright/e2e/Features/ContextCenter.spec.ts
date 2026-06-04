@@ -1066,9 +1066,12 @@ test.describe('Context Center', () => {
           (info: { filesLength: number; name: string; size: number }) => {
             console.log(
               '[upload-test][browser→node] change event fired —',
-              'files.length:', info.filesLength,
-              '| name:', info.name,
-              '| size:', info.size
+              'files.length:',
+              info.filesLength,
+              '| name:',
+              info.name,
+              '| size:',
+              info.size
             );
           }
         );
@@ -1094,7 +1097,9 @@ test.describe('Context Center', () => {
       await fileInput.setInputFiles(uploadFilePath);
 
       // File appears in staged list
-      console.log('[upload-test] waiting for filename to appear in staged list');
+      console.log(
+        '[upload-test] waiting for filename to appear in staged list'
+      );
       await expect(
         modal.getByText('context-center-upload.txt').first()
       ).toBeVisible();
