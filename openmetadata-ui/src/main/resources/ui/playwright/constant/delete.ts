@@ -41,11 +41,11 @@ export const LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT = [
 
 export const LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED = [
   {
-    containerSelector: '[data-testid="asset-header-btn-group"]',
+    containerSelector: '[data-testid="data-assets-header"]',
     elementSelector: '[data-testid="up-vote-btn"]',
   },
   {
-    containerSelector: '[data-testid="asset-header-btn-group"]',
+    containerSelector: '[data-testid="data-assets-header"]',
     elementSelector: '[data-testid="down-vote-btn"]',
   },
   {

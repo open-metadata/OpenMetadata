@@ -139,6 +139,7 @@ type StatItemProps = {
   count?: string | number;
   tooltip: string;
   testId: string;
+  countTestId?: string;
   onClick?: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -153,46 +154,53 @@ const StatItem = ({
   count,
   tooltip,
   testId,
+  countTestId,
   onClick,
   loading,
   disabled,
   isActive,
   srLabel,
 }: StatItemProps) => {
-  const content = (
-    <span
-      className={classNames(
-        'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
-        isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
-        onClick && !disabled
-          ? 'tw:cursor-pointer tw:hover:text-secondary'
-          : 'tw:cursor-default'
-      )}
-      data-testid={testId}>
+  const labelClassName = classNames(
+    'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
+    isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
+    onClick && !disabled
+      ? 'tw:cursor-pointer tw:hover:text-secondary'
+      : 'tw:cursor-default'
+  );
+
+  const label = (
+    <>
       {iconNode ??
         (Icon && (
           <Icon className={classNames(iconClassName, 'tw:text-current')} />
         ))}
       {count !== undefined && (
-        <span className="tw:text-quaternary tw:text-sm">{count}</span>
+        <span
+          className="tw:text-quaternary tw:text-sm"
+          data-testid={countTestId}>
+          {count}
+        </span>
       )}
       {srLabel && <span className="tw:sr-only">{srLabel}</span>}
-    </span>
+    </>
   );
 
-  const interactive =
-    onClick && !disabled ? (
-      <button
-        aria-busy={loading || undefined}
-        className="tw:cursor-pointer tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-        disabled={disabled}
-        type="button"
-        onClick={onClick}>
-        {content}
-      </button>
-    ) : (
-      content
-    );
+  const interactive = onClick ? (
+    <button
+      aria-busy={loading || undefined}
+      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
+      data-testid={testId}
+      disabled={disabled}
+      type="button"
+      onClick={onClick}>
+      <span className={labelClassName}>{label}</span>
+    </button>
+  ) : (
+    <span className={labelClassName} data-testid={testId}>
+      {label}
+    </span>
+  );
 
   return (
     <Tooltip placement="top" title={tooltip}>
@@ -855,6 +863,7 @@ export const DataAssetsHeader = ({
               <>
                 <StatItem
                   count={votes?.upVotes ?? 0}
+                  countTestId="up-vote-count"
                   disabled={deleted}
                   icon={ThumbsUp}
                   isActive={voteStatus === QueryVoteType.votedUp}
@@ -865,6 +874,7 @@ export const DataAssetsHeader = ({
                 />
                 <StatItem
                   count={votes?.downVotes ?? 0}
+                  countTestId="down-vote-count"
                   disabled={deleted}
                   icon={ThumbsDown}
                   isActive={voteStatus === QueryVoteType.votedDown}
@@ -922,6 +932,13 @@ export const DataAssetsHeader = ({
                 weight="bold">
                 {entityName}
               </Typography>
+              {deleted && (
+                <span
+                  className="deleted-badge-button"
+                  data-testid="deleted-badge">
+                  {t('label.deleted')}
+                </span>
+              )}
               <Tooltip
                 placement="top"
                 title={

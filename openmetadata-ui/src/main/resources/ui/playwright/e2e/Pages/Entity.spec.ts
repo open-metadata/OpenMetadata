@@ -53,6 +53,7 @@ import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
   closeColumnDetailPanel,
+  copyAndGetClipboardText,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
@@ -1996,6 +1997,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const entityName =
         entity.entityResponseData?.['displayName'] ?? entity.entity.name;
       await entity.followUnfollowEntity(page, entityName);
+    });
+
+    /**
+     * Tests copying the entity URL from the header
+     * @description Tests that the header copy button copies the current entity page URL to the clipboard
+     */
+    test(`Copy entity URL from header`, async ({ page }) => {
+      const pageUrl = page.url();
+      const copyButton = page.getByTestId('entity-header-copy-button');
+      const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+      expect(clipboardText).toBe(pageUrl);
     });
 
     /**
