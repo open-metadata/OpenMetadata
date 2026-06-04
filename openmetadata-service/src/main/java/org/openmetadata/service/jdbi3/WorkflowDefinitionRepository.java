@@ -192,14 +192,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    * Comprehensive workflow graph structure validation.
    * Performs all graph validations in a single traversal for efficiency:
    * 1. Exactly one start node (if nodes exist)
-   * 2. No orphaned nodes (all nodes are reachable from start)
-   * 3. All edges reference valid nodes
-   * 4. Non-end nodes must have outgoing edges
-   * 5. End nodes must not have outgoing edges
+   * 2. No infinite (automated-only) cycles
+   * 3. No orphaned nodes (all nodes are reachable from start)
+   * 4. All edges reference valid nodes
+   * 5. Non-end nodes must have outgoing edges
+   * 6. End nodes must not have outgoing edges
    *
-   * <p>Cycles are intentionally permitted: workflow state machines legitimately loop back (e.g. the
-   * incident-resolution New-&gt;Ack-&gt;New transition, or an Assigned self-reassign), so a back edge
-   * to an active stage is valid rather than an error.
+   * <p>A cycle is permitted only when it passes through a human-gated node (a userApprovalTask):
+   * workflow state machines legitimately loop back (e.g. the incident-resolution New-&gt;Ack-&gt;New
+   * transition, or an Assigned self-reassign). A cycle of only automated tasks is an infinite loop
+   * and is rejected.
    */
   private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
     // Skip validation if no nodes are present - allow empty workflows
@@ -296,15 +298,21 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
 
-    // Orphaned-node check: every node must be reachable from the start node. Cycles are NOT
-    // rejected — workflow state machines legitimately loop back (incident New->Ack->New, Assigned
-    // self-reassign), so the traversal simply skips already-visited nodes to terminate on a cycle.
+    // Reject infinite automated cycles and orphaned nodes. A cycle is ALLOWED when it passes
+    // through
+    // a human-gated node (a userApprovalTask): such a loop cannot run unbounded without external
+    // input (e.g. the incident New<->Ack transitions, or an Assigned self-reassign). A cycle of
+    // only
+    // automated tasks would loop forever and is rejected.
     String startNode = startNodes.iterator().next();
-    Set<String> reachableNodes = new java.util.HashSet<>();
-    collectReachableNodes(startNode, outgoingEdges, reachableNodes);
+    Set<String> visited = new java.util.HashSet<>();
+    if (hasAutomatedOnlyCycle(startNode, outgoingEdges, nodeMap, visited, new ArrayList<>())) {
+      throw BadRequestException.of(
+          String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
+    }
 
     Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
-    orphanedNodes.removeAll(reachableNodes);
+    orphanedNodes.removeAll(visited);
 
     if (!orphanedNodes.isEmpty()) {
       throw BadRequestException.of(
@@ -315,24 +323,48 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Depth-first traversal collecting every node reachable from {@code node}. Already-visited nodes
-   * are not re-traversed, so cycles (which are valid in workflow state machines) terminate
-   * naturally. The resulting set drives the orphaned-node check.
+   * Depth-first traversal that detects an infinite automated cycle while collecting every reachable
+   * node into {@code visited} (which drives the orphaned-node check). A back edge to a node on the
+   * current path forms a cycle; that cycle is allowed when it contains a human-gated node (a {@code
+   * userApprovalTask}), because such a loop cannot advance without external input (e.g. the incident
+   * New&lt;-&gt;Ack transitions). A cycle of only automated tasks would loop forever and is reported.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
-   * @param reachable Accumulates every node reachable from the start node
+   * @param nodeMap Node id to definition, used to classify human-gated nodes
+   * @param visited Accumulates every node reachable from the start node
+   * @param path Nodes on the current DFS path, used to extract a detected cycle
    */
-  private void collectReachableNodes(
-      String node, Map<String, List<String>> adjacencyList, Set<String> reachable) {
-    if (reachable.add(node)) {
+  private boolean hasAutomatedOnlyCycle(
+      String node,
+      Map<String, List<String>> adjacencyList,
+      Map<String, WorkflowNodeDefinitionInterface> nodeMap,
+      Set<String> visited,
+      List<String> path) {
+    boolean automatedOnlyCycle = false;
+    int cycleStart = path.indexOf(node);
+    if (cycleStart >= 0) {
+      automatedOnlyCycle =
+          path.subList(cycleStart, path.size()).stream()
+              .noneMatch(nodeId -> isHumanGatedNode(nodeMap.get(nodeId)));
+    } else if (visited.add(node)) {
+      path.add(node);
       List<String> neighbors = adjacencyList.get(node);
       if (neighbors != null) {
         for (String neighbor : neighbors) {
-          collectReachableNodes(neighbor, adjacencyList, reachable);
+          if (hasAutomatedOnlyCycle(neighbor, adjacencyList, nodeMap, visited, path)) {
+            automatedOnlyCycle = true;
+            break;
+          }
         }
       }
+      path.removeLast();
     }
+    return automatedOnlyCycle;
+  }
+
+  private boolean isHumanGatedNode(WorkflowNodeDefinitionInterface node) {
+    return node != null && "userApprovalTask".equals(node.getSubType());
   }
 
   public void suspendWorkflow(WorkflowDefinition workflow) {
