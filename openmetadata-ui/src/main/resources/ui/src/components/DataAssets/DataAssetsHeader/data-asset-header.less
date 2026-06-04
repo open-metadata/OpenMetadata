@@ -26,7 +26,7 @@
 
   .breadcrumb-container {
     .link-title {
-      color: @grey-700 !important;
+      color: var(--tw-color-gray-700) !important;
     }
 
     .link-title.font-medium {
@@ -39,7 +39,7 @@
     max-width: 148px;
 
     .domain-link-text.render-domain-lebel-style {
-      color: @grey-700;
+      color: var(--tw-color-gray-700);
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -49,17 +49,17 @@
   }
 
   .domain-link.ant-typography,
-  .owner-label-container [class*='text-brand-700'],
+  span.header-owner-heading,
   .ant-typography.no-owner-heading,
   .extra-info-label-heading {
-    color: @grey-700;
+    color: var(--tw-color-gray-700);
   }
 
   .data-contract-latest-result-button {
     &.failed {
-      color: @red-14;
-      border-color: @red-19;
-      background-color: @red-9;
+      color: var(--tw-color-error-600);
+      border-color: var(--tw-color-error-200);
+      background-color: var(--tw-color-error-50);
     }
 
     &.aborted {
@@ -69,9 +69,9 @@
     }
 
     &.running {
-      color: @primary-7;
-      border-color: @blue-39;
-      background-color: @blue-33;
+      color: var(--tw-color-brand-700);
+      border-color: var(--tw-color-brand-200);
+      background-color: var(--tw-color-brand-50);
     }
   }
 
