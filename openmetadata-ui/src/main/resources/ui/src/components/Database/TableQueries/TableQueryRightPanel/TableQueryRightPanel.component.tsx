@@ -20,7 +20,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
