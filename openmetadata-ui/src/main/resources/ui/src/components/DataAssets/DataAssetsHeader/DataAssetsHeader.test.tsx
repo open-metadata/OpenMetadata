@@ -487,6 +487,58 @@ describe('DataAssetsHeader component', () => {
     expect(onFollowClick).toHaveBeenCalled();
   });
 
+  it('should disable the up-vote button while the vote request is in flight', async () => {
+    let resolveVote: () => void = () => undefined;
+    const onUpdateVote = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVote = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
+
+    const upVoteButton = screen.getByTestId('up-vote-btn');
+
+    fireEvent.click(upVoteButton);
+
+    await waitFor(() => expect(upVoteButton).toBeDisabled());
+
+    fireEvent.click(upVoteButton);
+
+    expect(onUpdateVote).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveVote();
+    });
+  });
+
+  it('should disable the follow button while the follow request is in flight', async () => {
+    let resolveFollow: () => void = () => undefined;
+    const onFollowClick = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFollow = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    fireEvent.click(followButton);
+
+    await waitFor(() => expect(followButton).toBeDisabled());
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFollow();
+    });
+  });
+
   it('should render certification only when serviceCategory is undefined', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {

@@ -161,10 +161,11 @@ const StatItem = ({
   isActive,
   srLabel,
 }: StatItemProps) => {
+  const isDisabled = disabled || loading;
   const labelClassName = classNames(
     'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
     isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
-    onClick && !disabled
+    onClick && !isDisabled
       ? 'tw:cursor-pointer tw:hover:text-secondary'
       : 'tw:cursor-default'
   );
@@ -192,7 +193,7 @@ const StatItem = ({
       aria-label={srLabel ?? tooltip}
       className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
       data-testid={testId}
-      disabled={disabled}
+      disabled={isDisabled}
       type="button"
       onClick={onClick}>
       <span className={labelClassName}>{label}</span>
@@ -790,7 +791,7 @@ export const DataAssetsHeader = ({
             size="sm"
             target="_blank">
             {t('label.view-in-service-type', {
-              serviceType: (dataAsset as Table).serviceType,
+              serviceType: get(dataAsset, 'serviceType', ''),
             })}
           </Button>
         </TooltipTrigger>
