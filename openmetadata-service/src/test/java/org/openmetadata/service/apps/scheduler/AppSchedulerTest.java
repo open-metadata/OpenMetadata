@@ -345,6 +345,58 @@ class AppSchedulerTest {
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
   }
 
+  @Test
+  void testNonConcurrentApp_treatsActiveErrorRunAsStale() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+    String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("stale"))
+        .thenReturn(null);
+
+    AppRunRecord erroredRun = new AppRunRecord().withStatus(AppRunRecord.Status.ACTIVE_ERROR);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(erroredRun)))) {
+      appScheduler.triggerOnDemandApplication(app, new HashMap<>());
+    }
+
+    verify(mockScheduler).deleteJob(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP));
+    verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
+  }
+
+  @Test
+  void testConcurrentApp_rethrowsCollisionWithoutClearing() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+
+    App concurrentApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("QueryRunner")
+            .withFullyQualifiedName("QueryRunner")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAllowConcurrentExecution(true)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
   private App nonConcurrentApp(String name) {
     return new App()
         .withId(UUID.randomUUID())

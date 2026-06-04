@@ -479,8 +479,14 @@ public class DistributedSearchIndexExecutor {
             .start(() -> runStaleReclaimerLoop(jobId));
 
     try {
-      awaitWorkers(workerLatch, jobId);
-      LOG.info("All workers completed for job {}", jobId);
+      boolean drained = awaitWorkers(workerLatch, jobId);
+      if (drained) {
+        LOG.info("All workers completed for job {}", jobId);
+      } else {
+        LOG.warn(
+            "Workers did not all drain for job {}; orchestrator unwinding on terminal state",
+            jobId);
+      }
 
       // Ensure job completion is checked after all workers finish.
       // This handles the case where 0 partitions were created (e.g., all selected
@@ -942,20 +948,27 @@ public class DistributedSearchIndexExecutor {
    * every retrigger with "Job is already running". On terminal state we force {@link #stop()}
    * (which interrupts wedged workers via {@code shutdownNow}) and return; the caller's {@code
    * finally} performs the bounded drain ({@code awaitTermination} + sink flush).
+   *
+   * @return {@code true} if all workers drained normally, {@code false} if the orchestrator
+   *     force-unwound because the job reached a terminal/STOPPING state first
    */
-  private void awaitWorkers(CountDownLatch workerLatch, UUID jobId) throws InterruptedException {
-    boolean completed = false;
-    while (!completed) {
-      completed = workerLatch.await(LATCH_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
-      if (!completed && isJobTerminalOrStopping(jobId)) {
+  private boolean awaitWorkers(CountDownLatch workerLatch, UUID jobId) throws InterruptedException {
+    boolean drained = false;
+    boolean done = false;
+    while (!done) {
+      drained = workerLatch.await(LATCH_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+      if (drained) {
+        done = true;
+      } else if (isJobTerminalOrStopping(jobId)) {
         LOG.warn(
             "Job {} is terminal/stopping but workers have not drained; forcing executor "
                 + "shutdown so the orchestrator can unwind",
             jobId);
         stop();
-        completed = true;
+        done = true;
       }
     }
+    return drained;
   }
 
   private boolean isJobTerminalOrStopping(UUID jobId) {
