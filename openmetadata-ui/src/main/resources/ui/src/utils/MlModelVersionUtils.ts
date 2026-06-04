@@ -25,10 +25,9 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  getTagsDiff,
-  getTextDiff,
-  removeDuplicateTags,
-} from './EntityVersionUtils';
+} from './EntityDiffPureUtils';
+import { getTextDiff } from './EntityDiffUtils';
+import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtilsPure';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 
 const handleFeatureDescriptionChangeDiff = (

@@ -28,15 +28,17 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
+} from '../../../utils/EntityDiffPureUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';

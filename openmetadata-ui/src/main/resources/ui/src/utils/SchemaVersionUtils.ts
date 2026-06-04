@@ -28,12 +28,14 @@ import {
   getChangeColumnNameFromDiffValue,
   getChangedEntityName,
   getDiffByFieldName,
+  isEndsWithField,
+} from './EntityDiffPureUtils';
+import { getTextDiff } from './EntityDiffUtils';
+import {
   getEntityDescriptionDiff,
   getEntityTagDiff,
   getStringEntityDiff,
-  getTextDiff,
-  isEndsWithField,
-} from './EntityVersionUtils';
+} from './EntityVersionUtilsPure';
 
 export function getNewFieldFromSchemaFieldDiff(
   newCol: Array<Field>
