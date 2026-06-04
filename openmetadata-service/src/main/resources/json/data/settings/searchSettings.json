@@ -335,11 +335,6 @@
           "matchType": "exact"
         },
         {
-          "field": "columns.children.name",
-          "boost": 1.0,
-          "matchType": "exact"
-        },
-        {
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
@@ -704,11 +699,6 @@
         },
         {
           "field": "messageSchema.schemaFields.name.keyword",
-          "boost": 1.0,
-          "matchType": "exact"
-        },
-        {
-          "field": "messageSchema.schemaFields.children.name",
           "boost": 1.0,
           "matchType": "exact"
         },
@@ -1386,18 +1376,8 @@
           "matchType": "exact"
         },
         {
-          "field": "responseSchema.schemaFields.children.name",
-          "boost": 5.0,
-          "matchType": "exact"
-        },
-        {
           "field": "requestSchema.schemaFields.name.keyword",
           "boost": 8.0,
-          "matchType": "exact"
-        },
-        {
-          "field": "requestSchema.schemaFields.children.name",
-          "boost": 5.0,
           "matchType": "exact"
         }
       ],
@@ -2534,10 +2514,6 @@
           "description": "Exact match on column display names. Useful for finding tables with columns having specific user-friendly names."
         },
         {
-          "name": "columns.children.name",
-          "description": "Search for nested columns within complex data types. Helps find tables with specific nested fields."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find tables with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -2560,10 +2536,6 @@
         {
           "name": "columns.description",
           "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
-        },
-        {
-          "name": "columns.children.description",
-          "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
         }
       ]
     },
@@ -2770,10 +2742,6 @@
           "description": "Search within field descriptions in the message schema to find topics with fields serving specific purposes."
         },
         {
-          "name": "messageSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex schema structures."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find topics with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -2946,10 +2914,6 @@
         {
           "name": "columns.description",
           "description": "Search on column descriptions to find data models with fields serving specific purposes."
-        },
-        {
-          "name": "columns.children.name",
-          "description": "Search on nested field names within complex column structures."
         },
         {
           "name": "tags.tagFQN.text",
@@ -3220,10 +3184,6 @@
           "description": "Search on column descriptions to find containers with fields serving specific purposes."
         },
         {
-          "name": "dataModel.columns.children.name",
-          "description": "Search on nested field names within complex data structures in the container."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find containers with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -3293,10 +3253,6 @@
           "description": "Search on field descriptions in the response schema to find endpoints with fields serving specific purposes."
         },
         {
-          "name": "responseSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex response schema structures."
-        },
-        {
           "name": "requestSchema.schemaFields.name",
           "description": "Search on field names in the API request schema to find endpoints accepting specific data fields."
         },
@@ -3307,10 +3263,6 @@
         {
           "name": "requestSchema.schemaFields.description",
           "description": "Search on field descriptions in the request schema to find endpoints with fields serving specific purposes."
-        },
-        {
-          "name": "requestSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex request schema structures."
         },
         {
           "name": "tags.tagFQN.text",

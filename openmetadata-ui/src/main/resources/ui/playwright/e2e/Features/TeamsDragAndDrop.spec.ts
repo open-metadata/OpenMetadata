@@ -110,6 +110,7 @@ test.describe(
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
+      test.slow();
       for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
         await addTeamHierarchy(page, teamDetails);
 
@@ -157,6 +158,7 @@ test.describe(
       test(`Should drag and drop on ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, async ({
         page,
       }) => {
+        test.slow();
         // Nested team will be shown once anything is moved under it
         if (index !== 0) {
           await openDragDropDropdown(page, teams[index - 1]);
@@ -180,6 +182,7 @@ test.describe(
     }
 
     test(`Should drag and drop team on table level`, async ({ page }) => {
+      test.slow();
       // Open department team dropdown as it is moved under it from last test
       await openDragDropDropdown(page, teamNameDepartment);
 

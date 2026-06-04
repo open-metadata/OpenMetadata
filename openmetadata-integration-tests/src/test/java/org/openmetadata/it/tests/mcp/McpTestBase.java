@@ -120,6 +120,57 @@ public abstract class McpTestBase {
     return OBJECT_MAPPER.readValue(response.body(), responseType);
   }
 
+  protected static <T> T get(String path, Class<T> responseType) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Authorization", authToken)
+            .GET()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+    }
+    return OBJECT_MAPPER.readValue(response.body(), responseType);
+  }
+
+  protected static <T> T put(String path, Object body, Class<T> responseType) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    String jsonBody = OBJECT_MAPPER.writeValueAsString(body);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "application/json")
+            .header("Authorization", authToken)
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200 && response.statusCode() != 201) {
+      throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+    }
+    return OBJECT_MAPPER.readValue(response.body(), responseType);
+  }
+
+  protected static JsonNode patch(String path, String jsonPatch) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "application/json-patch+json")
+            .header("Authorization", authToken)
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonPatch))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+    }
+    return OBJECT_MAPPER.readTree(response.body());
+  }
+
   protected static void delete(String path) throws Exception {
     String baseUrl = TestSuiteBootstrap.getBaseUrl();
     HttpRequest request =
