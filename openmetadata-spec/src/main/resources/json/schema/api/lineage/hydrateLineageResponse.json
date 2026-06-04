@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/hydrateLineageResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HydrateLineageResponse",
+  "description": "Response of POST /v1/lineage/hydrate. Hydrated entities grouped by entityType. Entities the caller cannot VIEW_BASIC are silently dropped from `entitiesByType` and counted in `droppedCount`. Item shapes follow the per-type entity schemas (Table, Dashboard, Pipeline, ...); the schema itself uses `object` because there is no discriminated-union schema for `EntityInterface`.",
+  "javaType": "org.openmetadata.schema.api.lineage.HydrateLineageResponse",
+  "type": "object",
+  "properties": {
+    "entitiesByType": {
+      "description": "Hydrated entities keyed by entityType (table, dashboard, pipeline, topic, ...). Only types with at least one authorized entity are present in the map.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, java.util.List<Object>>",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "droppedCount": {
+      "description": "Number of requested entities that were silently dropped because the caller does not have VIEW_BASIC permission on them. Includes ids that did not resolve to any entity. Lets the UI surface 'N items hidden by permissions' instead of silently swallowing them.",
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "required": ["entitiesByType"],
+  "additionalProperties": false
+}
