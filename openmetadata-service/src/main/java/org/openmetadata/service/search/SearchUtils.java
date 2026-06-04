@@ -80,22 +80,18 @@ public final class SearchUtils {
    */
   public static List<EsLineageData> getUpstreamLineageListIfExist(
       Map<String, Object> esDoc, Long startTime, Long endTime) {
-    List<EsLineageData> all = getUpstreamLineageListIfExist(esDoc);
-    List<EsLineageData> result = all;
-    if (startTime != null || endTime != null) {
-      result =
-          all.stream()
-              .filter(e -> edgeMatchesWindow(e, startTime, endTime))
-              .collect(Collectors.toList());
-    }
-    return result;
+    return getUpstreamLineageListIfExist(esDoc).stream()
+        .filter(edge -> edgeMatchesWindow(edge, startTime, endTime))
+        .collect(Collectors.toList());
   }
 
   private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
     boolean matches;
-    if (startTime == null && endTime == null) {
+    if (edge == null) {
+      matches = false;
+    } else if (startTime == null && endTime == null) {
       matches = true;
-    } else if (edge == null || (edge.getCreatedAt() == null && edge.getUpdatedAt() == null)) {
+    } else if (edge.getCreatedAt() == null && edge.getUpdatedAt() == null) {
       matches = true;
     } else {
       Long createdAt = edge.getCreatedAt();

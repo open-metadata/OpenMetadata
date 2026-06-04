@@ -15,6 +15,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import java.io.StringReader;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -228,6 +229,27 @@ class SearchUtilsTest {
     assertEquals(
         List.of("created-only-current", "updated-only-current"),
         lineage.stream().map(EsLineageData::getDocId).toList());
+  }
+
+  @Test
+  void timeWindowedLineageFilterRemovesNullEdges() {
+    EsLineageData matchingEdge =
+        new EsLineageData().withDocId("matching-edge").withCreatedAt(1_500L);
+    EsLineageData legacyEdge = new EsLineageData().withDocId("legacy-edge");
+    Map<String, Object> lineageDoc =
+        Map.of(SearchClient.UPSTREAM_LINEAGE_FIELD, Arrays.asList(matchingEdge, null, legacyEdge));
+
+    List<EsLineageData> filteredLineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+    List<EsLineageData> unboundedLineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, null, null);
+
+    assertEquals(
+        List.of("matching-edge", "legacy-edge"),
+        filteredLineage.stream().map(EsLineageData::getDocId).toList());
+    assertEquals(
+        List.of("matching-edge", "legacy-edge"),
+        unboundedLineage.stream().map(EsLineageData::getDocId).toList());
   }
 
   @Test
