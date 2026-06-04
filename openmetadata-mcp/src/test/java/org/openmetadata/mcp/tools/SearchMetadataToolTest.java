@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -21,6 +22,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -54,8 +56,8 @@ class SearchMetadataToolTest {
     searchRepository = mock(SearchRepository.class);
 
     Principal mockPrincipal = mock(Principal.class);
-    when(mockPrincipal.getName()).thenReturn("test-user");
-    when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
+    lenient().when(mockPrincipal.getName()).thenReturn("test-user");
+    lenient().when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
 
     mockUser = new User();
     mockUser.setId(UUID.randomUUID());
@@ -124,6 +126,7 @@ class SearchMetadataToolTest {
       params.put("entityType", "dashboard");
       params.put("size", 10);
 
+      when(searchRepository.getIndexMapping("dashboard")).thenReturn(mock(IndexMapping.class));
       when(searchRepository.getIndexOrAliasName("dashboard")).thenReturn("openmetadata_dashboard");
 
       Response mockResponse = mock(Response.class);
@@ -140,59 +143,55 @@ class SearchMetadataToolTest {
   }
 
   @Test
-  void testEntityTypeResolvesToOwnIndexNotDataAsset() throws Exception {
+  void testRegisteredEntityTypeResolvesToOwnIndex() {
     // Regression for #27796: databaseService is absent from the legacy switch and not part of the
     // dataAsset alias, so it must resolve to its own index rather than falling back to dataAsset.
-    SearchRequest sent =
-        captureRequestForEntityType("databaseService", "database_service_search_index");
+    when(searchRepository.getIndexMapping("databaseService")).thenReturn(mock(IndexMapping.class));
 
-    verify(searchRepository).getIndexOrAliasName("databaseService");
-    assertEquals("database_service_search_index", sent.getIndex());
-    assertEquals("test", sent.getQuery());
+    assertEquals("databaseService", SearchMetadataTool.resolveIndex("databaseService"));
   }
 
   @Test
-  void testChartResolvesToOwnIndex() throws Exception {
-    SearchRequest sent = captureRequestForEntityType("chart", "chart_search_index");
+  void testUnregisteredEntityTypeFallsBackToDataAsset() {
+    when(searchRepository.getIndexMapping("bogusType")).thenReturn(null);
 
-    verify(searchRepository).getIndexOrAliasName("chart");
-    assertEquals("chart_search_index", sent.getIndex());
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex("bogusType"));
   }
 
   @Test
-  void testNullEntityTypeUsesDataAsset() throws Exception {
+  void testWildcardAndCommaInputFallBackToDataAsset() {
+    when(searchRepository.getIndexMapping(any())).thenReturn(null);
+
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex("*"));
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex("_all"));
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex("table,user"));
+  }
+
+  @Test
+  void testNullEntityTypeUsesDataAsset() {
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex(null));
+    assertEquals("dataAsset", SearchMetadataTool.resolveIndex(""));
+  }
+
+  @Test
+  void testSearchRequestTargetsResolvedEntityTypeIndex() throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
 
       Map<String, Object> params = new HashMap<>();
       params.put("query", "test");
+      params.put("entityType", "chart");
 
-      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
-      stubEmptySearch();
-
-      searchMetadataTool.execute(authorizer, securityContext, params);
-
-      verify(searchRepository).getIndexOrAliasName("dataAsset");
-    }
-  }
-
-  private SearchRequest captureRequestForEntityType(String entityType, String resolvedIndex)
-      throws Exception {
-    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
-      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
-
-      Map<String, Object> params = new HashMap<>();
-      params.put("query", "test");
-      params.put("entityType", entityType);
-
-      when(searchRepository.getIndexOrAliasName(entityType)).thenReturn(resolvedIndex);
+      when(searchRepository.getIndexMapping("chart")).thenReturn(mock(IndexMapping.class));
+      when(searchRepository.getIndexOrAliasName("chart")).thenReturn("chart_search_index");
       stubEmptySearch();
 
       searchMetadataTool.execute(authorizer, securityContext, params);
 
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
       verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
-      return captor.getValue();
+      assertEquals("chart_search_index", captor.getValue().getIndex());
+      assertEquals("test", captor.getValue().getQuery());
     }
   }
 

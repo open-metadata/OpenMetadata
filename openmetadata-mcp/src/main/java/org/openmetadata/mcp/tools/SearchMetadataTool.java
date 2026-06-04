@@ -101,11 +101,7 @@ public class SearchMetadataTool implements McpTool {
     LOG.info("Executing searchMetadata with params: {}", params);
     String query = params.containsKey("query") ? (String) params.get("query") : "*";
     String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
-    // Resolve the entity type to its own index alias via the authoritative index registry rather
-    // than a hand-maintained switch. Types missing from the switch silently fell back to the broad
-    // dataAsset alias and leaked other types (e.g. metric returned dashboards, #27796); types not
-    // present in dataAsset at all (e.g. databaseService) returned nothing.
-    String index = nullOrEmpty(entityType) ? "dataAsset" : entityType;
+    String index = resolveIndex(entityType);
 
     int size = 10;
     if (params.containsKey("size")) {
@@ -428,6 +424,24 @@ public class SearchMetadataTool implements McpTool {
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Resolves the search index from the requested entity type using the authoritative index registry
+   * instead of a hand-maintained switch. A registered entity type resolves to its own single-type
+   * index, so results are correctly scoped (fixing #27796, where unlisted types fell back to the
+   * broad dataAsset alias and leaked other types). Null, unregistered, wildcard, or comma-separated
+   * input is not a registry key and falls back to dataAsset, preserving the prior graceful default
+   * rather than erroring or widening the search.
+   */
+  @VisibleForTesting
+  static String resolveIndex(String entityType) {
+    String index = "dataAsset";
+    if (!nullOrEmpty(entityType)
+        && Entity.getSearchRepository().getIndexMapping(entityType) != null) {
+      index = entityType;
+    }
+    return index;
   }
 
   /**
