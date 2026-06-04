@@ -22,7 +22,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
@@ -36,7 +36,7 @@ jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -67,6 +67,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.CERTIFICATION,
       EntityFields.TIER,
       'extension',
+      'description',
       'descriptionStatus',
       EntityFields.ENTITY_TYPE_KEYWORD,
       'descriptionSources.Suggested',
@@ -646,16 +647,16 @@ describe('getCustomPropertiesSubFields', () => {
 
     expect(result).toHaveLength(3);
 
-    expect(result[0].subfieldsKey).toBe('testTable.rows.Col1.keyword');
+    expect(result[0].subfieldsKey).toBe('testTable.rows.Col1');
     expect(result[0].dataObject.type).toBe('text');
     expect(result[0].dataObject.label).toContain('Col1');
     expect(result[0].dataObject.operators).toBe(TEXT_FIELD_OPERATORS);
     expect(result[0].dataObject.valueSources).toEqual(['value']);
 
-    expect(result[1].subfieldsKey).toBe('testTable.rows.Col2.keyword');
+    expect(result[1].subfieldsKey).toBe('testTable.rows.Col2');
     expect(result[1].dataObject.label).toContain('Col2');
 
-    expect(result[2].subfieldsKey).toBe('testTable.rows.Col3.keyword');
+    expect(result[2].subfieldsKey).toBe('testTable.rows.Col3');
     expect(result[2].dataObject.label).toContain('Col3');
   });
 

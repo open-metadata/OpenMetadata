@@ -80,6 +80,8 @@ export enum EntityTabs {
   SUBDOMAINS = 'subdomains',
   CONTRACT = 'contract',
   ER_DIAGRAM = 'erDiagram',
+  RELATIONS_GRAPH = 'relations_graph',
+  DATA_OBSERVABILITY = 'data_observability',
 }
 
 export const TABLE_DEFAULT_TABS = [
@@ -88,6 +90,7 @@ export const TABLE_DEFAULT_TABS = [
   EntityTabs.CUSTOM_PROPERTIES,
   EntityTabs.PROFILER,
   EntityTabs.LINEAGE,
+  ...(process.env.PLAYWRIGHT_IS_OSS ? [] : [EntityTabs.ER_DIAGRAM]),
   EntityTabs.TABLE_QUERIES,
   EntityTabs.SAMPLE_DATA,
   EntityTabs.SCHEMA,
@@ -179,6 +182,7 @@ export const DATABASE_SCHEMA_DEFAULT_TABS = [
   EntityTabs.STORED_PROCEDURE,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CONTRACT,
+  ...(process.env.PLAYWRIGHT_IS_OSS ? [] : [EntityTabs.ER_DIAGRAM]),
   EntityTabs.CUSTOM_PROPERTIES,
 ];
 
@@ -235,6 +239,7 @@ export const DATA_PRODUCT_DEFAULT_TABS = [
 
 export const GLOSSARY_DEFAULT_TABS = [
   EntityTabs.TERMS,
+  EntityTabs.RELATIONS_GRAPH,
   EntityTabs.ACTIVITY_FEED,
 ];
 
@@ -243,5 +248,7 @@ export const GLOSSARY_TERM_DEFAULT_TABS = [
   EntityTabs.GLOSSARY_TERMS,
   EntityTabs.ASSETS,
   EntityTabs.ACTIVITY_FEED,
+  EntityTabs.RELATIONS_GRAPH,
   EntityTabs.CUSTOM_PROPERTIES,
+  EntityTabs.DATA_OBSERVABILITY,
 ];

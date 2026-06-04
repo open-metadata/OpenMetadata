@@ -71,6 +71,28 @@ class FullyQualifiedNameTest {
   }
 
   @Test
+  void test_buildHash_rejectsEntityLink() {
+    // Plain FQNs (including quoted-dot names) are hashed as before.
+    assertEquals(
+        FullyQualifiedName.buildHash("svc.db.schema.table"),
+        FullyQualifiedName.buildHash("svc.db.schema.table"));
+    // Should not throw — quoted-dot FQN is a valid FQN.
+    FullyQualifiedName.buildHash("\"a.1\".b.c");
+
+    // EntityLink-shaped input is rejected fast with a clear message,
+    // rather than bailing inside the ANTLR parser with a null message.
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> FullyQualifiedName.buildHash("<#E::table::svc.db.s.t::description>"));
+    assertTrue(ex.getMessage().contains("EntityLink"));
+    assertTrue(ex.getMessage().contains("MessageParser"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> FullyQualifiedName.buildHash("<#E::table::\"PW%domain.x\">"));
+  }
+
+  @Test
   void test_getParentFQN() {
     assertEquals("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
     assertEquals("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));

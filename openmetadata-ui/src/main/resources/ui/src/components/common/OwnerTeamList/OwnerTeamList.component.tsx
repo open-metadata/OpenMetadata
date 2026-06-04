@@ -17,7 +17,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
 import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
@@ -56,13 +56,14 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
         />
 
         <div
-          className={classNames({
+          className={classNames('owner-team-name-wrapper', {
             'tw:max-w-30': placement === 'vertical' || owners.length < 2,
             'tw:max-w-16': placement !== 'vertical' && owners.length >= 2,
           })}>
           <Typography
             ellipsis
             as="p"
+            className="owner-team-name"
             data-testid={getEntityName(visibleTeam)}
             size="text-xs"
             weight="medium">

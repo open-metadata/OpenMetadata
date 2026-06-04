@@ -120,6 +120,6 @@ public class CreateTestCaseTool implements McpTool {
         repository.createOrUpdate(null, testCase, updatedBy, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(
         response.getEntity(), response.getChangeType(), updatedBy);
-    return JsonUtils.getMap(response.getEntity());
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
   }
 }

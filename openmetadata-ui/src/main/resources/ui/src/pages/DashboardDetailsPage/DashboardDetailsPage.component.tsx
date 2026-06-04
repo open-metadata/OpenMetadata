@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
@@ -35,21 +36,22 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
   updateDashboardVotes,
 } from '../../rest/dashboardAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+  dashboardQueryFn,
+  dashboardQueryKey,
+} from '../../rest/queries/dashboardQuery';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -64,46 +66,12 @@ const DashboardDetailsPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
+  const queryClient = useQueryClient();
 
-  const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
-    {} as Dashboard
-  );
-  const [isLoading, setLoading] = useState<boolean>(false);
-  const [isError, setIsError] = useState(false);
-
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const { id: dashboardId, version, charts } = dashboardDetails;
-
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.DASHBOARD,
-        entityFqn
-      );
-      setDashboardPermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveUpdatedDashboardData = (updatedData: Dashboard) => {
-    const jsonPatch = compare(
-      omitBy(dashboardDetails, isUndefined),
-      updatedData
-    );
-
-    return patchDashboardDetails(dashboardId, jsonPatch);
-  };
 
   const viewUsagePermission = useMemo(
     () =>
@@ -114,171 +82,293 @@ const DashboardDetailsPage = () => {
     [dashboardPermissions]
   );
 
-  const fetchDashboardDetail = async (dashboardFQN: string) => {
-    setLoading(true);
+  const canViewDashboard = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        dashboardPermissions,
+        PermissionOperation.ViewBasic
+      ) === true,
+    [dashboardPermissions]
+  );
 
+  const dashboardFields = useMemo(() => {
+    let fields = defaultFields;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
+
+    return fields;
+  }, [viewUsagePermission]);
+
+  const dashboardCacheKey = useMemo(
+    () => dashboardQueryKey(dashboardFQN, dashboardFields),
+    [dashboardFQN, dashboardFields]
+  );
+
+  const {
+    data: dashboardDetails,
+    isLoading: dashboardLoading,
+    error: dashboardError,
+  } = useQuery({
+    queryKey: dashboardCacheKey,
+    queryFn: dashboardQueryFn(dashboardFQN, dashboardFields),
+    enabled: Boolean(dashboardFQN && canViewDashboard && !permissionsLoading),
+  });
+
+  const isError = useMemo(
+    () => (dashboardError as AxiosError | undefined)?.response?.status === 404,
+    [dashboardError]
+  );
+
+  useEffect(() => {
+    const status = (dashboardError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        dashboardError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.dashboard'),
+          entityName: dashboardFQN,
+        })
+      );
+    }
+  }, [dashboardError, navigate, dashboardFQN, t]);
+
+  useEffect(() => {
+    if (!dashboardDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(dashboardDetails),
+      entityType: EntityType.DASHBOARD,
+      fqn: dashboardDetails.fullyQualifiedName ?? '',
+      serviceType: dashboardDetails.serviceType,
+      timestamp: 0,
+      id: dashboardDetails.id,
+    });
+  }, [dashboardDetails]);
+
+  const setDashboardDetails = useCallback(
+    (
+      updater:
+        | Dashboard
+        | undefined
+        | ((prev: Dashboard | undefined) => Dashboard | undefined)
+    ) => {
+      queryClient.setQueryData<Dashboard | undefined>(
+        dashboardCacheKey,
+        updater
+      );
+    },
+    [queryClient, dashboardCacheKey]
+  );
+
+  const refetchDashboardDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: dashboardCacheKey }),
+    [queryClient, dashboardCacheKey]
+  );
+
+  const { id: dashboardId, version, charts } = dashboardDetails ?? {};
+  const isFollowing = useMemo(
+    () => dashboardDetails?.followers?.some(({ id }) => id === USERId) ?? false,
+    [dashboardDetails?.followers, USERId]
+  );
+  const entityName = useMemo(
+    () => getEntityName(dashboardDetails),
+    [dashboardDetails]
+  );
+
+  // Intentionally NOT a useCallback. The {@code t} from {@link useTranslation} is a fresh
+  // reference per render in the testing-library mocked env (and in some non-test paths too),
+  // which would make this callback unstable and create an infinite re-render via the useEffect
+  // below. Keep it as a plain function — the useEffect depends only on {@code dashboardFQN}.
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setPermissionsLoading(true);
     try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.DASHBOARD,
+        entityFqn
+      );
+      setDashboardPermissions(entityPermission);
+    } catch {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: entityFqn })
+      );
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const saveUpdatedDashboardData = useCallback(
+    (updatedData: Dashboard) => {
+      if (!dashboardDetails || !dashboardId) {
+        return Promise.reject(new Error('Dashboard not loaded'));
       }
-      const res = await getDashboardByFqn(dashboardFQN, { fields });
+      const jsonPatch = compare(
+        omitBy(dashboardDetails, isUndefined),
+        updatedData
+      );
 
-      const { id, fullyQualifiedName, serviceType } = res;
-      setDashboardDetails(res);
+      return patchDashboardDetails(dashboardId, jsonPatch);
+    },
+    [dashboardDetails, dashboardId]
+  );
 
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.DASHBOARD,
-        fqn: fullyQualifiedName ?? '',
-        serviceType: serviceType,
-        timestamp: 0,
-        id: id,
-      });
+  const onDashboardUpdate = useCallback(
+    async (updatedDashboard: Dashboard, key?: keyof Dashboard) => {
+      try {
+        const response = await saveUpdatedDashboardData(updatedDashboard);
+        setDashboardDetails((previous) => {
+          if (!previous) {
+            return previous;
+          }
 
-      setLoading(false);
-    } catch (error) {
-      if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
+          return {
+            ...previous,
+            version: response.version,
+            ...(key ? { [key]: response[key] } : response),
+          };
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [saveUpdatedDashboardData, setDashboardDetails]
+  );
+
+  // Optimistic follow/unfollow — flip the heart instantly via {@code onMutate}, roll back
+  // on error, invalidate on settle so background revalidation absorbs any server-side
+  // adjustments (timestamps etc.).
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Dashboard | undefined }
+  >({
+    mutationFn: async () => {
+      if (!dashboardId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(dashboardId, USERId);
       } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.dashboard'),
-            entityName: dashboardFQN,
-          })
+        await addFollower(dashboardId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: dashboardCacheKey });
+      const previous = queryClient.getQueryData<Dashboard | undefined>(
+        dashboardCacheKey
+      );
+      queryClient.setQueryData<Dashboard | undefined>(
+        dashboardCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USERId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USERId, type: 'user' },
+            ] as Dashboard['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Dashboard | undefined>(
+          dashboardCacheKey,
+          context.previous
         );
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onDashboardUpdate = async (
-    updatedDashboard: Dashboard,
-    key?: keyof Dashboard
-  ) => {
-    try {
-      const response = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails((previous) => {
-        return {
-          ...previous,
-          version: response.version,
-          ...(key ? { [key]: response[key] } : response),
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const followDashboard = async () => {
-    try {
-      const res = await addFollower(dashboardId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setDashboardDetails((prev) => ({
-        ...prev,
-        followers: [...(prev?.followers ?? []), ...newValue],
-      }));
-    } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(dashboardDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', { entity: entityName })
+          : t('server.entity-follow-error', { entity: entityName })
       );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: dashboardCacheKey });
+    },
+  });
 
-  const unFollowDashboard = async () => {
-    try {
-      const res = await removeFollower(dashboardId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+  const followDashboard = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
-      setDashboardDetails((prev) => ({
-        ...prev,
-        followers:
-          prev.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ) ?? [],
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(dashboardDetails),
-        })
-      );
-    }
-  };
+  const unFollowDashboard = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
-  const versionHandler = () => {
+  const versionHandler = useCallback(() => {
     version &&
       navigate(
         getVersionPath(EntityType.DASHBOARD, dashboardFQN, toString(version))
       );
-  };
+  }, [version, dashboardFQN, navigate]);
 
-  const handleToggleDelete = (version?: number) => {
-    setDashboardDetails((prev) => {
-      if (!prev) {
-        return prev;
+  const handleToggleDelete = useCallback(
+    (version?: number) => {
+      setDashboardDetails((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          deleted: !prev?.deleted,
+          ...(version ? { version } : {}),
+        };
+      });
+    },
+    [setDashboardDetails]
+  );
+
+  const updateVote = useCallback(
+    async (data: QueryVote, id: string) => {
+      try {
+        await updateDashboardVotes(id, data);
+        // Background revalidation pulls authoritative vote counts; the optimistic patch
+        // (votes increment is already reflected by the UI button state) keeps the page
+        // responsive in the meantime.
+        await queryClient.invalidateQueries({ queryKey: dashboardCacheKey });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
-
-  const updateVote = async (data: QueryVote, id: string) => {
-    try {
-      await updateDashboardVotes(id, data);
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const details = await getDashboardByFqn(dashboardFQN, { fields });
-      setDashboardDetails(details);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [queryClient, dashboardCacheKey]
+  );
 
   const updateDashboardDetailsState = useCallback(
     (data: DataAssetWithDomains) => {
       const updatedData = data as Dashboard;
-
-      setDashboardDetails((data) => ({
-        ...(updatedData ?? data),
+      setDashboardDetails((prev) => ({
+        ...(updatedData ?? prev),
         version: updatedData.version,
       }));
     },
-    []
+    [setDashboardDetails]
   );
-
-  useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        dashboardPermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
-      fetchDashboardDetail(dashboardFQN);
-    }
-  }, [dashboardFQN, dashboardPermissions]);
 
   useEffect(() => {
     fetchResourcePermission(dashboardFQN);
   }, [dashboardFQN]);
 
-  if (isLoading) {
+  if (permissionsLoading || dashboardLoading) {
     return <Loader />;
   }
   if (isError) {
@@ -299,12 +389,15 @@ const DashboardDetailsPage = () => {
       />
     );
   }
+  if (!dashboardDetails) {
+    return <Loader />;
+  }
 
   return (
     <DashboardDetails
       charts={charts ?? []}
       dashboardDetails={dashboardDetails}
-      fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
+      fetchDashboard={refetchDashboardDetails}
       followDashboardHandler={followDashboard}
       handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}

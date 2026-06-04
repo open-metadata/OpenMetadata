@@ -33,6 +33,16 @@ public class APIEndpointIndex implements DataAssetIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // APIEndpointRepository.fetchAndSetSchemaFieldTagsInBatch is gated on
+    // fields.contains("requestSchema") || fields.contains("responseSchema").
+    fields.add("requestSchema");
+    fields.add("responseSchema");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeAPIEndpointFields;
   }
@@ -116,12 +126,10 @@ public class APIEndpointIndex implements DataAssetIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("requestSchema.schemaFields.name.keyword", 5.0f);
     fields.put("requestSchema.schemaFields.description", 1.0f);
-    fields.put("requestSchema.schemaFields.children.name", 7.0f);
-    fields.put("requestSchema.schemaFields.children.keyword", 5.0f);
+    fields.put("request_field_namesFuzzy", 7.0f);
     fields.put("responseSchema.schemaFields.name.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.description", 1.0f);
-    fields.put("responseSchema.schemaFields.children.name", 7.0f);
-    fields.put("responseSchema.schemaFields.children.keyword", 5.0f);
+    fields.put("response_field_namesFuzzy", 7.0f);
     return fields;
   }
 }

@@ -528,3 +528,107 @@ SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
         AND name ILIKE '%{tablename}%'
         AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
 """
+
+SNOWFLAKE_ACCESS_HISTORY_PROBE = """
+SELECT 1 FROM {account_usage}.ACCESS_HISTORY LIMIT 1
+"""
+
+SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
+    """
+    WITH access_history_filtered AS (
+        SELECT
+            ah.QUERY_ID,
+            ah.QUERY_START_TIME,
+            ah.DIRECT_OBJECTS_ACCESSED,
+            ah.OBJECTS_MODIFIED,
+            qh.QUERY_TEXT
+        FROM {account_usage}.ACCESS_HISTORY ah
+        LEFT JOIN {account_usage}.QUERY_HISTORY qh
+            ON ah.QUERY_ID = qh.QUERY_ID
+            AND qh.START_TIME
+                BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+            AND qh.EXECUTION_STATUS = 'SUCCESS'
+        WHERE ah.QUERY_START_TIME
+            BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+    ),
+    table_edges AS (
+        SELECT
+            upstream.value:"objectName"::STRING AS UPSTREAM_TABLE,
+            upstream.value:"objectDomain"::STRING AS UPSTREAM_DOMAIN,
+            downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
+            downstream.value:"objectDomain"::STRING AS DOWNSTREAM_DOMAIN,
+            MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME) AS QUERY_ID,
+            MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME) AS QUERY_TEXT
+        FROM access_history_filtered ah,
+             LATERAL FLATTEN(input => ah.DIRECT_OBJECTS_ACCESSED) upstream,
+             LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream
+        WHERE upstream.value:"objectDomain"::STRING IN
+                ('Table', 'View', 'Materialized view', 'Dynamic table', 'External table', 'Iceberg table')
+          AND downstream.value:"objectDomain"::STRING IN
+                ('Table', 'View', 'Materialized view', 'Dynamic table', 'External table', 'Iceberg table')
+          AND upstream.value:"objectName"::STRING IS NOT NULL
+          AND downstream.value:"objectName"::STRING IS NOT NULL
+          AND upstream.value:"objectName"::STRING != downstream.value:"objectName"::STRING
+        GROUP BY
+            upstream.value:"objectName"::STRING,
+            upstream.value:"objectDomain"::STRING,
+            downstream.value:"objectName"::STRING,
+            downstream.value:"objectDomain"::STRING
+    ),
+    column_edges_grouped AS (
+        SELECT
+            downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
+            direct_source.value:"objectName"::STRING AS UPSTREAM_TABLE,
+            ARRAY_AGG(DISTINCT OBJECT_CONSTRUCT(
+                'd', downstream_col.value:"columnName"::STRING,
+                'u', direct_source.value:"columnName"::STRING
+            )) AS COLUMN_PAIRS
+        FROM access_history_filtered ah,
+             LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream,
+             LATERAL FLATTEN(input => downstream.value:"columns", outer => true) downstream_col,
+             LATERAL FLATTEN(input => downstream_col.value:"directSources", outer => true) direct_source
+        WHERE direct_source.value:"objectName"::STRING IS NOT NULL
+          AND direct_source.value:"columnName"::STRING IS NOT NULL
+          AND downstream.value:"objectName"::STRING IS NOT NULL
+          AND downstream_col.value:"columnName"::STRING IS NOT NULL
+          AND direct_source.value:"objectName"::STRING != downstream.value:"objectName"::STRING
+        GROUP BY
+            downstream.value:"objectName"::STRING,
+            direct_source.value:"objectName"::STRING
+    )
+    SELECT * FROM (
+        SELECT
+            te.UPSTREAM_TABLE,
+            te.UPSTREAM_DOMAIN,
+            te.DOWNSTREAM_TABLE,
+            te.DOWNSTREAM_DOMAIN,
+            te.QUERY_ID,
+            te.QUERY_TEXT,
+            ce.COLUMN_PAIRS
+        FROM table_edges te
+        LEFT JOIN column_edges_grouped ce
+            ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
+            AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    )
+    {filter_condition}
+    """
+)
+
+SNOWFLAKE_COPY_HISTORY_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        TABLE_CATALOG_NAME AS DOWNSTREAM_DATABASE,
+        TABLE_SCHEMA_NAME AS DOWNSTREAM_SCHEMA,
+        TABLE_NAME AS DOWNSTREAM_TABLE,
+        STAGE_LOCATION,
+        MAX(LAST_LOAD_TIME) AS LAST_LOAD_TIME,
+        COUNT(*) AS LOAD_COUNT
+    FROM {account_usage}.COPY_HISTORY
+    WHERE LAST_LOAD_TIME
+        BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+        AND STATUS = 'Loaded'
+        AND STAGE_LOCATION IS NOT NULL
+        AND TABLE_NAME IS NOT NULL
+    GROUP BY DOWNSTREAM_DATABASE, DOWNSTREAM_SCHEMA, DOWNSTREAM_TABLE, STAGE_LOCATION
+    """
+)

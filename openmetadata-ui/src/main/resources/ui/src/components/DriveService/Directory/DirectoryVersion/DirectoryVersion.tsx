@@ -31,7 +31,7 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
@@ -65,9 +65,6 @@ const DirectoryVersion = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -331,12 +328,9 @@ const DirectoryVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.DIRECTORY}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

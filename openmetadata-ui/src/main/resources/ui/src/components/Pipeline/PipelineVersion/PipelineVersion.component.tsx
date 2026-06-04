@@ -25,7 +25,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/schema';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -61,9 +61,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   tier,
   slashedPipelineName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -314,12 +311,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.PIPELINE}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

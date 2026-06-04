@@ -20,12 +20,36 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
+  APICollectionSource,
+  APIEndpointSource,
+  ChartSource,
+  ColumnSource,
+  DashboardDataModelSource,
+  DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
+  DataProductSource,
+  DirectorySource,
+  FileSource,
+  GlossarySource,
+  KnowledgePageSource,
+  MetricSource,
+  MlModelSource,
   Option,
+  PipelineSource,
+  SearchIndexSource,
   SearchSuggestions,
+  SpreadsheetSource,
+  StoredProcedureSource,
   SuggestionsObject,
+  TableSource,
+  TagSource,
+  TopicSource,
+  WorksheetSource,
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
+import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -34,7 +58,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './suggestions.less';
@@ -83,6 +107,7 @@ const Suggestions = ({
     fileSuggestions: [],
     spreadsheetSuggestions: [],
     worksheetSuggestions: [],
+    knowledgeArticleSuggestions: [],
   });
 
   const {
@@ -111,68 +136,102 @@ const Suggestions = ({
 
   const updateSuggestions = (options: Array<Option>) => {
     setSuggestions(() => ({
-      tableSuggestions: filterOptionsByIndex(options, SearchIndex.TABLE),
-      columnSuggestions: filterOptionsByIndex(options, SearchIndex.COLUMN),
-      topicSuggestions: filterOptionsByIndex(options, SearchIndex.TOPIC),
+      tableSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TABLE
+      ) as TableSource[],
+      columnSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.COLUMN
+      ) as ColumnSource[],
+      topicSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TOPIC
+      ) as TopicSource[],
       dashboardSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DASHBOARD
-      ),
-      pipelineSuggestions: filterOptionsByIndex(options, SearchIndex.PIPELINE),
-      mlModelSuggestions: filterOptionsByIndex(options, SearchIndex.MLMODEL),
+      ) as DashboardSource[],
+      pipelineSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.PIPELINE
+      ) as PipelineSource[],
+      mlModelSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.MLMODEL
+      ) as MlModelSource[],
       containerSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.CONTAINER
-      ),
+      ) as ContainerSearchSource[],
       glossaryTermSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.GLOSSARY_TERM
-      ),
-      databaseSuggestions: filterOptionsByIndex(options, SearchIndex.DATABASE),
+      ) as GlossarySource[],
+      databaseSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATABASE
+      ) as DatabaseSource[],
       databaseSchemaSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DATABASE_SCHEMA
-      ),
+      ) as DatabaseSchemaSource[],
       searchIndexSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.SEARCH_INDEX
-      ),
-      tagSuggestions: filterOptionsByIndex(options, SearchIndex.TAG),
+      ) as SearchIndexSource[],
+      tagSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TAG
+      ) as TagSource[],
       storedProcedureSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.STORED_PROCEDURE
-      ),
+      ) as StoredProcedureSource[],
       dataModelSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DASHBOARD_DATA_MODEL
-      ),
+      ) as DashboardDataModelSource[],
       dataProductSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DATA_PRODUCT
-      ),
-      chartSuggestions: filterOptionsByIndex(options, SearchIndex.CHART),
+      ) as DataProductSource[],
+      chartSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.CHART
+      ) as ChartSource[],
       apiEndpointSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.API_ENDPOINT
-      ),
+      ) as APIEndpointSource[],
       apiCollectionSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.API_COLLECTION
-      ),
-      metricSuggestions: filterOptionsByIndex(options, SearchIndex.METRIC),
+      ) as APICollectionSource[],
+      metricSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.METRIC
+      ) as MetricSource[],
       directorySuggestions: filterOptionsByIndex(
         options,
         SearchIndex.DIRECTORY
-      ),
-      fileSuggestions: filterOptionsByIndex(options, SearchIndex.FILE),
+      ) as DirectorySource[],
+      fileSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.FILE
+      ) as FileSource[],
       spreadsheetSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.SPREADSHEET
-      ),
+      ) as SpreadsheetSource[],
       worksheetSuggestions: filterOptionsByIndex(
         options,
         SearchIndex.WORKSHEET
-      ),
+      ) as WorksheetSource[],
+      knowledgeArticleSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.KNOWLEDGE_PAGE_INDEX
+      ) as KnowledgePageSource[],
     }));
   };
 
@@ -289,6 +348,10 @@ const Suggestions = ({
           {
             suggestions: suggestions.worksheetSuggestions,
             searchIndex: SearchIndex.WORKSHEET,
+          },
+          {
+            suggestions: suggestions.knowledgeArticleSuggestions,
+            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

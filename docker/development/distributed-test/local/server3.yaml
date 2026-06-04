@@ -270,6 +270,8 @@ authenticationConfiguration:
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
+  sessionExpiry: ${AUTHENTICATION_SESSION_EXPIRY:-"604800"} # 7 days; applies to all auth providers
+  maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.

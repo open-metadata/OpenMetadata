@@ -91,6 +91,7 @@ import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
@@ -181,21 +182,21 @@ import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/Par
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import { extractMlModelFeatures } from './MlModelDetailsUtils';
 import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
+import { ordinalize } from './StringUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
@@ -500,6 +501,9 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [EntityType.SPREADSHEET]: SpreadsheetIcon,
   [EntityType.WORKSHEET]: WorksheetIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
+  [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
+  [EntityType.knowledgePanels]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
@@ -1721,27 +1725,6 @@ export const mergeTagsWithGlossary = (
   const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
 
   return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**

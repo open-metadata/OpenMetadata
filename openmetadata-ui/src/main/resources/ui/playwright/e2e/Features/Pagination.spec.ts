@@ -425,6 +425,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto('/observability/alerts?pageSize=15');
+
       await testPaginationNavigation(
         page,
         '/api/v1/events/subscriptions',

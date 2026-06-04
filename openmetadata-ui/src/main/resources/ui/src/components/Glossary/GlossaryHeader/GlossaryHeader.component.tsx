@@ -56,7 +56,7 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import {
   getEntityImportPath,
   getEntityVoteStatus,
@@ -138,8 +138,10 @@ const GlossaryHeader = ({
         Operation.EditAll,
         ResourceEntity.GLOSSARY_TERM,
         globalPermissions
-      ),
-    [globalPermissions]
+      ) ||
+      permissions[Operation.All] ||
+      permissions[Operation.EditAll],
+    [globalPermissions, permissions]
   );
 
   // To fetch the latest glossary data

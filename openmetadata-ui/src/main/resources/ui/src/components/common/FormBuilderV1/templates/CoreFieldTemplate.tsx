@@ -11,21 +11,32 @@
  *  limitations under the License.
  */
 
-import { FieldTemplateProps } from '@rjsf/utils';
+import { FieldTemplateProps, getTemplate, getUiOptions } from '@rjsf/utils';
 
 export const CoreFieldTemplate = ({
   children,
-  classNames,
-  hidden,
-  style,
+  hidden = false,
+  registry,
+  uiSchema,
+  ...props
 }: FieldTemplateProps) => {
+  const uiOptions = getUiOptions(uiSchema);
+  const WrapIfAdditionalTemplate = getTemplate(
+    'WrapIfAdditionalTemplate',
+    registry,
+    uiOptions
+  );
+
   if (hidden) {
     return <div className="tw:hidden">{children}</div>;
   }
 
   return (
-    <div className={classNames} style={style}>
+    <WrapIfAdditionalTemplate
+      {...props}
+      registry={registry}
+      uiSchema={uiSchema}>
       {children}
-    </div>
+    </WrapIfAdditionalTemplate>
   );
 };

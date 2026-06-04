@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,27 +32,29 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   addMetricFollower,
-  getMetricByFqn,
   patchMetric,
   removeMetricFollower,
   updateMetricVote,
 } from '../../../rest/metricsAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+  metricQueryFn,
+  metricQueryKey,
+  METRIC_DEFAULT_FIELDS,
+} from '../../../rest/queries/metricQuery';
+import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -61,53 +64,99 @@ const MetricDetailsPage = () => {
   const currentUserId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const queryClient = useQueryClient();
 
   const { fqn: metricFqn } = useFqn();
-  const [metricDetails, setMetricDetails] = useState<Metric>({} as Metric);
-  const [isLoading, setLoading] = useState<boolean>(true);
-  const [isError, setIsError] = useState(false);
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
 
   const [metricPermissions, setMetricPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const { id: metricId, version: currentVersion } = metricDetails;
+  const canViewMetric = useMemo(
+    () =>
+      getPrioritizedViewPermission(metricPermissions, Operation.ViewBasic) ===
+      true,
+    [metricPermissions]
+  );
 
-  const saveUpdatedMetricData = (updatedData: Metric) => {
-    const jsonPatch = compare(omitBy(metricDetails, isUndefined), updatedData);
+  const metricCacheKey = useMemo(
+    () => metricQueryKey(metricFqn, METRIC_DEFAULT_FIELDS),
+    [metricFqn]
+  );
 
-    return patchMetric(metricId, jsonPatch);
-  };
+  const {
+    data: metricDetails,
+    isLoading: metricLoading,
+    error: metricError,
+  } = useQuery({
+    queryKey: metricCacheKey,
+    queryFn: metricQueryFn(metricFqn, METRIC_DEFAULT_FIELDS),
+    enabled: Boolean(metricFqn && canViewMetric && !permissionsLoading),
+  });
 
-  const handleMetricUpdate = async (
-    updatedData: Metric,
-    key?: keyof Metric
-  ) => {
-    try {
-      const res = await saveUpdatedMetricData(updatedData);
+  const isError = useMemo(
+    () => (metricError as AxiosError | undefined)?.response?.status === 404,
+    [metricError]
+  );
 
-      if (key === 'unitOfMeasurement') {
-        setMetricDetails((previous) => ({
-          ...previous,
-          version: res.version,
-          unitOfMeasurement: res.unitOfMeasurement,
-          customUnitOfMeasurement: res.customUnitOfMeasurement,
-        }));
-      } else {
-        setMetricDetails((previous) => {
-          return {
-            ...previous,
-            version: res.version,
-            ...(key ? { [key]: res[key] } : res),
-          };
-        });
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+  useEffect(() => {
+    const status = (metricError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        metricError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.metric'),
+          entityName: metricFqn,
+        })
+      );
     }
-  };
+  }, [metricError, navigate, metricFqn, t]);
 
+  useEffect(() => {
+    if (!metricDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(metricDetails),
+      entityType: EntityType.METRIC,
+      fqn: metricDetails.fullyQualifiedName ?? '',
+      timestamp: 0,
+      id: metricDetails.id,
+    });
+  }, [metricDetails]);
+
+  const setMetricDetails = useCallback(
+    (
+      updater:
+        | Metric
+        | undefined
+        | ((prev: Metric | undefined) => Metric | undefined)
+    ) => {
+      queryClient.setQueryData<Metric | undefined>(metricCacheKey, updater);
+    },
+    [queryClient, metricCacheKey]
+  );
+
+  const refetchMetricDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: metricCacheKey }),
+    [queryClient, metricCacheKey]
+  );
+
+  const { id: metricId, version: currentVersion } = metricDetails ?? {};
+  const isFollowing = useMemo(
+    () => metricDetails?.followers?.some(({ id }) => id === currentUserId),
+    [metricDetails?.followers, currentUserId]
+  );
+  const entityName = useMemo(
+    () => getEntityName(metricDetails),
+    [metricDetails]
+  );
+
+  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
   const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
+    setPermissionsLoading(true);
     try {
       const permissions = await getEntityPermissionByFqn(
         ResourceEntity.METRIC,
@@ -121,95 +170,135 @@ const MetricDetailsPage = () => {
         })
       );
     } finally {
-      setLoading(false);
+      setPermissionsLoading(false);
     }
   };
 
-  const fetchMetricDetail = async (metricFqn: string) => {
-    setLoading(true);
+  const saveUpdatedMetricData = useCallback(
+    (updatedData: Metric) => {
+      if (!metricDetails || !metricId) {
+        return Promise.reject(new Error('Metric not loaded'));
+      }
+      const jsonPatch = compare(
+        omitBy(metricDetails, isUndefined),
+        updatedData
+      );
+
+      return patchMetric(metricId, jsonPatch);
+    },
+    [metricDetails, metricId]
+  );
+
+  const handleMetricUpdate = async (
+    updatedData: Metric,
+    key?: keyof Metric
+  ) => {
     try {
-      const res = await getMetricByFqn(metricFqn, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.DATA_PRODUCTS,
-          TabSpecificField.VOTES,
-          TabSpecificField.EXTENSION,
-          TabSpecificField.RELATED_METRICS,
-          TabSpecificField.REVIEWERS,
-        ].join(','),
-      });
-      const { id, fullyQualifiedName } = res;
+      const res = await saveUpdatedMetricData(updatedData);
 
-      setMetricDetails(res);
+      if (key === 'unitOfMeasurement') {
+        setMetricDetails((previous) => {
+          if (!previous) {
+            return previous;
+          }
 
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.METRIC,
-        fqn: fullyQualifiedName ?? '',
-        timestamp: 0,
-        id: id,
-      });
-    } catch (error) {
-      if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
+          return {
+            ...previous,
+            version: res.version,
+            unitOfMeasurement: res.unitOfMeasurement,
+            customUnitOfMeasurement: res.customUnitOfMeasurement,
+          };
+        });
       } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.metric'),
-            entityName: metricFqn,
-          })
+        setMetricDetails((previous) => {
+          if (!previous) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            version: res.version,
+            ...(key ? { [key]: res[key] } : res),
+          };
+        });
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Metric | undefined }
+  >({
+    mutationFn: async () => {
+      if (!metricId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeMetricFollower(metricId, currentUserId);
+      } else {
+        await addMetricFollower(metricId, currentUserId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: metricCacheKey });
+      const previous = queryClient.getQueryData<Metric | undefined>(
+        metricCacheKey
+      );
+      queryClient.setQueryData<Metric | undefined>(metricCacheKey, (prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const currentFollowers = prev.followers ?? [];
+        if (isFollowing) {
+          return {
+            ...prev,
+            followers: currentFollowers.filter(
+              ({ id }) => id !== currentUserId
+            ),
+          };
+        }
+
+        return {
+          ...prev,
+          followers: [
+            ...currentFollowers,
+            { id: currentUserId, type: 'user' },
+          ] as Metric['followers'],
+        };
+      });
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Metric | undefined>(
+          metricCacheKey,
+          context.previous
         );
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const followMetric = async () => {
-    try {
-      const res = await addMetricFollower(metricId, currentUserId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setMetricDetails((prev) => ({
-        ...prev,
-        followers: [...(prev?.followers ?? []), ...newValue],
-      }));
-    } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(metricDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', { entity: entityName })
+          : t('server.entity-follow-error', { entity: entityName })
       );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: metricCacheKey });
+    },
+  });
 
-  const unFollowMetric = async () => {
-    try {
-      const res = await removeMetricFollower(metricId, currentUserId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setMetricDetails((prev) => ({
-        ...prev,
-        followers: (prev?.followers ?? []).filter(
-          (follower) => follower.id !== oldValue[0].id
-        ),
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(metricDetails),
-        })
-      );
-    }
-  };
+  const followMetric = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
+
+  const unFollowMetric = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const versionHandler = () => {
     currentVersion &&
@@ -235,41 +324,28 @@ const MetricDetailsPage = () => {
   const handleUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMetricVote(id, data);
-      const details = await getMetricByFqn(metricFqn, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.VOTES,
-          TabSpecificField.REVIEWERS,
-        ].join(','),
-      });
-      setMetricDetails(details);
+      await queryClient.invalidateQueries({ queryKey: metricCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const updateMetricDetails = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Metric;
-
-    setMetricDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+  const updateMetricDetails = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Metric;
+      setMetricDetails((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setMetricDetails]
+  );
 
   useEffect(() => {
     fetchResourcePermission(metricFqn);
   }, [metricFqn]);
 
-  useEffect(() => {
-    if (getPrioritizedViewPermission(metricPermissions, Operation.ViewBasic)) {
-      fetchMetricDetail(metricFqn);
-    }
-  }, [metricPermissions, metricFqn]);
-
-  if (isLoading) {
+  if (permissionsLoading || metricLoading) {
     return <Loader />;
   }
   if (isError) {
@@ -290,10 +366,13 @@ const MetricDetailsPage = () => {
       />
     );
   }
+  if (!metricDetails) {
+    return <Loader />;
+  }
 
   return (
     <MetricDetails
-      fetchMetricDetails={() => fetchMetricDetail(metricFqn)}
+      fetchMetricDetails={refetchMetricDetails}
       metricDetails={metricDetails}
       metricPermissions={metricPermissions}
       onFollowMetric={followMetric}

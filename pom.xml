@@ -73,7 +73,10 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.18.6</jackson.version>
+    <jackson.version>2.18.7</jackson.version>
+    <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
+         import below and by openmetadata-service's BOM import. -->
+    <awssdk.version>2.41.30</awssdk.version>
     <dropwizard.version>5.0.0</dropwizard.version>
     <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -94,11 +97,11 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
-    <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
-    <gson.version>2.11.0</gson.version>
+    <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
+    <gson.version>2.13.1</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.7</postgres.connector.version>
-    <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
+    <postgres.connector.version>42.7.11</postgres.connector.version>
+    <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
     <hikaricp.version>7.0.2</hikaricp.version>
@@ -107,14 +110,22 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.11</spring.version>
-    <log4j.version>2.25.3</log4j.version>
+    <spring.version>6.2.18</spring.version>
+    <log4j.version>2.25.4</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
+    <!-- Apache Jena RDF client libraries. Pinned project-wide so
+         openmetadata-service and openmetadata-integration-tests stay on the
+         same classpath; the previous split (4.10.0 vs 5.0.0) forced
+         JenaFusekiStorage to abstract over API differences between Jena 4 and
+         Jena 5 with a CompletableFuture wrapper around every RDFConnection
+         call. Jena 6 requires Java 21 — already our project minimum, so no
+         JDK bump needed. -->
+    <jena.version>5.6.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -135,7 +146,7 @@
     <freemarker.version>2.3.33</freemarker.version>
     <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
-    <simplejavamail.version>8.12.2</simplejavamail.version>
+    <simplejavamail.version>8.12.6</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <unboundsdk.version>6.0.11</unboundsdk.version>
@@ -150,7 +161,7 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.6</jetty.version>
+    <jetty.version>12.1.7</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
@@ -184,12 +195,19 @@
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.14</version>
+        <version>1.2.16</version>
       </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
+      </dependency>
+      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
+           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>0.23.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -307,6 +325,11 @@
             <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.dropwizard</groupId>
+        <artifactId>dropwizard-http2</artifactId>
+        <version>${dropwizard.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -669,7 +692,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.132.Final</version>
+        <version>4.1.133.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -684,7 +707,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-yaml</artifactId>
-        <version>2.17.2</version>
+        <version>${jackson.version}</version>
         <exclusions>
           <exclusion>
             <groupId>org.yaml</groupId>
@@ -721,6 +744,54 @@
         <artifactId>flyway-mysql</artifactId>
         <version>${flyway.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5-h2</artifactId>
+        <version>5.3.5</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>1.26.0</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcutil-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+      <!-- Jackson 3.x BOM — jsonschema2pojo-core 1.3.1 (provided scope, used by the
+           jsonschema2pojo-maven-plugin) pulls tools.jackson 3.0.2 transitively
+           (SNYK-JAVA-TOOLSJACKSONCORE-15365915 / -15371178 / -15907550). The provided
+           scope keeps it out of the runtime dist, but Snyk's Maven scanner still walks
+           the provided tree, so it reports 3.0.2. Force the patched line (>= 3.1.0). -->
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>3.1.3</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- AWS SDK v2 BOM at root so every module resolves the patched line.
+           openmetadata-dist / -mcp / -k8s-operator are siblings that depend on
+           -service (not children of it), so -service's BOM alone does not reach
+           them. Clears cloudfront (SNYK-JAVA-SOFTWAREAMAZONAWSSDK-15810116). -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${awssdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -733,7 +804,7 @@
         <enabled>false</enabled>
       </snapshots>
       <id>central</id>
-      <url>https://repo1.maven.org/maven2/</url>
+      <url>https://repo.maven.apache.org/maven2/</url>
     </repository>
     <repository>
       <releases>

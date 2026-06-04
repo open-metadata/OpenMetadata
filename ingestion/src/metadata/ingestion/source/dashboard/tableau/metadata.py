@@ -17,7 +17,7 @@ import traceback
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
-from requests.utils import urlparse
+from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -1117,6 +1117,6 @@ class TableauSource(DashboardServiceSource):
         """
         Get the proxy url for the tableau server
         """
-        if self.config.serviceConnection.root.config.proxyURL:
-            return str(self.config.serviceConnection.root.config.proxyURL)
+        if self.config.serviceConnection.root.config.proxyURL:  # pyright: ignore[reportAttributeAccessIssue]
+            return str(self.config.serviceConnection.root.config.proxyURL)  # pyright: ignore[reportAttributeAccessIssue]
         return str(self.config.serviceConnection.root.config.hostPort)

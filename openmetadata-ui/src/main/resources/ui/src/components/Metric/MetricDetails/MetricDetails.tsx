@@ -30,13 +30,17 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import {
   getPrioritizedEditPermission,
@@ -191,6 +195,22 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedMetricFqn) {
+      fetchEntityTaskCountsInto(decodedMetricFqn, setFeedCount);
+    }
+  }, [decodedMetricFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedMetricFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.METRIC,
+        decodedMetricFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedMetricFqn]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
     []
@@ -231,7 +251,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [metricPermissions, decodedMetricFqn]);
 
   const tabs = useMemo(() => {

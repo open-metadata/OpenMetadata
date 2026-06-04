@@ -42,7 +42,6 @@ from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -366,7 +365,7 @@ class ESMixin(Generic[T]):
         if sort_order not in ("asc", "desc"):
             raise ValueError(f"sort_order must be 'asc' or 'desc', got '{sort_order}'")
 
-        after: Optional[str] = None  # noqa: UP045
+        after: str = ""
         error_pages = 0
         query = functools.partial(
             self.paginate_query.format,
@@ -379,7 +378,7 @@ class ESMixin(Generic[T]):
             sort_order=sort_order,
         )
         while True:
-            query_string = query(after="&search_after=" + quote_plus(after) if after else "")
+            query_string = query(after=after)
             response = self._get_es_response(query_string)
 
             # Allow 3 errors getting pages before getting out of the loop
@@ -397,7 +396,7 @@ class ESMixin(Generic[T]):
                 logger.debug("No more pages to fetch")
                 break
 
-            after = ",".join(last_hit.sort)
+            after = "".join(f"&search_after={quote_plus(str(v))}" for v in last_hit.sort)
 
     def paginate_es(
         self,
@@ -466,7 +465,6 @@ class ESMixin(Generic[T]):
             except Exception as exc:
                 logger.warning(f"Error while getting {hit.source['fullyQualifiedName']} - {exc}")
 
-    @calculate_execution_time_generator(context="ES.FetchViewDefinition")
     def yield_es_view_def(
         self,
         service_name: str,

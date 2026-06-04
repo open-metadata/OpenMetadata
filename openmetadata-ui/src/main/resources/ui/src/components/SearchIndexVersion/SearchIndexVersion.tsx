@@ -28,12 +28,12 @@ import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TagSource } from '../../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
@@ -55,9 +55,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -267,12 +264,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.SEARCH_INDEX}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

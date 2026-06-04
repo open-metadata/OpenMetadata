@@ -34,7 +34,7 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 
@@ -42,8 +42,8 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../utils/StringsUtils'),
+jest.mock('../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../utils/StringUtils'),
   stringToHTML: jest.fn((text) => text),
 }));
 

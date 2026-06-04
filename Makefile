@@ -39,7 +39,7 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
-	
+
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -68,6 +68,9 @@ install_antlr_cli:  ## Install antlr CLI locally
 ## SNYK
 SNYK_ARGS := --severity-threshold=high
 
+# Drop pip's build/lib tree before scanning so `snyk code test` does not
+# double-report findings (once under src/, once under build/lib/). Same
+# applies to snyk-airflow-apis-report below.
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
@@ -76,6 +79,7 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
+		rm -rf build; \
 		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) --json > ../security-report/ingestion-dep-scan.json | true; \
 		snyk code test $(SNYK_ARGS) --json > ../security-report/ingestion-code-scan.json | true;
 
@@ -83,7 +87,8 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
+		rm -rf build; \
+		snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
 
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
@@ -254,21 +259,21 @@ ui-checkstyle-core-components:
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
 
 # Fix linting and formatting errors in changed files in src folder
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-src-changed
 ui-checkstyle-src-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
 
 # Fix linting and formatting errors in changed playwright test files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-playwright-changed
 ui-checkstyle-playwright-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:playwright:changed
 
 # Fix linting and formatting errors in changed core components files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:

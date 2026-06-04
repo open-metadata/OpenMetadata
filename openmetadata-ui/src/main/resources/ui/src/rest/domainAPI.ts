@@ -27,7 +27,7 @@ import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/domains';
@@ -80,12 +80,9 @@ export const getDomainByName = async (fqn: string, params?: ListParams) => {
   return response.data;
 };
 
-export const getDomainVersionsList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDomainVersionsList = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.util.Utilities;
 
@@ -164,6 +166,32 @@ public final class SearchIndexUtils {
       return Collections.emptyList();
     }
     return followersRef.stream().map(item -> item.getId().toString()).toList();
+  }
+
+  /**
+   * Search documents store {@code followers} as a flat list of user-id strings (see {@link
+   * #parseFollowers}). When a search hit is converted back into an entity, that string list cannot
+   * be deserialized into the entity's {@code List<EntityReference> followers} field. This rebuilds
+   * each id into a user {@link EntityReference} so the entity deserializes cleanly.
+   */
+  public static void normalizeFollowers(Map<String, Object> sourceAsMap) {
+    Object followers = sourceAsMap.get(EntityBuilderConstant.FIELD_FOLLOWERS);
+    if (followers instanceof List<?> followerList && !followerList.isEmpty()) {
+      sourceAsMap.put(EntityBuilderConstant.FIELD_FOLLOWERS, expandFollowerIds(followerList));
+    }
+  }
+
+  private static List<Object> expandFollowerIds(List<?> followerList) {
+    List<Object> followers = new ArrayList<>();
+    for (Object follower : followerList) {
+      if (follower instanceof String followerId) {
+        followers.add(
+            new EntityReference().withId(UUID.fromString(followerId)).withType(Entity.USER));
+      } else {
+        followers.add(follower);
+      }
+    }
+    return followers;
   }
 
   public static List<String> parseOwners(List<EntityReference> ownersRef) {
@@ -465,26 +493,27 @@ public final class SearchIndexUtils {
 
   private static void processTagAndTierSources(
       List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags ->
-                tags.forEach(
-                    tag -> {
-                      String tagSource = tag.getLabelType().value();
-                      if (tag.getTagFQN().startsWith("Tier.")) {
-                        tagAndTierSources
-                            .getTierSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                      } else {
-                        tagAndTierSources
-                            .getTagSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                      }
-                    }));
+    if (tagList == null) {
+      return;
+    }
+    for (TagLabel tag : tagList) {
+      // Defensive: tags deserialized from historical entity_extension rows may have null
+      // labelType or null tagFQN. Skip the malformed tag entirely.
+      if (tag == null) {
+        continue;
+      }
+      String tagFQN = tag.getTagFQN();
+      TagLabel.LabelType labelType = tag.getLabelType();
+      if (tagFQN == null || labelType == null) {
+        continue;
+      }
+      String tagSource = labelType.value();
+      Map<String, Integer> bucket =
+          tagFQN.startsWith("Tier.")
+              ? tagAndTierSources.getTierSources()
+              : tagAndTierSources.getTagSources();
+      bucket.merge(tagSource, 1, Integer::sum);
+    }
   }
 
   private static void processEntityTagSources(

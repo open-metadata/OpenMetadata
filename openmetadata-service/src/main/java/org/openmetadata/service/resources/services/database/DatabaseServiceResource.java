@@ -304,25 +304,8 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    EntityHistory entityHistory =
-        super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -786,7 +769,10 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted database service",
-      description = "Restore a soft deleted database service.",
+      description =
+          "Restore a soft deleted database service. Pass async=true to run the restore in the"
+              + " background and receive a 202 Accepted response with a job id; strongly"
+              + " recommended for services that contain many databases / schemas / tables.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -794,13 +780,27 @@ public class DatabaseServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = DatabaseService.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDatabaseService(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @Override

@@ -34,7 +34,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
@@ -76,12 +76,9 @@ export const deleteDataProduct = (id: string) => {
   return APIClient.delete(`${BASE_URL}/${id}`);
 };
 
-export const getDataProductVersionsList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDataProductVersionsList = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

@@ -14,13 +14,9 @@
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
-import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
-import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
@@ -36,13 +31,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Worker that processes a single partition of entities for search indexing.
@@ -54,26 +52,11 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesS
 public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
-  /** Time series entity types that need special handling */
-  private static final Set<String> TIME_SERIES_ENTITIES =
-      Set.of(
-          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
-
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key for recreate index flag */
-  private static final String RECREATE_INDEX = "recreateIndex";
-
-  /** Context key for recreate context */
-  private static final String RECREATE_CONTEXT = "recreateContext";
+  /** Context key for staged index context. */
+  private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
   /** Context key for target index */
   private static final String TARGET_INDEX_KEY = "targetIndex";
@@ -90,8 +73,7 @@ public class PartitionWorker {
   private final DistributedSearchIndexCoordinator coordinator;
   private final BulkSink searchIndexSink;
   private final int batchSize;
-  private final ReindexContext recreateContext;
-  private final boolean recreateIndex;
+  private final ReindexContext stagedIndexContext;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final IndexingFailureRecorder failureRecorder;
   private final ReindexingConfiguration reindexConfig;
@@ -100,41 +82,30 @@ public class PartitionWorker {
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex) {
-    this(coordinator, searchIndexSink, batchSize, recreateContext, recreateIndex, null, null);
+      ReindexContext stagedIndexContext) {
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, null, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder) {
-    this(
-        coordinator,
-        searchIndexSink,
-        batchSize,
-        recreateContext,
-        recreateIndex,
-        failureRecorder,
-        null);
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, failureRecorder, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder,
       ReindexingConfiguration reindexConfig) {
     this.coordinator = coordinator;
     this.searchIndexSink = searchIndexSink;
     this.batchSize = batchSize;
-    this.recreateContext = recreateContext;
-    this.recreateIndex = recreateIndex;
+    this.stagedIndexContext = stagedIndexContext;
     this.failureRecorder = failureRecorder;
     this.reindexConfig = reindexConfig;
   }
@@ -146,7 +117,20 @@ public class PartitionWorker {
    * @return Result containing success and failure counts
    */
   public PartitionResult processPartition(SearchIndexPartition partition) {
-    String entityType = partition.getEntityType();
+    // Reindex worker threads opt out of the Redis-backed entity cache. Cache hit rate during a
+    // bulk reindex is ~0 (every entity read exactly once) and the write-through tax is ~2-3M
+    // Redis ops per 580k-entity reindex; on an unhealthy Redis the indexer crawls at ~0.6 r/s
+    // because every relationship lookup pays a 300ms timeout. Bypassing for the duration of
+    // the partition keeps the reindex independent of cache health and removes the unwanted
+    // write-through pollution. Other code paths (UI requests, etc.) on other threads keep
+    // using the cache normally.
+    try (EntityCacheBypass.Handle ignored = EntityCacheBypass.skip()) {
+      return processPartitionInternal(partition);
+    }
+  }
+
+  private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
 
@@ -188,7 +172,7 @@ public class PartitionWorker {
 
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
+      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
       LOG.debug(
           "initializeKeysetCursor for {} offset={} took {}ms",
           entityType,
@@ -229,7 +213,7 @@ public class PartitionWorker {
 
           // If keyset cursor exhausted, recompute or stop
           if (keysetCursor == null && currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               LOG.debug(
                   "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
@@ -286,7 +270,7 @@ public class PartitionWorker {
 
           // Recompute keyset cursor after failure
           if (currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               break;
             }
@@ -487,59 +471,54 @@ public class PartitionWorker {
       String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
-    long t0 = System.currentTimeMillis();
+    long readStartNanos = System.nanoTime();
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
-    long t1 = System.currentTimeMillis();
+    long readDurationNanos = System.nanoTime() - readStartNanos;
 
-    if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      LOG.debug("{} read={}ms returned empty", entityType, t1 - t0);
-      return new BatchResult(0, 0, 0, null);
-    }
-
-    String nextCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
-    int readSuccessCount = listOrEmpty(resultList.getData()).size();
-    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
-    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+    int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
+    int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
+    int warningsCount =
+        (resultList != null && resultList.getWarningsCount() != null)
+            ? resultList.getWarningsCount()
+            : 0;
+    String nextCursor =
+        (resultList != null && resultList.getPaging() != null)
+            ? resultList.getPaging().getAfter()
+            : null;
 
     if (statsTracker != null) {
-      statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+      // Reader timing = wall-clock time of the keyset DB read (listAfter + setFieldsInBulk
+      // hydration). This isolates DB latency from downstream queue / process / sink work.
+      statsTracker.recordReaderBatch(
+          readSuccessCount, readErrorCount, warningsCount, readDurationNanos);
     }
 
-    if (failureRecorder != null && readErrorCount > 0) {
-      for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
-        Object rawEntity = entityError.getEntity();
-        String entityId = null;
-        if (rawEntity instanceof EntityInterface) {
-          UUID id = ((EntityInterface) rawEntity).getId();
-          if (id != null) {
-            entityId = id.toString();
-          }
-        } else if (rawEntity != null) {
-          entityId = rawEntity.toString();
-        }
-        if (entityId == null) {
-          LOG.warn(
-              "Skipping reader failure record for entityType={}: entityId is null, message={}",
-              entityType,
-              entityError.getMessage());
-          continue;
-        }
-        failureRecorder.recordReaderEntityFailure(
-            entityType, entityId, null, entityError.getMessage());
-      }
+    recordReaderFailures(entityType, resultList, readErrorCount);
+    recordRelationshipWarnings(entityType, resultList);
+
+    if (readSuccessCount == 0) {
+      LOG.debug(
+          "{} read={}ms returned no indexable rows (warnings={}, errors={})",
+          entityType,
+          readDurationNanos / 1_000_000L,
+          warningsCount,
+          readErrorCount);
+      return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
 
+    long readMs = readDurationNanos / 1_000_000L;
     try {
+      long writeStartMs = System.currentTimeMillis();
       writeToSink(entityType, resultList, contextData);
-      long t2 = System.currentTimeMillis();
+      long writeMs = System.currentTimeMillis() - writeStartMs;
       LOG.debug(
           "{} read={}ms write={}ms total={}ms records={}",
           entityType,
-          t1 - t0,
-          t2 - t1,
-          t2 - t0,
+          readMs,
+          writeMs,
+          readMs + writeMs,
           readSuccessCount);
       return new BatchResult(readSuccessCount, readErrorCount, warningsCount, nextCursor);
     } catch (Exception e) {
@@ -553,6 +532,68 @@ public class PartitionWorker {
   }
 
   /**
+   * Persist per-entity reader failures so that downstream tooling (e.g. the failures dashboard)
+   * can show which specific records the reader could not hydrate. Runs whether or not the batch
+   * has any successful rows — losing failure diagnostics for "all-error" batches would defeat
+   * the point of the recorder.
+   */
+  private void recordReaderFailures(
+      String entityType, ResultList<?> resultList, int readErrorCount) {
+    if (failureRecorder == null || readErrorCount == 0 || resultList == null) {
+      return;
+    }
+    for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+      Object rawEntity = entityError.getEntity();
+      String entityId = null;
+      if (rawEntity instanceof EntityInterface) {
+        UUID id = ((EntityInterface) rawEntity).getId();
+        if (id != null) {
+          entityId = id.toString();
+        }
+      } else if (rawEntity != null) {
+        entityId = rawEntity.toString();
+      }
+      if (entityId == null) {
+        // Time-series readers (EntityTimeSeriesRepository) build EntityError without an id —
+        // they only have access to the JSON row, not the entity reference. Per-entity recording
+        // requires an id, so log at DEBUG (not WARN) to avoid spamming logs for every error in
+        // large time-series batches.
+        LOG.debug(
+            "No entityId on reader failure for entityType={} — skipping per-entity record. message={}",
+            entityType,
+            entityError.getMessage());
+        continue;
+      }
+      failureRecorder.recordReaderEntityFailure(
+          entityType, entityId, null, entityError.getMessage());
+    }
+  }
+
+  /**
+   * Persist stale-relationship warnings (records read but not indexable because their parent is
+   * gone) to the failures table, tagged {@code READER_RELATIONSHIP_WARNING}. These are not
+   * failures and never count against the job's failure total — they are recorded only so an
+   * operator can find and clean up the orphaned rows from the failures dashboard.
+   */
+  private void recordRelationshipWarnings(String entityType, ResultList<?> resultList) {
+    if (failureRecorder == null || resultList == null) {
+      return;
+    }
+    for (EntityError warning : listOrEmpty(resultList.getWarnings())) {
+      Object rawEntity = warning.getEntity();
+      String entityId = null;
+      String entityFqn = null;
+      if (rawEntity instanceof EntityInterface entity) {
+        UUID id = entity.getId();
+        entityId = id != null ? id.toString() : null;
+        entityFqn = entity.getFullyQualifiedName();
+      }
+      failureRecorder.recordRelationshipWarning(
+          entityType, entityId, entityFqn, warning.getMessage());
+    }
+  }
+
+  /**
    * Read entities from the database.
    *
    * @param entityType The entity type
@@ -562,17 +603,21 @@ public class PartitionWorker {
    */
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-    List<String> fields = TIME_SERIES_ENTITIES.contains(entityType) ? List.of() : List.of("*");
+    // Selective fields avoid running expensive field fetchers that are stripped out before
+    // indexing.
+    List<String> fields = ReindexingUtil.getSearchIndexFields(normalizedEntityType);
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0);
       return source.readNextKeyset(keysetCursor);
     } else {
       Long filterStartTs = null;
       Long filterEndTs = null;
       if (reindexConfig != null) {
-        long startTs = reindexConfig.getTimeSeriesStartTs(entityType);
+        long startTs = reindexConfig.getTimeSeriesStartTs(normalizedEntityType);
         if (startTs > 0) {
           filterStartTs = startTs;
           filterEndTs = System.currentTimeMillis();
@@ -581,32 +626,42 @@ public class PartitionWorker {
       PaginatedEntityTimeSeriesSource source =
           (filterStartTs != null)
               ? new PaginatedEntityTimeSeriesSource(
-                  entityType, limit, fields, filterStartTs, filterEndTs)
-              : new PaginatedEntityTimeSeriesSource(entityType, limit, fields, 0);
+                  normalizedEntityType, limit, fields, filterStartTs, filterEndTs)
+              : new PaginatedEntityTimeSeriesSource(normalizedEntityType, limit, fields, 0);
       return source.readWithCursor(keysetCursor);
     }
   }
 
-  private String initializeKeysetCursor(String entityType, long offset) {
+  private String initializeKeysetCursor(SearchIndexPartition partition, long offset) {
     if (offset <= 0) {
       return null;
     }
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = toCursorOffset(entityType, offset);
-      ListFilter filter = new ListFilter(Include.ALL);
-      String cursor =
-          Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
-      if (cursor == null) {
-        LOG.debug(
-            "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
-            entityType,
-            offset,
-            cursorOffset);
-      }
-      return cursor;
-    } else {
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
+    if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+    // Fast path: coordinator precomputed boundary cursors for every partition's
+    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
+    // Only the partition's first call lands on a known rangeStart value; mid-partition
+    // recomputes (after batch failure) won't hit this path and fall through to the
+    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
+    // from a previous job that ran on the same server.
+    String precomputed =
+        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
+    if (precomputed != null) {
+      return precomputed;
+    }
+    int cursorOffset = toCursorOffset(entityType, offset);
+    ListFilter filter = new ListFilter(Include.ALL);
+    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    if (cursor == null) {
+      LOG.debug(
+          "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+          entityType,
+          offset,
+          cursorOffset);
+    }
+    return cursor;
   }
 
   private int toCursorOffset(String entityType, long offset) {
@@ -631,9 +686,11 @@ public class PartitionWorker {
   private void writeToSink(
       String entityType, ResultList<?> resultList, Map<String, Object> contextData)
       throws Exception {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
@@ -650,20 +707,28 @@ public class PartitionWorker {
    * @return Context data map
    */
   private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
-    contextData.put(ENTITY_TYPE_KEY, entityType);
-    contextData.put(RECREATE_INDEX, recreateIndex);
+    contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
     }
 
-    if (recreateContext != null) {
-      contextData.put(RECREATE_CONTEXT, recreateContext);
-      recreateContext
-          .getStagedIndex(entityType)
-          .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
+    if (stagedIndexContext == null) {
+      throw new IllegalStateException(
+          "Staged index context is required for distributed reindexing");
     }
+
+    String targetIndex =
+        stagedIndexContext
+            .getStagedIndex(normalizedEntityType)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No staged index configured for entity type: " + normalizedEntityType));
+    contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
+    contextData.put(TARGET_INDEX_KEY, targetIndex);
 
     return contextData;
   }
