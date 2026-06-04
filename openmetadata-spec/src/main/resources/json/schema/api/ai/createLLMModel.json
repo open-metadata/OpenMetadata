@@ -57,6 +57,21 @@
       "type": "string",
       "enum": ["Approved", "PendingReview", "Rejected", "Unauthorized"]
     },
+    "detection": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiDetection",
+      "description": "Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs, connector audits, etc."
+    },
+    "evidence": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiEvidence",
+      "description": "Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)"
+    },
+    "remediationActions": {
+      "type": "array",
+      "description": "Structured remediation actions with assignee, due date, priority, and status",
+      "items": {
+        "$ref": "../../type/aiCompliance.json#/definitions/remediationAction"
+      }
+    },
     "certifications": {
       "description": "Certifications this model has received",
       "type": "array",

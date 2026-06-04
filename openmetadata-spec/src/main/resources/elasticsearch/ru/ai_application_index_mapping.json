@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -28,9 +29,13 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "asciifolding",
+            "russian_stop",
+            "russian_snowball",
+            "english_stop",
+            "om_kstem"
           ]
         },
         "om_ngram": {
@@ -43,17 +48,13 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
       },
       "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "kstem"
-        },
         "word_delimiter_filter": {
           "type": "word_delimiter",
           "preserve_original": true
@@ -69,6 +70,24 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "russian_snowball": {
+          "name": "russian",
+          "type": "stemmer"
+        },
+        "om_kstem": {
+          "type": "kstem"
+        },
+        "asciifolding": {
+          "type": "asciifolding"
         }
       }
     }
@@ -698,6 +717,69 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiGovernance": {
+        "type": "object",
+        "properties": {
+          "assetSubtype": {
+            "type": "keyword"
+          },
+          "registrationStatus": {
+            "type": "keyword"
+          },
+          "riskLevel": {
+            "type": "keyword"
+          },
+          "accessesPii": {
+            "type": "boolean"
+          },
+          "accessesSensitiveData": {
+            "type": "boolean"
+          },
+          "dataCategories": {
+            "type": "keyword"
+          },
+          "detection": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "suspectedTeam": {
+                "type": "keyword"
+              },
+              "detectedAt": {
+                "type": "date",
+                "format": "strict_date_optional_time||epoch_millis"
+              },
+              "flags": {
+                "type": "keyword"
+              }
+            }
+          },
+          "complianceStatus": {
+            "type": "flattened"
+          },
+          "frameworks": {
+            "type": "keyword"
+          },
+          "euRiskClassification": {
+            "type": "keyword"
+          },
+          "regions": {
+            "type": "keyword"
+          },
+          "lastAssessedAt": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "affectedUserCount": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

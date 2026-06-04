@@ -1,0 +1,100 @@
+{
+  "id": "22222222-2222-4222-8222-222222222205",
+  "name": "slack_workflow_actions",
+  "displayName": "Slack Workflow Actions",
+  "description": "Registered communication MCP server that lets AI agents create Slack follow-up messages and approval reminders.",
+  "serverType": "Communication",
+  "transportType": "StreamableHTTP",
+  "protocolVersion": "2025-03-26",
+  "developmentStage": "Production",
+  "deploymentUrl": "https://mcp.acme.example/slack-actions",
+  "capabilities": {
+    "toolsSupported": true,
+    "resourcesSupported": false,
+    "promptsSupported": true,
+    "loggingSupported": true
+  },
+  "tools": [
+    {
+      "name": "send_governance_reminder",
+      "displayName": "Send Governance Reminder",
+      "description": "Sends review reminders to approved Slack channels.",
+      "toolCategory": "CommunicationOperation",
+      "riskLevel": "Medium",
+      "riskFactors": ["External user notification", "Channel metadata"],
+      "dataAccess": {
+        "readsData": true,
+        "writesData": true,
+        "deletesData": false,
+        "sensitivityLevel": "Internal",
+        "piiAccess": false,
+        "dataTypes": ["Slack channel", "Task metadata"]
+      },
+      "requiredPermissions": ["slack.message.write"],
+      "sideEffects": true,
+      "idempotent": false,
+      "reversible": false,
+      "usageCount": 1180
+    }
+  ],
+  "prompts": [
+    {
+      "name": "approval_reminder_copy",
+      "displayName": "Approval Reminder Copy",
+      "description": "Generates concise reviewer reminder copy for pending AI governance approvals.",
+      "promptType": "Generation",
+      "outputClassification": {
+        "sensitivityLevel": "Internal",
+        "mayContainPII": false,
+        "outputCategories": ["Notification copy"]
+      },
+      "usageCount": 1180
+    }
+  ],
+  "governanceMetadata": {
+    "registrationStatus": "Registered",
+    "registeredBy": "platform-ops@acme.example",
+    "registeredAt": 1775001600000,
+    "riskAssessment": {
+      "riskLevel": "Medium",
+      "riskFactors": ["Writes messages into Slack", "Can notify reviewers"],
+      "mitigations": ["Channel allowlist", "Message templates", "Rate limits"],
+      "assessedBy": "ai-governance@acme.example",
+      "assessedAt": 1775606400000
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": false,
+      "dataCategories": ["Task metadata", "Reviewer reminders"],
+      "dataRetentionPeriod": "90 days"
+    }
+  },
+  "dataAccessSummary": {
+    "accessPatterns": ["Read", "Write"],
+    "sensitivityLevel": "Internal",
+    "piiAccess": false,
+    "externalApiAccess": true,
+    "fileSystemAccess": false,
+    "networkAccess": true,
+    "databaseAccess": false
+  },
+  "usageMetrics": {
+    "totalInvocations": 1180,
+    "successRate": 0.996,
+    "averageLatencyMs": 180,
+    "p95LatencyMs": 480,
+    "lastInvokedAt": 1775606400000,
+    "uniqueUsers": 34,
+    "dailyActiveUsers": 12
+  },
+  "securityMetrics": {
+    "authenticationRequired": true,
+    "authorizationEnforced": true,
+    "auditLoggingEnabled": true,
+    "encryptionInTransit": true,
+    "sandboxed": true,
+    "secretsManagement": "Slack app token vault"
+  },
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

@@ -1,0 +1,157 @@
+{
+  "name": "finance-forecast-agent",
+  "displayName": "Finance Forecast Agent",
+  "description": "Agent that drafts variance narratives and quarterly forecast commentary from finance warehouse extracts.",
+  "applicationType": "Agent",
+  "developmentStage": "Staging",
+  "modelConfigurations": [
+    {
+      "model": {
+        "id": "11111111-1111-4111-8111-111111111103",
+        "type": "llmModel",
+        "name": "gemini_finance_forecast",
+        "fullyQualifiedName": "ai_governance_llm.gemini_finance_forecast",
+        "displayName": "Gemini Finance Forecast"
+      },
+      "purpose": "Reasoning",
+      "parameters": {
+        "temperature": 0.25,
+        "maxTokens": 3200
+      }
+    }
+  ],
+  "primaryModel": {
+    "id": "11111111-1111-4111-8111-111111111103",
+    "type": "llmModel",
+    "name": "gemini_finance_forecast",
+    "fullyQualifiedName": "ai_governance_llm.gemini_finance_forecast",
+    "displayName": "Gemini Finance Forecast"
+  },
+  "mcpServers": [
+    {
+      "id": "22222222-2222-4222-8222-222222222202",
+      "type": "mcpServer",
+      "name": "warehouse_sql_query",
+      "fullyQualifiedName": "ai_governance_mcp.warehouse_sql_query",
+      "displayName": "Warehouse SQL Query"
+    }
+  ],
+  "framework": {
+    "name": "LlamaIndex",
+    "version": "0.10.45",
+    "language": "Python"
+  },
+  "governanceMetadata": {
+    "registrationStatus": "Registered",
+    "registeredBy": "finance-analytics@acme.example",
+    "registeredAt": 1776643200000,
+    "riskAssessment": {
+      "riskLevel": "Medium",
+      "riskFactors": ["Sensitive financial planning data", "Generated content used in executive reporting"],
+      "mitigations": ["CFO analyst review before publication", "Warehouse access restricted to aggregated forecast tables"],
+      "assessedBy": "ai-governance@acme.example",
+      "assessedAt": 1777593600000
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Forecast snapshots", "Budget variance commentary", "Aggregated bookings metrics"],
+      "dataRetentionPeriod": "365 days"
+    },
+    "aiCompliance": {
+      "complianceRecords": [
+        {
+          "framework": "NIST_AI_RMF",
+          "assessedBy": "ai-governance@acme.example",
+          "assessedAt": 1777593600000,
+          "nextReviewDate": 1785542400000,
+          "status": "UnderReview",
+          "ethicalAssessment": {
+            "privacyLevel": "Sensitive",
+            "fairnessRisk": "Low",
+            "biasMitigationCoverage": "Partial",
+            "reliabilitySafetyRisk": "Moderate",
+            "transparencyLevel": "Partial",
+            "accountabilityMeasures": {
+              "hasOwner": true,
+              "subjectToHumanOversight": true,
+              "auditTrailEnabled": true
+            },
+            "environmentalConsciousness": "LowRisk"
+          },
+          "notes": "Awaiting final drift threshold and evaluation cadence sign-off."
+        },
+        {
+          "framework": "ISO_IEC_42001",
+          "assessedBy": "ai-governance@acme.example",
+          "assessedAt": 1777593600000,
+          "nextReviewDate": 1785542400000,
+          "status": "PartiallyCompliant",
+          "ethicalAssessment": {
+            "privacyLevel": "Sensitive",
+            "fairnessRisk": "Low",
+            "biasMitigationCoverage": "Partial",
+            "reliabilitySafetyRisk": "Moderate",
+            "transparencyLevel": "Partial",
+            "accountabilityMeasures": {
+              "hasOwner": true,
+              "subjectToHumanOversight": true,
+              "auditTrailEnabled": true
+            },
+            "environmentalConsciousness": "LowRisk"
+          },
+          "remediationRequired": ["Document drift threshold before production approval"]
+        }
+      ]
+    },
+    "evidence": {
+      "modelCardUrl": "https://governance.example.com/evidence/finance-forecast/model-card",
+      "technicalDocsUrl": "https://governance.example.com/evidence/finance-forecast/architecture"
+    },
+    "remediationActions": [
+      {
+        "id": "22222222-2222-4222-8222-222222222203",
+        "label": "Document drift threshold and evaluation owner",
+        "frameworkRef": "ISO_IEC_42001",
+        "controlCode": "9.1",
+        "dueDate": 1784073600000,
+        "priority": "Medium",
+        "status": "Open",
+        "createdAt": 1777593600000,
+        "createdBy": "ai-governance@acme.example"
+      }
+    ],
+    "intakeNotes": "Registered and awaiting production approval once monitoring thresholds are finalized."
+  },
+  "biasMetrics": {
+    "lastEvaluatedAt": 1778803200000,
+    "evaluationMethod": "Scenario output review",
+    "overallBiasScore": 0.08,
+    "biasDetected": false
+  },
+  "performanceMetrics": {
+    "totalExecutions": 1250,
+    "successRate": 0.966,
+    "averageLatencyMs": 2380,
+    "p95LatencyMs": 5800,
+    "p99LatencyMs": 8800,
+    "averageCost": 0.063,
+    "totalCost": 78.75,
+    "currency": "USD",
+    "lastExecutionAt": 1779667200000
+  },
+  "qualityMetrics": {
+    "answerRelevancy": 0.86,
+    "contextPrecision": 0.83,
+    "faithfulness": 0.88,
+    "hallucinationRate": 0.052
+  },
+  "safetyMetrics": {
+    "piiLeakageRate": 0,
+    "harmfulContentRate": 0,
+    "promptInjectionAttempts": 1,
+    "blockedRequests": 1
+  },
+  "sourceCode": "https://github.example.com/ai/finance-forecast-agent",
+  "documentation": "https://governance.example.com/apps/finance-forecast-agent"
+}

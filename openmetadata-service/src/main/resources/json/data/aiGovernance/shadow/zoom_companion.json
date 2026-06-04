@@ -1,0 +1,24 @@
+{
+  "name": "zoom-ai-companion-legal",
+  "displayName": "Zoom AI Companion (legal team)",
+  "description": "Zoom AI Companion adopted by Legal. Touches privileged data — DPA must be on file and risk classification reviewed before further use.",
+  "applicationType": "Copilot",
+  "governanceMetadata": {
+    "registrationStatus": "Unregistered",
+    "riskAssessment": {
+      "riskLevel": "High"
+    },
+    "dataClassification": {
+      "accessesPII": true,
+      "accessesSensitiveData": true
+    },
+    "detection": {
+      "source": "SSOLogs",
+      "sourceDetails": "Detected from SSO logs",
+      "suspectedTeam": "Legal",
+      "volume7d": "~120 sessions / 7d",
+      "flags": ["PiiWithoutDpa", "PrivilegedData"],
+      "severity": "High"
+    }
+  }
+}

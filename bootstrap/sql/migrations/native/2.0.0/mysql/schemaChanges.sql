@@ -450,3 +450,50 @@ CREATE TABLE IF NOT EXISTS mcp_message (
   INDEX idx_mcp_message_conversation_index (conversationId, messageIndex),
   INDEX idx_mcp_message_conversation_created (conversationId, timestamp)
 );
+-- AI Governance Studio (Phase 4): framework + control entity tables.
+CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Governance Framework entities';
+
+CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Framework Control entities';
+
+CREATE TABLE IF NOT EXISTS audit_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    status VARCHAR(32) GENERATED ALWAYS AS (json ->> '$.status') VIRTUAL,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX status_index (status),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';

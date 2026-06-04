@@ -15,6 +15,10 @@ import { Bucket } from 'Models';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { AIApplication } from '../generated/entity/ai/aiApplication';
+import { AIGovernancePolicy } from '../generated/entity/ai/aiGovernancePolicy';
+import { LlmModel } from '../generated/entity/ai/llmModel';
+import { MCPServer } from '../generated/entity/ai/mcpServer';
 import { Tag } from '../generated/entity/classification/tag';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -116,6 +120,60 @@ export interface DashboardSearchSource extends SearchSourceBase, Dashboard {} //
 export interface PipelineSearchSource extends SearchSourceBase, Pipeline {} // extends EntityInterface
 
 export interface MlmodelSearchSource extends SearchSourceBase, Mlmodel {} // extends EntityInterface
+
+export interface AIApplicationSearchSource
+  extends SearchSourceBase,
+    AIApplication {
+  entityType: SearchIndex.AI_APPLICATION;
+}
+
+export interface LlmModelSearchSource extends SearchSourceBase, LlmModel {
+  entityType: SearchIndex.LLM_MODEL;
+}
+
+export interface McpServerSearchSource extends SearchSourceBase, MCPServer {
+  entityType: SearchIndex.MCP_SERVER;
+}
+
+export interface AIGovernancePolicySearchSource
+  extends SearchSourceBase,
+    AIGovernancePolicy {
+  entityType: SearchIndex.AI_GOVERNANCE_POLICY;
+}
+
+export interface AIGovernanceFrameworkSearchSource extends SearchSourceBase {
+  id?: string;
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+  description?: string;
+  enabled?: boolean;
+  entityType: SearchIndex.AI_GOVERNANCE_FRAMEWORK;
+}
+
+export interface AIFrameworkControlSearchSource extends SearchSourceBase {
+  id?: string;
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+  description?: string;
+  code?: string;
+  entityType: SearchIndex.AI_FRAMEWORK_CONTROL;
+}
+
+export interface AuditReportSearchSource extends SearchSourceBase {
+  id?: string;
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+  description?: string;
+  status?: string;
+  scope?: string;
+  format?: string;
+  requestedAt?: number;
+  completedAt?: number;
+  entityType: SearchIndex.AUDIT_REPORT;
+}
 
 export interface TopicSearchSource extends SearchSourceBase, Topic {} // extends EntityInterface
 
@@ -288,6 +346,13 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
+  [SearchIndex.AI_APPLICATION]: AIApplicationSearchSource;
+  [SearchIndex.LLM_MODEL]: LlmModelSearchSource;
+  [SearchIndex.MCP_SERVER]: McpServerSearchSource;
+  [SearchIndex.AI_GOVERNANCE_POLICY]: AIGovernancePolicySearchSource;
+  [SearchIndex.AI_GOVERNANCE_FRAMEWORK]: AIGovernanceFrameworkSearchSource;
+  [SearchIndex.AI_FRAMEWORK_CONTROL]: AIFrameworkControlSearchSource;
+  [SearchIndex.AUDIT_REPORT]: AuditReportSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
   [SearchIndex.GLOSSARY]: GlossarySearchSource;

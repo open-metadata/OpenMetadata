@@ -1,0 +1,200 @@
+{
+  "name": "claims-triage-copilot",
+  "displayName": "Claims Triage Copilot",
+  "description": "Production copilot that summarizes claim notes, ranks escalation urgency, and drafts next-best actions for adjusters.",
+  "applicationType": "Copilot",
+  "developmentStage": "Production",
+  "modelConfigurations": [
+    {
+      "model": {
+        "id": "11111111-1111-4111-8111-111111111101",
+        "type": "llmModel",
+        "name": "gpt_4o_claims_prod",
+        "fullyQualifiedName": "ai_governance_llm.gpt_4o_claims_prod",
+        "displayName": "GPT-4o Claims Production"
+      },
+      "purpose": "Primary",
+      "parameters": {
+        "temperature": 0.2,
+        "maxTokens": 2400
+      }
+    }
+  ],
+  "primaryModel": {
+    "id": "11111111-1111-4111-8111-111111111101",
+    "type": "llmModel",
+    "name": "gpt_4o_claims_prod",
+    "fullyQualifiedName": "ai_governance_llm.gpt_4o_claims_prod",
+    "displayName": "GPT-4o Claims Production"
+  },
+  "mcpServers": [
+    {
+      "id": "22222222-2222-4222-8222-222222222201",
+      "type": "mcpServer",
+      "name": "customer_profile_tools",
+      "fullyQualifiedName": "ai_governance_mcp.customer_profile_tools",
+      "displayName": "Customer Profile Tools"
+    }
+  ],
+  "framework": {
+    "name": "LangChain",
+    "version": "0.2.11",
+    "language": "Python"
+  },
+  "governanceMetadata": {
+    "registrationStatus": "Approved",
+    "registeredBy": "ai-governance@acme.example",
+    "registeredAt": 1773100800000,
+    "approvedBy": "risk-council@acme.example",
+    "approvedAt": 1775001600000,
+    "riskAssessment": {
+      "riskLevel": "High",
+      "riskFactors": [
+        "Processes insurance claim PII",
+        "Influences operational prioritization",
+        "Uses externally hosted LLM endpoint"
+      ],
+      "mitigations": [
+        "Human adjuster approval required before customer communication",
+        "PII redaction before prompt submission",
+        "Weekly prompt and output audit"
+      ],
+      "assessedBy": "model-risk@acme.example",
+      "assessedAt": 1775001600000
+    },
+    "dataClassification": {
+      "accessesPII": true,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Claims notes", "Customer contact data", "Policy details"],
+      "dataRetentionPeriod": "180 days"
+    },
+    "aiCompliance": {
+      "complianceRecords": [
+        {
+          "framework": "EU_AI_Act",
+          "assessedBy": "model-risk@acme.example",
+          "assessedAt": 1775001600000,
+          "nextReviewDate": 1784073600000,
+          "status": "PartiallyCompliant",
+          "euAIAct": {
+            "riskClassification": "High",
+            "riskRationale": "The system supports access to essential private services and processes personal data.",
+            "highRiskSystems": {
+              "essentialPrivateServices": true
+            },
+            "conformityAssessment": {
+              "assessmentRequired": true,
+              "assessmentType": "Internal"
+            },
+            "transparencyObligations": {
+              "usersInformed": true,
+              "deepfakeLabeling": false,
+              "emotionRecognitionDisclosure": false
+            }
+          },
+          "ethicalAssessment": {
+            "privacyLevel": "PersonalData",
+            "fairnessRisk": "Medium",
+            "biasMitigationCoverage": "Partial",
+            "reliabilitySafetyRisk": "Moderate",
+            "transparencyLevel": "Partial",
+            "accountabilityMeasures": {
+              "hasOwner": true,
+              "subjectToHumanOversight": true,
+              "auditTrailEnabled": true
+            },
+            "environmentalConsciousness": "MediumRisk"
+          },
+          "verification": {
+            "isVerified": true,
+            "verifiedBy": "internal-audit@acme.example",
+            "verifiedAt": 1775606400000,
+            "verificationNotes": "Approved with quarterly fairness evidence follow-up."
+          },
+          "remediationRequired": ["Complete third-party conformity assessment before EU rollout"]
+        },
+        {
+          "framework": "NIST_AI_RMF",
+          "assessedBy": "ai-governance@acme.example",
+          "assessedAt": 1775606400000,
+          "nextReviewDate": 1784073600000,
+          "status": "Compliant",
+          "ethicalAssessment": {
+            "privacyLevel": "PersonalData",
+            "fairnessRisk": "Medium",
+            "biasMitigationCoverage": "Full",
+            "reliabilitySafetyRisk": "Moderate",
+            "transparencyLevel": "Partial",
+            "accountabilityMeasures": {
+              "hasOwner": true,
+              "subjectToHumanOversight": true,
+              "auditTrailEnabled": true
+            },
+            "environmentalConsciousness": "MediumRisk"
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "dpiaUrl": "https://governance.example.com/evidence/claims-triage/dpia",
+      "fairnessEvidenceUrl": "https://governance.example.com/evidence/claims-triage/fairness-q2",
+      "modelCardUrl": "https://governance.example.com/evidence/claims-triage/model-card",
+      "technicalDocsUrl": "https://governance.example.com/evidence/claims-triage/architecture"
+    },
+    "remediationActions": [
+      {
+        "id": "22222222-2222-4222-8222-222222222201",
+        "label": "Complete EU conformity assessment pack",
+        "frameworkRef": "EU_AI_Act",
+        "controlCode": "art-43",
+        "dueDate": 1781481600000,
+        "priority": "High",
+        "status": "InProgress",
+        "createdAt": 1775606400000,
+        "createdBy": "ai-governance@acme.example"
+      }
+    ],
+    "intakeNotes": "Validated for production with human review gate and redaction controls.",
+    "approvalComments": "Approved for US production. EU expansion requires conformity evidence closure."
+  },
+  "biasMetrics": {
+    "lastEvaluatedAt": 1776211200000,
+    "evaluationMethod": "Fairlearn subgroup parity report",
+    "overallBiasScore": 0.18,
+    "demographicParity": 0.91,
+    "equalizedOdds": 0.88,
+    "disparateImpact": 0.86,
+    "dimensionScores": {
+      "age": 0.14,
+      "gender": 0.1
+    },
+    "biasDetected": false,
+    "remediationSteps": ["Continue quarterly subgroup monitoring"]
+  },
+  "performanceMetrics": {
+    "totalExecutions": 18420,
+    "successRate": 0.982,
+    "averageLatencyMs": 1420,
+    "p95LatencyMs": 3100,
+    "p99LatencyMs": 5200,
+    "averageCost": 0.028,
+    "totalCost": 515.76,
+    "currency": "USD",
+    "lastExecutionAt": 1779667200000
+  },
+  "qualityMetrics": {
+    "answerRelevancy": 0.89,
+    "contextPrecision": 0.84,
+    "faithfulness": 0.91,
+    "hallucinationRate": 0.035
+  },
+  "safetyMetrics": {
+    "piiLeakageRate": 0.001,
+    "harmfulContentRate": 0,
+    "promptInjectionAttempts": 14,
+    "blockedRequests": 14
+  },
+  "sourceCode": "https://github.example.com/ai/claims-triage-copilot",
+  "deploymentUrl": "https://claims-copilot.internal.example.com",
+  "documentation": "https://governance.example.com/apps/claims-triage-copilot"
+}

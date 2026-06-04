@@ -1,0 +1,6 @@
+{
+  "name": "shadow-detected",
+  "displayName": "Shadow-detected providers",
+  "description": "Placeholder LLM service for AI assets auto-discovered through outbound API traffic, SSO logs, or SaaS connector audits. Real models behind these endpoints are unknown until the asset is registered.",
+  "serviceType": "CustomLLM"
+}

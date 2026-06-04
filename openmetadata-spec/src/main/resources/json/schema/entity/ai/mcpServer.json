@@ -255,6 +255,21 @@
           "$ref": "../../type/aiCompliance.json",
           "description": "AI compliance assessments for various regulatory frameworks (EU AI Act, NIST AI RMF, etc.)"
         },
+        "detection": {
+          "$ref": "../../type/aiCompliance.json#/definitions/aiDetection",
+          "description": "Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs, connector audits, etc. Populated for assets that were not registered through the intake wizard."
+        },
+        "evidence": {
+          "$ref": "../../type/aiCompliance.json#/definitions/aiEvidence",
+          "description": "Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)"
+        },
+        "remediationActions": {
+          "type": "array",
+          "description": "Structured remediation actions with assignee, due date, priority, and status. Replaces the legacy string-array remediationRequired on each AIComplianceRecord.",
+          "items": {
+            "$ref": "../../type/aiCompliance.json#/definitions/remediationAction"
+          }
+        },
         "intakeNotes": {
           "type": "string",
           "description": "Notes from AI governance intake form or review process"

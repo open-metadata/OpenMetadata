@@ -18,16 +18,6 @@
             "om_stemmer"
           ]
         },
-        "om_analyzer_jp": {
-          "tokenizer": "kuromoji_tokenizer",
-          "type": "custom",
-          "filter": [
-            "kuromoji_baseform",
-            "kuromoji_part_of_speech",
-            "kuromoji_number",
-            "kuromoji_stemmer"
-          ]
-        },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
@@ -65,8 +55,8 @@
       "tokenizer": {
         "n_gram_tokenizer": {
           "type": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 2,
+          "max_gram": 3,
           "token_chars": [
             "letter",
             "digit"
@@ -97,7 +87,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -120,7 +110,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -143,7 +133,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
+        "analyzer": "om_analyzer",
         "similarity": "boolean",
         "term_vector": "with_positions_offsets"
       },
@@ -703,6 +693,69 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiGovernance": {
+        "type": "object",
+        "properties": {
+          "assetSubtype": {
+            "type": "keyword"
+          },
+          "registrationStatus": {
+            "type": "keyword"
+          },
+          "riskLevel": {
+            "type": "keyword"
+          },
+          "accessesPii": {
+            "type": "boolean"
+          },
+          "accessesSensitiveData": {
+            "type": "boolean"
+          },
+          "dataCategories": {
+            "type": "keyword"
+          },
+          "detection": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "suspectedTeam": {
+                "type": "keyword"
+              },
+              "detectedAt": {
+                "type": "date",
+                "format": "strict_date_optional_time||epoch_millis"
+              },
+              "flags": {
+                "type": "keyword"
+              }
+            }
+          },
+          "complianceStatus": {
+            "type": "flattened"
+          },
+          "frameworks": {
+            "type": "keyword"
+          },
+          "euRiskClassification": {
+            "type": "keyword"
+          },
+          "regions": {
+            "type": "keyword"
+          },
+          "lastAssessedAt": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "affectedUserCount": {
+            "type": "integer"
+          }
+        }
       }
     }
   }
