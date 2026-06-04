@@ -328,12 +328,12 @@
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
-        <artifactId>dropwizard-client</artifactId>
+        <artifactId>dropwizard-http2</artifactId>
         <version>${dropwizard.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
-        <artifactId>dropwizard-http2</artifactId>
+        <artifactId>dropwizard-client</artifactId>
         <version>${dropwizard.version}</version>
       </dependency>
       <dependency>

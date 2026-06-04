@@ -26,7 +26,7 @@ const mockRelatedDataAssets = [
 ];
 const mockOnRelatedDataAssetsUpdate = jest.fn();
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity.displayName || entity.name),
