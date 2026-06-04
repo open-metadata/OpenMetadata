@@ -30,18 +30,19 @@ import {
   removeDuplicateTags,
 } from './EntityVersionUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { safeJsonParseStrict } from './jsonUtils';
 
 const handleFeatureDescriptionChangeDiff = (
   colList: Mlmodel['mlFeatures'],
   oldDiffs: MlFeature[],
-  newDiffs: MlFeature[]
+  newDiffs: MlFeature[],
 ) => {
   colList?.forEach((i) => {
     newDiffs.forEach((newDiff, index) => {
       if (isEqual(i.name, newDiff.name)) {
         i.description = getTextDiff(
           oldDiffs[index]?.description ?? '',
-          newDiff.description ?? ''
+          newDiff.description ?? '',
         );
       }
     });
@@ -51,7 +52,7 @@ const handleFeatureDescriptionChangeDiff = (
 const handleFeatureTagChangeDiff = (
   colList: Mlmodel['mlFeatures'],
   oldDiffs: MlFeature[],
-  newDiffs: MlFeature[]
+  newDiffs: MlFeature[],
 ) => {
   colList?.forEach((i) => {
     newDiffs.forEach((newDiff, index) => {
@@ -60,11 +61,11 @@ const handleFeatureTagChangeDiff = (
         const uniqueTags: Array<TagLabelWithStatus> = [];
         const oldTag = removeDuplicateTags(
           oldDiffs[index].tags ?? [],
-          newDiff.tags ?? []
+          newDiff.tags ?? [],
         );
         const newTag = removeDuplicateTags(
           newDiff.tags ?? [],
-          oldDiffs[index].tags ?? []
+          oldDiffs[index].tags ?? [],
         );
         const tagsDiff = getTagsDiff(oldTag, newTag);
 
@@ -74,7 +75,7 @@ const handleFeatureTagChangeDiff = (
               flag[elem.tagFQN] = true;
               uniqueTags.push(elem);
             }
-          }
+          },
         );
         i.tags = uniqueTags;
       }
@@ -84,22 +85,28 @@ const handleFeatureTagChangeDiff = (
 
 export const getMlFeatureVersionData = (
   currentVersionData: VersionData,
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
 ): Mlmodel['mlFeatures'] => {
   const featureList = cloneDeep(
-    (currentVersionData as Mlmodel).mlFeatures ?? []
+    (currentVersionData as Mlmodel).mlFeatures ?? [],
   );
   const featuresDiff = getAllDiffByFieldName(
     EntityField.ML_FEATURES,
-    changeDescription
+    changeDescription,
   );
   const changedEntities = getAllChangedEntityNames(featuresDiff);
 
   changedEntities.forEach((changedField) => {
     if (changedField === EntityField.ML_FEATURES) {
       const featureDiff = getDiffByFieldName(changedField, changeDescription);
-      const oldDiff = JSON.parse(getChangedEntityOldValue(featureDiff) ?? '[]');
-      const newDiff = JSON.parse(getChangedEntityNewValue(featureDiff) ?? '[]');
+      const oldDiff = safeJsonParseStrict<MlFeature[]>(
+        getChangedEntityOldValue(featureDiff),
+        [],
+      );
+      const newDiff = safeJsonParseStrict<MlFeature[]>(
+        getChangedEntityNewValue(featureDiff),
+        [],
+      );
 
       handleFeatureDescriptionChangeDiff(featureList, oldDiff, newDiff);
 

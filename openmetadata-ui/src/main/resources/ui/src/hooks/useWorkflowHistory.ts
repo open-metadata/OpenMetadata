@@ -34,8 +34,8 @@ export const useWorkflowHistory = ({
   const saveState = useCallback(
     (nodes: Node[], edges: Edge[], action = 'Unknown Action') => {
       const newState: WorkflowState = {
-        nodes: JSON.parse(JSON.stringify(nodes)),
-        edges: JSON.parse(JSON.stringify(edges)),
+        nodes: structuredClone(nodes),
+        edges: structuredClone(edges),
         timestamp: Date.now(),
         action,
       };
@@ -57,7 +57,7 @@ export const useWorkflowHistory = ({
         return newIndex;
       });
     },
-    [currentIndex, maxHistorySize]
+    [currentIndex, maxHistorySize],
   );
 
   const undo = useCallback((): WorkflowState | null => {

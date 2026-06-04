@@ -18,12 +18,13 @@ import {
   RuleType,
 } from '../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { tryParseJson } from './jsonUtils';
 
 /**
  * Parse a rule string into a structured object
  */
 export const parseRule = (rule: EntityRule): ParsedRule => {
-  const ruleObj = JSON.parse(rule.rule);
+  const ruleObj = tryParseJson<Record<string, unknown>>(rule.rule) ?? {};
 
   // Determine rule type from the parsed object
   let ruleType = 'custom';
@@ -62,7 +63,7 @@ export const parseRule = (rule: EntityRule): ParsedRule => {
  */
 export const getEntityRulesValidation = (
   rules: ParsedRule[],
-  entityType: EntityType
+  entityType: EntityType,
 ) => {
   const hints: DataAssetRuleValidation = {
     canAddMultipleUserOwners: true,

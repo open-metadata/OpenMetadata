@@ -12,6 +12,7 @@
  */
 import { mergeAttributes, Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import { tryParseJson } from '../../../utils/jsonUtils';
 import { FileNodeAttrs, FileNodeOptions } from './FileNode.interface';
 import FileNodeView from './FileNodeView';
 
@@ -74,7 +75,7 @@ const FileNode = Node.create<FileNodeOptions>({
             mimeType,
             isUploading,
             uploadProgress: uploadProgress ? parseInt(uploadProgress) : 0,
-            tempFile: tempFile ? JSON.parse(tempFile) : null,
+            tempFile: tempFile ? tryParseJson(tempFile) : null,
             isImage,
             alt,
           };
