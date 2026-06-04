@@ -95,6 +95,9 @@ public class DistributedSearchIndexExecutor {
   /** Interval for updating partition heartbeats */
   private static final long PARTITION_HEARTBEAT_INTERVAL_MS = 30000;
 
+  /** Interval the orchestrator re-checks job state while waiting for workers to finish */
+  private static final long LATCH_POLL_INTERVAL_SECONDS = 5;
+
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
   private final JobRecoveryManager recoveryManager;
@@ -476,8 +479,7 @@ public class DistributedSearchIndexExecutor {
             .start(() -> runStaleReclaimerLoop(jobId));
 
     try {
-      // Wait for all workers to complete
-      workerLatch.await();
+      awaitWorkers(workerLatch, jobId);
       LOG.info("All workers completed for job {}", jobId);
 
       // Ensure job completion is checked after all workers finish.
@@ -926,6 +928,39 @@ public class DistributedSearchIndexExecutor {
     } catch (Exception e) {
       LOG.error("Error marking job {} as failed", jobId, e);
     }
+  }
+
+  /**
+   * Wait for all workers to finish, re-checking job state on each poll so the orchestrator
+   * thread cannot hang indefinitely on {@code workerLatch.await()}.
+   *
+   * <p>A healthy reindex can legitimately run for hours, so there is no wall-clock cap: while the
+   * job keeps progressing it is never terminal and this simply keeps waiting. But once the job
+   * reaches a terminal/STOPPING state (lock lost, stop requested, or recovered/failed by another
+   * pod), a worker wedged inside a single partition on an unresponsive search backend would
+   * otherwise never count down the latch — leaving the Quartz execution thread stuck and blocking
+   * every retrigger with "Job is already running". On terminal state we force {@link #stop()}
+   * (which interrupts wedged workers via {@code shutdownNow}) and return; the caller's {@code
+   * finally} performs the bounded drain ({@code awaitTermination} + sink flush).
+   */
+  private void awaitWorkers(CountDownLatch workerLatch, UUID jobId) throws InterruptedException {
+    boolean completed = false;
+    while (!completed) {
+      completed = workerLatch.await(LATCH_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+      if (!completed && isJobTerminalOrStopping(jobId)) {
+        LOG.warn(
+            "Job {} is terminal/stopping but workers have not drained; forcing executor "
+                + "shutdown so the orchestrator can unwind",
+            jobId);
+        stop();
+        completed = true;
+      }
+    }
+  }
+
+  private boolean isJobTerminalOrStopping(UUID jobId) {
+    SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+    return job == null || job.isTerminal() || job.getStatus() == IndexJobStatus.STOPPING;
   }
 
   /**
