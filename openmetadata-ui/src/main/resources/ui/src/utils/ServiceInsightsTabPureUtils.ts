@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
-import {
-  first,
-  isEmpty,
-  isNil,
-  last,
-  round,
-  sortBy,
-  toLower,
-} from 'lodash';
+import { first, isEmpty, isNil, last, round, sortBy, toLower } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import type { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
-  type IngestionPipeline,
   ProviderType,
+  type IngestionPipeline,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import type { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import Fqn from './Fqn';

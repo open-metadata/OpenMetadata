@@ -26,7 +26,6 @@ export {
   getPlatformInsightsChartDataFormattingMethod,
   getTitleByChartType,
 } from './ServiceInsightsTabPureUtils';
-
 export { getServiceInsightsWidgetPlaceholder } from './ServiceInsightsWidgets';
 
 export const getFormattedTotalAssetsDataFromSocketData = (

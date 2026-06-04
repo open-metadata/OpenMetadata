@@ -13,9 +13,7 @@
 
 import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
-import {
-  GlobalSettingsMenuCategory,
-} from '../constants/GlobalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   ADMONITION_BLOCK_REGEX,
   MARKDOWN_MATCH_ID,
