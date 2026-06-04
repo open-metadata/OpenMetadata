@@ -641,6 +641,10 @@ public class OsUtils {
                   LOG.debug(
                       "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
                 }
+                // OpenSearch's boolean type does not support ignore_malformed (Elasticsearch does)
+                if (typeNode != null && "boolean".equals(typeNode.asText())) {
+                  fieldObj.remove("ignore_malformed");
+                }
 
                 // Recurse into nested properties
                 JsonNode nestedProps = fieldObj.get("properties");
