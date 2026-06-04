@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -357,6 +358,12 @@ public class AppScheduler {
    * deployment. If two pods race, the recovery {@code scheduleJob} may itself collide; we treat that
    * second collision as "another pod won" and rethrow so the caller reports the standard message
    * rather than deleting a job the other pod just scheduled.
+   *
+   * <p>"Active" is defined by {@link #TERMINAL_RUN_STATUSES}: any non-terminal status (including
+   * {@code ACTIVE_ERROR}, which is in-flight — set by apps that are still progressing and only
+   * normalized to {@code FAILED} when the run actually finishes) is treated as a live run we must
+   * not clear. Erring toward "active" is deliberate: leaving a stale entry is recoverable, while
+   * deleting a job another pod is genuinely running risks a duplicate/disrupted execution.
    */
   private void scheduleOnDemandJob(
       App application,
@@ -380,6 +387,14 @@ public class AppScheduler {
     }
   }
 
+  /** Statuses that mean a run has finished; anything else (incl. ACTIVE_ERROR) is in-flight. */
+  private static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
+      Set.of(
+          AppRunRecord.Status.SUCCESS,
+          AppRunRecord.Status.FAILED,
+          AppRunRecord.Status.STOPPED,
+          AppRunRecord.Status.COMPLETED);
+
   private boolean hasActiveAppRun(App application) {
     boolean active;
     try {
@@ -388,8 +403,7 @@ public class AppScheduler {
               .getLatestAppRunsOptional(application)
               .map(
                   run ->
-                      run.getStatus() != null
-                          && !OmAppJobListener.isTerminalStatus(run.getStatus()))
+                      run.getStatus() != null && !TERMINAL_RUN_STATUSES.contains(run.getStatus()))
               .orElse(false);
     } catch (Exception e) {
       LOG.warn(

@@ -79,7 +79,7 @@ public class OmAppJobListener implements JobListener {
     }
   }
 
-  public static boolean isTerminalStatus(AppRunRecord.Status status) {
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
     return switch (status) {
       case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
       default -> false;

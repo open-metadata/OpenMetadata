@@ -346,16 +346,14 @@ class AppSchedulerTest {
   }
 
   @Test
-  void testNonConcurrentApp_treatsActiveErrorRunAsStale() throws Exception {
+  void testNonConcurrentApp_treatsActiveErrorRunAsActive() throws Exception {
     AppScheduler appScheduler = createSchedulerWithMock();
     App app = nonConcurrentApp("SearchIndexApp");
-    String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
 
     when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
-        .thenThrow(new ObjectAlreadyExistsException("stale"))
-        .thenReturn(null);
+        .thenThrow(new ObjectAlreadyExistsException("running"));
 
     AppRunRecord erroredRun = new AppRunRecord().withStatus(AppRunRecord.Status.ACTIVE_ERROR);
     try (MockedConstruction<AppRepository> ignored =
@@ -364,11 +362,12 @@ class AppSchedulerTest {
             (repo, context) ->
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(erroredRun)))) {
-      appScheduler.triggerOnDemandApplication(app, new HashMap<>());
+      assertThrows(
+          UnhandledServerException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
-    verify(mockScheduler).deleteJob(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP));
-    verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
   }
 
   @Test
