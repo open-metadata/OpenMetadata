@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import {type ArrayChange, diffArrays } from 'diff';
+import { diffArrays, type ArrayChange } from 'diff';
 import {
   cloneDeep,
   isEmpty,

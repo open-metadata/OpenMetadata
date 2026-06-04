@@ -17,8 +17,8 @@
  * Pure entity diff accessors live in EntityDiffPureUtils.ts.
  */
 
-import { diffWords, diffWordsWithSpace } from 'diff';
 import type { Change } from 'diff';
+import { diffWords, diffWordsWithSpace } from 'diff';
 import { isEmpty, isObject, toString, uniqueId } from 'lodash';
 import type { ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';

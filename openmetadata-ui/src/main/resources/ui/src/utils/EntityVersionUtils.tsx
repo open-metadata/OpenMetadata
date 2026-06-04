@@ -13,8 +13,8 @@
 
 import { Divider, Space, Typography } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
-import { Fragment, lazy } from 'react';
 import type { ReactNode } from 'react';
+import { Fragment, lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';

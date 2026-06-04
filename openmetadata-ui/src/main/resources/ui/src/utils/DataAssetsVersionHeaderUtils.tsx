@@ -22,7 +22,10 @@ import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
 import type { Dashboard } from '../generated/entity/data/dashboard';
-import type { Metric, UnitOfMeasurement } from '../generated/entity/data/metric';
+import type {
+  Metric,
+  UnitOfMeasurement,
+} from '../generated/entity/data/metric';
 import type { Pipeline } from '../generated/entity/data/pipeline';
 import type { Topic } from '../generated/entity/data/topic';
 import type { ChangeDescription } from '../generated/entity/type';
