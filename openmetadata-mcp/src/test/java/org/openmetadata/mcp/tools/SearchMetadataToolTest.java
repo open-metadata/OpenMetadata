@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -247,5 +249,61 @@ class SearchMetadataToolTest {
     Response mockResponse = mock(Response.class);
     when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
     when(searchRepository.search(any(), any(SubjectContext.class))).thenReturn(mockResponse);
+  }
+
+  @Test
+  void testResultsIncludeSimilarityScoreFromScore() {
+    Map<String, Object> searchResponse =
+        searchResponseWith(buildHit(12.5, "db.schema.users"), buildHit(8.0, "db.schema.orders"));
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "users", 10, List.of(), false, 0);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(2, results.size());
+    assertEquals(12.5, results.get(0).get("similarityScore"));
+    assertEquals(8.0, results.get(1).get("similarityScore"));
+  }
+
+  @Test
+  void testResultOmitsSimilarityScoreWhenScoreMissing() {
+    Map<String, Object> hit = new HashMap<>();
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "table");
+    source.put("fullyQualifiedName", "db.schema.users");
+    hit.put("_source", source);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponseWith(hit), "users", 10, List.of(), false, 0);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(1, results.size());
+    assertFalse(results.get(0).containsKey("similarityScore"));
+  }
+
+  private Map<String, Object> buildHit(double score, String fqn) {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "table");
+    source.put("fullyQualifiedName", fqn);
+
+    Map<String, Object> hit = new HashMap<>();
+    hit.put("_score", score);
+    hit.put("_source", source);
+    return hit;
+  }
+
+  @SafeVarargs
+  private final Map<String, Object> searchResponseWith(Map<String, Object>... hits) {
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", List.of(hits));
+    hitsContainer.put("total", Map.of("value", hits.length));
+
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+    return searchResponse;
   }
 }

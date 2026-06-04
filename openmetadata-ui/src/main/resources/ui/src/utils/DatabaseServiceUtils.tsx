@@ -222,10 +222,6 @@ const databaseSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/database/burstIQConnection.json'
     ),
-  [DatabaseServiceType.MicrosoftFabric]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/database/microsoftFabricConnection.json'
-    ),
   [DatabaseServiceType.Iomete]: () =>
     import(
       '../jsons/connectionSchemas/connections/database/iometeConnection.json'
