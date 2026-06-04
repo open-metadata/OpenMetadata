@@ -1401,8 +1401,13 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
+                test_definition_name = (
+                    manifest_node.test_metadata.name
+                    if hasattr(manifest_node, "test_metadata") and manifest_node.test_metadata
+                    else manifest_node.name
+                )
                 check_test_definition_exists = self.metadata.get_by_name(
-                    fqn=manifest_node.name,
+                    fqn=test_definition_name,
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
@@ -1411,7 +1416,7 @@ class DbtSource(DbtServiceSource):
                         entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
-                            name=manifest_node.name,
+                            name=test_definition_name,
                             description=manifest_node.description,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
@@ -1455,12 +1460,16 @@ class DbtSource(DbtServiceSource):
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
                     if test_case is None:
-                        # Create the test case only if it does not exist
+                        test_definition_name = (
+                            manifest_node.test_metadata.name
+                            if hasattr(manifest_node, "test_metadata") and manifest_node.test_metadata
+                            else manifest_node.name
+                        )
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(manifest_node.name),
+                                testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
