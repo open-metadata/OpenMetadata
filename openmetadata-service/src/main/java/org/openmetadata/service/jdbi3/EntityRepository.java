@@ -196,8 +196,11 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TaskType;
@@ -252,6 +255,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -8159,16 +8163,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDisplayName())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Mirror updateDescription: a bot PUT (for example bulk ingestion) must not clobber a
-        // user-curated displayName. Use a PATCH or overrideMetadata=true to change it.
+      // A bot whose policy denies EditDisplayName (e.g. the ingestion bot via DefaultBotPolicy /
+      // IngestionBotPolicy) must not clobber a user-curated displayName. A PUT or bulk update
+      // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
+      // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
+      // identity attributes through the repository - fall through and update it. A bulk force-sync
+      // (overrideMetadata=true) also bypasses this guard.
+      boolean preserveUserDisplayName =
+          updatedByBot()
+              && !nullOrEmpty(original.getDisplayName())
+              && !overrideMetadata
+              && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+              && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
+      if (preserveUserDisplayName) {
         updated.setDisplayName(original.getDisplayName());
-        return;
+      } else {
+        recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
       }
-      recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
     private void updateEntityStatus(boolean consolidatingChanges) {
@@ -9377,6 +9388,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final boolean updatedByBot() {
       return Boolean.TRUE.equals(updatingUser.getIsBot());
+    }
+
+    /**
+     * Whether the bot performing this update is denied {@code operation} by policy. A PUT or bulk
+     * update authorizes with the coarse EDIT_ALL operation, which does not intersect a field-level
+     * deny (e.g. DisplayName-Deny on the ingestion bot), so callers re-apply the field-level check
+     * here. Returns false for users the policy does not explicitly deny (including the SCIM bot).
+     */
+    private boolean updatingBotDeniedOperation(MetadataOperation operation) {
+      boolean denied = false;
+      if (updatingUser != null) {
+        SubjectContext subjectContext = SubjectContext.getSubjectContext(updatingUser.getName());
+        ResourcePermission permission = PolicyEvaluator.getPermission(subjectContext, entityType);
+        denied =
+            permission.getPermissions().stream()
+                .anyMatch(
+                    p ->
+                        operation.equals(p.getOperation())
+                            && Permission.Access.DENY.equals(p.getAccess()));
+      }
+      return denied;
     }
 
     @VisibleForTesting

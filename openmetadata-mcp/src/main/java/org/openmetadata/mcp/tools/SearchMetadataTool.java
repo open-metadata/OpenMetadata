@@ -87,7 +87,13 @@ public class SearchMetadataTool implements McpTool {
           "columnNamesFuzzy",
           "descriptionStatus",
           "domains",
-          "embeddings");
+          "embeddings",
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "chunkCount",
+          "chunkIndex");
 
   @Override
   public Map<String, Object> execute(
@@ -297,6 +303,9 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
+        if (hit.containsKey("_score")) {
+          cleanedSource.put("similarityScore", hit.get("_score"));
+        }
         cleanedResults.add(cleanedSource);
       }
     }

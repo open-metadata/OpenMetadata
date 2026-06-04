@@ -15,7 +15,7 @@ import { FC, useCallback, useMemo } from 'react';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';
 import MUIAsyncTreeSelect from '../MUIAsyncTreeSelect/MUIAsyncTreeSelect';
 import { MUIDomainSelectProps } from './MUIDomainSelect.interface';

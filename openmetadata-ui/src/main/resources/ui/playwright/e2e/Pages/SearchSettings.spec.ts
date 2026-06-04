@@ -299,6 +299,118 @@ test.describe('Search Settings', () => {
     });
   });
 
+  test.describe(
+    'Search Preview Consistency Tests',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      test.beforeEach(async ({ page }) => {
+        await redirectToHomePage(page);
+      });
+
+      test.afterEach(async ({ page }) => {
+        await restoreDefaultSearchSettings(page);
+      });
+
+      test('Preview config reflects reverted n-gram weight after save', async ({
+        page,
+      }) => {
+        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+
+        // Register waitForResponse BEFORE the click so the on-load preview
+        // request is captured rather than missed.
+        const initialPreviewPromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/search/preview')
+        );
+
+        await tableCard.click();
+
+        await expect(page).toHaveURL(
+          new RegExp(mockEntitySearchSettings.url + '$')
+        );
+        await waitForAllLoadersToDisappear(page);
+
+        // Capture the initial preview request to read original n-gram boost.
+        const initialPreviewResponse = await initialPreviewPromise;
+        expect(initialPreviewResponse.status()).toBe(200);
+        const initialBody = initialPreviewResponse.request().postDataJSON();
+
+        const initialNgramBoost =
+          initialBody?.searchSettings?.assetTypeConfigurations
+            ?.find((c: { assetType: string }) => c.assetType === 'table')
+            ?.searchFields?.find(
+              (f: { field: string }) => f.field === 'name.ngram'
+            )?.boost ?? 0;
+
+        // Expand the name.ngram field configuration panel.
+        const ngramPanel = page.getByTestId(
+          'field-configuration-panel-name.ngram'
+        );
+        await ngramPanel.click();
+
+        // Change n-gram weight to 5 and save.
+        await setSliderValue(page, 'field-weight-slider', 5);
+
+        const saveResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/system/settings') &&
+            r.request().method() === 'PUT'
+        );
+        await page.getByTestId('save-btn').click();
+        await saveResponse;
+        await toastNotification(page, /Search Settings updated successfully/);
+
+        // Revert n-gram weight back to its original value.
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+
+        // Wait for the preview to re-fetch with the reverted config.
+        const revertedPreviewResponse = await page.waitForResponse((r) =>
+          r.url().includes('/api/v1/search/preview')
+        );
+        expect(revertedPreviewResponse.status()).toBe(200);
+        const revertedBody = revertedPreviewResponse.request().postDataJSON();
+
+        const revertedNgramBoost =
+          revertedBody?.searchSettings?.assetTypeConfigurations
+            ?.find((c: { assetType: string }) => c.assetType === 'table')
+            ?.searchFields?.find(
+              (f: { field: string }) => f.field === 'name.ngram'
+            )?.boost ?? 0;
+
+        // The reverted preview must use the original n-gram boost value.
+        expect(revertedNgramBoost).toBe(initialNgramBoost);
+      });
+
+      test('Preview config updates when restore defaults returns empty search fields', async ({
+        page,
+      }) => {
+        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+        await tableCard.click();
+
+        await expect(page).toHaveURL(
+          new RegExp(mockEntitySearchSettings.url + '$')
+        );
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByTestId('restore-defaults-btn').click();
+        await toastNotification(page, /Search Settings restored successfully/);
+
+        // Reload so the page re-fetches the restored config and triggers preview.
+        const previewPromise = page.waitForResponse('/api/v1/search/preview');
+        await page.reload();
+        const previewResponse = await previewPromise;
+        await waitForAllLoadersToDisappear(page);
+
+        const body = previewResponse.request().postDataJSON();
+
+        // After restore the preview API must be called — body must be present.
+        expect(body).not.toBeNull();
+        expect(body?.searchSettings?.assetTypeConfigurations).toBeDefined();
+      });
+    }
+  );
+
   test.describe('Column Search Settings Tests', () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
