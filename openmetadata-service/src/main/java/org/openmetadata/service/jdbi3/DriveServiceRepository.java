@@ -217,7 +217,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   List.of(
                       Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(5, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 6))
+          .withDomains(getDomains(printer, csvRecord, 6, directory.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 7));
 
       if (processRecord) {

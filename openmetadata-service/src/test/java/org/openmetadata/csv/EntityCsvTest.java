@@ -1843,7 +1843,7 @@ public class EntityCsvTest {
                   Entity.getEntityByNameWithExcludedFields(
                       Entity.TABLE,
                       tableFqn,
-                      "owners,tags,domains,extension",
+                      "owners,tags,extension",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(org.openmetadata.service.exception.EntityNotFoundException.byName(tableFqn));
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
@@ -2965,6 +2965,10 @@ public class EntityCsvTest {
     assertEquals(0, scenario.testCsv().importResult.getNumberOfRowsFailed());
     assertEquals(1, scenario.testCsv().importResult.getNumberOfRowsPassed());
     assertEquals(ENTITY_UPDATED, scenario.testCsv().pendingCsvResults.get(scenario.csvRecord()));
+    assertTrue(
+        scenario.updatedEntity().getDomains() == null
+            || scenario.updatedEntity().getDomains().isEmpty(),
+        "Inherited domain must be dropped before persistence, not materialized as a direct domain");
   }
 
   @Test
@@ -2983,7 +2987,10 @@ public class EntityCsvTest {
   }
 
   private record DataProductImportScenario(
-      TestCsv testCsv, CSVRecord csvRecord, EntityRepository<EntityInterface> repository) {}
+      TestCsv testCsv,
+      CSVRecord csvRecord,
+      EntityRepository<EntityInterface> repository,
+      Table updatedEntity) {}
 
   /**
    * Simulates the importer state after the fix: the entity reaching rule evaluation carries the
@@ -3055,7 +3062,7 @@ public class EntityCsvTest {
 
       testCsv.queueEntity(csvRecord, updatedEntity);
     }
-    return new DataProductImportScenario(testCsv, csvRecord, repository);
+    return new DataProductImportScenario(testCsv, csvRecord, repository, updatedEntity);
   }
 
   private static SemanticsRule dataProductDomainValidationRule() {
