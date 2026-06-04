@@ -20,8 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -440,9 +443,226 @@ public class ColumnSearchIndexIT {
     }
   }
 
+  @Nested
+  @DisplayName("Column Search Operator.AND Tests")
+  @Execution(ExecutionMode.CONCURRENT)
+  class ColumnSearchAndOperatorTests {
+
+    /**
+     * Regression for github.com/open-metadata/openmetadata-collate/issues/3851. Before the fix the
+     * column builder used {@code Operator.OR} with {@code minimum_should_match=0}; {@code
+     * om_analyzer} splits {@code first_name} into {@code [first, name]} and a single sub-token
+     * match anywhere was enough. As a result a query for {@code <tag>_first_name} also returned
+     * {@code <tag>_first_id} (only {@code first} overlaps) and {@code <tag>_last_name} (only {@code
+     * name} overlaps), flooding the column results pane with false positives. The fix switches the
+     * column multi_match to {@code Operator.AND} so every analyzer sub-token must match somewhere.
+     */
+    @Test
+    @DisplayName("Column query must require every analyzer sub-token to match somewhere")
+    void testColumnSearchRequiresAllSubtokensToMatch(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+      String tag = ns.shortPrefix();
+      Table table = createTableWithSubtokenDecoyColumns(ns, "subtoken_" + tag, tag);
+      assertNotNull(table);
+
+      String firstNameColumn = tag + "_first_name";
+      String firstIdColumn = tag + "_first_id";
+      String lastNameColumn = tag + "_last_name";
+
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(() -> columnNamesMatchingQuery(client, firstNameColumn).contains(firstNameColumn));
+
+      Set<String> hits = columnNamesMatchingQuery(client, firstNameColumn);
+
+      assertTrue(
+          hits.contains(firstNameColumn),
+          "Query " + firstNameColumn + " must match the column with the same name; got " + hits);
+      assertFalse(
+          hits.contains(firstIdColumn),
+          "Query "
+              + firstNameColumn
+              + " must not match column "
+              + firstIdColumn
+              + " (only the 'first' sub-token overlaps); got "
+              + hits);
+      assertFalse(
+          hits.contains(lastNameColumn),
+          "Query "
+              + firstNameColumn
+              + " must not match column "
+              + lastNameColumn
+              + " (only the 'name' sub-token overlaps); got "
+              + hits);
+    }
+
+    /**
+     * Regression for the user-visible mismatch in the Explore search bar: the left-pane
+     * entity-type count (from {@code index=dataAsset&size=0}) and the right-pane result count
+     * (from {@code index=tableColumn}) diverged because the column builder over-matched on single
+     * sub-tokens. After the fix both routes apply the same sub-token-AND semantics, so the
+     * tableColumn aggregation bucket and the tableColumn index total must agree.
+     */
+    @Test
+    @DisplayName(
+        "Aggregation bucket for tableColumn under dataAsset must match index=tableColumn total")
+    void testTableColumnAggregationMatchesIndexTotal(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+      String tag = ns.shortPrefix();
+      Table table = createTableWithSubtokenDecoyColumns(ns, "agg_parity_" + tag, tag);
+      assertNotNull(table);
+
+      String query = tag + "_first_name";
+
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(() -> tableColumnIndexTotal(client, query) >= 1);
+
+      long indexTotal = tableColumnIndexTotal(client, query);
+      long aggBucketCount = dataAssetBucketCount(client, query, "tableColumn");
+
+      assertTrue(indexTotal >= 1, "Seeded column " + query + " should match index=tableColumn");
+      assertEquals(
+          indexTotal,
+          aggBucketCount,
+          "dataAsset aggregation tableColumn bucket ("
+              + aggBucketCount
+              + ") must match index=tableColumn total ("
+              + indexTotal
+              + ") for query \""
+              + query
+              + "\"");
+    }
+
+    /**
+     * Guards against regressing the single-token query path: when the query has only one analyzer
+     * sub-token, AND is equivalent to OR (there is nothing to AND with), so columns containing
+     * that token in any searchable field must still surface.
+     */
+    @Test
+    @DisplayName("Single-token query still returns every column containing that token")
+    void testSingleTokenQueryStillReturnsAllMatchingColumns(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+      String tag = ns.shortPrefix();
+      Table table = createTableWithSubtokenDecoyColumns(ns, "single_tok_" + tag, tag);
+      assertNotNull(table);
+
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(() -> columnNamesMatchingQuery(client, tag).size() >= SUBTOKEN_SEED_COUNT);
+
+      Set<String> hits = columnNamesMatchingQuery(client, tag);
+
+      assertTrue(
+          hits.contains(tag + "_first_name"),
+          "Single-token query must surface " + tag + "_first_name; got " + hits);
+      assertTrue(
+          hits.contains(tag + "_first_id"),
+          "Single-token query must surface " + tag + "_first_id; got " + hits);
+      assertTrue(
+          hits.contains(tag + "_last_name"),
+          "Single-token query must surface " + tag + "_last_name; got " + hits);
+    }
+
+    private Set<String> columnNamesMatchingQuery(OpenMetadataClient client, String query)
+        throws Exception {
+      String response = client.search().query(query).index("tableColumn").size(50).execute();
+      JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+      Set<String> names = new HashSet<>();
+      for (JsonNode hit : hits) {
+        String name = hit.path("_source").path("name").asText("");
+        if (!name.isEmpty()) {
+          names.add(name);
+        }
+      }
+      return names;
+    }
+
+    private long tableColumnIndexTotal(OpenMetadataClient client, String query) throws Exception {
+      String response =
+          client.search().query(query).index("tableColumn").size(0).trackTotalHits().execute();
+      return OBJECT_MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
+    }
+
+    private long dataAssetBucketCount(OpenMetadataClient client, String query, String entityType)
+        throws Exception {
+      String response =
+          client
+              .search()
+              .query(query)
+              .index("dataAsset")
+              .size(0)
+              .includeAggregations(true)
+              .trackTotalHits()
+              .execute();
+      JsonNode aggregations = OBJECT_MAPPER.readTree(response).path("aggregations");
+      JsonNode buckets = aggregations.path("sterms#entityType").path("buckets");
+      if (buckets.isMissingNode() || !buckets.isArray()) {
+        buckets = aggregations.path("entityType").path("buckets");
+      }
+      for (JsonNode bucket : buckets) {
+        if (entityType.equals(bucket.path("key").asText(""))) {
+          return bucket.path("doc_count").asLong(0);
+        }
+      }
+      return 0;
+    }
+  }
+
+  private static final int SUBTOKEN_SEED_COUNT = 3;
+
   // ===================================================================
   // HELPER METHODS
   // ===================================================================
+
+  private Table createTableWithSubtokenDecoyColumns(TestNamespace ns, String baseName, String tag) {
+    String shortId = ns.shortPrefix();
+
+    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    DatabaseService dbService =
+        DatabaseServices.builder()
+            .name("subtok_svc_" + shortId + "_" + baseName)
+            .connection(conn)
+            .description("Test service for column subtoken AND tests")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("subtok_db_" + shortId + "_" + baseName);
+    dbReq.setService(dbService.getFullyQualifiedName());
+    Database database = SdkClients.adminClient().databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("subtok_schema_" + shortId + "_" + baseName);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix(baseName));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(
+            new Column()
+                .withName(tag + "_first_name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255)
+                .withDescription("First name"),
+            new Column()
+                .withName(tag + "_first_id")
+                .withDataType(ColumnDataType.INT)
+                .withDescription("Decoy: shares only the 'first' sub-token with first_name"),
+            new Column()
+                .withName(tag + "_last_name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255)
+                .withDescription("Decoy: shares only the 'name' sub-token with first_name")));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
 
   private Table createTableWithColumns(TestNamespace ns, String baseName) {
     String shortId = ns.shortPrefix();

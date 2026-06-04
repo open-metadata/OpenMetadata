@@ -380,7 +380,7 @@ public class ElasticSearchSourceBuilderFactory
               query,
               fields,
               es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
-              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
               String.valueOf(DEFAULT_TIE_BREAKER),
               "0");
     }
