@@ -279,7 +279,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             />
           ) : (
             <Typography
-              className="tw:text-gray-700"
+              className="tw:text-gray-400"
               data-testid="owner-name"
               size="text-xs"
               weight="medium">
