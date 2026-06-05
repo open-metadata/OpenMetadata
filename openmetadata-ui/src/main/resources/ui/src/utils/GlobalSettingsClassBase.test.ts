@@ -24,13 +24,6 @@ jest.mock('./i18next/LocalUtil', () => ({
   t: jest.fn((key: string) => key),
 }));
 
-jest.mock('./BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn(() => 'OpenMetadata'),
-  },
-}));
-
 jest.mock('./PermissionsUtils', () => ({
   ...jest.requireActual('./PermissionsUtils'),
   userPermissions: {

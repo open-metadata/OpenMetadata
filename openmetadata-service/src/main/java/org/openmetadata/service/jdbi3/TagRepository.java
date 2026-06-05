@@ -609,9 +609,13 @@ public class TagRepository extends EntityRepository<Tag> {
     super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+      EntityReference originalRef = original.getEntityReference();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
+          "reindexAcrossIndices",
+          originalRef.getId() != null ? originalRef.getId().toString() : null,
+          originalRef.getFullyQualifiedName(),
+          TAG);
     }
   }
 
@@ -910,6 +914,11 @@ public class TagRepository extends EntityRepository<Tag> {
 
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Override
