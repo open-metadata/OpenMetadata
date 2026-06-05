@@ -133,7 +133,7 @@
       },
       "testCaseResolutionStatusDetails": {
         "type": "object",
-        "dynamic": true,
+        "dynamic": false,
         "properties": {
           "assignee": {
             "properties": {

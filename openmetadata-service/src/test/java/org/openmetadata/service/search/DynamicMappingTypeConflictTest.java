@@ -13,6 +13,7 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -44,7 +45,16 @@ import org.testcontainers.utility.DockerImageName;
 class DynamicMappingTypeConflictTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(DynamicMappingTypeConflictTest.class);
-  private static final HttpClient HTTP = HttpClient.newHttpClient();
+
+  // Match the OpenSearch image the rest of the test/dev infra ships with
+  // (TestSuiteBootstrap.DEFAULT_OPENSEARCH_IMAGE, integration-tests pom, dev docker-compose) so the
+  // mapping behaviour exercised here matches production and failures reproduce locally.
+  private static final String OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
+  private static final String INGESTION_PIPELINE_MAPPING =
+      "elasticsearch/en/ingestion_pipeline_index_mapping.json";
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+  private static final HttpClient HTTP =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
   private static final String STRING_DOC =
       "{\"pipelineStatuses\":{\"config\":{\"appConfig\":{\"actions\":"
@@ -60,11 +70,11 @@ class DynamicMappingTypeConflictTest {
   static void startOpenSearch() {
     assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker is required");
     opensearch =
-        new GenericContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.13.0"))
+        new GenericContainer<>(DockerImageName.parse(OPENSEARCH_IMAGE))
             .withEnv("discovery.type", "single-node")
             .withEnv("DISABLE_SECURITY_PLUGIN", "true")
             .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
+            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m")
             .withExposedPorts(9200)
             .waitingFor(Wait.forHttp("/").forPort(9200).forStatusCode(200))
             .withStartupTimeout(Duration.ofMinutes(3));
@@ -114,9 +124,8 @@ class DynamicMappingTypeConflictTest {
   void realIngestionPipelineMapping_acceptsObjectConfigValue() throws Exception {
     String mapping;
     try (InputStream is =
-        getClass()
-            .getClassLoader()
-            .getResourceAsStream("elasticsearch/en/ingestion_pipeline_index_mapping.json")) {
+        getClass().getClassLoader().getResourceAsStream(INGESTION_PIPELINE_MAPPING)) {
+      assertNotNull(is, "Mapping resource not found on classpath: " + INGESTION_PIPELINE_MAPPING);
       mapping = new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
     assertEquals(200, put("/ingestion_pipeline_real", mapping).statusCode());
@@ -131,6 +140,7 @@ class DynamicMappingTypeConflictTest {
   private HttpResponse<String> put(String path, String body) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(baseUrl + path))
+            .timeout(REQUEST_TIMEOUT)
             .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(body))
             .build();
