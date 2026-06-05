@@ -204,6 +204,56 @@ class InListChunkingTest {
   }
 
   @Test
+  void queryInChunks_atOrBelowLimitPassesDuplicatesThroughVerbatim() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.findToBatchAllTypesWithRelationsCondition(anyList(), anyList(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              List<String> chunk = invocation.getArgument(0);
+              chunks.add(List.copyOf(chunk));
+              return chunk.stream()
+                  .map(id -> EntityRelationshipObject.builder().fromId(id).build())
+                  .collect(Collectors.toList());
+            });
+
+    List<String> withDuplicates = new ArrayList<>(ids(5));
+    withDuplicates.addAll(ids(5).subList(0, 2));
+
+    List<EntityRelationshipObject> result =
+        dao.findToBatchAllTypes(withDuplicates, List.of(1, 2), Include.ALL);
+
+    assertEquals(1, chunks.size(), "a list within the limit must issue exactly one query");
+    assertCoversInputExactlyOnce(withDuplicates, chunks);
+    assertEquals(
+        withDuplicates,
+        result.stream().map(EntityRelationshipObject::getFromId).collect(Collectors.toList()),
+        "within the limit the list is passed through verbatim — duplicates are NOT stripped here; "
+            + "collapsing them is the database's job via IN(...) set semantics");
+  }
+
+  @Test
+  void updateInChunks_atOrBelowLimitPassesDuplicatesThroughVerbatim() {
+    EntityExtensionDAO dao = mock(EntityExtensionDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return null;
+            })
+        .when(dao)
+        .deleteAllBatchInternal(anyList());
+
+    List<String> withDuplicates = new ArrayList<>(ids(5));
+    withDuplicates.addAll(ids(5).subList(0, 2));
+
+    dao.deleteAllBatch(withDuplicates);
+
+    assertEquals(1, chunks.size(), "a list within the limit must issue exactly one statement");
+    assertCoversInputExactlyOnce(withDuplicates, chunks);
+  }
+
+  @Test
   void bulkUpdateFromId_chunksOverLimit() {
     EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
     List<List<String>> chunks = new ArrayList<>();
