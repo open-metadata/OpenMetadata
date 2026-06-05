@@ -56,8 +56,8 @@ export const listContextFiles = async (params: ListParams = {}) => {
     '/contextCenter/drive/files',
     { params: { fields: 'folder', limit: 100, ...params } }
   );
-  
-  return response.data
+
+  return response.data;
 };
 
 export const moveFileToFolder = async (
