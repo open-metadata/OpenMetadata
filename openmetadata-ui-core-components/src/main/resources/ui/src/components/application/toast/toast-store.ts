@@ -11,56 +11,32 @@
  *  limitations under the License.
  */
 
-export interface ToastItem {
-  id: string;
+import { ToastQueue } from '@react-stately/toast';
+
+export interface ToastContent {
   message: string;
-  /** Auto-dismiss delay in ms. Pass 0 to disable. Default: 2200. */
-  duration?: number;
 }
 
-type Listener = (toasts: ToastItem[]) => void;
-
-let toasts: ToastItem[] = [];
-const listeners = new Set<Listener>();
-let idCounter = 0;
-
-function notify() {
-  const snapshot = [...toasts];
-  listeners.forEach((l) => l(snapshot));
-}
-
-export function subscribe(listener: Listener) {
-  listeners.add(listener);
-  listener([...toasts]);
-  return () => { listeners.delete(listener); };
-}
-
-export function dismiss(id: string) {
-  toasts = toasts.filter((t) => t.id !== id);
-  notify();
-}
+export const toastQueue = new ToastQueue<ToastContent>({
+  maxVisibleToasts: 5,
+});
 
 export interface ShowToastOptions {
-  message: string;
-  duration?: number;
+  /** Auto-dismiss delay in ms. Default: 2200. Pass 0 to disable. */
+  timeout?: number;
 }
 
-export function showToast(options: ShowToastOptions | string): string {
-  const id = String(++idCounter);
-  const opts = typeof options === 'string' ? { message: options } : options;
-  const item: ToastItem = { duration: 2200, ...opts, id };
-
-  toasts = [...toasts, item];
-  notify();
-
-  if (item.duration && item.duration > 0) {
-    setTimeout(() => dismiss(id), item.duration);
-  }
-
-  return id;
+export function showToast(
+  message: string,
+  options?: ShowToastOptions
+): string {
+  return toastQueue.add(
+    { message },
+    { timeout: options?.timeout ?? 2200, ...options }
+  );
 }
 
 export const toast = {
   show: showToast,
-  dismiss,
+  dismiss: (key: string) => toastQueue.close(key),
 };

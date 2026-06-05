@@ -12,30 +12,31 @@
  */
 
 import { Check } from '@untitledui/icons';
+import type { QueuedToast } from '@react-stately/toast';
+import { UNSTABLE_Toast as AriaToast } from 'react-aria-components';
+import type { ToastContent } from './toast-store';
 import { cx } from '@/utils/cx';
 
-export interface ToastProps {
-  /** The message to display. */
-  message: string;
-  className?: string;
+interface ToastProps {
+  toast: QueuedToast<ToastContent>;
 }
 
-export const Toast = ({ message, className }: ToastProps) => {
+export const Toast = ({ toast }: ToastProps) => {
   return (
-    <div
+    <AriaToast
       className={cx(
         'tw:inline-flex tw:items-center tw:gap-2.5',
         'tw:rounded-[10px] tw:bg-[#181D27] tw:px-4 tw:py-[11px]',
         'tw:text-[13px] tw:font-medium tw:leading-5 tw:text-white',
-        'tw:shadow-2xl',
-        className
+        'tw:shadow-2xl tw:outline-none',
+        'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
-      role="status">
+      toast={toast}>
       <Check
         aria-hidden="true"
         className="tw:size-4 tw:shrink-0 tw:text-[#17B26A]"
       />
-      {message}
-    </div>
+      <span>{toast.content.message}</span>
+    </AriaToast>
   );
 };

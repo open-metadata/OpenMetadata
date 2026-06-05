@@ -13,5 +13,5 @@
 
 export * from './toast';
 export * from './toast-provider';
-export { toast, showToast, dismiss as dismissToast } from './toast-store';
-export type { ToastItem, ShowToastOptions } from './toast-store';
+export { toast, showToast, toastQueue } from './toast-store';
+export type { ToastContent, ShowToastOptions } from './toast-store';

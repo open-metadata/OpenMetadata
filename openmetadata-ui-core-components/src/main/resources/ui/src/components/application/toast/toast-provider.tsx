@@ -11,48 +11,44 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import type { QueuedToast } from '@react-stately/toast';
+import { UNSTABLE_ToastRegion as ToastRegion, UNSTABLE_ToastList as ToastList } from 'react-aria-components';
 import { Toast } from './toast';
-import { subscribe, type ToastItem } from './toast-store';
+import { toastQueue, type ToastContent } from './toast-store';
+import { cx } from '@/utils/cx';
+
+export type ToastPosition =
+  | 'top-right'
+  | 'top-left'
+  | 'top-center'
+  | 'bottom-right'
+  | 'bottom-left'
+  | 'bottom-center';
+
+const positionClasses: Record<ToastPosition, string> = {
+  'top-right': 'tw:top-4 tw:right-4 tw:items-end',
+  'top-left': 'tw:top-4 tw:left-4 tw:items-start',
+  'top-center': 'tw:top-4 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
+  'bottom-right': 'tw:bottom-4 tw:right-4 tw:items-end',
+  'bottom-left': 'tw:bottom-4 tw:left-4 tw:items-start',
+  'bottom-center': 'tw:bottom-6.5 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
+};
 
 export interface ToastProviderProps {
-  /** The DOM node to portal into. Defaults to document.body. */
-  container?: Element;
+  position?: ToastPosition;
 }
 
-export const ToastProvider = ({ container }: ToastProviderProps) => {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-
-  useEffect(() => {
-    return subscribe(setToasts);
-  }, []);
-
-  if (toasts.length === 0) {
-    return null;
-  }
-
-  const portalTarget =
-    container ?? (typeof document !== 'undefined' ? document.body : null);
-
-  if (!portalTarget) {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      aria-live="polite"
-      aria-relevant="additions"
-      className="tw:pointer-events-none tw:fixed tw:bottom-6.5 tw:left-1/2 tw:z-200 tw:-translate-x-1/2 tw:flex tw:flex-col tw:items-center tw:gap-2"
-      role="region">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className="tw:pointer-events-auto tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150">
-          <Toast message={t.message} />
-        </div>
-      ))}
-    </div>,
-    portalTarget
+export const ToastProvider = ({ position = 'bottom-center' }: ToastProviderProps) => {
+  return (
+    <ToastRegion
+      className={cx(
+        'tw:fixed tw:z-200 tw:flex tw:flex-col tw:gap-2 tw:outline-none',
+        positionClasses[position]
+      )}
+      queue={toastQueue}>
+      <ToastList>
+        {({ toast }) => <Toast toast={toast as QueuedToast<ToastContent>} />}
+      </ToastList>
+    </ToastRegion>
   );
 };
