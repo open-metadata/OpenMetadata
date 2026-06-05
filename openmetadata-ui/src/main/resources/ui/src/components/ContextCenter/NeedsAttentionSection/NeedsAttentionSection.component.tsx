@@ -14,6 +14,7 @@
 import {
   Badge,
   BadgeWithDot,
+  Box,
   Button,
   Card,
   Skeleton,
@@ -41,7 +42,10 @@ function NeedsAttentionRow({ item }: { readonly item: AttentionItem }) {
   const KindIcon = KIND_ICONS[item.kind];
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0">
+    <Box
+      align="start"
+      className="tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+      gap={3}>
       <KindIcon className="tw:size-4 tw:text-quaternary tw:mt-0.5 tw:shrink-0" />
       <div className="tw:flex-1 tw:min-w-0">
         <Typography
@@ -68,34 +72,36 @@ function NeedsAttentionRow({ item }: { readonly item: AttentionItem }) {
         type="button">
         {t('label.resolve')}
       </Button>
-    </div>
+    </Box>
   );
 }
 
 function NeedsAttentionSectionSkeleton() {
   return (
     <Card className="tw:p-5">
-      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
-        <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <Box align="start" className="tw:mb-3.5" gap={3} justify="between">
+        <Box direction="col" gap={2}>
           <Skeleton height={14} variant="rounded" width={120} />
           <Skeleton height={12} variant="rounded" width={180} />
-        </div>
+        </Box>
         <Skeleton height={22} variant="rounded" width={24} />
-      </div>
-      <div className="tw:flex tw:flex-col">
+      </Box>
+      <Box direction="col">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            className="tw:flex tw:items-start tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+          <Box
+            align="start"
+            className="tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+            gap={3}
             key={i}>
             <Skeleton height={16} variant="rounded" width={16} />
-            <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+            <Box className="tw:flex-1" direction="col" gap={2}>
               <Skeleton height={12} variant="rounded" width="65%" />
               <Skeleton height={20} variant="rounded" width={80} />
-            </div>
+            </Box>
             <Skeleton height={20} variant="rounded" width={56} />
-          </div>
+          </Box>
         ))}
-      </div>
+      </Box>
     </Card>
   );
 }
@@ -112,7 +118,7 @@ const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({
 
   return (
     <Card className="tw:p-5">
-      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
+      <Box align="start" className="tw:mb-3.5" gap={3} justify="between">
         <div>
           <Typography
             as="div"
@@ -131,14 +137,14 @@ const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({
         <Badge color="warning" size="sm" type="color">
           {String(items.length)}
         </Badge>
-      </div>
+      </Box>
 
       {items.length === 0 ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:py-10">
+        <Box align="center" className="tw:py-10" justify="center">
           <Typography as="div" className="tw:text-quaternary" size="text-xs">
             {t('message.nothing-needs-attention-right-now')}
           </Typography>
-        </div>
+        </Box>
       ) : (
         <div>
           {items.map((item) => (

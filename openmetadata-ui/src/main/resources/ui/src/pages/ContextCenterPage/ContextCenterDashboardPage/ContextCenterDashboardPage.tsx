@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   File05,
@@ -269,7 +269,7 @@ const ContextCenterDashboardPage: FC = () => {
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={
-          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
+          <Box align="center" className="tw:shrink-0" gap={3}>
             <Button
               color="secondary"
               iconLeading={UploadCloud02}
@@ -303,7 +303,7 @@ const ContextCenterDashboardPage: FC = () => {
                 </Dropdown.Popover>
               </Dropdown.Root>
             </LimitWrapper>
-          </div>
+          </Box>
         }
         breadcrumbs={[
           {
@@ -327,9 +327,11 @@ const ContextCenterDashboardPage: FC = () => {
         title={t('label.dashboard')}
       />
 
-      <div
-        className="tw:flex tw:flex-col tw:gap-6 tw:h-full"
-        data-testid="dashboard-detail-card">
+      <Box
+        className="tw:h-full"
+        data-testid="dashboard-detail-card"
+        direction="col"
+        gap={6}>
         <div className="tw:grid tw:grid-cols-3 tw:gap-4">
           <ContextKnowledgePillarCard
             cta={t('label.view-all-entity', {
@@ -394,7 +396,7 @@ const ContextCenterDashboardPage: FC = () => {
           <AiActivitySection isLoading={false} items={[]} />
           <NeedsAttentionSection isLoading={false} items={[]} />
         </div>
-      </div>
+      </Box>
 
       <UploadDocumentModal
         isOpen={isUploadModalOpen}

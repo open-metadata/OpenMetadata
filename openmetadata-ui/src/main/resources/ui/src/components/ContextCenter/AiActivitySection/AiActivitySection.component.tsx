@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  Box,
   Button,
   Card,
   FeaturedIcon,
@@ -40,7 +41,10 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
   const { t } = useTranslation();
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0">
+    <Box
+      align="center"
+      className="tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+      gap={3}>
       <FeaturedIcon
         className="tw:size-7 tw:rounded-md tw:shrink-0"
         color="brand"
@@ -49,7 +53,7 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
         theme="light"
       />
       <div className="tw:flex-1 tw:min-w-0">
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:mb-0.5">
+        <Box align="center" className="tw:mb-0.5" gap={2}>
           <Typography
             as="span"
             className="tw:text-quaternary tw:uppercase tw:tracking-widest tw:font-mono"
@@ -60,7 +64,7 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
           <Badge color="brand" size="sm" type="color">
             {`cited ${item.count}×`}
           </Badge>
-        </div>
+        </Box>
         <Typography
           ellipsis
           as="div"
@@ -84,34 +88,36 @@ function AiActivityRow({ item }: { readonly item: ActivityItem }) {
           {` · ${t('label.last-cited-by')} ${item.who} ${item.when}`}
         </Typography>
       </div>
-    </div>
+    </Box>
   );
 }
 
 function AiActivitySectionSkeleton() {
   return (
     <Card className="tw:p-5">
-      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
-        <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <Box align="start" className="tw:mb-3.5" gap={3} justify="between">
+        <Box direction="col" gap={2}>
           <Skeleton height={14} variant="rounded" width={120} />
           <Skeleton height={12} variant="rounded" width={200} />
-        </div>
+        </Box>
         <Skeleton height={24} variant="rounded" width={80} />
-      </div>
-      <div className="tw:flex tw:flex-col">
+      </Box>
+      <Box direction="col">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            className="tw:flex tw:items-center tw:gap-3 tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+          <Box
+            align="center"
+            className="tw:py-3 tw:border-b tw:border-secondary last:tw:border-b-0"
+            gap={3}
             key={i}>
             <Skeleton height={28} variant="rounded" width={28} />
-            <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+            <Box className="tw:flex-1" direction="col" gap={2}>
               <Skeleton height={10} variant="rounded" width="40%" />
               <Skeleton height={12} variant="rounded" width="70%" />
               <Skeleton height={10} variant="rounded" width="55%" />
-            </div>
-          </div>
+            </Box>
+          </Box>
         ))}
-      </div>
+      </Box>
     </Card>
   );
 }
@@ -128,7 +134,7 @@ const AiActivitySection: FC<AiActivitySectionProps> = ({
 
   return (
     <Card className="tw:p-5">
-      <div className="tw:flex tw:items-start tw:justify-between tw:mb-3.5 tw:gap-3">
+      <Box align="start" className="tw:mb-3.5" gap={3} justify="between">
         <div>
           <Typography
             as="div"
@@ -151,14 +157,14 @@ const AiActivitySection: FC<AiActivitySectionProps> = ({
           type="button">
           {t('label.view-activity')}
         </Button>
-      </div>
+      </Box>
 
       {items.length === 0 ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:py-10">
+        <Box align="center" className="tw:py-10" justify="center">
           <Typography as="div" className="tw:text-quaternary" size="text-xs">
             {t('message.no-ai-activity-yet')}
           </Typography>
-        </div>
+        </Box>
       ) : (
         <div>
           {items.map((item) => (

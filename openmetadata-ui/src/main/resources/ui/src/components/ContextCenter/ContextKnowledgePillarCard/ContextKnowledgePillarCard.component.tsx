@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   Card,
   FeaturedIcon,
@@ -19,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight, TrendUp01 } from '@untitledui/icons';
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { PILLAR_TONE_TEXT_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   ContextKnowledgePillarCardProps,
@@ -36,12 +37,12 @@ function RecentItem({
   readonly showDivider: boolean;
 }) {
   return (
-    <div
-      className={`tw:flex tw:items-center tw:gap-2 tw:py-1.5 ${
-        showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''
-      }`}>
+    <Box
+      align="center"
+      className={`tw:py-1.5 ${showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''}`}
+      gap={2}>
       <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-      <div className="tw:flex tw:items-center tw:gap-4 tw:min-w-0 tw:flex-1 tw:justify-between">
+      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={4} justify="between">
         <Typography
           ellipsis
           as="span"
@@ -55,8 +56,8 @@ function RecentItem({
           size="text-xs">
           {item.meta}
         </Typography>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
@@ -67,29 +68,29 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
     className="tw:p-5 tw:flex tw:flex-col tw:justify-between"
     data-testid={dataTestId}>
     <div>
-      <div className="tw:flex tw:items-center tw:gap-2.5 tw:mb-3.5">
+      <Box align="center" className="tw:mb-3.5" gap={3}>
         <Skeleton height={36} variant="rounded" width={36} />
-        <div className="tw:flex-1 tw:flex tw:flex-col tw:gap-1.5">
+        <Box className="tw:flex-1" direction="col" gap={2}>
           <Skeleton height={14} variant="rounded" width="50%" />
           <Skeleton height={12} variant="rounded" width="75%" />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      <div className="tw:flex tw:items-baseline tw:gap-2.5 tw:mb-1 tw:mt-1.5">
+      <Box align="baseline" className="tw:mb-1 tw:mt-1.5" gap={3}>
         <Skeleton height={36} variant="rounded" width={64} />
         <Skeleton height={12} variant="rounded" width={96} />
-      </div>
+      </Box>
 
       <div className="tw:mb-4 tw:mt-1">
         <Skeleton height={12} variant="rounded" width={80} />
       </div>
 
-      <div className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-2.5 tw:gap-0">
+      <Box className="tw:border-t tw:border-secondary tw:pt-2.5" direction="col">
         {[0, 1, 2].map((i) => (
-          <div
-            className={`tw:flex tw:items-center tw:gap-2 tw:py-1.5 ${
-              i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''
-            }`}
+          <Box
+            align="center"
+            className={`tw:py-1.5 ${i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''}`}
+            gap={2}
             key={i}>
             <Skeleton
               className="tw:shrink-0"
@@ -99,9 +100,9 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
             />
             <Skeleton className="tw:flex-1" variant="rounded" />
             <Skeleton variant="rounded" width={48} />
-          </div>
+          </Box>
         ))}
-      </div>
+      </Box>
     </div>
 
     <div className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary">
@@ -125,7 +126,6 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   onClick,
   dataTestId,
 }) => {
-  const [hovered, setHovered] = useState(false);
   const statSubLabel = statSubSecondary
     ? `${statSub} · ${statSubSecondary}`
     : statSub;
@@ -136,17 +136,11 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:hover:border-brand-200 tw:flex tw:flex-col tw:justify-between"
+      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
       data-testid={dataTestId}
-      style={{
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'transform 0.15s, border-color 0.15s',
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}>
+      onClick={onClick}>
       <div>
-        <div className="tw:flex tw:items-center tw:gap-2.5 tw:mb-3.5">
+        <Box align="center" className="tw:mb-3.5" gap={3}>
           <FeaturedIcon
             className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
             color="brand"
@@ -166,9 +160,9 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
               {subtitle}
             </Typography>
           </div>
-        </div>
+        </Box>
 
-        <div className="tw:flex tw:items-baseline tw:gap-2.5 tw:mb-1 tw:mt-1.5">
+        <Box align="baseline" className="tw:mb-1 tw:mt-1.5" gap={3}>
           <Typography
             as="span"
             className="tw:text-primary tw:tabular-nums tw:tracking-tight"
@@ -179,10 +173,13 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           <Typography as="span" className="tw:text-quaternary" size="text-xs">
             {statSubLabel}
           </Typography>
-        </div>
+        </Box>
 
-        <div
-          className={`tw:inline-flex tw:items-center tw:gap-1 tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}>
+        <Box
+          inline
+          align="center"
+          className={`tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}
+          gap={1}>
           <TrendUp01 className="tw:size-3 tw:stroke-2" />
           <Typography
             as="span"
@@ -190,9 +187,9 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
             size="text-xs">
             {trend}
           </Typography>
-        </div>
+        </Box>
 
-        <div className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-2.5 tw:gap-0">
+        <Box className="tw:border-t tw:border-secondary tw:pt-2.5" direction="col">
           {recent.map((item, i) => (
             <RecentItem
               Icon={Icon}
@@ -201,9 +198,9 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
               showDivider={i < recent.length - 1}
             />
           ))}
-        </div>
+        </Box>
       </div>
-      <div className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary tw:inline-flex tw:items-center tw:gap-1.5">
+      <Box inline align='center' className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary" gap={2}>
         <Button
           color="link-color"
           iconTrailing={ArrowNarrowRight}
@@ -211,7 +208,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           type="button">
           {cta}
         </Button>
-      </div>
+      </Box>
     </Card>
   );
 };
