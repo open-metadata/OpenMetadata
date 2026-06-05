@@ -1606,8 +1606,17 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void storeEntity(Table table, boolean update) {
+    // column.extension lives in entity_extension; clone columns without it so
+    // the stored table JSON stays clean. Restore the originals on the in-memory
+    // entity so the response carries what the caller sent.
+    List<Column> originalColumns = table.getColumns();
+    if (originalColumns != null) {
+      table.setColumns(ColumnUtil.cloneWithoutTags(originalColumns));
+    }
     store(table, update);
-    // Store ER relationships based on table constraints
+    if (originalColumns != null) {
+      table.setColumns(originalColumns);
+    }
     addConstraintRelationship(table, table.getTableConstraints());
   }
 

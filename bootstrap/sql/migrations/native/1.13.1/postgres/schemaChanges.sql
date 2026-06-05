@@ -1,0 +1,5 @@
+-- 1.13.1 schema changes
+-- The column.extension cleanup (backfill entity_extension + strip inline from
+-- table_entity.json / dashboard_data_model_entity.json) is performed in the
+-- Java migration org.openmetadata.service.migration.postgres.v1131.Migration,
+-- because the per-column recursion is cleaner in Java than in SQL.

@@ -157,7 +157,17 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
+    // column.extension lives in entity_extension; clone columns without it so
+    // the stored data-model JSON stays clean. Restore the originals on the
+    // in-memory entity so the response carries what the caller sent.
+    List<Column> originalColumns = dashboardDataModel.getColumns();
+    if (originalColumns != null) {
+      dashboardDataModel.setColumns(ColumnUtil.cloneWithoutTags(originalColumns));
+    }
     store(dashboardDataModel, update);
+    if (originalColumns != null) {
+      dashboardDataModel.setColumns(originalColumns);
+    }
   }
 
   @Override

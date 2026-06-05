@@ -6,16 +6,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -96,6 +99,48 @@ public class ColumnCustomPropertiesIT {
     ENTITY_REFERENCE_TYPE = getTypeByName(client, "entityReference");
     ENTITY_REFERENCE_LIST_TYPE = getTypeByName(client, "entityReferenceList");
     TIME_INTERVAL_TYPE = getTypeByName(client, "timeInterval");
+  }
+
+  // ========================================================================
+  // STORAGE INVARIANT — column.extension must not be in the stored table JSON.
+  // entity_extension is the single source of truth.
+  // ========================================================================
+
+  @Test
+  void test_tableColumn_extensionNotPersistedInStoredJson(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("storageInvariantProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      Table table = createTestTable(ns);
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "value-must-only-live-in-entity-extension");
+      updateColumn(client, columnFQN, "table", extension);
+
+      Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+      String storedJson =
+          jdbi.withHandle(
+              h ->
+                  h.createQuery("SELECT json FROM table_entity WHERE id = :id")
+                      .bind("id", table.getId().toString())
+                      .mapTo(String.class)
+                      .one());
+      JsonNode root = OBJECT_MAPPER.readTree(storedJson);
+      for (JsonNode column : root.path("columns")) {
+        assertFalse(
+            column.has("extension"),
+            "column "
+                + column.path("name").asText()
+                + " still has inline extension in table_entity.json: "
+                + column.path("extension"));
+      }
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
   }
 
   // ========================================================================
