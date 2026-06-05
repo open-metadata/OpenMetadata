@@ -86,7 +86,7 @@ const EntitySearchSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [searchSettings, setSearchSettings] =
     useState<EntitySearchSettingsState>({
-      searchFields: [],
+      searchFields: undefined,
       fieldValueBoosts: [],
       boostMode: BoostMode.Multiply,
       scoreMode: ScoreMode.Avg,
@@ -278,11 +278,16 @@ const EntitySearchSettings = () => {
         })
       );
 
-      setSearchSettings({
-        ...searchSettings,
-        ...updatedSearchConfig,
+      const savedEntityConfig =
+        updatedSearchConfig.assetTypeConfigurations?.find(
+          (config: AssetTypeConfiguration) => config.assetType === entityType
+        );
+
+      setSearchSettings((prev) => ({
+        ...prev,
+        ...savedEntityConfig,
         isUpdated: false,
-      });
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -582,7 +587,7 @@ const EntitySearchSettings = () => {
       ),
     };
 
-    if (searchSettings.searchFields?.length) {
+    if (searchSettings.searchFields !== undefined) {
       setPreviewSearchConfig((prev) =>
         JSON.stringify(prev) !== JSON.stringify(updatedConfig)
           ? updatedConfig

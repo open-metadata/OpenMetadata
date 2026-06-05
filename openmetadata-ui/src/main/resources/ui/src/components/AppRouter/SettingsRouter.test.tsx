@@ -51,11 +51,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../pages/CustomPageSettings/CustomPageSettings', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>CustomPageSettings</div>),
-}));
-
 jest.mock('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>CustomPropertiesPageV1</div>),

@@ -33,7 +33,6 @@ import {
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
@@ -172,11 +171,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
       <div data-testid="es-error">
         <div className="m-b-lg text-center">
           <p>
-            <span>
-              {t('message.welcome-to-open-metadata', {
-                brandName: brandClassBase.getPageTitle(),
-              })}{' '}
-            </span>
+            <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
               {t('message.unable-to-error-elasticsearch', { error: errorText })}
             </span>
