@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import type { QueuedToast } from '@react-stately/toast';
 import {
-  UNSTABLE_ToastRegion as ToastRegion,
   UNSTABLE_ToastList as ToastList,
+  UNSTABLE_ToastRegion as ToastRegion,
 } from 'react-aria-components';
+import type { QueuedToast } from 'react-aria-components';
 import { Toast } from './toast';
 import { toastQueue, type ToastContent } from './toast-store';
 import { cx } from '@/utils/cx';
@@ -28,35 +28,33 @@ export type ToastPosition =
   | 'bottom-left'
   | 'bottom-center';
 
-const positionClasses: Record<
-  ToastPosition,
-  { region: string; list: string }
-> = {
-  'top-right': {
-    region: 'tw:top-4 tw:right-4 tw:items-end',
-    list: 'tw:flex-col',
-  },
-  'top-left': {
-    region: 'tw:top-4 tw:left-4 tw:items-start',
-    list: 'tw:flex-col',
-  },
-  'top-center': {
-    region: 'tw:top-4 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
-    list: 'tw:flex-col',
-  },
-  'bottom-right': {
-    region: 'tw:bottom-4 tw:right-4 tw:items-end',
-    list: 'tw:flex-col-reverse',
-  },
-  'bottom-left': {
-    region: 'tw:bottom-4 tw:left-4 tw:items-start',
-    list: 'tw:flex-col-reverse',
-  },
-  'bottom-center': {
-    region: 'tw:bottom-6.5 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
-    list: 'tw:flex-col-reverse',
-  },
-};
+const positionClasses: Record<ToastPosition, { region: string; list: string }> =
+  {
+    'top-right': {
+      region: 'tw:top-4 tw:right-4 tw:items-end',
+      list: 'tw:flex-col',
+    },
+    'top-left': {
+      region: 'tw:top-4 tw:left-4 tw:items-start',
+      list: 'tw:flex-col',
+    },
+    'top-center': {
+      region: 'tw:top-4 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
+      list: 'tw:flex-col',
+    },
+    'bottom-right': {
+      region: 'tw:bottom-4 tw:right-4 tw:items-end',
+      list: 'tw:flex-col-reverse',
+    },
+    'bottom-left': {
+      region: 'tw:bottom-4 tw:left-4 tw:items-start',
+      list: 'tw:flex-col-reverse',
+    },
+    'bottom-center': {
+      region: 'tw:bottom-6.5 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
+      list: 'tw:flex-col-reverse',
+    },
+  };
 
 export interface ToastProviderProps {
   position?: ToastPosition;
@@ -74,8 +72,7 @@ export const ToastProvider = ({
         classes.region
       )}
       queue={toastQueue}>
-      <ToastList
-        className={cx('tw:flex tw:gap-2', classes.list)}>
+      <ToastList className={cx('tw:flex tw:gap-2', classes.list)}>
         {({ toast }) => <Toast toast={toast as QueuedToast<ToastContent>} />}
       </ToastList>
     </ToastRegion>

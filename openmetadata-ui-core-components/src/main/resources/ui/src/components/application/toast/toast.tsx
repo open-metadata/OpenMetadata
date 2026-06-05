@@ -12,20 +12,20 @@
  */
 
 import type { FC } from 'react';
-import type { QueuedToast } from '@react-stately/toast';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   InfoCircle,
+  X,
 } from '@untitledui/icons';
 import {
   Button,
   UNSTABLE_Toast as AriaToast,
   UNSTABLE_ToastStateContext,
 } from 'react-aria-components';
+import type { QueuedToast } from 'react-aria-components';
 import { useContext } from 'react';
-import { X } from '@untitledui/icons';
 import type { ToastContent, ToastVariant } from './toast-store';
 import { cx } from '@/utils/cx';
 

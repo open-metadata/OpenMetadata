@@ -37,7 +37,13 @@ const meta = {
   },
   decorators: [
     (Story) => {
-      useEffect(() => () => { toastQueue.clear(); }, []);
+      useEffect(
+        () => () => {
+          toastQueue.clear();
+        },
+        []
+      );
+
       return <Story />;
     },
   ],
@@ -54,6 +60,7 @@ export const Success: Story = {
     useEffect(() => {
       toast.success('Dashboard created successfully!', { timeout: 0 });
     }, []);
+
     return <ToastProvider {...args} />;
   },
 };
@@ -64,6 +71,7 @@ export const Error: Story = {
     useEffect(() => {
       toast.error('Failed to save changes. Please try again.', { timeout: 0 });
     }, []);
+
     return <ToastProvider {...args} />;
   },
 };
@@ -74,6 +82,7 @@ export const Warning: Story = {
     useEffect(() => {
       toast.warning('You have unsaved changes.', { timeout: 0 });
     }, []);
+
     return <ToastProvider {...args} />;
   },
 };
@@ -84,6 +93,7 @@ export const Info: Story = {
     useEffect(() => {
       toast.info('A new version is available.', { timeout: 0 });
     }, []);
+
     return <ToastProvider {...args} />;
   },
 };
@@ -98,6 +108,7 @@ export const Stacked: Story = {
       toast.warning('You have unsaved changes.', { timeout: 0 });
       toast.error('Failed to connect to the data source.', { timeout: 0 });
     }, []);
+
     return <ToastProvider {...args} />;
   },
 };
@@ -119,7 +130,9 @@ export const LiveTrigger: Story = {
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.error('Failed to save changes. Please try again.')}>
+          onClick={() =>
+            toast.error('Failed to save changes. Please try again.')
+          }>
           Error (with close)
         </Button>
         <Button

@@ -12,7 +12,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { ToastQueue } from '@react-stately/toast';
+import { UNSTABLE_ToastQueue as ToastQueue } from 'react-aria-components';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'default';
 
@@ -26,7 +26,7 @@ export const toastQueue = new ToastQueue<ToastContent>({
 });
 
 export interface ShowToastOptions {
-  /** Auto-dismiss delay in ms. Default: 2200. Pass 0 to disable. */
+  /** Auto-dismiss delay in ms. Defaults to 2200. Pass 0 to keep the toast until manually dismissed. */
   timeout?: number;
 }
 
