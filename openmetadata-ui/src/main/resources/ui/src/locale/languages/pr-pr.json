@@ -1202,6 +1202,7 @@
     "last-activity": "ਆਖਰੀ ਗਤੀਵਿਧੀ",
     "last-activity-n-minutes-ago": "آخرین فعالیت {{count}} دقیقه پیش",
     "last-edited-by": "Última Edição Por",
+    "last-edited-time": "Última Edição {{time}}",
     "last-error": "آخرین خطا",
     "last-failed-at": "آخرین شکست در",
     "last-hour": "ساعت گذشته",

@@ -230,12 +230,14 @@ test.describe('Knowledge Center', () => {
       // verify the tag category
       await expect(
         page.locator(
-          `[data-testid="${knowledgePageQuickLink.updatedDisplayName}"]`
+          `[data-testid="knowledge-card-${knowledgePageQuickLink.updatedDisplayName}"]`
         )
       ).toBeVisible();
 
       await page
-        .locator(`[data-testid="${knowledgePageQuickLink.updatedDisplayName}"]`)
+        .locator(
+          `[data-testid="knowledge-card-${knowledgePageQuickLink.updatedDisplayName}"]`
+        )
         .locator('[data-testid="delete-quick-link-btn"]')
         .click();
       await deletePage(page, true);

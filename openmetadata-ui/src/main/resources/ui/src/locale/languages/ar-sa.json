@@ -1202,6 +1202,7 @@
     "last-activity": "آخر نشاط",
     "last-activity-n-minutes-ago": "آخر نشاط قبل {{count}} دقيقة",
     "last-edited-by": "آخر تعديل بواسطة",
+    "last-edited-time": "آخر تعديل {{time}}",
     "last-error": "آخر خطأ",
     "last-failed-at": "آخر فشل في",
     "last-hour": "الساعة الأخيرة",
