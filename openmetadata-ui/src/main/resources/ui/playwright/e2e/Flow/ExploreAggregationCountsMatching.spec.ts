@@ -127,7 +127,8 @@ async function runSearchValidation(page: Page): Promise<void> {
             response.url().includes(SEARCH_URL_FRAGMENT) &&
             response.url().includes('size=15') &&
             response.url().includes('from=0') &&
-            response.request().method() === 'GET'
+            response.request().method() === 'GET' &&
+            response.url().includes(`index=${bucket.key}`)
         );
 
         await tabLocator.click();
