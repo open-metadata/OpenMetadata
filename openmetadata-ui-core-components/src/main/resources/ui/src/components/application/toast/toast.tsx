@@ -35,27 +35,27 @@ const variantConfig: Record<
 > = {
   success: {
     icon: CheckCircle,
-    iconClass: 'tw:text-[#17B26A]',
+    iconClass: 'tw:text-fg-success-secondary',
     showClose: false,
   },
   error: {
     icon: AlertCircle,
-    iconClass: 'tw:text-[#F04438]',
+    iconClass: 'tw:text-fg-error-secondary',
     showClose: true,
   },
   warning: {
     icon: AlertTriangle,
-    iconClass: 'tw:text-[#F79009]',
+    iconClass: 'tw:text-fg-warning-secondary',
     showClose: false,
   },
   info: {
     icon: InfoCircle,
-    iconClass: 'tw:text-[#2E90FA]',
+    iconClass: 'tw:text-fg-brand-secondary',
     showClose: false,
   },
   default: {
     icon: CheckCircle,
-    iconClass: 'tw:text-[#17B26A]',
+    iconClass: 'tw:text-fg-success-secondary',
     showClose: false,
   },
 };
@@ -74,8 +74,8 @@ export const Toast = ({ toast }: ToastProps) => {
     <AriaToast
       className={cx(
         'tw:inline-flex tw:items-center tw:gap-2.5',
-        'tw:rounded-[10px] tw:bg-[#181D27] tw:px-4 tw:py-[11px]',
-        'tw:text-[13px] tw:font-medium tw:leading-5 tw:text-white',
+        'tw:rounded-[10px] tw:bg-primary-solid tw:px-4 tw:py-2.75',
+        'tw:text-sm tw:font-medium tw:text-fg-white',
         'tw:shadow-2xl tw:outline-none',
         'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
@@ -88,7 +88,7 @@ export const Toast = ({ toast }: ToastProps) => {
       {config.showClose && state && (
         <Button
           aria-label="Close"
-          className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-white/60 tw:outline-none tw:transition tw:hover:text-white"
+          className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
           slot="close"
           onPress={() => state.close(toast.key)}>
           <X aria-hidden="true" className="tw:size-3.5" />
