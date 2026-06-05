@@ -95,9 +95,23 @@ class FullyQualifiedNameTest {
   }
 
   @Test
+  void test_isValid() {
+    assertTrue(FullyQualifiedName.isValid("svc.db.schema.table"));
+    assertTrue(FullyQualifiedName.isValid("\"a.1\".b.c"));
+    // Unparseable FQNs (e.g. empty segments) are detected, not thrown.
+    assertFalse(FullyQualifiedName.isValid("a..b"));
+    // Null / empty are invalid rather than an NPE, so repair paths re-derive them.
+    assertFalse(FullyQualifiedName.isValid(null));
+    assertFalse(FullyQualifiedName.isValid(""));
+  }
+
+  @Test
   void test_invalid() {
     assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("..a"));
     assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.."));
+    // Empty quoted segments ("") are not valid FQN segments.
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("\"\""));
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.\"\".b"));
   }
 
   @Test

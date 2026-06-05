@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
 
@@ -207,11 +208,15 @@ public class FullyQualifiedName {
    */
   public static boolean isValid(String fullyQualifiedName) {
     boolean valid;
-    try {
-      split(fullyQualifiedName);
-      valid = true;
-    } catch (ParseCancellationException e) {
+    if (nullOrEmpty(fullyQualifiedName)) {
       valid = false;
+    } else {
+      try {
+        split(fullyQualifiedName);
+        valid = true;
+      } catch (ParseCancellationException e) {
+        valid = false;
+      }
     }
     return valid;
   }

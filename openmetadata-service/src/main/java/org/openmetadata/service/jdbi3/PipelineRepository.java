@@ -182,7 +182,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void setFields(Pipeline pipeline, Fields fields, RelationIncludes relationIncludes) {
     pipeline.setService(getContainer(pipeline.getId()));
-    repairTaskFqns(pipeline);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
     pipeline.withPipelineStatus(
@@ -889,19 +888,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
             t.setFullyQualifiedName(taskFqn);
           });
-    }
-  }
-
-  private void repairTaskFqns(Pipeline pipeline) {
-    for (Task task : listOrEmpty(pipeline.getTasks())) {
-      if (!FullyQualifiedName.isValid(task.getFullyQualifiedName())) {
-        LOG.warn(
-            "Repairing unparseable task FQN '{}' on pipeline '{}'",
-            task.getFullyQualifiedName(),
-            pipeline.getFullyQualifiedName());
-        task.setFullyQualifiedName(
-            FullyQualifiedName.add(pipeline.getFullyQualifiedName(), task.getName()));
-      }
     }
   }
 
