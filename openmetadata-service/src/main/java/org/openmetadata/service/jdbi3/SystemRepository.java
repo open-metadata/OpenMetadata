@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -77,6 +79,7 @@ import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchConsumerFields;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -108,6 +111,7 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
+  private static final String MAPPING_CONSISTENCY_VALIDATION_KEY = "Index Mapping Consistency";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -116,7 +120,10 @@ public class SystemRepository {
     SEARCH("Validate that the search client is available."),
     PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
-    MIGRATION("Validate that all the necessary migrations have been properly executed.");
+    MIGRATION("Validate that all the necessary migrations have been properly executed."),
+    SEARCH_MAPPING(
+        "Validate that deployed search indexes expose the denormalized fields used by RBAC, "
+            + "Data Quality, Incidents, Lineage, and Data Insights.");
 
     public final String key;
 
@@ -555,6 +562,9 @@ public class SystemRepository {
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    validation.setAdditionalProperty(
+        MAPPING_CONSISTENCY_VALIDATION_KEY, getMappingConsistencyValidation());
+
     addExtraValidations(applicationConfig, validation);
 
     return validation;
@@ -854,6 +864,81 @@ public class SystemRepository {
       }
     } catch (Exception e) {
       LOG.warn("Failed to check for missing indexes: {}", e.getMessage());
+    }
+    return missing;
+  }
+
+  private StepValidation getMappingConsistencyValidation() {
+    StepValidation step =
+        new StepValidation().withDescription(ValidationStepDescription.SEARCH_MAPPING.key);
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    StepValidation result;
+    if (searchRepository.getSearchClient().isClientAvailable()) {
+      List<String> inconsistent = findIndexesWithMissingConsumerFields(searchRepository);
+      result =
+          step.withPassed(inconsistent.isEmpty())
+              .withMessage(buildMappingConsistencyMessage(inconsistent));
+    } else {
+      result =
+          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+    }
+    return result;
+  }
+
+  private String buildMappingConsistencyMessage(List<String> inconsistent) {
+    String message;
+    if (inconsistent.isEmpty()) {
+      message =
+          "All core data asset indexes expose the fields used by RBAC, Data Quality, Incidents, "
+              + "Lineage, and Data Insights.";
+    } else {
+      message =
+          String.format(
+              "WARNING: %d index(es) are missing denormalized fields that RBAC, Data Quality, "
+                  + "Incidents, Lineage, and Data Insights depend on — a reindex is required to "
+                  + "restore them. Affected: %s",
+              inconsistent.size(), inconsistent);
+    }
+    return message;
+  }
+
+  @VisibleForTesting
+  List<String> findIndexesWithMissingConsumerFields(SearchRepository searchRepository) {
+    List<String> inconsistent = new ArrayList<>();
+    try {
+      Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+      for (String entityType : SearchConsumerFields.CANARY_DATA_ASSET_ENTITIES) {
+        collectMissingConsumerFields(
+            searchRepository, entityType, indexMap.get(entityType), inconsistent);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to validate index mapping consistency: {}", e.getMessage());
+    }
+    return inconsistent;
+  }
+
+  private void collectMissingConsumerFields(
+      SearchRepository searchRepository,
+      String entityType,
+      IndexMapping indexMapping,
+      List<String> inconsistent) {
+    if (indexMapping != null) {
+      Set<String> liveFields = searchRepository.getIndexFieldNames(indexMapping);
+      if (!liveFields.isEmpty()) {
+        List<String> missing = missingConsumerFields(liveFields);
+        if (!missing.isEmpty()) {
+          inconsistent.add(entityType + " (missing: " + missing + ")");
+        }
+      }
+    }
+  }
+
+  private List<String> missingConsumerFields(Set<String> liveFields) {
+    List<String> missing = new ArrayList<>();
+    for (String required : SearchConsumerFields.CANARY_REQUIRED_TOP_LEVEL_FIELDS) {
+      if (!liveFields.contains(required)) {
+        missing.add(required);
+      }
     }
     return missing;
   }

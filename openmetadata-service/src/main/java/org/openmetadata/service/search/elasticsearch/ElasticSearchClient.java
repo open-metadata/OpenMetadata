@@ -218,6 +218,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Set<String> getIndexFieldNames(String indexName) {
+    return indexManager.getIndexFieldNames(indexName);
+  }
+
+  @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
     indexManager.createIndex(indexMapping, indexMappingContent);
   }
