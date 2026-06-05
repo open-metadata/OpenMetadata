@@ -194,11 +194,19 @@ class TestNatsBuildConnectOpts:
         assert opts["connect_timeout"] == 10
         assert opts["max_reconnect_attempts"] == 5
 
-    def test_additional_config_can_override_servers(self):
+    def test_additional_config_extra_keys_are_merged(self):
         conn = self._mock_connection(additionalConfig={"pedantic": True})
         opts = _build_connect_opts(conn, [])
         assert opts["pedantic"] is True
         assert "servers" in opts
+
+    def test_additional_config_cannot_override_servers(self):
+        conn = self._mock_connection(
+            servers="nats://localhost:4222",
+            additionalConfig={"servers": ["nats://evil:9999"]},
+        )
+        opts = _build_connect_opts(conn, [])
+        assert opts["servers"] == ["nats://localhost:4222"]
 
     def test_tls_ca_cert_builds_ssl_context(self):
         ca_pem = "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----"
