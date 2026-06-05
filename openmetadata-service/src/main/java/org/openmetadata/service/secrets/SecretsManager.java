@@ -477,9 +477,9 @@ public abstract class SecretsManager {
       String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage());
+              secretId, exceptionMessage(e));
       LOG.error(msg);
-      throw new SecretsManagerException(msg);
+      throw new SecretsManagerException(msg, e);
     }
   }
 
@@ -560,6 +560,12 @@ public abstract class SecretsManager {
 
   protected abstract String storeValue(
       String fieldName, String value, String secretId, boolean store);
+
+  protected static String exceptionMessage(Throwable throwable) {
+    return throwable.getMessage() != null
+        ? throwable.getMessage()
+        : throwable.getClass().getSimpleName();
+  }
 
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();

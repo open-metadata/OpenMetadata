@@ -250,6 +250,11 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   }
 
   @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof ApiException apiException && apiException.getCode() == 404;
+  }
+
+  @Override
   protected void deleteSecretInternal(String secretName) {
     try {
       apiClient.deleteNamespacedSecret(secretName, namespace).execute();

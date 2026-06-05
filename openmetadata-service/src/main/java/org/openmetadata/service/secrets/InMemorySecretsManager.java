@@ -59,4 +59,9 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
     }
     return value;
   }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof SecretsManagerException;
+  }
 }

@@ -20,6 +20,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
+import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.Tag;
@@ -84,6 +85,11 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     DeleteParameterRequest deleteParameterRequest =
         DeleteParameterRequest.builder().name(secretName).build();
     this.ssmClient.deleteParameter(deleteParameterRequest);
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof ParameterNotFoundException;
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {

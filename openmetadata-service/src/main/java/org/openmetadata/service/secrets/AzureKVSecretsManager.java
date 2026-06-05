@@ -1,6 +1,7 @@
 package org.openmetadata.service.secrets;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.core.util.polling.SyncPoller;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
@@ -104,6 +105,11 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   protected void deleteSecretInternal(String secretName) {
     SyncPoller<DeletedSecret, Void> deletionPoller = client.beginDeleteSecret(secretName);
     deletionPoller.waitForCompletion();
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof ResourceNotFoundException;
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {

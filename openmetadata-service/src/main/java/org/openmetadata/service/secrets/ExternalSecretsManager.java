@@ -16,6 +16,7 @@ package org.openmetadata.service.secrets;
 import java.util.Locale;
 import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
@@ -46,28 +47,60 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   public void upsertSecret(String secretName, String secretValue) {
     String sanitizedValue = cleanNullOrEmpty(secretValue);
-    if (existSecret(secretName)) {
-      updateSecret(secretName, sanitizedValue);
-      sleep();
-    } else {
-      storeSecret(secretName, sanitizedValue);
-      sleep();
+    try {
+      storeOrUpdateSecret(secretName, sanitizedValue);
+    } catch (SecretsManagerException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      throw storeFailure(secretName, e);
     }
   }
 
-  public boolean existSecret(String secretName) {
-    try {
-      boolean exists = getSecret(secretName) != null;
-      sleep();
-      return exists;
-    } catch (Exception e) {
-      return false;
+  private void storeOrUpdateSecret(String secretName, String secretValue) {
+    if (existSecret(secretName)) {
+      updateSecret(secretName, secretValue);
+    } else {
+      storeSecret(secretName, secretValue);
     }
+    sleep();
+  }
+
+  private SecretsManagerException storeFailure(String secretName, RuntimeException cause) {
+    return new SecretsManagerException(
+        String.format(
+            "Failed to store secret [%s] in %s: %s",
+            secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
+        cause);
+  }
+
+  public boolean existSecret(String secretName) {
+    boolean exists = false;
+    try {
+      exists = getSecret(secretName) != null;
+      sleep();
+    } catch (RuntimeException e) {
+      if (!isNotFoundException(e)) {
+        throw readFailure(secretName, e);
+      }
+    }
+    return exists;
+  }
+
+  private SecretsManagerException readFailure(String secretName, RuntimeException cause) {
+    return new SecretsManagerException(
+        String.format(
+            "Unable to read secret [%s] from %s to determine whether it already exists: %s. "
+                + "This is a read failure (e.g. missing read/decrypt permissions on the secret), "
+                + "not a missing secret.",
+            secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
+        cause);
   }
 
   abstract void storeSecret(String secretName, String secretValue);
 
   abstract void updateSecret(String secretName, String secretValue);
+
+  protected abstract boolean isNotFoundException(Exception exception);
 
   private void sleep() {
     // delay reaching secrets manager quotas

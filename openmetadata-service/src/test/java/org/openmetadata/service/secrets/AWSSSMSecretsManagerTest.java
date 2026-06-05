@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -28,6 +31,7 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
 import software.amazon.awssdk.services.ssm.model.Parameter;
+import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.PutParameterResponse;
 
@@ -89,5 +93,16 @@ public class AWSSSMSecretsManagerTest extends AWSBasedSecretsManagerTest {
   @Override
   protected SecretsManagerProvider expectedSecretManagerProvider() {
     return SecretsManagerProvider.MANAGED_AWS_SSM;
+  }
+
+  @Test
+  void isNotFoundExceptionRecognizesParameterNotFoundButNotOtherErrors() {
+    assertTrue(
+        secretsManager.isNotFoundException(
+            ParameterNotFoundException.builder().message("parameter not found").build()),
+        "ParameterNotFoundException must be classified as a genuine not-found");
+    assertFalse(
+        secretsManager.isNotFoundException(new RuntimeException("throttled / access denied")),
+        "Other read failures must not be mistaken for a missing parameter");
   }
 }
