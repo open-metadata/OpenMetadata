@@ -48,6 +48,10 @@ import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
+import java.util.Map;
+import org.openmetadata.schema.api.lineage.openlineage.ErrorMessageFacet;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.type.StatusType;
 
 @ExtendWith(MockitoExtension.class)
 class OpenLineageMapperTest {
@@ -774,5 +778,82 @@ class OpenLineageMapperTest {
                 "00000000-0000-0000-0000-" + String.format("%012d", id.hashCode() & 0xFFFFFFFFL)))
         .withType("pipeline")
         .withFullyQualifiedName(fqn);
+  }
+
+  @Test
+  void mapPipelineStatus_startEvent_returnsRunningStatus() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.START);
+    EntityReference pipelineRef = createPipelineReference("p1", "service.pipeline1");
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(pipelineRef);
+
+    Map.Entry<String, PipelineStatus> result = mapper.mapPipelineStatus(event, UPDATED_BY);
+
+    assertNotNull(result);
+    assertEquals("service.pipeline1", result.getKey());
+    assertEquals(StatusType.Running, result.getValue().getExecutionStatus());
+    assertNull(result.getValue().getEndTime());
+  }
+
+  @Test
+  void mapPipelineStatus_runningEvent_returnsRunningStatus() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.RUNNING);
+    EntityReference pipelineRef = createPipelineReference("p1", "service.pipeline1");
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(pipelineRef);
+
+    Map.Entry<String, PipelineStatus> result = mapper.mapPipelineStatus(event, UPDATED_BY);
+
+    assertNotNull(result);
+    assertEquals(StatusType.Running, result.getValue().getExecutionStatus());
+  }
+
+  @Test
+  void mapPipelineStatus_completeEvent_returnsSuccessfulStatus() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    EntityReference pipelineRef = createPipelineReference("p1", "service.pipeline1");
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(pipelineRef);
+
+    Map.Entry<String, PipelineStatus> result = mapper.mapPipelineStatus(event, UPDATED_BY);
+
+    assertNotNull(result);
+    assertEquals(StatusType.Successful, result.getValue().getExecutionStatus());
+    assertNotNull(result.getValue().getEndTime());
+  }
+
+  @Test
+  void mapPipelineStatus_failEvent_returnsFailedStatusWithError() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.FAIL);
+    ErrorMessageFacet errorFacet = new ErrorMessageFacet()
+        .withMessage("Something went wrong")
+        .withStackTrace("Stack trace here");
+    event.getRun().setFacets(new RunFacets().withErrorMessage(errorFacet));
+    
+    EntityReference pipelineRef = createPipelineReference("p1", "service.pipeline1");
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(pipelineRef);
+
+    Map.Entry<String, PipelineStatus> result = mapper.mapPipelineStatus(event, UPDATED_BY);
+
+    assertNotNull(result);
+    assertEquals(StatusType.Failed, result.getValue().getExecutionStatus());
+    assertNotNull(result.getValue().getEndTime());
+    assertNotNull(result.getValue().getError());
+    assertEquals("Something went wrong", result.getValue().getError().getErrorMessage());
+    assertEquals("Stack trace here", result.getValue().getError().getStackTrace());
+  }
+
+  @Test
+  void mapPipelineStatus_abortEvent_returnsFailedStatus() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.ABORT);
+    EntityReference pipelineRef = createPipelineReference("p1", "service.pipeline1");
+    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
+        .thenReturn(pipelineRef);
+
+    Map.Entry<String, PipelineStatus> result = mapper.mapPipelineStatus(event, UPDATED_BY);
+
+    assertNotNull(result);
+    assertEquals(StatusType.Failed, result.getValue().getExecutionStatus());
   }
 }

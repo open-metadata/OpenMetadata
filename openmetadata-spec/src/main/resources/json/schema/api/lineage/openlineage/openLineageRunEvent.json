@@ -10,7 +10,7 @@
       "description": "The type of lifecycle event.",
       "type": "string",
       "javaType": "org.openmetadata.schema.api.lineage.openlineage.EventType",
-      "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER"]
+      "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER", "ABORTED"]
     },
     "openLineageRun": {
       "description": "Run information including run ID and facets.",
