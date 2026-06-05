@@ -1202,6 +1202,7 @@
     "last-activity": "Последняя активность",
     "last-activity-n-minutes-ago": "Последняя активность {{count}} минут назад",
     "last-edited-by": "Последнее редактирование",
+    "last-edited-time": "Последнее редактирование {{time}}",
     "last-error": "Последняя ошибка",
     "last-failed-at": "Последний сбой в",
     "last-hour": "Последний час",
