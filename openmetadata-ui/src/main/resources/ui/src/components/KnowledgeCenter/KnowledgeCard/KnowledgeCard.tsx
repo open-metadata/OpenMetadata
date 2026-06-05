@@ -13,20 +13,19 @@
 import {
   Badge,
   Box,
+  ButtonUtility,
   Card,
   Dot,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -54,6 +53,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
+import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -167,34 +167,31 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       permissions?.EditTags;
 
     return (
-      <>
+      <Box align="center" gap={1}>
         {editPermission && (
-          <EditIcon
+          <ButtonUtility
+            color='tertiary'
             data-testid="edit-quick-link-btn"
-            height={16}
-            style={{ verticalAlign: 'middle' }}
-            width={16}
-            onClick={(e) => {
+            icon={<EditIcon height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setShowAddLinkModal(true);
-            }}
-          />
+            }} />
+
         )}
         {permissions?.Delete && (
-          <IconDelete
+          <ButtonUtility
+            color='tertiary'
             data-testid="delete-quick-link-btn"
-            height={14}
-            style={{ verticalAlign: 'middle', color: DE_ACTIVE_COLOR }}
-            width={14}
-            onClick={(e) => {
+            icon={<Trash01 height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setIsDelete(true);
-            }}
-          />
+            }} />
         )}
-      </>
+      </Box>
     );
   }, [permissions]);
 
