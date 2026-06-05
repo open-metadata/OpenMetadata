@@ -13,10 +13,12 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional, cast  # noqa: UP035
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.event import listen
 
+from metadata.clients.aws_client import RdsIamAuthTokenManager
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -28,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 )
 from metadata.generated.schema.entity.services.connections.database.common.gcpCloudSqlConfig import (
     GcpCloudsqlConfigurationSource,
+)
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
+    IamAuthConfigurationSource,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MySQLConnectionConfig,
@@ -72,11 +77,48 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         if isinstance(connection.authType, GcpCloudsqlConfigurationSource):
             return self._get_cloudsql_engine(connection)
 
+        if isinstance(connection.authType, IamAuthConfigurationSource):
+            return self._get_iam_engine(connection)
+
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url_common,
             get_connection_args_fn=get_connection_args_common,
         )
+
+    def _get_iam_engine(self, connection: MySQLConnectionConfig) -> Engine:
+        """Build an engine that refreshes the RDS IAM token per connection.
+
+        RDS IAM tokens expire after ~15 minutes. Rather than baking a single token
+        into the connection URL (which would go stale for connections opened later
+        in a long ingestion), a ``do_connect`` listener injects a freshly minted
+        token on every new connection.
+        """
+        auth_type = cast("IamAuthConfigurationSource", connection.authType)
+        if auth_type.awsConfig is None:
+            raise ValueError("awsConfig is required for MySQL RDS IAM authentication")
+
+        host, port = connection.hostPort.split(":")
+        token_manager = RdsIamAuthTokenManager(
+            host=host,
+            port=port,
+            username=connection.username,
+            aws_config=auth_type.awsConfig,
+        )
+        scheme = connection.scheme.value if connection.scheme else "mysql+pymysql"
+        base_url = f"{scheme}://{connection.username}@{connection.hostPort}"
+        engine = create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=lambda _: base_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
+
+        def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: Dict[str, Any]):  # noqa: UP006
+            cparams["password"] = token_manager.get_token()
+            cparams["ssl"] = cparams.get("ssl") or {"ssl": True}
+
+        listen(engine, "do_connect", inject_iam_token)
+        return engine
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
