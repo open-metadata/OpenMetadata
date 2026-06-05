@@ -2544,7 +2544,8 @@
         },
         {
           "name": "columns.description",
-          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents.",
+          "highlight": true
         }
       ]
     },
@@ -2934,7 +2935,8 @@
         },
         {
           "name": "columns.name",
-          "description": "Standard text analysis on column names in the data model."
+          "description": "Standard text analysis on column names in the data model.",
+          "highlight": true
         },
         {
           "name": "columns.displayName",
@@ -2942,7 +2944,8 @@
         },
         {
           "name": "columns.description",
-          "description": "Search on column descriptions to find data models with fields serving specific purposes."
+          "description": "Search on column descriptions to find data models with fields serving specific purposes.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",

@@ -99,6 +99,41 @@ class SearchSettingsHandlerTest {
   }
 
   @Test
+  void everyDefaultHighlightFieldIsMarkedHighlightableInAllowedFields() {
+    // Highlight fields are config-driven: a field may be highlighted only if it is flagged
+    // "highlight": true in allowedFields. Every field shipped in a default highlightFields list
+    // must therefore be flagged, otherwise the 1.12.11 migration would strip it from stored
+    // settings and the UI would disable its toggle.
+    Set<String> highlightable =
+        defaultSearchSettings.getAllowedFields().stream()
+            .flatMap(allowed -> allowed.getFields().stream())
+            .filter(field -> Boolean.TRUE.equals(field.getHighlight()))
+            .map(Field::getName)
+            .collect(Collectors.toSet());
+
+    List<String> gaps = new ArrayList<>();
+    GlobalSettings global = defaultSearchSettings.getGlobalSettings();
+    if (global != null && global.getHighlightFields() != null) {
+      global.getHighlightFields().stream()
+          .filter(field -> !highlightable.contains(field))
+          .forEach(field -> gaps.add("global:" + field));
+    }
+    for (AssetTypeConfiguration config : defaultSearchSettings.getAssetTypeConfigurations()) {
+      if (config.getHighlightFields() != null) {
+        config.getHighlightFields().stream()
+            .filter(field -> !highlightable.contains(field))
+            .forEach(field -> gaps.add(config.getAssetType() + ":" + field));
+      }
+    }
+
+    assertTrue(
+        gaps.isEmpty(),
+        "Every default highlightField must be marked \"highlight\": true in allowedFields, "
+            + "otherwise the 1.12.11 migration strips it and the UI disables its toggle. Gaps: "
+            + gaps);
+  }
+
+  @Test
   void testMergeAddsNewAssetTypeFromDefaults() {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(
