@@ -439,12 +439,15 @@ public class OpenSearchIndexManager implements IndexManagementClient {
                 }
                 // Then delete any concrete index sharing the alias name, atomically, so the alias
                 // add below cannot race a separate delete and orphan the canonical name.
+                // Do NOT set must_exist: OpenSearch's _aliases parser rejects it on remove_index
+                // ("unknown field [must_exist]") and fails the whole request. It is unnecessary
+                // here anyway — resolveCanonicalRemoval only forwards indices it has already
+                // confirmed exist via indexExists().
                 for (String indexToRemove : finalIndicesToRemove) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.removeIndex(
-                              removeIndexBuilder ->
-                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
                 }
                 // Finally, add aliases to the new index
                 for (String alias : finalAliases) {
