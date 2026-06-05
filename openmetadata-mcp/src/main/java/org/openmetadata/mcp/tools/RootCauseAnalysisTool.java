@@ -78,11 +78,12 @@ public class RootCauseAnalysisTool implements McpTool {
       return analyze(request);
     } catch (IOException e) {
       LOG.error("IOException during root cause analysis for entity: {}", fqn, e);
-      throw new RuntimeException("Failed to perform root cause analysis: " + e.getMessage(), e);
+      throw new RuntimeException(
+          "Failed to perform root cause analysis: " + McpResponseTrim.safeMessage(e), e);
     } catch (Exception e) {
       LOG.error("Unexpected error during root cause analysis for entity: {}", fqn, e);
       throw new RuntimeException(
-          "Unexpected error during root cause analysis: " + e.getMessage(), e);
+          "Unexpected error during root cause analysis: " + McpResponseTrim.safeMessage(e), e);
     }
   }
 
