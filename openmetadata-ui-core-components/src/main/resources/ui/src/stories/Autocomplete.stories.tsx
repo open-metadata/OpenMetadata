@@ -372,10 +372,10 @@ export const WithoutIcon: StoryObj = {
     return (
       <div style={{ width: 360 }}>
         <Autocomplete
+          icon={null}
           items={ITEMS_WITH_SUPPORTING_TEXT}
           label="Tags"
           placeholder="Type to search..."
-          placeholderIcon={null}
           selectedItems={selectedItems}>
           {(item) => (
             <Autocomplete.Item
