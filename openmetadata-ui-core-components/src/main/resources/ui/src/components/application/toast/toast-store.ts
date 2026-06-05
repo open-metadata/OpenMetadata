@@ -13,8 +13,11 @@
 
 import { ToastQueue } from '@react-stately/toast';
 
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'default';
+
 export interface ToastContent {
   message: string;
+  variant: ToastVariant;
 }
 
 export const toastQueue = new ToastQueue<ToastContent>({
@@ -26,17 +29,30 @@ export interface ShowToastOptions {
   timeout?: number;
 }
 
-export function showToast(
+function add(
   message: string,
+  variant: ToastVariant,
   options?: ShowToastOptions
 ): string {
   return toastQueue.add(
-    { message },
+    { message, variant },
     { timeout: options?.timeout ?? 2200, ...options }
   );
 }
 
+export function showToast(message: string, options?: ShowToastOptions): string {
+  return add(message, 'default', options);
+}
+
 export const toast = {
   show: showToast,
+  success: (message: string, options?: ShowToastOptions) =>
+    add(message, 'success', options),
+  error: (message: string, options?: ShowToastOptions) =>
+    add(message, 'error', { timeout: 0, ...options }),
+  warning: (message: string, options?: ShowToastOptions) =>
+    add(message, 'warning', options),
+  info: (message: string, options?: ShowToastOptions) =>
+    add(message, 'info', options),
   dismiss: (key: string) => toastQueue.close(key),
 };

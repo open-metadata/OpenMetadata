@@ -46,23 +46,57 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// ─── Static previews (fire on mount, no auto-dismiss) ────────────────────────
+// ─── Individual variant previews ─────────────────────────────────────────────
 
-export const Default: Story = {
+export const Success: Story = {
   args: { position: 'bottom-center' },
   render: (args) => {
     useEffect(() => {
-      toast.show('Dashboard created successfully!', { timeout: 0 });
+      toast.success('Dashboard created successfully!', { timeout: 0 });
     }, []);
     return <ToastProvider {...args} />;
   },
 };
 
-export const LongMessage: Story = {
+export const Error: Story = {
   args: { position: 'bottom-center' },
   render: (args) => {
     useEffect(() => {
-      toast.show('Sharing settings saved for "Revenue Overview"', { timeout: 0 });
+      toast.error('Failed to save changes. Please try again.', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
+  },
+};
+
+export const Warning: Story = {
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.warning('You have unsaved changes.', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
+  },
+};
+
+export const Info: Story = {
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.info('A new version is available.', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
+  },
+};
+
+// ─── Stacking ─────────────────────────────────────────────────────────────────
+
+export const Stacked: Story = {
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.success('Dashboard created successfully!', { timeout: 0 });
+      toast.warning('You have unsaved changes.', { timeout: 0 });
+      toast.error('Failed to connect to the data source.', { timeout: 0 });
     }, []);
     return <ToastProvider {...args} />;
   },
@@ -79,50 +113,34 @@ export const LiveTrigger: Story = {
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.show('Dashboard created successfully!')}>
-          Dashboard created
+          onClick={() => toast.success('Dashboard created successfully!')}>
+          Success
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.show('Share link copied for "Revenue Overview"')}>
-          Link copied
+          onClick={() => toast.error('Failed to save changes. Please try again.')}>
+          Error (with close)
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.show('Added "Revenue Overview" to favorites')}>
-          Added to favorites
+          onClick={() => toast.warning('You have unsaved changes.')}>
+          Warning
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.show('Changes saved', { timeout: 0 })}>
-          Persistent (no auto-dismiss)
+          onClick={() => toast.info('A new version is available.')}>
+          Info
+        </Button>
+        <Button
+          color="secondary"
+          size="sm"
+          onClick={() => toast.show('Link copied to clipboard.')}>
+          Default
         </Button>
       </div>
     </>
   ),
-};
-
-// ─── Position showcase ────────────────────────────────────────────────────────
-
-export const TopRight: Story = {
-  args: { position: 'top-right' },
-  render: (args) => {
-    useEffect(() => {
-      toast.show('Saved to top-right!', { timeout: 0 });
-    }, []);
-    return <ToastProvider {...args} />;
-  },
-};
-
-export const TopCenter: Story = {
-  args: { position: 'top-center' },
-  render: (args) => {
-    useEffect(() => {
-      toast.show('Saved to top-center!', { timeout: 0 });
-    }, []);
-    return <ToastProvider {...args} />;
-  },
 };

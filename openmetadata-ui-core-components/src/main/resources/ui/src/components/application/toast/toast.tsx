@@ -11,17 +11,65 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import type { FC } from 'react';
 import type { QueuedToast } from '@react-stately/toast';
-import { UNSTABLE_Toast as AriaToast } from 'react-aria-components';
-import type { ToastContent } from './toast-store';
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  InfoCircle,
+} from '@untitledui/icons';
+import {
+  Button,
+  UNSTABLE_Toast as AriaToast,
+  UNSTABLE_ToastStateContext,
+} from 'react-aria-components';
+import { useContext } from 'react';
+import { X } from '@untitledui/icons';
+import type { ToastContent, ToastVariant } from './toast-store';
 import { cx } from '@/utils/cx';
+
+const variantConfig: Record<
+  ToastVariant,
+  { icon: FC<{ className?: string }>; iconClass: string; showClose: boolean }
+> = {
+  success: {
+    icon: CheckCircle,
+    iconClass: 'tw:text-[#17B26A]',
+    showClose: false,
+  },
+  error: {
+    icon: AlertCircle,
+    iconClass: 'tw:text-[#F04438]',
+    showClose: true,
+  },
+  warning: {
+    icon: AlertTriangle,
+    iconClass: 'tw:text-[#F79009]',
+    showClose: false,
+  },
+  info: {
+    icon: InfoCircle,
+    iconClass: 'tw:text-[#2E90FA]',
+    showClose: false,
+  },
+  default: {
+    icon: CheckCircle,
+    iconClass: 'tw:text-[#17B26A]',
+    showClose: false,
+  },
+};
 
 interface ToastProps {
   toast: QueuedToast<ToastContent>;
 }
 
 export const Toast = ({ toast }: ToastProps) => {
+  const state = useContext(UNSTABLE_ToastStateContext);
+  const { variant = 'default', message } = toast.content;
+  const config = variantConfig[variant];
+  const Icon = config.icon;
+
   return (
     <AriaToast
       className={cx(
@@ -32,11 +80,20 @@ export const Toast = ({ toast }: ToastProps) => {
         'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
       toast={toast}>
-      <Check
+      <Icon
         aria-hidden="true"
-        className="tw:size-4 tw:shrink-0 tw:text-[#17B26A]"
+        className={cx('tw:size-4 tw:shrink-0', config.iconClass)}
       />
-      <span>{toast.content.message}</span>
+      <span>{message}</span>
+      {config.showClose && state && (
+        <Button
+          aria-label="Close"
+          className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-white/60 tw:outline-none tw:transition tw:hover:text-white"
+          slot="close"
+          onPress={() => state.close(toast.key)}>
+          <X aria-hidden="true" className="tw:size-3.5" />
+        </Button>
+      )}
     </AriaToast>
   );
 };
