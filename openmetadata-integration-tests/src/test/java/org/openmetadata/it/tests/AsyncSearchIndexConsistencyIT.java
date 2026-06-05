@@ -61,12 +61,7 @@ public class AsyncSearchIndexConsistencyIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_SEARCH_INDEX = "table_search_index";
-  // Search read-your-write is normally near-immediate (synchronous post-commit indexing). Under the
-  // full IT suite (~14.5k tests against one shared Elasticsearch node) a live write can be 429'd
-  // and
-  // routed to the retry outbox, so the document lands a little later; widen the window so the
-  // contention does not flake the convergence assertion.
-  private static final Duration SEARCH_AT_MOST = Duration.ofSeconds(120);
+  private static final Duration SEARCH_AT_MOST = Duration.ofSeconds(60);
   private static final Duration SEARCH_POLL = Duration.ofMillis(500);
 
   @Test
@@ -121,13 +116,23 @@ public class AsyncSearchIndexConsistencyIT {
                 assertNotNull(searchSourceById(client, query, entityId), "Doc not yet searchable"));
   }
 
-  private JsonNode searchSourceById(OpenMetadataClient client, String query, String entityId)
+  private JsonNode searchSourceById(OpenMetadataClient client, String fqn, String entityId)
       throws Exception {
-    // Search FOR the entity (by FQN) rather than match-all: table_search_index holds every table in
-    // the cluster, so a "*" query returns an arbitrary 50-doc page that rarely contains this test's
-    // table once the suite has created thousands. Querying the FQN ranks the target first.
+    // Pin the exact doc with a term filter on the keyword fullyQualifiedName, not a free-text query
+    // of the FQN: the latter explodes into >1024 boolean clauses and trips OpenSearch's default
+    // index.query.bool.max_clause_count (Elasticsearch allows far more), 500ing the search. A
+    // single
+    // term clause matches regardless of how many tables the suite has indexed.
+    String filter = "{\"query\":{\"term\":{\"fullyQualifiedName\":\"" + fqn + "\"}}}";
     String response =
-        client.search().query(query).index(TABLE_SEARCH_INDEX).size(50).deleted(false).execute();
+        client
+            .search()
+            .query("*")
+            .index(TABLE_SEARCH_INDEX)
+            .queryFilter(filter)
+            .size(10)
+            .deleted(false)
+            .execute();
     JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
     JsonNode result = null;
     for (JsonNode hit : hits) {

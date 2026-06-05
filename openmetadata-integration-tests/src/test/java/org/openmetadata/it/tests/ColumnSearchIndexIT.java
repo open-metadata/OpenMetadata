@@ -163,10 +163,15 @@ public class ColumnSearchIndexIT {
       OpenMetadataClient client = SdkClients.adminClient();
       createTableWithColumns(ns, "col_dataasset");
 
+      String columnName = ns.prefix("user_email");
       String queryFilter =
-          "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"tableColumn\"}}]}}}";
-      awaitDataAssetHasColumn(
-          client, ns.prefix("user_email"), queryFilter, ns.prefix("user_email"));
+          "{\"query\":{\"bool\":{\"must\":["
+              + "{\"term\":{\"entityType\":\"tableColumn\"}},"
+              + "{\"term\":{\"name.keyword\":\""
+              + columnName
+              + "\"}}"
+              + "]}}}";
+      awaitDataAssetHasColumn(client, queryFilter, columnName);
     }
 
     @Test
@@ -175,13 +180,16 @@ public class ColumnSearchIndexIT {
       OpenMetadataClient client = SdkClients.adminClient();
       createTableWithColumns(ns, "col_db_filter");
 
+      String columnName = ns.prefix("user_email");
       String queryFilter =
           "{\"query\":{\"bool\":{\"must\":["
               + "{\"term\":{\"entityType\":\"tableColumn\"}},"
-              + "{\"exists\":{\"field\":\"database\"}}"
+              + "{\"exists\":{\"field\":\"database\"}},"
+              + "{\"term\":{\"name.keyword\":\""
+              + columnName
+              + "\"}}"
               + "]}}}";
-      awaitDataAssetHasColumn(
-          client, ns.prefix("user_email"), queryFilter, ns.prefix("user_email"));
+      awaitDataAssetHasColumn(client, queryFilter, columnName);
     }
   }
 
@@ -233,12 +241,7 @@ public class ColumnSearchIndexIT {
   // SEARCH POLLING HELPERS
   // ===================================================================
 
-  // A live column write is normally searchable near-immediately, but under the full IT suite
-  // (~14.5k tests against one shared Elasticsearch node) it can be 429'd and retried via the
-  // outbox,
-  // so it lands a little later. Widen the window so suite-wide contention does not flake the
-  // assert.
-  private static final Duration POLL_AT_MOST = Duration.ofSeconds(120);
+  private static final Duration POLL_AT_MOST = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
   private static final String COLUMN_SEARCH_INDEX = "column_search_index";
   private static final String DATA_ASSET_INDEX = "dataAsset";
@@ -280,26 +283,27 @@ public class ColumnSearchIndexIT {
   }
 
   private void awaitDataAssetHasColumn(
-      OpenMetadataClient client, String columnQuery, String queryFilter, String fqnNeedle) {
+      OpenMetadataClient client, String queryFilter, String fqnNeedle) {
     Awaitility.await("tableColumn present in dataAsset index")
         .pollInterval(POLL_INTERVAL)
         .atMost(POLL_AT_MOST)
         .ignoreExceptions()
-        .untilAsserted(
-            () -> assertTrue(dataAssetHasColumn(client, columnQuery, queryFilter, fqnNeedle)));
+        .untilAsserted(() -> assertTrue(dataAssetHasColumn(client, queryFilter, fqnNeedle)));
   }
 
   private boolean dataAssetHasColumn(
-      OpenMetadataClient client, String columnQuery, String queryFilter, String fqnNeedle)
-      throws Exception {
-    // Search FOR the specific column rather than match-all: the dataAsset alias spans every
-    // tableColumn doc in the cluster, so a "*" query returns an arbitrary 50-doc page that almost
-    // never contains this test's column once the suite has indexed thousands of columns. Querying
-    // the column name ranks the target first, so a single page reliably contains it.
+      OpenMetadataClient client, String queryFilter, String fqnNeedle) throws Exception {
+    // Pin the column with a term filter on its keyword name (in queryFilter), not a free-text
+    // query:
+    // the dataAsset alias spans many indices/fields, so a free-text query of the column name
+    // explodes
+    // into >1024 boolean clauses and trips OpenSearch's default index.query.bool.max_clause_count
+    // (Elasticsearch allows far more), 500ing the search. Match-all + the term filter returns the
+    // exact column with a single clause, regardless of how many columns the suite has indexed.
     String response =
         client
             .search()
-            .query(columnQuery)
+            .query("*")
             .index(DATA_ASSET_INDEX)
             .queryFilter(queryFilter)
             .size(50)
