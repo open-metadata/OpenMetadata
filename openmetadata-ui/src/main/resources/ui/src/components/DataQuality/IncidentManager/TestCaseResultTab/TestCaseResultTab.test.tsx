@@ -108,6 +108,12 @@ jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
 jest.mock('../../../Database/Profiler/TestSummary/TestSummary', () => {
   return jest.fn().mockImplementation(() => <div>TestSummary</div>);
 });
+jest.mock(
+  '../../../DataProducts/DataProductsContainer/DataProductsContainer.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
+  }
+);
 jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
   return jest.fn().mockImplementation(({ onUpdate, testCase, onCancel }) => (
     <div>
