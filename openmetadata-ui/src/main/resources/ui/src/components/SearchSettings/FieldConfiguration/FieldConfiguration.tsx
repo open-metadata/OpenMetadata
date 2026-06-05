@@ -49,9 +49,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     field.matchType || MatchType.Standard
   );
 
-  const fieldDescription = entityFields.find(
+  const entityFieldConfig = entityFields.find(
     (entityField) => entityField.name === field.fieldName
-  )?.description;
+  );
+  const fieldDescription = entityFieldConfig?.description;
+  // Highlighting only works on analyzed (text) fields; searchSettings config marks which fields
+  // are eligible. Fields that aren't (flattened/flat_object, keyword-only, non-indexed) must not
+  // be offered the toggle, otherwise the highlight phase fails at query time.
+  const isHighlightAllowed = entityFieldConfig?.highlight ?? false;
 
   useEffect(() => {
     // If initialOpen is true, open this panel automatically
@@ -155,11 +160,13 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </Typography.Text>
             <Switch
               checked={
-                searchSettings?.highlightFields?.includes(field.fieldName) ??
-                false
+                isHighlightAllowed &&
+                (searchSettings?.highlightFields?.includes(field.fieldName) ??
+                  false)
               }
               className="m-l-xlg"
               data-testid="highlight-field-switch"
+              disabled={!isHighlightAllowed}
               onChange={() => onHighlightFieldsChange(field.fieldName)}
             />
           </div>
