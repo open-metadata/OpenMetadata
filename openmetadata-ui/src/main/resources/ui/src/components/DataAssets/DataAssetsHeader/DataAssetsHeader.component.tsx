@@ -63,8 +63,6 @@ import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { APICollection } from '../../../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import {
   ContractExecutionStatus,
   DataContract,
@@ -528,14 +526,14 @@ export const DataAssetsHeader = ({
     []
   );
 
-const handleFollowingClick = useCallback(async () => {
-  setIsFollowingLoading(true);
-  try {
-    await onFollowClick?.();
-  } finally {
-    setIsFollowingLoading(false);
-  }
-}, [onFollowClick]);
+  const handleFollowingClick = useCallback(async () => {
+    setIsFollowingLoading(true);
+    try {
+      await onFollowClick?.();
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  }, [onFollowClick]);
 
   const handleCopyEntityUrl = useCallback(async () => {
     await onCopyToClipBoard(globalThis.location.href);
@@ -816,6 +814,8 @@ const handleFollowingClick = useCallback(async () => {
     }
   }, [dataAsset?.id]);
 
+  const hasDisplayName = !isEmpty(dataAsset.displayName);
+
   return (
     <>
       <div
@@ -935,16 +935,37 @@ const handleFollowingClick = useCallback(async () => {
                 />
               </div>
             )}
-            <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-              <Typography
-                as="h2"
-                className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary"
-                data-testid="entity-header-display-name"
-                ellipsis={{ tooltip: entityName }}
-                size="text-lg"
-                weight="bold">
-                {entityName}
-              </Typography>
+            <div
+              className="tw:flex tw:min-w-0 tw:items-center tw:gap-3"
+              data-testid="entity-header-title">
+              <div className="tw:flex tw:min-w-0 tw:flex-col">
+                {hasDisplayName && (
+                  <Typography
+                    as="h2"
+                    className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+                    data-testid="entity-header-display-name"
+                    ellipsis={{ tooltip: entityName }}
+                    size="text-lg"
+                    weight="bold">
+                    {entityName}
+                  </Typography>
+                )}
+                <Typography
+                  as={hasDisplayName ? 'span' : 'h2'}
+                  className={classNames(
+                    'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+                    {
+                      'tw:text-primary': !hasDisplayName,
+                      'tw:text-tertiary': hasDisplayName,
+                    }
+                  )}
+                  data-testid="entity-header-name"
+                  ellipsis={{ tooltip: dataAsset.name }}
+                  size={hasDisplayName ? 'text-sm' : 'text-lg'}
+                  weight={hasDisplayName ? 'medium' : 'bold'}>
+                  {dataAsset.name}
+                </Typography>
+              </div>
               {deleted && (
                 <span
                   className="deleted-badge-button"
