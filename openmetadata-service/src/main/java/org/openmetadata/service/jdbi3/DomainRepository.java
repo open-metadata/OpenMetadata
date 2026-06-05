@@ -543,6 +543,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {

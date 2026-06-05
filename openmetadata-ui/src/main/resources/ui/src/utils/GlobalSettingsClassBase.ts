@@ -79,7 +79,6 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
-import brandClassBase from './BrandData/BrandClassBase';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -308,9 +307,7 @@ class GlobalSettingsClassBase {
         category: t('label.team-user-management'),
         key: GlobalSettingsMenuCategory.MEMBERS,
         icon: ManagementIcon,
-        description: t('message.team-member-management-description', {
-          brandName: brandClassBase.getPageTitle(),
-        }),
+        description: t('message.team-member-management-description'),
         items: [
           {
             label: t('label.team-plural'),
@@ -394,15 +391,11 @@ class GlobalSettingsClassBase {
         category: t('label.preference-plural'),
         key: GlobalSettingsMenuCategory.PREFERENCES,
         icon: this.getPreferenceIcon(),
-        description: t('message.customize-brand-description', {
-          brandName: brandClassBase.getPageTitle(),
-        }),
+        description: t('message.customize-brand-description'),
         items: [
           {
             label: t('label.theme'),
-            description: t('message.appearance-configuration-message', {
-              brandName: brandClassBase.getPageTitle(),
-            }),
+            description: t('message.appearance-configuration-message'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
             icon: AppearanceIcon,
@@ -665,10 +658,8 @@ class GlobalSettingsClassBase {
             icon: LineageIcon,
           },
           {
-            label: t('label.open-metadata-url'),
-            description: t('message.om-url-configuration-message', {
-              brandName: brandClassBase.getPageTitle(),
-            }),
+            label: t('label.brand-name-url'),
+            description: t('message.om-url-configuration-message'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,

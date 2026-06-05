@@ -16,13 +16,19 @@ import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDirectory;
+import org.openmetadata.schema.api.data.CreateFile;
+import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
+import org.openmetadata.schema.entity.data.File;
+import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.fluent.Directories;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.DirectoryService;
+import org.openmetadata.sdk.services.drives.FileService;
+import org.openmetadata.sdk.services.drives.SpreadsheetService;
 
 /**
  * Integration tests for Directory entity operations.
@@ -471,5 +477,109 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
         Exception.class,
         () -> Directories.getByName(nonExistentFqn),
         "Getting directory by non-existent FQN should fail");
+  }
+
+  @Test
+  void test_listReturnsServiceParentAndStats_excludesDeletedFromTotalSize(TestNamespace ns) {
+    DriveService driveService = sharedDriveService(ns);
+    assertNotNull(driveService);
+
+    Directory parentDir =
+        Directories.create()
+            .name(ns.prefix("stats_parent"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Directory subDir =
+        Directories.create()
+            .name(ns.prefix("stats_sub"))
+            .withService(driveService.getFullyQualifiedName())
+            .withParent(parentDir.getFullyQualifiedName())
+            .execute();
+    assertNotNull(subDir);
+
+    File liveFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("stats_live_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(100));
+    assertNotNull(liveFile);
+
+    Spreadsheet spreadsheet =
+        getSpreadsheetService()
+            .create(
+                new CreateSpreadsheet()
+                    .withName(ns.prefix("stats_sheet"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withParent(parentDir.getEntityReference())
+                    .withSize(50));
+    assertNotNull(spreadsheet);
+
+    File deletedFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("stats_deleted_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(999));
+    getFileService().delete(deletedFile.getId().toString());
+
+    ListParams params =
+        new ListParams()
+            .setService(driveService.getFullyQualifiedName())
+            .setFields("service,parent,numberOfFiles,numberOfSubDirectories,totalSize")
+            .setLimit(1000);
+    Directory listedParent = findInList(params, parentDir.getId());
+    assertNotNull(listedParent, "Parent directory must be present in the list response");
+
+    assertNotNull(listedParent.getService(), "Service must be set on the list path");
+    assertEquals(
+        driveService.getFullyQualifiedName(),
+        listedParent.getService().getFullyQualifiedName(),
+        "Service FQN must match on the list path");
+
+    assertEquals(
+        2,
+        listedParent.getNumberOfFiles(),
+        "numberOfFiles must count the live file and spreadsheet, not the deleted file");
+    assertEquals(
+        1,
+        listedParent.getNumberOfSubDirectories(),
+        "numberOfSubDirectories must count the subdirectory on the list path");
+    assertEquals(
+        150,
+        listedParent.getTotalSize(),
+        "totalSize must sum live children only and exclude the soft-deleted file");
+
+    Directory listedSub = findInList(params, subDir.getId());
+    assertNotNull(listedSub, "Subdirectory must be present in the list response");
+    assertNotNull(listedSub.getParent(), "Parent must be set on the list path");
+    assertEquals(
+        parentDir.getId(),
+        listedSub.getParent().getId(),
+        "Parent reference must match on the list path");
+  }
+
+  private Directory findInList(ListParams params, UUID id) {
+    ListResponse<Directory> response = listEntities(params);
+    Directory match = null;
+    for (Directory directory : response.getData()) {
+      if (id.equals(directory.getId())) {
+        match = directory;
+      }
+    }
+    return match;
+  }
+
+  private FileService getFileService() {
+    return new FileService(SdkClients.adminClient().getHttpClient());
+  }
+
+  private SpreadsheetService getSpreadsheetService() {
+    return new SpreadsheetService(SdkClients.adminClient().getHttpClient());
   }
 }

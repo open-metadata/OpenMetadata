@@ -34,7 +34,89 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 @Slf4j
 public class LineageUtil {
 
+  /**
+   * When a deferral scope is open on the calling thread, the lineage-ES leaves ({@link
+   * #addLineageToSearch} / {@link #deleteLineageFromSearch}) capture their {@code updateLineage} /
+   * {@code updateChildren} round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so no Elasticsearch call runs while a pooled connection
+   * is held — only the DB lineage-edge writes stay in the transaction — then drains the captured
+   * closures after commit. {@code null} means "no scope active" and the leaf executes inline.
+   */
+  private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
+   * toEntity} is retained so a post-commit drain that fails the {@code updateLineage}/{@code
+   * updateChildren} round trip can enqueue that entity to the durable search-index retry outbox
+   * (the same entity-keyed recovery the direct entity-index path uses) instead of silently losing
+   * the edge — the DB lineage rows were already committed inside the transaction.
+   */
+  public record DeferredLineageEsWrite(Runnable esWrite, EntityReference toEntity) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
   private LineageUtil() {}
+
+  /**
+   * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call
+   * — the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that
+   * calls {@link #drainLineageDeferred()} after commit and {@link #clearLineageDeferred()} on
+   * failure.
+   */
+  public static boolean beginLineageDeferral() {
+    boolean opened = DEFERRED_LINEAGE_ES.get() == null;
+    if (opened) {
+      DEFERRED_LINEAGE_ES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackToCheckpoint(int)} its own contributions on a deadlock replay without disturbing
+   * closures the outer owner captured.
+   */
+  public static int checkpoint() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackToCheckpoint(int checkpoint) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginLineageDeferral} and close the scope. */
+  public static List<DeferredLineageEsWrite> drainLineageDeferred() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    DEFERRED_LINEAGE_ES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearLineageDeferred() {
+    DEFERRED_LINEAGE_ES.remove();
+  }
+
+  private static void deferOrRun(Runnable esWrite, EntityReference toEntity) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      deferred.add(new DeferredLineageEsWrite(esWrite, toEntity));
+    } else {
+      esWrite.run();
+    }
+  }
 
   public static void addDomainLineage(
       UUID entityId, String entityType, EntityReference updatedDomain) {
@@ -126,6 +208,11 @@ public class LineageUtil {
 
   private static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doDeleteLineageFromSearch(fromEntity, toEntity), toEntity);
+  }
+
+  private static void doDeleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity) {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     Entity.getSearchRepository()
         .getSearchClient()
@@ -177,6 +264,11 @@ public class LineageUtil {
   }
 
   private static void addLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doAddLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
+  }
+
+  private static void doAddLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());

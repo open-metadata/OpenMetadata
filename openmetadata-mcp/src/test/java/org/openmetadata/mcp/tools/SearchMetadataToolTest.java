@@ -285,6 +285,96 @@ class SearchMetadataToolTest {
     assertFalse(results.get(0).containsKey("similarityScore"));
   }
 
+  @Test
+  void testTestCaseAndTestSuiteResolveToOwnIndexes() {
+    // Regression for collate#4323: test cases/suites are not part of the dataAsset alias, so they
+    // must resolve to their own indexes for data quality search to work.
+    when(searchRepository.getIndexMapping("testCase")).thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexMapping("testSuite")).thenReturn(mock(IndexMapping.class));
+
+    assertEquals("testCase", SearchMetadataTool.resolveIndex("testCase"));
+    assertEquals("testSuite", SearchMetadataTool.resolveIndex("testSuite"));
+  }
+
+  @Test
+  void testCleanSearchResultKeepsTestCaseFields() {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("fullyQualifiedName", "svc.db.schema.users.id.column_values_to_be_unique");
+    source.put("entityFQN", "svc.db.schema.users.id");
+    source.put("originEntityFQN", "svc.db.schema.users");
+    source.put("testCaseStatus", "Failed");
+    source.put("testCaseType", "column");
+    source.put("dataQualityDimension", "Uniqueness");
+    source.put("testPlatforms", List.of("OpenMetadata"));
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    assertEquals("svc.db.schema.users.id", result.get("entityFQN"));
+    assertEquals("svc.db.schema.users", result.get("originEntityFQN"));
+    assertEquals("Failed", result.get("testCaseStatus"));
+    assertEquals("column", result.get("testCaseType"));
+    assertEquals("Uniqueness", result.get("dataQualityDimension"));
+    assertEquals(List.of("OpenMetadata"), result.get("testPlatforms"));
+  }
+
+  @Test
+  void testCleanSearchResultKeepsTestSuiteFields() {
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testSuite");
+    source.put("fullyQualifiedName", "svc.db.schema.users.testSuite");
+    source.put("basic", true);
+    source.put("lastResultTimestamp", 1768222130752L);
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    assertEquals(true, result.get("basic"));
+    assertEquals(1768222130752L, result.get("lastResultTimestamp"));
+  }
+
+  @Test
+  void testCleanSearchResultSlimsTestCaseResult() {
+    Map<String, Object> testCaseResult = new HashMap<>();
+    testCaseResult.put("testCaseStatus", "Failed");
+    testCaseResult.put("timestamp", 1768222130752L);
+    testCaseResult.put("result", "Found min=1001 vs. expected min=90001");
+    testCaseResult.put("testResultValue", List.of(Map.of("name", "min", "value", "1001")));
+    testCaseResult.put("id", "5c0b4b32-b4ec-4570-b3b9-025d3fdf264b");
+
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("testCaseResult", testCaseResult);
+
+    Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> slim = (Map<String, Object>) result.get("testCaseResult");
+    assertNotNull(slim);
+    assertEquals("Failed", slim.get("testCaseStatus"));
+    assertEquals(1768222130752L, slim.get("timestamp"));
+    assertEquals("Found min=1001 vs. expected min=90001", slim.get("result"));
+    assertFalse(slim.containsKey("testResultValue"));
+    assertFalse(slim.containsKey("id"));
+  }
+
+  @Test
+  void testCleanSearchResultReturnsFullTestCaseResultWhenRequested() {
+    Map<String, Object> testCaseResult = new HashMap<>();
+    testCaseResult.put("testCaseStatus", "Failed");
+    testCaseResult.put("testResultValue", List.of(Map.of("name", "min", "value", "1001")));
+
+    Map<String, Object> source = new HashMap<>();
+    source.put("entityType", "testCase");
+    source.put("testCaseResult", testCaseResult);
+
+    Map<String, Object> result =
+        SearchMetadataTool.cleanSearchResult(source, List.of("testCaseResult"));
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> full = (Map<String, Object>) result.get("testCaseResult");
+    assertEquals(testCaseResult, full);
+  }
+
   private Map<String, Object> buildHit(double score, String fqn) {
     Map<String, Object> source = new HashMap<>();
     source.put("entityType", "table");
