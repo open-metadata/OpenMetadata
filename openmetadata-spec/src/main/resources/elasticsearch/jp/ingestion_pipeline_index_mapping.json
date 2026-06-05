@@ -361,7 +361,6 @@
         "type": "keyword"
       },
       "pipelineStatuses": {
-        "dynamic": false,
         "properties": {
           "pipelineState": {
             "type": "keyword"
