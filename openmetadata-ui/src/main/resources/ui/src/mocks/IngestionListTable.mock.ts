@@ -21,8 +21,8 @@ import { ServiceCategory } from '../enums/service.enum';
 import { DatabaseServiceType } from '../generated/entity/data/database';
 import { ConfigType } from '../generated/entity/services/databaseService';
 import {
-  FluffyType as AirflowConfigType,
   AuthProvider,
+  FluffyType as AirflowConfigType,
   IngestionPipeline,
   LogLevels,
   OpenmetadataType,

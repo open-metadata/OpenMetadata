@@ -23,14 +23,14 @@ import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
-  IngestionServicePermission,
+  OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -88,6 +88,7 @@ interface SelectedRowDetails {
 interface PipelineTableRow extends IngestionPipeline {
   runId?: string;
   runStatus?: StepSummary;
+  pipelinePermissions?: OperationPermission;
 }
 
 const TestSuitePipelineTab = ({
@@ -119,7 +120,8 @@ const TestSuitePipelineTab = ({
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
-    useState<IngestionServicePermission>();
+    useState<Map<string, OperationPermission>>();
+  const permissionFetchId = useRef(0);
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
@@ -171,10 +173,13 @@ const TestSuitePipelineTab = ({
 
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     if (!testSuitePipelines.length) {
-      setIngestionPipelinePermissions(undefined);
+      setIngestionPipelinePermissions(new Map<string, OperationPermission>());
 
       return;
     }
+
+    permissionFetchId.current += 1;
+    const fetchId = permissionFetchId.current;
 
     const permissionPromises = testSuitePipelines.map((item) =>
       getEntityPermissionByFqn(
@@ -183,17 +188,21 @@ const TestSuitePipelineTab = ({
       )
     );
 
-    Promise.allSettled(permissionPromises).then((permissionResponse) => {
-      const permissionData = permissionResponse.reduce((acc, cv, index) => {
-        return {
-          ...acc,
-          [testSuitePipelines[index]?.name]:
-            cv.status === 'fulfilled' ? cv.value : {},
-        };
-      }, {});
+    const permissionResponse = await Promise.allSettled(permissionPromises);
 
-      setIngestionPipelinePermissions(permissionData);
-    });
+    if (fetchId !== permissionFetchId.current) {
+      return;
+    }
+
+    const permissionData = permissionResponse.reduce((acc, cv, index) => {
+      if (cv.status === 'fulfilled') {
+        acc.set(testSuitePipelines[index]?.name ?? '', cv.value);
+      }
+
+      return acc;
+    }, new Map<string, OperationPermission>());
+
+    setIngestionPipelinePermissions(permissionData);
   }, [testSuitePipelines, getEntityPermissionByFqn]);
 
   const handlePipelinePageChange = useCallback(
@@ -338,8 +347,9 @@ const TestSuitePipelineTab = ({
       key: pipeline.name,
       runStatus: pipeline.pipelineStatuses?.[0]?.status?.[0],
       runId: pipeline.pipelineStatuses?.[0]?.runId,
+      pipelinePermissions: ingestionPipelinePermissions?.get(pipeline.name),
     }));
-  }, [testSuitePipelines]);
+  }, [testSuitePipelines, ingestionPipelinePermissions]);
 
   const emptyPlaceholder = useMemo(
     () =>
@@ -460,7 +470,7 @@ const TestSuitePipelineTab = ({
                   record?.sourceConfig?.config?.testCases?.length ??
                   t('label.all');
 
-                const permissions = ingestionPipelinePermissions?.[record.name];
+                const permissions = record.pipelinePermissions;
 
                 return (
                   <Table.Row
