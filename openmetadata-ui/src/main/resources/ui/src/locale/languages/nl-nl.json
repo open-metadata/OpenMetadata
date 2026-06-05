@@ -1202,6 +1202,7 @@
     "last-activity": "Laatste activiteit",
     "last-activity-n-minutes-ago": "Laatste activiteit {{count}} minuten geleden",
     "last-edited-by": "Laatst bewerkt door",
+    "last-edited-time": "Laatst bewerkt {{time}}",
     "last-error": "Laatste fout",
     "last-failed-at": "Laatst gefaald op",
     "last-hour": "Laatste uur",

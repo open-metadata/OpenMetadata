@@ -1202,6 +1202,7 @@
     "last-activity": "פעילות אחרונה",
     "last-activity-n-minutes-ago": "פעילות אחרונה לפני {{count}} דקות",
     "last-edited-by": "נערך לאחרונה על ידי",
+    "last-edited-time": "נערך לאחרונה {{time}}",
     "last-error": "שגיאה אחרונה",
     "last-failed-at": "נכשל לאחרונה ב",
     "last-hour": "שעה אחרונה",
