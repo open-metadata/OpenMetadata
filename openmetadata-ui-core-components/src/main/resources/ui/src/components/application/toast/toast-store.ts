@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
+import type { ReactNode } from 'react';
 import { ToastQueue } from '@react-stately/toast';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'default';
 
 export interface ToastContent {
-  message: string;
+  message: string | ReactNode;
   variant: ToastVariant;
 }
 
@@ -30,7 +31,7 @@ export interface ShowToastOptions {
 }
 
 function add(
-  message: string,
+  message: string | ReactNode,
   variant: ToastVariant,
   options?: ShowToastOptions
 ): string {
@@ -40,19 +41,22 @@ function add(
   );
 }
 
-export function showToast(message: string, options?: ShowToastOptions): string {
+export function showToast(
+  message: string | ReactNode,
+  options?: ShowToastOptions
+): string {
   return add(message, 'default', options);
 }
 
 export const toast = {
   show: showToast,
-  success: (message: string, options?: ShowToastOptions) =>
+  success: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'success', options),
-  error: (message: string, options?: ShowToastOptions) =>
+  error: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'error', { timeout: 0, ...options }),
-  warning: (message: string, options?: ShowToastOptions) =>
+  warning: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'warning', options),
-  info: (message: string, options?: ShowToastOptions) =>
+  info: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'info', options),
   dismiss: (key: string) => toastQueue.close(key),
 };

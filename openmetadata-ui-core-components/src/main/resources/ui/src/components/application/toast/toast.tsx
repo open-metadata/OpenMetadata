@@ -66,7 +66,7 @@ interface ToastProps {
 
 export const Toast = ({ toast }: ToastProps) => {
   const state = useContext(UNSTABLE_ToastStateContext);
-  const { variant = 'default', message } = toast.content;
+  const { variant = 'default', message: messageOrNode } = toast.content;
   const config = variantConfig[variant];
   const Icon = config.icon;
 
@@ -84,7 +84,7 @@ export const Toast = ({ toast }: ToastProps) => {
         aria-hidden="true"
         className={cx('tw:size-4 tw:shrink-0', config.iconClass)}
       />
-      <span>{message}</span>
+      <span>{messageOrNode}</span>
       {config.showClose && state && (
         <Button
           aria-label="Close"
