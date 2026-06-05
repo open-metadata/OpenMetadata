@@ -35,7 +35,6 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
 import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
@@ -224,9 +223,7 @@ const MarketPlaceAppDetails = () => {
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
           <Typography.Text className="text-xs font-medium text-grey-muted">
-            {t('message.marketplace-verify-msg', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
+            {t('message.marketplace-verify-msg')}
           </Typography.Text>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>
