@@ -61,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
@@ -146,6 +147,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
+    IntakeFormValidator.validate(entity, Entity.DOMAIN);
   }
 
   @Override

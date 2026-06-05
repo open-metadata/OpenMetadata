@@ -111,6 +111,7 @@ ENTITY_TYPE
     | 'mcpService'
     | 'mcpServer'
     | 'mcpExecution'
+    | 'intakeForm'
     ;
 
 ENTITY_FIELD

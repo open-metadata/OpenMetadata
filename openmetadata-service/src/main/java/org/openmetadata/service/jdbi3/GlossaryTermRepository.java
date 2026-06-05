@@ -132,6 +132,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -506,6 +507,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!update) {
       checkDuplicateTerms(entity);
     }
+
+    IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
   }
 
   /**
