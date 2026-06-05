@@ -10,7 +10,9 @@ import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -3134,5 +3136,78 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.PUT, addPath, addRequest, BulkOperationResult.class);
+  }
+
+  // ===================================================================
+  // Issue #28696 (data product analogue): a prefix-extension rename must keep
+  // the linked asset's dataProducts[].fullyQualifiedName pointing at the new
+  // FQN in search. Data products are flat and their reference update uses an
+  // EXACT-match term query + script (==oldFqn -> newFqn), so this path is
+  // idempotent and prefix-safe by construction (no sibling concern, no
+  // double-apply); this confirms it empirically.
+  // ===================================================================
+  @Test
+  void test_renameDataProductPrefixExtension_keepsAssetReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Domain domain = getOrCreateDomain(ns);
+
+    String dpName = "dp_" + ns.shortPrefix();
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(dpName)
+                .withDisplayName("Revenue")
+                .withDescription("Data product renamed via prefix extension (#28696)")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    String oldFqn = dataProduct.getFullyQualifiedName();
+
+    Table asset = createTestTable(ns, "dp_asset", domain);
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(asset.getEntityReference())));
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), oldFqn);
+
+    dataProduct.setName(dpName + " Renamed");
+    dataProduct.setDisplayName("Revenue Renamed");
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(newFqn.startsWith(oldFqn), "rename must extend the FQN as a prefix: " + newFqn);
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), newFqn);
+  }
+
+  private void awaitAssetDataProduct(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDpFqn) {
+    Awaitility.await("asset " + tableId + " carries data product " + expectedDpFqn + " in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> dpFqns = new ArrayList<>();
+              for (JsonNode dp : hits.get(0).path("_source").path("dataProducts")) {
+                dpFqns.add(dp.path("fullyQualifiedName").asText());
+              }
+              assertTrue(
+                  dpFqns.contains(expectedDpFqn),
+                  "Expected data product FQN '"
+                      + expectedDpFqn
+                      + "' on table search doc but found "
+                      + dpFqns);
+            });
   }
 }

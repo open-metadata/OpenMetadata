@@ -172,6 +172,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsNameLengthValidation = true;
   protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
   protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
+  // Set true in subclasses whose list endpoint accepts `?sortBy=updatedAt&sortOrder=desc` and
+  // routes to EntityRepository.listFromSearchWithOffset. Used by the follower-regression test
+  // below — see Fixes #28473.
+  protected boolean supportsSearchBackedSortedList = false;
   protected boolean supportsVersionHistory =
       true; // Override in subclasses that don't support version history
   protected boolean supportsGetByVersion =
@@ -1712,6 +1716,67 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> addFollower(entityId, nonExistentUserId),
         "Adding non-existent user as follower should fail");
+  }
+
+  /**
+   * Regression for #28473: listing entities through the search-backed sorted path
+   * (EntityRepository.listFromSearchWithOffset) used to 400 with a Jackson
+   * EntityReference-from-String deserialization error as soon as any returned entity had
+   * a follower. The search index stores `followers` as a flat List<String> of UUIDs
+   * (SearchIndexUtils.parseFollowers) while every entity schema types the field as
+   * List<EntityReference>. The base path now strips relationship-shaped fields before
+   * deserialization and repopulates them via setFieldsInBulk.
+   */
+  @Test
+  void list_searchBackedSortedWithFollowers_200(TestNamespace ns) {
+    if (!supportsFollowers || !hasFollowerMethods() || !supportsSearchBackedSortedList) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    addFollower(entity.getId(), testUser1().getId());
+
+    awaitEntityIndexed(entity.getId());
+
+    String path = getResourcePath() + "?sortBy=updatedAt&sortOrder=desc&limit=1000";
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Awaitility.await("Sorted list call surfaces the followed entity")
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+              JsonNode root = MAPPER.readTree(body);
+              assertTrue(root.has("data"), "Response should have data field");
+              JsonNode data = root.get("data");
+              boolean found = false;
+              for (JsonNode node : data) {
+                if (entity.getId().toString().equals(node.path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(found, "Followed entity should appear in the sorted list");
+            });
+  }
+
+  /**
+   * Wait until the given entity id is queryable in the search index. Uses the generic
+   * `v1/search/get/<index>/doc/<id>` endpoint so subclasses don't need to override.
+   */
+  protected void awaitEntityIndexed(UUID id) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + id;
+    Awaitility.await("Entity " + id + " indexed in " + getSearchIndex())
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              // executeForString throws on non-2xx; reaching the assignment means 200.
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, docPath, null);
+              assertNotNull(body, "Indexed doc body should not be null");
+            });
   }
 
   // ===================================================================
