@@ -11,24 +11,17 @@
  *  limitations under the License.
  */
 
-import type { FC } from 'react';
-import type { ToastVariant } from './toast';
-
 export interface ToastItem {
   id: string;
-  variant?: ToastVariant;
-  title: string;
-  description?: string;
+  message: string;
+  /** Auto-dismiss delay in ms. Pass 0 to disable. Default: 2200. */
   duration?: number;
-  closable?: boolean;
-  icon?: FC<{ className?: string }> | null;
 }
 
 type Listener = (toasts: ToastItem[]) => void;
 
 let toasts: ToastItem[] = [];
 const listeners = new Set<Listener>();
-
 let idCounter = 0;
 
 function notify() {
@@ -39,7 +32,7 @@ function notify() {
 export function subscribe(listener: Listener) {
   listeners.add(listener);
   listener([...toasts]);
-  return () => listeners.delete(listener);
+  return () => { listeners.delete(listener); };
 }
 
 export function dismiss(id: string) {
@@ -47,12 +40,15 @@ export function dismiss(id: string) {
   notify();
 }
 
-export interface ShowToastOptions
-  extends Omit<ToastItem, 'id'> {}
+export interface ShowToastOptions {
+  message: string;
+  duration?: number;
+}
 
-export function showToast(options: ShowToastOptions): string {
+export function showToast(options: ShowToastOptions | string): string {
   const id = String(++idCounter);
-  const item: ToastItem = { duration: 4000, closable: true, ...options, id };
+  const opts = typeof options === 'string' ? { message: options } : options;
+  const item: ToastItem = { duration: 2200, ...opts, id };
 
   toasts = [...toasts, item];
   notify();
@@ -66,15 +62,5 @@ export function showToast(options: ShowToastOptions): string {
 
 export const toast = {
   show: showToast,
-  success: (title: string, options?: Partial<ShowToastOptions>) =>
-    showToast({ ...options, title, variant: 'success' }),
-  error: (title: string, options?: Partial<ShowToastOptions>) =>
-    showToast({ ...options, title, variant: 'error' }),
-  warning: (title: string, options?: Partial<ShowToastOptions>) =>
-    showToast({ ...options, title, variant: 'warning' }),
-  info: (title: string, options?: Partial<ShowToastOptions>) =>
-    showToast({ ...options, title, variant: 'brand' }),
-  default: (title: string, options?: Partial<ShowToastOptions>) =>
-    showToast({ ...options, title, variant: 'default' }),
   dismiss,
 };

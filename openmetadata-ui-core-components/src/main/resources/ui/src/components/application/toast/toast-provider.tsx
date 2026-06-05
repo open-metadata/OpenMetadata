@@ -14,41 +14,18 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast } from './toast';
-import { dismiss, subscribe, type ToastItem } from './toast-store';
-
-export type ToastPosition =
-  | 'top-right'
-  | 'top-left'
-  | 'top-center'
-  | 'bottom-right'
-  | 'bottom-left'
-  | 'bottom-center';
-
-const positionClasses: Record<ToastPosition, string> = {
-  'top-right': 'tw:top-4 tw:right-4 tw:items-end',
-  'top-left': 'tw:top-4 tw:left-4 tw:items-start',
-  'top-center': 'tw:top-4 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
-  'bottom-right': 'tw:bottom-4 tw:right-4 tw:items-end',
-  'bottom-left': 'tw:bottom-4 tw:left-4 tw:items-start',
-  'bottom-center':
-    'tw:bottom-4 tw:left-1/2 tw:-translate-x-1/2 tw:items-center',
-};
+import { subscribe, type ToastItem } from './toast-store';
 
 export interface ToastProviderProps {
-  position?: ToastPosition;
   /** The DOM node to portal into. Defaults to document.body. */
   container?: Element;
 }
 
-export const ToastProvider = ({
-  position = 'top-right',
-  container,
-}: ToastProviderProps) => {
+export const ToastProvider = ({ container }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   useEffect(() => {
-    const unsubscribe = subscribe(setToasts);
-    return () => { unsubscribe(); };
+    return subscribe(setToasts);
   }, []);
 
   if (toasts.length === 0) {
@@ -66,20 +43,13 @@ export const ToastProvider = ({
     <div
       aria-live="polite"
       aria-relevant="additions"
-      className={`tw:pointer-events-none tw:fixed tw:z-[9999] tw:flex tw:flex-col tw:gap-3 ${positionClasses[position]}`}
+      className="tw:pointer-events-none tw:fixed tw:bottom-6.5 tw:left-1/2 tw:z-200 tw:-translate-x-1/2 tw:flex tw:flex-col tw:items-center tw:gap-2"
       role="region">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="tw:pointer-events-auto tw:animate-in tw:fade-in tw:slide-in-from-top-2 tw:duration-200">
-          <Toast
-            closable={t.closable}
-            description={t.description}
-            icon={t.icon}
-            title={t.title}
-            variant={t.variant}
-            onClose={() => dismiss(t.id)}
-          />
+          className="tw:pointer-events-auto tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150">
+          <Toast message={t.message} />
         </div>
       ))}
     </div>,

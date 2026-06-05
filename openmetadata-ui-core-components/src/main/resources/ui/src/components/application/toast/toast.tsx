@@ -11,100 +11,31 @@
  *  limitations under the License.
  */
 
-import type { FC, ReactNode } from 'react';
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '@untitledui/icons';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
+import { Check } from '@untitledui/icons';
 import { cx } from '@/utils/cx';
 
-export type ToastVariant = 'success' | 'error' | 'warning' | 'brand' | 'default';
-
-type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
-
-const variantConfig: Record<
-  ToastVariant,
-  {
-    iconColor: FeaturedIconColor;
-    icon: FC<{ className?: string }>;
-    showIcon: boolean;
-  }
-> = {
-  success: { iconColor: 'success', icon: CheckCircle, showIcon: true },
-  error: { iconColor: 'error', icon: AlertCircle, showIcon: true },
-  warning: { iconColor: 'warning', icon: AlertTriangle, showIcon: true },
-  brand: { iconColor: 'brand', icon: InfoCircle, showIcon: true },
-  default: { iconColor: 'gray', icon: InfoCircle, showIcon: false },
-};
-
 export interface ToastProps {
-  /** The toast variant — drives the icon and icon color. */
-  variant?: ToastVariant;
-  /** Primary message text. */
-  title: string;
-  /** Optional supporting text shown below the title. */
-  description?: ReactNode;
-  /** Override the variant's default icon. Pass `null` to suppress the icon entirely. */
-  icon?: FC<{ className?: string }> | null;
-  /** Show the × dismiss button. */
-  closable?: boolean;
-  /** Called when × is clicked. */
-  onClose?: () => void;
+  /** The message to display. */
+  message: string;
   className?: string;
 }
 
-export const Toast = ({
-  variant = 'default',
-  title,
-  description,
-  icon,
-  closable = true,
-  onClose,
-  className,
-}: ToastProps) => {
-  const config = variantConfig[variant];
-  const showIcon = icon !== null && (icon !== undefined || config.showIcon);
-  const Icon = icon ?? config.icon;
-
+export const Toast = ({ message, className }: ToastProps) => {
   return (
     <div
       className={cx(
-        'tw:flex tw:w-full tw:max-w-sm tw:items-start tw:gap-3',
-        'tw:rounded-xl tw:border tw:border-primary tw:bg-primary',
-        'tw:px-4 tw:py-3 tw:shadow-lg',
+        'tw:inline-flex tw:items-center tw:gap-2.5',
+        'tw:rounded-[10px] tw:bg-[#181D27] tw:px-4 tw:py-[11px]',
+        'tw:text-[13px] tw:font-medium tw:leading-5 tw:text-white',
+        'tw:shadow-2xl',
         className
       )}
       role="status">
-      {showIcon && (
-        <FeaturedIcon
-          className="tw:mt-0.5 tw:shrink-0"
-          color={config.iconColor}
-          icon={Icon}
-          size="sm"
-          theme="light"
-        />
-      )}
-
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
-        <p className="tw:text-sm tw:font-semibold tw:text-primary">{title}</p>
-
-        {description && (
-          <p className="tw:text-sm tw:text-tertiary">{description}</p>
-        )}
-      </div>
-
-      {closable && (
-        <CloseButton
-          className="tw:-mr-1 tw:-mt-0.5 tw:shrink-0"
-          label="Dismiss notification"
-          size="xs"
-          onPress={onClose}
-        />
-      )}
+      <Check
+        aria-hidden="true"
+        className="tw:size-4 tw:shrink-0 tw:text-[#17B26A]"
+      />
+      {message}
     </div>
   );
 };

@@ -20,193 +20,60 @@ import { toast } from '../components/application/toast/toast-store';
 const meta = {
   title: 'Components/Toast',
   component: Toast,
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'centered' },
   tags: ['autodocs'],
   argTypes: {
-    variant: {
-      control: 'select',
-      options: ['success', 'error', 'warning', 'brand', 'default'],
-    },
-    title: { control: 'text' },
-    description: { control: 'text' },
-    closable: { control: 'boolean' },
+    message: { control: 'text' },
   },
 } satisfies Meta<typeof Toast>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// ─── Static component stories ────────────────────────────────────────────────
+// ─── Static ──────────────────────────────────────────────────────────────────
 
 export const Default: Story = {
   args: {
-    variant: 'default',
-    title: 'Dashboard created successfully!',
-    closable: true,
-    onClose: () => {},
+    message: 'Dashboard created successfully!',
   },
 };
 
-export const Success: Story = {
+export const LongMessage: Story = {
   args: {
-    variant: 'success',
-    title: 'Changes saved successfully',
-    description: 'Your metadata edits have been saved and indexed.',
-    closable: true,
-    onClose: () => {},
+    message: 'Sharing settings saved for "Revenue Overview"',
   },
 };
 
-export const Error: Story = {
-  args: {
-    variant: 'error',
-    title: 'Something went wrong',
-    description: 'Unable to reach the data source. Check your credentials.',
-    closable: true,
-    onClose: () => {},
-  },
-};
-
-export const Warning: Story = {
-  args: {
-    variant: 'warning',
-    title: 'Unsaved changes',
-    description: 'You have unsaved changes that will be lost if you leave.',
-    closable: true,
-    onClose: () => {},
-  },
-};
-
-export const Brand: Story = {
-  args: {
-    variant: 'brand',
-    title: 'New feature available',
-    description: 'You can now connect to more data sources from the dashboard.',
-    closable: true,
-    onClose: () => {},
-  },
-};
-
-export const TitleOnly: Story = {
-  args: {
-    variant: 'success',
-    title: 'Dashboard created successfully!',
-    closable: false,
-  },
-};
-
-export const WithoutCloseButton: Story = {
-  args: {
-    variant: 'brand',
-    title: 'Syncing in progress…',
-    description: 'This may take a few seconds.',
-    closable: false,
-  },
-};
-
-// ─── All variants at once ─────────────────────────────────────────────────────
-
-export const AllVariants: StoryObj = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 384 }}>
-      <Toast
-        closable
-        title="Dashboard created successfully!"
-        variant="default"
-        onClose={() => {}}
-      />
-      <Toast
-        closable
-        description="Your metadata edits have been saved."
-        title="Changes saved"
-        variant="success"
-        onClose={() => {}}
-      />
-      <Toast
-        closable
-        description="Unable to reach the data source. Check your credentials."
-        title="Connection failed"
-        variant="error"
-        onClose={() => {}}
-      />
-      <Toast
-        closable
-        description="You have unsaved changes that will be lost if you leave."
-        title="Unsaved changes"
-        variant="warning"
-        onClose={() => {}}
-      />
-      <Toast
-        closable
-        description="You can now connect to more data sources from the dashboard."
-        title="New feature available"
-        variant="brand"
-        onClose={() => {}}
-      />
-    </div>
-  ),
-};
-
-// ─── Live trigger story ───────────────────────────────────────────────────────
+// ─── Live trigger ─────────────────────────────────────────────────────────────
 
 export const LiveTrigger: StoryObj = {
   parameters: { layout: 'centered' },
   render: () => (
     <>
-      <ToastProvider position="top-right" />
+      <ToastProvider />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.default('Dashboard created successfully!')}>
-          Default
+          onClick={() => toast.show('Dashboard created successfully!')}>
+          Dashboard created
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() =>
-            toast.success('Changes saved', {
-              description: 'Your metadata edits have been saved and indexed.',
-            })
-          }>
-          Success
+          onClick={() => toast.show('Share link copied for "Revenue Overview"')}>
+          Link copied
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() =>
-            toast.error('Something went wrong', {
-              description: 'Unable to reach the data source.',
-            })
-          }>
-          Error
+          onClick={() => toast.show('Added "Revenue Overview" to favorites')}>
+          Added to favorites
         </Button>
         <Button
           color="secondary"
           size="sm"
-          onClick={() =>
-            toast.warning('Unsaved changes', {
-              description: 'Your changes will be lost if you leave.',
-            })
-          }>
-          Warning
-        </Button>
-        <Button
-          color="secondary"
-          size="sm"
-          onClick={() =>
-            toast.info('New feature available', {
-              description: 'Connect to more data sources from the dashboard.',
-            })
-          }>
-          Info
-        </Button>
-        <Button
-          color="secondary"
-          size="sm"
-          onClick={() =>
-            toast.success('Saved!', { duration: 0, closable: true })
-          }>
+          onClick={() => toast.show('Changes saved', { duration: 0 })}>
           Persistent (no auto-dismiss)
         </Button>
       </div>
