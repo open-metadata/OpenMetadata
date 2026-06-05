@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataQu
 import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.ServiceFilter;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -253,9 +254,14 @@ public class RunAppImpl {
     ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
-    repository.deployIngestionPipeline(
-        ingestionPipeline,
-        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
+    PipelineServiceClientResponse status =
+        repository.deployIngestionPipeline(
+            ingestionPipeline,
+            Entity.getEntity(
+                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
+    if (status.getCode() == 200) {
+      repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
+    }
 
     return ingestionPipeline;
   }
