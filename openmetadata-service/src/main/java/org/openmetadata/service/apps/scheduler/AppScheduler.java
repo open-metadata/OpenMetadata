@@ -336,6 +336,23 @@ public class AppScheduler {
     }
   }
 
+  /**
+   * Removes any persisted on-demand job/trigger for the given app from the Quartz store. Used by
+   * maintenance/ops flows (server start, upgrade, CLI reindex) to clear a leftover from a previous
+   * run that died before completing, so a fresh on-demand trigger can be scheduled without hitting
+   * "Job is already running".
+   */
+  public void deleteOnDemandJob(App app) {
+    try {
+      scheduler.deleteJob(
+          new JobKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
+      scheduler.unscheduleJob(
+          new TriggerKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP));
+    } catch (SchedulerException ex) {
+      LOG.warn("Could not clear existing on-demand job for app {}", app.getName(), ex);
+    }
+  }
+
   public void stopApplicationRun(App application) {
     try {
       JobDetail jobDetailScheduled =
