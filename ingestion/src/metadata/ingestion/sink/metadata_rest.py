@@ -129,15 +129,24 @@ logger = ingestion_logger()
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
 
-# Bulk-flush failures that are benign: the entity already exists (idempotent re-create)
-# or is a duplicate within the same batch. No metadata is lost, so these must be reported
-# as warnings rather than failures - otherwise a lineage run goes red over conflicts that
-# changed nothing (e.g. the same query checksum re-ingested across overlapping runs).
-BENIGN_BULK_CONFLICT_MARKERS = (
-    "duplicate key value violates unique constraint",  # PostgreSQL unique_violation (23505)
-    "Duplicate entry",  # MySQL ER_DUP_ENTRY (1062)
-    "Entity does not exist and could not be created",  # within-batch duplicate whose create lost
+# TODO: remove the dedicated query bulk path below once #25890 (the server-side
+# bulk-query idempotency fix, shipped in 1.13.0) has rolled out to all deployments.
+# Until then, re-ingesting a query whose checksum already exists (same SQL across
+# services/runs, or racing concurrent bulk requests) comes back as a unique-constraint
+# violation that loses no metadata, so a lineage run must not be marked failed over it.
+# These are the query_entity unique constraints (checksum + nameHash, both engines) that
+# identify such an already-present query on the bulk response.
+DUPLICATE_QUERY_CONSTRAINTS = (
+    "unique_query_checksum",
+    "query_entity_namehash_key",
+    "query_entity.namehash",
 )
+
+
+def is_duplicate_query_conflict(message: Optional[str]) -> bool:  # noqa: UP045
+    """Whether a failed bulk-query response is an already-present (duplicate) query."""
+    lowered = (message or "").lower()
+    return any(constraint in lowered for constraint in DUPLICATE_QUERY_CONSTRAINTS)
 
 
 class MetadataRestSinkConfig(ConfigModel):
@@ -174,6 +183,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         # Track entity names in buffer for O(1) duplicate checking
         # Key: (entity_type, name), Value: True
         self.buffered_entity_names: dict[tuple, bool] = {}
+        # Queries are bulk-created on a dedicated buffer (see write_query) keyed on the
+        # SQL checksum, so query-specific dedup and duplicate-checksum handling stay out
+        # of the generic entity bulk path.
+        self.query_buffer: list[CreateQueryRequest] = []
+        self.buffered_query_checksums: set[str] = set()
 
     @classmethod
     def create(
@@ -241,18 +255,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         ):
             return self.write_create_single_request(entity_request)
 
-        # Deduplicate entities within a buffer to avoid duplicate FQN-hash conflicts in the
-        # bulk API. These CreateRequest types may carry duplicate identifiers from source
-        # systems (e.g. stored procedures running the same SQL emit the same query checksum).
+        # Deduplicate entities by name to avoid duplicate FQN hash errors
+        # These are CreateRequest types that may have duplicate names from source systems
         if isinstance(
             entity_request,
             (
                 CreateDashboardDataModelRequest,  # QuickSight: multiple tables with same DataSourceId
-                CreateQueryRequest,  # Lineage: stored procs / scheduled jobs emit identical SQL repeatedly
             ),
         ):
             if self._is_duplicate_in_buffer(entity_request):
-                logger.debug(f"Skipping duplicate {type(entity_request).__name__} in buffer")
+                logger.debug(
+                    f"Skipping duplicate {type(entity_request).__name__} with name: {entity_request.name.root}"
+                )
                 return Either(right=None)
 
             # Track this entity for future duplicate checks (only for types that need deduplication)
@@ -273,42 +287,32 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
             )
 
-    @staticmethod
-    def _buffer_dedup_key(entity_request) -> tuple | None:
-        """
-        Build the (type, identifier) key used to deduplicate an entity within a buffer, or
-        None when the entity has no stable identifier to dedup on.
-
-        Query requests carry no `name` (the checksum/name is derived server-side from the
-        query text), so they are deduped on that same query checksum to avoid duplicate
-        FQN-hash conflicts when identical SQL repeats in a batch.
-        """
-        entity_type = type(entity_request).__name__
-        if isinstance(entity_request, CreateQueryRequest):
-            return (entity_type, get_query_checksum(model_str(entity_request.query)))
-
-        name = getattr(entity_request, "name", None)
-        if name is None:
-            return None
-
-        return (entity_type, name.root if hasattr(name, "root") else name)
-
     def _track_entity_in_buffer(self, entity_request) -> None:
         """
-        Track an entity identifier in the buffer for O(1) duplicate detection.
+        Track an entity name in the buffer for O(1) duplicate detection.
         Only called for entity types that require deduplication.
         """
-        key = self._buffer_dedup_key(entity_request)
-        if key is not None:
-            self.buffered_entity_names[key] = True
+        if not hasattr(entity_request, "name"):
+            return
+
+        entity_type = type(entity_request).__name__
+        current_name = entity_request.name.root if hasattr(entity_request.name, "root") else entity_request.name
+
+        self.buffered_entity_names[(entity_type, current_name)] = True
 
     def _is_duplicate_in_buffer(self, entity_request) -> bool:
         """
-        Check if an entity with the same identifier already exists in the buffer.
+        Check if an entity with the same name already exists in the buffer.
         Uses O(1) lookup via buffered_entity_names dict.
         """
-        key = self._buffer_dedup_key(entity_request)
-        return key is not None and key in self.buffered_entity_names
+        if not hasattr(entity_request, "name"):
+            return False
+
+        entity_type = type(entity_request).__name__
+        current_name = entity_request.name.root if hasattr(entity_request.name, "root") else entity_request.name
+
+        # O(1) lookup
+        return (entity_type, current_name) in self.buffered_entity_names
 
     def write_create_single_request(self, entity_request) -> Either[Entity]:
         try:
@@ -370,36 +374,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return Either(right=result, left=None)
 
         self.status.scanned_all(result.successRequest)
-        real_failures = [err for err in result.failedRequest if not self._record_bulk_failure(err)]
-        if not real_failures:
-            return Either(right=result, left=None)
-
-        return Either(
-            right=None,
-            left=StackTraceError(
-                name="Entity Buffer",
-                error=f"Failed to flush entities to bulk API: {real_failures}",
-                stackTrace=None,
-            ),
-        )
-
-    @staticmethod
-    def _is_benign_bulk_failure(message: str | None) -> bool:
-        """A bulk failure is benign when the entity already exists or is a duplicate within
-        the same batch - no metadata is lost, so it must not fail the workflow."""
-        return bool(message) and any(marker in message for marker in BENIGN_BULK_CONFLICT_MARKERS)
-
-    def _record_bulk_failure(self, err) -> bool:
-        """Record a single bulk failedRequest. Benign idempotency conflicts are recorded as
-        warnings (returns True) so the lineage status stays green; genuine failures are
-        recorded as failures (returns False)."""
-        is_benign = self._is_benign_bulk_failure(getattr(err, "message", None))
-        if is_benign:
-            self.status.warning(
-                str(getattr(err, "request", None) or "Entity Buffer"),
-                f"Idempotent bulk conflict, no metadata lost: {getattr(err, 'message', err)}",
-            )
-        else:
+        for err in result.failedRequest:
             self.status.failed(
                 StackTraceError(
                     name="Entity Buffer",
@@ -407,7 +382,89 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     stackTrace=None,
                 )
             )
-        return is_benign
+        return Either(
+            right=None,
+            left=StackTraceError(
+                name="Entity Buffer",
+                error=f"Failed to flush entities to bulk API: {result.failedRequest}",
+                stackTrace=None,
+            ),
+        )
+
+    @_run_dispatch.register
+    def write_query(self, record: CreateQueryRequest) -> Either[Entity]:
+        """Buffer queries on a dedicated bulk path.
+
+        A query create request carries no name; the server derives it from the SQL
+        checksum. Identical SQL (e.g. a scheduled stored procedure running the same
+        statement) therefore produces the same checksum and would collide in the bulk
+        API. Keeping queries on their own buffer and flush isolates that checksum dedup,
+        and the already-present-query handling in _flush_query_buffer, from the generic
+        entity bulk path.
+        """
+        checksum = get_query_checksum(model_str(record.query))
+        result = Either(right=None)
+        if checksum in self.buffered_query_checksums:
+            logger.debug(f"Skipping duplicate query with checksum {checksum}")
+        else:
+            self.buffered_query_checksums.add(checksum)
+            self.query_buffer.append(record)
+            if len(self.query_buffer) >= self.config.bulk_sink_batch_size:
+                result = self._flush_query_buffer()
+        return result
+
+    def _flush_query_buffer(self) -> Either[Entity]:
+        """Bulk-create buffered queries, then classify the response."""
+        if not self.query_buffer:
+            return Either(right=None)
+
+        try:
+            result = self.metadata.bulk_create_or_update(
+                entities=self.query_buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to flush queries to bulk API: {exc}")
+            logger.debug(traceback.format_exc())
+            return Either(
+                left=StackTraceError(
+                    name="Query Buffer",
+                    error=f"Failed to flush queries to bulk API: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        finally:
+            self.query_buffer = []
+            self.buffered_query_checksums.clear()
+
+        return self._record_query_flush_result(result)
+
+    def _record_query_flush_result(self, result) -> Either[Entity]:
+        """Record a query bulk response. Already-present queries are reported as warnings
+        (not failures) so a lineage run is not marked failed over queries that lost no
+        metadata; any other failure is still recorded as a failure."""
+        if not result:
+            return Either(right=None)
+
+        self.status.scanned_all(result.successRequest)
+        if result.status == basic.Status.success:
+            return Either(right=result)
+
+        first_failure = None
+        for failed in result.failedRequest:
+            if is_duplicate_query_conflict(failed.message):
+                self.status.warning("Query", f"Skipped already-present query: {failed.message}")
+            else:
+                failure = StackTraceError(
+                    name="Query Buffer",
+                    error=f"Failed to flush query to bulk API: {failed.message}",
+                    stackTrace=None,
+                )
+                self.status.failed(failure)
+                first_failure = first_failure or failure
+
+        return Either(left=first_failure) if first_failure else Either(right=result)
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -527,16 +584,26 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def write_barrier(self, record: Barrier) -> Either[Entity]:
-        """Flush the buffer synchronously so subsequent records in the same
+        """Flush the buffers synchronously so subsequent records in the same
         stream see committed entities."""
+        result = Either(right=None)
         if self.buffer:
             logger.debug(
                 "Barrier flush: %d entities, reason=%s",
                 len(self.buffer),
                 record.reason,
             )
-            return self._flush_buffer()
-        return Either(right=None)  # pyright: ignore[reportCallIssue]
+            result = self._flush_buffer()
+        if self.query_buffer:
+            logger.debug(
+                "Barrier flush: %d queries, reason=%s",
+                len(self.query_buffer),
+                record.reason,
+            )
+            query_result = self._flush_query_buffer()
+            if result.right is None and result.left is None:
+                result = query_result
+        return result  # pyright: ignore[reportCallIssue]
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """
@@ -1095,6 +1162,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if self.buffer:
             logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
             self._flush_buffer()
+
+        if self.query_buffer:
+            logger.info(f"Flushing {len(self.query_buffer)} remaining queries on close")
+            self._flush_query_buffer()
 
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()

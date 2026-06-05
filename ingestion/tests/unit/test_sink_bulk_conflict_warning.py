@@ -2,9 +2,10 @@
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 
 """
-Unit tests for the metadata-rest sink classifying benign bulk-flush conflicts (duplicate-key /
-within-batch duplicate) as warnings instead of failures, so a lineage run does not go red over
-conflicts that lost no metadata.
+Unit tests for the dedicated query bulk path in the metadata-rest sink classifying an
+already-present query (duplicate checksum / nameHash unique-constraint violation) as a
+warning instead of a failure, so a lineage run is not marked failed over a query that lost
+no metadata.
 """
 
 from unittest.mock import Mock
@@ -21,13 +22,15 @@ from metadata.generated.schema.type.bulkOperationResult import (
 from metadata.ingestion.sink.metadata_rest import (
     MetadataRestSink,
     MetadataRestSinkConfig,
+    is_duplicate_query_conflict,
 )
 
-DUPLICATE_KEY = (
+CHECKSUM_CONFLICT = (
     'org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint "unique_query_checksum"'
 )
-ENTITY_NOT_CREATED = "Entity does not exist and could not be created"
-REAL_ERROR = "Invalid entity: name must not be null"
+NAMEHASH_CONFLICT_PG = 'duplicate key value violates unique constraint "query_entity_namehash_key"'
+NAMEHASH_CONFLICT_MYSQL = "Duplicate entry 'abc' for key 'query_entity.nameHash'"
+REAL_ERROR = "Invalid entity: SqlQuery must not be null"
 
 
 @pytest.fixture
@@ -47,35 +50,33 @@ def _result(failed_messages):
     )
 
 
-def _flush(sink, result):
+def _flush_queries(sink, result):
     sink.metadata.bulk_create_or_update.return_value = result
-    sink.buffer = [CreateQueryRequest(query=SqlQuery("SELECT 1"), service=FullyQualifiedEntityName("svc"))]
-    return sink._flush_buffer()
+    sink.query_buffer = [CreateQueryRequest(query=SqlQuery("SELECT 1"), service=FullyQualifiedEntityName("svc"))]
+    return sink._flush_query_buffer()
 
 
-def test_benign_conflicts_become_warnings_not_failures(sink):
-    out = _flush(sink, _result([DUPLICATE_KEY, ENTITY_NOT_CREATED]))
+def test_already_present_queries_become_warnings_not_failures(sink):
+    out = _flush_queries(sink, _result([CHECKSUM_CONFLICT, NAMEHASH_CONFLICT_PG, NAMEHASH_CONFLICT_MYSQL]))
 
-    assert len(sink.status.warnings) == 2
+    assert len(sink.status.warnings) == 3
     assert len(sink.status.failures) == 0
-    # No genuine failure -> the flush is reported as a success (status stays green).
     assert out.left is None
 
 
 def test_real_failures_are_still_recorded(sink):
-    out = _flush(sink, _result([DUPLICATE_KEY, REAL_ERROR]))
+    out = _flush_queries(sink, _result([CHECKSUM_CONFLICT, REAL_ERROR]))
 
     assert len(sink.status.warnings) == 1
     assert len(sink.status.failures) == 1
     assert REAL_ERROR in sink.status.failures[0].error
-    # A genuine failure is present -> the flush is reported as failed.
     assert out.left is not None
 
 
-def test_is_benign_bulk_failure_classification(sink):
-    assert sink._is_benign_bulk_failure(DUPLICATE_KEY) is True
-    assert sink._is_benign_bulk_failure("Duplicate entry '...' for key 'unique_query_checksum'") is True
-    assert sink._is_benign_bulk_failure(ENTITY_NOT_CREATED) is True
-    assert sink._is_benign_bulk_failure(REAL_ERROR) is False
-    assert sink._is_benign_bulk_failure(None) is False
-    assert sink._is_benign_bulk_failure("") is False
+def test_is_duplicate_query_conflict_classification():
+    assert is_duplicate_query_conflict(CHECKSUM_CONFLICT) is True
+    assert is_duplicate_query_conflict(NAMEHASH_CONFLICT_PG) is True
+    assert is_duplicate_query_conflict(NAMEHASH_CONFLICT_MYSQL) is True
+    assert is_duplicate_query_conflict(REAL_ERROR) is False
+    assert is_duplicate_query_conflict(None) is False
+    assert is_duplicate_query_conflict("") is False

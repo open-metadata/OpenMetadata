@@ -137,10 +137,10 @@ class TestSinkDeduplication(TestCase):
 
     def test_deduplicate_queries_with_same_text(self):
         """
-        Identical SQL (same checksum) repeated within a buffer must be deduplicated.
-        Query requests have no name set, so dedup is keyed on the query checksum. Stored
-        procedures and scheduled jobs emit the same SQL repeatedly, which otherwise produces
-        duplicate-FQN-hash failures in the bulk API.
+        Identical SQL (same checksum) repeated within the dedicated query buffer must be
+        deduplicated. Query requests have no name set, so dedup is keyed on the query
+        checksum. Stored procedures and scheduled jobs emit the same SQL repeatedly, which
+        otherwise produces duplicate-FQN-hash failures in the bulk API.
         """
         query_text = "INSERT INTO members_curated SELECT * FROM members_source WHERE dt = '2026-06-05'"
 
@@ -152,9 +152,10 @@ class TestSinkDeduplication(TestCase):
             for _ in range(3)
         ]
         for query in queries:
-            self.sink.write_create_request(query)
+            self.sink.write_query(query)
 
-        self.assertEqual(len(self.sink.buffer), 1)
+        self.assertEqual(len(self.sink.query_buffer), 1)
+        self.assertEqual(len(self.sink.buffer), 0)
 
     def test_different_query_text_is_not_deduplicated(self):
         """Queries with different SQL text (different checksum) are NOT deduplicated."""
@@ -167,10 +168,10 @@ class TestSinkDeduplication(TestCase):
             service=FullyQualifiedEntityName("Snowflake US"),
         )
 
-        self.sink.write_create_request(query_1)
-        self.sink.write_create_request(query_2)
+        self.sink.write_query(query_1)
+        self.sink.write_query(query_2)
 
-        self.assertEqual(len(self.sink.buffer), 2)
+        self.assertEqual(len(self.sink.query_buffer), 2)
 
 
 if __name__ == "__main__":
