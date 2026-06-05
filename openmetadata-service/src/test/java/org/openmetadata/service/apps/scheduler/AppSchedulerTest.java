@@ -320,6 +320,30 @@ class AppSchedulerTest {
   }
 
   @Test
+  void testDeleteOnDemandJob_skipsWhenJobCurrentlyExecuting() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+    String onDemandIdentity =
+        String.format("SearchIndexingApplication-%s", AppScheduler.ON_DEMAND_JOB);
+    JobKey onDemandKey = new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP);
+
+    // The on-demand job is genuinely executing right now.
+    JobDetail running =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    JobExecutionContext execContext = mock(JobExecutionContext.class);
+    when(execContext.getJobDetail()).thenReturn(running);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(execContext));
+
+    appScheduler.deleteOnDemandJob(app);
+
+    // A running job must never be cleared.
+    verify(mockScheduler, never()).deleteJob(onDemandKey);
+    verify(mockScheduler, never()).unscheduleJob(any(TriggerKey.class));
+  }
+
+  @Test
   void testDeleteOnDemandJob_isBestEffortOnSchedulerException() throws Exception {
     AppScheduler appScheduler = createSchedulerWithMock();
     App app = nonConcurrentApp("SearchIndexingApplication");
