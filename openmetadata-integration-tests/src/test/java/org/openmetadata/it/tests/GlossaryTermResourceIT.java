@@ -3761,4 +3761,136 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         .getHttpClient()
         .executeForString(HttpMethod.GET, "/v1/glossaryTerms/byIds", null, opts.build());
   }
+
+  // -------------------------------------------------------------------------
+  // Issue #28696: renaming a glossary term so the new name keeps the original
+  // name as a PREFIX (e.g. "Customer Lifetime Value" -> "Customer Lifetime
+  // Value Renamed") corrupted the glossary tagFQN on every linked asset in the
+  // search index. The term's asset page then showed 0 assets even though the
+  // database relationship stayed intact.
+  //
+  // Root cause: a non-idempotent prefix replace runs twice on the same asset
+  // doc. updateAssetIndexes (in-transaction) rewrites the tag old -> new, then
+  // propagateToRelatedEntities (post-commit, gated on the simultaneous
+  // displayName change a UI rename sends) re-runs replace(oldFqn, newFqn) on
+  // the already-renamed tag, producing "<newFqn> Renamed" because the new FQN
+  // still startsWith the old FQN.
+  // -------------------------------------------------------------------------
+  @Test
+  void test_renameGlossaryTermPrefixExtension_keepsAssetGlossaryTagInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Short, dot-free names: the FQN must stay unquoted so the new FQN literally
+    // startsWith the old one, and stay well under the tag_usage.tagFQN(256) limit.
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("clv_g"))
+                    .withDescription("Glossary for rename-prefix search regression (#28696)"));
+    GlossaryTerm term =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("clv"))
+                .withDisplayName("Customer Lifetime Value")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Term for rename-prefix search regression (#28696)"));
+    String oldFqn = term.getFullyQualifiedName();
+
+    Table table = createTableTaggedWithTerm(ns, term, "clv_asset");
+    String tableId = table.getId().toString();
+
+    awaitTableGlossaryTag(client, mapper, tableId, oldFqn);
+
+    // UI rename shape: the new name extends the old name as a prefix AND the
+    // displayName changes in the same PATCH (EntityNameModal submits both).
+    GlossaryTerm toRename = client.glossaryTerms().get(term.getId().toString(), "tags");
+    toRename.setName(term.getName() + " Renamed");
+    toRename.setDisplayName("Customer Lifetime Value Renamed");
+    GlossaryTerm renamed = patchEntity(term.getId().toString(), toRename);
+
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(
+        newFqn.startsWith(oldFqn),
+        "Reproduction requires the new FQN to extend the old FQN as a prefix: " + newFqn);
+
+    // The asset's glossary tag in search must equal the NEW FQN exactly. The
+    // regression produced "<newFqn> Renamed", dropping the asset from the term.
+    awaitTableGlossaryTag(client, mapper, tableId, newFqn);
+
+    // ...and the term's asset listing (search backed) must still surface the table.
+    awaitGlossaryTagAssetSearchable(client, mapper, newFqn, tableId);
+  }
+
+  private void awaitTableGlossaryTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedGlossaryFqn) {
+    Awaitility.await("table search doc carries glossary tag " + expectedGlossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> glossaryFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                if ("Glossary".equals(tag.path("source").asText())) {
+                  glossaryFqns.add(tag.path("tagFQN").asText());
+                }
+              }
+              assertTrue(
+                  glossaryFqns.contains(expectedGlossaryFqn),
+                  "Expected glossary tagFQN '"
+                      + expectedGlossaryFqn
+                      + "' on table search doc but found "
+                      + glossaryFqns);
+            });
+  }
+
+  private void awaitGlossaryTagAssetSearchable(
+      OpenMetadataClient client, ObjectMapper mapper, String glossaryFqn, String tableId) {
+    String queryFilter =
+        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"tags.tagFQN\":\"" + glossaryFqn + "\"}}]}}}";
+    Awaitility.await("asset is searchable by glossary tag " + glossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("*")
+                      .index("table_search_index")
+                      .queryFilter(queryFilter)
+                      .size(50)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (tableId.equals(hit.path("_id").asText())
+                    || tableId.equals(hit.path("_source").path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Glossary term assets page (search by tags.tagFQN="
+                      + glossaryFqn
+                      + ") must still include the linked table");
+            });
+  }
 }

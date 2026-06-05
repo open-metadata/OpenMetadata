@@ -432,6 +432,8 @@ authenticationConfiguration:
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
+  sessionExpiry: ${AUTHENTICATION_SESSION_EXPIRY:-"604800"} # 7 days; applies to all auth providers
+  maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
   oidcConfiguration:
     # REQUIRED for SSO: OAuth client ID from your identity provider
     id: ${OIDC_CLIENT_ID:-""}
@@ -455,7 +457,7 @@ authenticationConfiguration:
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
     prompt: ${OIDC_PROMPT_TYPE:-"consent"}
-    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -798,7 +800,8 @@ rdf:
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
-# Default: Disabled (uses NoopCacheProvider)
+# Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
+# Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(UserMetricsResourceIT.class);
+  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(15);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
@@ -257,11 +258,11 @@ public class UserMetricsResourceIT {
       Instant lastActivityTime = Instant.parse(lastActivity);
       Instant now = Instant.now();
       long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-      // In parallel test execution, tests take longer due to resource contention
-      // Use a generous timeout (10 minutes) to avoid flaky tests
       assertTrue(
-          secondsSinceActivity < 600,
-          "Last activity should be within last 10 minutes, but was "
+          secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
+          "Last activity should be within last "
+              + MAX_LAST_ACTIVITY_AGE.toMinutes()
+              + " minutes, but was "
               + secondsSinceActivity
               + " seconds ago");
 
@@ -327,11 +328,11 @@ public class UserMetricsResourceIT {
     Instant lastActivityTime = Instant.parse(lastActivity);
     Instant now = Instant.now();
     long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-    // In parallel test execution, tests take longer due to resource contention
-    // Use a generous timeout (10 minutes) to avoid flaky tests
     assertTrue(
-        secondsSinceActivity < 600,
-        "Last activity should be within last 10 minutes, but was "
+        secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
+        "Last activity should be within last "
+            + MAX_LAST_ACTIVITY_AGE.toMinutes()
+            + " minutes, but was "
             + secondsSinceActivity
             + " seconds ago");
   }

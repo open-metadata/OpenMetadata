@@ -1706,9 +1706,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository
-        .getSearchClient()
-        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+        "updateGlossaryTermByFqnPrefix",
+        null,
+        newFqn,
+        Entity.GLOSSARY_TERM);
   }
 
   private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
@@ -2023,6 +2029,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Transaction

@@ -45,7 +45,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
