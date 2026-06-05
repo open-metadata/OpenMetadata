@@ -2,7 +2,6 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -312,9 +311,11 @@ public class DefaultToolContext {
    * This is the dispatch-level floor that bounds tools without their own per-tool trim ({@code
    * get_entity_details}, {@code get_test_definitions}) and backstops the rest. The happy path
    * serializes exactly once; the re-serialization runs only on the rare oversized path.
+   *
+   * <p>Public so the Collate dispatcher ({@code CollateToolContext}), which builds its own success
+   * result for Collate-only tools, applies the same floor instead of re-implementing it.
    */
-  @VisibleForTesting
-  static String serializeWithinBudget(Object result, String toolName) {
+  public static String serializeWithinBudget(Object result, String toolName) {
     String serialized = JsonUtils.pojoToJson(result);
     if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
       LOG.warn(
