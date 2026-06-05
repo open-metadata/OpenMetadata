@@ -2262,6 +2262,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -2316,6 +2317,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -2383,6 +2385,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -3186,8 +3189,29 @@ public class SearchRepository {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
     return searchClient.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)

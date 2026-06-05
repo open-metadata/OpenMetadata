@@ -338,7 +338,7 @@ export const performCollapse = async (
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('minus-icon');
 
-  await collapseBtn.click();
+  await collapseBtn.dispatchEvent('click');
 
   for (const entity of hiddenEntity) {
     const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');

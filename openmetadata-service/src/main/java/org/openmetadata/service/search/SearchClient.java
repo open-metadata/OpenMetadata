@@ -391,6 +391,21 @@ public interface SearchClient
           if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
             oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
           }
+          def old = ctx._source.upstreamLineage[i];
+          def carryCreatedAt = old.get('createdAt');
+          def carryCreatedBy = old.get('createdBy');
+          def newCreatedAt = edgeData.get('createdAt');
+          if (carryCreatedAt != null && (newCreatedAt == null || carryCreatedAt < newCreatedAt)) {
+            edgeData.put('createdAt', carryCreatedAt);
+            if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
+          }
+          def carryUpdatedAt = old.get('updatedAt');
+          def carryUpdatedBy = old.get('updatedBy');
+          def newUpdatedAt = edgeData.get('updatedAt');
+          if (carryUpdatedAt != null && (newUpdatedAt == null || carryUpdatedAt > newUpdatedAt)) {
+            edgeData.put('updatedAt', carryUpdatedAt);
+            if (carryUpdatedBy != null) edgeData.put('updatedBy', carryUpdatedBy);
+          }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
@@ -722,13 +737,27 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
-  LineagePaginationInfo getLineagePaginationInfo(
+  default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
       String entityType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException;
 
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
