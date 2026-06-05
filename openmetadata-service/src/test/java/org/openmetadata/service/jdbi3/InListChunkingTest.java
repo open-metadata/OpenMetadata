@@ -149,4 +149,55 @@ class InListChunkingTest {
     assertChunksWithinLimit(chunks);
     assertCoversInputExactlyOnce(input, chunks);
   }
+
+  @Test
+  void queryInChunks_deduplicatesIdsSplitAcrossChunks() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.findToBatchAllTypesWithRelationsCondition(anyList(), anyList(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              List<String> chunk = invocation.getArgument(0);
+              chunks.add(List.copyOf(chunk));
+              return chunk.stream()
+                  .map(id -> EntityRelationshipObject.builder().fromId(id).build())
+                  .collect(Collectors.toList());
+            });
+
+    List<String> distinct = ids(OVER_LIMIT);
+    List<String> withDuplicates = new ArrayList<>(distinct);
+    withDuplicates.addAll(distinct.subList(0, 10));
+
+    List<EntityRelationshipObject> result =
+        dao.findToBatchAllTypes(withDuplicates, List.of(1, 2), Include.ALL);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(distinct, chunks);
+    assertEquals(
+        distinct,
+        result.stream().map(EntityRelationshipObject::getFromId).collect(Collectors.toList()),
+        "duplicate ids split across chunks must not produce duplicate result rows");
+  }
+
+  @Test
+  void updateInChunks_deduplicatesIdsSplitAcrossChunks() {
+    EntityExtensionDAO dao = mock(EntityExtensionDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return null;
+            })
+        .when(dao)
+        .deleteAllBatchInternal(anyList());
+
+    List<String> distinct = ids(OVER_LIMIT);
+    List<String> withDuplicates = new ArrayList<>(distinct);
+    withDuplicates.addAll(distinct.subList(0, 10));
+
+    dao.deleteAllBatch(withDuplicates);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(distinct, chunks);
+  }
 }
