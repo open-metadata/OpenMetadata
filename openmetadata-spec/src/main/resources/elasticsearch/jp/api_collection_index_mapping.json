@@ -25,6 +25,16 @@
         }
       },
       "analyzer": {
+        "om_analyzer_jp": {
+          "type": "custom",
+          "tokenizer": "kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
+        },
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
