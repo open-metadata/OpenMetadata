@@ -76,6 +76,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -403,7 +404,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         entity bulk path.
         """
         checksum = get_query_checksum(model_str(record.query))
-        result = Either(right=None)
+        result = Either(right=None)  # pyright: ignore[reportCallIssue]
         if checksum in self.buffered_query_checksums:
             logger.debug(f"Skipping duplicate query with checksum {checksum}")
         else:
@@ -416,7 +417,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def _flush_query_buffer(self) -> Either[Entity]:
         """Bulk-create buffered queries, then classify the response."""
         if not self.query_buffer:
-            return Either(right=None)
+            return Either(right=None)  # pyright: ignore[reportCallIssue]
 
         try:
             result = self.metadata.bulk_create_or_update(
@@ -427,7 +428,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         except Exception as exc:
             logger.error(f"Failed to flush queries to bulk API: {exc}")
             logger.debug(traceback.format_exc())
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name="Query Buffer",
                     error=f"Failed to flush queries to bulk API: {exc}",
@@ -440,19 +441,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return self._record_query_flush_result(result)
 
-    def _record_query_flush_result(self, result) -> Either[Entity]:
+    def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
         """Record a query bulk response. Already-present queries are reported as warnings
         (not failures) so a lineage run is not marked failed over queries that lost no
         metadata; any other failure is still recorded as a failure."""
         if not result:
-            return Either(right=None)
+            return Either(right=None)  # pyright: ignore[reportCallIssue]
 
         self.status.scanned_all(result.successRequest)
         if result.status == basic.Status.success:
-            return Either(right=result)
+            return Either(right=result)  # pyright: ignore[reportCallIssue]
 
         first_failure = None
-        for failed in result.failedRequest:
+        for failed in result.failedRequest:  # pyright: ignore[reportOptionalIterable]
             if is_duplicate_query_conflict(failed.message):
                 self.status.warning("Query", f"Skipped already-present query: {failed.message}")
             else:
@@ -464,7 +465,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 self.status.failed(failure)
                 first_failure = first_failure or failure
 
-        return Either(left=first_failure) if first_failure else Either(right=result)
+        return Either(left=first_failure) if first_failure else Either(right=result)  # pyright: ignore[reportCallIssue]
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -586,7 +587,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def write_barrier(self, record: Barrier) -> Either[Entity]:
         """Flush the buffers synchronously so subsequent records in the same
         stream see committed entities."""
-        result = Either(right=None)
+        result = Either(right=None)  # pyright: ignore[reportCallIssue]
         if self.buffer:
             logger.debug(
                 "Barrier flush: %d entities, reason=%s",
@@ -601,7 +602,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 record.reason,
             )
             query_result = self._flush_query_buffer()
-            if result.right is None and result.left is None:
+            # Surface a genuine query failure even when the entity flush succeeded.
+            if result.left is None and query_result.left is not None:
                 result = query_result
         return result  # pyright: ignore[reportCallIssue]
 
