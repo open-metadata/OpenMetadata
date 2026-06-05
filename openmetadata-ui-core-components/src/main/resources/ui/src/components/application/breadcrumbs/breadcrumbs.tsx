@@ -57,7 +57,13 @@ export interface BreadcrumbsProps {
   'aria-label'?: string;
   /** Class name for the root navigation element. */
   className?: string;
-  /** Called with the item id when a non-current crumb is activated. */
+  /**
+   * Called with the item id when a non-current crumb is activated. When
+   * provided, native `href` navigation is suppressed so the callback alone
+   * drives navigation (client-side routing) — this avoids a double navigation
+   * when an item supplies both `href` and `onAction`. Provide `href` without
+   * `onAction` for a plain link.
+   */
   onAction?: (id: Key) => void;
 }
 
@@ -198,7 +204,7 @@ const EllipsisMenu = ({
       <Dropdown.Menu aria-label="Hidden breadcrumbs">
         {hidden.map((item, index) => (
           <Dropdown.Item
-            href={item.href}
+            href={onAction ? undefined : item.href}
             icon={item.icon}
             key={item.id}
             label={toText(item.label, `Item ${index + 1}`)}
@@ -221,7 +227,6 @@ export const Breadcrumbs = ({
   ...props
 }: BreadcrumbsProps) => {
   const displayItems = collapseItems(items, maxItems);
-  const firstId = displayItems[0]?.id;
   const padding = type === 'text' ? '' : sizes[size].padding;
 
   return (
@@ -239,7 +244,6 @@ export const Breadcrumbs = ({
           className={cx('tw:flex tw:items-center', sizes[size].gap)}>
           {({ isCurrent }) => (
             <>
-              {item.id !== firstId && <Divider divider={divider} size={size} />}
               {isEllipsis(item) ? (
                 <EllipsisMenu
                   hidden={item.hidden}
@@ -251,7 +255,7 @@ export const Breadcrumbs = ({
               ) : !isCurrent && (item.href || onAction) ? (
                 <AriaLink
                   className={cx(linkClassName, styles[type].link, padding)}
-                  href={item.href}
+                  href={onAction ? undefined : item.href}
                   onPress={() => onAction?.(item.id)}>
                   <CrumbLabel item={item} size={size} />
                 </AriaLink>
@@ -266,6 +270,7 @@ export const Breadcrumbs = ({
                   <CrumbLabel item={item} size={size} />
                 </span>
               )}
+              {!isCurrent && <Divider divider={divider} size={size} />}
             </>
           )}
         </AriaBreadcrumb>
