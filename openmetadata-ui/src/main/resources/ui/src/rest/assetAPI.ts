@@ -70,9 +70,7 @@ export const listContextFiles = async (
 
   return {
     data: response.data.data ?? [],
-    paging: response.data.paging ?? {
-      total: (response.data.data ?? []).length,
-    },
+    paging: response.data.paging,
   };
 };
 
