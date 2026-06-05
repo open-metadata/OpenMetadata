@@ -125,6 +125,7 @@ public class GetEntityTool implements McpTool {
           DESCRIPTION_KEY, McpResponseTrim.truncate(description, McpResponseTrim.TEXT_MAX_LENGTH));
       truncated = true;
     }
+    // Non-short-circuit | : children must be trimmed even when this column's description was cut.
     return truncated | trimColumnDescriptions(column.get(CHILDREN_KEY));
   }
 
@@ -140,6 +141,7 @@ public class GetEntityTool implements McpTool {
   private static void trimDataModelSql(Map<String, Object> entity) {
     if (entity.get(DATA_MODEL_KEY) instanceof Map) {
       Map<String, Object> dataModel = castMap(entity.get(DATA_MODEL_KEY));
+      // Non-short-circuit | : both sql and rawSql must be trimmed regardless of the other.
       boolean truncated = trimSqlField(dataModel, SQL_KEY) | trimSqlField(dataModel, RAW_SQL_KEY);
       if (truncated) {
         dataModel.put(SQL_TRUNCATED_KEY, Boolean.TRUE);
