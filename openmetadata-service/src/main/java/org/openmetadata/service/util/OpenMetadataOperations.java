@@ -1388,6 +1388,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
 
       // Prepare search repository for reindexing (e.g., initialize vector services)
       searchRepository.prepareForReindex();
@@ -1908,8 +1909,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
     }
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
@@ -1966,6 +1969,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
       return executeDataInsightsReindexApp(
           batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
     } catch (Exception e) {
@@ -2000,8 +2004,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
     return waitAndReturnReindexingAppStatus(app, currentTime);
   }
