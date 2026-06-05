@@ -14,7 +14,6 @@
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
@@ -115,7 +114,6 @@ const EntityDeleteModal = ({
               }
               values={{
                 entityName: entityName,
-                brandName: brandClassBase.getPageTitle(),
               }}
             />
           )}

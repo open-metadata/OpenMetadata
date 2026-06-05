@@ -355,10 +355,11 @@ def test_get_owner_ref_uses_as_json_payload(monkeypatch):
     source.context.get().database = "db"
     source.context.get().database_schema = "sch"
     source._filter_owner_name = DatabricksSource._filter_owner_name.__get__(source)
+    source.owner_resolver = Mock()
 
     DatabricksSource.get_owner_ref(source, "tbl")
 
-    source.metadata.get_reference_by_name.assert_called_once_with(name="data_team")
+    source.owner_resolver.get_owner_ref.assert_called_once_with("data_team")
 
 
 def test_fetch_table_describe_json_cache_is_size_one():
