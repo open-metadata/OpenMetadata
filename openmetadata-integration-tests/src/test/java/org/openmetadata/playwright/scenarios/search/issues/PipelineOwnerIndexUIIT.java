@@ -24,7 +24,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 
 /**
- * Regression guard for Orsted's "pipeline owners missing from index" (issue #35, fix #28109/#28264):
+ * Regression guard for the "pipeline owners missing from index" issue (fix #28109/#28264):
  * pipelines were indexed with {@code owners: []} even when they had an owner, so the {@code isOwner()}
  * RBAC policy denied everyone access through search/landing pages. The DB had the owner; only the
  * search doc's owner enrichment was dropped.

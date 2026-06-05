@@ -19,8 +19,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
 
 /**
- * Regression guard for the {@code too_many_nested_clauses} drop-out reported by NBN (issue #7,
- * fix #21502/#21505): searching a long underscore-segmented table name (e.g.
+ * Regression guard for the {@code too_many_nested_clauses} drop-out (fix #21502/#21505):
+ * searching a long underscore-segmented table name (e.g.
  * {@code v_location_category...}) exploded the boolean query past {@code indices.query.bool.max_clause_count}
  * — every searchable compound field ({@code name.compound}, {@code displayName.compound}) multiplies
  * the clause count — so the table silently dropped out of results.

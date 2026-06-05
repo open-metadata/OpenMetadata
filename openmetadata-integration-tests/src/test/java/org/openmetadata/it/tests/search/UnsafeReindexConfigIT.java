@@ -30,10 +30,10 @@ import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.service.Entity;
 
 /**
- * Guard derived from Inmar's OOM loop (issue #22): a manually-persisted, aggressive bulk-sink config
- * (tiny batch + high concurrency + large payload) put gigabytes in flight and deterministically
- * OOM-looped the server — 8+ restarts, HTTP 500s on every page. The remediation was to stop the job
- * and reset to safe/auto-tune values.
+ * Guard derived from the bulk-sink OOM-loop incident: a manually-persisted, aggressive bulk-sink
+ * config (tiny batch + high concurrency + large payload) put gigabytes in flight and
+ * deterministically OOM-looped the server (repeated restarts, HTTP 500s on every page). The
+ * remediation was to stop the job and reset to safe/auto-tune values.
  *
  * <p>This triggers a reindex with an aggressive manual config and asserts the server <b>survives</b>
  * it: the run reaches a terminal state and the server stays responsive (a follow-up search and a

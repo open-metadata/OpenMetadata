@@ -24,8 +24,8 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
 
 /**
- * Regression guard for the glossary-term rename corruption reported in #search-issues (issue #33,
- * fixed by PR #28725 in 1.12.11): a double find-replace — the rename handler AND the reindex hook
+ * Regression guard for the glossary-term rename corruption (fixed by PR #28725 in 1.12.11): a
+ * double find-replace — the rename handler AND the reindex hook
  * each rewrote the name — turned {@code "CLV"} into {@code "CLV Renamed Renamed"} in the search doc
  * whenever the new name <b>starts with</b> the old one. The DB row stayed correct, so the only
  * visible symptom was through search: the term's page (asset list, backed by the search doc) showed
