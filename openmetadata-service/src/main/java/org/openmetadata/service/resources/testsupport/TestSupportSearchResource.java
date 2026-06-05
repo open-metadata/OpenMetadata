@@ -53,7 +53,7 @@ import org.openmetadata.service.security.Authorizer;
 public class TestSupportSearchResource {
 
   private static final List<String> ALLOWED_TOKENS =
-      List.of("_count", "_search", "_alias", "_cat/indices");
+      List.of("_count", "_search", "_alias", "_cat/indices", "_mapping");
 
   private final Authorizer authorizer;
 
