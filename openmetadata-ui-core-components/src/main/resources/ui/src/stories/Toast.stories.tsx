@@ -11,46 +11,70 @@
  *  limitations under the License.
  */
 
+import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
-import { Toast } from '../components/application/toast/toast';
 import { ToastProvider } from '../components/application/toast/toast-provider';
-import { toast } from '../components/application/toast/toast-store';
+import { toast, toastQueue } from '../components/application/toast/toast-store';
 
 const meta = {
   title: 'Components/Toast',
-  component: Toast,
+  component: ToastProvider,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
   argTypes: {
-    message: { control: 'text' },
+    position: {
+      control: 'select',
+      options: [
+        'top-right',
+        'top-left',
+        'top-center',
+        'bottom-right',
+        'bottom-left',
+        'bottom-center',
+      ],
+    },
   },
-} satisfies Meta<typeof Toast>;
+  decorators: [
+    (Story) => {
+      useEffect(() => () => { toastQueue.clear(); }, []);
+      return <Story />;
+    },
+  ],
+} satisfies Meta<typeof ToastProvider>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// ─── Static ──────────────────────────────────────────────────────────────────
+// ─── Static previews (fire on mount, no auto-dismiss) ────────────────────────
 
 export const Default: Story = {
-  args: {
-    message: 'Dashboard created successfully!',
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.show('Dashboard created successfully!', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
   },
 };
 
 export const LongMessage: Story = {
-  args: {
-    message: 'Sharing settings saved for "Revenue Overview"',
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.show('Sharing settings saved for "Revenue Overview"', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
   },
 };
 
 // ─── Live trigger ─────────────────────────────────────────────────────────────
 
-export const LiveTrigger: StoryObj = {
-  parameters: { layout: 'centered' },
-  render: () => (
+export const LiveTrigger: Story = {
+  args: { position: 'bottom-center' },
+  render: (args) => (
     <>
-      <ToastProvider />
+      <ToastProvider {...args} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <Button
           color="secondary"
@@ -73,10 +97,32 @@ export const LiveTrigger: StoryObj = {
         <Button
           color="secondary"
           size="sm"
-          onClick={() => toast.show('Changes saved', { duration: 0 })}>
+          onClick={() => toast.show('Changes saved', { timeout: 0 })}>
           Persistent (no auto-dismiss)
         </Button>
       </div>
     </>
   ),
+};
+
+// ─── Position showcase ────────────────────────────────────────────────────────
+
+export const TopRight: Story = {
+  args: { position: 'top-right' },
+  render: (args) => {
+    useEffect(() => {
+      toast.show('Saved to top-right!', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
+  },
+};
+
+export const TopCenter: Story = {
+  args: { position: 'top-center' },
+  render: (args) => {
+    useEffect(() => {
+      toast.show('Saved to top-center!', { timeout: 0 });
+    }, []);
+    return <ToastProvider {...args} />;
+  },
 };
