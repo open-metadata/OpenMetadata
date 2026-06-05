@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -199,5 +201,66 @@ class InListChunkingTest {
 
     assertChunksWithinLimit(chunks);
     assertCoversInputExactlyOnce(distinct, chunks);
+  }
+
+  @Test
+  void bulkUpdateFromId_chunksOverLimit() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(2)));
+              return null;
+            })
+        .when(dao)
+        .bulkUpdateFromIdInternal(any(), any(), anyList(), anyString(), anyString(), anyInt());
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.bulkUpdateFromId(new UUID(0L, 1L), new UUID(0L, 2L), input, "glossary", "glossaryTerm", 10);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+
+  @Test
+  void deleteTagsByTargets_chunksOverLimit() {
+    TagUsageDAO dao = mock(TagUsageDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return null;
+            })
+        .when(dao)
+        .deleteTagsByTargetsInternal(anyList());
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.deleteTagsByTargets(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+
+  @Test
+  void getLatestExtensionBatch_chunksOverLimitAndAggregates() {
+    EntityTimeSeriesDAO dao = mock(EntityTimeSeriesDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.getLatestExtensionBatch(any(), anyList(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              List<String> chunk = invocation.getArgument(1);
+              chunks.add(List.copyOf(chunk));
+              return chunk.stream()
+                  .map(h -> new EntityTimeSeriesDAO.FQNHashJsonRow(h, "{}"))
+                  .collect(Collectors.toList());
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    Map<String, String> result = dao.getLatestExtensionBatch(input, "someExtension");
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+    assertEquals(
+        input.size(), result.size(), "every distinct hash must appear in the aggregated map");
   }
 }
