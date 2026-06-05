@@ -498,6 +498,7 @@ const KnowledgePagesHierarchy = forwardRef<
               {() => (
                 <Link
                   className="knowledge-hierarchy-node-link tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2"
+                  data-testid={`page-node-${displayName}`}
                   to={contextCenterClassBase.getArticlePath(
                     node.fullyQualifiedName
                   )}>
@@ -516,19 +517,21 @@ const KnowledgePagesHierarchy = forwardRef<
                       {displayName}
                     </Typography>
                   </Box>
-                  <ButtonUtility
-                    className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-                    color="tertiary"
-                    data-testid={`${displayName}-delete-page-btn`}
-                    icon={Trash01}
-                    size="xs"
-                    tooltip={t('label.delete')}
-                    onClick={(e: React.MouseEvent) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDeletePage(node.fullyQualifiedName);
-                    }}
-                  />
+                  {permissions.Delete && (
+                    <ButtonUtility
+                      className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
+                      color="tertiary"
+                      data-testid={`${displayName}-delete-page-btn`}
+                      icon={Trash01}
+                      size="xs"
+                      tooltip={t('label.delete')}
+                      onClick={(e: React.MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeletePage(node.fullyQualifiedName);
+                      }}
+                    />
+                  )}
                 </Link>
               )}
             </Tree.ItemContent>
@@ -586,7 +589,7 @@ const KnowledgePagesHierarchy = forwardRef<
           loadNodeChildren(key);
         }
       });
-    }, [expandedKeys]);
+    }, [expandedKeys, knowledgePageHierarchy, loadNodeChildren]);
 
     if (isLoading) {
       return (
@@ -635,6 +638,7 @@ const KnowledgePagesHierarchy = forwardRef<
       <section
         aria-label={t('label.article-plural')}
         className="knowledge-pages-hierarchy-wrapper tw:pt-2 tw:px-3"
+        data-testid="knowledge-pages-hierarchy-container"
         style={{ height: TREE_HEIGHT, overflow: 'auto' }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
