@@ -28,8 +28,7 @@
           "title": "Polling Interval Seconds",
           "description": "How often (in seconds) to poll the Policy Agent pipeline run for completion while waiting. Falls back to the server-wide default (workflowSettings.policyAgentConfiguration.pollingIntervalSeconds) when unset.",
           "type": "integer",
-          "minimum": 1,
-          "default": 30
+          "minimum": 1
         }
       },
       "additionalProperties": false,
