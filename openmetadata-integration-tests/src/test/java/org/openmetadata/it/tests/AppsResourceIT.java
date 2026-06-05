@@ -1280,6 +1280,106 @@ public class AppsResourceIT {
     }
   }
 
+  @Test
+  void test_externalAppScheduleSync_removingAppScheduleNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedRemove");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          initialCron,
+          pipeline.getAirflowConfig().getScheduleInterval(),
+          "Bound pipeline should have the initial cron schedule");
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeSchedulePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      IngestionPipeline pipelineAfterRemove =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterRemove.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null after removing appSchedule");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_noneTimelineNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNone");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String setNoneTimelinePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/scheduleTimeline\",\"value\":\"None\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          setNoneTimelinePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNone =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNone.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when scheduleTimeline is None, even if cronExpression remains");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
   private AppMarketPlaceDefinition createExternalAppMarketplace(
       HttpClient httpClient, String appName) throws Exception {
     CreateAppMarketPlaceDefinitionReq req =
