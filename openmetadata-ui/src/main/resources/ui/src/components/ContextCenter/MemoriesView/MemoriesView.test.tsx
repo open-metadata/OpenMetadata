@@ -30,9 +30,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
+  Box: jest.fn(
+    ({
+      children,
+      ...rest
+    }: { children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) => (
+      <div {...rest}>{children}</div>
+    )
+  ),
   ButtonUtility: jest.fn(
     ({
       onClick,
