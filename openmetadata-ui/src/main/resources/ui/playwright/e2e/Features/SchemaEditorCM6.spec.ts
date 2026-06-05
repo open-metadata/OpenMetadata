@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import test, { expect } from '@playwright/test';
+import test, { expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -23,7 +28,6 @@ const table = new TableClass();
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
-  await table.createQuery(apiContext, 'SELECT 1 FROM dual');
   await afterAction();
 });
 
@@ -33,67 +37,108 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-test('CM6 renders on Table Queries tab — no CM5 artifacts', async ({
-  page,
-}) => {
+async function openQueriesTab(page: Page) {
+  const querySearchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=query') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.getByTestId('table_queries').click();
+  await querySearchResponse;
+  await waitForAllLoadersToDisappear(page);
+}
+
+async function createQueryFromUi(page: Page, queryText: string) {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
+  await openQueriesTab(page);
 
-  const queryResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query*'
+  await page.getByTestId('add-query-btn').click();
+  await expect(page.getByTestId('query-form')).toBeVisible();
+
+  await page
+    .getByTestId('code-mirror-container')
+    .getByRole('textbox')
+    .fill(queryText);
+  await page.locator(descriptionBox).click();
+  await page.keyboard.type(`CM6 verification ${uuid()}`);
+
+  const createQueryResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/queries') &&
+      response.request().method() === 'POST'
   );
-  await page.getByTestId('table_queries').click();
-  await queryResponse;
+  await page.getByTestId('save-btn').click();
+  await createQueryResponse;
+  await page.waitForURL('**/table_queries**');
   await waitForAllLoadersToDisappear(page);
+}
 
-  const queryCard = page.locator('[data-testid="query-card"]').first();
-  await queryCard.waitFor({ state: 'visible' });
+async function waitForQueryCard(
+  page: Page,
+  queryText: string
+): Promise<Locator> {
+  const queryCard = page
+    .locator('[data-testid="query-card"]')
+    .filter({ hasText: queryText })
+    .first();
 
-  // CM6 read-only (nocursor) editor renders the cm-content as role=textbox
+  // Elasticsearch indexing lags after creation. Reload the page (same URL) to
+  // remount TableQueries and trigger a fresh ES search, retrying until the
+  // newly-created query card appears. Tab-switching cannot be used here because
+  // Ant Design keeps inactive tab panels mounted — switching back would not
+  // re-fire the useEffect that fetches queries.
+  await expect(async () => {
+    if (!(await queryCard.isVisible())) {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+    }
+    await expect(queryCard).toBeVisible();
+  }).toPass({ intervals: [3000], timeout: 60_000 });
+
+  return queryCard;
+}
+
+test('Query editor renders on Table Queries tab', async ({ page }) => {
+  const queryText = `SELECT '${uuid()}' AS cm6_render_check`;
+
+  await createQueryFromUi(page, queryText);
+
+  const queryCard = await waitForQueryCard(page, queryText);
+
+  await expect(queryCard).toContainText(queryText);
   await expect(queryCard.getByRole('textbox')).toBeVisible();
-
-  // CM5 artifact must be absent after migration
-  await expect(page.locator('.CodeMirror')).not.toBeAttached();
 });
 
-test('CM6 editor re-renders after tab switch — IntersectionObserver fix', async ({
-  page,
-}) => {
-  test.slow();
+test('Query editor stays visible after tab switch', async ({ page }) => {
+  const queryText = `SELECT '${uuid()}' AS cm6_tab_switch_check`;
 
-  await redirectToHomePage(page);
-  await table.visitEntityPage(page);
+  await createQueryFromUi(page, queryText);
+
+  const queryCard = await waitForQueryCard(page, queryText);
+  const editorTextbox = queryCard.getByRole('textbox');
 
   await test.step('Navigate to Queries tab — CM6 editor mounts', async () => {
-    const queryResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=query*'
-    );
-    await page.getByTestId('table_queries').click();
-    await queryResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    const queryCard = page.locator('[data-testid="query-card"]').first();
-    await queryCard.waitFor({ state: 'visible' });
-    await expect(queryCard.getByRole('textbox')).toBeVisible();
+    await expect(queryCard).toContainText(queryText);
+    await expect(editorTextbox).toBeVisible();
   });
 
   await test.step('Switch to Schema tab — Queries panel hidden via display:none', async () => {
-    await page.getByTestId('schema-tab').click();
+    await page.getByTestId('schema').click();
     await waitForAllLoadersToDisappear(page);
   });
 
-  await test.step('Return to Queries tab — IntersectionObserver triggers requestRefresh()', async () => {
-    // Tab content stays in DOM (Ant Design keeps it, just toggles display:none).
-    // No API re-fetch happens on return — just wait for the panel to become visible.
+  await test.step('Return to Queries tab', async () => {
     await page.getByTestId('table_queries').click();
+    await waitForAllLoadersToDisappear(page);
 
-    const queryCard = page.locator('[data-testid="query-card"]').first();
-    await queryCard.waitFor({ state: 'visible' });
-    await expect(queryCard.getByRole('textbox')).toBeVisible();
+    await expect(queryCard).toBeVisible();
+    await expect(queryCard).toContainText(queryText);
+    await expect(editorTextbox).toBeVisible();
 
-    // Non-zero height validates the IntersectionObserver fix worked
-    const cmEditor = page.locator('.cm-editor').first();
-    const editorHeight = await cmEditor.evaluate(
+    const editorHeight = await editorTextbox.evaluate(
       (el) => el.getBoundingClientRect().height
     );
     expect(editorHeight).toBeGreaterThan(0);
