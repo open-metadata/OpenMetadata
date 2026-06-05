@@ -67,3 +67,13 @@ export const SlashDivider: Story = {
 export const Collapsed: Story = {
   args: { items: deepItems, maxItems: 3 },
 };
+
+export const Sizes: Story = {
+  render: (args) => (
+    <div className="tw:flex tw:flex-col tw:gap-4">
+      <Breadcrumbs {...args} size="xs" />
+      <Breadcrumbs {...args} size="sm" />
+      <Breadcrumbs {...args} size="md" />
+    </div>
+  ),
+};

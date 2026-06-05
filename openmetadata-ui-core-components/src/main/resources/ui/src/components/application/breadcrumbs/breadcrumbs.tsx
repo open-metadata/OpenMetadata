@@ -25,6 +25,8 @@ export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
 
 export type BreadcrumbsDivider = 'chevron' | 'slash';
 
+export type BreadcrumbsSize = 'xs' | 'sm' | 'md';
+
 export interface BreadcrumbItemType {
   /** Unique identifier for the item. */
   id: Key;
@@ -43,6 +45,8 @@ export interface BreadcrumbsProps {
   type?: BreadcrumbsType;
   /** Separator rendered between crumbs. */
   divider?: BreadcrumbsDivider;
+  /** Size of the crumbs (text, icons and button padding). */
+  size?: BreadcrumbsSize;
   /**
    * Maximum number of crumbs to render inline. When the list is longer, the
    * middle crumbs collapse into a `…` menu, keeping the first and last crumbs
@@ -75,14 +79,37 @@ const styles = sortCx({
     current: 'tw:text-secondary tw:font-medium',
   },
   'button-white': {
-    link: 'tw:rounded-md tw:px-2 tw:py-1 tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary',
+    link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary',
     current:
-      'tw:rounded-md tw:bg-primary tw:px-2 tw:py-1 tw:font-medium tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
   },
   'button-gray': {
-    link: 'tw:rounded-md tw:px-2 tw:py-1 tw:text-quaternary tw:hover:bg-secondary tw:hover:text-secondary',
-    current:
-      'tw:rounded-md tw:bg-secondary tw:px-2 tw:py-1 tw:font-medium tw:text-secondary',
+    link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-secondary tw:hover:text-secondary',
+    current: 'tw:rounded-md tw:bg-secondary tw:font-medium tw:text-secondary',
+  },
+});
+
+const sizes = sortCx({
+  xs: {
+    gap: 'tw:gap-1',
+    text: 'tw:text-xs',
+    icon: 'tw:size-3.5',
+    dots: 'tw:size-4',
+    padding: 'tw:px-1.5 tw:py-0.5',
+  },
+  sm: {
+    gap: 'tw:gap-1.5',
+    text: 'tw:text-sm',
+    icon: 'tw:size-4',
+    dots: 'tw:size-5',
+    padding: 'tw:px-2 tw:py-1',
+  },
+  md: {
+    gap: 'tw:gap-2',
+    text: 'tw:text-sm',
+    icon: 'tw:size-5',
+    dots: 'tw:size-5',
+    padding: 'tw:px-2.5 tw:py-1.5',
   },
 });
 
@@ -111,7 +138,13 @@ const collapseItems = (
   return result;
 };
 
-const Divider = ({ divider }: { divider: BreadcrumbsDivider }) =>
+const Divider = ({
+  divider,
+  size,
+}: {
+  divider: BreadcrumbsDivider;
+  size: BreadcrumbsSize;
+}) =>
   divider === 'slash' ? (
     <span aria-hidden="true" className="tw:px-0.5 tw:text-quaternary">
       /
@@ -119,16 +152,22 @@ const Divider = ({ divider }: { divider: BreadcrumbsDivider }) =>
   ) : (
     <ChevronRight
       aria-hidden="true"
-      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+      className={cx('tw:shrink-0 tw:text-fg-quaternary', sizes[size].icon)}
     />
   );
 
-const CrumbLabel = ({ item }: { item: BreadcrumbItemType }) => {
+const CrumbLabel = ({
+  item,
+  size,
+}: {
+  item: BreadcrumbItemType;
+  size: BreadcrumbsSize;
+}) => {
   const Icon = item.icon;
 
   return (
-    <span className="tw:flex tw:items-center tw:gap-1.5">
-      {Icon && <Icon className="tw:size-4 tw:shrink-0" />}
+    <span className={cx('tw:flex tw:items-center', sizes[size].gap)}>
+      {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       {item.label}
     </span>
   );
@@ -137,15 +176,23 @@ const CrumbLabel = ({ item }: { item: BreadcrumbItemType }) => {
 interface EllipsisMenuProps {
   hidden: BreadcrumbItemType[];
   type: BreadcrumbsType;
+  size: BreadcrumbsSize;
+  padding: string;
   onAction?: (id: Key) => void;
 }
 
-const EllipsisMenu = ({ hidden, type, onAction }: EllipsisMenuProps) => (
+const EllipsisMenu = ({
+  hidden,
+  type,
+  size,
+  padding,
+  onAction,
+}: EllipsisMenuProps) => (
   <Dropdown.Root>
     <AriaButton
       aria-label="Show hidden breadcrumbs"
-      className={cx(linkClassName, styles[type].link)}>
-      <DotsHorizontal className="tw:size-5 tw:shrink-0" />
+      className={cx(linkClassName, styles[type].link, padding)}>
+      <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
     </AriaButton>
     <Dropdown.Popover>
       <Dropdown.Menu aria-label="Hidden breadcrumbs">
@@ -167,6 +214,7 @@ export const Breadcrumbs = ({
   items,
   type = 'text',
   divider = 'chevron',
+  size = 'sm',
   maxItems,
   className,
   onAction,
@@ -174,38 +222,48 @@ export const Breadcrumbs = ({
 }: BreadcrumbsProps) => {
   const displayItems = collapseItems(items, maxItems);
   const firstId = displayItems[0]?.id;
+  const padding = type === 'text' ? '' : sizes[size].padding;
 
   return (
     <AriaBreadcrumbs
       aria-label={props['aria-label'] ?? 'Breadcrumb'}
-      className={cx('tw:flex tw:items-center tw:gap-1.5 tw:text-sm', className)}
+      className={cx(
+        'tw:flex tw:items-center',
+        sizes[size].gap,
+        sizes[size].text,
+        className
+      )}
       items={displayItems}>
       {(item) => (
-        <AriaBreadcrumb className="tw:flex tw:items-center tw:gap-1.5">
+        <AriaBreadcrumb
+          className={cx('tw:flex tw:items-center', sizes[size].gap)}>
           {({ isCurrent }) => (
             <>
-              {item.id !== firstId && <Divider divider={divider} />}
+              {item.id !== firstId && <Divider divider={divider} size={size} />}
               {isEllipsis(item) ? (
                 <EllipsisMenu
                   hidden={item.hidden}
+                  padding={padding}
+                  size={size}
                   type={type}
                   onAction={onAction}
                 />
               ) : !isCurrent && (item.href || onAction) ? (
                 <AriaLink
-                  className={cx(linkClassName, styles[type].link)}
+                  className={cx(linkClassName, styles[type].link, padding)}
                   href={item.href}
                   onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel item={item} />
+                  <CrumbLabel item={item} size={size} />
                 </AriaLink>
               ) : (
                 <span
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cx(
                     'tw:flex tw:items-center',
+                    padding,
                     isCurrent ? styles[type].current : 'tw:text-quaternary'
                   )}>
-                  <CrumbLabel item={item} />
+                  <CrumbLabel item={item} size={size} />
                 </span>
               )}
             </>
