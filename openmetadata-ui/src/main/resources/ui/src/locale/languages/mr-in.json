@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "शेवटची क्रिया {{count}} मिनिटांपूर्वी",
     "last-cited-by": "Last cited by",
     "last-edited-by": "शेवटचे संपादन केले",
+    "last-edited-time": "शेवटचे संपादित {{time}}",
     "last-error": "शेवटची त्रुटी",
     "last-failed-at": "शेवटचे अयशस्वी",
     "last-hour": "मागील तास",

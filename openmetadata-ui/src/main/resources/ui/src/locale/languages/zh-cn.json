@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "{{count}}分钟前的最后活动",
     "last-cited-by": "Last cited by",
     "last-edited-by": "最后编辑者",
+    "last-edited-time": "最后编辑 {{time}}",
     "last-error": "最近错误",
     "last-failed-at": "最近失败时间",
     "last-hour": "最后一小时",

@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "{{count}} dakika önce son aktivite",
     "last-cited-by": "Last cited by",
     "last-edited-by": "Son Düzenleyen",
+    "last-edited-time": "Son Düzenleme {{time}}",
     "last-error": "Son hata",
     "last-failed-at": "Son Başarısız Olma Zamanı",
     "last-hour": "Son saat",

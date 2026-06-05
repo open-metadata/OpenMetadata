@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "Última actividad hace {{count}} minutos",
     "last-cited-by": "Last cited by",
     "last-edited-by": "Última edición por",
+    "last-edited-time": "Última edición {{time}}",
     "last-error": "Último error",
     "last-failed-at": "Último fallo en",
     "last-hour": "Última hora",

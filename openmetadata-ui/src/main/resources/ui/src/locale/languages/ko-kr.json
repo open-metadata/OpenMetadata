@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "{{count}}분 전 마지막 활동",
     "last-cited-by": "Last cited by",
     "last-edited-by": "마지막 편집자",
+    "last-edited-time": "마지막 편집 {{time}}",
     "last-error": "마지막 오류",
     "last-failed-at": "마지막 실패 시간",
     "last-hour": "지난 시간",

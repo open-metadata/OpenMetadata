@@ -1203,6 +1203,7 @@
     "last-activity-n-minutes-ago": "最終アクティビティは{{count}}分前",
     "last-cited-by": "Last cited by",
     "last-edited-by": "最終編集者",
+    "last-edited-time": "最終編集 {{time}}",
     "last-error": "最新のエラー",
     "last-failed-at": "最後の失敗日時",
     "last-hour": "直近1時間",
