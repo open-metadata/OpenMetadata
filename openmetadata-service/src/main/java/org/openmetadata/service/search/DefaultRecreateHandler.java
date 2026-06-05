@@ -87,10 +87,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String entityType = context.getEntityType();
     String canonicalIndex = context.getCanonicalIndex();
     String stagedIndex = context.getStagedIndex();
-    Set<String> aliasesFromMapping = context.getExistingAliases();
 
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
+    IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
@@ -144,15 +144,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       //                         is strictly worse than the writes going back to the canonical
       //                         alias target. Operators need to retry the reindex either way.
       try {
-        // The alias set was derived from indexMapping.json at recreate time via
-        // getAliasesFromMapping; finalize just attaches that captured set. Nothing is read from the
-        // live cluster, so the set is deterministic and matches the distributed promotion path.
-        Set<String> aliasesToAttach = new HashSet<>();
-        if (aliasesFromMapping != null) {
-          aliasesFromMapping.stream()
-              .filter(alias -> alias != null && !alias.isBlank())
-              .forEach(aliasesToAttach::add);
-        }
+        // Re-derive aliases from indexMapping.json rather than trusting
+        // context.getExistingAliases(). A participant server rebuilds the context
+        // from only the staged-index mapping (ReindexContext.fromStagedIndexMapping),
+        // leaving its alias set empty; trusting it would abort promotion and drop the
+        // parent aliases (all/table/dataAsset). Deriving from the mapping matches
+        // promoteEntityIndex.
+        Set<String> aliasesToAttach =
+            getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
         if (aliasesToAttach.isEmpty()) {
           abortPromotionWithoutAliases(entityType, stagedIndex);
