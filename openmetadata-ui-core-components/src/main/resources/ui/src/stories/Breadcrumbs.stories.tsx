@@ -24,6 +24,15 @@ const items: BreadcrumbItemType[] = [
   { id: 'members', label: 'Members' },
 ];
 
+const deepItems: BreadcrumbItemType[] = [
+  { id: 'home', label: 'Home', href: '#', icon: HomeLine },
+  { id: 'workspace', label: 'Workspace', href: '#' },
+  { id: 'projects', label: 'Projects', href: '#' },
+  { id: 'analytics', label: 'Analytics', href: '#' },
+  { id: 'dashboards', label: 'Dashboards', href: '#' },
+  { id: 'overview', label: 'Overview' },
+];
+
 const meta = {
   title: 'Components/Breadcrumbs',
   component: Breadcrumbs,
@@ -53,4 +62,8 @@ export const ButtonGray: Story = {
 
 export const SlashDivider: Story = {
   args: { divider: 'slash' },
+};
+
+export const Collapsed: Story = {
+  args: { items: deepItems, maxItems: 3 },
 };

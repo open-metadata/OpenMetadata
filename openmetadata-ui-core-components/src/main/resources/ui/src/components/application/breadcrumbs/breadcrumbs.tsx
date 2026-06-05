@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronRight } from '@untitledui/icons';
+import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
 import type { FC, Key, ReactNode } from 'react';
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
+  Button as AriaButton,
   Link as AriaLink,
 } from 'react-aria-components';
+import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { cx, sortCx } from '@/utils/cx';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
@@ -41,6 +43,12 @@ export interface BreadcrumbsProps {
   type?: BreadcrumbsType;
   /** Separator rendered between crumbs. */
   divider?: BreadcrumbsDivider;
+  /**
+   * Maximum number of crumbs to render inline. When the list is longer, the
+   * middle crumbs collapse into a `…` menu, keeping the first and last crumbs
+   * visible. Omit to always render every crumb.
+   */
+  maxItems?: number;
   /** Accessible label for the navigation landmark. */
   'aria-label'?: string;
   /** Class name for the root navigation element. */
@@ -48,6 +56,18 @@ export interface BreadcrumbsProps {
   /** Called with the item id when a non-current crumb is activated. */
   onAction?: (id: Key) => void;
 }
+
+const ELLIPSIS_ID = '__breadcrumbs_ellipsis__';
+
+interface EllipsisItem {
+  id: typeof ELLIPSIS_ID;
+  hidden: BreadcrumbItemType[];
+}
+
+type DisplayItem = BreadcrumbItemType | EllipsisItem;
+
+const isEllipsis = (item: DisplayItem): item is EllipsisItem =>
+  item.id === ELLIPSIS_ID;
 
 const styles = sortCx({
   text: {
@@ -66,6 +86,31 @@ const styles = sortCx({
   },
 });
 
+const linkClassName =
+  'tw:flex tw:cursor-pointer tw:items-center tw:rounded-md tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2';
+
+const toText = (label: ReactNode, fallback: string): string =>
+  typeof label === 'string' || typeof label === 'number'
+    ? String(label)
+    : fallback;
+
+const collapseItems = (
+  items: BreadcrumbItemType[],
+  maxItems?: number
+): DisplayItem[] => {
+  let result: DisplayItem[] = items;
+  if (maxItems && maxItems >= 2 && items.length > maxItems) {
+    const trailingCount = maxItems - 1;
+    result = [
+      items[0],
+      { id: ELLIPSIS_ID, hidden: items.slice(1, items.length - trailingCount) },
+      ...items.slice(items.length - trailingCount),
+    ];
+  }
+
+  return result;
+};
+
 const Divider = ({ divider }: { divider: BreadcrumbsDivider }) =>
   divider === 'slash' ? (
     <span aria-hidden="true" className="tw:px-0.5 tw:text-quaternary">
@@ -78,58 +123,93 @@ const Divider = ({ divider }: { divider: BreadcrumbsDivider }) =>
     />
   );
 
+const CrumbLabel = ({ item }: { item: BreadcrumbItemType }) => {
+  const Icon = item.icon;
+
+  return (
+    <span className="tw:flex tw:items-center tw:gap-1.5">
+      {Icon && <Icon className="tw:size-4 tw:shrink-0" />}
+      {item.label}
+    </span>
+  );
+};
+
+interface EllipsisMenuProps {
+  hidden: BreadcrumbItemType[];
+  type: BreadcrumbsType;
+  onAction?: (id: Key) => void;
+}
+
+const EllipsisMenu = ({ hidden, type, onAction }: EllipsisMenuProps) => (
+  <Dropdown.Root>
+    <AriaButton
+      aria-label="Show hidden breadcrumbs"
+      className={cx(linkClassName, styles[type].link)}>
+      <DotsHorizontal className="tw:size-5 tw:shrink-0" />
+    </AriaButton>
+    <Dropdown.Popover>
+      <Dropdown.Menu aria-label="Hidden breadcrumbs">
+        {hidden.map((item, index) => (
+          <Dropdown.Item
+            href={item.href}
+            icon={item.icon}
+            key={item.id}
+            label={toText(item.label, `Item ${index + 1}`)}
+            onAction={() => onAction?.(item.id)}
+          />
+        ))}
+      </Dropdown.Menu>
+    </Dropdown.Popover>
+  </Dropdown.Root>
+);
+
 export const Breadcrumbs = ({
   items,
   type = 'text',
   divider = 'chevron',
+  maxItems,
   className,
   onAction,
   ...props
 }: BreadcrumbsProps) => {
-  const firstId = items[0]?.id;
+  const displayItems = collapseItems(items, maxItems);
+  const firstId = displayItems[0]?.id;
 
   return (
     <AriaBreadcrumbs
       aria-label={props['aria-label'] ?? 'Breadcrumb'}
       className={cx('tw:flex tw:items-center tw:gap-1.5 tw:text-sm', className)}
-      items={items}>
+      items={displayItems}>
       {(item) => (
         <AriaBreadcrumb className="tw:flex tw:items-center tw:gap-1.5">
-          {({ isCurrent }) => {
-            const Icon = item.icon;
-            const content = (
-              <span className="tw:flex tw:items-center tw:gap-1.5">
-                {Icon && <Icon className="tw:size-4 tw:shrink-0" />}
-                {item.label}
-              </span>
-            );
-
-            return (
-              <>
-                {item.id !== firstId && <Divider divider={divider} />}
-                {!isCurrent && (item.href || onAction) ? (
-                  <AriaLink
-                    className={cx(
-                      'tw:flex tw:cursor-pointer tw:items-center tw:rounded-md tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
-                      styles[type].link
-                    )}
-                    href={item.href}
-                    onPress={() => onAction?.(item.id)}>
-                    {content}
-                  </AriaLink>
-                ) : (
-                  <span
-                    aria-current={isCurrent ? 'page' : undefined}
-                    className={cx(
-                      'tw:flex tw:items-center',
-                      isCurrent ? styles[type].current : 'tw:text-quaternary'
-                    )}>
-                    {content}
-                  </span>
-                )}
-              </>
-            );
-          }}
+          {({ isCurrent }) => (
+            <>
+              {item.id !== firstId && <Divider divider={divider} />}
+              {isEllipsis(item) ? (
+                <EllipsisMenu
+                  hidden={item.hidden}
+                  type={type}
+                  onAction={onAction}
+                />
+              ) : !isCurrent && (item.href || onAction) ? (
+                <AriaLink
+                  className={cx(linkClassName, styles[type].link)}
+                  href={item.href}
+                  onPress={() => onAction?.(item.id)}>
+                  <CrumbLabel item={item} />
+                </AriaLink>
+              ) : (
+                <span
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={cx(
+                    'tw:flex tw:items-center',
+                    isCurrent ? styles[type].current : 'tw:text-quaternary'
+                  )}>
+                  <CrumbLabel item={item} />
+                </span>
+              )}
+            </>
+          )}
         </AriaBreadcrumb>
       )}
     </AriaBreadcrumbs>
