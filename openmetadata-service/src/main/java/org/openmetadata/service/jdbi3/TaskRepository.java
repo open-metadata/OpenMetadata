@@ -98,6 +98,18 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
+  // Statuses for which an approval/grant workflow task is still live (not terminal) and therefore a
+  // candidate for supersession by a newer run. Approved and Granted are intermediate stages in
+  // multi-stage approval/grant workflows, not terminal states — mirrors
+  // CreateTask#isTerminalTaskStatus.
+  public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
+      List.of(
+          TaskEntityStatus.Open,
+          TaskEntityStatus.InProgress,
+          TaskEntityStatus.Pending,
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Granted);
+
   public TaskRepository() {
     super(
         COLLECTION_PATH,
@@ -1101,6 +1113,18 @@ public class TaskRepository extends EntityRepository<Task> {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
+  public List<Task> listNonTerminalTasksByEntityAndCategory(
+      String entityFqn, TaskCategory category) {
+    List<String> statuses =
+        NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndCategoryAndStatuses(entityFqn, category.value(), statuses)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task hydrateStoredTask(Task task) {
