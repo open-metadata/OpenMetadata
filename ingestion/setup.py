@@ -54,11 +54,10 @@ VERSIONS = {
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
+    "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
-    "snowflake": "snowflake-sqlalchemy>=1.6.1",
-    "snowflake-connector": "snowflake-connector-python~=3.18.0",
+    "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -152,7 +151,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=44.0.1",
+    "cryptography>=46.0.5",  # CVE-2026-26007
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -176,23 +175,20 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.1",
+    "collate-sqllineage>=2.1.3",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.9",
+    "collate-data-diff>=0.11.11",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
-    # TODO: Remove one once we have updated datadiff version
-    VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
 }
 
@@ -215,8 +211,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
-    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "googledrive": {
         "google-api-python-client>=2.0.0",
@@ -262,10 +256,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        # CVE-2026-27459 (DTLS cookie callback BoF) wants pyOpenSSL>=26.0.0, but
-        # snowflake-connector-python 3.18 (forced via base_requirements) pins
-        # pyOpenSSL<26.0.0. Dismiss until snowflake stack supports connector 4.x.
-        "pyOpenSSL>=24.3.0",
+        "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
         "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
     },
     "datalake-azure": {
@@ -350,9 +341,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # <3.11 keeps the search/registry surface stable; the MySQL integration test
-    # sets log_bin_trust_function_creators=1 so the 3.8.1+ trigger creation passes.
-    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
+    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
+    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},

@@ -62,13 +62,17 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
         <Typography
           ellipsis
           className="tw:m-0"
+          data-testid="document-name"
           size="text-xs"
           title={name}
           weight="medium">
           {name}
         </Typography>
         <div className="tw:flex tw:items-center tw:justify-between">
-          <Typography className="tw:text-gray-400" size="text-xs">
+          <Typography
+            className="tw:text-gray-400"
+            data-testid="document-size"
+            size="text-xs">
             {sizeLabel}
           </Typography>
           {onDownload && (

@@ -17,7 +17,6 @@ import { CurrentState } from 'Models';
 import { lazy, ReactNode, Suspense } from 'react';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
-import brandClassBase from './BrandData/BrandClassBase';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t, Transi18next } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -101,7 +100,6 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     return t('message.permanently-delete-metadata-and-dependents', {
       entityName: entity,
       dependents,
-      brandName: brandClassBase.getPageTitle(),
     });
   } else {
     return (
@@ -112,7 +110,6 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
         }
         values={{
           entityName: entity,
-          brandName: brandClassBase.getPageTitle(),
         }}
       />
     );

@@ -30,6 +30,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
@@ -2221,9 +2222,28 @@ export const checkExploreSearchFilter = async (
   filterLabel: string,
   filterKey: string,
   filterValue: string,
-  entity?: EntityClass
+  entity?: EntityClass,
+  searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  if (entity?.type && searchEntityType) {
+    const entityTypeId = (
+      getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
+    )
+      .toLocaleLowerCase()
+      .replaceAll(' ', '');
+    const entitySearchResponse = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes(`index=dataAsset`)
+    );
+
+    await page.getByTestId(`search-dropdown-Data Assets`).click();
+    await page.fill('[data-testid="search-input"]', entityTypeId);
+    await page.getByTestId(entityTypeId).click();
+    await entitySearchResponse;
+    await page.getByTestId('update-btn').click();
+  }
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,

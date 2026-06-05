@@ -68,7 +68,10 @@ export interface SnowflakeConnection {
     /**
      * Password to connect to Snowflake.
      */
-    password?:          string;
+    password?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
     policyAgentConfig?: PolicyAgentConfig;
     /**
      * Connection to Snowflake instance via Private Key

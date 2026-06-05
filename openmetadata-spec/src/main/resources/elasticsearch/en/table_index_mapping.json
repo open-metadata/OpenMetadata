@@ -286,12 +286,17 @@
             }
           },
           "children": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "databaseSchema": {
         "properties": {

@@ -62,6 +62,7 @@ import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 import { KnowledgePage } from './knowledge-center.interface';
 
@@ -415,6 +416,7 @@ export interface SearchResponse<
     hits: SearchIndexSearchHitBodyMapping<TIncludeFields>[SI][];
   };
   aggregations: Aggregations;
+  applied_quick_filters?: QueryFilterInterface;
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;

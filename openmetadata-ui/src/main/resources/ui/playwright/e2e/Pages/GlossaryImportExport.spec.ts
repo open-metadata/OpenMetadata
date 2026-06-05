@@ -801,6 +801,10 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         await page.getByRole('button', { name: 'Update' }).click();
         await loader.waitFor({ state: 'detached' });
+        await toastNotification(
+          page,
+          `Glossary ${relGlossary.responseData.fullyQualifiedName} details updated successfully`
+        );
       });
 
       await test.step('Verify each relation type via API', async () => {

@@ -38,6 +38,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -56,6 +57,8 @@ import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
+import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -66,6 +69,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -89,10 +93,12 @@ public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
   private final LineageRepository dao;
   private final Authorizer authorizer;
+  private final LineageHydrator hydrator;
 
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
+    this.hydrator = new LineageHydrator(authorizer);
   }
 
   @GET
@@ -751,6 +757,30 @@ public class LineageResource {
             addLineage.getEdge().getToEntity().getName()));
     dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
+  }
+
+  @POST
+  @Path("/hydrate")
+  @Operation(
+      operationId = "hydrateLineageEntities",
+      summary = "Batch-hydrate lineage nodes into full entity objects",
+      description =
+          "Replaces N per-node entity GETs with a single round-trip. Accepts a list of "
+              + "(type, id) pairs; returns hydrated entities grouped by entityType. Each entity "
+              + "is authorized individually with VIEW_BASIC — entities the caller cannot read "
+              + "are silently dropped from the response (rather than failing the whole batch).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Hydrated entities grouped by entityType",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "400", description = "Request body is missing or empty")
+      })
+  public HydrateLineageResponse hydrateLineageEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid HydrateLineageRequest request) {
+    return hydrator.hydrate(uriInfo, securityContext, request);
   }
 
   @GET

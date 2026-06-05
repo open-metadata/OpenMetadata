@@ -558,6 +558,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
+                  data-testid="share-btn"
                   icon={<Copy06 height={20} width={20} />}
                   onClick={handleShare}
                 />
@@ -652,6 +653,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className="tw:relative tw:bottom-2.5"
                   color="tertiary"
+                  data-testid="right-panel-toggle-btn"
                   icon={
                     <SidebarCollapsible
                       className={isRightPanelOpen ? undefined : 'tw:rotate-180'}

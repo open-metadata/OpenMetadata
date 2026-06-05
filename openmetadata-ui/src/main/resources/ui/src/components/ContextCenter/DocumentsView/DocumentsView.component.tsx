@@ -258,11 +258,18 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Typography className="tw:truncate" size="text-sm" weight="medium">
+        <Typography
+          className="tw:truncate"
+          data-testid="document-name"
+          size="text-sm"
+          weight="medium">
           {file.name}
         </Typography>
         <div className="tw:flex tw:items-center tw:gap-1">
-          <Typography className="tw:text-gray-500" size="text-xs">
+          <Typography
+            className="tw:text-gray-500"
+            data-testid="document-size"
+            size="text-xs">
             {file.sizeLabel}
           </Typography>
           {file.updatedBy && (
@@ -270,7 +277,10 @@ const FileRow: FC<FileRowProps> = ({
               <span className="tw:text-gray-500 tw:leading-none tw:select-none">
                 &middot;
               </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
+              <Typography
+                className="tw:text-gray-500"
+                data-testid="document-updated-by"
+                size="text-xs">
                 {file.updatedBy}
               </Typography>
             </>
@@ -280,7 +290,10 @@ const FileRow: FC<FileRowProps> = ({
               <span className="tw:text-gray-500 tw:leading-none tw:select-none">
                 &middot;
               </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
+              <Typography
+                className="tw:text-gray-500"
+                data-testid="document-updated-at"
+                size="text-xs">
                 {getShortRelativeTime(file.updatedAt)}
               </Typography>
             </>
@@ -293,6 +306,7 @@ const FileRow: FC<FileRowProps> = ({
           <TooltipTrigger>
             <ButtonUtility
               color="secondary"
+              data-testid="download-btn"
               icon={
                 <Download01
                   className="tw:text-gray-500"

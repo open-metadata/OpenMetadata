@@ -377,10 +377,10 @@ class TestAirflowOps(TestCase):
 
         self.assertIsNotNone(dag_model)
 
-        res = trigger(dag_id="my_new_dag", run_id=None)
+        trigger_payload, trigger_status = trigger(dag_id="my_new_dag", run_id=None)
 
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("Workflow [my_new_dag] has been triggered", res.json["message"])
+        self.assertEqual(trigger_status, 200)
+        self.assertIn("Workflow [my_new_dag] has been triggered", trigger_payload["message"])
 
         # Delete it
         res = delete_dag_id("my_new_dag")

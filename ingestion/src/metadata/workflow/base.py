@@ -52,7 +52,6 @@ from metadata.utils.class_helper import (
     get_reference_type_from_service_type,
     get_service_class_from_service_type,
 )
-from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -108,9 +107,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
         self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
-
-        # Execution time tracking is always enabled for workflows regardless of the log level
-        self._execution_time_tracker = ExecutionTimeTracker(enabled=True)
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
 

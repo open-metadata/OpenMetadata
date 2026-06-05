@@ -295,8 +295,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       await entity.tier(
         page,
         'Tier1',
-        COMMON_TIER_TAG[2].name,
-        COMMON_TIER_TAG[2].fullyQualifiedName,
+        COMMON_TIER_TAG[4].name,
+        COMMON_TIER_TAG[4].fullyQualifiedName,
         entity
       );
     });

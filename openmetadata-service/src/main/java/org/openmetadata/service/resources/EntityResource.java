@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -1284,11 +1285,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<T> entities,
       String userName,
       Map<String, T> existingByFqn,
+      boolean overrideMetadata,
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
     repository
         .submitAsyncBulkOperation(
-            uriInfo, entities, userName, existingByFqn, authFailedResponses, totalRequests)
+            uriInfo,
+            entities,
+            userName,
+            existingByFqn,
+            overrideMetadata,
+            authFailedResponses,
+            totalRequests)
         .thenAccept(
             result ->
                 LOG.info(
@@ -1313,9 +1321,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected Response bulkCreateOrUpdateSync(
-      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
     BulkOperationResult result =
-        repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName, existingByFqn);
+        repository.bulkCreateOrUpdateEntities(
+            uriInfo, entities, userName, existingByFqn, overrideMetadata);
+    return Response.ok(result).build();
+  }
+
+  /**
+   * Reads the {@code overrideMetadata} query param from the bulk request URI. When true, the bulk
+   * update path is allowed to overwrite user-curated metadata (description, displayName) that a bot
+   * PUT would otherwise preserve, and the sourceHash fast-path is disabled. Read from {@link
+   * UriInfo} so the flag is honored uniformly across every {@code /bulk} endpoint without changing
+   * each resource method signature.
+   */
+  protected boolean isOverrideMetadata(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("overrideMetadata"));
+  }
+
+  /**
+   * Deletes entities of this type within the request scope that the ingestion connector did not
+   * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
+   * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
+   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   */
+  protected Response deleteStaleEntities(
+      SecurityContext securityContext, BulkDeleteStaleRequest request) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    BulkOperationResult result =
+        repository.bulkDeleteStaleEntities(request, securityContext.getUserPrincipal().getName());
     return Response.ok(result).build();
   }
 
@@ -1326,6 +1365,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       EntityMapper<T, C> mapper,
       boolean async) {
 
+    boolean overrideMetadata = isOverrideMetadata(uriInfo);
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
@@ -1446,11 +1486,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               validEntities,
               userName,
               existingByFqn,
+              overrideMetadata,
               failedResponses,
               createRequests.size());
     } else {
       BulkOperationResult result =
-          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName, existingByFqn);
+          repository.bulkCreateOrUpdateEntities(
+              uriInfo, validEntities, userName, existingByFqn, overrideMetadata);
 
       if (!failedResponses.isEmpty()) {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);

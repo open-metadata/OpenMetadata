@@ -49,7 +49,10 @@ export interface DatabricksConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath:           string;
+    httpPath: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
     policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
