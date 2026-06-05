@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -84,7 +84,11 @@ export const Toast = ({ toast }: ToastProps) => {
         aria-hidden="true"
         className={cx('tw:size-4 tw:shrink-0', config.iconClass)}
       />
-      <span>{messageOrNode}</span>
+      {typeof messageOrNode === 'string' ? (
+        <span>{messageOrNode}</span>
+      ) : (
+        (messageOrNode as ReactNode)
+      )}
       {config.showClose && state && (
         <Button
           aria-label="Close"
