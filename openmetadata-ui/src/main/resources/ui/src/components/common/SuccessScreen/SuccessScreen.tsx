@@ -21,7 +21,6 @@ import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
@@ -63,15 +62,11 @@ const SuccessScreen = ({
         <div data-testid="airflow-platform-message">
           <div>
             <h6 className="text-base text-grey-body font-medium">
-              {t('message.manage-airflow-api-failed', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.manage-airflow-api-failed')}
             </h6>
 
             <p className="text-grey-body text-sm m-b-md">
-              {t('message.airflow-guide-message', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.airflow-guide-message')}
             </p>
           </div>
 
@@ -87,17 +82,14 @@ const SuccessScreen = ({
           className="justify-center w-full m-t-sm"
           data-testid="argo-platform-message"
           direction="vertical"
-          size={16}>
+          size={16}
+        >
           <IconCollateSupport
             data-testid="collate-support"
             height={100}
             width={100}
           />
-          <Typography>
-            {t('message.pipeline-scheduler-message', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
-          </Typography>
+          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
         </Space>
       ),
     [isAirflowPlatform]
@@ -106,7 +98,8 @@ const SuccessScreen = ({
   return (
     <div
       className="d-flex flex-col mt-14 mb-24 mx-8 p-x-xss"
-      data-testid="success-screen-container">
+      data-testid="success-screen-container"
+    >
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
@@ -145,7 +138,8 @@ const SuccessScreen = ({
           ghost
           data-testid="view-service-button"
           type="primary"
-          onClick={handleViewServiceClick}>
+          onClick={handleViewServiceClick}
+        >
           <span>
             {viewServiceText ??
               t('label.view-entity', { entity: t('label.service') })}
@@ -158,7 +152,8 @@ const SuccessScreen = ({
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
-            onClick={handleIngestionClick}>
+            onClick={handleIngestionClick}
+          >
             <span>
               {t('label.add-entity', { entity: t('label.ingestion') })}
             </span>
@@ -171,7 +166,8 @@ const SuccessScreen = ({
             data-testid="deploy-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
-            onClick={handleDeployClick}>
+            onClick={handleDeployClick}
+          >
             <span>{t('label.deploy')}</span>
           </Button>
         )}

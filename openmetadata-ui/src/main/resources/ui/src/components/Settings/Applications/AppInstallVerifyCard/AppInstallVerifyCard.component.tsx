@@ -57,7 +57,6 @@ const AppInstallVerifyCard = ({
           icon={
             <BrandImage
               isMonoGram
-              alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
               height={56}
@@ -123,7 +122,8 @@ const AppInstallVerifyCard = ({
             data-testid="save-button"
             key="save-btn"
             type="primary"
-            onClick={onSave}>
+            onClick={onSave}
+          >
             {nextButtonLabel}
           </Button>
         </div>

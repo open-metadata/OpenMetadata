@@ -20,7 +20,6 @@ import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-col
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 import { ErrorPlaceHolderIngestionProps } from './ErrorPlaceHolderIngestion.interface';
@@ -40,21 +39,18 @@ const ErrorPlaceHolderIngestion = ({
           className={classNames(
             'd-flex flex-col justify-between',
             cardClassName
-          )}>
+          )}
+        >
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>
               <div>
                 <h6 className="text-base text-grey-body font-medium">
-                  {t('message.manage-airflow-api-failed', {
-                    brandName: brandClassBase.getPageTitle(),
-                  })}
+                  {t('message.manage-airflow-api-failed')}
                 </h6>
 
                 <p className="text-grey-body text-sm mb-5">
-                  {t('message.airflow-guide-message', {
-                    brandName: brandClassBase.getPageTitle(),
-                  })}
+                  {t('message.airflow-guide-message')}
                 </p>
               </div>
 
@@ -62,7 +58,8 @@ const ErrorPlaceHolderIngestion = ({
                 <a
                   href={AIRFLOW_DOCS}
                   rel="noopener noreferrer"
-                  target="_blank">
+                  target="_blank"
+                >
                   {`${t('label.install-airflow-api')} >>`}
                 </a>
               </p>
@@ -72,13 +69,10 @@ const ErrorPlaceHolderIngestion = ({
               align="center"
               className="justify-center w-full"
               direction="vertical"
-              size={16}>
+              size={16}
+            >
               <IconCollateSupport height={100} width={100} />
-              <Typography>
-                {t('message.pipeline-scheduler-message', {
-                  brandName: brandClassBase.getPageTitle(),
-                })}
-              </Typography>
+              <Typography>{t('message.pipeline-scheduler-message')}</Typography>
             </Space>
           )}
         </Card>

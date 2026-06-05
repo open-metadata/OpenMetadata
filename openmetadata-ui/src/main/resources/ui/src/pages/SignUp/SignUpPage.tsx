@@ -117,22 +117,24 @@ const SignUp = () => {
           align="center"
           className="w-full m-b-lg"
           direction="vertical"
-          size="middle">
+          size="middle"
+        >
           <OMDLogo
             data-testid="om-logo"
             height={50}
-            name={t('label.open-metadata-logo')}
+            name={t('label.brand-name-logo')}
             width={50}
           />
           <Typography.Title
             className="text-center"
             data-testid="om-heading"
-            level={3}>
+            level={3}
+          >
             <Transi18next
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
               values={{
-                entity: t('label.open-metadata'),
+                entity: t('label.brand-name'),
               }}
             />
           </Typography.Title>
@@ -143,7 +145,8 @@ const SignUp = () => {
           initialValues={initialValues}
           layout="vertical"
           validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleCreateNewUser}>
+          onFinish={handleCreateNewUser}
+        >
           <Form.Item
             data-testid="full-name-label"
             label={t('label.full-name')}
@@ -152,7 +155,8 @@ const SignUp = () => {
               {
                 required: true,
               },
-            ]}>
+            ]}
+          >
             <Input
               autoFocus
               data-testid="full-name-input"
@@ -171,7 +175,8 @@ const SignUp = () => {
               {
                 required: true,
               },
-            ]}>
+            ]}
+          >
             <Input
               disabled
               data-testid="username-input"
@@ -187,7 +192,8 @@ const SignUp = () => {
               {
                 required: true,
               },
-            ]}>
+            ]}
+          >
             <Input
               disabled
               data-testid="email-input"
@@ -204,7 +210,8 @@ const SignUp = () => {
               field: t('label.team-plural-lowercase'),
             })}
             name="teams"
-            trigger="onSelectionChange">
+            trigger="onSelectionChange"
+          >
             <TeamsSelectable filterJoinable showTeamsAlert />
           </Form.Item>
 
@@ -213,7 +220,8 @@ const SignUp = () => {
               data-testid="create-button"
               htmlType="submit"
               loading={loading}
-              type="primary">
+              type="primary"
+            >
               {t('label.create')}
             </Button>
           </Space>

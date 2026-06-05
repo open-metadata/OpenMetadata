@@ -61,7 +61,6 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -220,7 +219,6 @@ const AppDetails = () => {
               <ManageButtonItemLabel
                 description={t('message.uninstall-app', {
                   app: getEntityName(appData),
-                  brandName: brandClassBase.getPageTitle(),
                 })}
                 icon={DeleteIcon}
                 id="uninstall-button"

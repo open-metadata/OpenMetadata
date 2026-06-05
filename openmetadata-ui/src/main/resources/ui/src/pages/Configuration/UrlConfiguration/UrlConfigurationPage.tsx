@@ -44,7 +44,7 @@ const UrlConfigurationPage = () => {
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.brand-name-url'),
         })
       ),
     []
@@ -82,7 +82,8 @@ const UrlConfigurationPage = () => {
     <PageLayoutV1
       pageTitle={t('label.entity-configuration', {
         entity: t('label.url-uppercase'),
-      })}>
+      })}
+    >
       <Row className="bg-white p-lg border-radius-sm" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -107,7 +108,8 @@ const UrlConfigurationPage = () => {
               <Button
                 data-testid="edit-button"
                 icon={<Icon component={IconEdit} size={12} />}
-                onClick={handleEditClick}>
+                onClick={handleEditClick}
+              >
                 {t('label.edit')}
               </Button>
             </Col>
@@ -117,7 +119,7 @@ const UrlConfigurationPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.open-metadata-url')}
+                {t('label.brand-name-url')}
               </Typography.Text>
             </Col>
             <Col span={24}>

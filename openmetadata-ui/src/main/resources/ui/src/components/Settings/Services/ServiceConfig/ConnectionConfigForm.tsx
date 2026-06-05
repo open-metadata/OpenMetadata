@@ -29,7 +29,6 @@ import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/Airf
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -171,11 +170,13 @@ const ConnectionConfigForm = ({
         validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
-        onSubmit={handleSave}>
+        onSubmit={handleSave}
+      >
         {isEmpty(connSch.schema) && (
           <div
             className="text-grey-muted text-center"
-            data-testid="no-config-available">
+            data-testid="no-config-available"
+          >
             {t('message.no-config-available')}
           </div>
         )}
@@ -186,7 +187,7 @@ const ConnectionConfigForm = ({
               <Transi18next
                 i18nKey="message.airflow-host-ip-address"
                 renderElement={<strong />}
-                values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+                values={{ hostIp }}
               />
             }
             type="info"

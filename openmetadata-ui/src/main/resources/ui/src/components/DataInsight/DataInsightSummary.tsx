@@ -52,8 +52,9 @@ interface Props {
 }
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
-  const { tab = DataInsightTabs.DATA_ASSETS } =
-    useRequiredParams<{ tab: DataInsightTabs }>();
+  const { tab = DataInsightTabs.DATA_ASSETS } = useRequiredParams<{
+    tab: DataInsightTabs;
+  }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [webCharts, setWebCharts] = useState<
@@ -181,7 +182,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       <Typography.Paragraph className="font-medium">
         {t('label.data-insight-summary', {
           organization:
-            getEntityName(OrganizationDetails) ?? t('label.open-metadata'),
+            getEntityName(OrganizationDetails) ?? t('label.brand-name'),
         })}
       </Typography.Paragraph>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
@@ -193,7 +194,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 data-testid="data-assets-summary"
                 key={summary.id}
                 span={6}
-                onClick={() => onScrollToChart(summary.id)}>
+                onClick={() => onScrollToChart(summary.id)}
+              >
                 <SummaryCard
                   className="summary-card-item"
                   isLoading={isLoading}
@@ -217,7 +219,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 data-testid="app-analytics-summary"
                 key={summary.id}
                 span={6}
-                onClick={() => onScrollToChart(summary.id)}>
+                onClick={() => onScrollToChart(summary.id)}
+              >
                 <SummaryCard
                   className="summary-card-item h-full"
                   isLoading={isLoading}
@@ -236,7 +239,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 className="data-insight-active-user"
                 data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
                 key={DataInsightChartType.MostActiveUsers}
-                span={6}>
+                span={6}
+              >
                 <SummaryCard
                   isLoading={isLoading}
                   showProgressBar={false}

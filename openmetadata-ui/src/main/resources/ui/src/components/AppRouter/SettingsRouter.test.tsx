@@ -51,11 +51,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../pages/CustomPageSettings/CustomPageSettings', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>CustomPageSettings</div>),
-}));
-
 jest.mock('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>CustomPropertiesPageV1</div>),
@@ -306,7 +301,8 @@ describe.skip('SettingsRouter', () => {
       <MemoryRouter
         initialEntries={[
           `/settings/members/teams/Organization/import?type=teams`,
-        ]}>
+        ]}
+      >
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -329,7 +325,8 @@ describe.skip('SettingsRouter', () => {
   it.skip('should render CustomPageSettings component for custom page settings route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[`/settings/preferences/customizeLandingPage`]}>
+        initialEntries={[`/settings/preferences/customizeLandingPage`]}
+      >
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -362,7 +359,8 @@ describe.skip('SettingsRouter', () => {
   it('should render LoginConfigurationPage component for login configuration details route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[`/settings/preferences/loginConfiguration`]}>
+        initialEntries={[`/settings/preferences/loginConfiguration`]}
+      >
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -447,7 +445,8 @@ describe.skip('SettingsRouter', () => {
   it('should render AlertDetailsPage component for alert details route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}>
+        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}
+      >
         <SettingsRouter />
       </MemoryRouter>
     );

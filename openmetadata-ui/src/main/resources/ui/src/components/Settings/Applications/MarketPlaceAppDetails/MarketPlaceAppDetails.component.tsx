@@ -34,7 +34,6 @@ import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
@@ -150,7 +149,8 @@ const MarketPlaceAppDetails = () => {
           icon={<LeftOutlined />}
           size="small"
           type="text"
-          onClick={onBrowseAppsClick}>
+          onClick={onBrowseAppsClick}
+        >
           <Typography.Text className="font-medium">
             {t('label.browse-app-plural')}
           </Typography.Text>
@@ -165,7 +165,8 @@ const MarketPlaceAppDetails = () => {
             data-testid="install-application"
             disabled={isInstalled || isPreviewApp}
             type="primary"
-            onClick={installApp}>
+            onClick={installApp}
+          >
             {t('label.install')}
           </Button>
         </Tooltip>
@@ -198,9 +199,7 @@ const MarketPlaceAppDetails = () => {
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
           <Typography.Text className="text-xs font-medium text-grey-muted">
-            {t('message.marketplace-verify-msg', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
+            {t('message.marketplace-verify-msg')}
           </Typography.Text>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>
@@ -209,7 +208,8 @@ const MarketPlaceAppDetails = () => {
               <Typography.Link
                 data-testid="app-support-email"
                 href={`mailto:${appData?.supportEmail}`}
-                target="_blank">
+                target="_blank"
+              >
                 <Space>{t('label.get-app-support')}</Space>
               </Typography.Link>
             )}
@@ -242,7 +242,8 @@ const MarketPlaceAppDetails = () => {
     <PageLayoutV1
       leftPanel={leftPanel}
       leftPanelWidth={260}
-      pageTitle={t('label.application-plural')}>
+      pageTitle={t('label.application-plural')}
+    >
       <Row>
         <Col span={24}>
           <Typography.Title className="p-md m-0 p-t-xss" level={2}>
@@ -257,12 +258,14 @@ const MarketPlaceAppDetails = () => {
             dots
             autoplaySpeed={3000}
             className="p-x-md"
-            easing="ease-in-out">
+            easing="ease-in-out"
+          >
             {appScreenshots.map((data) => (
               <div
                 className="app-slider-container"
                 data-testid="slider-container"
-                key={uniqueId()}>
+                key={uniqueId()}
+              >
                 {data}
               </div>
             ))}

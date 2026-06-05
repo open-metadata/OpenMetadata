@@ -72,7 +72,7 @@ const EditUrlConfigurationPage = () => {
       },
       {
         name: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.brand-name-url'),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -82,7 +82,7 @@ const EditUrlConfigurationPage = () => {
       {
         name: t('label.edit-entity', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+            entity: t('label.brand-name-url'),
           }),
         }),
         url: '',
@@ -106,7 +106,7 @@ const EditUrlConfigurationPage = () => {
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+            entity: t('label.brand-name-url'),
           }),
         })
       );
@@ -136,11 +136,13 @@ const EditUrlConfigurationPage = () => {
           e.preventDefault();
           e.stopPropagation();
           setActiveField(e.target.id);
-        }}>
+        }}
+      >
         <Item
-          label={t('label.open-metadata-url')}
+          label={t('label.brand-name-url')}
           name="openMetadataUrl"
-          rules={[{ required: true }]}>
+          rules={[{ required: true }]}
+        >
           <Input
             data-testid="open-metadata-url-input"
             id="root/openMetadataUrl-input"
@@ -151,7 +153,8 @@ const EditUrlConfigurationPage = () => {
             <Button
               data-testid="cancel-button"
               type="link"
-              onClick={handleGoBack}>
+              onClick={handleGoBack}
+            >
               {t('label.cancel')}
             </Button>
           </Col>
@@ -160,7 +163,8 @@ const EditUrlConfigurationPage = () => {
               data-testid="save-button"
               htmlType="submit"
               loading={updating}
-              type="primary">
+              type="primary"
+            >
               {t('label.save')}
             </Button>
           </Col>
@@ -194,7 +198,7 @@ const EditUrlConfigurationPage = () => {
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+          entity: t('label.brand-name-url'),
         }),
       })}
       secondPanel={{

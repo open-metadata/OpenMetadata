@@ -14,7 +14,6 @@
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
@@ -76,7 +75,8 @@ const EntityDeleteModal = ({
             data-testid="discard-button"
             disabled={saving}
             type="text"
-            onClick={onCancel}>
+            onClick={onCancel}
+          >
             {t('label.cancel')}
           </Button>
           <Button
@@ -84,7 +84,8 @@ const EntityDeleteModal = ({
             disabled={!isNameMatching}
             loading={saving}
             type="primary"
-            onClick={handleSave}>
+            onClick={handleSave}
+          >
             {t('label.confirm')}
           </Button>
         </div>
@@ -104,7 +105,8 @@ const EntityDeleteModal = ({
           )}
         </Typography.Text>
       }
-      width={600}>
+      width={600}
+    >
       <div data-testid="body-text">
         <div className="mb-2">
           {bodyText || (
@@ -115,7 +117,6 @@ const EntityDeleteModal = ({
               }
               values={{
                 entityName: entityName,
-                brandName: brandClassBase.getPageTitle(),
               }}
             />
           )}

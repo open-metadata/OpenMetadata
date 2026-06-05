@@ -70,7 +70,8 @@ export const getInitOptions = (): InitOptions => {
       caches: ['cookie'], // cache user language on
     },
     interpolation: {
-      escapeValue: false, // XSS safety provided by React
+      escapeValue: false,
+      defaultVariables: { brandName: process.env.BRAND_NAME ?? 'OpenMetadata' },
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console
