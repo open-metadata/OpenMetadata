@@ -16,6 +16,7 @@ import { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
+import { ToastProvider } from '@openmetadata/ui-core-components';
 import { useShallow } from 'zustand/react/shallow';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
@@ -90,6 +91,7 @@ const AppRoot: FC = () => {
               <HelmetProvider>
                 <ErrorBoundary>
                   <App />
+                  <ToastProvider />
                 </ErrorBoundary>
               </HelmetProvider>
             </AntDConfigProvider>
