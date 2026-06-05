@@ -219,9 +219,7 @@ function FiltersConfigForm({
   const connectionHost = getConnectionDisplayHost(validConfig, serviceType);
 
   return (
-    <div
-      className="tw:grid tw:gap-4 tw:font-[Inter,sans-serif]"
-      data-testid={FORM_TEST_ID}>
+    <div className="tw:grid tw:gap-4" data-testid={FORM_TEST_ID}>
       <div>
         <h2 className="tw:m-0 tw:text-lg tw:font-semibold tw:leading-7 tw:text-primary">
           {t('label.what-should-we-ingest')}

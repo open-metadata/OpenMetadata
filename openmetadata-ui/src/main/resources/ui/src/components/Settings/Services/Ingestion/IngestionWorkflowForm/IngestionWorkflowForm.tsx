@@ -35,12 +35,21 @@ import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigu
 import { transformErrors } from '../../../../../utils/formUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
-import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import CodeWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
 import ManifestJsonWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget';
+import CoreOneOfField from '../../../../common/FormBuilderV1/fields/CoreOneOfField';
+import { CoreArrayFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreArrayFieldTemplate';
+import { CoreFieldErrorTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldErrorTemplate';
+import { CoreFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
+import { CoreWrapIfAdditionalTemplate } from '../../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
+import CoreCheckboxWidget from '../../../../common/FormBuilderV1/widgets/CoreCheckboxWidget';
+import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
+import CorePasswordWidget from '../../../../common/FormBuilderV1/widgets/CorePasswordWidget';
+import CoreRadioWidget from '../../../../common/FormBuilderV1/widgets/CoreRadioWidget';
+import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
+import CoreTextAreaWidget from '../../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
+import { IngestionObjectFieldTemplate } from '../../AddIngestion/IngestionObjectFieldTemplate/IngestionObjectFieldTemplate';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
@@ -141,8 +150,10 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
   const customFields = useMemo(() => {
     const fields: RegistryFieldsType = {
-      BooleanField: BooleanFieldTemplate,
+      AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
+      BooleanField: BooleanFieldTemplate,
+      OneOfField: CoreOneOfField,
     };
 
     const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
@@ -203,14 +214,25 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       schema={schema}
       showErrorList={false}
       templates={{
-        DescriptionFieldTemplate: DescriptionFieldTemplate,
-        FieldErrorTemplate: FieldErrorTemplate,
-        ObjectFieldTemplate: ObjectFieldTemplate,
+        ArrayFieldTemplate: CoreArrayFieldTemplate,
+        FieldErrorTemplate: CoreFieldErrorTemplate,
+        FieldTemplate: CoreFieldTemplate,
+        ObjectFieldTemplate: IngestionObjectFieldTemplate,
+        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
       validator={validator}
       widgets={{
+        CheckboxWidget: CoreCheckboxWidget,
+        EmailWidget: CoreInputWidget,
+        PasswordWidget: CorePasswordWidget,
+        RadioWidget: CoreRadioWidget,
+        SelectWidget: CoreSelectWidget,
+        TextWidget: CoreInputWidget,
+        TextareaWidget: CoreTextAreaWidget,
+        URLWidget: CoreInputWidget,
+        UpDownWidget: CoreInputWidget,
         code: CodeWidget,
         manifestJson: ManifestJsonWidget,
       }}

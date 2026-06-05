@@ -235,6 +235,26 @@ export const ADVANCED_PROPERTIES = [
   'maxAge',
 ];
 
+export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'includeTables',
+  'includeViews',
+  'includeTags',
+  'includeCustomProperties',
+  'includeOwners',
+  'includeStoredProcedures',
+  'includeDDL',
+  'markDeletedTables',
+  'markDeletedStoredProcedures',
+  'markDeletedSchemas',
+  'markDeletedDatabases',
+  'overrideMetadata',
+  'enableDebugLog',
+  'dbtUpdateDescriptions',
+  'dbtUpdateOwners',
+  'overrideLineage',
+  'searchAcrossDatabases',
+];
+
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
 
 export const SERVICE_TYPES = [

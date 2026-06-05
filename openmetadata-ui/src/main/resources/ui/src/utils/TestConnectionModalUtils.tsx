@@ -290,7 +290,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
             <span className="tw:overflow-hidden tw:text-sm tw:font-medium tw:leading-5 tw:text-primary tw:text-ellipsis tw:whitespace-nowrap">
               {label}
             </span>
-            <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-2 tw:text-[11px] tw:font-semibold tw:leading-4 tw:text-quaternary">
+            <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-2 tw:text-xs tw:font-semibold tw:leading-4 tw:text-quaternary">
               {step.name}
             </span>
             {step.mandatory && (
@@ -298,7 +298,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
                 className={classNames(
                   'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
                   'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-[7px]',
-                  'tw:text-[11px] tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-brand-700'
+                  'tw:text-xs tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-brand-700'
                 )}>
                 {requiredLabel}
               </span>
@@ -438,7 +438,7 @@ export function ConnectionGateCard(
             className={classNames(
               'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
               'tw:border-utility-success-200 tw:bg-[#dcfae6] tw:px-2',
-              'tw:text-[11px] tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-success-700'
+              'tw:text-xs tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-success-700'
             )}>
             {t('label.gate')}
           </span>
@@ -503,7 +503,7 @@ export function ConnectionCapabilitySection(
     <div
       className="tw:flex tw:flex-col tw:gap-2"
       data-testid="capability-checks-phase">
-      <div className="tw:flex tw:items-center tw:justify-between tw:text-[11px] tw:font-bold tw:uppercase tw:leading-4 tw:tracking-[0.04em] tw:text-quaternary">
+      <div className="tw:flex tw:items-center tw:justify-between tw:text-xs tw:font-bold tw:uppercase tw:leading-4 tw:tracking-[0.04em] tw:text-quaternary">
         <span>{t('label.capability-check-plural')}</span>
         <span>
           {t('message.test-connection-checks-passed-count', {

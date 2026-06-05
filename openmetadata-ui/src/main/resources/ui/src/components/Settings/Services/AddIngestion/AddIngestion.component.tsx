@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Input, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Input } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,8 +48,9 @@ import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
+import ServiceFlowStepper from '../AddService/ServiceFlowStepper/ServiceFlowStepper';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
+import IngestionNameCard from './IngestionNameCard/IngestionNameCard';
 import { AddIngestionProps } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 import {
@@ -175,7 +177,7 @@ const AddIngestion = ({
   };
 
   const handleSubmit = (data: IngestionWorkflowData) => {
-    setWorkflowData(data);
+    setWorkflowData({ ...data, displayName: workflowData?.displayName });
     handleNext(2);
   };
 
@@ -333,30 +335,39 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <Typography.Title className="font-normal" level={5}>
+      <Typography className="tw:m-0" size="text-xl" weight="semibold">
         {heading}
-      </Typography.Title>
+      </Typography>
 
-      <IngestionStepper
+      <ServiceFlowStepper
         activeStep={activeIngestionStep}
-        excludeSteps={[]}
+        className="tw:mt-6"
         steps={translatedSteps}
       />
 
       <div className="p-t-lg">
         {activeIngestionStep === 1 && (
-          <IngestionWorkflowForm
-            okText={t('label.next')}
-            operationType={status}
-            pipeLineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceData={serviceData}
-            workflowData={workflowData}
-            onCancel={handleCancelClick}
-            onChange={handleDataChange}
-            onFocus={onFocus}
-            onSubmit={handleSubmit}
-          />
+          <div className="tw:flex tw:flex-col tw:gap-4">
+            <IngestionNameCard
+              displayName={workflowData?.displayName ?? ''}
+              onDisplayNameChange={(value) =>
+                handleDataChange({ ...workflowData, displayName: value })
+              }
+              onFocus={onFocus}
+            />
+            <IngestionWorkflowForm
+              okText={t('label.next')}
+              operationType={status}
+              pipeLineType={pipelineType}
+              serviceCategory={serviceCategory}
+              serviceData={serviceData}
+              workflowData={workflowData}
+              onCancel={handleCancelClick}
+              onChange={handleDataChange}
+              onFocus={onFocus}
+              onSubmit={handleSubmit}
+            />
+          </div>
         )}
 
         {activeIngestionStep === 2 && (

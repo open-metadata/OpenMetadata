@@ -270,6 +270,7 @@ const AddIngestionPage = () => {
 
   const secondPanelChildren = (
     <ServiceDocPanel
+      focusedMode
       isWorkflow
       activeField={activeField}
       serviceName={serviceData?.serviceType ?? ''}
@@ -304,7 +305,7 @@ const AddIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'steps-form-container',
+        cardClassName: 'add-service-page-card max-width-lg m-x-auto',
         allowScroll: true,
       }}
       pageTitle={t('label.add-entity', {

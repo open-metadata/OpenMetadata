@@ -546,6 +546,8 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     return {
       eyebrow: LINEAGE_FIELDS.has(activeFieldName ?? '')
         ? t('label.advanced-config')
+        : isWorkflow
+        ? t('label.configuration')
         : t('label.connection'),
       title:
         fieldTitle ??
@@ -556,7 +558,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           : t('message.openmetadata-docs-description'),
       markdown: fieldBody,
     };
-  }, [activeFieldMarkdown, activeFieldName, serviceName, t]);
+  }, [activeFieldMarkdown, activeFieldName, isWorkflow, serviceName, t]);
 
   const showFocusedRequirements =
     !activeFieldName ||

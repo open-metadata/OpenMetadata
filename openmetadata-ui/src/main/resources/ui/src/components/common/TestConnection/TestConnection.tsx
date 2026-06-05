@@ -655,7 +655,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       {showDetails ? (
         <div
           className={classNames(
-            'tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-5 tw:mt-3.5 tw:border tw:border-gray-200 tw:rounded-xl tw:bg-primary tw:p-[14px_20px] tw:font-[Inter,sans-serif]',
+            'tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-5 tw:mt-3.5 tw:border tw:border-gray-200 tw:rounded-xl tw:bg-primary tw:p-[14px_20px]',
             {
               'tw:border-utility-success-200 tw:bg-utility-success-50':
                 testStatus === StatusType.Successful,
@@ -722,7 +722,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             <div className="tw:min-w-0" data-testid="messag-text">
               <div
                 className={classNames(
-                  'tw:text-[15px] tw:font-semibold tw:leading-[22px] tw:text-primary',
+                  'tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary',
                   {
                     'tw:text-base tw:font-bold tw:leading-6': isReadyToTestCard,
                   }
@@ -738,7 +738,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                     'tw:text-utility-warning-700': testStatus === 'Warning',
                     'tw:text-utility-error-700':
                       testStatus === StatusType.Failed,
-                    'tw:text-[15px] tw:leading-[22px] tw:text-[#2563eb]':
+                    'tw:text-sm tw:leading-6 tw:text-[#2563eb]':
                       isReadyToTestCard,
                   }
                 )}>

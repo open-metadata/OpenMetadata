@@ -539,7 +539,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           <div className="core-object-field-template-additional-header tw:flex tw:min-h-6 tw:items-center tw:justify-between tw:gap-4">
             <Typography
               as="label"
-              className="core-object-field-template-additional-label tw:text-[13px] tw:font-semibold tw:leading-[17px] tw:text-secondary"
+              className="core-object-field-template-additional-label tw:text-sm tw:font-semibold tw:leading-[17px] tw:text-secondary"
               size="text-xs"
               weight="semibold">
               {t('label.additional-property-plural')}
@@ -568,7 +568,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           normalProperties.length === 0 && (
             <Typography
               as="span"
-              className="core-object-field-template-empty tw:text-[12.5px] tw:leading-[18px] tw:text-tertiary"
+              className="core-object-field-template-empty tw:leading-5 tw:text-tertiary"
               size="text-xs">
               {t('message.no-properties-added')}
             </Typography>

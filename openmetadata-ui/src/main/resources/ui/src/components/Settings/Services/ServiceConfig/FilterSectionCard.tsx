@@ -248,12 +248,12 @@ export function FilterSectionCard({
         <span className="tw:grid tw:size-[34px] tw:shrink-0 tw:place-items-center tw:rounded-[9px] tw:bg-utility-brand-50 tw:text-utility-brand-600">
           <Icon size={18} />
         </span>
-        <span className="tw:text-[15px] tw:font-semibold tw:leading-[22px] tw:text-primary">
+        <span className="tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary">
           {section.label}
         </span>
         <span
           className={classNames(
-            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-[11.5px] tw:font-semibold tw:leading-[18px]',
+            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-semibold tw:leading-[18px]',
             summary.tone === 'success'
               ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700'
               : 'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'

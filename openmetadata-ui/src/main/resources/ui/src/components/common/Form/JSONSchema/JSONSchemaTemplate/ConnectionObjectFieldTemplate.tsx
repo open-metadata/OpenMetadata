@@ -147,7 +147,7 @@ const ReqBadge = ({
   return (
     <span
       className={classNames(
-        'tw:rounded-full tw:border tw:px-2 tw:py-0.5 tw:text-[11px] tw:font-semibold tw:leading-4',
+        'tw:rounded-full tw:border tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:leading-4',
         toneClass
       )}>
       {children}
@@ -184,13 +184,13 @@ const SectionHeader = ({
       }
     }}>
     {index != null && (
-      <span className="tw:grid tw:size-5 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-[11px] tw:font-semibold tw:text-utility-brand-700">
+      <span className="tw:grid tw:size-5 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-xs tw:font-semibold tw:text-utility-brand-700">
         {index}
       </span>
     )}
     <span className="tw:flex-1">
       <span className="tw:flex tw:items-center tw:gap-2">
-        <span className="connection-section-header-title tw:text-[15px] tw:font-semibold tw:leading-5 tw:text-primary">
+        <span className="connection-section-header-title tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
           {title}
         </span>
         {badge}
@@ -519,7 +519,7 @@ const AuthTabs = ({
           return (
             <button
               className={classNames(
-                'tw:flex tw:h-7 tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:text-[12px] tw:transition-colors',
+                'tw:flex tw:h-7 tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:text-xs tw:transition-colors',
                 isActive
                   ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
                   : 'tw:border-transparent tw:font-medium tw:text-tertiary'

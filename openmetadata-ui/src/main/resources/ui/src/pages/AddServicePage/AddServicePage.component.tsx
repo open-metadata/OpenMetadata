@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
@@ -301,18 +302,22 @@ const AddServicePage = () => {
                 serviceConfig.serviceType || '',
                 'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
               )}
-              <h1
-                className="tw:m-0 tw:font-[Inter,sans-serif] tw:text-[22px] tw:font-semibold tw:leading-[26px] tw:text-primary"
-                data-testid="header">
+              <Typography
+                className="tw:m-0"
+                data-testid="header"
+                size="text-xl"
+                weight="semibold">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
-              </h1>
+              </Typography>
             </div>
           ) : (
-            <h1
-              className="tw:m-0 tw:font-[Inter,sans-serif] tw:text-[22px] tw:font-semibold tw:leading-[26px] tw:text-primary"
-              data-testid="header">
+            <Typography
+              className="tw:m-0"
+              data-testid="header"
+              size="text-xl"
+              weight="semibold">
               {t('label.add-new-entity', { entity: t('label.service') })}
-            </h1>
+            </Typography>
           )}
 
           <ServiceFlowStepper
