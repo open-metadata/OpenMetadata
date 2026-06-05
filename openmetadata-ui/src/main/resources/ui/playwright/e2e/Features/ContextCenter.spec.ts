@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
@@ -978,6 +979,22 @@ test.describe('Context Center', () => {
   // ─── Documents Page ───────────────────────────────────────────────────────────
 
   test.describe('Documents Page', () => {
+    const uploadFilePath = path.join(__dirname, '..', 'output', 'context-center-upload.txt');
+
+    test.beforeAll(() => {
+      const dir = path.dirname(uploadFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(uploadFilePath, 'context center upload test file');
+    });
+
+    test.afterAll(() => {
+      if (fs.existsSync(uploadFilePath)) {
+        fs.unlinkSync(uploadFilePath);
+      }
+    });
+
     test('shows header with Upload File button', async ({ page }) => {
       await navigateToDocuments(page);
 
@@ -1033,10 +1050,6 @@ test.describe('Context Center', () => {
 
       // Set file on the input via testId; wait for attached (not visible)
       const fileInput = page.getByTestId('file-upload-input');
-      const uploadFilePath = path.join(
-        __dirname,
-        '../../test-data/context-center-upload.txt'
-      );
       console.log('[upload-test] resolved file path:', uploadFilePath);
 
       await fileInput.waitFor({ state: 'attached' });
