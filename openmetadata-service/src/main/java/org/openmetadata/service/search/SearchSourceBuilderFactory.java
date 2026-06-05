@@ -330,18 +330,26 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   /**
    * Filter highlight-unsafe fields (flattened paths and their subfields) out of the configured
-   * list. The returned list preserves the original order of safe fields. Callers should compare
-   * against the input to detect — and log — dropped fields once per request.
+   * list. The returned list preserves the original order of safe fields. When no field is unsafe
+   * — the common case on the {@code /v1/search/query} hot path — the original {@code fields} list
+   * is returned as-is to avoid an allocation and copy; a new list is built only when something is
+   * actually dropped. Callers should compare against the input to detect — and log — dropped
+   * fields once per request.
    */
   static List<String> filterHighlightSafeFields(List<String> fields) {
-    List<String> safe = new ArrayList<>();
-    if (fields != null) {
+    List<String> result = fields;
+    boolean hasUnsafe =
+        fields != null
+            && fields.stream().anyMatch(SearchSourceBuilderFactory::isHighlightUnsafeField);
+    if (hasUnsafe) {
+      List<String> safe = new ArrayList<>(fields.size());
       for (String field : fields) {
         if (!isHighlightUnsafeField(field)) {
           safe.add(field);
         }
       }
+      result = safe;
     }
-    return safe;
+    return result;
   }
 }

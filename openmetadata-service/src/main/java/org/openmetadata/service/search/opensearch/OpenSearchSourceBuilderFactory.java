@@ -765,7 +765,7 @@ public class OpenSearchSourceBuilderFactory
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     List<String> safeFields = SearchSourceBuilderFactory.filterHighlightSafeFields(fields);
-    if (fields != null && safeFields.size() < fields.size()) {
+    if (LOG.isDebugEnabled() && fields != null && safeFields.size() < fields.size()) {
       LOG.debug(
           "Dropping highlight fields with no associated analyzer (flat_object subfields): {}",
           fields.stream().filter(SearchSourceBuilderFactory::isHighlightUnsafeField).toList());
