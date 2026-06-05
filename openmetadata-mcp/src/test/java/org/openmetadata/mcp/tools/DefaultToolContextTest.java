@@ -187,6 +187,29 @@ class DefaultToolContextTest {
         .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
   }
 
+  @Test
+  void serializeWithinBudgetPassesSmallResultThrough() {
+    Map<String, Object> result = Map.of("fqn", "svc.db.orders", "status", "success");
+
+    String serialized = DefaultToolContext.serializeWithinBudget(result, "root_cause_analysis");
+
+    assertThat(serialized).contains("svc.db.orders").doesNotContain("truncated");
+  }
+
+  @Test
+  void serializeWithinBudgetReplacesOversizedResultWithEnvelope() {
+    Map<String, Object> result =
+        Map.of("blob", "z".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 1), "tool", "ignored");
+
+    String serialized = DefaultToolContext.serializeWithinBudget(result, "get_entity_details");
+
+    assertThat(serialized)
+        .contains("\"truncated\":true")
+        .contains("\"tool\":\"get_entity_details\"")
+        .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
+        .doesNotContain("zzzz");
+  }
+
   private static DefaultToolContext.CallToolOutcome invokeWithToolName(String toolName) {
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
     Principal principal = mock(Principal.class);
