@@ -16,13 +16,13 @@ import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadc
 import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import type { EntityWithServices } from '../components/Explore/ExplorePage.interface';
 import type {
-    SearchedDataProps,
-    SourceType
+  SearchedDataProps,
+  SourceType,
 } from '../components/SearchedData/SearchedData.interface';
 import { ROUTES } from '../constants/constants';
 import {
-    GlobalSettingOptions,
-    GlobalSettingsMenuCategory
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -48,15 +48,15 @@ import type { Worksheet } from '../generated/entity/data/worksheet';
 import type { DataProduct } from '../generated/entity/domains/dataProduct';
 import type { Team } from '../generated/entity/teams/team';
 import {
-    AlertType,
-    type EventSubscription
+  AlertType,
+  type EventSubscription,
 } from '../generated/events/eventSubscription';
 import type { TestCase, TestSuite } from '../generated/tests/testCase';
 import type { EntityReference } from '../generated/type/entityUsage';
 import { DataInsightTabs } from '../interface/data-insight.interface';
 import type {
-    SearchSourceAlias,
-    TableColumnSearchSource
+  SearchSourceAlias,
+  TableColumnSearchSource,
 } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
@@ -65,28 +65,28 @@ import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
-    getApplicationDetailsPath,
-    getBotsPagePath,
-    getBotsPath,
-    getClassificationTagPath,
-    getDataProductDetailsPath,
-    getDataQualityPagePath,
-    getDomainDetailsPath,
-    getDomainPath,
-    getEntityDetailsPath,
-    getGlossaryPath,
-    getGlossaryTermDetailsPath,
-    getKpiPath,
-    getNotificationAlertDetailsPath,
-    getObservabilityAlertDetailsPath,
-    getPersonaDetailsPath,
-    getPolicyWithFqnPath,
-    getRoleWithFqnPath,
-    getServiceDetailsPath,
-    getSettingPath,
-    getTagsDetailsPath,
-    getTeamsWithFqnPath,
-    getTestCaseDetailPagePath
+  getApplicationDetailsPath,
+  getBotsPagePath,
+  getBotsPath,
+  getClassificationTagPath,
+  getDataProductDetailsPath,
+  getDataQualityPagePath,
+  getDomainDetailsPath,
+  getDomainPath,
+  getEntityDetailsPath,
+  getGlossaryPath,
+  getGlossaryTermDetailsPath,
+  getKpiPath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getServiceDetailsPath,
+  getSettingPath,
+  getTagsDetailsPath,
+  getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 

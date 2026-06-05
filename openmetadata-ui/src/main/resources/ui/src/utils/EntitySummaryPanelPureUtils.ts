@@ -15,8 +15,8 @@ import { get, isUndefined } from 'lodash';
 import type { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import type { ColumnOrTask } from '../components/Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 import type {
-    BasicEntityInfo,
-    HighlightedTagLabel
+  BasicEntityInfo,
+  HighlightedTagLabel,
 } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';

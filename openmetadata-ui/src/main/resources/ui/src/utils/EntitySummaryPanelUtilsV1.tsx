@@ -12,12 +12,12 @@
  */
 import { Typography } from '@openmetadata/ui-core-components';
 import {
-    Button,
-    Col,
-    Row,
-    Segmented,
-    Table,
-    Typography as AntTypography
+  Button,
+  Col,
+  Row,
+  Segmented,
+  Table,
+  Typography as AntTypography,
 } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -45,17 +45,17 @@ import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
-    getDataModelColumnsByFQN,
-    searchDataModelColumnsByFQN
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
 } from '../rest/dataModelsAPI';
 import {
-    getTableColumnsByFQN,
-    getTableList,
-    searchTableColumnsByFQN
+  getTableColumnsByFQN,
+  getTableList,
+  searchTableColumnsByFQN,
 } from '../rest/tableAPI';
 import {
-    filterItemsBySearchText,
-    filterNestedFields
+  filterItemsBySearchText,
+  filterNestedFields,
 } from './EntitySummaryPanelPureUtilsV1';
 import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { getEntityName } from './EntityUtils';

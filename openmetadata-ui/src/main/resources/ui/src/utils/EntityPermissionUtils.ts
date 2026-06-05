@@ -12,9 +12,9 @@
  */
 
 import {
-    CUSTOM_PROPERTIES_TABS_SET,
-    LINEAGE_TABS_SET,
-    SCHEMA_TABS_SET
+  CUSTOM_PROPERTIES_TABS_SET,
+  LINEAGE_TABS_SET,
+  SCHEMA_TABS_SET,
 } from '../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityType } from '../enums/entity.enum';
 import { User } from '../generated/entity/teams/user';

@@ -15,10 +15,10 @@ import type { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import {
-    LabelType,
-    State,
-    TagLabel,
-    TagSource
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
 } from '../generated/type/tagLabel';
 
 export const convertTagLabelsToEntityReferences = (

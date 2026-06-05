@@ -14,9 +14,9 @@
 import { isUndefined } from 'lodash';
 import type { Node } from 'reactflow';
 import {
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    PLACEHOLDER_ROUTE_FQN,
-    ROUTES
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
+  ROUTES,
 } from '../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import type { ColumnJoins, JoinedWith } from '../generated/entity/data/table';
@@ -25,19 +25,19 @@ import Fqn from './Fqn';
 import { getEncodedFqn } from './StringUtils';
 
 export {
-    hasCustomPropertiesTab,
-    hasEditAccess,
-    hasLineageTab,
-    hasSchemaTab
+  hasCustomPropertiesTab,
+  hasEditAccess,
+  hasLineageTab,
+  hasSchemaTab,
 } from './EntityPermissionUtils';
 export {
-    getEntityReferenceFromEntity,
-    getEntityReferenceListFromEntities
+  getEntityReferenceFromEntity,
+  getEntityReferenceListFromEntities,
 } from './EntityReferenceUtils';
 export {
-    highlightEntityNameAndDescription,
-    highlightSearchText,
-    searchInColumns
+  highlightEntityNameAndDescription,
+  highlightSearchText,
+  searchInColumns,
 } from './EntitySearchUtils';
 export { columnSorter, getColumnSorter } from './EntitySortUtils';
 export { getEntityTags } from './EntityTagUtils';

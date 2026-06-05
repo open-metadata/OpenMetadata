@@ -18,12 +18,12 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import type { ColumnJoins } from '../generated/entity/data/table';
 import {
-    checkIfJoinsAvailable,
-    getFrequentlyJoinedWithColumns
+  checkIfJoinsAvailable,
+  getFrequentlyJoinedWithColumns,
 } from './EntityPureUtils';
 import {
-    getPartialNameFromTableFQN,
-    getTableFQNFromColumnFQN
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
 } from './FqnUtils';
 import { getEntityDetailsPath } from './RouterUtils';
 

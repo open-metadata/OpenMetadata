@@ -14,42 +14,42 @@
 import { isUndefined } from 'lodash';
 import { Node } from 'reactflow';
 import {
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    PLACEHOLDER_ROUTE_FQN,
-    ROUTES
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
+  ROUTES,
 } from '../constants/constants';
 import {
-    EntityLineageNodeType,
-    EntityTabs,
-    EntityType
+  EntityLineageNodeType,
+  EntityTabs,
+  EntityType,
 } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import {
-    AlertType,
-    EventSubscription
+  AlertType,
+  EventSubscription,
 } from '../generated/events/eventSubscription';
 import { SearchSourceAlias } from '../interface/search.interface';
 import EntityLink from './EntityLink';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
-    getApplicationDetailsPath,
-    getBotsPath,
-    getClassificationTagPath,
-    getDataProductDetailsPath,
-    getDomainDetailsPath,
-    getEntityDetailsPath,
-    getGlossaryPath,
-    getGlossaryTermDetailsPath,
-    getKpiPath,
-    getNotificationAlertDetailsPath,
-    getObservabilityAlertDetailsPath,
-    getPersonaDetailsPath,
-    getPolicyWithFqnPath,
-    getRoleWithFqnPath,
-    getServiceDetailsPath,
-    getTagsDetailsPath,
-    getTeamsWithFqnPath,
-    getTestCaseDetailPagePath
+  getApplicationDetailsPath,
+  getBotsPath,
+  getClassificationTagPath,
+  getDataProductDetailsPath,
+  getDomainDetailsPath,
+  getEntityDetailsPath,
+  getGlossaryPath,
+  getGlossaryTermDetailsPath,
+  getKpiPath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getServiceDetailsPath,
+  getTagsDetailsPath,
+  getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getEncodedFqn } from './StringUtils';
 

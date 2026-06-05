@@ -12,15 +12,15 @@
  */
 
 export {
-    getBreadCrumbForAPICollection,
-    getBreadCrumbForAPIEndpoint,
-    getBreadcrumbForChart,
-    getBreadcrumbForEntitiesWithServiceOnly,
-    getBreadcrumbForEntityWithParent,
-    getBreadCrumbForKpi,
-    getBreadcrumbForTable,
-    getBreadcrumbForTestCase,
-    getBreadcrumbForTestSuite,
-    getEntityBreadcrumbs,
-    getEntityLinkFromType
+  getBreadCrumbForAPICollection,
+  getBreadCrumbForAPIEndpoint,
+  getBreadcrumbForChart,
+  getBreadcrumbForEntitiesWithServiceOnly,
+  getBreadcrumbForEntityWithParent,
+  getBreadCrumbForKpi,
+  getBreadcrumbForTable,
+  getBreadcrumbForTestCase,
+  getBreadcrumbForTestSuite,
+  getEntityBreadcrumbs,
+  getEntityLinkFromType,
 } from './EntityBreadcrumbPureUtils';

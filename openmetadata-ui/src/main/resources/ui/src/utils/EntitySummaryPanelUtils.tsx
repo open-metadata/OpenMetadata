@@ -65,7 +65,6 @@ import {
   getHighlightOfListItem,
   getMapOfListHighlights,
   getSummaryListItemType,
-  toEntityData,
   type ListItemHighlights,
   type SummaryListItem,
 } from './EntitySummaryPanelPureUtils';
@@ -83,7 +82,6 @@ export {
   toEntityData,
 } from './EntitySummaryPanelPureUtils';
 export type { ListItemHighlights, SummaryListItem };
-export { toEntityData };
 
 const { Text } = Typography;
 
