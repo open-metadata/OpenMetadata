@@ -24,8 +24,9 @@ import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { Asset, AssetType } from '../generated/attachments/asset';
+import { AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
+import { ListParams } from '../interface/API.interface';
 import {
   CreateKnowledgePage,
   PageType,
@@ -34,7 +35,6 @@ import {
 import {
   downloadDriveFile,
   listAssetsByFqn,
-  ListAssetsByFqnParams,
 } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
@@ -154,8 +154,8 @@ export const knowledgePageToArticleItem = (
 });
 
 export const fetchContextCenterDocuments = async (
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
+  params?: ListParams
+) => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,

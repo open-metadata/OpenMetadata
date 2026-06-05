@@ -160,13 +160,9 @@ const ContextCenterDashboardPage: FC = () => {
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const response = await listContextFiles(
-        RECENT_DASHBOARD_DOCUMENTS_LIMIT,
-        {
-          sortBy: 'updatedAt',
-          sortOrder: 'desc',
-        }
-      );
+      const response = await listContextFiles({
+        limit: RECENT_DASHBOARD_DOCUMENTS_LIMIT,
+      });
       setDocumentsCount(response.paging.total ?? response.data.length);
       setDocuments(response.data.map(contextFileToUploadedDocumentItem));
     } catch (err) {
