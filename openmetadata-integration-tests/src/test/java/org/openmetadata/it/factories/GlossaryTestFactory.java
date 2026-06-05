@@ -3,6 +3,7 @@ package org.openmetadata.it.factories;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.sdk.fluent.Glossaries;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating Glossary entities in integration tests using fluent API.
@@ -17,27 +18,30 @@ public class GlossaryTestFactory {
    * Create a glossary with default settings using fluent API.
    */
   public static Glossary createSimple(TestNamespace ns) {
-    return Glossaries.create()
-        .name(ns.prefix("glossary"))
-        .withDescription("Test glossary")
-        .execute();
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        Glossaries.create().name(ns.prefix("glossary")).withDescription("Test glossary").execute());
   }
 
   /**
    * Create glossary with custom name using fluent API.
    */
   public static Glossary createWithName(TestNamespace ns, String baseName) {
-    return Glossaries.create()
-        .name(ns.prefix(baseName))
-        .withDescription("Test glossary: " + baseName)
-        .execute();
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        Glossaries.create()
+            .name(ns.prefix(baseName))
+            .withDescription("Test glossary: " + baseName)
+            .execute());
   }
 
   /**
    * Create glossary with description using fluent API.
    */
   public static Glossary createWithDescription(TestNamespace ns, String description) {
-    return Glossaries.create().name(ns.prefix("glossary")).withDescription(description).execute();
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        Glossaries.create().name(ns.prefix("glossary")).withDescription(description).execute());
   }
 
   /**
@@ -45,11 +49,13 @@ public class GlossaryTestFactory {
    */
   public static Glossary createWithDisplayName(
       TestNamespace ns, String baseName, String displayName) {
-    return Glossaries.create()
-        .name(ns.prefix(baseName))
-        .withDisplayName(displayName)
-        .withDescription("Test glossary with display name")
-        .execute();
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        Glossaries.create()
+            .name(ns.prefix(baseName))
+            .withDisplayName(displayName)
+            .withDescription("Test glossary with display name")
+            .execute());
   }
 
   /**

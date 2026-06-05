@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -688,12 +689,14 @@ public final class EntityLoader {
         count,
         EntityKind.GLOSSARY,
         index ->
-            SdkClients.adminClient()
-                .glossaries()
-                .create(
-                    new CreateGlossary()
-                        .withName(namePrefix + index)
-                        .withDescription("Loader glossary " + index)));
+            ns.trackRoot(
+                Entity.GLOSSARY,
+                SdkClients.adminClient()
+                    .glossaries()
+                    .create(
+                        new CreateGlossary()
+                            .withName(namePrefix + index)
+                            .withDescription("Loader glossary " + index))));
     summary.recordCreated(EntityKind.GLOSSARY, count);
   }
 
@@ -734,12 +737,14 @@ public final class EntityLoader {
         count,
         EntityKind.CLASSIFICATION,
         index ->
-            SdkClients.adminClient()
-                .classifications()
-                .create(
-                    new CreateClassification()
-                        .withName(namePrefix + index)
-                        .withDescription("Loader classification " + index)));
+            ns.trackRoot(
+                Entity.CLASSIFICATION,
+                SdkClients.adminClient()
+                    .classifications()
+                    .create(
+                        new CreateClassification()
+                            .withName(namePrefix + index)
+                            .withDescription("Loader classification " + index))));
     summary.recordCreated(EntityKind.CLASSIFICATION, count);
   }
 
@@ -803,13 +808,15 @@ public final class EntityLoader {
         count,
         EntityKind.TEAM,
         index ->
-            SdkClients.adminClient()
-                .teams()
-                .create(
-                    new CreateTeam()
-                        .withName(namePrefix + index)
-                        .withDisplayName(namePrefix + index)
-                        .withTeamType(TeamType.GROUP)));
+            ns.trackRoot(
+                Entity.TEAM,
+                SdkClients.adminClient()
+                    .teams()
+                    .create(
+                        new CreateTeam()
+                            .withName(namePrefix + index)
+                            .withDisplayName(namePrefix + index)
+                            .withTeamType(TeamType.GROUP))));
     summary.recordCreated(EntityKind.TEAM, count);
   }
 
@@ -828,13 +835,15 @@ public final class EntityLoader {
         count,
         EntityKind.DOMAIN,
         index ->
-            SdkClients.adminClient()
-                .domains()
-                .create(
-                    new CreateDomain()
-                        .withName(namePrefix + index)
-                        .withDomainType(DomainType.AGGREGATE)
-                        .withDescription("Loader domain " + index)));
+            ns.trackRoot(
+                Entity.DOMAIN,
+                SdkClients.adminClient()
+                    .domains()
+                    .create(
+                        new CreateDomain()
+                            .withName(namePrefix + index)
+                            .withDomainType(DomainType.AGGREGATE)
+                            .withDescription("Loader domain " + index))));
     summary.recordCreated(EntityKind.DOMAIN, count);
   }
 
@@ -880,7 +889,7 @@ public final class EntityLoader {
           final CreateTestSuite request = new CreateTestSuite();
           request.setName(namePrefix + index);
           request.setDescription("Loader test suite " + index);
-          SdkClients.adminClient().testSuites().create(request);
+          ns.trackRoot(Entity.TEST_SUITE, SdkClients.adminClient().testSuites().create(request));
         });
     summary.recordCreated(EntityKind.TEST_SUITE, count);
   }
