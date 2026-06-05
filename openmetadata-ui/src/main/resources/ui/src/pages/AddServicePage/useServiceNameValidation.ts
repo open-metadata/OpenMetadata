@@ -82,6 +82,10 @@ export const useServiceNameValidation = ({
     ) => {
       const trimmedName = name.trim();
 
+      if (requestId < validationRequestIdRef.current) {
+        return false;
+      }
+
       validationRequestIdRef.current = requestId;
 
       if (!enabled || !trimmedName) {

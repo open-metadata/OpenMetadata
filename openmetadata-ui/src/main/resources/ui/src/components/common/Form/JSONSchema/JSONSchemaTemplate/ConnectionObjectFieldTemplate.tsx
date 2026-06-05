@@ -31,18 +31,23 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreObjectFieldTemplate';
 import './connection-object-field-template.less';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
 
 const SingleCredentialNote = ({ method }: { method: string }) => {
-  const { t } = useTranslation();
-
   return (
     <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-xs">
       <InfoCircle className="tw:text-fg-quaternary" size={14} />
       <span className="tw:text-tertiary">
-        {t('message.auth-single-credential-stored', { method })}
+        <Transi18next
+          i18nKey="message.auth-single-credential-stored"
+          renderElement={
+            <strong className="tw:font-semibold tw:text-secondary" />
+          }
+          values={{ method }}
+        />
       </span>
     </div>
   );

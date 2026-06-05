@@ -181,7 +181,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     !testStatus &&
     missingRequiredFieldsCount === 0;
 
-  const connectionDisplayName = useMemo(() => {
+  const connectionDisplayName = (() => {
     const formData = getData();
     const connectionData = (formData ?? {}) as Record<string, unknown>;
     const account = connectionData.account;
@@ -214,7 +214,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
 
     return serviceName || connectionType;
-  }, [connectionType, dialogOpen, getData, serviceName]);
+  })();
 
   // data fetch handlers
 
@@ -758,17 +758,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           </div>
           <Tooltip title={buttonTooltipTitle}>
             <Button
-              className={classNames(
-                'tw:h-[42px] tw:min-w-[160px] tw:shrink-0 tw:rounded-lg tw:border tw:border-gray-300',
-                'tw:bg-primary tw:px-[22px] tw:text-sm tw:font-semibold tw:text-utility-brand-600',
-                'tw:shadow-sm tw:cursor-pointer hover:tw:border-utility-brand-200',
-                'hover:tw:bg-utility-brand-50 hover:tw:text-utility-brand-700',
-                {
-                  'tw:h-12 tw:min-w-[184px] tw:border-blue-600 tw:bg-blue-600 tw:text-white tw:text-base hover:tw:border-blue-700 hover:tw:bg-blue-700':
-                    isReadyToTestCard,
-                }
-              )}
-              color="secondary"
+              color="primary"
               data-testid="test-connection-btn"
               isDisabled={isTestConnectionDisabled}
               isLoading={isTestingConnection}

@@ -169,10 +169,8 @@ describe('Test Connection Component', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('ready-badge')).toBeInTheDocument();
-    expect(connectionCard).toHaveClass('test-connection-card-ready');
-    expect(testConnectionButton).toHaveClass(
-      'test-connection-card-button-primary'
-    );
+    expect(connectionCard).toHaveClass('tw:border-utility-brand-300');
+    expect(testConnectionButton).toBeInTheDocument();
   });
 
   it('Should show missing required field count before testing', async () => {
@@ -502,7 +500,7 @@ describe('Test Connection Component', () => {
 
     expect(screen.getByTestId('success-badge')).toBeInTheDocument();
     expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'test-connection-card-success'
+      'tw:border-utility-success-200'
     );
   });
 
@@ -541,7 +539,7 @@ describe('Test Connection Component', () => {
 
     expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
     expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'test-connection-card-warning'
+      'tw:border-utility-warning-200'
     );
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
@@ -630,7 +628,7 @@ describe('Test Connection Component', () => {
 
     expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
     expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'test-connection-card-failed'
+      'tw:border-utility-error-200'
     );
   });
 
