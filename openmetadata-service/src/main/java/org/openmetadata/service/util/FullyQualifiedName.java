@@ -182,13 +182,24 @@ public class FullyQualifiedName {
    * Nested objects (table columns, pipeline tasks, topic/searchIndex/apiEndpoint fields, mlFeatures)
    * carry FQNs derived from their {@code name} but are not hash-validated at insert time, so a name
    * that cannot round-trip would persist silently and only fail later when its FQN is hashed (e.g. on
-   * a tags read). Calling this at write time rejects such names up front with a clear error.
+   * a tags read). Calling this at write time rejects such names up front with a clear error. A
+   * null or empty name is rejected too: it yields an empty FQN segment ({@code parent.}) that cannot
+   * be parsed or hashed.
    */
   public static void validateFqnName(String name) {
-    String segment = quoteName(name);
-    if (segment.equals(name)) {
-      return;
+    boolean valid;
+    if (nullOrEmpty(name)) {
+      valid = false;
+    } else {
+      String segment = quoteName(name);
+      valid = segment.equals(name) || roundTripsAsSegment(name, segment);
     }
+    if (!valid) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
+  }
+
+  private static boolean roundTripsAsSegment(String name, String segment) {
     boolean roundTrips;
     try {
       String[] parts = split(segment);
@@ -196,9 +207,7 @@ public class FullyQualifiedName {
     } catch (ParseCancellationException e) {
       roundTrips = false;
     }
-    if (!roundTrips) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
-    }
+    return roundTrips;
   }
 
   /**

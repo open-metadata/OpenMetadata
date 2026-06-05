@@ -90,8 +90,9 @@ class FullyQualifiedNameTest {
     FullyQualifiedName.validateFqnName("name_with_\"quotes\"");
     FullyQualifiedName.validateFqnName("récupère_les_agents/email");
     FullyQualifiedName.validateFqnName("a\".b");
-    // A null name is rejected up front.
+    // Null or empty names are rejected up front: they yield an unhashable empty FQN segment.
     assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.validateFqnName(null));
+    assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.validateFqnName(""));
   }
 
   @Test
