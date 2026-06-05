@@ -137,7 +137,7 @@ jobs:
                 return { error: 'missing-token' };
               }
               try {
-                const projectsClient = require('@actions/github').getOctokit(token);
+                const projectsClient = new github.constructor({ auth: token });
                 const data = await projectsClient.graphql(ISSUE_PROJECT_QUERY, {
                   owner,
                   repo,
