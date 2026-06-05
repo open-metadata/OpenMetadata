@@ -170,6 +170,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
           PW_VIDEO: 'true'
         run: |
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
@@ -311,6 +314,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
         run: |
           mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
@@ -427,6 +433,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
         run: |
           mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.scale.tables=${{ matrix.seed }} \
