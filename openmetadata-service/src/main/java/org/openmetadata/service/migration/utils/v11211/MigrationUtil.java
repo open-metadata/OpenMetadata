@@ -1,14 +1,14 @@
 package org.openmetadata.service.migration.utils.v11211;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -20,40 +20,61 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * time, so a task whose name contained a {@code "} was stored with a corrupt segment that could not
  * be parsed or hashed, making later tag/owner reads fail with a 500. This one-time migration
  * re-derives any unparseable task FQN from its parent pipeline FQN and the task name and persists
- * the corrected value, so reads no longer pay a per-request repair and the corruption leaves the
- * stored data entirely.
+ * the corrected value, so the corruption leaves the stored data and reads pay no per-request cost.
+ *
+ * <p>Pipelines are scanned in pages (no per-pipeline query), only changed rows are written, and any
+ * pipeline that cannot be repaired is counted and sampled in the completion log so operators have a
+ * concrete remediation list. Repaired FQNs reach the search index on the standard post-upgrade
+ * reindex.
  */
 @Slf4j
 public class MigrationUtil {
 
+  private static final int PAGE_SIZE = 1000;
+  private static final int MAX_REPORTED_FAILURES = 100;
+
   private MigrationUtil() {}
 
-  public static void repairPipelineTaskFqns(Handle handle, CollectionDAO collectionDAO) {
-    List<String> pipelineIds =
-        handle.createQuery("SELECT id FROM pipeline_entity").mapTo(String.class).list();
+  public static void repairPipelineTaskFqns(CollectionDAO collectionDAO) {
+    CollectionDAO.PipelineDAO pipelineDAO = collectionDAO.pipelineDAO();
+    List<String> failedPipelineIds = new ArrayList<>();
+    int scanned = 0;
     int repairedTasks = 0;
-    for (String pipelineId : pipelineIds) {
-      repairedTasks += repairPipeline(collectionDAO, pipelineId);
+    int repairedPipelines = 0;
+    int failedPipelines = 0;
+    int offset = 0;
+    List<String> page = pipelineDAO.listAfterWithOffset(PAGE_SIZE, offset);
+    while (!page.isEmpty()) {
+      for (String json : page) {
+        scanned++;
+        PipelineRepair repair = repairPipeline(pipelineDAO, json, failedPipelineIds);
+        repairedTasks += repair.taskCount();
+        repairedPipelines += repair.taskCount() > 0 ? 1 : 0;
+        failedPipelines += repair.failed() ? 1 : 0;
+      }
+      offset += PAGE_SIZE;
+      page = pipelineDAO.listAfterWithOffset(PAGE_SIZE, offset);
     }
-    LOG.info(
-        "Pipeline task FQN repair complete: re-derived {} task FQNs across {} pipelines",
-        repairedTasks,
-        pipelineIds.size());
+    logSummary(scanned, repairedPipelines, repairedTasks, failedPipelines, failedPipelineIds);
   }
 
-  private static int repairPipeline(CollectionDAO collectionDAO, String pipelineId) {
-    int repairedTasks = 0;
+  private static PipelineRepair repairPipeline(
+      CollectionDAO.PipelineDAO pipelineDAO, String json, List<String> failedPipelineIds) {
+    int taskCount = 0;
+    boolean failed = false;
+    String pipelineId = null;
     try {
-      Pipeline pipeline =
-          collectionDAO.pipelineDAO().findEntityById(UUID.fromString(pipelineId), Include.ALL);
-      repairedTasks = repairTasks(pipeline);
-      if (repairedTasks > 0) {
-        collectionDAO.pipelineDAO().update(pipeline);
+      Pipeline pipeline = JsonUtils.readValue(json, Pipeline.class);
+      pipelineId = pipeline.getId().toString();
+      taskCount = repairTasks(pipeline);
+      if (taskCount > 0) {
+        pipelineDAO.update(pipeline);
       }
     } catch (Exception e) {
-      LOG.warn("Skipping pipeline {} during task FQN repair: {}", pipelineId, e.getMessage());
+      failed = true;
+      recordFailure(failedPipelineIds, pipelineId, e);
     }
-    return repairedTasks;
+    return new PipelineRepair(taskCount, failed);
   }
 
   private static int repairTasks(Pipeline pipeline) {
@@ -67,4 +88,37 @@ public class MigrationUtil {
     }
     return repairedTasks;
   }
+
+  private static void recordFailure(
+      List<String> failedPipelineIds, String pipelineId, Exception e) {
+    String id = nullOrEmpty(pipelineId) ? "<unreadable-pipeline-json>" : pipelineId;
+    LOG.warn("Failed to repair task FQNs for pipeline {}: {}", id, e.getMessage());
+    if (failedPipelineIds.size() < MAX_REPORTED_FAILURES) {
+      failedPipelineIds.add(id);
+    }
+  }
+
+  private static void logSummary(
+      int scanned,
+      int repairedPipelines,
+      int repairedTasks,
+      int failedPipelines,
+      List<String> failedPipelineIds) {
+    LOG.info(
+        "Pipeline task FQN repair complete: scanned {} pipelines, re-derived {} task FQNs across {} pipelines. "
+            + "Repaired FQNs are reflected in search after the standard post-upgrade reindex.",
+        scanned,
+        repairedTasks,
+        repairedPipelines);
+    if (failedPipelines > 0) {
+      LOG.warn(
+          "Pipeline task FQN repair could not fix {} pipeline(s); they retain unparseable task FQNs "
+              + "and need manual remediation. First {} id(s): {}",
+          failedPipelines,
+          MAX_REPORTED_FAILURES,
+          failedPipelineIds);
+    }
+  }
+
+  private record PipelineRepair(int taskCount, boolean failed) {}
 }
