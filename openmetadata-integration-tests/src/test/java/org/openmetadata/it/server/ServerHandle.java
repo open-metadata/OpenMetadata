@@ -2,6 +2,7 @@ package org.openmetadata.it.server;
 
 import java.net.URI;
 import java.util.Objects;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -59,8 +60,23 @@ public final class ServerHandle {
     return baseUrl;
   }
 
+  /**
+   * The SDK client for API calls. In external mode, where a long-running suite can outlive the
+   * login token's TTL, this delegates to {@link SdkClients#adminClient()} — the refresh-aware
+   * client that {@code ExternalTokenRefresher} rebuilds on each re-login. The boot client captured
+   * at construction carries the original token and would 401 once it expires, so we never hand it
+   * out while an admin-token override is in effect. Embedded mode (24h harness token) and a
+   * standalone {@link org.openmetadata.it.server.ExternalServer} with no override keep the boot
+   * client.
+   */
   public OpenMetadataClient sdk() {
-    return sdkClient;
+    final OpenMetadataClient current;
+    if (external && SdkClients.hasAdminOverride()) {
+      current = SdkClients.adminClient();
+    } else {
+      current = sdkClient;
+    }
+    return current;
   }
 
   public String searchHost() {

@@ -305,6 +305,16 @@ public class SdkClients {
     USER3_CLIENT = null;
   }
 
+  /**
+   * Whether an admin token has been supplied out-of-band (external operator token, or a
+   * refresher's re-login). When true, {@link #adminClient()} is the single source of truth for
+   * the current token and is rebuilt on every {@link #overrideAdminToken(String)} — callers must
+   * fetch it fresh rather than capturing a client reference that goes stale on the next refresh.
+   */
+  public static boolean hasAdminOverride() {
+    return OVERRIDDEN_ADMIN_TOKEN != null;
+  }
+
   private static OpenMetadataClient buildAdminClientWithToken(String accessToken) {
     OpenMetadataConfig cfg =
         OpenMetadataConfig.builder()
