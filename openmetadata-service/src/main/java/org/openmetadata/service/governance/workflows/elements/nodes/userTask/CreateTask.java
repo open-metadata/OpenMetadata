@@ -846,9 +846,25 @@ public class CreateTask implements TaskListener {
     if (reason == null || reason.isBlank()) {
       return payload;
     }
-    Map<String, Object> map = payload == null ? new LinkedHashMap<>() : JsonUtils.getMap(payload);
-    map.put("manualGrantReason", reason);
-    return map;
+    Map<String, Object> merged = new LinkedHashMap<>();
+    if (payload instanceof Map<?, ?> rawMap) {
+      // Copy entries directly (like withGrantExpirationDate) rather than JsonUtils.getMap, which
+      // would convertValue the whole payload and could re-type nested values or throw.
+      rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
+    } else if (payload != null) {
+      // Non-Map payload is not expected on the DAR path; convert defensively so the reason is never
+      // dropped, but never let a conversion problem break task creation.
+      try {
+        merged.putAll(JsonUtils.getMap(payload));
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Could not merge manualGrantReason into payload of type {}",
+            payload.getClass().getSimpleName());
+        return payload;
+      }
+    }
+    merged.put("manualGrantReason", reason);
+    return merged;
   }
 
   private EntityReference resolveCreatedByReference(
