@@ -90,10 +90,7 @@ export const PasswordInput = ({
     ) : null;
 
   return (
-    <TextField
-      aria-label={label ?? placeholder}
-      {...props}
-      value={value ?? ''}>
+    <TextField aria-label={label ?? placeholder} {...props} value={value ?? ''}>
       <>
         {labelRow}
         <InputBase

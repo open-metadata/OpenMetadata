@@ -11,47 +11,55 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { IChangeEvent } from '@rjsf/core';
+import Form, { IChangeEvent } from '@rjsf/core';
+import {
+  FieldTemplateProps,
+  ObjectFieldTemplateProps,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
+import { customizeValidator } from '@rjsf/validator-ajv8';
 import { CheckCircle } from '@untitledui/icons';
-import { isEmpty, isUndefined, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   buildValidConfig,
-  ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
-import {
-  FILTER_LABEL_KEYS,
-  FILTER_SINGLE_LABEL_KEYS,
-  FORM_TEST_ID,
-} from './FiltersConfigForm.constants';
+import { FilterPatternField } from './FilterPatternField';
+import { FORM_TEST_ID } from './FiltersConfigForm.constants';
 import { FiltersConfigFormProps } from './FiltersConfigForm.interface';
 import {
+  FilterPatternConfig,
   FilterSchemaProperty,
-  FilterSection,
-  FilterSectionState,
-  FiltersState,
 } from './FiltersConfigForm.types';
 import {
   addSnowflakeSystemExcludes,
-  buildPatternFromState,
-  cleanSchemaTitle,
   getConnectionDisplayHost,
   getFilterPatternConfig,
   getOrderedFilterEntries,
-  getSectionIcon,
-  parseRegexPattern,
-  pluralizeFallback,
-  singularizeFallback,
 } from './FiltersConfigForm.utils';
-import { FilterSectionCard } from './FilterSectionCard';
+
+const validator = customizeValidator();
+
+const FiltersFormObjectTemplate = ({
+  properties,
+}: ObjectFieldTemplateProps) => (
+  <div className="tw:grid tw:gap-3">
+    {properties.map((p) => (
+      <div key={p.name}>{p.content}</div>
+    ))}
+  </div>
+);
+
+const FiltersFormFieldTemplate = ({ children, hidden }: FieldTemplateProps) =>
+  hidden ? <div className="tw:hidden">{children}</div> : <>{children}</>;
 
 function FiltersConfigForm({
   data,
@@ -66,12 +74,8 @@ function FiltersConfigForm({
 }: Readonly<FiltersConfigFormProps>) {
   const { t } = useTranslation();
   const { inlineAlertDetails } = useApplicationStore();
-  const [connSch, setConnSch] = useState<ConnectionSchemaResult['connSch']>(
-    EMPTY_CONNECTION_SCHEMA
-  );
+  const [connSch, setConnSch] = useState(EMPTY_CONNECTION_SCHEMA);
   const validConfig = useMemo(() => buildValidConfig(data), [data]);
-  const [filters, setFilters] = useState<FiltersState>({});
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const submitText = okText ?? t('label.save');
   const backText = cancelText ?? t('label.cancel');
   const isSaving = status === 'waiting';
@@ -95,128 +99,83 @@ function FiltersConfigForm({
     };
   }, [serviceCategory, serviceType]);
 
-  const filterSections = useMemo<FilterSection[]>(() => {
-    const properties = (connSch.schema.properties ?? {}) as Record<
-      string,
-      unknown
-    >;
-
-    return (getOrderedFilterEntries(properties) as [string, unknown][]).map(
-      ([fieldName, property]) => {
-        const schemaProperty = property as FilterSchemaProperty;
-        const field = fieldName as ServiceConnectionFilterPatternFields;
-        const cleanedTitle = cleanSchemaTitle(
-          schemaProperty.title ?? '',
-          fieldName
-        );
-        const labelKey = FILTER_LABEL_KEYS[field];
-        const singleLabelKey = FILTER_SINGLE_LABEL_KEYS[field];
-        const label = labelKey
-          ? t(labelKey)
-          : pluralizeFallback(cleanedTitle || startCase(fieldName));
-        const singleLabel = singleLabelKey
-          ? t(singleLabelKey)
-          : singularizeFallback(label);
-        const defaultExcludes = addSnowflakeSystemExcludes(
-          serviceType,
-          fieldName,
-          schemaProperty.default?.excludes ?? []
-        );
-
-        return {
-          description: schemaProperty.description,
-          fieldName,
-          icon: getSectionIcon(fieldName),
-          label,
-          singleLabel,
-          systemExcludes: defaultExcludes.map(parseRegexPattern),
-        };
-      }
-    );
-  }, [connSch.schema.properties, serviceType, t]);
-
-  useEffect(() => {
-    const initialFilters = filterSections.reduce<FiltersState>(
-      (accumulator, section) => {
-        const property = (
-          (connSch.schema.properties ?? {}) as Record<
-            string,
-            FilterSchemaProperty
-          >
-        )[section.fieldName];
-        const defaultConfig = {
-          excludes: addSnowflakeSystemExcludes(
-            serviceType,
-            section.fieldName,
-            property?.default?.excludes ?? []
-          ),
-          includes: property?.default?.includes ?? [],
-        };
-        const existingConfig = getFilterPatternConfig(
-          validConfig,
-          section.fieldName
-        );
-        const config = existingConfig ?? defaultConfig;
-        const includes = (config.includes ?? []).map(parseRegexPattern);
-        const excludes = (config.excludes ?? []).map(parseRegexPattern);
-
-        accumulator[section.fieldName] = {
-          excludes,
-          includes,
-          restrict: includes.length > 0,
-        };
-
-        return accumulator;
-      },
-      {}
-    );
-    const initialOpenSections = filterSections.reduce<Record<string, boolean>>(
-      (accumulator, section, index) => {
-        accumulator[section.fieldName] = index < 2;
-
-        return accumulator;
-      },
-      {}
-    );
-
-    setFilters(initialFilters);
-    setOpenSections(initialOpenSections);
-  }, [connSch.schema.properties, filterSections, serviceType, validConfig]);
-
-  const updateFilter = useCallback(
-    (fieldName: string, filter: FilterSectionState) => {
-      setFilters((currentFilters) => ({
-        ...currentFilters,
-        [fieldName]: filter,
-      }));
-    },
-    []
+  const filterEntries = useMemo(
+    () =>
+      getOrderedFilterEntries(
+        (connSch.schema.properties ?? {}) as Record<string, unknown>
+      ),
+    [connSch.schema.properties]
   );
 
-  const handleSubmit = async () => {
-    const filterFormData = filterSections.reduce<
-      Record<string, { excludes: string[]; includes: string[] }>
-    >((accumulator, section) => {
-      const filter = filters[section.fieldName];
+  const filterSchema = useMemo<RJSFSchema>(() => {
+    const properties: Record<string, unknown> = {};
+    filterEntries.forEach(([fieldName, property]) => {
+      properties[fieldName as string] = property;
+    });
 
-      if (!filter) {
-        return accumulator;
+    return { properties, type: 'object' };
+  }, [filterEntries]);
+
+  const initialFilterFormData = useMemo(() => {
+    const formData: Record<string, FilterPatternConfig | undefined> = {};
+    filterEntries.forEach(([fieldName]) => {
+      const existing = getFilterPatternConfig(validConfig, fieldName as string);
+      if (existing) {
+        formData[fieldName as string] = existing;
       }
+    });
 
-      accumulator[section.fieldName] = buildPatternFromState(filter);
+    return formData;
+  }, [filterEntries, validConfig]);
 
-      return accumulator;
-    }, {});
-    const formattedFormData = formatFormDataForSubmit(
-      filterFormData
-    ) as ConfigData;
+  const filterUiSchema = useMemo<UiSchema>(() => {
+    const uiSchema: UiSchema = {};
+    filterEntries.forEach(([fieldName, property], index) => {
+      const schemaProperty = property as FilterSchemaProperty;
+      const systemExcludes = addSnowflakeSystemExcludes(
+        serviceType,
+        fieldName as string,
+        schemaProperty.default?.excludes ?? []
+      );
+      uiSchema[fieldName as string] = {
+        'ui:field': 'FilterPatternField',
+        'ui:options': {
+          defaultOpen: index < 2,
+          systemExcludes,
+        },
+      };
+    });
 
-    await onSave({
-      formData: formattedFormData,
-    } as IChangeEvent<ConfigData>);
+    return uiSchema;
+  }, [filterEntries, serviceType]);
+
+  const filterDataRef = useRef<Record<string, FilterPatternConfig | undefined>>(
+    initialFilterFormData
+  );
+
+  useEffect(() => {
+    filterDataRef.current = initialFilterFormData;
+  }, [initialFilterFormData]);
+
+  const handleFilterFormChange = useCallback((e: IChangeEvent) => {
+    if (e.formData !== undefined) {
+      filterDataRef.current = e.formData as Record<
+        string,
+        FilterPatternConfig | undefined
+      >;
+    }
+  }, []);
+
+  const handleSubmit = async () => {
+    const filterData = Object.fromEntries(
+      Object.entries(filterDataRef.current).filter(([, v]) => v !== undefined)
+    );
+    const formattedFormData = formatFormDataForSubmit(filterData) as ConfigData;
+    await onSave({ formData: formattedFormData } as IChangeEvent<ConfigData>);
   };
 
   const connectionHost = getConnectionDisplayHost(validConfig, serviceType);
+  const formKey = filterEntries.map(([name]) => name as string).join(',');
 
   return (
     <div className="tw:grid tw:gap-4" data-testid={FORM_TEST_ID}>
@@ -243,37 +202,31 @@ function FiltersConfigForm({
         </div>
       </div>
 
-      <div className="tw:grid tw:gap-3">
-        {filterSections.map((section) => {
-          const filter = filters[section.fieldName];
-
-          return filter ? (
-            <FilterSectionCard
-              filter={filter}
-              isOpen={Boolean(openSections[section.fieldName])}
-              key={section.fieldName}
-              section={section}
-              onChange={(updatedFilter) =>
-                updateFilter(section.fieldName, updatedFilter)
-              }
-              onFocus={onFocus}
-              onToggle={() =>
-                setOpenSections((currentOpenSections) => ({
-                  ...currentOpenSections,
-                  [section.fieldName]: !currentOpenSections[section.fieldName],
-                }))
-              }
-            />
-          ) : null;
-        })}
-      </div>
-
-      {isEmpty(filterSections) && (
+      {isEmpty(filterEntries) ? (
         <div
           className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-6 tw:text-center tw:font-medium tw:leading-5 tw:text-tertiary"
           data-testid="no-config-available">
           {t('message.no-filter-patterns-available')}
         </div>
+      ) : (
+        <Form
+          noHtml5Validate
+          fields={{ FilterPatternField }}
+          formContext={{ handleFocus: onFocus }}
+          formData={initialFilterFormData}
+          idSeparator="/"
+          key={formKey}
+          schema={filterSchema}
+          showErrorList={false}
+          templates={{
+            FieldTemplate: FiltersFormFieldTemplate,
+            ObjectFieldTemplate: FiltersFormObjectTemplate,
+          }}
+          uiSchema={filterUiSchema}
+          validator={validator}
+          onChange={handleFilterFormChange}>
+          {null}
+        </Form>
       )}
 
       {!isUndefined(inlineAlertDetails) && (

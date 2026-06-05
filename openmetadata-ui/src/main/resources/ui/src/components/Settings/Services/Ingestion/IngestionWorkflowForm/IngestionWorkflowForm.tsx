@@ -50,6 +50,7 @@ import CoreRadioWidget from '../../../../common/FormBuilderV1/widgets/CoreRadioW
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import CoreTextAreaWidget from '../../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
 import { IngestionObjectFieldTemplate } from '../../AddIngestion/IngestionObjectFieldTemplate/IngestionObjectFieldTemplate';
+import { FilterPatternField } from '../../ServiceConfig/FilterPatternField';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
@@ -153,6 +154,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
       BooleanField: BooleanFieldTemplate,
+      FilterPatternField,
       OneOfField: CoreOneOfField,
     };
 

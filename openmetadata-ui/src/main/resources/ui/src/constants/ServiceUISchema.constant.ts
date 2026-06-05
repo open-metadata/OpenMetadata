@@ -51,6 +51,14 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   displayName: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   defaultManifest: { 'ui:widget': 'manifestJson' },
+  ...SERVICE_FILTER_PATTERN_FIELDS.reduce<Record<string, object>>(
+    (acc, field) => {
+      acc[field] = { 'ui:field': 'FilterPatternField' };
+
+      return acc;
+    },
+    {}
+  ),
   'ui:order': [
     'rootProcessingEngine',
     'name',
