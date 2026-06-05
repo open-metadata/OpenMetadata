@@ -37,6 +37,20 @@ public final class SearchAssertions {
     return response.path("count").asLong();
   }
 
+  /**
+   * Exact count of docs whose {@code name} starts with {@code namePrefix}. Scopes a count to a
+   * single test run's entities (named {@code <unique-prefix>_<n>}) regardless of what else lives on
+   * the cluster — unlike the relevance-ranked Explore search, which fuzzy-matches across the whole
+   * index. {@code name.keyword} carries a {@code lowercase_normalizer}, so the prefix is lowercased
+   * to match the indexed (lowercased) value.
+   */
+  public long countByNamePrefix(final String indexOrAlias, final String namePrefix) {
+    final String prefix = escape(namePrefix.toLowerCase(java.util.Locale.ROOT));
+    final String body = "{\"query\":{\"prefix\":{\"name.keyword\":\"" + prefix + "\"}}}";
+    final JsonNode response = search.post("/" + indexOrAlias + "/_count", body);
+    return response.path("count").asLong();
+  }
+
   public List<String> indicesForAlias(final String alias) {
     final JsonNode body = search.get("/_alias/" + alias);
     final List<String> indices = new ArrayList<>();
