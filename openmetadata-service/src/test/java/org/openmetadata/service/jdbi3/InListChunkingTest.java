@@ -1,0 +1,152 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.service.jdbi3;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityExtensionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO;
+
+/**
+ * Outcome tests for the IN-list chunking that keeps bulk delete / restore queries under the
+ * database prepared-statement parameter ceiling (PostgreSQL hard-caps at 65,535 bound params).
+ *
+ * <p>These do not verify how many times the delegate is called — they assert the observable
+ * contract of the partition: every chunk stays within {@link EntityDAO#MAX_IN_LIST_CHUNK_SIZE},
+ * the union of chunks equals the input exactly once each (no dropped or duplicated ids), and the
+ * aggregated result equals the concatenation of the per-chunk results.
+ */
+class InListChunkingTest {
+
+  private static final int OVER_LIMIT = EntityDAO.MAX_IN_LIST_CHUNK_SIZE * 2 + 2;
+
+  private static List<String> ids(int count) {
+    return IntStream.range(0, count)
+        .mapToObj(i -> new UUID(0L, i).toString())
+        .collect(Collectors.toList());
+  }
+
+  private static void assertChunksWithinLimit(List<List<String>> chunks) {
+    assertTrue(
+        chunks.stream().allMatch(chunk -> chunk.size() <= EntityDAO.MAX_IN_LIST_CHUNK_SIZE),
+        "every chunk must stay within MAX_IN_LIST_CHUNK_SIZE");
+  }
+
+  private static void assertCoversInputExactlyOnce(List<String> input, List<List<String>> chunks) {
+    List<String> flattened = chunks.stream().flatMap(List::stream).collect(Collectors.toList());
+    assertEquals(input, flattened, "union of chunks must equal the input exactly once, in order");
+  }
+
+  @Test
+  void findToBatchAllTypesWithRelations_chunksOverLimitAndAggregates() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.findToBatchAllTypesWithRelationsCondition(anyList(), anyList(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              List<String> chunk = invocation.getArgument(0);
+              chunks.add(List.copyOf(chunk));
+              return chunk.stream()
+                  .map(id -> EntityRelationshipObject.builder().fromId(id).build())
+                  .collect(Collectors.toList());
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    List<EntityRelationshipObject> result =
+        dao.findToBatchAllTypes(input, List.of(1, 2), Include.ALL);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+    assertEquals(
+        input,
+        result.stream().map(EntityRelationshipObject::getFromId).collect(Collectors.toList()),
+        "aggregated result must equal the concatenation of per-chunk results");
+  }
+
+  @Test
+  void findFromBatch_chunksOverLimitAndAggregates() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.findFromBatchWithCondition(anyList(), anyInt(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              List<String> chunk = invocation.getArgument(0);
+              chunks.add(List.copyOf(chunk));
+              return chunk.stream()
+                  .map(id -> EntityRelationshipObject.builder().toId(id).build())
+                  .collect(Collectors.toList());
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    List<EntityRelationshipObject> result = dao.findFromBatch(input, 1, Include.ALL);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+    assertEquals(
+        input, result.stream().map(EntityRelationshipObject::getToId).collect(Collectors.toList()));
+  }
+
+  @Test
+  void deleteAllBatch_chunksOverLimit() {
+    EntityExtensionDAO dao = mock(EntityExtensionDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return null;
+            })
+        .when(dao)
+        .deleteAllBatchInternal(anyList());
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.deleteAllBatch(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+
+  @Test
+  void getTagsInternalBatch_chunksOverLimit() {
+    TagUsageDAO dao = mock(TagUsageDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.getTagsInternalBatchInternal(anyList()))
+        .thenAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return new ArrayList<>();
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.getTagsInternalBatch(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+}
