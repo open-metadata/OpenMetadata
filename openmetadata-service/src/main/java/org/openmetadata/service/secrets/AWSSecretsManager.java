@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.ResourceExistsException;
 import software.amazon.awssdk.services.secretsmanager.model.Tag;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
@@ -62,7 +63,12 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
                     .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
                     .toList())
             .build();
-    this.secretsClient.createSecret(createSecretRequest);
+    try {
+      this.secretsClient.createSecret(createSecretRequest);
+    } catch (ResourceExistsException e) {
+      LOG.warn("Secret [{}] already exists, updating instead of creating.", secretName);
+      updateSecret(secretName, secretValue);
+    }
   }
 
   @Override
