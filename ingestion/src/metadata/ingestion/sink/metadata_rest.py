@@ -34,6 +34,7 @@ from metadata.generated.schema.api.data.createDataContract import (
 )
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
@@ -110,6 +111,7 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import (
@@ -119,12 +121,23 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
+from metadata.utils.fqn import get_query_checksum
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
+
+# Bulk-flush failures that are benign: the entity already exists (idempotent re-create)
+# or is a duplicate within the same batch. No metadata is lost, so these must be reported
+# as warnings rather than failures - otherwise a lineage run goes red over conflicts that
+# changed nothing (e.g. the same query checksum re-ingested across overlapping runs).
+BENIGN_BULK_CONFLICT_MARKERS = (
+    "duplicate key value violates unique constraint",  # PostgreSQL unique_violation (23505)
+    "Duplicate entry",  # MySQL ER_DUP_ENTRY (1062)
+    "Entity does not exist and could not be created",  # within-batch duplicate whose create lost
+)
 
 
 class MetadataRestSinkConfig(ConfigModel):
@@ -228,18 +241,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         ):
             return self.write_create_single_request(entity_request)
 
-        # Deduplicate entities by name to avoid duplicate FQN hash errors
-        # These are CreateRequest types that may have duplicate names from source systems
+        # Deduplicate entities within a buffer to avoid duplicate FQN-hash conflicts in the
+        # bulk API. These CreateRequest types may carry duplicate identifiers from source
+        # systems (e.g. stored procedures running the same SQL emit the same query checksum).
         if isinstance(
             entity_request,
             (
                 CreateDashboardDataModelRequest,  # QuickSight: multiple tables with same DataSourceId
+                CreateQueryRequest,  # Lineage: stored procs / scheduled jobs emit identical SQL repeatedly
             ),
         ):
             if self._is_duplicate_in_buffer(entity_request):
-                logger.debug(
-                    f"Skipping duplicate {type(entity_request).__name__} with name: {entity_request.name.root}"
-                )
+                logger.debug(f"Skipping duplicate {type(entity_request).__name__} in buffer")
                 return Either(right=None)
 
             # Track this entity for future duplicate checks (only for types that need deduplication)
@@ -260,32 +273,42 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
             )
 
+    @staticmethod
+    def _buffer_dedup_key(entity_request) -> tuple | None:
+        """
+        Build the (type, identifier) key used to deduplicate an entity within a buffer, or
+        None when the entity has no stable identifier to dedup on.
+
+        Query requests carry no `name` (the checksum/name is derived server-side from the
+        query text), so they are deduped on that same query checksum to avoid duplicate
+        FQN-hash conflicts when identical SQL repeats in a batch.
+        """
+        entity_type = type(entity_request).__name__
+        if isinstance(entity_request, CreateQueryRequest):
+            return (entity_type, get_query_checksum(model_str(entity_request.query)))
+
+        name = getattr(entity_request, "name", None)
+        if name is None:
+            return None
+
+        return (entity_type, name.root if hasattr(name, "root") else name)
+
     def _track_entity_in_buffer(self, entity_request) -> None:
         """
-        Track an entity name in the buffer for O(1) duplicate detection.
+        Track an entity identifier in the buffer for O(1) duplicate detection.
         Only called for entity types that require deduplication.
         """
-        if not hasattr(entity_request, "name"):
-            return
-
-        entity_type = type(entity_request).__name__
-        current_name = entity_request.name.root if hasattr(entity_request.name, "root") else entity_request.name
-
-        self.buffered_entity_names[(entity_type, current_name)] = True
+        key = self._buffer_dedup_key(entity_request)
+        if key is not None:
+            self.buffered_entity_names[key] = True
 
     def _is_duplicate_in_buffer(self, entity_request) -> bool:
         """
-        Check if an entity with the same name already exists in the buffer.
+        Check if an entity with the same identifier already exists in the buffer.
         Uses O(1) lookup via buffered_entity_names dict.
         """
-        if not hasattr(entity_request, "name"):
-            return False
-
-        entity_type = type(entity_request).__name__
-        current_name = entity_request.name.root if hasattr(entity_request.name, "root") else entity_request.name
-
-        # O(1) lookup
-        return (entity_type, current_name) in self.buffered_entity_names
+        key = self._buffer_dedup_key(entity_request)
+        return key is not None and key in self.buffered_entity_names
 
     def write_create_single_request(self, entity_request) -> Either[Entity]:
         try:
@@ -347,7 +370,36 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return Either(right=result, left=None)
 
         self.status.scanned_all(result.successRequest)
-        for err in result.failedRequest:
+        real_failures = [err for err in result.failedRequest if not self._record_bulk_failure(err)]
+        if not real_failures:
+            return Either(right=result, left=None)
+
+        return Either(
+            right=None,
+            left=StackTraceError(
+                name="Entity Buffer",
+                error=f"Failed to flush entities to bulk API: {real_failures}",
+                stackTrace=None,
+            ),
+        )
+
+    @staticmethod
+    def _is_benign_bulk_failure(message: str | None) -> bool:
+        """A bulk failure is benign when the entity already exists or is a duplicate within
+        the same batch - no metadata is lost, so it must not fail the workflow."""
+        return bool(message) and any(marker in message for marker in BENIGN_BULK_CONFLICT_MARKERS)
+
+    def _record_bulk_failure(self, err) -> bool:
+        """Record a single bulk failedRequest. Benign idempotency conflicts are recorded as
+        warnings (returns True) so the lineage status stays green; genuine failures are
+        recorded as failures (returns False)."""
+        is_benign = self._is_benign_bulk_failure(getattr(err, "message", None))
+        if is_benign:
+            self.status.warning(
+                str(getattr(err, "request", None) or "Entity Buffer"),
+                f"Idempotent bulk conflict, no metadata lost: {getattr(err, 'message', err)}",
+            )
+        else:
             self.status.failed(
                 StackTraceError(
                     name="Entity Buffer",
@@ -355,14 +407,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     stackTrace=None,
                 )
             )
-        return Either(
-            right=None,
-            left=StackTraceError(
-                name="Entity Buffer",
-                error=f"Failed to flush entities to bulk API: {result.failedRequest}",
-                stackTrace=None,
-            ),
-        )
+        return is_benign
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
