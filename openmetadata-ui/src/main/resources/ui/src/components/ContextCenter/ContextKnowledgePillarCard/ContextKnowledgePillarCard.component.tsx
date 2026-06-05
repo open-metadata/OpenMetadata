@@ -39,10 +39,16 @@ function RecentItem({
   return (
     <Box
       align="center"
-      className={`tw:py-1.5 ${showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''}`}
+      className={`tw:py-1.5 ${
+        showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''
+      }`}
       gap={2}>
       <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={4} justify="between">
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:flex-1"
+        gap={4}
+        justify="between">
         <Typography
           ellipsis
           as="span"
@@ -85,11 +91,15 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
         <Skeleton height={12} variant="rounded" width={80} />
       </div>
 
-      <Box className="tw:border-t tw:border-secondary tw:pt-2.5" direction="col">
+      <Box
+        className="tw:border-t tw:border-secondary tw:pt-2.5"
+        direction="col">
         {[0, 1, 2].map((i) => (
           <Box
             align="center"
-            className={`tw:py-1.5 ${i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''}`}
+            className={`tw:py-1.5 ${
+              i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''
+            }`}
             gap={2}
             key={i}>
             <Skeleton
@@ -189,7 +199,9 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           </Typography>
         </Box>
 
-        <Box className="tw:border-t tw:border-secondary tw:pt-2.5" direction="col">
+        <Box
+          className="tw:border-t tw:border-secondary tw:pt-2.5"
+          direction="col">
           {recent.map((item, i) => (
             <RecentItem
               Icon={Icon}
@@ -200,7 +212,11 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           ))}
         </Box>
       </div>
-      <Box inline align='center' className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary" gap={2}>
+      <Box
+        inline
+        align="center"
+        className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary"
+        gap={2}>
         <Button
           color="link-color"
           iconTrailing={ArrowNarrowRight}
