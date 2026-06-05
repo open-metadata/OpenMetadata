@@ -17,11 +17,7 @@ import {
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
-import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  redirectToHomePage,
-} from './common';
+import { descriptionBox, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
@@ -258,22 +254,22 @@ export const readQuickLink = async (
   }
 ) => {
   await page
-    .locator(`[data-testid="${quickLink.displayName}"]`)
+    .locator(`[data-testid="knowledge-card-${quickLink.displayName}"]`)
     .scrollIntoViewIfNeeded();
 
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] ${descriptionBoxReadOnly} > p`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-card-description"]`
     )
   ).toHaveText(quickLink.description);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('href', quickLink.url);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('target', '_blank');
 };
@@ -291,7 +287,7 @@ export const updateQuickLink = async (
 ) => {
   await page
     .locator(
-      `[data-testid="${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
+      `[data-testid="knowledge-card-${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
     )
     .click();
 
@@ -459,7 +455,7 @@ export const getKnowledgePageCardByIndex = async (
   index: number
 ) => {
   const listing = page.getByTestId('knowledge-page-listing');
-  const cards = listing.locator('.knowledge-card');
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
   await expect(cards.nth(index)).toBeAttached();
   const card = cards.nth(index);
   await card.scrollIntoViewIfNeeded();
@@ -481,7 +477,7 @@ export const getKnowledgePageCardEntityIdentifier = async (
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
   const fqn = href.split('/knowledge-center/').pop() ?? '';
   const displayText = (
-    await card.getByTestId('entity-header-display-name').textContent()
+    await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();
   return displayText && displayText !== 'Untitled' ? displayText : fqn;
 };
