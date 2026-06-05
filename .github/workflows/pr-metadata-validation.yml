@@ -36,8 +36,10 @@ permissions:
   pull-requests: write
 
 concurrency:
+  # Serialize runs per PR (avoids duplicate sticky comments) but never cancel:
+  # this check gates merges, so every event must reach a definitive conclusion.
   group: pr-metadata-validation-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   validate-pr-metadata:
@@ -53,13 +55,22 @@ jobs:
             const CHECK_MARKER = '<!-- pr-metadata-check -->';
             const BYPASS_LABEL = 'skip-pr-checks';
 
+            const { owner, repo } = context.repo;
+
+            function escapeRegExp(value) {
+              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
             // ---- Linked issue + description ------------------------------------
             const REQUIRE_LINKED_ISSUE = true;
             const MIN_DESCRIPTION_WORDS = 25;
             const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
-            const ISSUE_REF_REGEX = new RegExp(`\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s+#(\\d+)`, 'gi');
+            const ISSUE_REF_REGEX = new RegExp(`\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*#(\\d+)`, 'gi');
+            // Only same-repo issue URLs count; a cross-repo URL would otherwise be validated
+            // against this repository (wrong issue), so such links are intentionally ignored.
             const ISSUE_URL_REGEX = new RegExp(
-              `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s+https?://github\\.com/[^/\\s]+/[^/\\s]+/issues/(\\d+)`,
+              `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*https?://github\\.com/` +
+              `${escapeRegExp(owner)}/${escapeRegExp(repo)}/issues/(\\d+)`,
               'gi'
             );
 
@@ -67,8 +78,6 @@ jobs:
             const PROJECT_NAME = 'Shipping';
             const REQUIRED_PROJECT_FIELDS = ['Status', 'Source', 'Priority', 'Domain', 'Release'];
             const FAIL_WHEN_PROJECT_UNVERIFIABLE = true;
-
-            const { owner, repo } = context.repo;
 
             const ISSUE_PROJECT_QUERY = `
               query($owner: String!, $repo: String!, $number: Int!) {
