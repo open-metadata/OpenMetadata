@@ -498,6 +498,7 @@ const KnowledgePagesHierarchy = forwardRef<
               {() => (
                 <Link
                   className="knowledge-hierarchy-node-link tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2"
+                  data-isactive={isActive}
                   data-testid={`page-node-${displayName}`}
                   to={contextCenterClassBase.getArticlePath(
                     node.fullyQualifiedName
