@@ -32,7 +32,6 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { updateTestCaseById } from '../../../../rest/testAPI';
 import {
   getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
@@ -40,6 +39,7 @@ import {
   transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import { updateTestCaseById } from '../../../../rest/testAPI';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
