@@ -40,7 +40,7 @@ export interface Config {
     /**
      * How often (in seconds) to poll the Policy Agent pipeline run for completion while
      * waiting. Falls back to the server-wide default
-     * (workflowSettings.policyAgentPollingIntervalSeconds) when unset.
+     * (workflowSettings.policyAgentConfiguration.pollingIntervalSeconds) when unset.
      */
     pollingIntervalSeconds?: number;
     /**

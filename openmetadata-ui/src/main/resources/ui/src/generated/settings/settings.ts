@@ -2637,6 +2637,13 @@ export interface PolicyAgentConfiguration {
      */
     batchWindowSeconds?: number;
     /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
      * Server-wide default for how often (seconds) to poll a Policy Agent batch run for
      * completion. Overridden per-node by
      * PolicyAgentTaskDefinition.config.pollingIntervalSeconds.
