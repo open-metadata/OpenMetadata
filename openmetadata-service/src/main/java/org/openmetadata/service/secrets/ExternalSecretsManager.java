@@ -13,36 +13,55 @@
 
 package org.openmetadata.service.secrets;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
-import org.openmetadata.service.exception.UnhandledServerException;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
-  private final long waitTimeBetweenStoreCalls;
 
+  /**
+   * Default ceiling on calls to the external backend. Ten per second (one every ~100ms) keeps a
+   * multi-field encrypt clear of the lowest write quota among the supported providers while staying
+   * imperceptible for the common single-field case.
+   */
+  static final double DEFAULT_PERMITS_PER_SECOND = 10.0;
+
+  private final SecretsManagerRateLimiter rateLimiter;
+
+  protected ExternalSecretsManager(
+      SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
+    this(
+        secretsManagerProvider,
+        secretsConfig,
+        SecretsManagerRateLimiter.perSecond(DEFAULT_PERMITS_PER_SECOND));
+  }
+
+  @VisibleForTesting
   protected ExternalSecretsManager(
       SecretsManagerProvider secretsManagerProvider,
       SecretsConfig secretsConfig,
-      long waitTimeBetweenCalls) {
+      SecretsManagerRateLimiter rateLimiter) {
     super(secretsManagerProvider, secretsConfig);
-    waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
+    this.rateLimiter = rateLimiter;
   }
 
   @Override
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    String result;
     // check if value does not start with 'config:' only String can have password annotation
     if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
-      return SECRET_FIELD_PREFIX + fieldSecretId;
+      result = SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
-      return value;
+      result = value;
     }
+    return result;
   }
 
   public void upsertSecret(String secretName, String secretValue) {
@@ -56,13 +75,21 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     }
   }
 
-  private void storeOrUpdateSecret(String secretName, String secretValue) {
-    if (existSecret(secretName)) {
+  /**
+   * Persists a secret, creating it or updating it in place. The default probes existence with a read
+   * and then branches to {@link #storeSecret} or {@link #updateSecret}. Providers whose backend
+   * offers a read-free idempotent write (e.g. Azure {@code setSecret}, SSM {@code PutParameter}
+   * overwrite) should override this to skip the existence read — that read otherwise needs
+   * decrypt/read permission on every write and doubles the per-field call count.
+   */
+  void storeOrUpdateSecret(String secretName, String secretValue) {
+    boolean exists = existSecret(secretName);
+    throttle();
+    if (exists) {
       updateSecret(secretName, secretValue);
     } else {
       storeSecret(secretName, secretValue);
     }
-    sleep();
   }
 
   private SecretsManagerException storeFailure(String secretName, RuntimeException cause) {
@@ -75,9 +102,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   public boolean existSecret(String secretName) {
     boolean exists = false;
+    throttle();
     try {
       exists = getSecret(secretName) != null;
-      sleep();
     } catch (RuntimeException e) {
       if (!isNotFoundException(e)) {
         throw readFailure(secretName, e);
@@ -102,16 +129,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   protected abstract boolean isNotFoundException(Exception exception);
 
-  private void sleep() {
-    // delay reaching secrets manager quotas
-    if (waitTimeBetweenStoreCalls > 0) {
-      try {
-        Thread.sleep(waitTimeBetweenStoreCalls);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new UnhandledServerException("Exception encountered", e);
-      }
-    }
+  /** Blocks, if necessary, to keep calls to the external backend within its API quota. */
+  protected void throttle() {
+    rateLimiter.acquire();
   }
 
   public String cleanNullOrEmpty(String secretValue) {

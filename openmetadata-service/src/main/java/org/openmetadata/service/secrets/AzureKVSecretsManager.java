@@ -10,6 +10,7 @@ import com.azure.security.keyvault.secrets.SecretClientBuilder;
 import com.azure.security.keyvault.secrets.models.DeletedSecret;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.security.keyvault.secrets.models.SecretProperties;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -18,7 +19,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 public class AzureKVSecretsManager extends ExternalSecretsManager {
 
   private static AzureKVSecretsManager instance = null;
-  private final SecretClient client;
+  private SecretClient client;
 
   public static final String CLIENT_ID = "clientId";
   public static final String CLIENT_SECRET = "clientSecret";
@@ -27,7 +28,7 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
 
   private AzureKVSecretsManager(
       SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
-    super(secretsManagerProvider, secretsConfig, 100);
+    super(secretsManagerProvider, secretsConfig);
 
     String vaultName =
         (String) secretsConfig.parameters().getAdditionalProperties().getOrDefault(VAULT_NAME, "");
@@ -83,6 +84,14 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   }
 
   @Override
+  void storeOrUpdateSecret(String secretName, String secretValue) {
+    // Azure Key Vault setSecret is idempotent (new version if the secret exists, create if absent),
+    // so there is no need to read the secret first to choose between create and update.
+    throttle();
+    storeSecret(secretName, secretValue);
+  }
+
+  @Override
   void storeSecret(String secretName, String secretValue) {
     client.setSecret(
         new KeyVaultSecret(secretName, cleanNullOrEmpty(secretValue))
@@ -117,5 +126,10 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
       instance = new AzureKVSecretsManager(SecretsManagerProvider.MANAGED_AZURE_KV, secretsConfig);
     }
     return instance;
+  }
+
+  @VisibleForTesting
+  void setClient(SecretClient client) {
+    this.client = client;
   }
 }

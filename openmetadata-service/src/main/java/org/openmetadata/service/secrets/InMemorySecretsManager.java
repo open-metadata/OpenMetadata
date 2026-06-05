@@ -25,7 +25,7 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(SecretsConfig secretsConfig) {
-    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, 0);
+    super(SecretsManagerProvider.IN_MEMORY, secretsConfig, SecretsManagerRateLimiter.noOp());
   }
 
   public static InMemorySecretsManager getInstance(SecretsConfig secretsConfig) {

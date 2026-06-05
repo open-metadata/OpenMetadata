@@ -15,11 +15,13 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.util.List;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
+import software.amazon.awssdk.services.ssm.model.ParameterAlreadyExistsException;
 import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
@@ -48,6 +50,20 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   @Override
+  void storeOrUpdateSecret(String secretName, String secretValue) {
+    // SSM cannot create-with-tags and overwrite in one read-free call, so attempt the tagged create
+    // and fall back to an overwrite when the parameter already exists. This avoids a GetParameter
+    // existence probe (and its read/decrypt permission requirement) on every write.
+    throttle();
+    try {
+      storeSecret(secretName, secretValue);
+    } catch (ParameterAlreadyExistsException e) {
+      throttle();
+      updateSecret(secretName, secretValue);
+    }
+  }
+
+  @Override
   public void storeSecret(String secretName, String secretValue) {
     putSecretParameter(secretName, secretValue, false);
   }
@@ -58,19 +74,25 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   private void putSecretParameter(String parameterName, String parameterValue, boolean overwrite) {
-    PutParameterRequest putParameterRequest =
+    PutParameterRequest.Builder requestBuilder =
         PutParameterRequest.builder()
             .name(parameterName)
             .description("This secret parameter was created by OpenMetadata")
             .value(parameterValue)
             .overwrite(overwrite)
-            .type(ParameterType.SECURE_STRING)
-            .tags(
-                SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
-                    .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
-                    .toList())
-            .build();
-    this.ssmClient.putParameter(putParameterRequest);
+            .type(ParameterType.SECURE_STRING);
+    // AWS SSM rejects PutParameter when Overwrite and Tags are sent together. Tags are applied
+    // only on creation; an overwrite (update/rotation) leaves the existing parameter's tags as-is.
+    if (!overwrite) {
+      requestBuilder.tags(buildTags());
+    }
+    this.ssmClient.putParameter(requestBuilder.build());
+  }
+
+  private List<Tag> buildTags() {
+    return SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
+        .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
+        .toList();
   }
 
   @Override

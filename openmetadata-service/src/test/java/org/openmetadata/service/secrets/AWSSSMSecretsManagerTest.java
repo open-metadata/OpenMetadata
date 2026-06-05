@@ -16,7 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +28,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -31,6 +36,7 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
 import software.amazon.awssdk.services.ssm.model.Parameter;
+import software.amazon.awssdk.services.ssm.model.ParameterAlreadyExistsException;
 import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.PutParameterResponse;
@@ -93,6 +99,47 @@ public class AWSSSMSecretsManagerTest extends AWSBasedSecretsManagerTest {
   @Override
   protected SecretsManagerProvider expectedSecretManagerProvider() {
     return SecretsManagerProvider.MANAGED_AWS_SSM;
+  }
+
+  @Test
+  void createTagsTheParameterWithoutOverwriteAndWithoutAnExistenceRead() {
+    ArgumentCaptor<PutParameterRequest> captor = ArgumentCaptor.forClass(PutParameterRequest.class);
+
+    secretsManager.upsertSecret("/prefix/database/myservice/newparam", "value");
+
+    verify(ssmClient).putParameter(captor.capture());
+    PutParameterRequest request = captor.getValue();
+    assertFalse(request.overwrite(), "creating a parameter must not overwrite");
+    assertTrue(request.hasTags(), "creating a parameter must apply the configured tags");
+    verify(ssmClient, never()).getParameter(any(GetParameterRequest.class));
+  }
+
+  @Test
+  void updateFallsBackToOverwriteWithoutTagsWhenTheParameterAlreadyExists() {
+    reset(ssmClient);
+    when(ssmClient.putParameter(any(PutParameterRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              PutParameterRequest request = invocation.getArgument(0);
+              if (Boolean.FALSE.equals(request.overwrite())) {
+                throw ParameterAlreadyExistsException.builder().message("already exists").build();
+              }
+              return PutParameterResponse.builder().build();
+            });
+    ArgumentCaptor<PutParameterRequest> captor = ArgumentCaptor.forClass(PutParameterRequest.class);
+
+    secretsManager.upsertSecret("/prefix/database/myservice/password", "rotated-value");
+
+    verify(ssmClient, times(2)).putParameter(captor.capture());
+    PutParameterRequest create = captor.getAllValues().get(0);
+    PutParameterRequest overwrite = captor.getAllValues().get(1);
+    assertFalse(create.overwrite(), "the first attempt must be a tagged create");
+    assertTrue(create.hasTags(), "the create attempt must carry the configured tags");
+    assertTrue(overwrite.overwrite(), "the fallback must overwrite the existing parameter");
+    assertFalse(
+        overwrite.hasTags(),
+        "SSM rejects Overwrite combined with Tags, so the overwrite must omit tags");
+    verify(ssmClient, never()).getParameter(any(GetParameterRequest.class));
   }
 
   @Test

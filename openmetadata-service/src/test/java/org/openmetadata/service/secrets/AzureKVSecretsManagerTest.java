@@ -14,8 +14,16 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.ResourceNotFoundException;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,5 +56,18 @@ class AzureKVSecretsManagerTest {
     assertFalse(
         secretsManager.isNotFoundException(new RuntimeException("forbidden / throttled")),
         "Other read failures must not be mistaken for a missing secret");
+  }
+
+  @Test
+  void upsertUsesIdempotentSetSecretWithoutAnExistenceRead() {
+    SecretClient mockClient = mock(SecretClient.class);
+    when(mockClient.setSecret(any(KeyVaultSecret.class)))
+        .thenReturn(new KeyVaultSecret("name", "value"));
+    secretsManager.setClient(mockClient);
+
+    secretsManager.upsertSecret("openmetadata-prefix-database-password", "s3cret");
+
+    verify(mockClient).setSecret(any(KeyVaultSecret.class));
+    verify(mockClient, never()).getSecret(anyString());
   }
 }

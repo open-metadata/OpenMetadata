@@ -26,7 +26,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   private final String projectId;
 
   private GCPSecretsManager(SecretsConfig secretsConfig) {
-    super(GCP, secretsConfig, 100);
+    super(GCP, secretsConfig);
 
     this.projectId =
         (String)
