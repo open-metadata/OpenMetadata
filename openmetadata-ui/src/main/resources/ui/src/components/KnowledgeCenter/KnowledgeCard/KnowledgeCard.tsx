@@ -170,26 +170,27 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       <Box align="center" gap={1}>
         {editPermission && (
           <ButtonUtility
-            color='tertiary'
+            color="tertiary"
             data-testid="edit-quick-link-btn"
             icon={<EditIcon height={16} width={16} />}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setShowAddLinkModal(true);
-            }} />
-
+            }}
+          />
         )}
         {permissions?.Delete && (
           <ButtonUtility
-            color='tertiary'
+            color="tertiary"
             data-testid="delete-quick-link-btn"
             icon={<Trash01 height={16} width={16} />}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setIsDelete(true);
-            }} />
+            }}
+          />
         )}
       </Box>
     );
