@@ -1318,7 +1318,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
-  // Default keeps the pipeline's own value; overridden to derive it from the ingestion runner.
+  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
+  // runner (service / test-suite / application) and derive the flag from it.
   protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
