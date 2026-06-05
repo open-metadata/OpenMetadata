@@ -36,12 +36,12 @@ permissions:
 
 concurrency:
   group: playwright-ci-pr-mysql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   playwright-ci-mysql:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
