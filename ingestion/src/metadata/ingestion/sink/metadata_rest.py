@@ -448,12 +448,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if not result:
             return Either(right=None)  # pyright: ignore[reportCallIssue]
 
-        self.status.scanned_all(result.successRequest)
+        self.status.scanned_all(result.successRequest or [])
         if result.status == basic.Status.success:
             return Either(right=result)  # pyright: ignore[reportCallIssue]
 
         first_failure = None
-        for failed in result.failedRequest:  # pyright: ignore[reportOptionalIterable]
+        for failed in result.failedRequest or []:
             if is_duplicate_query_conflict(failed.message):
                 self.status.warning("Query", f"Skipped already-present query: {failed.message}")
             else:

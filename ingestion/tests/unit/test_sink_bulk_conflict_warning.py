@@ -19,6 +19,7 @@ from metadata.generated.schema.type.bulkOperationResult import (
     BulkOperationResult,
     Response,
 )
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.sink.metadata_rest import (
     MetadataRestSink,
     MetadataRestSinkConfig,
@@ -80,3 +81,56 @@ def test_is_duplicate_query_conflict_classification():
     assert is_duplicate_query_conflict(REAL_ERROR) is False
     assert is_duplicate_query_conflict(None) is False
     assert is_duplicate_query_conflict("") is False
+
+
+def _query(text="SELECT 1"):
+    return CreateQueryRequest(query=SqlQuery(text), service=FullyQualifiedEntityName("svc"))
+
+
+def test_dispatch_routes_query_to_dedicated_buffer(sink):
+    sink._run(_query())
+
+    assert len(sink.query_buffer) == 1
+    assert len(sink.buffer) == 0
+
+
+def test_close_flushes_pending_query_buffer(sink):
+    sink.metadata.bulk_create_or_update.return_value = _result([])
+    sink._run(_query())
+    assert len(sink.query_buffer) == 1
+
+    sink.close()
+
+    sink.metadata.bulk_create_or_update.assert_called_once()
+    assert len(sink.query_buffer) == 0
+
+
+def test_barrier_flushes_pending_query_buffer(sink):
+    sink.metadata.bulk_create_or_update.return_value = _result([])
+    sink._run(_query())
+
+    sink.write_barrier(Barrier(reason="test"))
+
+    sink.metadata.bulk_create_or_update.assert_called_once()
+    assert len(sink.query_buffer) == 0
+
+
+def test_barrier_surfaces_genuine_query_failure(sink):
+    sink.metadata.bulk_create_or_update.return_value = _result([REAL_ERROR])
+    sink._run(_query())
+
+    out = sink.write_barrier(Barrier(reason="test"))
+
+    assert out.left is not None
+    assert len(sink.status.failures) == 1
+
+
+def test_all_benign_conflicts_keep_run_green(sink):
+    sink.metadata.bulk_create_or_update.return_value = _result([CHECKSUM_CONFLICT])
+    sink._run(_query())
+
+    out = sink.write_barrier(Barrier(reason="test"))
+
+    assert out.left is None
+    assert len(sink.status.failures) == 0
+    assert len(sink.status.warnings) == 1
