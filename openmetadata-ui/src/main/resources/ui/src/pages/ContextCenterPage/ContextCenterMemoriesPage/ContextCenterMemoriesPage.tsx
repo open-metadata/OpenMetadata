@@ -441,9 +441,10 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   return (
-    <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
-      data-testid="context-center-memories-page">
+    <Box
+      className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      data-testid="context-center-memories-page"
+      direction="col">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={headerActions}
@@ -789,7 +790,7 @@ const ContextCenterMemoriesPage: FC = () => {
           onDelete={handleConfirmDelete}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

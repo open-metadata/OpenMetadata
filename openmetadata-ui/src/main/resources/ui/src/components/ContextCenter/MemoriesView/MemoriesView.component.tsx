@@ -164,9 +164,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
   );
 
   return (
-    <div
-      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
+    <Box
+      align="start"
+      className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
       data-testid={`memory-row-${memory.id}`}
+      gap={3}
       style={
         pinned
           ? {
@@ -177,8 +179,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
       }
       onClick={() => onViewMemory?.(memory)}>
       {pinned && (
-        <div
-          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:flex tw:items-start tw:justify-end tw:text-brand-600"
+        <Box
+          align="start"
+          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-brand-600"
+          justify="end"
           style={{
             width: 28,
             height: 28,
@@ -188,7 +192,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             padding: '5px 7px 0 0',
           }}>
           <Pin01 size={11} strokeWidth={2.4} />
-        </div>
+        </Box>
       )}
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
@@ -319,7 +323,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           )}
         </Box>
       </Box>
-    </div>
+    </Box>
   );
 };
 
