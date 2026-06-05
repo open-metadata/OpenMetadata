@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -90,6 +91,7 @@ const AppRoot: FC = () => {
               <HelmetProvider>
                 <ErrorBoundary>
                   <App />
+                  <ToastProvider />
                 </ErrorBoundary>
               </HelmetProvider>
             </AntDConfigProvider>
