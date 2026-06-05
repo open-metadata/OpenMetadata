@@ -1871,14 +1871,16 @@ public interface CollectionDAO {
         UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
 
       List<String> toIdsAsString = toIds.stream().map(UUID::toString).toList();
-      bulkRemoveTo(fromId, toIdsAsString, fromEntity, toEntity, relation);
+      EntityDAO.updateInChunks(
+          toIdsAsString, chunk -> bulkRemoveTo(fromId, chunk, fromEntity, toEntity, relation));
     }
 
     default void bulkRemoveFromRelationship(
         List<UUID> fromIds, UUID toId, String fromEntity, String toEntity, int relation) {
 
       List<String> fromIdsAsString = fromIds.stream().map(UUID::toString).toList();
-      bulkRemoveFrom(fromIdsAsString, toId, fromEntity, toEntity, relation);
+      EntityDAO.updateInChunks(
+          fromIdsAsString, chunk -> bulkRemoveFrom(chunk, toId, fromEntity, toEntity, relation));
     }
 
     @ConnectionAwareSqlUpdate(
@@ -7825,7 +7827,11 @@ public interface CollectionDAO {
             + "u1.percentile1, u1.percentile7, u1.percentile30 FROM entity_usage u1 "
             + "INNER JOIN (SELECT id, MAX(usageDate) as maxDate FROM entity_usage WHERE id IN (<ids>) GROUP BY id) u2 "
             + "ON u1.id = u2.id AND u1.usageDate = u2.maxDate")
-    List<UsageDetailsWithId> getLatestUsageBatch(@BindList("ids") List<String> ids);
+    List<UsageDetailsWithId> getLatestUsageBatchInternal(@BindList("ids") List<String> ids);
+
+    default List<UsageDetailsWithId> getLatestUsageBatch(List<String> ids) {
+      return EntityDAO.queryInChunks(ids, this::getLatestUsageBatchInternal);
+    }
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
@@ -9871,8 +9877,12 @@ public interface CollectionDAO {
             + "FROM data_quality_data_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
             + "GROUP BY entityFQNHash) t2 "
             + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
-    List<LatestRecordWithFQNHash> getLatestRecordBatch(
+    List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
+
+    default List<LatestRecordWithFQNHash> getLatestRecordBatch(List<String> entityFQNs) {
+      return EntityDAO.queryInChunks(entityFQNs, this::getLatestRecordBatchInternal);
+    }
 
     @SqlUpdate(
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
@@ -10297,8 +10307,12 @@ public interface CollectionDAO {
             """,
         connectionType = POSTGRES)
     @UseRowMapper(ResultSummaryRowMapper.class)
-    List<ResultSummaryRow> listResultSummariesForTestSuites(
+    List<ResultSummaryRow> listResultSummariesForTestSuitesInternal(
         @BindList("testSuiteIds") List<String> testSuiteIds);
+
+    default List<ResultSummaryRow> listResultSummariesForTestSuites(List<String> testSuiteIds) {
+      return EntityDAO.queryInChunks(testSuiteIds, this::listResultSummariesForTestSuitesInternal);
+    }
 
     record SuiteMaxTimestamp(String testSuiteId, long maxTimestamp) {}
 

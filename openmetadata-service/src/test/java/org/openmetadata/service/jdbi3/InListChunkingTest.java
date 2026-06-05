@@ -31,10 +31,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.jdbi3.CollectionDAO.DataQualityDataTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.TestCaseResultTimeSeriesDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
 
 /**
  * Outcome tests for the IN-list chunking that keeps bulk delete / restore queries under the
@@ -53,6 +56,10 @@ class InListChunkingTest {
     return IntStream.range(0, count)
         .mapToObj(i -> new UUID(0L, i).toString())
         .collect(Collectors.toList());
+  }
+
+  private static List<UUID> uuids(int count) {
+    return IntStream.range(0, count).mapToObj(i -> new UUID(0L, i)).collect(Collectors.toList());
   }
 
   private static void assertChunksWithinLimit(List<List<String>> chunks) {
@@ -312,5 +319,99 @@ class InListChunkingTest {
     assertCoversInputExactlyOnce(input, chunks);
     assertEquals(
         input.size(), result.size(), "every distinct hash must appear in the aggregated map");
+  }
+
+  @Test
+  void bulkRemoveToRelationship_chunksOverLimit() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(1)));
+              return null;
+            })
+        .when(dao)
+        .bulkRemoveTo(any(), anyList(), anyString(), anyString(), anyInt());
+
+    List<UUID> input = uuids(OVER_LIMIT);
+    dao.bulkRemoveToRelationship(new UUID(1L, 0L), input, "glossary", "glossaryTerm", 10);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(
+        input.stream().map(UUID::toString).collect(Collectors.toList()), chunks);
+  }
+
+  @Test
+  void bulkRemoveFromRelationship_chunksOverLimit() {
+    EntityRelationshipDAO dao = mock(EntityRelationshipDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return null;
+            })
+        .when(dao)
+        .bulkRemoveFrom(anyList(), any(), anyString(), anyString(), anyInt());
+
+    List<UUID> input = uuids(OVER_LIMIT);
+    dao.bulkRemoveFromRelationship(input, new UUID(1L, 0L), "glossary", "glossaryTerm", 10);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(
+        input.stream().map(UUID::toString).collect(Collectors.toList()), chunks);
+  }
+
+  @Test
+  void getLatestUsageBatch_chunksOverLimit() {
+    UsageDAO dao = mock(UsageDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.getLatestUsageBatchInternal(anyList()))
+        .thenAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return new ArrayList<>();
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.getLatestUsageBatch(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+
+  @Test
+  void getLatestRecordBatch_chunksOverLimit() {
+    DataQualityDataTimeSeriesDAO dao = mock(DataQualityDataTimeSeriesDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.getLatestRecordBatchInternal(anyList()))
+        .thenAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return new ArrayList<>();
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.getLatestRecordBatch(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
+  }
+
+  @Test
+  void listResultSummariesForTestSuites_chunksOverLimit() {
+    TestCaseResultTimeSeriesDAO dao = mock(TestCaseResultTimeSeriesDAO.class, CALLS_REAL_METHODS);
+    List<List<String>> chunks = new ArrayList<>();
+    when(dao.listResultSummariesForTestSuitesInternal(anyList()))
+        .thenAnswer(
+            invocation -> {
+              chunks.add(List.copyOf(invocation.getArgument(0)));
+              return new ArrayList<>();
+            });
+
+    List<String> input = ids(OVER_LIMIT);
+    dao.listResultSummariesForTestSuites(input);
+
+    assertChunksWithinLimit(chunks);
+    assertCoversInputExactlyOnce(input, chunks);
   }
 }
