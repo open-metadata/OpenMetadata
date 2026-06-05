@@ -95,8 +95,8 @@ public class DistributedSearchIndexExecutor {
   /** Interval for updating partition heartbeats */
   private static final long PARTITION_HEARTBEAT_INTERVAL_MS = 30000;
 
-  /** Interval the orchestrator re-checks job state while waiting for workers to finish */
-  private static final long LATCH_POLL_INTERVAL_SECONDS = 5;
+  /** Default cadence the orchestrator re-checks job state while waiting for workers to finish */
+  private static final long DEFAULT_LATCH_POLL_INTERVAL_SECONDS = 15;
 
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
@@ -113,6 +113,9 @@ public class DistributedSearchIndexExecutor {
   private volatile Thread lockRefreshThread;
   private volatile Thread partitionHeartbeatThread;
   private Thread staleReclaimerThread;
+
+  /** Re-check cadence for {@link #awaitWorkers}; overridable in tests to keep them fast. */
+  private long latchPollIntervalSeconds = DEFAULT_LATCH_POLL_INTERVAL_SECONDS;
 
   // App context for WebSocket broadcasts
   private UUID appId;
@@ -956,7 +959,7 @@ public class DistributedSearchIndexExecutor {
     boolean drained = false;
     boolean done = false;
     while (!done) {
-      drained = workerLatch.await(LATCH_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+      drained = workerLatch.await(latchPollIntervalSeconds, TimeUnit.SECONDS);
       if (drained) {
         done = true;
       } else if (isJobTerminalOrStopping(jobId)) {
@@ -971,9 +974,21 @@ public class DistributedSearchIndexExecutor {
     return drained;
   }
 
+  /**
+   * Whether the job has reached a terminal/STOPPING state. A read failure is treated as
+   * non-terminal so a transient DB blip during polling keeps the orchestrator waiting rather than
+   * tearing down an otherwise-healthy multi-hour reindex; the wedge unwinds on the next clean poll.
+   */
   private boolean isJobTerminalOrStopping(UUID jobId) {
-    SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
-    return job == null || job.isTerminal() || job.getStatus() == IndexJobStatus.STOPPING;
+    boolean terminal;
+    try {
+      SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+      terminal = job == null || job.isTerminal() || job.getStatus() == IndexJobStatus.STOPPING;
+    } catch (Exception e) {
+      LOG.warn("Could not read job {} state while awaiting workers; will keep waiting", jobId, e);
+      terminal = false;
+    }
+    return terminal;
   }
 
   /**
