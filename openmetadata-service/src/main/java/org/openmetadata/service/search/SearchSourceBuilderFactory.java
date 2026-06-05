@@ -333,11 +333,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * list. The returned list preserves the original order of safe fields. When no field is unsafe
    * — the common case on the {@code /v1/search/query} hot path — the original {@code fields} list
    * is returned as-is to avoid an allocation and copy; a new list is built only when something is
-   * actually dropped. Callers should compare against the input to detect — and log — dropped
-   * fields once per request.
+   * actually dropped. A {@code null} input yields an empty list (never {@code null}) so callers can
+   * iterate the result unconditionally. Callers should compare against the input to detect — and
+   * log — dropped fields once per request.
    */
   static List<String> filterHighlightSafeFields(List<String> fields) {
-    List<String> result = fields;
+    List<String> result = fields == null ? List.of() : fields;
     boolean hasUnsafe =
         fields != null
             && fields.stream().anyMatch(SearchSourceBuilderFactory::isHighlightUnsafeField);

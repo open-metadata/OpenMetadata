@@ -551,6 +551,27 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testFilterHighlightSafeFieldsContract() {
+    // null must yield an empty (never null) list so the buildHighlightsV2 for-loops can iterate it
+    // unconditionally — the hot-path optimization must not reintroduce a null return.
+    List<String> fromNull = SearchSourceBuilderFactory.filterHighlightSafeFields(null);
+    assertNotNull(fromNull);
+    assertTrue(fromNull.isEmpty());
+
+    // No unsafe field: the original list is returned as-is (no allocation/copy on the hot path).
+    List<String> allSafe = List.of("name", "displayName", "description");
+    assertSame(allSafe, SearchSourceBuilderFactory.filterHighlightSafeFields(allSafe));
+
+    // Unsafe fields are dropped while the order of the surviving safe fields is preserved.
+    List<String> mixed =
+        List.of(
+            "name", "extension", "extension.foundry_rid", "columns.children.foo", "description");
+    assertEquals(
+        List.of("name", "description"),
+        SearchSourceBuilderFactory.filterHighlightSafeFields(mixed));
+  }
+
+  @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
