@@ -163,7 +163,6 @@ jest.mock('../../utils/BrandData/BrandClassBase', () => ({
   default: {
     getBrandName: jest.fn().mockReturnValue('OpenMetadata'),
     getMonogram: jest.fn().mockReturnValue({ src: 'monogram.svg' }),
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
   },
 }));
 
