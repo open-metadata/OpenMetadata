@@ -103,11 +103,10 @@ def _build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) 
 
 
 def _build_connect_opts(connection: NatsConnection, temp_cert_files: list[str]) -> dict:
-    servers = [s.strip() for s in connection.natsServers.split(",")]
-    opts: dict = {"servers": servers}
-
+    opts: dict = {}
     if connection.additionalConfig:
         opts.update(connection.additionalConfig)
+    opts["servers"] = [s.strip() for s in connection.natsServers.split(",")]
 
     if connection.username and connection.password:
         opts["user"] = connection.username
