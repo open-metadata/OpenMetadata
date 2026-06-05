@@ -133,40 +133,7 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
   };
 };
 
-export const StatusClass = {
-  [EntityStatus.Approved]: StatusType.Success,
-  [EntityStatus.Draft]: StatusType.Pending,
-  [EntityStatus.Rejected]: StatusType.Failure,
-  [EntityStatus.Deprecated]: StatusType.Deprecated,
-  [EntityStatus.InReview]: StatusType.InReview,
-  [EntityStatus.Unprocessed]: StatusType.Unprocessed,
-};
-
-export const StatusFilters = Object.values(EntityStatus)
-  .filter((status) => status !== EntityStatus.Deprecated) // Deprecated not in use for this release
-  .map((status) => ({
-    text: status,
-    value: status,
-  }));
-
-export const getGlossaryBreadcrumbs = (fqn: string) => {
-  const arr = Fqn.split(fqn);
-  const dataFQN: Array<string> = [];
-  const breadcrumbList = [
-    {
-      name: 'Glossaries',
-      url: getGlossaryPath(''),
-      activeTitle: false,
-    },
-    ...arr.map((d) => {
-      dataFQN.push(d);
-
-      return {
-        name: d,
-        url: getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-        activeTitle: false,
-      };
-    }),
+}),
   ];
 
   return breadcrumbList;
@@ -530,3 +497,4 @@ export const referenceURLValidator = (
     new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
 };
+
