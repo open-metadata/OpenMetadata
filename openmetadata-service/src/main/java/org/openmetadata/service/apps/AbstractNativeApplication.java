@@ -201,6 +201,7 @@ public class AbstractNativeApplication implements NativeApplication {
   private static String deriveInterval(AppSchedule schedule) {
     String result = null;
     if (schedule != null
+        && schedule.getScheduleTimeline() != null
         && schedule.getScheduleTimeline() != ScheduleTimeline.NONE
         && schedule.getCronExpression() != null
         && !schedule.getCronExpression().isBlank()) {

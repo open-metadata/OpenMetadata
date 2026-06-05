@@ -1380,6 +1380,53 @@ public class AppsResourceIT {
     }
   }
 
+  @Test
+  void test_externalAppScheduleSync_nullTimelineNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNullTL");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeTimelinePatch =
+          "[{\"op\":\"remove\",\"path\":\"/appSchedule/scheduleTimeline\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeTimelinePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNullTimeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNullTimeline.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when scheduleTimeline is null, even if cronExpression remains");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
   private AppMarketPlaceDefinition createExternalAppMarketplace(
       HttpClient httpClient, String appName) throws Exception {
     CreateAppMarketPlaceDefinitionReq req =
