@@ -1223,7 +1223,7 @@ public final class EntityUtil {
    * either {@code id} or {@code fullyQualifiedName}. Throws {@link IllegalArgumentException} with a
    * descriptive message when the reference is malformed or its target cannot be found.
    */
-  public static void validateEntityReference(JsonNode fieldValue, String fieldName) {
+  public static void validateCustomPropertyEntityReference(JsonNode fieldValue, String fieldName) {
     if (fieldValue != null && !fieldValue.isNull()) {
       if (!fieldValue.isObject()) {
         throw new IllegalArgumentException(
@@ -1235,9 +1235,11 @@ public final class EntityUtil {
 
   /**
    * Validate an {@code entityReferenceList} custom property: the value must be an array of entity
-   * references, each resolvable to an existing entity (see {@link #validateEntityReference}).
+   * references, each resolvable to an existing entity (see {@link
+   * #validateCustomPropertyEntityReference}).
    */
-  public static void validateEntityReferenceList(JsonNode fieldValue, String fieldName) {
+  public static void validateCustomPropertyEntityReferenceList(
+      JsonNode fieldValue, String fieldName) {
     if (fieldValue != null && !fieldValue.isNull()) {
       if (!fieldValue.isArray()) {
         throw new IllegalArgumentException(
