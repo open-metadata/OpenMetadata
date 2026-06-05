@@ -2954,6 +2954,7 @@
     "list-of-strings-regex-patterns-csv": "أدخل قائمة من السلاسل/أنماط التعبير العادي كقيمة مفصولة بفاصلة",
     "login-fail-attempt-message": "المحاولة المسموح بها لتسجيل الدخول المتتالي الفاشل إلى التطبيق.",
     "logout-confirmation": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+    "long-form-authored-versioned": "Long-form, authored, versioned.",
     "look-like-upgraded-om": "يبدو أنك قمت بترقية {{brandName}}",
     "made-announcement": "أصدر إعلانًا",
     "make-an-announcement": "قم بإصدار إعلان!",
