@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,22 +19,26 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.Trigger;
 import sun.misc.Unsafe;
@@ -286,5 +291,118 @@ class AppSchedulerTest {
     assertNotEquals(identity1, identity2);
     assertTrue(identity1.contains(workflowId1));
     assertTrue(identity2.contains(workflowId2));
+  }
+
+  @Test
+  void testNonConcurrentApp_clearsStaleJobAndReschedulesWhenNoActiveRun() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+    String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("stale"))
+        .thenReturn(null);
+
+    AppRunRecord staleRun = new AppRunRecord().withStatus(AppRunRecord.Status.FAILED);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(staleRun)))) {
+      appScheduler.triggerOnDemandApplication(app, new HashMap<>());
+    }
+
+    verify(mockScheduler).deleteJob(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP));
+    verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
+  }
+
+  @Test
+  void testNonConcurrentApp_rethrowsWhenRunGenuinelyActive() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    AppRunRecord activeRun = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(activeRun)))) {
+      assertThrows(
+          UnhandledServerException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
+    }
+
+    verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  @Test
+  void testNonConcurrentApp_treatsActiveErrorRunAsActive() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    AppRunRecord erroredRun = new AppRunRecord().withStatus(AppRunRecord.Status.ACTIVE_ERROR);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(erroredRun)))) {
+      assertThrows(
+          UnhandledServerException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
+    }
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  @Test
+  void testConcurrentApp_rethrowsCollisionWithoutClearing() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+
+    App concurrentApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("QueryRunner")
+            .withFullyQualifiedName("QueryRunner")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAllowConcurrentExecution(true)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  private App nonConcurrentApp(String name) {
+    return new App()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withClassName("org.openmetadata.service.resources.apps.TestApp")
+        .withAllowConcurrentExecution(false)
+        .withRuntime(new ScheduledExecutionContext().withEnabled(true));
   }
 }

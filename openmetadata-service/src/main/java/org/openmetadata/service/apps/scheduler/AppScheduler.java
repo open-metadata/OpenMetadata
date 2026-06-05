@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +32,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
@@ -279,7 +281,8 @@ public class AppScheduler {
       String triggerIdentity;
 
       String uniqueId = getUniqueJobIdentifier(config);
-      if (allowConcurrent && uniqueId != null) {
+      boolean concurrentJob = allowConcurrent && uniqueId != null;
+      if (concurrentJob) {
         // For apps that allow concurrent execution, use a unique identifier per job
         jobIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
         triggerIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
@@ -328,12 +331,88 @@ public class AppScheduler {
               .withIdentity(triggerIdentity, APPS_TRIGGER_GROUP)
               .startNow()
               .build();
-      scheduler.scheduleJob(newJobDetail, trigger);
+      scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
     }
+  }
+
+  /**
+   * Schedule the on-demand job, recovering from a stale Quartz entry left by a crashed pod.
+   *
+   * <p>The on-demand job is non-durable, so a clean run auto-deletes its {@code JobDetail}. But a
+   * pod that crashed (or was wedged) mid-execution leaves the persisted {@code QRTZ_*} job/trigger
+   * behind. Because the store is clustered, a retrigger from <em>any</em> pod then hits
+   * {@link ObjectAlreadyExistsException} and is rejected with "Job is already running" even though
+   * nothing is actually running. We distinguish the two cases using the DB-backed {@link
+   * AppRunRecord} (cross-pod truth): if the latest run is genuinely active we rethrow; otherwise the
+   * entry is stale, so we clear it and reschedule once.
+   *
+   * <p>Recovery is applied only to non-concurrent jobs. Concurrent jobs use a unique identity per
+   * run, so a collision there is not a stale entry and the app-wide latest run record is not a
+   * reliable signal for a specific run.
+   *
+   * <p>The check-then-act (read run record → delete → reschedule) is not atomic across a clustered
+   * deployment. If two pods race, the recovery {@code scheduleJob} may itself collide; we treat that
+   * second collision as "another pod won" and rethrow so the caller reports the standard message
+   * rather than deleting a job the other pod just scheduled.
+   *
+   * <p>"Active" is defined by {@link #TERMINAL_RUN_STATUSES}: any non-terminal status (including
+   * {@code ACTIVE_ERROR}, which is in-flight — set by apps that are still progressing and only
+   * normalized to {@code FAILED} when the run actually finishes) is treated as a live run we must
+   * not clear. Erring toward "active" is deliberate: leaving a stale entry is recoverable, while
+   * deleting a job another pod is genuinely running risks a duplicate/disrupted execution.
+   */
+  private void scheduleOnDemandJob(
+      App application,
+      JobDetail jobDetail,
+      Trigger trigger,
+      String triggerIdentity,
+      boolean concurrent)
+      throws SchedulerException {
+    try {
+      scheduler.scheduleJob(jobDetail, trigger);
+    } catch (ObjectAlreadyExistsException ex) {
+      if (concurrent || hasActiveAppRun(application)) {
+        throw ex;
+      }
+      LOG.warn(
+          "Stale Quartz job/trigger for app {} with no active run record; clearing and rescheduling",
+          application.getName());
+      scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP));
+      scheduler.scheduleJob(jobDetail, trigger);
+    }
+  }
+
+  /** Statuses that mean a run has finished; anything else (incl. ACTIVE_ERROR) is in-flight. */
+  private static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
+      Set.of(
+          AppRunRecord.Status.SUCCESS,
+          AppRunRecord.Status.FAILED,
+          AppRunRecord.Status.STOPPED,
+          AppRunRecord.Status.COMPLETED);
+
+  private boolean hasActiveAppRun(App application) {
+    boolean active;
+    try {
+      active =
+          new AppRepository()
+              .getLatestAppRunsOptional(application)
+              .map(
+                  run ->
+                      run.getStatus() != null && !TERMINAL_RUN_STATUSES.contains(run.getStatus()))
+              .orElse(false);
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not read latest run for app {}; treating as active to avoid clearing a live job",
+          application.getName(),
+          e);
+      active = true;
+    }
+    return active;
   }
 
   public void stopApplicationRun(App application) {
