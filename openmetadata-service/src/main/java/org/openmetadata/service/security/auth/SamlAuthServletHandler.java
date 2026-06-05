@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -56,6 +57,7 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -653,10 +655,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
   }
 
-  private String samlAuthCallback() {
+  private ServiceProviderConfig samlSp() {
     SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
-    String acs =
-        (samlConfig == null || samlConfig.getSp() == null) ? null : samlConfig.getSp().getAcs();
+    return samlConfig == null ? null : samlConfig.getSp();
+  }
+
+  private String samlAuthCallback() {
+    ServiceProviderConfig sp = samlSp();
+    String acs = sp == null ? null : sp.getAcs();
     String authCallback = null;
     if (!nullOrEmpty(acs)) {
       try {
@@ -664,7 +670,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         if (uri.getScheme() != null && uri.getHost() != null) {
           URI origin =
               new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
-          authCallback = origin + "/auth/callback";
+          authCallback = origin + AUTH_CALLBACK_PATH;
         }
       } catch (URISyntaxException e) {
         LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
@@ -681,11 +687,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private String samlSpCallback() {
-    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
-    if (samlConfig == null || samlConfig.getSp() == null) {
-      return null;
-    }
-    return samlConfig.getSp().getCallback();
+    ServiceProviderConfig sp = samlSp();
+    return sp == null ? null : sp.getCallback();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {
