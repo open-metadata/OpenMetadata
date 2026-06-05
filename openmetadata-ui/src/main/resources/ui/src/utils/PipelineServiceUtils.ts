@@ -79,10 +79,6 @@ const pipelineSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json'
     ),
-  [PipelineServiceType.MicrosoftFabricPipeline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json'
-    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

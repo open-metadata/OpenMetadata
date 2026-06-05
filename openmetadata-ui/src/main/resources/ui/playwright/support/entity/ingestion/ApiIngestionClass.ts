@@ -13,10 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
-import {
-  checkServiceFieldSectionHighlighting,
-  Services,
-} from '../../../utils/serviceIngestion';
+import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
@@ -52,12 +49,22 @@ class ApiIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const openAPISchemaURL = 'https://petstore3.swagger.io/api/v3/openapi.json';
+    // Use the bundled OpenAPI fixture instead of an external URL to keep the test hermetic.
+    const openAPISchemaFilePath =
+      '/home/airflow/ingestion/examples/openapi/sample.json';
 
     await page
-      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
-      .fill(openAPISchemaURL);
-    await checkServiceFieldSectionHighlighting(page, 'openAPISchemaURL');
+      .getByTestId('select-widget-root/openAPISchemaConnection__oneof_select')
+      .getByRole('combobox')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+      .click({ force: true });
+    await page.click(
+      '.ant-select-dropdown:visible [title="OpenAPISchemaFilePath"]'
+    );
+
+    await page
+      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaFilePath')
+      .fill(openAPISchemaFilePath);
   }
 
   async deleteService(page: Page): Promise<void> {
