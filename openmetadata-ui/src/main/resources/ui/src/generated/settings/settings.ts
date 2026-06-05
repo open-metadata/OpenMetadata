@@ -544,6 +544,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -2611,6 +2616,32 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Server-wide default for how often (seconds) to poll a Policy Agent batch run for
+     * completion. Overridden per-node by
+     * PolicyAgentTaskDefinition.config.pollingIntervalSeconds.
+     */
+    pollingIntervalSeconds?: number;
 }
 
 /**
