@@ -979,7 +979,12 @@ test.describe('Context Center', () => {
   // ─── Documents Page ───────────────────────────────────────────────────────────
 
   test.describe('Documents Page', () => {
-    const uploadFilePath = path.join(__dirname, '..', 'output', 'context-center-upload.txt');
+    const uploadFilePath = path.join(
+      __dirname,
+      '..',
+      'output',
+      'context-center-upload.txt'
+    );
 
     test.beforeAll(() => {
       const dir = path.dirname(uploadFilePath);
