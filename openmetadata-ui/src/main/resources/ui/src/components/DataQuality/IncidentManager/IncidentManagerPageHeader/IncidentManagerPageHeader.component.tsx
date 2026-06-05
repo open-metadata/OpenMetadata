@@ -14,7 +14,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { Divider, Skeleton, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { first, isUndefined, last } from 'lodash';
+import { first, isEmpty, isUndefined, last } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -32,6 +32,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import { updateTestCaseById } from '../../../../rest/testAPI';
 import {
   getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
@@ -53,6 +54,7 @@ import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/Tas
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
@@ -71,7 +73,11 @@ const IncidentManagerPageHeader = ({
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
-  const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
+  const {
+    testCase: testCaseData,
+    testCasePermission,
+    setTestCase,
+  } = useTestCaseStore();
 
   const { dimensionKey } = useRequiredParams<{
     fqn: string;
@@ -223,6 +229,30 @@ const IncidentManagerPageHeader = ({
     }
   }, [testCaseData]);
 
+  const handleDomainUpdate = async (
+    selectedDomain: EntityReference | EntityReference[]
+  ) => {
+    if (!testCaseData) {
+      return;
+    }
+
+    const domains = Array.isArray(selectedDomain)
+      ? selectedDomain
+      : isEmpty(selectedDomain)
+      ? []
+      : [selectedDomain];
+
+    const patch = compare(testCaseData, { ...testCaseData, domains });
+    if (patch.length && testCaseData.id) {
+      try {
+        const updated = await updateTestCaseById(testCaseData.id, patch);
+        setTestCase(updated);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
     return isVersionPage
       ? {
@@ -357,6 +387,19 @@ const IncidentManagerPageHeader = ({
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
         onUpdate={onOwnerUpdate}
+      />
+      <Divider className="self-center m-x-sm" type="vertical" />
+      <DomainLabel
+        headerLayout
+        showDashPlaceholder
+        domains={testCaseData?.domains}
+        entityFqn={testCaseData?.fullyQualifiedName ?? ''}
+        entityId={testCaseData?.id ?? ''}
+        entityType={EntityType.TEST_CASE}
+        hasPermission={!isVersionPage && Boolean(testCasePermission?.EditAll)}
+        multiple={false}
+        textClassName="render-domain-lebel-style"
+        onUpdate={handleDomainUpdate}
       />
       {!isVersionPage && statusDetails}
       {tableFqn && (

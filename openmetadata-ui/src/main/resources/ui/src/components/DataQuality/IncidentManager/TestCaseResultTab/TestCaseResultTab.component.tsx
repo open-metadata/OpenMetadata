@@ -30,6 +30,7 @@ import { useParams } from 'react-router-dom';
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
@@ -53,11 +54,11 @@ import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import DataProductsSectionV1 from '../../../common/DataProductsSection/DataProductsSection';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
@@ -204,6 +205,37 @@ const TestCaseResultTab = () => {
       }
     }
   };
+
+  const handleDataProductsSave = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      if (!testCaseData) {
+        return;
+      }
+
+      const updatedDataProducts = dataProducts.map((dp) => ({
+        id: dp.id ?? '',
+        type: 'dataProduct',
+        name: dp.name,
+        fullyQualifiedName: dp.fullyQualifiedName,
+        displayName: dp.displayName,
+      }));
+
+      const patch = compare(testCaseData, {
+        ...testCaseData,
+        dataProducts: updatedDataProducts,
+      });
+
+      if (patch.length) {
+        try {
+          const res = await updateTestCaseById(testCaseData.id ?? '', patch);
+          setTestCase(res);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    },
+    [testCaseData, setTestCase]
+  );
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
@@ -590,18 +622,16 @@ const TestCaseResultTab = () => {
                 onSelectionChange={handleTagSelection}
               />
             </div>
-            {!!testCaseData?.domains?.length && (
-              <div className="tw:w-full">
-                <DataProductsSectionV1
-                  activeDomains={testCaseData?.domains ?? []}
-                  dataProducts={testCaseData?.dataProducts ?? []}
-                  entityId={testCaseData?.id ?? ''}
-                  entityType={EntityType.TEST_CASE}
-                  hasPermission={false}
-                  showEditButton={false}
-                />
-              </div>
-            )}
+            <div className="tw:w-full">
+              <DataProductsContainer
+                multiple
+                newLook
+                activeDomains={testCaseData?.domains ?? []}
+                dataProducts={testCaseData?.dataProducts ?? []}
+                hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+                onSave={handleDataProductsSave}
+              />
+            </div>
           </div>
         </div>
       )}
