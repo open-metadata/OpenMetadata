@@ -34,9 +34,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ({
       children,
       ...rest
-    }: { children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...rest}>{children}</div>
-    )
+    }: {
+      children: React.ReactNode;
+    } & React.HTMLAttributes<HTMLDivElement>) => <div {...rest}>{children}</div>
   ),
   ButtonUtility: jest.fn(
     ({
