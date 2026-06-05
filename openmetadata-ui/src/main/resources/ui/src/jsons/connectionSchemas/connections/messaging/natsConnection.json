@@ -8,7 +8,9 @@
     "natsType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Nats"],
+      "enum": [
+        "Nats"
+      ],
       "default": "Nats"
     }
   },
@@ -18,7 +20,9 @@
       "description": "Service Type",
       "default": "Nats",
       "type": "string",
-      "enum": ["Nats"]
+      "enum": [
+        "Nats"
+      ]
     },
     "natsServers": {
       "title": "NATS Servers",
@@ -73,7 +77,13 @@
               "description": "The CA certificate used for SSL validation.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             },
             "sslCertificate": {
@@ -81,7 +91,13 @@
               "description": "The SSL certificate used for client authentication.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             },
             "sslKey": {
@@ -89,7 +105,13 @@
               "description": "The private key associated with the SSL certificate.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             }
           }
@@ -139,5 +161,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["natsServers"]
+  "required": [
+    "natsServers"
+  ]
 }
