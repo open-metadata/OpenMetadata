@@ -80,6 +80,8 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.EntityUtil.validateEntityReference;
+import static org.openmetadata.service.util.EntityUtil.validateEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
@@ -5221,106 +5223,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return JsonUtils.treeToValue(jsonNode, Object.class);
-  }
-
-  private static void validateEntityReference(JsonNode fieldValue, String fieldName) {
-    if (fieldValue == null || fieldValue.isNull()) {
-      return;
-    }
-    if (!fieldValue.isObject()) {
-      throw new IllegalArgumentException(
-          "Custom property '"
-              + fieldName
-              + "' must be an object with 'type' and either 'id' or 'fullyQualifiedName'");
-    }
-    resolveCustomPropertyReference(fieldValue, fieldName);
-  }
-
-  private static void validateEntityReferenceList(JsonNode fieldValue, String fieldName) {
-    if (fieldValue == null || fieldValue.isNull()) {
-      return;
-    }
-    if (!fieldValue.isArray()) {
-      throw new IllegalArgumentException(
-          "Custom property '" + fieldName + "' must be an array of entity references");
-    }
-    int index = 0;
-    for (JsonNode ref : fieldValue) {
-      if (ref == null || ref.isNull()) {
-        throw new IllegalArgumentException(
-            "Custom property '"
-                + fieldName
-                + "' must contain only non-null entity references at index "
-                + index);
-      }
-      if (!ref.isObject()) {
-        throw new IllegalArgumentException(
-            "Custom property '"
-                + fieldName
-                + "' must contain only objects with 'type' and either 'id' or"
-                + " 'fullyQualifiedName' at index "
-                + index);
-      }
-      resolveCustomPropertyReference(ref, fieldName);
-      index++;
-    }
-  }
-
-  /**
-   * Resolve a single entity reference on a custom property field and confirm the referenced
-   * entity exists. Accepts either {@code id} or {@code fullyQualifiedName} alongside {@code type}
-   * — consistent with the EntityReference JSON Schema, which treats either as a valid lookup key.
-   * Throws IllegalArgumentException with a clear message if the reference is malformed or the
-   * target entity cannot be found.
-   */
-  private static void resolveCustomPropertyReference(JsonNode ref, String fieldName) {
-    if (ref == null || ref.isNull()) {
-      return;
-    }
-    JsonNode typeNode = ref.get("type");
-    JsonNode idNode = ref.get("id");
-    JsonNode fqnNode = ref.get("fullyQualifiedName");
-    boolean hasId = idNode != null && !idNode.isNull() && !idNode.asText().isEmpty();
-    boolean hasFqn = fqnNode != null && !fqnNode.isNull() && !fqnNode.asText().isEmpty();
-    if (typeNode == null || typeNode.isNull() || typeNode.asText().isEmpty()) {
-      throw new IllegalArgumentException(
-          "Custom property '"
-              + fieldName
-              + "' reference requires 'type' plus either 'id' or 'fullyQualifiedName'");
-    }
-    if (!hasId && !hasFqn) {
-      throw new IllegalArgumentException(
-          "Custom property '"
-              + fieldName
-              + "' reference requires either 'id' or 'fullyQualifiedName'");
-    }
-    String type = typeNode.asText();
-    try {
-      if (hasId) {
-        UUID id;
-        try {
-          id = UUID.fromString(idNode.asText());
-        } catch (IllegalArgumentException e) {
-          throw new IllegalArgumentException(
-              "Custom property '"
-                  + fieldName
-                  + "' reference has an invalid id: "
-                  + idNode.asText());
-        }
-        Entity.getEntityReferenceById(type, id, Include.NON_DELETED);
-      } else {
-        Entity.getEntityReferenceByName(type, fqnNode.asText(), Include.NON_DELETED);
-      }
-    } catch (EntityNotFoundException e) {
-      throw new IllegalArgumentException(
-          "Custom property '"
-              + fieldName
-              + "' references "
-              + type
-              + " '"
-              + (hasId ? idNode.asText() : fqnNode.asText())
-              + "' that does not exist");
-    }
   }
 
   private void validateExtension(T entity, boolean update) {
