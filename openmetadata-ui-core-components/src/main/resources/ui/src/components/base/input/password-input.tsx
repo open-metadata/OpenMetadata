@@ -5,7 +5,7 @@ import { cx } from '@/utils/cx';
 import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
 import { useState } from 'react';
 import { FileTrigger } from 'react-aria-components';
-import { InputBase, type InputBaseProps } from './input';
+import { InputBase, TextField, type InputBaseProps } from './input';
 
 interface BaseProps {
   label?: string;
@@ -39,13 +39,11 @@ export const PasswordInput = ({
   inputClassName,
   wrapperClassName,
   tooltipClassName,
-  isRequired,
-  isInvalid,
-  isDisabled,
-  onChange,
+  // AriaTextField props go into ...props so they reach TextField/AriaTextField
   ...props
 }: PasswordInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
+  const { onChange, isRequired, isDisabled, isInvalid, value } = props;
 
   const handleFileSelect = (files: FileList | null) => {
     if (files?.[0] && onChange) {
@@ -92,31 +90,31 @@ export const PasswordInput = ({
     ) : null;
 
   return (
-    <div
-      className={cx(
-        'tw:flex tw:h-max tw:w-full tw:flex-col tw:items-start tw:justify-start tw:gap-1.5'
-      )}>
-      {labelRow}
-      <InputBase
-        {...props}
-        fontSize={fontSize}
-        groupRef={groupRef}
-        iconClassName={iconClassName}
-        inputClassName={cx('tw:pr-9', inputClassName)}
-        isDisabled={isDisabled}
-        isInvalid={isInvalid}
-        isRequired={isRequired}
-        placeholder={placeholder}
-        ref={ref}
-        size={size}
-        tooltipClassName={tooltipClassName}
-        trailingSlot={revealButton}
-        type={showPassword ? 'text' : 'password'}
-        wrapperClassName={wrapperClassName}
-        onChange={onChange}
-      />
-      {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
-    </div>
+    <TextField
+      aria-label={label ?? placeholder}
+      {...props}
+      value={value ?? ''}>
+      <>
+        {labelRow}
+        <InputBase
+          fontSize={fontSize}
+          groupRef={groupRef}
+          iconClassName={iconClassName}
+          inputClassName={cx('tw:pr-9', inputClassName)}
+          isDisabled={isDisabled}
+          isInvalid={isInvalid}
+          isRequired={isRequired}
+          placeholder={placeholder}
+          ref={ref}
+          size={size}
+          tooltipClassName={tooltipClassName}
+          trailingSlot={revealButton}
+          type={showPassword ? 'text' : 'password'}
+          wrapperClassName={wrapperClassName}
+        />
+        {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+      </>
+    </TextField>
   );
 };
 
