@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Logger;
@@ -27,6 +29,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
@@ -36,9 +39,10 @@ import org.slf4j.Marker;
 
 /**
  * Verifies that {@link AuditLogRepository#write(ChangeEvent)} re-emits each persisted audit entry
- * through the AUDIT-marked logger so the dedicated {@code audit.log} appender is fed, and that the
- * file emission is gated on an actual DB insert (so the publisher + consumer dual-write path and
- * multi-server replays do not produce duplicate lines).
+ * through the AUDIT-marked logger so the dedicated {@code audit.log} appender is fed, that the file
+ * emission is gated on an actual DB insert (so the publisher + consumer dual-write path and
+ * multi-server replays do not produce duplicate lines), and that supported event types (including
+ * lineage) are persisted.
  */
 class AuditLogRepositoryTest {
 
@@ -88,6 +92,38 @@ class AuditLogRepositoryTest {
     repository.write(changeEvent());
 
     assertEquals(0, auditEvents().size());
+  }
+
+  @Test
+  void writePersistsLineageChangeEvents() {
+    String lineageFqn = "service.db.schema.source--upstream-->service.db.schema.target";
+    for (EventType eventType :
+        List.of(
+            EventType.ENTITY_LINEAGE_ADDED,
+            EventType.ENTITY_LINEAGE_UPDATED,
+            EventType.ENTITY_LINEAGE_DELETED)) {
+      repository.write(
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(eventType)
+              .withEntityType("lineage")
+              .withEntityId(UUID.randomUUID())
+              .withEntityFullyQualifiedName(lineageFqn)
+              .withTimestamp(System.currentTimeMillis()));
+    }
+
+    ArgumentCaptor<AuditLogRecord> recordCaptor = ArgumentCaptor.forClass(AuditLogRecord.class);
+    verify(auditLogDAO, times(3)).insert(recordCaptor.capture());
+    assertEquals(
+        List.of("entityLineageAdded", "entityLineageUpdated", "entityLineageDeleted"),
+        recordCaptor.getAllValues().stream().map(AuditLogRecord::getEventType).toList());
+    recordCaptor
+        .getAllValues()
+        .forEach(
+            record -> {
+              assertEquals("lineage", record.getEntityType());
+              assertEquals(lineageFqn, record.getEntityFQN());
+            });
   }
 
   private List<ILoggingEvent> auditEvents() {

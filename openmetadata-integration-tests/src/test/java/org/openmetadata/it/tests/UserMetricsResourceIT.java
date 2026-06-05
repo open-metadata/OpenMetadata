@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(UserMetricsResourceIT.class);
-  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(15);
+  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(30);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 

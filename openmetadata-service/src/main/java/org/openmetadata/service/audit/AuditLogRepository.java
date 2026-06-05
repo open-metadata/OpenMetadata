@@ -38,6 +38,9 @@ public class AuditLogRepository {
           EventType.ENTITY_SOFT_DELETED,
           EventType.ENTITY_DELETED,
           EventType.ENTITY_RESTORED,
+          EventType.ENTITY_LINEAGE_ADDED,
+          EventType.ENTITY_LINEAGE_DELETED,
+          EventType.ENTITY_LINEAGE_UPDATED,
           EventType.USER_LOGIN,
           EventType.USER_LOGOUT);
 
