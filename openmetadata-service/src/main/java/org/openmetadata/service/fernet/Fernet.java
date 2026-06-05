@@ -23,6 +23,7 @@ import com.macasaet.fernet.Key;
 import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
 import com.macasaet.fernet.Validator;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
@@ -31,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -43,7 +43,10 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();
+  private static final String KEY_SEPARATOR = ",";
   private String fernetKey;
+  private volatile List<Key> cachedKeys;
+  private final SecureRandom secureRandom = new SecureRandom();
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
   private final Validator<String> validator =
@@ -75,9 +78,20 @@ public class Fernet {
     if (fernetKey != null) {
       // convert base64 to base64url
       this.fernetKey = fernetKey.replace("/", "_").replace("+", "-").replace("=", "");
+      this.cachedKeys = buildKeys(this.fernetKey);
     } else {
       this.fernetKey = null;
+      this.cachedKeys = null;
     }
+  }
+
+  private static List<Key> buildKeys(String fernetKey) {
+    return Arrays.stream(fernetKey.split(KEY_SEPARATOR)).map(Key::new).toList();
+  }
+
+  @VisibleForTesting
+  public List<Key> getCachedKeys() {
+    return cachedKeys;
   }
 
   public boolean isKeyDefined() {
@@ -89,8 +103,8 @@ public class Fernet {
       throw new IllegalArgumentException(FIELD_ALREADY_TOKENIZED);
     }
     if (isKeyDefined()) {
-      Key key = new Key(fernetKey.split(",")[0]);
-      return FERNET_PREFIX + Token.generate(key, secret).serialise();
+      Key key = cachedKeys.getFirst();
+      return FERNET_PREFIX + Token.generate(secureRandom, key, secret).serialise();
     }
     throw new IllegalArgumentException(FERNET_KEY_NULL);
   }
@@ -106,9 +120,7 @@ public class Fernet {
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];
       Token token = Token.fromString(str);
-      List<Key> keys =
-          Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
-      return token.validateAndDecrypt(keys, validator);
+      return token.validateAndDecrypt(cachedKeys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }

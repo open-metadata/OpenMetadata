@@ -642,6 +642,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       renameAllowed = true;
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {

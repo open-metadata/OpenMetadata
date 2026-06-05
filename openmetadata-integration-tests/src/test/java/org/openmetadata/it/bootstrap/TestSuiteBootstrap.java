@@ -300,6 +300,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.withPassword("test");
       postgres.withStartupTimeoutSeconds(240);
       postgres.withConnectTimeoutSeconds(240);
+      String durability =
+          Boolean.parseBoolean(System.getProperty("dbDurable", "false")) ? "on" : "off";
+      LOG.info("PostgreSQL durability (fsync/synchronous_commit/full_page_writes)={}", durability);
       postgres.withCommand(
           "postgres",
           "-c",
@@ -317,11 +320,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "shared_buffers=128MB",
           "-c",
-          "fsync=off",
+          "fsync=" + durability,
           "-c",
-          "synchronous_commit=off",
+          "synchronous_commit=" + durability,
           "-c",
-          "full_page_writes=off",
+          "full_page_writes=" + durability,
           // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
           // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
           // under load.

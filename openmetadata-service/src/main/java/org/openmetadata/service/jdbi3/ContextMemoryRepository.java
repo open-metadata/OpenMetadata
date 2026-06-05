@@ -17,6 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,6 +84,113 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<ContextMemory> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetPrimaryEntities(entities, fields);
+    fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (ContextMemory entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetPrimaryEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_PRIMARY_ENTITY)) {
+      return;
+    }
+    Map<UUID, EntityReference> primaryById = batchFetchPrimaryEntities(entities);
+    entities.forEach(memory -> memory.setPrimaryEntity(primaryById.get(memory.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchPrimaryEntities(List<ContextMemory> entities) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatchWithRelations(
+                entityListToStrings(entities),
+                Entity.CONTEXT_MEMORY,
+                List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    Map<UUID, EntityReference> appliedTo = new HashMap<>();
+    Map<UUID, EntityReference> hasFallback = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      indexPrimaryRecord(record, refById, appliedTo, hasFallback);
+    }
+    hasFallback.forEach(appliedTo::putIfAbsent);
+    return appliedTo;
+  }
+
+  private void indexPrimaryRecord(
+      CollectionDAO.EntityRelationshipObject record,
+      Map<String, EntityReference> refById,
+      Map<UUID, EntityReference> appliedTo,
+      Map<UUID, EntityReference> hasFallback) {
+    EntityReference ref = refById.get(record.getFromId());
+    if (ref == null) {
+      return;
+    }
+    UUID memoryId = UUID.fromString(record.getToId());
+    if (record.getRelation() == Relationship.APPLIED_TO.ordinal()) {
+      appliedTo.putIfAbsent(memoryId, ref);
+    } else if (!Entity.DOMAIN.equals(ref.getType())) {
+      hasFallback.putIfAbsent(memoryId, ref);
+    }
+  }
+
+  private void fetchAndSetRelatedEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_RELATED_ENTITIES)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> relatedById = batchFetchRelatedEntities(entities);
+    entities.forEach(
+        memory ->
+            memory.setRelatedEntities(
+                relatedById.getOrDefault(memory.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<ContextMemory> entities) {
+    Map<UUID, List<EntityReference>> relatedById = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.RELATED_TO.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        relatedById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    relatedById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    return relatedById;
+  }
+
+  private Map<String, EntityReference> resolveReferencesByType(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      idsByType
+          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .add(UUID.fromString(record.getFromId()));
+    }
+    Map<String, EntityReference> refById = new HashMap<>();
+    idsByType.forEach(
+        (type, ids) ->
+            Entity.getEntityReferencesByIds(type, new ArrayList<>(ids), Include.NON_DELETED)
+                .forEach(ref -> refById.put(ref.getId().toString(), ref)));
+    return refById;
   }
 
   private EntityReference getPrimaryEntity(ContextMemory entity) {
