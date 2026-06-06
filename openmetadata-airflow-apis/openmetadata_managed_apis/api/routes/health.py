@@ -11,13 +11,15 @@
 """
 Health endpoint. Globally accessible
 """
-from typing import Callable
+
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint
+
 from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
-try:
+try:  # noqa: SIM105
     pass
 except ImportError:
     pass
@@ -34,17 +36,13 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf
+        from airflow.www.app import csrf  # noqa: PLC0415
     else:
-        # Airflow 3.x doesn't have csrf in the same location, use a no-op
-        class csrf:
-            @staticmethod
-            def exempt(f):
-                return f
+        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
 
     @blueprint.route("/health", methods=["GET"])
     @csrf.exempt

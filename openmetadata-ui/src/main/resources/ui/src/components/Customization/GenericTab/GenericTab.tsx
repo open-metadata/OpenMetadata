@@ -13,6 +13,10 @@
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import {
+  GRID_ROW_HEIGHT,
+  GRID_VERTICAL_MARGIN,
+} from '../../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
@@ -87,9 +91,9 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       containerPadding={[0, 0]}
       isDraggable={false}
       isResizable={false}
-      margin={[16, 16]}
+      margin={[GRID_VERTICAL_MARGIN, GRID_VERTICAL_MARGIN]}
       preventCollision={false}
-      rowHeight={100}>
+      rowHeight={GRID_ROW_HEIGHT}>
       {widgets}
     </ReactGridLayout>
   );

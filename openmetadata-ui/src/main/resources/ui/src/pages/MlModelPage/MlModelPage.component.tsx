@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,21 +35,22 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
   updateMlModelVotes,
 } from '../../rest/mlModelAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+  mlModelQueryFn,
+  mlModelQueryKey,
+} from '../../rest/queries/mlModelQuery';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -56,19 +58,117 @@ const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
-  const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
-  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';
 
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        mlModelPermissions,
+        PermissionOperation.ViewUsage
+      ),
+    [mlModelPermissions]
+  );
+
+  const canViewMlModel = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        mlModelPermissions,
+        PermissionOperation.ViewBasic
+      ) === true,
+    [mlModelPermissions]
+  );
+
+  const mlModelFields = useMemo(() => {
+    let fields = defaultFields;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
+
+    return fields;
+  }, [viewUsagePermission]);
+
+  const mlModelCacheKey = useMemo(
+    () => mlModelQueryKey(mlModelFqn, mlModelFields),
+    [mlModelFqn, mlModelFields]
+  );
+
+  const {
+    data: mlModelDetail,
+    isLoading: mlModelLoading,
+    error: mlModelError,
+  } = useQuery({
+    queryKey: mlModelCacheKey,
+    queryFn: mlModelQueryFn(mlModelFqn, mlModelFields),
+    enabled: Boolean(mlModelFqn && canViewMlModel && !permissionsLoading),
+  });
+
+  useEffect(() => {
+    if (!mlModelError) {
+      return;
+    }
+    const status = (mlModelError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+
+      return;
+    }
+    showErrorToast(mlModelError as AxiosError);
+  }, [mlModelError, navigate]);
+
+  useEffect(() => {
+    if (!mlModelDetail) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(mlModelDetail),
+      entityType: EntityType.MLMODEL,
+      fqn: mlModelDetail.fullyQualifiedName ?? '',
+      serviceType: mlModelDetail.serviceType,
+      timestamp: 0,
+      id: mlModelDetail.id,
+    });
+  }, [mlModelDetail]);
+
+  const setMlModelDetail = useCallback(
+    (
+      updater:
+        | Mlmodel
+        | undefined
+        | ((prev: Mlmodel | undefined) => Mlmodel | undefined)
+    ) => {
+      queryClient.setQueryData<Mlmodel | undefined>(mlModelCacheKey, updater);
+    },
+    [queryClient, mlModelCacheKey]
+  );
+
+  const refetchMlModel = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: mlModelCacheKey }),
+    [queryClient, mlModelCacheKey]
+  );
+
+  const { mlModelId, followers } = useMemo(() => {
+    return {
+      mlModelId: mlModelDetail?.id,
+      followers: mlModelDetail?.followers ?? [],
+    };
+  }, [mlModelDetail]);
+
+  const isFollowing = useMemo(
+    () => followers.some(({ id }) => id === USERId),
+    [followers, USERId]
+  );
+
   const fetchResourcePermission = async (entityFqn: string) => {
-    setIsDetailLoading(true);
+    setPermissionsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.ML_MODEL,
@@ -82,106 +182,99 @@ const MlModelPage = () => {
         })
       );
     } finally {
-      setIsDetailLoading(false);
+      setPermissionsLoading(false);
     }
   };
-
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        mlModelPermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [mlModelPermissions]
-  );
-
-  const fetchMlModelDetails = async (name: string) => {
-    setIsDetailLoading(true);
-    try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const res = await getMlModelByFQN(name, { fields });
-      setMlModelDetail(res);
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.MLMODEL,
-        fqn: res.fullyQualifiedName ?? '',
-        serviceType: res.serviceType,
-        timestamp: 0,
-        id: res.id,
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsDetailLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        mlModelPermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
-      fetchMlModelDetails(mlModelFqn);
-    }
-  }, [mlModelPermissions, mlModelFqn]);
 
   const saveUpdatedMlModelData = useCallback(
     (updatedData: Mlmodel) => {
+      if (!mlModelDetail || !mlModelId) {
+        return Promise.reject(new Error('MlModel not loaded'));
+      }
       const jsonPatch = compare(
         omitBy(mlModelDetail, isUndefined),
         updatedData
       );
 
-      return patchMlModelDetails(mlModelDetail.id, jsonPatch);
+      return patchMlModelDetails(mlModelId, jsonPatch);
     },
-    [mlModelDetail]
+    [mlModelDetail, mlModelId]
   );
 
-  const followMlModel = async () => {
-    try {
-      const res = await addFollower(mlModelDetail.id, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        followers: [...(mlModelDetail.followers || []), ...newValue],
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(mlModelDetail),
-        })
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Mlmodel | undefined }
+  >({
+    mutationFn: async () => {
+      if (!mlModelId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(mlModelId, USERId);
+      } else {
+        await addFollower(mlModelId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: mlModelCacheKey });
+      const previous = queryClient.getQueryData<Mlmodel | undefined>(
+        mlModelCacheKey
       );
-    }
-  };
+      queryClient.setQueryData<Mlmodel | undefined>(mlModelCacheKey, (prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const currentFollowers = prev.followers ?? [];
+        if (isFollowing) {
+          return {
+            ...prev,
+            followers: currentFollowers.filter(({ id }) => id !== USERId),
+          };
+        }
 
-  const unFollowMlModel = async () => {
-    try {
-      const res = await removeFollower(mlModelDetail.id, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        followers: (mlModelDetail.followers ?? []).filter(
-          (follower) => follower.id !== oldValue[0].id
-        ),
-      }));
-    } catch (error) {
+        return {
+          ...prev,
+          followers: [
+            ...currentFollowers,
+            { id: USERId, type: 'user' },
+          ] as Mlmodel['followers'],
+        };
+      });
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Mlmodel | undefined>(
+          mlModelCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(mlModelDetail),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(mlModelDetail),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(mlModelDetail),
+            })
       );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: mlModelCacheKey });
+    },
+  });
+
+  const followMlModel = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
+
+  const unFollowMlModel = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const settingsUpdateHandler = async (
     updatedMlModel: Mlmodel
@@ -189,13 +282,19 @@ const MlModelPage = () => {
     try {
       const { displayName, owners, tags, version } =
         await saveUpdatedMlModelData(updatedMlModel);
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        displayName,
-        owners,
-        tags,
-        version,
-      }));
+      setMlModelDetail((preVDetail) => {
+        if (!preVDetail) {
+          return preVDetail;
+        }
+
+        return {
+          ...preVDetail,
+          displayName,
+          owners,
+          tags,
+          version,
+        };
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -211,7 +310,7 @@ const MlModelPage = () => {
       getVersionPath(
         EntityType.MLMODEL,
         mlModelFqn,
-        toString(mlModelDetail.version)
+        toString(mlModelDetail?.version)
       )
     );
   };
@@ -233,12 +332,7 @@ const MlModelPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMlModelVotes(id, data);
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const details = await getMlModelByFQN(mlModelFqn, { fields });
-      setMlModelDetail(details);
+      await queryClient.invalidateQueries({ queryKey: mlModelCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -247,23 +341,28 @@ const MlModelPage = () => {
   const updateMlModelDetailsState = useCallback(
     (data: DataAssetWithDomains) => {
       const updatedData = data as Mlmodel;
-
-      setMlModelDetail((data) => ({
-        ...(updatedData ?? data),
+      setMlModelDetail((prev) => ({
+        ...(updatedData ?? prev),
         version: updatedData.version,
       }));
     },
-    []
+    [setMlModelDetail]
   );
 
   const handleMlModelUpdate = useCallback(
     async (data: Mlmodel) => {
       try {
         const response = await saveUpdatedMlModelData(data);
-        setMlModelDetail((prev) => ({
-          ...prev,
-          ...response,
-        }));
+        setMlModelDetail((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            ...response,
+          };
+        });
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -273,8 +372,9 @@ const MlModelPage = () => {
         );
       }
     },
-    [saveUpdatedMlModelData]
+    [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail, t]
   );
+
   const onMlModelUpdateCertification = async (
     updatedMlModel: Mlmodel,
     key?: keyof Mlmodel
@@ -282,6 +382,10 @@ const MlModelPage = () => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
         return {
           ...previous,
           version: response.version,
@@ -297,11 +401,11 @@ const MlModelPage = () => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
 
-  if (isDetailLoading) {
+  if (permissionsLoading || mlModelLoading) {
     return <Loader />;
   }
 
-  if (isNil(mlModelDetail) || isEmpty(mlModelDetail)) {
+  if (mlModelError) {
     return (
       <ErrorPlaceHolder className="mt-0-important">
         {getEntityMissingError('mlModel', mlModelFqn)}
@@ -321,9 +425,13 @@ const MlModelPage = () => {
     );
   }
 
+  if (!mlModelDetail) {
+    return <Loader />;
+  }
+
   return (
     <MlModelDetailComponent
-      fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
+      fetchMlModel={refetchMlModel}
       followMlModelHandler={followMlModel}
       handleToggleDelete={handleToggleDelete}
       mlModelDetail={mlModelDetail}

@@ -25,7 +25,7 @@ import { revokeToken } from './user';
 
 const botName = `a-bot-pw%test-${uuid()}`;
 
-const BOT_DETAILS = {
+export const BOT_DETAILS = {
   botName: botName,
   botEmail: `${botName}@mail.com`,
   description: `This is bot description for ${botName}`,
@@ -36,6 +36,32 @@ const BOT_DETAILS = {
 };
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
+
+export const searchBotFromSearchInput = async (
+  page: Page,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse((response) => {
+    const url = response.url();
+    const decodedUrl = decodeURIComponent(url);
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=user') &&
+      decodedUrl.includes('"isBot":true') &&
+      response.request().method() === 'GET'
+    );
+  });
+
+  const searchInput = page.getByTestId('searchbar');
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+
+  expect(searchResponse.status()).toBe(200);
+};
 
 export const getCreatedBot = async (
   page: Page,
@@ -70,9 +96,15 @@ export const createBot = async (page: Page) => {
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
-  const saveResponse = page.waitForResponse('/api/v1/bots');
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/bots') &&
+      response.request().method() === 'POST'
+  );
   await page.click('[data-testid="save-user"]');
-  await saveResponse;
+  const createBotResponse = await saveResponse;
+
+  expect(createBotResponse.status()).toBe(201);
 
   // Verify bot is getting added in the bots listing page
   await expect(
@@ -115,7 +147,10 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
+  await page.getByTestId('searchbar').clear();
+  await page.getByTestId('searchbar').fill(BOT_DETAILS.updatedBotName);
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 };
 
 export const updateBotDetails = async (page: Page) => {

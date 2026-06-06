@@ -12,7 +12,13 @@
  */
 
 import { IChangeEvent } from '@rjsf/core';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { LoadingState } from 'Models';
 import React from 'react';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -32,29 +38,31 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockReturnValue({
-    connSch: {
-      schema: {
-        type: 'object',
-        properties: {
-          filter1: { type: 'string' },
-          filter2: { type: 'string' },
-          someOtherProperty: { type: 'string' },
-        },
-        additionalProperties: true,
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest.fn().mockResolvedValue({
+    schema: {
+      type: 'object',
+      properties: {
+        filter1: { type: 'string' },
+        filter2: { type: 'string' },
+        someOtherProperty: { type: 'string' },
       },
+      additionalProperties: true,
     },
-    validConfig: {},
+    uiSchema: {},
   }),
-  getFilteredSchema: jest.fn((properties) => {
-    const {
-      filter1: _filter1,
-      filter2: _filter2,
-      ...rest
-    } = properties as Record<string, unknown>;
+  EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
+  getFilteredSchema: jest.fn(
+    (properties: Record<string, unknown> | undefined) => {
+      const {
+        filter1: _filter1,
+        filter2: _filter2,
+        ...rest
+      } = (properties || {}) as Record<string, unknown>;
 
-    return rest;
-  }),
+      return rest;
+    }
+  ),
 }));
 
 const MockFormBuilder = React.forwardRef<
@@ -94,9 +102,13 @@ jest.mock('../../../common/InlineAlert/InlineAlert', () => {
     .mockImplementation(() => <div data-testid="inline-alert">Alert</div>);
 });
 
-const mockGetConnectionSchemas = jest.requireMock(
+const mockLoadConnectionSchema = jest.requireMock(
   '../../../../utils/ServiceConnectionUtils'
-).getConnectionSchemas;
+).loadConnectionSchema;
+
+const mockBuildValidConfig = jest.requireMock(
+  '../../../../utils/ServiceConnectionUtils'
+).buildValidConfig;
 
 const mockGetFilteredSchema = jest.requireMock(
   '../../../../utils/ServiceConnectionUtils'
@@ -109,6 +121,15 @@ const mockFormatFormDataForSubmit = jest.requireMock(
 const mockUseApplicationStore = jest.requireMock(
   '../../../../hooks/useApplicationStore'
 ).useApplicationStore;
+
+const renderForm = async (props: FiltersConfigFormProps) => {
+  let utils: ReturnType<typeof render> | undefined;
+  await act(async () => {
+    utils = render(<FiltersConfigForm {...props} />);
+  });
+
+  return utils!;
+};
 
 describe('FiltersConfigForm', () => {
   const mockOnSave = jest.fn();
@@ -127,49 +148,81 @@ describe('FiltersConfigForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe('Schema Filtering', () => {
-    it('should remove filter properties from the schema', () => {
-      render(<FiltersConfigForm {...defaultProps} />);
-
-      expect(mockGetFilteredSchema).toHaveBeenCalledWith(
-        {
+    mockLoadConnectionSchema.mockResolvedValue({
+      schema: {
+        type: 'object',
+        properties: {
           filter1: { type: 'string' },
           filter2: { type: 'string' },
           someOtherProperty: { type: 'string' },
         },
-        false
-      );
+        additionalProperties: true,
+      },
+      uiSchema: {},
+    });
+    mockBuildValidConfig.mockReturnValue({});
+    mockGetFilteredSchema.mockImplementation(
+      (properties: Record<string, unknown> | undefined) => {
+        const {
+          filter1: _filter1,
+          filter2: _filter2,
+          ...rest
+        } = (properties || {}) as Record<string, unknown>;
+
+        return rest;
+      }
+    );
+  });
+
+  describe('Schema Filtering', () => {
+    it('should remove filter properties from the schema', async () => {
+      await renderForm(defaultProps);
+
+      await waitFor(() => {
+        expect(mockGetFilteredSchema).toHaveBeenCalledWith(
+          {
+            filter1: { type: 'string' },
+            filter2: { type: 'string' },
+            someOtherProperty: { type: 'string' },
+          },
+          false
+        );
+      });
     });
 
-    it('should set additionalProperties to false in the filtered schema', () => {
+    it('should set additionalProperties to false in the filtered schema', async () => {
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      await waitFor(() => {
+        const lastCall =
+          mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.schema.additionalProperties).toBe(false);
+        expect(lastCall.schema.additionalProperties).toBe(false);
+      });
     });
 
-    it('should pass the filtered schema to FormBuilder', () => {
+    it('should pass the filtered schema to FormBuilder', async () => {
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      await waitFor(() => {
+        const lastCall =
+          mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.schema).toEqual({
-        type: 'object',
-        properties: {
-          someOtherProperty: { type: 'string' },
-        },
-        additionalProperties: false,
+        expect(lastCall.schema).toEqual({
+          type: 'object',
+          properties: {
+            someOtherProperty: { type: 'string' },
+          },
+          additionalProperties: false,
+        });
       });
     });
   });
@@ -178,7 +231,7 @@ describe('FiltersConfigForm', () => {
     it('should format and save form data on submit', async () => {
       mockFormatFormDataForSubmit.mockReturnValue({ formatted: 'data' });
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
       const submitButton = screen.getByTestId('submit-button');
       fireEvent.click(submitButton);
@@ -191,8 +244,8 @@ describe('FiltersConfigForm', () => {
       });
     });
 
-    it('should call onCancel when cancel button is clicked', () => {
-      render(<FiltersConfigForm {...defaultProps} />);
+    it('should call onCancel when cancel button is clicked', async () => {
+      await renderForm(defaultProps);
 
       const cancelButton = screen.getByTestId('cancel-button');
       fireEvent.click(cancelButton);
@@ -202,21 +255,20 @@ describe('FiltersConfigForm', () => {
   });
 
   describe('Empty Schema Handling', () => {
-    it('should not show no config message with default mock (schema has properties)', () => {
-      // Default mock has properties, so no-config message shouldn't show
-      render(<FiltersConfigForm {...defaultProps} />);
+    it('should not show no config message with default mock (schema has properties)', async () => {
+      await renderForm(defaultProps);
 
       expect(
         screen.queryByTestId('no-config-available')
       ).not.toBeInTheDocument();
     });
 
-    it('should not show no config message when schema has properties', () => {
+    it('should not show no config message when schema has properties', async () => {
       mockGetFilteredSchema.mockReturnValue({
         someProperty: { type: 'string' },
       });
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
       expect(
         screen.queryByTestId('no-config-available')
@@ -225,7 +277,7 @@ describe('FiltersConfigForm', () => {
   });
 
   describe('Inline Alert', () => {
-    it('should render inline alert when inlineAlertDetails is present', () => {
+    it('should render inline alert when inlineAlertDetails is present', async () => {
       mockUseApplicationStore.mockReturnValue({
         inlineAlertDetails: {
           type: 'error',
@@ -233,104 +285,97 @@ describe('FiltersConfigForm', () => {
         },
       });
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
       expect(screen.getByTestId('inline-alert')).toBeInTheDocument();
     });
 
-    it('should not render inline alert when inlineAlertDetails is undefined', () => {
+    it('should not render inline alert when inlineAlertDetails is undefined', async () => {
       mockUseApplicationStore.mockReturnValue({
         inlineAlertDetails: undefined,
       });
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
       expect(screen.queryByTestId('inline-alert')).not.toBeInTheDocument();
     });
   });
 
   describe('Props Handling', () => {
-    it('should use custom okText and cancelText when provided', () => {
+    it('should use custom okText and cancelText when provided', async () => {
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(
-        <FiltersConfigForm
-          {...defaultProps}
-          cancelText="Custom Cancel"
-          okText="Custom Save"
-        />
-      );
+      await renderForm({
+        ...defaultProps,
+        cancelText: 'Custom Cancel',
+        okText: 'Custom Save',
+      });
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      const lastCall =
+        mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.okText).toBe('Custom Save');
-      expect(formBuilderCall.cancelText).toBe('Custom Cancel');
+      expect(lastCall.okText).toBe('Custom Save');
+      expect(lastCall.cancelText).toBe('Custom Cancel');
     });
 
-    it('should use default okText and cancelText when not provided', () => {
+    it('should use default okText and cancelText when not provided', async () => {
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      const lastCall =
+        mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.okText).toBe('Save');
-      expect(formBuilderCall.cancelText).toBe('Cancel');
+      expect(lastCall.okText).toBe('Save');
+      expect(lastCall.cancelText).toBe('Cancel');
     });
 
-    it('should pass all required props to FormBuilder', () => {
+    it('should pass all required props to FormBuilder', async () => {
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      const lastCall =
+        mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.serviceCategory).toBe(
-        ServiceCategory.DATABASE_SERVICES
-      );
-      expect(formBuilderCall.status).toBe('initial');
-      expect(formBuilderCall.onFocus).toBe(mockOnFocus);
-      expect(formBuilderCall.showFormHeader).toBe(true);
+      expect(lastCall.serviceCategory).toBe(ServiceCategory.DATABASE_SERVICES);
+      expect(lastCall.status).toBe('initial');
+      expect(lastCall.onFocus).toBe(mockOnFocus);
+      expect(lastCall.showFormHeader).toBe(true);
     });
   });
 
   describe('Connection Schema Integration', () => {
-    it('should call getConnectionSchemas with correct parameters', () => {
-      render(<FiltersConfigForm {...defaultProps} />);
+    it('should call loadConnectionSchema with correct parameters', async () => {
+      await renderForm(defaultProps);
 
-      expect(mockGetConnectionSchemas).toHaveBeenCalledWith({
-        data: undefined,
-        serviceCategory: ServiceCategory.DATABASE_SERVICES,
-        serviceType: DatabaseServiceType.Mysql,
-      });
+      expect(mockLoadConnectionSchema).toHaveBeenCalledWith(
+        ServiceCategory.DATABASE_SERVICES,
+        DatabaseServiceType.Mysql
+      );
     });
 
-    it('should use validConfig from getConnectionSchemas', () => {
-      mockGetConnectionSchemas.mockReturnValue({
-        connSch: {
-          schema: {
-            type: 'object',
-            properties: {},
-          },
-        },
-        validConfig: { customConfig: 'value' },
-      });
+    it('should use validConfig from buildValidConfig', async () => {
+      mockBuildValidConfig.mockReturnValue({ customConfig: 'value' });
 
       const mockFormBuilder = jest.requireMock(
         '../../../common/FormBuilder/FormBuilder'
       );
 
-      render(<FiltersConfigForm {...defaultProps} />);
+      await renderForm(defaultProps);
 
-      const formBuilderCall = mockFormBuilder.mock.calls[0][0];
+      await waitFor(() => {
+        const lastCall =
+          mockFormBuilder.mock.calls[mockFormBuilder.mock.calls.length - 1][0];
 
-      expect(formBuilderCall.formData).toEqual({ customConfig: 'value' });
+        expect(lastCall.formData).toEqual({ customConfig: 'value' });
+      });
     });
   });
 });

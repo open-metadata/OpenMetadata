@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
 import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
 import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';
@@ -22,7 +22,7 @@ jest.mock('lodash', () => ({
   cloneDeep: jest.fn(),
 }));
 
-jest.mock('../constants/Services.constant', () => ({
+jest.mock('../constants/ServiceUISchema.constant', () => ({
   COMMON_UI_SCHEMA: {
     connection: {
       'ui:field': 'collapsible',
@@ -78,46 +78,45 @@ describe('DriveServiceUtils', () => {
   });
 
   describe('getDriveConfig', () => {
-    it('should return custom drive configuration for CustomDrive type', () => {
+    it('should return custom drive configuration for CustomDrive type', async () => {
       const expectedResult = {
         schema: customDriveConnection,
         uiSchema: COMMON_UI_SCHEMA,
       };
 
-      const result = getDriveConfig(DriveServiceType.CustomDrive);
+      const result = await getDriveConfig(DriveServiceType.CustomDrive);
 
       expect(mockedCloneDeep).toHaveBeenCalledWith(expectedResult);
       expect(result).toEqual(expectedResult);
     });
 
-    it('should return google drive configuration for GoogleDrive type', () => {
+    it('should return google drive configuration for GoogleDrive type', async () => {
       const expectedResult = {
         schema: googleDriveConnection,
         uiSchema: COMMON_UI_SCHEMA,
       };
 
-      const result = getDriveConfig(DriveServiceType.GoogleDrive);
+      const result = await getDriveConfig(DriveServiceType.GoogleDrive);
 
       expect(mockedCloneDeep).toHaveBeenCalledWith(expectedResult);
       expect(result).toEqual(expectedResult);
     });
 
-    it('should return empty schema and common ui schema for unknown drive type', () => {
+    it('should return empty schema and common ui schema for unknown drive type', async () => {
       const unknownType = 'UnknownDrive' as DriveServiceType;
       const expectedResult = {
         schema: {},
         uiSchema: COMMON_UI_SCHEMA,
       };
 
-      const result = getDriveConfig(unknownType);
+      const result = await getDriveConfig(unknownType);
 
       expect(mockedCloneDeep).toHaveBeenCalledWith(expectedResult);
       expect(result).toEqual(expectedResult);
     });
 
-    it('should return empty schema and common ui schema for default case', () => {
-      // Test the default case by passing undefined as type
-      getDriveConfig(undefined as unknown as DriveServiceType);
+    it('should return empty schema and common ui schema for default case', async () => {
+      await getDriveConfig(undefined as unknown as DriveServiceType);
       const expectedResult = {
         schema: {},
         uiSchema: COMMON_UI_SCHEMA,
@@ -126,8 +125,8 @@ describe('DriveServiceUtils', () => {
       expect(mockedCloneDeep).toHaveBeenCalledWith(expectedResult);
     });
 
-    it('should create a deep clone of the configuration object', () => {
-      getDriveConfig(DriveServiceType.GoogleDrive);
+    it('should create a deep clone of the configuration object', async () => {
+      await getDriveConfig(DriveServiceType.GoogleDrive);
 
       expect(mockedCloneDeep).toHaveBeenCalledTimes(1);
       expect(mockedCloneDeep).toHaveBeenCalledWith({
@@ -136,24 +135,24 @@ describe('DriveServiceUtils', () => {
       });
     });
 
-    it('should not mutate the original COMMON_UI_SCHEMA object', () => {
+    it('should not mutate the original COMMON_UI_SCHEMA object', async () => {
       const originalUiSchema = { ...COMMON_UI_SCHEMA };
 
-      getDriveConfig(DriveServiceType.CustomDrive);
+      await getDriveConfig(DriveServiceType.CustomDrive);
 
       expect(COMMON_UI_SCHEMA).toEqual(originalUiSchema);
     });
 
-    it('should handle all valid DriveServiceType enum values', () => {
+    it('should handle all valid DriveServiceType enum values', async () => {
       const driveServiceTypes = [
         DriveServiceType.CustomDrive,
         DriveServiceType.GoogleDrive,
       ];
 
-      driveServiceTypes.forEach((type) => {
-        expect(() => getDriveConfig(type)).not.toThrow();
+      for (const type of driveServiceTypes) {
+        await expect(getDriveConfig(type)).resolves.toBeDefined();
         expect(mockedCloneDeep).toHaveBeenCalled();
-      });
+      }
     });
   });
 });

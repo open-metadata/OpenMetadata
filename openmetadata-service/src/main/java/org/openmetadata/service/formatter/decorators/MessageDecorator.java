@@ -51,15 +51,26 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FeedUtils;
+import org.openmetadata.service.util.branding.MessageBrandingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface MessageDecorator<T> {
   Logger LOG = LoggerFactory.getLogger(MessageDecorator.class);
-  String CONNECTION_TEST_DESCRIPTION =
-      "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts.";
 
-  String TEMPLATE_FOOTER = "Change Event By OpenMetadata";
+  default String getConnectionTestDescription() {
+    return "This is a test message, receiving this message confirms that you have successfully configured "
+        + MessageBrandingResolver.get().getProductName()
+        + " to receive alerts.";
+  }
+
+  default String getProductName() {
+    return MessageBrandingResolver.get().getProductName();
+  }
+
+  default String getLogoUrl() {
+    return MessageBrandingResolver.get().getLogoUrl();
+  }
 
   String getBold();
 

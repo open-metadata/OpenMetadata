@@ -207,6 +207,11 @@ public final class PromptTemplates {
     public PromptTemplateDeleter delete() {
       return new PromptTemplateDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<PromptTemplate> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.promptTemplates(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

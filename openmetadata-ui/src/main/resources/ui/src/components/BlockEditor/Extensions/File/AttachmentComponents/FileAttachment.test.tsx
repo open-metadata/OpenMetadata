@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
-import { bytesToSize } from '../../../../../utils/StringsUtils';
+import { bytesToSize } from '../../../../../utils/StringUtils';
 import FileAttachment from './FileAttachment';
 
 describe('FileAttachment', () => {

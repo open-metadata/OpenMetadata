@@ -39,13 +39,13 @@ MAX_FILE_SIZE_FOR_PREVIEW = 50 * 1024 * 1024  # 50MB
 logger = ingestion_logger()
 
 
-class FileFormatException(Exception):
+class FileFormatException(Exception):  # noqa: N818
     def __init__(self, config_source: Any, file_name: str) -> None:
         message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
         super().__init__(message)
 
 
-class DataFrameReadException(Exception):
+class DataFrameReadException(Exception):  # noqa: N818
     """
     To be raised by any errors with the read calls
     """
@@ -64,48 +64,45 @@ class DataFrameReader(ABC):
     config_source: ConfigSource
     reader: Reader
 
-    def __init__(self, config_source: ConfigSource, client: Optional[Any]):
+    def __init__(
+        self,
+        config_source: ConfigSource,
+        client: Optional[Any],  # noqa: UP045
+        session: Optional[Any] = None,  # noqa: UP045
+    ):
         self.config_source = config_source
         self.client = client
+        self.session = session
 
         self.reader = get_reader(config_source=config_source, client=client)
 
-    def _get_file_size_mb(self, key: str, bucket_name: str) -> float:
+    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: Optional[int] = None) -> float:  # noqa: UP045
         """
         Get file size in MB. Returns 0 if unable to determine.
-        Uses efficient HEAD operations from cloud providers.
+        If file_size (bytes) is provided from listing metadata, uses that
+        to avoid a redundant HEAD/info API call.
         """
+        if file_size is not None:
+            return file_size / (1024 * 1024)
         try:
             if isinstance(self.config_source, S3Config):
                 response = self.client.head_object(Bucket=bucket_name, Key=key)
                 return response.get("ContentLength", 0) / (1024 * 1024)
 
-            elif isinstance(self.config_source, GCSConfig):
-                from gcsfs import GCSFileSystem
-
-                gcs = GCSFileSystem()
-                file_path = f"gs://{bucket_name}/{key}"
-                file_info = gcs.info(file_path)
-                return file_info.get("size", 0) / (1024 * 1024)
+            elif isinstance(self.config_source, GCSConfig):  # noqa: RET505
+                bucket = self.client.get_bucket(bucket_name)
+                blob = bucket.get_blob(key)
+                return (blob.size or 0) / (1024 * 1024) if blob else 0
 
             elif isinstance(self.config_source, AzureConfig):
-                from adlfs import AzureBlobFileSystem
-
-                from metadata.readers.file.adls import return_azure_storage_options
-
-                storage_options = return_azure_storage_options(self.config_source)
-                adlfs_fs = AzureBlobFileSystem(
-                    account_name=self.config_source.securityConfig.accountName,
-                    **storage_options,
-                )
-                file_path = f"{bucket_name}/{key}"
-                file_info = adlfs_fs.info(file_path)
-                return file_info.get("size", 0) / (1024 * 1024)
+                blob_client = self.client.get_blob_client(container=bucket_name, blob=key)
+                props = blob_client.get_blob_properties()
+                return (props.size or 0) / (1024 * 1024)
 
             elif isinstance(self.config_source, LocalConfig):
-                import os
+                import os  # noqa: PLC0415
 
-                return os.path.getsize(key) / (1024 * 1024)
+                return os.path.getsize(key) / (1024 * 1024)  # noqa: PTH202
 
         except Exception as exc:
             logger.debug(f"Could not determine file size for {key}: {exc}")
@@ -125,11 +122,9 @@ class DataFrameReader(ABC):
         try:
             return self._read(key=key, bucket_name=bucket_name, **kwargs)
         except Exception as err:
-            raise DataFrameReadException(f"Error reading dataframe due to [{err}]")
+            raise DataFrameReadException(f"Error reading dataframe due to [{err}]")  # noqa: B904
 
-    def read_first_chunk(
-        self, *, key: str, bucket_name: str, **kwargs
-    ) -> DatalakeColumnWrapper:
+    def read_first_chunk(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         """
         Returns only the first chunk of data. Used for schema inference
         without loading the entire file into memory.
@@ -153,10 +148,8 @@ class DataFrameReader(ABC):
 
             return DatalakeColumnWrapper(
                 columns=wrapper.columns,
-                dataframes=(lambda chunk=first_chunk: iter([chunk]))
-                if first_chunk is not None
-                else None,
+                dataframes=(lambda chunk=first_chunk: iter([chunk])) if first_chunk is not None else None,
                 raw_data=wrapper.raw_data,
             )
         except Exception as err:
-            raise DataFrameReadException(f"Error reading first chunk due to [{err}]")
+            raise DataFrameReadException(f"Error reading first chunk due to [{err}]")  # noqa: B904

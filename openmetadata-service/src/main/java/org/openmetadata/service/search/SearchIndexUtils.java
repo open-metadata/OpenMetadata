@@ -3,24 +3,29 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -32,6 +37,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.util.Utilities;
 
@@ -44,11 +50,148 @@ public final class SearchIndexUtils {
 
   private SearchIndexUtils() {}
 
+  /**
+   * Deduplicates identical SQL queries across lineage edges in-place.
+   *
+   * <p>Each unique SQL text is assigned a sequential integer key ("1", "2", …). Every edge that
+   * carries that SQL has its {@code sqlQuery} cleared and {@code sqlQueryKey} set to the shared
+   * key. The returned map contains {@code key → sqlText} for all unique SQLs found.
+   *
+   * <p>Edges with no SQL are left untouched.
+   */
+  public static Map<String, String> deduplicateSqlAcrossEdges(List<EsLineageData> edges) {
+    Map<String, String> sqlTextToKey = new LinkedHashMap<>();
+    Map<String, String> sqlQueries = new LinkedHashMap<>();
+    int[] counter = {0};
+
+    for (EsLineageData edge : edges) {
+      String sql = edge.getSqlQuery();
+      if (sql != null && !sql.isEmpty()) {
+        String key =
+            sqlTextToKey.computeIfAbsent(
+                sql,
+                k -> {
+                  String newKey = String.valueOf(++counter[0]);
+                  sqlQueries.put(newKey, sql);
+                  return newKey;
+                });
+        edge.setSqlQueryKey(key);
+        edge.setSqlQuery(null);
+      }
+    }
+
+    return sqlQueries;
+  }
+
+  /**
+   * Progressively strips lineage fields from a search document JSON to bring it under maxBytes.
+   *
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage.
+   * Returns the (possibly stripped) JSON — caller must re-check size and handle the still-oversized
+   * case.
+   */
+  public static String stripLineageForSize(
+      String json, long maxBytes, String docId, String entityType) {
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return json;
+    }
+    TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
+    Map<String, Object> doc = JsonUtils.readValue(json, mapType);
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      json = JsonUtils.pojoToJson(doc);
+      int sizeAfterStrip = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
+          docId,
+          entityType,
+          sizeAfterStrip);
+      if (sizeAfterStrip <= maxBytes) {
+        return json;
+      }
+    }
+    doc.remove("upstreamLineage");
+    json = JsonUtils.pojoToJson(doc);
+    LOG.warn(
+        "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
+        docId,
+        entityType,
+        json.getBytes(StandardCharsets.UTF_8).length);
+    return json;
+  }
+
+  public static Map<String, Object> stripDocMapIfOversized(
+      Map<String, Object> doc, long maxBytes, String docId, String entityType) {
+    String json = JsonUtils.pojoToJson(doc);
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return doc;
+    }
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      json = JsonUtils.pojoToJson(doc);
+      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          docId,
+          entityType,
+          strippedSize);
+      if (strippedSize <= maxBytes) {
+        return doc;
+      }
+    }
+    if (doc.remove("upstreamLineage") != null) {
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+          docId,
+          entityType,
+          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+    }
+    return doc;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripSqlQueryKeysFromEdges(Map<String, Object> doc) {
+    Object lineage = doc.get("upstreamLineage");
+    if (lineage instanceof List<?> edges) {
+      for (Object edge : edges) {
+        if (edge instanceof Map<?, ?> edgeMap) {
+          ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
+  }
+
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {
       return Collections.emptyList();
     }
     return followersRef.stream().map(item -> item.getId().toString()).toList();
+  }
+
+  /**
+   * Search documents store {@code followers} as a flat list of user-id strings (see {@link
+   * #parseFollowers}). When a search hit is converted back into an entity, that string list cannot
+   * be deserialized into the entity's {@code List<EntityReference> followers} field. This rebuilds
+   * each id into a user {@link EntityReference} so the entity deserializes cleanly.
+   */
+  public static void normalizeFollowers(Map<String, Object> sourceAsMap) {
+    Object followers = sourceAsMap.get(EntityBuilderConstant.FIELD_FOLLOWERS);
+    if (followers instanceof List<?> followerList && !followerList.isEmpty()) {
+      sourceAsMap.put(EntityBuilderConstant.FIELD_FOLLOWERS, expandFollowerIds(followerList));
+    }
+  }
+
+  private static List<Object> expandFollowerIds(List<?> followerList) {
+    List<Object> followers = new ArrayList<>();
+    for (Object follower : followerList) {
+      if (follower instanceof String followerId) {
+        followers.add(
+            new EntityReference().withId(UUID.fromString(followerId)).withType(Entity.USER));
+      } else {
+        followers.add(follower);
+      }
+    }
+    return followers;
   }
 
   public static List<String> parseOwners(List<EntityReference> ownersRef) {
@@ -350,26 +493,27 @@ public final class SearchIndexUtils {
 
   private static void processTagAndTierSources(
       List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
-    Optional.ofNullable(tagList)
-        .ifPresent(
-            tags ->
-                tags.forEach(
-                    tag -> {
-                      String tagSource = tag.getLabelType().value();
-                      if (tag.getTagFQN().startsWith("Tier.")) {
-                        tagAndTierSources
-                            .getTierSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                      } else {
-                        tagAndTierSources
-                            .getTagSources()
-                            .put(
-                                tagSource,
-                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                      }
-                    }));
+    if (tagList == null) {
+      return;
+    }
+    for (TagLabel tag : tagList) {
+      // Defensive: tags deserialized from historical entity_extension rows may have null
+      // labelType or null tagFQN. Skip the malformed tag entirely.
+      if (tag == null) {
+        continue;
+      }
+      String tagFQN = tag.getTagFQN();
+      TagLabel.LabelType labelType = tag.getLabelType();
+      if (tagFQN == null || labelType == null) {
+        continue;
+      }
+      String tagSource = labelType.value();
+      Map<String, Integer> bucket =
+          tagFQN.startsWith("Tier.")
+              ? tagAndTierSources.getTierSources()
+              : tagAndTierSources.getTagSources();
+      bucket.merge(tagSource, 1, Integer::sum);
+    }
   }
 
   private static void processEntityTagSources(

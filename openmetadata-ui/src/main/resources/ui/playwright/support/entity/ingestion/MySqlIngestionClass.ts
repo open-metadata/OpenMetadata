@@ -29,6 +29,7 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { expandAdvancedConfig } from '../../../utils/profilerForm';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -137,14 +138,27 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
+      const profilerMenuItem = page
+        .locator('.ant-dropdown:visible')
+        .getByTestId('agent-item-profiler');
+      await expect(profilerMenuItem).toBeVisible();
+      await profilerMenuItem.click();
+
+      await waitForAllLoadersToDisappear(page);
+      await expandAdvancedConfig(page);
+
+      const sampleConfigTypeSelect = page.getByTestId(
+        'sample-config-type-select'
+      );
+      await expect(sampleConfigTypeSelect).toBeVisible();
+      await sampleConfigTypeSelect.click();
+      await page.locator('[data-key="STATIC"]').click();
+
+      await page.getByTestId('profile-sample-input').waitFor();
       await page
-        .locator('.ant-dropdown:visible [data-menu-id*="profiler"]')
-        .waitFor();
-
-      await page.click('[data-menu-id*="profiler"]');
-
-      await page.locator('#root\\/profileSample').waitFor();
-      await page.fill('#root\\/profileSample', '10');
+        .getByTestId('profile-sample-input')
+        .locator('input')
+        .fill('10');
       await page.click('[data-testid="submit-btn"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);

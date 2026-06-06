@@ -33,6 +33,12 @@ jobs:
   pw-ci-mysql-branch:
     runs-on: ubuntu-latest
     environment: test
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
       matrix:
@@ -75,7 +81,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install --with-deps
+        run: npx playwright@1.57.0 install chromium --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
@@ -88,21 +94,14 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
-          elif [ "${{ matrix.shardIndex }}" -eq "6" ]; then
-            echo "🔹 Running stateful Playwright tests serially on shard 6"
-            npx playwright test \
-              --project=stateful \
-              --workers=1
-
           else
-            # Shards 2-5 handle chromium tests (4 shards total)
+            # Shards 2-6 handle chromium tests (5 shards total)
             CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running all tests (excluding DataAssetRules/stateful) on chromium shard ${CHROMIUM_SHARD}/4"
+            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/4 \
-              --workers=50%
+              --shard=${CHROMIUM_SHARD}/5
           fi
 
         env:

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
@@ -25,43 +24,13 @@ const mockTestSuite = {
   name: 'mySQL.openmetadata_db.openmetadata_db.web_analytic_event.testSuite',
   fullyQualifiedName:
     'mySQL.openmetadata_db.openmetadata_db.web_analytic_event.testSuite',
-  tests: [],
-  pipelines: [
-    {
-      id: 'd16c64b6-fb36-4e20-8700-d6f1e2754ef5',
-      type: 'ingestionPipeline',
-      name: 'web_analytic_event_TestSuite',
-      fullyQualifiedName:
-        'mySQL.openmetadata_db.openmetadata_db.web_analytic_event.testSuite.web_analytic_event_TestSuite',
-      deleted: false,
-    },
-  ],
-  serviceType: 'TestSuite',
-  version: 0.1,
-  updatedAt: 1692766701920,
-  updatedBy: 'admin',
-  deleted: false,
-  basic: true,
-  basicEntityReference: {
-    id: 'e926d275-441e-49ee-a073-ad509f625a14',
-    type: 'table',
-    name: 'web_analytic_event',
-    fullyQualifiedName:
-      'mySQL.openmetadata_db.openmetadata_db.web_analytic_event',
-  },
-  summary: {
-    success: 0,
-    failed: 1,
-    aborted: 0,
-    total: 1,
-  },
-  testCaseResultSummary: [],
 } as unknown as Table['testSuite'];
 
 const mockPipelines = [
   {
     id: '1',
     name: 'pipeline1',
+    fullyQualifiedName: 'svc.pipeline1',
     sourceConfig: {
       config: {
         testCases: ['test1', 'test2', 'test3'],
@@ -71,6 +40,7 @@ const mockPipelines = [
   {
     id: '2',
     name: 'pipeline2',
+    fullyQualifiedName: 'svc.pipeline2',
     sourceConfig: {
       config: {
         testCases: ['test1'],
@@ -80,11 +50,12 @@ const mockPipelines = [
   {
     id: '3',
     name: 'pipeline3',
+    fullyQualifiedName: 'svc.pipeline3',
     sourceConfig: {
       config: {},
     },
   },
-];
+] as unknown as IngestionPipeline[];
 
 const mockPaging = {
   after: 'after-id',
@@ -92,13 +63,115 @@ const mockPaging = {
   total: 10,
 };
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockTable = ({
+    children,
+    'data-testid': testId,
+  }: React.PropsWithChildren<{
+    'data-testid'?: string;
+    [key: string]: unknown;
+  }>) => <table data-testid={testId}>{children}</table>;
+
+  MockTable.Header = ({
+    columns,
+    children,
+  }: {
+    columns: Array<{
+      id: string;
+      name: React.ReactNode;
+      headerContent?: React.ReactNode;
+    }>;
+    children: (col: {
+      id: string;
+      name: React.ReactNode;
+      headerContent?: React.ReactNode;
+    }) => React.ReactNode;
+  }) => (
+    <thead>
+      <tr>{(columns || []).map((col) => children(col as never))}</tr>
+    </thead>
+  );
+
+  MockTable.Head = ({
+    children,
+    className,
+    id,
+    label,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    id?: string;
+    label?: React.ReactNode;
+  }) => (
+    <th className={className} id={id}>
+      {label}
+      {children}
+    </th>
+  );
+
+  MockTable.Body = ({
+    items,
+    children,
+    renderEmptyState,
+  }: {
+    items?: unknown[];
+    children: (item: unknown) => React.ReactNode;
+    renderEmptyState?: () => React.ReactNode;
+  }) => (
+    <tbody>
+      {items && items.length > 0
+        ? items.map((item) => children(item))
+        : renderEmptyState?.()}
+    </tbody>
+  );
+
+  MockTable.Row = ({
+    children,
+    id,
+  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
+
+  MockTable.Cell = ({
+    children,
+    className,
+  }: React.PropsWithChildren<{ className?: string }>) => (
+    <td className={className}>{children}</td>
+  );
+
+  const MockTableCard = {
+    Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  };
+
+  const MockTooltip = ({ children }: React.PropsWithChildren) => (
+    <>{children}</>
+  );
+
+  const MockTooltipTrigger = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <span {...props}>{children}</span>
+  );
+
+  return {
+    Table: MockTable,
+    TableCard: MockTableCard,
+    Tooltip: MockTooltip,
+    TooltipTrigger: MockTooltipTrigger,
+  };
+});
+
 jest.mock('../../../../rest/ingestionPipelineAPI', () => {
   return {
+    deleteIngestionPipelineById: jest.fn(),
+    deployIngestionPipelineById: jest.fn(),
+    enableDisableIngestionPipelineById: jest.fn(),
     getIngestionPipelines: jest
       .fn()
       .mockImplementation(() =>
         Promise.resolve({ data: mockPipelines, paging: mockPaging })
       ),
+    getRunHistoryForPipeline: jest.fn().mockResolvedValue({ data: [] }),
+    triggerIngestionPipelineById: jest.fn(),
   };
 });
 
@@ -108,23 +181,23 @@ jest.mock(
     useAirflowStatus: jest.fn().mockReturnValue({
       isAirflowAvailable: true,
       isFetchingStatus: false,
+      platform: 'active',
     }),
   })
 );
 
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockReturnValue({
-    pathname: '/test/path',
-    search: '',
-    hash: '',
-    state: null,
-  }),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {},
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+      Delete: true,
+      EditAll: true,
+      EditIngestionPipelineStatus: true,
+    }),
   }),
 }));
 
@@ -141,66 +214,47 @@ jest.mock('../../../../hooks/paging/usePaging', () => ({
     pageSize: 15,
     handlePageSizeChange: jest.fn(),
     showPagination: true,
-    pagingCursor: {
-      cursorType: undefined,
-      cursorValue: undefined,
-      currentPage: '1',
-      pageSize: 15,
-    },
   }),
 }));
 
+jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ pagingHandler }) => (
+      <button
+        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
+        Next Page
+      </button>
+    )),
+}));
+
 jest.mock(
-  '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable',
-  () => {
-    return function MockIngestionListTable({
-      ingestionData,
-      onPageChange,
-      pipelineTypeColumnObj,
-    }: {
-      ingestionData: IngestionPipeline[];
-      onPageChange: ({
-        cursorType,
-        currentPage,
-      }: {
-        cursorType: string;
-        currentPage: number;
-      }) => void;
-      pipelineTypeColumnObj?: Array<{
-        title: React.ReactNode;
-        dataIndex: string;
-        key: string;
-        width?: number;
-        render?: (text: string, record: IngestionPipeline) => JSX.Element;
-      }>;
-    }) {
-      return (
-        <div data-testid="test-suite-pipeline-tab">
-          {pipelineTypeColumnObj && (
-            <div data-testid="pipeline-type-column-header">
-              {pipelineTypeColumnObj[0]?.title}
-            </div>
-          )}
-          {ingestionData.map((pipeline) => (
-            <div key={pipeline.id}>
-              <div>{pipeline.name}</div>
-              {pipelineTypeColumnObj && (
-                <div data-testid={`test-case-count-${pipeline.name}`}>
-                  {pipeline?.sourceConfig?.config?.testCases?.length ?? 'All'}
-                </div>
-              )}
-            </div>
-          ))}
-          <button
-            onClick={() =>
-              onPageChange({ cursorType: 'after', currentPage: 2 })
-            }>
-            Next Page
-          </button>
-        </div>
-      );
-    };
-  }
+  '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  () => ({
+    IngestionRecentRuns: jest
+      .fn()
+      .mockImplementation(() => <div>IngestionRecentRuns</div>),
+  })
+);
+
+jest.mock(
+  '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="pipeline-actions">PipelineActions</div>
+      ))
+);
+
+jest.mock(
+  '../../../Settings/Services/Ingestion/IngestionListTable/IngestionStatusCount/IngestionStatusCount',
+  () => jest.fn().mockImplementation(() => <div>IngestionStatusCount</div>)
+);
+
+jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
+  jest.fn().mockImplementation(() => null)
 );
 
 jest.mock(
@@ -219,6 +273,11 @@ jest.mock(
 describe('TestSuite Pipeline component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'active',
+    });
   });
 
   it('getIngestionPipelines API should call on page load', async () => {
@@ -232,6 +291,7 @@ describe('TestSuite Pipeline component', () => {
       pipelineType: ['TestSuite'],
       testSuite: mockTestSuite?.fullyQualifiedName,
       limit: PAGE_SIZE_BASE,
+      paging: undefined,
     });
   });
 
@@ -241,20 +301,11 @@ describe('TestSuite Pipeline component', () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
-    // Initial call with default page size
-    expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
-      expect.objectContaining({
-        limit: PAGE_SIZE_BASE,
-      })
-    );
-
-    // Click next page button
     const nextPageButton = screen.getByText('Next Page');
     await act(async () => {
-      nextPageButton.click();
+      fireEvent.click(nextPageButton);
     });
 
-    // Verify call with after cursor
     expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
       expect.objectContaining({
         paging: { after: 'after-id' },
@@ -263,49 +314,20 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
-  it('should update pipeline list when page changes', async () => {
-    const updatedMockPipelines = [
-      {
-        id: '4',
-        name: 'pipeline4',
-        sourceConfig: { config: {} },
-      },
-    ];
-
-    const mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
-    mockGetIngestionPipelines
-      .mockImplementationOnce(() =>
-        Promise.resolve({ data: mockPipelines, paging: mockPaging })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          data: updatedMockPipelines,
-          paging: { ...mockPaging, after: null },
-        })
-      );
-
+  it('should render pipeline rows', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
-    // Initial render should show first page pipelines
     expect(screen.getByText('pipeline1')).toBeInTheDocument();
-
-    // Click next page button
-    const nextPageButton = screen.getByText('Next Page');
-    await act(async () => {
-      nextPageButton.click();
-    });
-
-    // Should show second page pipeline
-    expect(screen.getByText('pipeline4')).toBeInTheDocument();
+    expect(screen.getByText('pipeline2')).toBeInTheDocument();
   });
 
   it('should show error placeholder when airflow is not available', async () => {
-    // Mock airflow status as unavailable
     (useAirflowStatus as jest.Mock).mockReturnValue({
       isAirflowAvailable: false,
       isFetchingStatus: false,
+      platform: 'active',
     });
 
     await act(async () => {
@@ -317,37 +339,20 @@ describe('TestSuite Pipeline component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should show loading state while fetching airflow status', async () => {
-    // Mock airflow status as loading
-    (useAirflowStatus as jest.Mock).mockReturnValue({
-      isAirflowAvailable: true,
-      isFetchingStatus: true,
-    });
-
-    await act(async () => {
-      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
-    });
-
-    // Component should be in loading state
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('error-placeholder-ingestion')
-    ).not.toBeInTheDocument();
-  });
-
   it('should display test case count for each pipeline', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
-    // Check test case counts are displayed correctly
-    const pipeline1Count = screen.getByTestId('test-case-count-pipeline1');
-    const pipeline2Count = screen.getByTestId('test-case-count-pipeline2');
-    const pipeline3Count = screen.getByTestId('test-case-count-pipeline3');
-
-    expect(pipeline1Count).toHaveTextContent('3');
-    expect(pipeline2Count).toHaveTextContent('1');
-    expect(pipeline3Count).toHaveTextContent('All');
+    expect(screen.getByTestId('test-case-count-pipeline1')).toHaveTextContent(
+      '3'
+    );
+    expect(screen.getByTestId('test-case-count-pipeline2')).toHaveTextContent(
+      '1'
+    );
+    expect(screen.getByTestId('test-case-count-pipeline3')).toHaveTextContent(
+      'label.all'
+    );
   });
 
   it('should render test cases column header with label and helper icon', async () => {
@@ -355,10 +360,12 @@ describe('TestSuite Pipeline component', () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
-    const columnHeader = screen.getByTestId('pipeline-type-column-header');
-
-    expect(columnHeader).toBeInTheDocument();
-    expect(screen.getByTestId('mui-form-item-label')).toBeInTheDocument();
-    expect(screen.getByTestId('mui-helper-icon')).toBeInTheDocument();
+    expect(screen.getByText('label.test-case-plural')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-cases-info-tooltip-trigger')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('test-cases-info-tooltip-icon')).toHaveClass(
+      'tw:size-3'
+    );
   });
 });

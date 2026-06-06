@@ -30,9 +30,7 @@ class TestTableauClientOwner(TestCase):
     def setUp(self):
         """Set up test client with mocked Tableau server"""
         # Mock the Server and its authentication
-        with patch(
-            "metadata.ingestion.source.dashboard.tableau.client.Server"
-        ) as mock_server:
+        with patch("metadata.ingestion.source.dashboard.tableau.client.Server") as mock_server:
             mock_server_instance = MagicMock()
             mock_server.return_value = mock_server_instance
             mock_server_instance.auth = MagicMock()

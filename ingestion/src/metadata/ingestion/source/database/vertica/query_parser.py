@@ -11,8 +11,9 @@
 """
 Vertica usage module
 """
+
 from abc import ABC
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -45,20 +46,16 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
-            raise InvalidSourceException(
-                f"Expected VerticaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        database = self.config.serviceConnection.root.config.database
+        database = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if database:
             yield from super().get_table_query()
         else:
@@ -67,6 +64,6 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
             for res in results:
                 row = list(res)
                 logger.info(f"Ingesting from database: {row[0]}")
-                self.config.serviceConnection.root.config.database = row[0]
+                self.config.serviceConnection.root.config.database = row[0]  # pyright: ignore[reportAttributeAccessIssue]
                 self.engine = get_connection(self.service_connection)
                 yield from super().get_table_query()

@@ -49,7 +49,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -270,6 +270,14 @@ const AddCustomProperty = ({
         placeholder: t('label.name'),
         rules: [
           {
+            max: 256,
+            message: t('message.entity-size-in-between', {
+              entity: t('label.name'),
+              min: 1,
+              max: 256,
+            }),
+          },
+          {
             pattern: CUSTOM_PROPERTY_NAME_REGEX,
             message: t('message.custom-property-name-validation'),
           },
@@ -370,7 +378,7 @@ const AddCustomProperty = ({
     () => ({
       name: 'multiSelect',
       label: t('label.multi-select'),
-      type: FieldTypes.SWITCH_MUI,
+      type: FieldTypes.UT_SWITCH,
       required: false,
       props: {
         'data-testid': 'multiSelect',

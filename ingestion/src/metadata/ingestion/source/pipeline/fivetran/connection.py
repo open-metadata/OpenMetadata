@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -40,15 +41,15 @@ def test_connection(
     metadata: OpenMetadata,
     client: FivetranClient,
     service_connection: FivetranConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetPipelines": client.list_groups}
+    test_fn = {"GetPipelines": lambda: list(client.list_groups())}
 
     return test_connection_steps(
         metadata=metadata,

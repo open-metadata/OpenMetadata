@@ -14,7 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
 from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 
 

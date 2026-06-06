@@ -77,11 +77,14 @@ class EntityLinkGrammarTest {
           Entity.AUDIT_LOG,
           Entity.QUERY_COST_RECORD,
           Entity.AGENT_EXECUTION,
-          Entity.MCP_EXECUTION,
           Entity.DATA_CONTRACT_RESULT,
           // Internal entities - used for feeds/suggestions, not linkable targets
           Entity.THREAD,
           Entity.SUGGESTION,
+          // Feed entity derived from scheduling windows, not addressed via EntityLinks
+          Entity.ANNOUNCEMENT,
+          // Admin-only task form configuration entity, not a content entity link target
+          Entity.TASK_FORM_SCHEMA,
           // Column entity types - sub-entity types for custom properties, not top-level
           Entity.TABLE_COLUMN,
           Entity.DASHBOARD_DATA_MODEL_COLUMN,

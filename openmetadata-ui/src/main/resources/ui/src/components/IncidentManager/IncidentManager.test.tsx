@@ -12,10 +12,12 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import { act } from 'react';
+import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
+import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import '../../test/unit/mocks/mui.mock';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -146,6 +148,62 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
+  const TableMock = Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+      'aria-label'?: string;
+    }) => (
+      <table aria-label={ariaLabel} data-testid={testId}>
+        {children}
+      </table>
+    ),
+    {
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: { id: string; label: string }[];
+        children: (col: { id: string; label: string }) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label }: { label?: string }) => <span>{label}</span>,
+      Body: ({
+        items,
+        children,
+        renderEmptyState,
+      }: {
+        items?: unknown[];
+        children: (item: unknown) => React.ReactNode;
+        renderEmptyState?: () => React.ReactNode;
+        dependencies?: unknown[];
+      }) => (
+        <tbody>
+          {!items || items.length === 0
+            ? renderEmptyState?.()
+            : items.map((item) => children(item))}
+        </tbody>
+      ),
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  );
+
   return {
     Dropdown: {
       Root: DropdownRoot,
@@ -169,6 +227,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children, className }) => (
         <button className={className}>{children}</button>
       )),
+    Table: TableMock,
   };
 });
 
@@ -204,7 +263,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -326,11 +389,11 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('EntityName'),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
 }));
@@ -828,6 +891,46 @@ describe('IncidentManagerPage', () => {
       });
 
       expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+    });
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('test case name link should use observabilityRouterClassBase.getTestCaseDetailPagePath', async () => {
+      const fqn = 'svc.db.schema.table.test_case_1';
+      const { getTestCaseDetailPagePath } = require('../../utils/RouterUtils');
+      (getTestCaseDetailPagePath as jest.Mock).mockClear();
+
+      (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'tcr-1',
+            testCaseReference: {
+              fullyQualifiedName: fqn,
+              name: 'test_case_1',
+            },
+            testCaseResolutionStatusType: 'New',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const link = await screen.findByTestId('test-case-test_case_1');
+
+      expect(link.tagName).toBe('A');
+      expect(link.getAttribute('data-to')).toBe(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          fqn,
+          TestCasePageTabs.TEST_CASE_RESULTS
+        )
+      );
+      expect(getTestCaseDetailPagePath).toHaveBeenCalledWith(
+        fqn,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      );
     });
   });
 });

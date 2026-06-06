@@ -50,7 +50,7 @@ const styles = sortCx({
   },
 
   dark: {
-    base: 'tw:text-fg-white tw:shadow-xs-skeumorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+    base: 'tw:text-fg-white tw:shadow-xs-skeuomorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md tw:before:rounded-[5px]',
       md: 'tw:size-10 tw:rounded-lg tw:before:rounded-[7px]',
@@ -67,7 +67,7 @@ const styles = sortCx({
   },
 
   modern: {
-    base: 'tw:bg-primary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-inset',
+    base: 'tw:bg-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-inset',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md',
       md: 'tw:size-10 tw:rounded-lg',
@@ -163,7 +163,7 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
         className
       )}>
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}
-      {isValidElement(Icon) && <div className="tw:z-1">{Icon}</div>}
+      {isValidElement(Icon) && <div className="tw:z-1 tw:flex">{Icon}</div>}
 
       {children}
     </div>

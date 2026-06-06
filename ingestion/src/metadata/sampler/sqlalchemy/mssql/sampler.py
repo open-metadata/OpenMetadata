@@ -13,11 +13,12 @@ Helper module to handle data sampling
 for the profiler
 """
 
-
 from sqlalchemy import Table, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -27,26 +28,22 @@ class MssqlSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
         Args:
-            selectable (Table): _description_
+            static (StaticSamplingConfig): sampling configuration
+            selectable (Table): table to sample
         """
         if self.entity.tableType != TableType.View:
-            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-                return selectable.tablesample(
-                    text(f"{self.sample_config.profileSample or 100} PERCENT")
-                )
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+                return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 
-            return selectable.tablesample(
-                text(f"{int(self.sample_config.profileSample or 100)} ROWS")
-            )
+            return selectable.tablesample(text(f"{int(static.profileSample or 100 if static else 100)} ROWS"))
         return selectable
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
+        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

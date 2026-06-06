@@ -17,20 +17,28 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.Toleration;
+import io.fabric8.kubernetes.api.model.TolerationBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.NamespaceableResource;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.operator.controller.CronOMJobReconciler;
 import org.openmetadata.operator.model.CronOMJobResource;
 import org.openmetadata.operator.model.CronOMJobSpec;
 import org.openmetadata.operator.model.CronOMJobStatus;
+import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,15 +46,27 @@ class CronOMJobReconcilerTest {
 
   @Mock private Context<CronOMJobResource> context;
   @Mock private KubernetesClient client;
+  @Mock private MixedOperation mixedOp;
+  @Mock private NamespaceableResource namespaceable;
+  @Mock private Resource resource;
 
   private CronOMJobReconciler reconciler;
   private CronOMJobResource cronOMJob;
 
+  @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
     reconciler = new CronOMJobReconciler();
     cronOMJob = createTestCronOMJob("test-cronjob", "0 * * * *");
-    when(context.getClient()).thenReturn(client);
+
+    // Stub the client chain so tests that reach the happy path
+    // (time-dependent) don't NPE. Lenient because most tests
+    // return early before calling context.getClient().
+    lenient().when(context.getClient()).thenReturn(client);
+    lenient().when(client.resources(any(Class.class))).thenReturn(mixedOp);
+    lenient().when(mixedOp.inNamespace(any())).thenReturn(mixedOp);
+    lenient().when(mixedOp.resource(any())).thenReturn(namespaceable);
+    lenient().when(namespaceable.create()).thenReturn(null);
   }
 
   @Test
@@ -141,6 +161,79 @@ class CronOMJobReconcilerTest {
 
     assertNotNull(result);
     assertEquals("Missing schedule", cronOMJob.getStatus().getMessage());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testReconcilePropagatesTolerationsFromCronOMJobToScheduledOMJob() {
+    List<Toleration> tolerations =
+        List.of(
+            new TolerationBuilder()
+                .withKey("dedicated")
+                .withOperator("Equal")
+                .withValue("ingestion")
+                .withEffect("NoSchedule")
+                .build(),
+            new TolerationBuilder()
+                .withKey("gpu")
+                .withOperator("Exists")
+                .withEffect("NoExecute")
+                .withTolerationSeconds(300L)
+                .build());
+
+    cronOMJob.getSpec().getOmJobSpec().getMainPodSpec().setTolerations(tolerations);
+    cronOMJob.getSpec().getOmJobSpec().getExitHandlerSpec().setTolerations(tolerations);
+
+    cronOMJob.getSpec().setSchedule("* * * * *");
+    cronOMJob.getSpec().setStartingDeadlineSeconds(86400);
+
+    reconciler.reconcile(cronOMJob, context);
+
+    ArgumentCaptor<OMJobResource> captor = ArgumentCaptor.forClass(OMJobResource.class);
+    verify(mixedOp).resource(captor.capture());
+    OMJobResource scheduled = captor.getValue();
+
+    assertNotNull(scheduled.getSpec(), "Scheduled OMJob spec must not be null");
+    assertNotNull(
+        scheduled.getSpec().getMainPodSpec().getTolerations(),
+        "Main pod tolerations must be propagated from CronOMJob template");
+    assertEquals(2, scheduled.getSpec().getMainPodSpec().getTolerations().size());
+    assertEquals(
+        "dedicated", scheduled.getSpec().getMainPodSpec().getTolerations().get(0).getKey());
+    assertEquals(
+        "NoSchedule", scheduled.getSpec().getMainPodSpec().getTolerations().get(0).getEffect());
+    assertEquals("gpu", scheduled.getSpec().getMainPodSpec().getTolerations().get(1).getKey());
+    assertEquals(
+        Long.valueOf(300L),
+        scheduled.getSpec().getMainPodSpec().getTolerations().get(1).getTolerationSeconds());
+
+    assertNotNull(
+        scheduled.getSpec().getExitHandlerSpec().getTolerations(),
+        "Exit handler tolerations must be propagated from CronOMJob template");
+    assertEquals(2, scheduled.getSpec().getExitHandlerSpec().getTolerations().size());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testReconcileLeavesTolerationsNullWhenSourceHasNone() {
+    cronOMJob.getSpec().getOmJobSpec().getMainPodSpec().setTolerations(null);
+    cronOMJob.getSpec().getOmJobSpec().getExitHandlerSpec().setTolerations(null);
+
+    cronOMJob.getSpec().setSchedule("* * * * *");
+    cronOMJob.getSpec().setStartingDeadlineSeconds(86400);
+
+    reconciler.reconcile(cronOMJob, context);
+
+    ArgumentCaptor<OMJobResource> captor = ArgumentCaptor.forClass(OMJobResource.class);
+    verify(mixedOp).resource(captor.capture());
+    OMJobResource scheduled = captor.getValue();
+
+    assertNull(
+        scheduled.getSpec().getMainPodSpec().getTolerations(),
+        "Main pod tolerations must remain null when CronOMJob has none");
+    assertNull(
+        scheduled.getSpec().getExitHandlerSpec().getTolerations(),
+        "Exit handler tolerations must remain null when CronOMJob has none");
   }
 
   private CronOMJobResource createTestCronOMJob(String name, String schedule) {

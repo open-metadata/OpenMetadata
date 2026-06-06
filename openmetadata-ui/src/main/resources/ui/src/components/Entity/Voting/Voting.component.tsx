@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
+import './voting.less';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
   const { t } = useTranslation();
@@ -39,7 +40,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
     <>
       <Tooltip title={t('label.up-vote')}>
         <Button
-          className={classNames('  ant-button-vote flex-center', {
+          className={classNames('ant-button-vote flex-center', {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedUp,
           })}
           data-testid="up-vote-btn"

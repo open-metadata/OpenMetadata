@@ -13,10 +13,9 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import i18next from 'i18next';
+import type { AxiosError } from 'axios';
 import { isString, omit } from 'lodash';
-import { EntityTags } from 'Models';
+import type { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -24,26 +23,19 @@ import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
 import { SettledStatus } from '../enums/Axios.enum';
-import { EntityType } from '../enums/entity.enum';
-import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { Classification } from '../generated/entity/classification/classification';
+import type { Tag } from '../generated/entity/classification/tag';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
-  AssetCertification,
-  Column,
-  EntityReference,
   TagSource,
+  type AssetCertification,
+  type Column,
+  type EntityReference,
 } from '../generated/entity/data/table';
-import { Operation } from '../generated/entity/policies/policy';
-import { Paging } from '../generated/type/paging';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import type { Paging } from '../generated/type/paging';
+import { LabelType, State, type TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
 import {
   getAllClassifications,
@@ -52,13 +44,7 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
-import { checkPermissionEntityResource } from './PermissionsUtils';
-import {
-  getClassificationTagPath,
-  getExplorePath,
-  getGlossaryPath,
-} from './RouterUtils';
-import { getTermQuery } from './SearchUtils';
+import i18n from './i18next/LocalUtil';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -201,38 +187,22 @@ export const getDeleteIcon = (arg: {
   return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
 
-export const getUsageCountLink = (tagFQN: string) => {
-  const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
-
-  return getExplorePath({
-    tab: ExplorePageTabs.TABLES,
-    extraParameters: {
-      page: '1',
-      quickFilter: JSON.stringify({
-        query: {
-          bool: {
-            must: [
-              {
-                bool: {
-                  should: [{ term: { [`${type}.tagFQN`]: tagFQN } }],
-                },
-              },
-            ],
-          },
-        },
-      }),
-    },
-    isPersistFilters: false,
-  });
-};
+// Re-exports from TagsPureUtils (backward compat)
+export {
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+  getQueryFilterToExcludeTermsAndEntities,
+  getTagAssetsQueryFilter,
+  getTagRedirectLink,
+  getUsageCountLink,
+} from './TagsPureUtils';
 
 export const getTagPlaceholder = (isGlossaryType: boolean): string =>
   isGlossaryType
-    ? i18next.t('label.search-entity', {
-        entity: i18next.t('label.glossary-term-plural'),
+    ? i18n.t('label.search-entity', {
+        entity: i18n.t('label.glossary-term-plural'),
       })
-    : i18next.t('label.search-entity', {
-        entity: i18next.t('label.tag-plural'),
+    : i18n.t('label.search-entity', {
+        entity: i18n.t('label.tag-plural'),
       });
 
 export const tagRender = (customTagProps: CustomTagProps) => {
@@ -372,240 +342,6 @@ export const createTagObject = (tags: EntityTags[]) => {
   );
 };
 
-export const getQueryFilterToExcludeTermsAndEntities = (
-  fqn: string,
-  excludeEntityIndex: string[] = []
-) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'tags.tagFQN': fqn,
-                },
-              },
-            ],
-          },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                terms: {
-                  entityType: [
-                    EntityType.CLASSIFICATION,
-                    EntityType.TEST_SUITE,
-                    EntityType.TEST_CASE,
-                    EntityType.TEST_CASE_RESOLUTION_STATUS,
-                    EntityType.TEST_CASE_RESULT,
-                    EntityType.TAG,
-                    EntityType.DATA_PRODUCT,
-                    ...excludeEntityIndex,
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-});
-
-export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
-  permissions: UIPermission
-) => {
-  const entityPermission = {
-    [EntityType.TABLE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.TABLE,
-      permissions,
-      true
-    ),
-    [EntityType.TOPIC]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.TOPIC,
-      permissions,
-      true
-    ),
-    [EntityType.DASHBOARD]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DASHBOARD,
-      permissions,
-      true
-    ),
-    [EntityType.MLMODEL]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.ML_MODEL,
-      permissions,
-      true
-    ),
-    [EntityType.PIPELINE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.PIPELINE,
-      permissions,
-      true
-    ),
-    [EntityType.CONTAINER]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.CONTAINER,
-      permissions,
-      true
-    ),
-    [EntityType.SEARCH_INDEX]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.SEARCH_INDEX,
-      permissions,
-      true
-    ),
-    [EntityType.API_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.API_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.API_ENDPOINT]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.API_ENDPOINT,
-      permissions,
-      true
-    ),
-    [EntityType.API_COLLECTION]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.API_COLLECTION,
-      permissions,
-      true
-    ),
-    [EntityType.DASHBOARD_DATA_MODEL]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DASHBOARD_DATA_MODEL,
-      permissions,
-      true
-    ),
-    [EntityType.STORED_PROCEDURE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.STORED_PROCEDURE,
-      permissions,
-      true
-    ),
-    [EntityType.DATABASE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DATABASE,
-      permissions,
-      true
-    ),
-    [EntityType.DATABASE_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DATABASE_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.DATABASE_SCHEMA]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DATABASE_SCHEMA,
-      permissions,
-      true
-    ),
-    [EntityType.MESSAGING_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.PIPELINE_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.DASHBOARD_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DASHBOARD_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.MLMODEL_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.ML_MODEL_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.PIPELINE_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.PIPELINE_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.STORAGE_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.STORAGE_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.SEARCH_SERVICE]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.SEARCH_SERVICE,
-      permissions,
-      true
-    ),
-    [EntityType.GLOSSARY]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.GLOSSARY,
-      permissions,
-      true
-    ),
-    [EntityType.GLOSSARY_TERM]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.GLOSSARY_TERM,
-      permissions,
-      true
-    ),
-    [EntityType.DOMAIN]: checkPermissionEntityResource(
-      Operation.EditTags,
-      ResourceEntity.DOMAIN,
-      permissions,
-      true
-    ),
-  };
-
-  return (Object.keys(entityPermission) as EntityType[]).reduce(
-    (
-      acc: {
-        entitiesHavingPermission: EntityType[];
-        entitiesNotHavingPermission: EntityType[];
-      },
-      cv: EntityType
-    ) => {
-      const currentEntityPermission =
-        entityPermission[cv as keyof typeof entityPermission];
-      if (currentEntityPermission) {
-        return {
-          ...acc,
-          entitiesHavingPermission: [...acc.entitiesHavingPermission, cv],
-        };
-      }
-
-      return {
-        ...acc,
-        entitiesNotHavingPermission: [...acc.entitiesNotHavingPermission, cv],
-      };
-    },
-    {
-      entitiesHavingPermission: [],
-      entitiesNotHavingPermission: [],
-    }
-  );
-};
-
-export const getTagAssetsQueryFilter = (fqn: string) => {
-  let fieldName = 'tags.tagFQN';
-
-  if (fqn.includes('Tier.')) {
-    fieldName = 'tier.tagFQN';
-  } else if (fqn.includes('Certification.')) {
-    fieldName = 'certification.tagLabel.tagFQN';
-  }
-
-  return getTermQuery({ [fieldName]: fqn });
-};
-
 /**
  * Check if a tag is a glossary tag
  */
@@ -631,18 +367,6 @@ export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
   );
 };
 
-/**
- * Get the redirect link for a tag
- */
-export const getTagRedirectLink = (
-  tag: EntityTags,
-  tagType?: TagSource
-): string => {
-  return (tagType ?? tag.source) === TagSource.Glossary
-    ? getGlossaryPath(tag.tagFQN)
-    : getClassificationTagPath(tag.tagFQN);
-};
-
 export const getGlossaryTags = (tags: TagLabel[] | undefined): TagLabel[] =>
   tags?.filter((tag) => tag.source === TagSource.Glossary) ?? [];
 
@@ -658,4 +382,19 @@ export const TagListItemRenderer = (props: EntityReference) => {
       <Typography.Text>{getEntityName(props)}</Typography.Text>
     </Space>
   );
+};
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
 };

@@ -12,50 +12,50 @@
 Glue source models.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 class GlueSchema(BaseModel):
-    CatalogId: Optional[str] = None
+    CatalogId: Optional[str] = None  # noqa: UP045
     Name: str
-    Description: Optional[str] = None
+    Description: Optional[str] = None  # noqa: UP045
 
 
 class DatabasePage(BaseModel):
-    DatabaseList: Optional[List[GlueSchema]] = []
+    DatabaseList: Optional[List[GlueSchema]] = []  # noqa: UP006, UP045
 
 
 class TableParameters(BaseModel):
-    table_type: Optional[str] = None
+    table_type: Optional[str] = None  # noqa: UP045
 
 
 class Column(BaseModel):
     Type: str
     Name: str
-    Comment: Optional[str] = None
+    Comment: Optional[str] = None  # noqa: UP045
 
 
 class SerializationDetails(BaseModel):
-    SerializationLibrary: Optional[str] = None
-    Parameters: Optional[dict] = {}
+    SerializationLibrary: Optional[str] = None  # noqa: UP045
+    Parameters: Optional[dict] = {}  # noqa: UP045
 
 
 class StorageDetails(BaseModel):
-    Columns: Optional[List[Column]] = []
-    Location: Optional[str] = None
-    SerdeInfo: Optional[SerializationDetails] = SerializationDetails()
+    Columns: Optional[List[Column]] = []  # noqa: UP006, UP045
+    Location: Optional[str] = None  # noqa: UP045
+    SerdeInfo: Optional[SerializationDetails] = SerializationDetails()  # noqa: UP045
 
 
 class GlueTable(BaseModel):
-    Parameters: Optional[TableParameters] = None
+    Parameters: Optional[TableParameters] = None  # noqa: UP045
     Name: str
-    TableType: Optional[str] = None
-    Description: Optional[str] = None
-    StorageDescriptor: Optional[StorageDetails] = StorageDetails()
-    PartitionKeys: Optional[List[Column]] = []
+    TableType: Optional[str] = None  # noqa: UP045
+    Description: Optional[str] = None  # noqa: UP045
+    StorageDescriptor: Optional[StorageDetails] = StorageDetails()  # noqa: UP045
+    PartitionKeys: Optional[List[Column]] = []  # noqa: UP006, UP045
 
 
 class TablePage(BaseModel):
-    TableList: Optional[List[GlueTable]] = []
+    TableList: Optional[List[GlueTable]] = []  # noqa: UP006, UP045

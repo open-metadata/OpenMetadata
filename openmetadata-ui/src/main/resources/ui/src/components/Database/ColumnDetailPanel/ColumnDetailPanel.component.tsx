@@ -25,27 +25,21 @@ import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ENTITY_PATH,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import {
-  getTableColumnsByFQN,
-  updateTableColumn,
-} from '../../../rest/tableAPI';
+import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import EntityLink from '../../../utils/EntityLink';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
+import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -98,10 +92,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
-  onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
-  const { permissions } = useGenericContext();
+  const { permissions, changeSummary } = useGenericContext();
 
   const previousFqnRef = useRef<string | undefined>();
   const fetchedColumnFqnRef = useRef<string | undefined>();
@@ -267,44 +260,27 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     ) {
       try {
         setIsColumnDataLoading(true);
-        const response = await getTableColumnsByFQN(tableFqn, {
+        const latestColumn = await getColumnByFQN(targetFqn, {
+          entityType,
           fields: 'tags,customMetrics,extension,profile',
-          limit: PAGE_SIZE_LARGE,
         });
 
-        const latestColumn = response.data.find(
-          (c) => c.fullyQualifiedName === targetFqn
-        );
+        setActiveColumn((prev) => {
+          if (prev?.fullyQualifiedName !== targetFqn) {
+            return prev;
+          }
 
-        if (latestColumn) {
-          setActiveColumn((prev) => {
-            // Discard stale response if column changed during fetch
-            if (prev?.fullyQualifiedName !== targetFqn) {
-              return prev;
-            }
-
-            return { ...prev, ...latestColumn } as Column;
-          });
-        }
+          return { ...prev, ...latestColumn } as Column;
+        });
 
         fetchedColumnFqnRef.current = targetFqn;
-
-        if (onColumnsUpdate) {
-          onColumnsUpdate(response.data);
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsColumnDataLoading(false);
       }
     }
-  }, [
-    column?.fullyQualifiedName,
-    isOpen,
-    entityType,
-    tableFqn,
-    onColumnsUpdate,
-  ]);
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {
@@ -676,20 +652,28 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const renderOverviewTab = () => {
     if (isColumnDataLoading) {
       return (
-        <div className="flex-center p-lg">
+        <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
           <Loader size="default" />
         </div>
       );
     }
 
     return (
-      <Space className="w-full" direction="vertical" size="large">
+      <Space className="tw:w-full" direction="vertical" size="large">
         {isDescriptionLoading ? (
-          <div className="flex-center p-lg">
+          <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
             <Loader size="small" />
           </div>
         ) : (
           <DescriptionSection
+            changeSummaryEntry={
+              changeSummary?.[
+                `columns.${EntityLink.getTableColumnNameFromColumnFqn(
+                  activeColumn?.fullyQualifiedName ?? '',
+                  false
+                )}.description`
+              ]
+            }
             description={activeColumn?.description}
             entityFqn={activeColumn?.fullyQualifiedName}
             entityType={entityType}
@@ -743,7 +727,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const renderLineageTab = () => {
     if (isLineageLoading) {
       return (
-        <div className="flex-center p-lg">
+        <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
           <Loader size="default" />
         </div>
       );
@@ -751,7 +735,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     if (!lineageData) {
       return (
-        <div className="text-center text-grey-muted p-lg">
+        <div className="tw:text-center tw:text-gray-400 tw:p-6">
           {t('label.no-data-found')}
         </div>
       );
@@ -773,7 +757,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <div className="overview-tab-content">
+      <div className="tw:h-auto">
         <CustomPropertiesSection
           emptyStateMessage={t('label.table-entity-text', {
             entityText: t('label.column-plural'),
@@ -794,23 +778,24 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const columnTitle = activeColumn ? (
     <div className="title-section">
-      <div className="tw:ml-4">
+      <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
         {breadcrumbPath.length > 1 &&
           breadcrumbPath.map((breadcrumb, index) => {
             const isLastItem = index === breadcrumbPath.length - 1;
 
             return (
               <div
-                className="tw:inline-flex tw:items-center"
+                className="tw:inline-flex tw:items-center tw:min-w-0"
                 key={breadcrumb.fullyQualifiedName}>
-                <div className="tw:inline-flex tw:items-center tw:gap-0.5">
+                <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography.Text
-                    className={classNames('tw:text-xs', {
-                      'tw:cursor-default tw:font-medium tw:text-gray-700':
+                    className={classNames('tw:text-xs tw:truncate', {
+                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-gray-700':
                         isLastItem,
-                      'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
                         !isLastItem,
                     })}
+                    title={getEntityName(breadcrumb)}
                     onClick={
                       isLastItem
                         ? undefined
@@ -820,7 +805,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   </Typography.Text>
                   {index < breadcrumbPath.length - 1 && (
                     <ChevronRight
-                      className="tw:text-gray-400"
+                      className="tw:text-gray-400 tw:shrink-0"
                       height={16}
                       width={16}
                     />
@@ -830,23 +815,25 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             );
           })}
       </div>
-      <div className="title-container items-start gap-4">
-        <div className="d-flex items-center justify-between w-full">
-          <div className="d-flex items-center w-full">
-            <div className="tw:mr-2 tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
+      <div className="title-container tw:items-start tw:gap-4">
+        <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
+          <div
+            className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
+            style={{ flex: 1 }}>
+            <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
               <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
             </div>
-            <div className="d-flex flex-column w-full overflow-hidden">
-              <div className="d-flex items-center gap-2 w-full">
+            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                 <Tooltip
                   mouseEnterDelay={0.5}
                   placement="topLeft"
                   title={getEntityName(activeColumn)}
                   trigger="hover">
                   <Typography.Text
+                    ellipsis
                     className="entity-title-link"
-                    data-testid="entity-link"
-                    ellipsis={{ tooltip: true }}>
+                    data-testid="entity-link">
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
                         activeColumn.name ||
@@ -883,7 +870,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 (entityType === EntityType.TABLE ||
                   entityType === EntityType.DASHBOARD_DATA_MODEL) && (
                   <Typography.Text
-                    className="text-grey-muted text-xs"
+                    className="tw:text-gray-400 tw:text-xs"
                     data-testid="entity-name"
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(activeColumn.name || '')}
@@ -891,7 +878,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 )}
             </div>
           </div>
-          <div>
+          <div className="tw:shrink-0">
             <Button
               color="secondary"
               data-testid="close-button"
@@ -901,13 +888,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             />
           </div>
         </div>
-        <div className="d-flex items-center gap-2">
+        <div className="tw:flex tw:items-center tw:gap-2">
           {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
             <Tooltip
               placement="bottom"
               title={getDataTypeDisplay(activeColumn)}
               trigger="hover">
-              <div className="tw:max-w-60 flex-center tw:overflow-hidden tw:text-ellipsis data-type-chip">
+              <div
+                className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
+                  tw:text-ellipsis data-type-chip
+                  ">
                 {getDataTypeDisplay(activeColumn) || ''}
               </div>
             </Tooltip>
@@ -938,20 +928,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           />
         );
       case EntityRightPanelTab.LINEAGE:
-        return <div className="overview-tab-content">{renderLineageTab()}</div>;
+        return <div className="tw:h-auto">{renderLineageTab()}</div>;
       case EntityRightPanelTab.CUSTOM_PROPERTIES:
-        return (
-          <div className="overview-tab-content">
-            {renderCustomPropertiesTab()}
-          </div>
-        );
+        return <div className="tw:h-auto">{renderCustomPropertiesTab()}</div>;
       case EntityRightPanelTab.RELATIONS:
         return null;
       case EntityRightPanelTab.OVERVIEW:
       default:
-        return (
-          <div className="overview-tab-content">{renderOverviewTab()}</div>
-        );
+        return <div className="tw:h-auto">{renderOverviewTab()}</div>;
     }
   };
 
@@ -960,8 +944,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }
 
   const navFooter = (
-    <div className="d-flex justify-between items-center w-full navigation-container">
-      <div className="d-flex items-center gap-1 m-t-sm">
+    <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
+      <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
           color="secondary"
           iconLeading={ChevronUp}
@@ -977,7 +961,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handleNextColumn}
         />
         {isColumnInList && flattenedColumns.length > 0 && (
-          <Typography.Text className="pagination-header-text text-medium">
+          <Typography.Text className="pagination-header-text tw:font-medium">
             {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
             {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
           </Typography.Text>
@@ -1007,18 +991,20 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         </div>
       )}
       <div className="column-detail-panel-container">
-        <div className="d-flex gap-2">
+        <div className="tw:flex tw:gap-2 tw:h-full">
           <Card bordered={false} className="summary-panel-container">
-            <Card className="content-area" style={{ width: '100%' }}>
+            <Card
+              className="tw:h-full tw:overflow-y-auto tw:max-h-full"
+              style={{ width: '100%' }}>
               {renderTabContent()}
             </Card>
           </Card>
-          <div className="m-r-sm">
+          <div className="tw:mr-2">
             <EntityRightPanelVerticalNav
               isColumnDetailPanel
               activeTab={activeTab}
               entityType={entityType}
-              verticalNavConatinerclassName="column-detail-panel-vertical-nav"
+              verticalNavConatinerclassName="tw:w-[70px]"
               onTabChange={handleTabChange}
             />
           </div>

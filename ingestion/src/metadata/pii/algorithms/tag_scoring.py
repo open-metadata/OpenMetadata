@@ -1,4 +1,4 @@
-from typing import (
+from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Any,
     Dict,
@@ -60,9 +60,9 @@ class TagScorer:
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        _column_data_type: Optional[DataType] = None,
-    ) -> List[ScoredTag]:
+        column_name: Optional[str] = None,  # noqa: UP045
+        _column_data_type: Optional[DataType] = None,  # noqa: UP045
+    ) -> List[ScoredTag]:  # noqa: UP006
         str_values = preprocess_values(sample_data)
 
         if not str_values:
@@ -73,7 +73,7 @@ class TagScorer:
         if len(unique_values) / len(str_values) < self._relative_cardinality_cutoff:
             return []
 
-        results: List[ScoredTag] = []
+        results: List[ScoredTag] = []  # noqa: UP006
         for analyzer in self._analyzers:
             content_analysis = analyzer.analyze_content(values=str_values)
             content_score = content_analysis.score
@@ -109,9 +109,7 @@ class TagScorer:
 
         return results
 
-    def _build_reason(
-        self, content_analysis: TagAnalysis, column_analysis: Optional[TagAnalysis]
-    ) -> str:
+    def _build_reason(self, content_analysis: TagAnalysis, column_analysis: Optional[TagAnalysis]) -> str:  # noqa: UP045
         """Build a human-readable reason for why this tag was matched."""
         reason = f"Content analysis:\n{content_analysis.explanation}\n"
 
@@ -124,7 +122,7 @@ class TagScorer:
         self,
         content_analysis: TagAnalysis,
         total_score: float,
-    ) -> Optional[TagLabelRecognizerMetadata]:
+    ) -> Optional[TagLabelRecognizerMetadata]:  # noqa: UP045
         """Build recognizer metadata from the primary (highest scoring) analysis."""
 
         if not content_analysis or not content_analysis.recognizer_results:
@@ -135,7 +133,7 @@ class TagScorer:
             return None
 
         first_result = results[0]
-        recognition_metadata = cast(Dict[str, str], first_result.recognition_metadata)
+        recognition_metadata = cast(Dict[str, str], first_result.recognition_metadata)  # noqa: TC006, UP006
 
         recognizer_name = recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
@@ -145,7 +143,7 @@ class TagScorer:
             ),
         )
 
-        patterns_matched: Set[Tuple[str, str, float]] = set()
+        patterns_matched: Set[Tuple[str, str, float]] = set()  # noqa: UP006
         for result in results:
             if result.analysis_explanation and result.analysis_explanation.pattern:
                 patterns_matched.add(
@@ -158,16 +156,12 @@ class TagScorer:
 
         pattern_matches = [
             PatternMatch(name=name, regex=pattern, score=score)
-            for name, pattern, score in sorted(
-                patterns_matched, key=lambda o: o[1], reverse=True
-            )
+            for name, pattern, score in sorted(patterns_matched, key=lambda o: o[1], reverse=True)
         ]
 
         recognizer_id = None
         for recognizer_config in content_analysis.tag.recognizers or []:
-            if isinstance(
-                recognizer_config.recognizerConfig.root, PredefinedRecognizer
-            ):
+            if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
                 name = recognizer_config.recognizerConfig.root.name.value
             else:
                 name = recognizer_config.name.root
@@ -183,9 +177,7 @@ class TagScorer:
             recognizerId=recognizer_id,
             recognizerName=recognizer_name,
             score=min(total_score, 1),
-            target=TARGET_MAP[content_analysis.target]
-            if content_analysis.target
-            else None,
+            target=TARGET_MAP[content_analysis.target] if content_analysis.target else None,
             patterns=pattern_matches if pattern_matches else None,
         )
 
@@ -204,9 +196,7 @@ class ScoreTagsForColumnService:
         self._nlp_engine = nlp_engine
         self._language = language
 
-    def __call__(
-        self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
-    ) -> List[ScoredTag]:
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:  # noqa: UP006
         # Create analyzers for remaining candidate tags
         tag_analyzers = (
             TagAnalyzer(
@@ -219,9 +209,7 @@ class ScoreTagsForColumnService:
         )
 
         classifier = TagScorer(tag_analyzers=tag_analyzers)
-        column_name_str = (
-            column.fullyQualifiedName.root if column.fullyQualifiedName else None
-        )
+        column_name_str = column.fullyQualifiedName.root if column.fullyQualifiedName else None
         return classifier.predict_scores(
             sample_data=data,
             column_name=column_name_str,

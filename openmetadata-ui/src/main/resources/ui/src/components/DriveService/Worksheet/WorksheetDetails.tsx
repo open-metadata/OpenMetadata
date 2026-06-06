@@ -36,7 +36,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -46,6 +45,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -253,6 +257,20 @@ function WorksheetDetails({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.WORKSHEET, fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -306,7 +324,8 @@ function WorksheetDetails({
 
   useEffect(() => {
     if (worksheetDetails.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 

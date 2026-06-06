@@ -349,10 +349,11 @@ CREATE TABLE `entity_relationship` (
   `fromEntity` varchar(256) NOT NULL,
   `toEntity` varchar(256) NOT NULL,
   `relation` tinyint NOT NULL,
+  `relationType` varchar(64) NOT NULL DEFAULT '',
   `jsonSchema` varchar(256) DEFAULT NULL,
   `json` json DEFAULT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`fromId`,`toId`,`relation`),
+  PRIMARY KEY (`fromId`,`toId`,`relation`,`relationType`),
   KEY `from_index` (`fromId`,`relation`),
   KEY `to_index` (`toId`,`relation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

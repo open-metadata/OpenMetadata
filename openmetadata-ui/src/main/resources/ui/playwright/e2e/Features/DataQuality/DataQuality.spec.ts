@@ -41,13 +41,11 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
+  submitTestCaseForm,
   verifyIncidentBreadcrumbsFromTablePageRedirect,
   visitDataQualityTab,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-
-const table1 = new TableClass();
-const table2 = new TableClass();
 
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
@@ -86,8 +84,13 @@ test.describe(
     ],
   },
   () => {
+    let table1: TableClass;
+    let table2: TableClass;
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      table1 = new TableClass();
+      table2 = new TableClass();
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = await table2.createTestCase(apiContext, {
@@ -237,18 +240,7 @@ test.describe(
           .click();
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-        const ingestionPipelines = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines'
-        );
-        const deploy = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines/deploy/*'
-        );
-        await page.click('[data-testid="create-btn"]');
-
-        await ingestionPipelines;
-        await deploy;
-
-        await toastNotification(page, 'Test case created successfully.');
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
       });
@@ -454,10 +446,7 @@ test.describe(
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
-        await page.click('[data-testid="create-btn"]');
-        await toastNotification(page, 'Test case created successfully.');
-
-        await page.getByTestId(NEW_COLUMN_TEST_CASE.name).waitFor();
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_COLUMN_TEST_CASE.name)).toBeVisible();
       });
@@ -621,7 +610,7 @@ test.describe(
         expect(body1).toEqual(
           JSON.stringify([
             {
-              op: 'add',
+              op: 'replace',
               path: '/displayName',
               value: 'Table test case display name',
             },
@@ -1248,6 +1237,86 @@ test.describe(
         });
       } finally {
         await paginationTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Editing display name does not emit a phantom tags patch op', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const phantomTagsTable = new TableClass();
+
+      try {
+        await phantomTagsTable.create(apiContext);
+        await phantomTagsTable.createTestCase(apiContext, {
+          name: `phantom_tags_test_case_${uuid()}`,
+          entityLink: `<#E::table::${phantomTagsTable.entityResponseData?.['fullyQualifiedName']}::columns::${phantomTagsTable.entity?.columns[3].name}>`,
+          parameterValues: [
+            { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
+          ],
+          testDefinition: 'columnValuesToBeInSet',
+        });
+
+        const testCaseName =
+          phantomTagsTable.testCasesResponseData[0]?.['name'];
+
+        // Drop `tags` from the list response to mimic the search-backed
+        // listing that omits relationship fields, reproducing the regression.
+        await page.route(
+          /dataQuality\/testCases\/search\/list/,
+          async (route) => {
+            const response = await route.fetch();
+            const json = await response.json();
+            json.data = (json.data ?? []).map(
+              (item: Record<string, unknown>) => {
+                const strippedItem = { ...item };
+                delete strippedItem.tags;
+
+                return strippedItem;
+              }
+            );
+            await route.fulfill({ json, response });
+          }
+        );
+
+        await visitDataQualityTab(page, phantomTagsTable);
+
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
+
+        await page.fill(
+          '[id="root\\/displayName"]',
+          'Phantom tags display name'
+        );
+
+        const updateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('update-btn').click();
+        const patchRequest = await updateResponse;
+        const patchBody = JSON.parse(
+          (await patchRequest.request().postData()) ?? '[]'
+        );
+
+        expect(
+          patchBody.some((op: { path: string }) => op.path === '/tags')
+        ).toBe(false);
+        expect(patchBody).toContainEqual({
+          op: 'replace',
+          path: '/displayName',
+          value: 'Phantom tags display name',
+        });
+      } finally {
+        await phantomTagsTable.delete(apiContext);
         await afterAction();
       }
     });

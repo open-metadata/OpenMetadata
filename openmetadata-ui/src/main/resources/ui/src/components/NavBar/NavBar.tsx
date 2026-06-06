@@ -24,7 +24,6 @@ import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -73,7 +72,8 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
-import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
+import i18n from '../../utils/i18next/LocalUtil';
+import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -111,7 +111,7 @@ const NavBar = () => {
   const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed, language },
+    preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -126,6 +126,10 @@ const NavBar = () => {
     const pathname = location.pathname;
 
     return pathname.includes(ROUTES.TOUR);
+  }, [location.pathname]);
+
+  const isDataMarketplacePage = useMemo(() => {
+    return location.pathname === ROUTES.DATA_MARKETPLACE;
   }, [location.pathname]);
 
   const fetchOMVersion = async () => {
@@ -271,10 +275,13 @@ const NavBar = () => {
         break;
       }
     }
-    const notification = new Notification('Notification From OpenMetadata', {
-      body: body,
-      icon: Logo,
-    });
+    const notification = new Notification(
+      t('label.notification-from-brand-name'),
+      {
+        body: body,
+        icon: Logo,
+      }
+    );
     notification.onclick = () => {
       const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
@@ -434,15 +441,29 @@ const NavBar = () => {
     [activeDomainEntityRef, activeDomain, t]
   );
 
-  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
-    i18next.changeLanguage(key);
-    setPreference({ language: key as SupportedLocales });
+  const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
+    await localUtilClassBase.loadLocales(key);
+    await i18n.changeLanguage(key);
     navigate(0);
   }, []);
 
+  const currentLanguage = i18n.language
+    ? upperCase(i18n.language.split('-')[0])
+    : '';
+
   return (
     <>
-      <Header>
+      <Header
+        style={
+          isDataMarketplacePage
+            ? {
+                background: 'transparent',
+                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+                position: 'relative' as const,
+                zIndex: 10,
+              }
+            : undefined
+        }>
         <div className="navbar-container">
           <div className="flex-center gap-2">
             <Tooltip
@@ -467,7 +488,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && (
+            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList
@@ -523,7 +544,7 @@ const NavBar = () => {
                 className="flex-center gap-2 p-x-xs font-medium"
                 data-testid="language-selector-button"
                 type="text">
-                {language ? upperCase(language.split('-')[0]) : ''}{' '}
+                {currentLanguage}
                 <DropDownIcon width={12} />
               </Button>
             </Dropdown>

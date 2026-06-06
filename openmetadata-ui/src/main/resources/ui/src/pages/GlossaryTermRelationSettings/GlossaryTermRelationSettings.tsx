@@ -54,6 +54,7 @@ import {
   updateGlossaryTermRelationSettings,
 } from '../../rest/glossaryAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const CATEGORY_BADGE_COLORS: Record<
@@ -74,31 +75,6 @@ const CARDINALITY_LIMITS: Record<
   [RelationCardinality.ManyToOne]: { sourceMax: null, targetMax: 1 },
   [RelationCardinality.ManyToMany]: { sourceMax: null, targetMax: null },
   [RelationCardinality.Custom]: { sourceMax: null, targetMax: null },
-};
-
-const deriveCardinality = (
-  sourceMax?: number | null,
-  targetMax?: number | null
-): RelationCardinality => {
-  if (sourceMax === null || sourceMax === undefined) {
-    if (targetMax === null || targetMax === undefined) {
-      return RelationCardinality.ManyToMany;
-    }
-    if (targetMax === 1) {
-      return RelationCardinality.ManyToOne;
-    }
-  }
-
-  if (sourceMax === 1) {
-    if (targetMax === 1) {
-      return RelationCardinality.OneToOne;
-    }
-    if (targetMax === null || targetMax === undefined) {
-      return RelationCardinality.OneToMany;
-    }
-  }
-
-  return RelationCardinality.Custom;
 };
 
 const applyCardinalityDefaults = (
@@ -218,7 +194,9 @@ function GlossaryTermRelationSettingsPage() {
 
   const renderColorBadge = useCallback(
     (record: GlossaryTermRelationType) => {
-      const effectiveColor = record.color ?? RELATION_META[record.name]?.color;
+      const effectiveColor = record.isSystemDefined
+        ? RELATION_META[record.name]?.color ?? record.color
+        : record.color ?? RELATION_META[record.name]?.color;
 
       if (!effectiveColor) {
         return (
@@ -379,7 +357,7 @@ function GlossaryTermRelationSettingsPage() {
         });
         setSettings({ relationTypes: updatedRelationTypes });
         showSuccessToast(
-          t('server.delete-entity-success', {
+          t('server.entity-deleted-success', {
             entity: t('label.relation-type'),
           })
         );

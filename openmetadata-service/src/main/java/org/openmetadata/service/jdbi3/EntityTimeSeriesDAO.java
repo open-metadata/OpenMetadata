@@ -503,7 +503,9 @@ public interface EntityTimeSeriesDAO {
       return Map.of();
     }
     List<FQNHashJsonRow> rows =
-        getLatestExtensionBatch(getTimeSeriesTableName(), entityFQNHashes, extension);
+        EntityDAO.queryInChunks(
+            entityFQNHashes,
+            chunk -> getLatestExtensionBatch(getTimeSeriesTableName(), chunk, extension));
     Map<String, String> result = new HashMap<>();
     for (FQNHashJsonRow row : rows) {
       result.put(row.entityFQNHash(), row.json());

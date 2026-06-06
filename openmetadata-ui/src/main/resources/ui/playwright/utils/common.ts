@@ -12,6 +12,7 @@
  */
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -60,8 +61,12 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/');
-  await page.waitForURL('**/my-data');
+  await page.goto('/', {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL('**/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -116,6 +121,24 @@ export const createNewPage = async (browser: Browser) => {
   return { page, apiContext, afterAction };
 };
 
+export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  const context = await browser.newContext({
+    storageState: 'playwright/.auth/admin.json',
+  });
+
+  const page = await context.newPage();
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+    await context.close();
+  };
+
+  return { apiContext, afterAction };
+};
+
 /**
  * Retrieves the API context for the given page.
  * @param page The Playwright page object.
@@ -142,6 +165,11 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'searchIndex',
     ApiEndpoint: 'apiEndpoint',
     Metric: 'metric',
+    ['Store Procedure']: 'storedProcedure',
+    Directory: 'directory',
+    File: 'file',
+    Spreadsheet: 'spreadsheet',
+    Worksheet: 'worksheet',
     [DASHBOARD_DATA_MODEL]: 'dashboardDataModel',
   };
 
@@ -153,11 +181,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').waitFor({
+  await page.getByTestId('alert-bar').getByText(message).waitFor({
     state: 'visible',
+    timeout,
   });
-
-  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 };
@@ -169,6 +196,25 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+export const searchFromSearchInput = async (
+  page: Page,
+  searchInput: Locator,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
+
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -222,9 +268,16 @@ export const assignDomain = async (
   await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 };
 
@@ -397,8 +450,44 @@ export const assignDataProduct = async (
     fullyQualifiedName?: string;
   }[],
   action: 'Add' | 'Edit' = 'Add',
-  parentId = 'KnowledgePanel.DataProducts'
+  parentId = 'KnowledgePanel.DataProducts',
+  // Set true when the domain is inherited from a parent entity. The search
+  // index is updated asynchronously, so a page reload is needed on each poll
+  // to fetch the current state directly from the entity API.
+  pollForInheritance = false
 ) => {
+  if (pollForInheritance) {
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          return page
+            .getByTestId('domain-link')
+            .textContent()
+            .catch(() => null);
+        },
+        {
+          message: `Waiting for inherited domain "${domain.displayName}" to appear on the entity page`,
+          timeout: 60_000,
+          intervals: [2_000, 3_000, 5_000],
+        }
+      )
+      .toContain(domain.displayName);
+  } else {
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
+  }
+
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')
@@ -443,13 +532,38 @@ export const assignDataProduct = async (
     .click();
   await patchReq;
 
-  for (const dataProduct of dataProducts) {
-    await expect(
-      page
-        .getByTestId(parentId)
-        .getByTestId('data-products-list')
-        .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
-    ).toBeVisible();
+  if (pollForInheritance) {
+    for (const dataProduct of dataProducts) {
+      await expect
+        .poll(
+          async () => {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+
+            return page
+              .getByTestId(parentId)
+              .getByTestId('data-products-list')
+              .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+              .isVisible()
+              .catch(() => false);
+          },
+          {
+            message: `Waiting for data product "${dataProduct.displayName}" to appear after save`,
+            timeout: 60_000,
+            intervals: [2_000, 3_000, 5_000],
+          }
+        )
+        .toBe(true);
+    }
+  } else {
+    for (const dataProduct of dataProducts) {
+      await expect(
+        page
+          .getByTestId(parentId)
+          .getByTestId('data-products-list')
+          .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+      ).toBeVisible();
+    }
   }
 };
 
@@ -542,6 +656,23 @@ export const generateRandomUsername = (prefix = '') => {
     lastName,
     email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
+  };
+};
+
+export const generateRandomAdminUsername = (prefix = '') => {
+  const timestamp = Date.now();
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
+  const name = toLower(`${firstName}.${lastName}.${timestamp}`);
+  const password = 'Admin@OMD123';
+
+  return {
+    name,
+    displayName: `${firstName}${lastName}`,
+    email: `${name}@example.com`,
+    password,
+    confirmPassword: password,
+    isAdmin: true,
   };
 };
 
@@ -736,11 +867,14 @@ export const testPaginationNavigation = async (
     page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.locator('[data-testid="next"]');
-  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+  await nextButton.scrollIntoViewIfNeeded();
 
-  await nextButton.click();
-  const page2Response = await page2ResponsePromise;
+  const [page2Response] = await Promise.all([
+    page.waitForResponse(responseMatcher),
+    nextButton.click(),
+  ]);
   expect(page2Response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);

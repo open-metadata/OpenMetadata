@@ -25,8 +25,8 @@ import { useGenericContext } from '../../../components/Customization/GenericProv
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
@@ -93,33 +93,19 @@ const TableConstraints = ({
     <Space className="w-full new-header-border-card" direction="vertical">
       {data?.tableConstraints?.map(
         ({ constraintType, columns, referredColumns }) => {
-          if (constraintType === ConstraintType.PrimaryKey) {
-            return tableConstraintRendererBasedOnType(
+          if (
+            constraintType &&
+            [
               ConstraintType.PrimaryKey,
-              columns
-            );
-          }
-
-          if (constraintType === ConstraintType.SortKey) {
-            return tableConstraintRendererBasedOnType(
               ConstraintType.SortKey,
-              columns
-            );
-          }
-
-          if (constraintType === ConstraintType.DistKey) {
-            return tableConstraintRendererBasedOnType(
               ConstraintType.DistKey,
-              columns
-            );
+              ConstraintType.ClusterKey,
+              ConstraintType.Unique,
+            ].includes(constraintType)
+          ) {
+            return tableConstraintRendererBasedOnType(constraintType, columns);
           }
 
-          if (constraintType === ConstraintType.Unique) {
-            return tableConstraintRendererBasedOnType(
-              ConstraintType.Unique,
-              columns
-            );
-          }
           if (constraintType === ConstraintType.ForeignKey) {
             return (
               <div

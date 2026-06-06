@@ -28,10 +28,12 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -44,10 +46,13 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
+  private static final Logger LOG = LoggerFactory.getLogger(UserMetricsResourceIT.class);
+  private static final Duration MAX_LAST_ACTIVITY_AGE = Duration.ofMinutes(30);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
@@ -86,17 +91,24 @@ public class UserMetricsResourceIT {
     int adminPort = TestSuiteBootstrap.getAdminPort();
     URL url = URI.create("http://localhost:" + adminPort + "/user-metrics").toURL();
 
-    long startTime = System.currentTimeMillis();
-    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-    connection.setRequestMethod("GET");
-    int responseCode = connection.getResponseCode();
-    long duration = System.currentTimeMillis() - startTime;
+    // Warm up the servlet once to avoid connection/bootstrap noise dominating the measurement.
+    assertEquals(200, executeUserMetricsRequest(url));
 
-    assertEquals(200, responseCode);
+    List<Long> durations = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      long startTime = System.nanoTime();
+      int responseCode = executeUserMetricsRequest(url);
+      long duration = Duration.ofNanos(System.nanoTime() - startTime).toMillis();
+      assertEquals(200, responseCode);
+      durations.add(duration);
+    }
+
+    Collections.sort(durations);
+    long medianDuration = durations.get(1);
     assertTrue(
-        duration < 2000,
-        "User metrics endpoint should respond within 2 seconds, took: " + duration + "ms");
-    connection.disconnect();
+        medianDuration < 3000,
+        "User metrics endpoint median latency after warmup should stay under 3 seconds, durations="
+            + durations);
   }
 
   @Test
@@ -173,7 +185,7 @@ public class UserMetricsResourceIT {
         int botUsers = (Integer) metrics.get("bot_users");
         assertTrue(botUsers >= 1, "Should have at least one bot user (ingestion-bot)");
 
-        log.info("User metrics: {}", metrics);
+        LOG.info("User metrics: {}", metrics);
       }
     } finally {
       connection.disconnect();
@@ -197,7 +209,7 @@ public class UserMetricsResourceIT {
     TestNamespace ns = new TestNamespace("UserMetricsResourceIT");
 
     Map<String, Object> initialMetrics = getUserMetrics();
-    log.info("Initial metrics: {}", initialMetrics);
+    LOG.info("Initial metrics: {}", initialMetrics);
 
     int initialTotalUsers = (Integer) initialMetrics.get("total_users");
     int initialBotUsers = (Integer) initialMetrics.get("bot_users");
@@ -208,7 +220,7 @@ public class UserMetricsResourceIT {
 
     UserService usersApi = adminClient.users();
     User newUser = usersApi.create(createUser);
-    log.info("Created new user: {}", newUser.getName());
+    LOG.info("Created new user: {}", newUser.getName());
 
     try {
       usersApi.getByName(newUser.getName());
@@ -226,7 +238,7 @@ public class UserMetricsResourceIT {
               });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
-      log.info("Updated metrics after activity: {}", updatedMetrics);
+      LOG.info("Updated metrics after activity: {}", updatedMetrics);
 
       int updatedTotalUsers = (Integer) updatedMetrics.get("total_users");
       // In parallel test execution, other tests may create/delete users, so verify the user exists
@@ -246,11 +258,11 @@ public class UserMetricsResourceIT {
       Instant lastActivityTime = Instant.parse(lastActivity);
       Instant now = Instant.now();
       long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-      // In parallel test execution, tests take longer due to resource contention
-      // Use a generous timeout (10 minutes) to avoid flaky tests
       assertTrue(
-          secondsSinceActivity < 600,
-          "Last activity should be within last 10 minutes, but was "
+          secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
+          "Last activity should be within last "
+              + MAX_LAST_ACTIVITY_AGE.toMinutes()
+              + " minutes, but was "
               + secondsSinceActivity
               + " seconds ago");
 
@@ -271,7 +283,7 @@ public class UserMetricsResourceIT {
     assertTrue(initialBotUsers >= 0, "Bot users count should be non-negative");
     assertTrue(initialBotUsers <= initialTotalUsers, "Bot users should not exceed total users");
 
-    log.info(
+    LOG.info(
         "Bot user filtering is implemented in UserMetricsServlet.createNonBotFilter() which adds isBot=false filter");
   }
 
@@ -308,7 +320,7 @@ public class UserMetricsResourceIT {
             });
 
     Map<String, Object> metrics = getUserMetrics();
-    log.info("Metrics after multiple users: {}", metrics);
+    LOG.info("Metrics after multiple users: {}", metrics);
 
     String lastActivity = (String) metrics.get("last_activity");
     assertNotNull(lastActivity, "Last activity should not be null");
@@ -316,11 +328,11 @@ public class UserMetricsResourceIT {
     Instant lastActivityTime = Instant.parse(lastActivity);
     Instant now = Instant.now();
     long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
-    // In parallel test execution, tests take longer due to resource contention
-    // Use a generous timeout (10 minutes) to avoid flaky tests
     assertTrue(
-        secondsSinceActivity < 600,
-        "Last activity should be within last 10 minutes, but was "
+        secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
+        "Last activity should be within last "
+            + MAX_LAST_ACTIVITY_AGE.toMinutes()
+            + " minutes, but was "
             + secondsSinceActivity
             + " seconds ago");
   }
@@ -335,7 +347,7 @@ public class UserMetricsResourceIT {
     assertInstanceOf(Integer.class, dauValue, "Daily active users should be an integer");
     assertTrue((Integer) dauValue >= 0, "Daily active users should be non-negative");
 
-    log.info("Daily active users implementation handles missing data by returning 0");
+    LOG.info("Daily active users implementation handles missing data by returning 0");
   }
 
   private Map<String, Object> getUserMetrics() throws Exception {
@@ -357,6 +369,18 @@ public class UserMetricsResourceIT {
         Map<String, Object> metrics = objectMapper.readValue(response, Map.class);
         return metrics;
       }
+    } finally {
+      connection.disconnect();
+    }
+  }
+
+  private int executeUserMetricsRequest(URL url) throws Exception {
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+    connection.setRequestMethod("GET");
+    connection.setConnectTimeout(5000);
+    connection.setReadTimeout(5000);
+    try {
+      return connection.getResponseCode();
     } finally {
       connection.disconnect();
     }

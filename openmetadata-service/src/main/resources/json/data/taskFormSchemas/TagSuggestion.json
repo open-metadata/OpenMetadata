@@ -1,0 +1,31 @@
+{
+  "name": "TagSuggestion",
+  "displayName": "Tag Suggestion",
+  "taskType": "Suggestion",
+  "taskCategory": "MetadataUpdate",
+  "formSchema": {
+    "type": "object",
+    "required": [
+      "suggestedValue"
+    ],
+    "properties": {
+      "suggestedValue": {
+        "type": "string",
+        "title": "Suggested Tags (JSON)"
+      },
+      "reasoning": {
+        "type": "string",
+        "title": "Reason for suggestion"
+      }
+    }
+  },
+  "uiSchema": {
+    "suggestedValue": {
+      "ui:widget": "tagSelector"
+    },
+    "reasoning": {
+      "ui:widget": "textarea"
+    }
+  },
+  "fullyQualifiedName": "TagSuggestion"
+}

@@ -27,9 +27,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayUtils';
+import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
@@ -38,9 +38,10 @@ import {
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { generateUUID } from '../../../utils/StringsUtils';
+import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -177,9 +178,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           let type = null;
           let logo = undefined;
           if (isEntityType) {
+            const isColumn = bucket.key === EntityType.TABLE_COLUMN;
             logo = searchClassBase.getEntityIcon(
               bucket.key,
-              'service-icon w-4 h-4'
+              classNames('service-icon w-4 h-4', { 'text-grey-500': isColumn })
             ) ?? <></>;
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);

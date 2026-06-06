@@ -42,7 +42,7 @@ interface SelectProps
     SelectCommonProps {
   items?: SelectItemType[];
   popoverClassName?: string;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
 }
 
@@ -54,7 +54,7 @@ interface SelectValueProps {
   isDisabled: boolean;
   placeholder?: string;
   ref?: Ref<HTMLButtonElement>;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
 }
 
 export const sizes = {
@@ -69,7 +69,7 @@ const SelectValue = ({
   size,
   fontSize,
   placeholder,
-  placeholderIcon,
+  icon,
   ref,
 }: SelectValueProps) => {
   return (
@@ -91,7 +91,7 @@ const SelectValue = ({
           sizes[size].root
         )}>
         {(state) => {
-          const Icon = state.selectedItem?.icon || placeholderIcon;
+          const Icon = state.selectedItem?.icon || icon;
 
           return (
             <>
@@ -111,7 +111,7 @@ const SelectValue = ({
                 <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
                   <p
                     className={cx(
-                      'tw:truncate tw:font-medium tw:text-primary',
+                      'tw:truncate tw:text-primary',
                       fontSizeClass[fontSize]
                     )}>
                     {state.selectedItem?.label}
@@ -152,15 +152,19 @@ const SelectValue = ({
   );
 };
 
-export const SelectContext = createContext<{ size: 'sm' | 'md' }>({
+export const SelectContext = createContext<{
+  size: 'sm' | 'md';
+  fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+}>({
+  fontSize: 'md',
   size: 'sm',
 });
 
 const Select = ({
   placeholder = 'Select',
-  placeholderIcon,
+  icon,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   children,
   items,
   label,
@@ -170,7 +174,7 @@ const Select = ({
   ...rest
 }: SelectProps) => {
   return (
-    <SelectContext.Provider value={{ size }}>
+    <SelectContext.Provider value={{ fontSize, size }}>
       <AriaSelect
         {...rest}
         className={(state) =>
@@ -190,7 +194,7 @@ const Select = ({
             <SelectValue
               {...state}
               {...{ size, fontSize, placeholder }}
-              placeholderIcon={placeholderIcon}
+              icon={icon}
             />
 
             <Popover className={rest.popoverClassName} size={size}>

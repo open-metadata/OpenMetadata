@@ -26,13 +26,18 @@ import { sidebarClick } from '../../utils/sidebar';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const table1 = new TableClass();
-const user = new UserClass();
-const domain = new Domain();
+let table: TableClass;
+let table1: TableClass;
+let user: UserClass;
+let domain: Domain;
 
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
+    table = new TableClass();
+    table1 = new TableClass();
+    user = new UserClass();
+    domain = new Domain();
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user.create(apiContext);
@@ -308,7 +313,8 @@ test.describe('Explore Assets Discovery', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Click on the show deleted toggle button
-    await page.getByTestId('show-deleted').click();
+    await page.getByRole('button', { name: 'Tools' }).click();
+    await page.getByRole('menuitemradio', { name: 'Deleted' }).click();
 
     await waitForAllLoadersToDisappear(page);
 

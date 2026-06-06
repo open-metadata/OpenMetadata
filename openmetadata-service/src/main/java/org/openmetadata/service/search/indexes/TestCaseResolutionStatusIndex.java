@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -26,6 +27,11 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
   @Override
   public Object getEntity() {
     return testCaseResolutionStatus;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_CASE_RESOLUTION_STATUS;
   }
 
   private void setParentRelationships(Map<String, Object> doc) {
@@ -57,7 +63,12 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
     if (testSuite.getBasicEntityReference() != null) {
-      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+      Table linkedTable =
+          TestSuiteIndex.addTestSuiteParentEntityRelations(
+              testSuite.getBasicEntityReference(), doc);
+      if (linkedTable != null && linkedTable.getCertification() != null) {
+        doc.put("certification", linkedTable.getCertification());
+      }
     }
   }
 

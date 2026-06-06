@@ -206,7 +206,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   public GChatMessage createConnectionTestMessage() {
     Header header = createConnectionSuccessfulHeader();
 
-    Widget descriptionWidget = new Widget(new TextParagraph(CONNECTION_TEST_DESCRIPTION));
+    Widget descriptionWidget = new Widget(new TextParagraph(getConnectionTestDescription()));
 
     Section descriptionSection = new Section(List.of(descriptionWidget));
     Section footerSection = createFooterSection();
@@ -506,15 +506,15 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   private Header createHeader() {
-    return new Header("Change Event Details", "https://imgur.com/kOOPEG4.png", "IMAGE");
+    return new Header("Change Event Details", getLogoUrl(), "IMAGE");
   }
 
   private Header createConnectionSuccessfulHeader() {
-    return new Header("Connection Successful ✅", "https://imgur.com/kOOPEG4.png", "IMAGE");
+    return new Header("Connection Successful ✅", getLogoUrl(), "IMAGE");
   }
 
   private Section createFooterSection() {
-    return new Section(List.of(new Widget(new TextParagraph(TEMPLATE_FOOTER))));
+    return new Section(List.of(new Widget(new TextParagraph(getProductName() + " Change Event"))));
   }
 
   private String applyBoldFormatWithSpace(String title) {

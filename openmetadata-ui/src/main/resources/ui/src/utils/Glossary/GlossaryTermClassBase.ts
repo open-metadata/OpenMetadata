@@ -80,6 +80,7 @@ class GlossaryTermClassBase {
       EntityTabs.GLOSSARY_TERMS,
       EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.RELATIONS_GRAPH,
       EntityTabs.CUSTOM_PROPERTIES,
       EntityTabs.DATA_OBSERVABILITY,
     ].map((tab: EntityTabs) => ({
