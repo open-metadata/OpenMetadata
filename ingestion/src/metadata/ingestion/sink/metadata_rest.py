@@ -130,13 +130,13 @@ logger = ingestion_logger()
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
 
-# TODO: remove the dedicated query bulk path below once #25890 (the server-side
-# bulk-query idempotency fix, shipped in 1.13.0) has rolled out to all deployments.
-# Until then, re-ingesting a query whose checksum already exists (same SQL across
-# services/runs, or racing concurrent bulk requests) comes back as a unique-constraint
-# violation that loses no metadata, so a lineage run must not be marked failed over it.
-# These are the query_entity unique constraints (checksum + nameHash, both engines) that
-# identify such an already-present query on the bulk response.
+# TODO: remove the duplicate-conflict-to-warning downgrade below once #25890 (the server-side
+# bulk-query idempotency fix, shipped in 1.13.0) has rolled out to all deployments. The
+# checksum dedup in write_query is permanent and stays - only this downgrade is temporary.
+# Until then, re-ingesting a query whose checksum already exists (same SQL across services or
+# runs) comes back as a unique-constraint violation that loses no metadata, so a lineage run
+# must not be marked failed over it. These are the query_entity unique constraints (checksum +
+# nameHash, both engines) that identify such an already-present query on the bulk response.
 DUPLICATE_QUERY_CONSTRAINTS = (
     "unique_query_checksum",
     "query_entity_namehash_key",
