@@ -350,3 +350,15 @@ ALTER TABLE user_entity DROP COLUMN IF EXISTS isBot;
 ALTER TABLE user_entity
     ADD COLUMN isBot BOOLEAN GENERATED ALWAYS AS ((json ->> 'isBot')::boolean) STORED NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_isBot ON user_entity (isBot);
+
+-- Perf (A3): getContractByEntityId filtered json#>>'{entity,id}' / '{entity,type}' (nested,
+-- unindexed paths) on the per-entity contract-enforcement write path, full-scanning
+-- data_contract_entity. Add STORED generated columns mirroring those paths plus a composite
+-- index so the lookup becomes an index seek. The #>> operator on jsonb is immutable, so it is
+-- valid in a STORED generated column; STORED backfills existing rows automatically.
+ALTER TABLE data_contract_entity
+    ADD COLUMN IF NOT EXISTS contractEntityId VARCHAR(36) GENERATED ALWAYS AS (json #>> '{entity,id}') STORED;
+ALTER TABLE data_contract_entity
+    ADD COLUMN IF NOT EXISTS contractEntityType VARCHAR(256) GENERATED ALWAYS AS (json #>> '{entity,type}') STORED;
+CREATE INDEX IF NOT EXISTS idx_data_contract_entity_contract_entity
+    ON data_contract_entity (contractEntityId, contractEntityType);

@@ -400,3 +400,56 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Perf (A3): getContractByEntityId filtered $.entity.id / $.entity.type via JSON_EXTRACT
+-- (nested, unindexed paths) on the per-entity contract-enforcement write path, full-scanning
+-- data_contract_entity. Add VIRTUAL generated columns mirroring those paths plus a composite
+-- index so the lookup becomes an index seek. VIRTUAL columns need no table rewrite. MySQL has
+-- no ADD COLUMN/KEY IF NOT EXISTS, so guard each add via information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'data_contract_entity'
+        AND column_name = 'contractEntityId'
+    ),
+    'SELECT 1',
+    'ALTER TABLE data_contract_entity ADD COLUMN contractEntityId VARCHAR(36) GENERATED ALWAYS AS (json ->> ''$.entity.id'') VIRTUAL'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'data_contract_entity'
+        AND column_name = 'contractEntityType'
+    ),
+    'SELECT 1',
+    'ALTER TABLE data_contract_entity ADD COLUMN contractEntityType VARCHAR(256) GENERATED ALWAYS AS (json ->> ''$.entity.type'') VIRTUAL'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1 FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'data_contract_entity'
+        AND index_name = 'idx_data_contract_entity_contract_entity'
+    ),
+    'SELECT 1',
+    'ALTER TABLE data_contract_entity ADD KEY idx_data_contract_entity_contract_entity (contractEntityId, contractEntityType)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

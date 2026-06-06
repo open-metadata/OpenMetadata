@@ -1153,11 +1153,32 @@ public interface ClassificationTagDAOs {
     @SqlQuery("SELECT COUNT(*) FROM tag_usage")
     long getTotalTagUsageCount();
 
-    @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+    // Keyset pagination over the unique (source, tagFQNHash, targetFQNHash) key. The expanded
+    // OR form is required on MySQL — its optimizer turns it into an index range seek, whereas a
+    // row-constructor comparison scans the whole index from the start (verified via
+    // Handler_read_next). Postgres seeks optimally with the row-constructor (Index Only Scan).
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
+                + "FROM tag_usage "
+                + "WHERE source > :lastSource "
+                + "OR (source = :lastSource AND tagFQNHash > :lastTagFQNHash) "
+                + "OR (source = :lastSource AND tagFQNHash = :lastTagFQNHash AND targetFQNHash > :lastTargetFQNHash) "
+                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
+                + "FROM tag_usage "
+                + "WHERE (source, tagFQNHash, targetFQNHash) > (:lastSource, :lastTagFQNHash, :lastTargetFQNHash) "
+                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(TagUsageObjectMapper.class)
-    List<TagUsageObject> getAllTagUsagesPaginated(
-        @Bind("offset") long offset, @Bind("limit") int limit);
+    List<TagUsageObject> getTagUsagesAfter(
+        @Bind("lastSource") int lastSource,
+        @Bind("lastTagFQNHash") String lastTagFQNHash,
+        @Bind("lastTargetFQNHash") String lastTargetFQNHash,
+        @Bind("limit") int limit);
 
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash")

@@ -88,39 +88,52 @@ public class TagUsageCleanup {
           totalTagUsages,
           batchSize);
 
-      long offset = 0;
+      int lastSource = -1;
+      String lastTagFQNHash = "";
+      String lastTargetFQNHash = "";
       int processedCount = 0;
       int batchNumber = 1;
+      boolean hasMore = true;
 
-      while (offset < totalTagUsages) {
-        LOG.info("Processing batch {} (offset: {}, limit: {})", batchNumber, offset, batchSize);
+      while (hasMore) {
+        LOG.info(
+            "Processing batch {} (after source={}, tagFQNHash={})",
+            batchNumber,
+            lastSource,
+            lastTagFQNHash);
 
         List<CollectionDAO.TagUsageObject> tagUsageBatch =
-            collectionDAO.tagUsageDAO().getAllTagUsagesPaginated(offset, batchSize);
+            collectionDAO
+                .tagUsageDAO()
+                .getTagUsagesAfter(lastSource, lastTagFQNHash, lastTargetFQNHash, batchSize);
 
         if (tagUsageBatch.isEmpty()) {
           LOG.info("No more tag usages to process");
-          break;
-        }
-
-        for (CollectionDAO.TagUsageObject tagUsage : tagUsageBatch) {
-          OrphanedTagUsage orphan = validateTagUsage(tagUsage);
-          if (orphan != null) {
-            result.getOrphanedTagUsages().add(orphan);
-            result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
+          hasMore = false;
+        } else {
+          for (CollectionDAO.TagUsageObject tagUsage : tagUsageBatch) {
+            OrphanedTagUsage orphan = validateTagUsage(tagUsage);
+            if (orphan != null) {
+              result.getOrphanedTagUsages().add(orphan);
+              result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
+            }
+            processedCount++;
           }
-          processedCount++;
-        }
 
-        offset += tagUsageBatch.size();
-        batchNumber++;
+          CollectionDAO.TagUsageObject lastRow = tagUsageBatch.getLast();
+          lastSource = lastRow.getSource();
+          lastTagFQNHash = lastRow.getTagFQNHash();
+          lastTargetFQNHash = lastRow.getTargetFQNHash();
+          batchNumber++;
+          hasMore = tagUsageBatch.size() == batchSize;
 
-        if (processedCount % (batchSize * 10) == 0 || offset >= totalTagUsages) {
-          LOG.info(
-              "Progress: {}/{} tag usages processed, {} orphaned tag usages found",
-              processedCount,
-              totalTagUsages,
-              result.getOrphanedTagUsages().size());
+          if (processedCount % (batchSize * 10) == 0 || !hasMore) {
+            LOG.info(
+                "Progress: {}/{} tag usages processed, {} orphaned tag usages found",
+                processedCount,
+                totalTagUsages,
+                result.getOrphanedTagUsages().size());
+          }
         }
       }
 
