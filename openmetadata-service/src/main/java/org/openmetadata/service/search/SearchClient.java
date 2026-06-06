@@ -191,15 +191,34 @@ public interface SearchClient
       }
       """;
 
+  // FQN-boundary aware, idempotent rewrite of a single tagFQN. A bare
+  // startsWith + replace is NOT idempotent when the new FQN keeps the old one
+  // as a prefix (rename "a" -> "a b"): the glossary rename fires this twice
+  // (in-transaction updateAssetIndexes, then the post-commit propagation pass)
+  // and the second pass turns "a b" into "a b b", dropping the asset from the
+  // term (issue #28696). Matching only an exact FQN or a real "oldFQN." child
+  // boundary makes the second pass a no-op and never touches a sibling that
+  // merely shares a textual prefix (e.g. "a" must not rewrite "ab").
+  String UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT =
+      """
+            String currentFQN = ctx._source.tags[i].tagFQN;
+            if (currentFQN != null && currentFQN.equals(params.oldParentFQN)) {
+              ctx._source.tags[i].tagFQN = params.newParentFQN;
+            } else if (currentFQN != null && currentFQN.startsWith(params.oldParentFQN + '.')) {
+              ctx._source.tags[i].tagFQN = params.newParentFQN + currentFQN.substring(params.oldParentFQN.length());
+            }
+      """;
+
   String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
       """
       if (ctx._source.containsKey('tags')) {
         for (int i = 0; i < ctx._source.tags.size(); i++) {
           if (ctx._source.tags[i].containsKey('tagFQN') &&
               ctx._source.tags[i].containsKey('source') &&
-              ctx._source.tags[i].source == 'Glossary' &&
-              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
-            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+              ctx._source.tags[i].source == 'Glossary') {
+      """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
           }
         }
       }
@@ -211,9 +230,10 @@ public interface SearchClient
         for (int i = 0; i < ctx._source.tags.size(); i++) {
           if (ctx._source.tags[i].containsKey('tagFQN') &&
               ctx._source.tags[i].containsKey('source') &&
-              ctx._source.tags[i].source == 'Classification' &&
-              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
-            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+              ctx._source.tags[i].source == 'Classification') {
+      """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
           }
         }
       }
@@ -241,8 +261,9 @@ public interface SearchClient
                   if (ctx._source.containsKey('tags')) {
                     for (int i = 0; i < ctx._source.tags.size(); i++) {
                       if (ctx._source.tags[i].containsKey('tagFQN')) {
-                        String tagFQN = ctx._source.tags[i].tagFQN;
-                        ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+                  """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
                       }
                     }
                   }
