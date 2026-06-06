@@ -661,8 +661,8 @@ public interface TimeSeriesDAOs {
                 + "GROUP BY date_key, status "
                 + "ORDER BY date_key ASC",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.ExecutionTrendRowMapper.class)
-    List<CollectionDAO.ExecutionTrendRow> getExecutionTrendData(
+    @RegisterRowMapper(SharedRowMappers.ExecutionTrendRowMapper.class)
+    List<SharedRowMappers.ExecutionTrendRow> getExecutionTrendData(
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
@@ -774,8 +774,8 @@ public interface TimeSeriesDAOs {
                 + "GROUP BY date_key "
                 + "ORDER BY date_key ASC",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.RuntimeTrendRowMapper.class)
-    List<CollectionDAO.RuntimeTrendRow> getRuntimeTrendData(
+    @RegisterRowMapper(SharedRowMappers.RuntimeTrendRowMapper.class)
+    List<SharedRowMappers.RuntimeTrendRow> getRuntimeTrendData(
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
@@ -827,8 +827,8 @@ public interface TimeSeriesDAOs {
                 + "  <endTsFilter> "
                 + "GROUP BY service_type",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.ServiceBreakdownRowMapper.class)
-    List<CollectionDAO.ServiceBreakdownRow> getServiceBreakdown(
+    @RegisterRowMapper(SharedRowMappers.ServiceBreakdownRowMapper.class)
+    List<SharedRowMappers.ServiceBreakdownRow> getServiceBreakdown(
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
@@ -881,8 +881,8 @@ public interface TimeSeriesDAOs {
                 + "  <startTsFilter> "
                 + "  <endTsFilter>",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.PipelineMetricsRowMapper.class)
-    CollectionDAO.PipelineMetricsRow getPipelineMetricsData(
+    @RegisterRowMapper(SharedRowMappers.PipelineMetricsRowMapper.class)
+    SharedRowMappers.PipelineMetricsRow getPipelineMetricsData(
         @Define("serviceTypeFilter") String serviceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
@@ -931,8 +931,8 @@ public interface TimeSeriesDAOs {
                 + "ORDER BY pe.name "
                 + "LIMIT :limit OFFSET :offset",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.PipelineSummaryRowMapper.class)
-    List<CollectionDAO.PipelineSummaryRow> listPipelineSummariesFiltered(
+    @RegisterRowMapper(SharedRowMappers.PipelineSummaryRowMapper.class)
+    List<SharedRowMappers.PipelineSummaryRow> listPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
         @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,

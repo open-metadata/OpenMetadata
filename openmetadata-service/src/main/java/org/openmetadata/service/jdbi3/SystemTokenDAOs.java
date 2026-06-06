@@ -122,7 +122,7 @@ public interface SystemTokenDAOs {
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.EntitiesCountRowMapper.class)
+    @RegisterRowMapper(SharedRowMappers.EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
 
     @ConnectionAwareSqlQuery(
@@ -145,7 +145,7 @@ public interface SystemTokenDAOs {
                 + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
                 + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount",
         connectionType = POSTGRES)
-    @RegisterRowMapper(CollectionDAO.ServicesCountRowMapper.class)
+    @RegisterRowMapper(SharedRowMappers.ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
     @SqlQuery("SELECT configType,json FROM openmetadata_settings")
