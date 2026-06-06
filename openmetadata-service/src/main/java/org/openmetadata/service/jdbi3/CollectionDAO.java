@@ -25,8 +25,10 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
@@ -56,6 +58,9 @@ public interface CollectionDAO
 
   @CreateSqlObject
   DeletionLockDAO deletionLockDAO();
+
+  @CreateSqlObject
+  IntakeFormDAO intakeFormDAO();
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
     @Override
@@ -375,6 +380,38 @@ public interface CollectionDAO
       row.setLatestStatus(rs.getString("latest_status"));
       return row;
     }
+  }
+
+  interface IntakeFormDAO extends EntityDAO<IntakeForm> {
+    @Override
+    default String getTableName() {
+      return "intake_form_entity";
+    }
+
+    @Override
+    default Class<IntakeForm> getEntityClass() {
+      return IntakeForm.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM intake_form_entity WHERE JSON_EXTRACT(json, '$.entityType') = :entityType LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM intake_form_entity WHERE json->>'entityType' = :entityType LIMIT 1",
+        connectionType = POSTGRES)
+    String findByEntityType(@Bind("entityType") String entityType);
   }
 
   interface AssetDAO {

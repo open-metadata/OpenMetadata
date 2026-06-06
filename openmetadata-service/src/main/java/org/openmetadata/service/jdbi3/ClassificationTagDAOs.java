@@ -321,8 +321,12 @@ public interface ClassificationTagDAOs {
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
-    List<TagLabelWithFQNHash> getTagsInternalBatch(
+    List<TagLabelWithFQNHash> getTagsInternalBatchInternal(
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
+
+    default List<TagLabelWithFQNHash> getTagsInternalBatch(List<String> targetFQNHashes) {
+      return EntityDAO.queryInChunks(targetFQNHashes, this::getTagsInternalBatchInternal);
+    }
 
     @SqlQuery(
         "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
@@ -332,10 +336,17 @@ public interface ClassificationTagDAOs {
             + "AND tagFQNHash LIKE :tagFQNHashPrefix "
             + "ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
-    List<TagLabelWithFQNHash> getCertTagsInternalBatch(
+    List<TagLabelWithFQNHash> getCertTagsInternalBatchInternal(
         @Bind("source") int source,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes,
         @Bind("tagFQNHashPrefix") String tagFQNHashPrefix);
+
+    default List<TagLabelWithFQNHash> getCertTagsInternalBatch(
+        int source, List<String> targetFQNHashes, String tagFQNHashPrefix) {
+      return EntityDAO.queryInChunks(
+          targetFQNHashes,
+          chunk -> getCertTagsInternalBatchInternal(source, chunk, tagFQNHashPrefix));
+    }
 
     /**
      * Batch fetch derived tags for multiple glossary term FQNs. Returns a map from glossary term
@@ -513,7 +524,11 @@ public interface ClassificationTagDAOs {
         @BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlUpdate("DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>)")
-    void deleteTagsByTargets(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+    void deleteTagsByTargetsInternal(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    default void deleteTagsByTargets(List<String> targetFQNs) {
+      EntityDAO.updateInChunks(targetFQNs, this::deleteTagsByTargetsInternal);
+    }
 
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQN LIKE :tagFQNPrefix AND targetFQNHash IN (<targetFQNHashes>)")

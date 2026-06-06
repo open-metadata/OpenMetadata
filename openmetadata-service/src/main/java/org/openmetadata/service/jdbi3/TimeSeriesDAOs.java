@@ -1375,8 +1375,12 @@ public interface TimeSeriesDAOs {
             + "FROM data_quality_data_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
             + "GROUP BY entityFQNHash) t2 "
             + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
-    List<LatestRecordWithFQNHash> getLatestRecordBatch(
+    List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
+
+    default List<LatestRecordWithFQNHash> getLatestRecordBatch(List<String> entityFQNs) {
+      return EntityDAO.queryInChunks(entityFQNs, this::getLatestRecordBatchInternal);
+    }
 
     @SqlUpdate(
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
@@ -1801,8 +1805,12 @@ public interface TimeSeriesDAOs {
             """,
         connectionType = POSTGRES)
     @UseRowMapper(ResultSummaryRowMapper.class)
-    List<ResultSummaryRow> listResultSummariesForTestSuites(
+    List<ResultSummaryRow> listResultSummariesForTestSuitesInternal(
         @BindList("testSuiteIds") List<String> testSuiteIds);
+
+    default List<ResultSummaryRow> listResultSummariesForTestSuites(List<String> testSuiteIds) {
+      return EntityDAO.queryInChunks(testSuiteIds, this::listResultSummariesForTestSuitesInternal);
+    }
 
     record SuiteMaxTimestamp(String testSuiteId, long maxTimestamp) {}
 

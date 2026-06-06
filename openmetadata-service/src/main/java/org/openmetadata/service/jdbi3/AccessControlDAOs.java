@@ -409,7 +409,11 @@ public interface AccessControlDAOs {
             + "u1.percentile1, u1.percentile7, u1.percentile30 FROM entity_usage u1 "
             + "INNER JOIN (SELECT id, MAX(usageDate) as maxDate FROM entity_usage WHERE id IN (<ids>) GROUP BY id) u2 "
             + "ON u1.id = u2.id AND u1.usageDate = u2.maxDate")
-    List<UsageDetailsWithId> getLatestUsageBatch(@BindList("ids") List<String> ids);
+    List<UsageDetailsWithId> getLatestUsageBatchInternal(@BindList("ids") List<String> ids);
+
+    default List<UsageDetailsWithId> getLatestUsageBatch(List<String> ids) {
+      return EntityDAO.queryInChunks(ids, this::getLatestUsageBatchInternal);
+    }
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);

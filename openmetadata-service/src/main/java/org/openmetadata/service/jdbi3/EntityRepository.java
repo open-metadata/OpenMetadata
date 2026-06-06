@@ -78,6 +78,8 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
+import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
@@ -4570,6 +4572,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
         case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
+        case "entityReference" -> validateCustomPropertyEntityReference(fieldValue, fieldName);
+        case "entityReferenceList" -> validateCustomPropertyEntityReferenceList(
+            fieldValue, fieldName);
         default -> {}
       }
     }
