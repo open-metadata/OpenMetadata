@@ -1432,6 +1432,34 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation,
         @Bind("json") String json);
 
+    // Batch counterpart of insert(...) for INSERT-only callers that loop one round trip per row.
+    // Binds the FieldRelationship bean's pre-hashed fromFQNHash/toFQNHash directly (callers must
+    // hash via FullyQualifiedName.buildHash, mirroring @BindFQN on the single-row insert), and
+    // omits the nullable json column so the per-row Postgres ::jsonb cast is unnecessary.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation) "
+                + "VALUES <values>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation) "
+                + "VALUES <values> ON CONFLICT (fromFQNHash, toFQNHash, relation) DO NOTHING",
+        connectionType = POSTGRES)
+    void insertMany(
+        @BindBeanList(
+                value = "values",
+                propertyNames = {
+                  "fromFQNHash",
+                  "toFQNHash",
+                  "fromFQN",
+                  "toFQN",
+                  "fromType",
+                  "toType",
+                  "relation"
+                })
+            List<FieldRelationship> values);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
