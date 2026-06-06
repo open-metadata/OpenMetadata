@@ -12,6 +12,7 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
+import i18next from '../utils/i18next/LocalUtil';
 import {
   getAuthorityUrl,
   getCallbackUrl,
@@ -201,8 +202,9 @@ export const LDAP_UI_SCHEMA = {
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
       'ui:widget': 'LdapRoleMappingWidget',
-      'ui:help':
-        'Map LDAP groups to OpenMetadata roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.',
+      'ui:help': `Map LDAP groups to ${i18next.t(
+        'label.brand-name'
+      )} roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.`,
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',

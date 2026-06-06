@@ -57,7 +57,13 @@
         "enabled": false
       },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -203,6 +209,10 @@
           },
           "ordinalPosition": {
             "type": "integer"
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -720,6 +730,29 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -732,8 +765,53 @@
           }
         }
       },
+      "customPropertiesTyped": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "propertyType": {
+            "type": "keyword"
+          },
+          "stringValue": {
+            "type": "keyword"
+          },
+          "textValue": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "longValue": {
+            "type": "long"
+          },
+          "doubleValue": {
+            "type": "double"
+          },
+          "start": {
+            "type": "long"
+          },
+          "end": {
+            "type": "long"
+          },
+          "refId": {
+            "type": "keyword"
+          },
+          "refType": {
+            "type": "keyword"
+          },
+          "refName": {
+            "type": "keyword"
+          },
+          "refFqn": {
+            "type": "keyword"
+          }
+        }
+      },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"
@@ -754,6 +832,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

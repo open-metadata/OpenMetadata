@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import {
+  Alert,
+  Avatar,
+  Button as CoreButton,
+  Tooltip as CoreTooltip,
+} from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -21,10 +26,12 @@ import { isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -49,24 +56,27 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
-import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
-import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getEntityDeleteMessage,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
+import {
+  exportDataProductToODPSYaml,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -75,13 +85,21 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
+  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -89,11 +107,13 @@ import {
   getPrioritizedEditPermission,
 } from '../../../utils/PermissionsUtils';
 import {
+  getDataProductDetailsPath,
   getDomainPath,
-  getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -117,6 +137,8 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { DataProductMetadataModal } from '../DataProductMetadataModal';
+import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -134,7 +156,13 @@ const DataProductsDetailsPage = ({
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
-  const { getEntityPermission } = usePermissionProvider();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
+  const { getEntityPermission, permissions: resourcePermissions } =
+    usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
@@ -150,6 +178,8 @@ const DataProductsDetailsPage = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isOdpsImportOpen, setIsOdpsImportOpen] = useState(false);
+  const [isMetadataEditing, setIsMetadataEditing] = useState(false);
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [previewAsset, setPreviewAsset] =
@@ -160,10 +190,22 @@ const DataProductsDetailsPage = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const { isDarDisabled, isDarGranted, isDarAwaitingGrant } =
+    useDataAccessRequest({
+      entityFqn: dataProduct.fullyQualifiedName,
+      enabled: dataProductClassBase.getShowRequestDataAccess(),
+      listenForEvents: true,
+    });
+
+  const canCreateTask = Boolean(
+    resourcePermissions?.[ResourceEntity.TASK]?.Create
+  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -177,6 +219,20 @@ const DataProductsDetailsPage = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
   }, []);
@@ -187,7 +243,7 @@ const DataProductsDetailsPage = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(
           EntityType.DATA_PRODUCT,
           dataProduct.fullyQualifiedName ?? ''
@@ -231,13 +287,25 @@ const DataProductsDetailsPage = ({
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
 
-    // Add Data Products listing page FIRST
-    items.push({
-      name: t('label.data-product-plural'),
-      url: ROUTES.DATA_PRODUCT,
-    });
+    if (isMarketplace) {
+      items.push({
+        name: t('label.data-marketplace'),
+        url: ROUTES.DATA_MARKETPLACE,
+      });
+    }
 
-    // Add parent domain SECOND (if exists)
+    items.push(
+      fromMarketplace
+        ? {
+            name: t('label.data-marketplace'),
+            url: ROUTES.DATA_MARKETPLACE,
+          }
+        : {
+            name: t('label.data-product-plural'),
+            url: dataProductBasePath,
+          }
+    );
+
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
         name: getEntityName(dataProduct.domains[0]),
@@ -246,7 +314,13 @@ const DataProductsDetailsPage = ({
     }
 
     return items;
-  }, [dataProduct.domains, t]);
+  }, [
+    dataProduct.domains,
+    isMarketplace,
+    fromMarketplace,
+    dataProductBasePath,
+    t,
+  ]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
@@ -308,6 +382,16 @@ const DataProductsDetailsPage = ({
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
     [dataProduct.votes, currentUser?.id]
+  );
+
+  const isOwner = useMemo(
+    () =>
+      Boolean(
+        currentUser &&
+          dataProduct.owners?.length &&
+          hasEditAccess(dataProduct.owners, currentUser)
+      ),
+    [dataProduct.owners, currentUser]
   );
 
   const handleVoteChange = useCallback(
@@ -446,6 +530,22 @@ const DataProductsDetailsPage = ({
               setShowActions(false);
             },
           },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-metadata-description')}
+                icon={EditIcon}
+                id="edit-metadata-button"
+                name={t('label.edit-metadata')}
+              />
+            ),
+            key: 'edit-metadata-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsMetadataEditing(true);
+              setShowActions(false);
+            },
+          },
         ] as ItemType[])
       : []),
     ...(deleteDataProductPermission
@@ -468,6 +568,51 @@ const DataProductsDetailsPage = ({
             onClick: (e) => {
               e.domEvent.stopPropagation();
               setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-as-odps-description')}
+          icon={ExportIcon}
+          id="export-odps-button"
+          name={t('label.export-as-odps')}
+        />
+      ),
+      key: 'export-odps-button',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        try {
+          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
+          downloadFile(
+            yaml,
+            `${dataProduct.name}.odps.yaml`,
+            'application/yaml'
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      },
+    },
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-odps-description')}
+                icon={ImportIcon}
+                id="import-odps-button"
+                name={t('label.import-from-odps')}
+              />
+            ),
+            key: 'import-odps-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOdpsImportOpen(true);
               setShowActions(false);
             },
           },
@@ -497,14 +642,9 @@ const DataProductsDetailsPage = ({
 
         // If name changed, navigate to the new URL
         if (name && name.trim() !== dataProduct.name) {
-          navigate(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
-              name.trim(),
-              activeTab
-            ),
-            { replace: true }
-          );
+          navigate(getDataProductDetailsPath(name.trim(), activeTab), {
+            replace: true,
+          });
         }
       } catch {
         // Error is already handled by the parent component
@@ -542,11 +682,7 @@ const DataProductsDetailsPage = ({
             toString(dataProduct.version),
             activeKey
           )
-        : getEntityDetailsPath(
-            EntityType.DATA_PRODUCT,
-            dataProductFqn,
-            activeKey
-          );
+        : getDataProductDetailsPath(dataProductFqn, activeKey);
 
       navigate(path, {
         replace: true,
@@ -556,7 +692,7 @@ const DataProductsDetailsPage = ({
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      ? getDataProductDetailsPath(dataProductFqn)
       : getVersionPath(
           EntityType.DATA_PRODUCT,
           dataProductFqn,
@@ -626,7 +762,8 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
@@ -686,11 +823,27 @@ const DataProductsDetailsPage = ({
       'entityStatus' in dataProduct
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
+    const { lifecycleStage } = dataProduct;
 
-    return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
-    ) : null;
-  }, [dataProduct]);
+    if (!shouldShowStatus && !lifecycleStage) {
+      return null;
+    }
+
+    return (
+      <Space size={8}>
+        {shouldShowStatus && entityStatus && (
+          <EntityStatusBadge showDivider={false} status={entityStatus} />
+        )}
+        {lifecycleStage && (
+          <Tag
+            className="tw:rounded-full tw:font-medium"
+            data-testid="lifecycle-stage-badge">
+            {t('label.lifecycle-stage')}: {lifecycleStage}
+          </Tag>
+        )}
+      </Space>
+    );
+  }, [dataProduct, t]);
 
   if (isCustomPageLoading) {
     return <Loader />;
@@ -741,6 +894,30 @@ const DataProductsDetailsPage = ({
           </div>
           <div>
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+              {!isVersionsView &&
+                !isOwner &&
+                !currentUser?.isAdmin &&
+                canCreateTask &&
+                dataProductClassBase.getShowRequestDataAccess() && (
+                  <CoreTooltip
+                    isDisabled={!isDarDisabled}
+                    title={getDarButtonTooltip(
+                      isDarDisabled,
+                      isDarGranted,
+                      isDarAwaitingGrant,
+                      t
+                    )}>
+                    <CoreButton
+                      color="primary"
+                      data-testid="request-data-access-button"
+                      isDisabled={isDarDisabled}
+                      size="md"
+                      onClick={() => setIsRequestDataAccessOpen(true)}>
+                      {t('label.request-data-access')}
+                    </CoreButton>
+                  </CoreTooltip>
+                )}
+
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
                   data-testid="data-product-details-add-button"
@@ -829,6 +1006,17 @@ const DataProductsDetailsPage = ({
             </div>
           </div>
         </div>
+
+        {isDarAwaitingGrant && (
+          <div className="tw:px-5">
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </div>
+        )}
 
         <GenericProvider<DataProduct>
           muiTags
@@ -925,6 +1113,44 @@ const DataProductsDetailsPage = ({
         open={isAnnouncementDrawerOpen}
         onClose={handleCloseAnnouncementDrawer}
       />
+
+      <ODPSImportModal
+        domainFqn={dataProduct.domains?.[0]?.fullyQualifiedName}
+        existingDataProduct={dataProduct}
+        open={isOdpsImportOpen}
+        onClose={() => setIsOdpsImportOpen(false)}
+        onSuccess={() => {
+          // The ODPS import endpoint already persists the entity; use the
+          // refetch hook rather than feeding the returned object back through
+          // onUpdate, which would compute a JSON patch against stale local
+          // state and resubmit the import's diff as a regular PATCH.
+          setIsOdpsImportOpen(false);
+          onRefresh?.();
+        }}
+      />
+
+      <DataProductMetadataModal
+        dataProduct={dataProduct}
+        open={isMetadataEditing}
+        onCancel={() => setIsMetadataEditing(false)}
+        onSubmit={async (values) => {
+          await onUpdate({
+            ...dataProduct,
+            dataProductType: values.dataProductType,
+            visibility: values.visibility,
+            portfolioPriority: values.portfolioPriority,
+          });
+          setIsMetadataEditing(false);
+        }}
+      />
+
+      {dataProductClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataProduct.fullyQualifiedName ?? '',
+        getEntityName(dataProduct),
+        EntityType.DATA_PRODUCT
+      )}
     </>
   );
 

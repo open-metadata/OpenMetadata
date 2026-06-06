@@ -25,7 +25,6 @@ import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
@@ -46,7 +45,7 @@ const BasicSignUp = () => {
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
 
-  const brandName = brandClassBase.getPageTitle();
+  const brandName = t('label.brand-name');
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -105,23 +104,19 @@ const BasicSignUp = () => {
                 validateMessages={VALIDATION_MESSAGES}
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.first'),
-                  })}
+                  label={t('label.first-name')}
                   name="firstName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
                     autoFocus
                     className="input-field"
-                    placeholder={t('label.enter-entity-name', {
-                      entity: t('label.first-lowercase'),
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.first-name-lowercase'),
                     })}
                   />
                 </Form.Item>
                 <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.last'),
-                  })}
+                  label={t('label.last-name')}
                   name="lastName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input

@@ -15,7 +15,7 @@ import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
+import { removeAttachmentsWithoutUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -80,6 +80,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
         </KeyDownStopPropagationWrapper>
       }
       maskClosable={false}
+      modalRender={(node) => <div data-react-aria-top-layer>{node}</div>}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="90%"

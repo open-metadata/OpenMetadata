@@ -31,6 +31,7 @@ import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
 import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
+import dataMarketplaceClassBase from '../DataMarketplace/DataMarketplaceClassBase';
 import dataProductClassBase from '../DataProduct/DataProductClassBase';
 import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
@@ -87,11 +88,29 @@ export const getGlossaryTermDefaultTabs = () => {
       editable: false,
     },
     {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
+    },
+    {
       id: EntityTabs.CUSTOM_PROPERTIES,
       name: EntityTabs.CUSTOM_PROPERTIES,
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
+      ),
+      editable: false,
+    },
+    {
+      id: EntityTabs.DATA_OBSERVABILITY,
+      name: EntityTabs.DATA_OBSERVABILITY,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.DATA_OBSERVABILITY]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.DATA_OBSERVABILITY
       ),
       editable: false,
     },
@@ -108,6 +127,15 @@ export const getGlossaryDefaultTabs = () => {
         EntityTabs.TERMS
       ),
       editable: true,
+    },
+    {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
     },
     {
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
@@ -155,6 +183,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
     case PageType.Domain:
       return domainClassBase.getDomainDetailPageTabsIds();
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getDataMarketplaceDetailPageTabsIds();
     case PageType.DataProduct:
       return dataProductClassBase.getDataProductDetailPageTabsIds();
     case PageType.APICollection:
@@ -217,6 +247,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return containerDetailsClassBase.getDefaultLayout(tab);
     case PageType.Domain:
       return domainClassBase.getDefaultLayout(tab);
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getDefaultLayout(tab);
     case PageType.DataProduct:
       return dataProductClassBase.getDefaultLayout(tab);
     case PageType.Dashboard:
@@ -296,6 +328,8 @@ export const getCustomizableWidgetByPage = (
       return searchIndexClassBase.getCommonWidgetList();
     case PageType.Domain:
       return domainClassBase.getCommonWidgetList();
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getCommonWidgetList();
     case PageType.DataProduct:
       return dataProductClassBase.getCommonWidgetList();
     case PageType.APICollection:
@@ -352,6 +386,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return dashboardDetailsClassBase.getDummyData();
     case PageType.Domain:
       return domainClassBase.getDummyData();
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getDummyData() as EntityUnion;
     case PageType.DataProduct:
       return dataProductClassBase.getDummyData();
     case PageType.APICollection:
@@ -407,6 +443,8 @@ export const getWidgetsFromKey = (
       return dashboardDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Domain:
       return domainClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.DataProduct:
       return dataProductClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.APICollection:
@@ -464,6 +502,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return dashboardDetailsClassBase.getWidgetHeight(widgetName);
     case PageType.Domain:
       return domainClassBase.getWidgetHeight(widgetName);
+    case PageType.DataMarketplace:
+      return dataMarketplaceClassBase.getWidgetHeight(widgetName);
     case PageType.DataProduct:
       return dataProductClassBase.getWidgetHeight(widgetName);
     case PageType.APICollection:

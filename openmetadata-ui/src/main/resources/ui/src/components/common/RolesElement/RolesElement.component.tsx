@@ -18,7 +18,7 @@ import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import './roles-element.styles.less';
 import { RolesElementProps } from './RolesElement.interface';
 

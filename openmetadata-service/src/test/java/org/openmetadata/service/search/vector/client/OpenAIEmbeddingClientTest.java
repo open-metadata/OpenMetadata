@@ -456,7 +456,7 @@ class OpenAIEmbeddingClientTest {
   @Test
   void testResolveMaxConcurrentFromConfig() {
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentEmbeddingRequests(5);
+    nlsCfg.setMaxConcurrentRequests(5);
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setNaturalLanguageSearch(nlsCfg);
 
@@ -485,7 +485,7 @@ class OpenAIEmbeddingClientTest {
   @Test
   void testResolveMaxConcurrentDefaultWhenZero() {
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentEmbeddingRequests(0);
+    nlsCfg.setMaxConcurrentRequests(0);
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setNaturalLanguageSearch(nlsCfg);
 
@@ -497,7 +497,7 @@ class OpenAIEmbeddingClientTest {
   @Test
   void testResolveMaxConcurrentDefaultWhenNegative() {
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentEmbeddingRequests(-3);
+    nlsCfg.setMaxConcurrentRequests(-3);
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     config.setNaturalLanguageSearch(nlsCfg);
 

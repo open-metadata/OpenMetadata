@@ -13,13 +13,14 @@ from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
-    ProfileSampleType,
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 
 
 @pytest.mark.parametrize(
@@ -46,14 +47,19 @@ def test_compile_and_clauses(elements, expected):
     [
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                        profileSample=10,
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType="STATIC",
+                            config={
+                                "profileSample": 10,
+                                "profileSampleType": "PERCENTAGE",
+                            },
+                        ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -63,7 +69,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -79,14 +85,19 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                        profileSample=20,
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType="STATIC",
+                            config={
+                                "profileSample": 20,
+                                "profileSampleType": "PERCENTAGE",
+                            },
+                        ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -96,7 +107,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -112,14 +123,19 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                        profileSample=10,
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType="STATIC",
+                            config={
+                                "profileSample": 10,
+                                "profileSampleType": "PERCENTAGE",
+                            },
+                        ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -129,7 +145,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -145,14 +161,19 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
-                        profileSampleType=ProfileSampleType.ROWS,
-                        profileSample=20,
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType="STATIC",
+                            config={
+                                "profileSample": 20,
+                                "profileSampleType": "ROWS",
+                            },
+                        ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -162,7 +183,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -178,13 +199,18 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "table_profile_config": TableProfilerConfig(
-                        profileSampleType=ProfileSampleType.ROWS,
-                        profileSample=20,
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType="STATIC",
+                            config={
+                                "profileSample": 20,
+                                "profileSampleType": "ROWS",
+                            },
+                        ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -194,7 +220,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="ID", dataType=DataType.STRING),
@@ -213,10 +239,10 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "table_profile_config": None,
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -226,7 +252,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -245,18 +271,14 @@ def test_compile_and_clauses(elements, expected):
 def test_sample_where_clauses(config, expected):
     validator = TableDiffValidator(
         None,
-        TestCase.model_construct(
-            parameterValues=[
-                TestCaseParameterValue(name="caseSensitiveColumns", value="false")
-            ]
-        ),
+        TestCase.model_construct(parameterValues=[TestCaseParameterValue(name="caseSensitiveColumns", value="false")]),
         None,
     )
     validator.runtime_params = config
-    if (
-        config.table_profile_config
-        and config.table_profile_config.profileSampleType == ProfileSampleType.ROWS
-    ):
+    table_profile_config = config.table_profile_config if config else None
+    profile_sample_config = table_profile_config.profileSampleConfig.root if table_profile_config else None
+    sample_config = profile_sample_config.config if profile_sample_config else None
+    if sample_config and sample_config.profileSampleType == ProfileSampleType.ROWS:
         validator.get_total_row_count = Mock(return_value=10_000)
     with patch("random.choices", Mock(return_value=["a"])):
         assert validator.sample_where_clause() == expected

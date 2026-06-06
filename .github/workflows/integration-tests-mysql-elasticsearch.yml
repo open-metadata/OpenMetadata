@@ -12,6 +12,7 @@
 name: Integration Tests - MySQL + Elasticsearch
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:
@@ -76,7 +77,7 @@ jobs:
           swap-storage: true
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -96,7 +97,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Cache Maven dependencies
         id: cache-output

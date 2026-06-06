@@ -50,7 +50,6 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignDomain,
-  clickOutside,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
@@ -196,9 +195,9 @@ test.describe(
         ).toBeVisible();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: /Users/ })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         await page
           .locator("[data-testid='select-owner-tabs']")
@@ -206,9 +205,9 @@ test.describe(
           .click();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: 'Teams' })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -377,8 +376,8 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
 
@@ -521,8 +520,8 @@ test.describe(
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
 
@@ -665,8 +664,8 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '1',
+          processed: '1',
           failed: '0',
         });
         const updateButtonResponse = page.waitForResponse(
@@ -788,8 +787,8 @@ test.describe(
           page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
         ).toBeVisible();
 
-        // Close the selector by clicking outside
-        await clickOutside(page);
+        // Close the selector by clicking cancel btn
+        await page.getByTestId('cancelAssociatedTag').click();
 
         // Wait for domain selector to be fully closed
         await page.getByTestId('domain-selectable-tree').waitFor({

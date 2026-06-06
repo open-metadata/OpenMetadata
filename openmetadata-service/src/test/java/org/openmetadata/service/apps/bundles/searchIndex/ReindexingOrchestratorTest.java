@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
@@ -92,12 +93,9 @@ class ReindexingOrchestratorTest {
   }
 
   @Test
-  void runSingleServerPreservesResultMetadataInSuccessContext() {
+  void runPreservesResultMetadataInSuccessContext() {
     EventPublisherJob jobData =
-        new EventPublisherJob()
-            .withEntities(Set.of(Entity.TABLE))
-            .withBatchSize(25)
-            .withUseDistributedIndexing(false);
+        new EventPublisherJob().withEntities(Set.of(Entity.TABLE)).withBatchSize(25);
     ReindexingProgressListener progressListener = mock(ReindexingProgressListener.class);
     ReindexingJobContext jobContext = mock(ReindexingJobContext.class);
     EntityRepository entityRepository = mock(EntityRepository.class);
@@ -106,8 +104,9 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
-    when(context.createReindexingContext(false)).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(context.createReindexingContext()).thenReturn(jobContext);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(5);
 
@@ -115,9 +114,9 @@ class ReindexingOrchestratorTest {
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> cleanerConstruction = mockOrphanCleaner();
-        MockedConstruction<SingleServerIndexingStrategy> strategyConstruction =
+        MockedConstruction<DistributedIndexingStrategy> strategyConstruction =
             mockConstruction(
-                SingleServerIndexingStrategy.class,
+                DistributedIndexingStrategy.class,
                 (strategy, context1) -> {
                   when(strategy.execute(any(), any()))
                       .thenReturn(
@@ -139,7 +138,7 @@ class ReindexingOrchestratorTest {
 
       orchestrator.run(jobData);
 
-      SingleServerIndexingStrategy strategy = strategyConstruction.constructed().getFirst();
+      DistributedIndexingStrategy strategy = strategyConstruction.constructed().getFirst();
       verify(strategy, times(2)).addListener(any(ReindexingProgressListener.class));
       verify(strategy).execute(any(ReindexingConfiguration.class), eq(jobContext));
       verify(context).storeRunStats(stats);
@@ -160,13 +159,14 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
     when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(jobData));
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
 
     try (MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
-        MockedConstruction<SingleServerIndexingStrategy> ignoredStrategy =
-            mockConstruction(SingleServerIndexingStrategy.class)) {
+        MockedConstruction<DistributedIndexingStrategy> ignoredStrategy =
+            mockConstruction(DistributedIndexingStrategy.class)) {
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(null);
       websocketMock.when(WebSocketManager::getInstance).thenReturn(null);
 
@@ -182,12 +182,46 @@ class ReindexingOrchestratorTest {
   }
 
   @Test
+  void runRemovesLegacyModeOptionsFromOnDemandAndRunRecordConfig() {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of());
+    Map<String, Object> legacyConfig = JsonUtils.convertValue(jobData, Map.class);
+    legacyConfig.put("recreateIndex", true);
+    legacyConfig.put("useDistributedIndexing", false);
+    appRunRecord.setConfig(new HashMap<>(legacyConfig));
+
+    when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
+    when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(legacyConfig));
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
+
+    try (MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
+        MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
+        MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
+        MockedConstruction<DistributedIndexingStrategy> ignoredStrategy =
+            mockConstruction(DistributedIndexingStrategy.class)) {
+      metricsMock.when(ReindexingMetrics::getInstance).thenReturn(null);
+      websocketMock.when(WebSocketManager::getInstance).thenReturn(null);
+
+      orchestrator.run(null);
+
+      ArgumentCaptor<Map> configCaptor = ArgumentCaptor.forClass(Map.class);
+      verify(context).updateAppConfiguration(configCaptor.capture());
+      assertFalse(configCaptor.getValue().containsKey("recreateIndex"));
+      assertFalse(configCaptor.getValue().containsKey("useDistributedIndexing"));
+      assertFalse(appRunRecord.getConfig().containsKey("recreateIndex"));
+      assertFalse(appRunRecord.getConfig().containsKey("useDistributedIndexing"));
+      assertTrue(ignoredStrategy.constructed().isEmpty());
+    }
+  }
+
+  @Test
   void runContinuesWhenHybridPipelinePreflightFails() {
     EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of());
 
     when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
     when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(jobData));
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     doThrow(new RuntimeException("Pipeline creation failed"))
         .when(searchRepository)
         .ensureHybridSearchPipeline();
@@ -195,8 +229,8 @@ class ReindexingOrchestratorTest {
     try (MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
-        MockedConstruction<SingleServerIndexingStrategy> ignoredStrategy =
-            mockConstruction(SingleServerIndexingStrategy.class)) {
+        MockedConstruction<DistributedIndexingStrategy> ignoredStrategy =
+            mockConstruction(DistributedIndexingStrategy.class)) {
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(null);
       websocketMock.when(WebSocketManager::getInstance).thenReturn(null);
 
@@ -211,10 +245,7 @@ class ReindexingOrchestratorTest {
 
   @Test
   void runMarksJobFailedAndCapturesStrategyStatsOnExecutionException() {
-    EventPublisherJob jobData =
-        new EventPublisherJob()
-            .withEntities(Set.of(Entity.TABLE))
-            .withUseDistributedIndexing(false);
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of(Entity.TABLE));
     ReindexingProgressListener progressListener = mock(ReindexingProgressListener.class);
     ReindexingJobContext jobContext = mock(ReindexingJobContext.class);
     EntityRepository entityRepository = mock(EntityRepository.class);
@@ -223,8 +254,9 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
-    when(context.createReindexingContext(false)).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(context.createReindexingContext()).thenReturn(jobContext);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(3);
 
@@ -232,9 +264,9 @@ class ReindexingOrchestratorTest {
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
-        MockedConstruction<SingleServerIndexingStrategy> ignoredStrategy =
+        MockedConstruction<DistributedIndexingStrategy> ignoredStrategy =
             mockConstruction(
-                SingleServerIndexingStrategy.class,
+                DistributedIndexingStrategy.class,
                 (strategy, context1) -> {
                   when(strategy.execute(any(), any())).thenThrow(new RuntimeException("boom"));
                   when(strategy.getStats()).thenReturn(Optional.of(stats));
@@ -257,7 +289,7 @@ class ReindexingOrchestratorTest {
 
   @Test
   void stopStopsActiveStrategyAndPushesStoppedStatus() throws Exception {
-    IndexingStrategy strategy = mock(IndexingStrategy.class);
+    DistributedIndexingStrategy strategy = mock(DistributedIndexingStrategy.class);
     EventPublisherJob jobData =
         new EventPublisherJob()
             .withEntities(Set.of(Entity.TABLE))
@@ -312,8 +344,7 @@ class ReindexingOrchestratorTest {
         new EventPublisherJob()
             .withEntities(Set.of(Entity.TABLE))
             .withSlackBotToken("token")
-            .withSlackChannel("#alerts")
-            .withUseDistributedIndexing(false);
+            .withSlackChannel("#alerts");
     ReindexingProgressListener progressListener = mock(ReindexingProgressListener.class);
     ReindexingJobContext jobContext = mock(ReindexingJobContext.class);
     EntityRepository entityRepository = mock(EntityRepository.class);
@@ -323,8 +354,9 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
-    when(context.createReindexingContext(false)).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(context.createReindexingContext()).thenReturn(jobContext);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(2);
     when(systemRepository.getOMBaseUrlConfigInternal())
@@ -337,9 +369,9 @@ class ReindexingOrchestratorTest {
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
         MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
-        MockedConstruction<SingleServerIndexingStrategy> strategyConstruction =
+        MockedConstruction<DistributedIndexingStrategy> strategyConstruction =
             mockConstruction(
-                SingleServerIndexingStrategy.class,
+                DistributedIndexingStrategy.class,
                 (strategy, context1) ->
                     when(strategy.execute(any(), any()))
                         .thenReturn(
@@ -360,7 +392,7 @@ class ReindexingOrchestratorTest {
 
       orchestrator.run(jobData);
 
-      SingleServerIndexingStrategy strategy = strategyConstruction.constructed().getFirst();
+      DistributedIndexingStrategy strategy = strategyConstruction.constructed().getFirst();
       verify(strategy, times(3)).addListener(any(ReindexingProgressListener.class));
       verify(context, never()).updateAppConfiguration(any(Map.class));
     }
@@ -399,7 +431,7 @@ class ReindexingOrchestratorTest {
     Map<String, Object> serverStats = Map.of("server-1", Map.of("success", 2));
 
     appRunRecord.setSuccessContext(new SuccessContext().withAdditionalProperty("existing", "keep"));
-    when(searchIndexFailureDAO.countByJobId("job-123")).thenReturn(4);
+    when(searchIndexFailureDAO.countFailuresByJobId("job-123")).thenReturn(4);
     setField("jobData", jobData);
     setField(
         "resultMetadata",

@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.service.Entity;
 
-public class MetricIndex implements SearchIndex {
+public class MetricIndex implements TaggableIndex, LineageIndex {
   final Metric metric;
 
   public MetricIndex(Metric metric) {
@@ -16,10 +16,12 @@ public class MetricIndex implements SearchIndex {
     return metric;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.METRIC;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(metric, Entity.METRIC);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(metric.getEntityReference()));
     return doc;
   }
 }

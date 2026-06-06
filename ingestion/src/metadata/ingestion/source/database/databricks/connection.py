@@ -12,9 +12,11 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -41,6 +43,9 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -57,6 +62,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+suppress_user_agent_entry_deprecation_log()
+
 
 class DatabricksEngineWrapper:
     """Wrapper to store engine and schemas to avoid multiple calls"""
@@ -68,7 +75,7 @@ class DatabricksEngineWrapper:
         self.first_schema = None
         self.first_catalog = None
 
-    def get_schemas(self, schema_name: Optional[str] = None):
+    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
         """Get schemas and cache them"""
         if schema_name is not None:
             with self.engine.connect() as connection:
@@ -98,10 +105,8 @@ class DatabricksEngineWrapper:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
             with self.engine.connect() as connection:
-                tables = connection.execute(
-                    text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`")
-                )
-            return tables
+                tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
+            return tables  # noqa: RET504
         return []
 
     def get_views(self):
@@ -110,13 +115,11 @@ class DatabricksEngineWrapper:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
             with self.engine.connect() as connection:
-                views = connection.execute(
-                    text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`")
-                )
-            return views
+                views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
+            return views  # noqa: RET504
         return []
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):
+    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
         """Get catalogs"""
         catalogs = []
         if catalog_name is not None:
@@ -132,7 +135,11 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
-    return f"{connection.scheme.value}://{connection.hostPort}"
+    scheme = connection.scheme.value if connection.scheme else "databricks"
+    url = f"{scheme}://{connection.hostPort}"
+    if connection.catalog:
+        url = f"{url}?catalog={quote_plus(connection.catalog)}"
+    return url
 
 
 def get_connection(connection: DatabricksConnection) -> Engine:
@@ -166,8 +173,8 @@ def test_connection(
     metadata: OpenMetadata,
     connection: Engine,
     service_connection: DatabricksConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -196,20 +203,14 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
-        "GetSchemas": partial(
-            engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema
-        ),
+        "GetSchemas": partial(engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema),
         "GetTables": engine_wrapper.get_tables,
         "GetViews": engine_wrapper.get_views,
-        "GetDatabases": partial(
-            engine_wrapper.get_catalogs, catalog_name=service_connection.catalog
-        ),
+        "GetDatabases": partial(engine_wrapper.get_catalogs, catalog_name=service_connection.catalog),
         "GetQueries": partial(
             test_database_query,
             engine=connection,
-            statement=DATABRICKS_SQL_STATEMENT_TEST.format(
-                query_history=service_connection.queryHistoryTable
-            ),
+            statement=DATABRICKS_SQL_STATEMENT_TEST.format(query_history=service_connection.queryHistoryTable),
         ),
         "GetViewDefinitions": partial(
             test_database_query,

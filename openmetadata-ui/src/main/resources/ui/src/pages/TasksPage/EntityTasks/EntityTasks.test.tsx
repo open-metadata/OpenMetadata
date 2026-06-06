@@ -75,7 +75,8 @@ jest.mock('../../../utils/FeedElementUtils', () => ({
     )),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../utils/FqnUtils'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('test'),
 }));
 

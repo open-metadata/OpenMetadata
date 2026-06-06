@@ -40,6 +40,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -158,9 +160,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
-                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2. Each value carried as its own "
+                      + "parameter so values containing ',' (e.g. a glossary term FQN) are safe.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(
               description =
                   "Sort the search results by field, available fields to "
@@ -252,7 +256,186 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
+
+    // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
+    // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
+    // to get single-flight semantics: 100 concurrent users hitting the same uncached query
+    // collapse to one ES call instead of 100 (P2.3).
+    org.openmetadata.service.cache.CachedSearchLayer searchCache =
+        org.openmetadata.service.cache.CacheBundle.getCachedSearchLayer();
+    String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
+    boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
+    if (!cacheable) {
+      return searchRepository.search(request, subjectContext);
+    }
+
+    // Buffer the upstream response body once so the cache stores exactly what we return. The
+    // single-flight wrapper holds the stripe lock around the supplier; we keep the supplier
+    // tight to minimize lock-hold time.
+    //
+    // The supplier captures the Response object into `capturedResponse[0]` so a non-cacheable
+    // outcome (non-200 or non-String body) can be returned directly without a SECOND call to
+    // searchRepository.search() — the previous implementation re-called search() on the error
+    // path, doubling backend load for every error / non-200 response.
+    final Response[] capturedResponse = new Response[1];
+    final java.io.IOException[] thrown = new java.io.IOException[1];
+    String body =
+        searchCache.loadOrCompute(
+            request,
+            principal,
+            () -> {
+              try {
+                Response upstream = searchRepository.search(request, subjectContext);
+                capturedResponse[0] = upstream;
+                if (upstream.getStatus() != 200) {
+                  return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
+                }
+                Object entity = upstream.getEntity();
+                return entity instanceof String s ? s : null;
+              } catch (java.io.IOException ioe) {
+                thrown[0] = ioe;
+                return null;
+              }
+            });
+    if (thrown[0] != null) {
+      throw thrown[0];
+    }
+    if (body != null) {
+      // Cache hit OR fresh write succeeded — return the cached/just-computed body.
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+    }
+    if (capturedResponse[0] != null) {
+      // The supplier ran for this caller and produced a non-cacheable response (non-200 or
+      // non-String entity). Return it directly — no second backend call.
+      return capturedResponse[0];
+    }
+    // Edge case: single-flight wait — another caller ran the supplier for our key and its
+    // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
+    // through to a live call (this is rare and only affects the second+ caller of a query
+    // that's currently returning errors).
     return searchRepository.search(request, subjectContext);
+  }
+
+  @GET
+  @Path("/export")
+  @Produces("text/csv; charset=utf-8")
+  @Operation(
+      operationId = "exportSearchResults",
+      summary = "Export search results as CSV (streaming)",
+      description =
+          "Exports the current search results as a streaming CSV download. "
+              + "The response is streamed directly to the client without buffering the entire result set in memory.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "CSV file stream",
+            content = @Content(mediaType = "text/csv; charset=utf-8"))
+      })
+  public Response exportSearchResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(
+              description = "Sort order asc for ascending or desc for descending, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Maximum number of rows to export. When null, exports all matching results up to the hard cap.")
+          @QueryParam("size")
+          Integer size,
+      @Parameter(
+              description =
+                  "Starting offset for export. Use with size to export a specific page of results (e.g., from=30&size=15 for page 3).")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    SearchRequest request =
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder);
+
+    int totalHits = searchRepository.countSearchResults(request, subjectContext);
+    final int effectiveTotal =
+        Math.max(
+            (size != null && size > 0) ? Math.min(size, totalHits - from) : totalHits - from, 0);
+
+    if (effectiveTotal > SearchResultCsvExporter.MAX_EXPORT_ROWS) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              String.format(
+                  "Results contain %d rows, max is %d. Please add filters to reduce the result set.",
+                  effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS))
+          .type(MediaType.TEXT_PLAIN)
+          .build();
+    }
+
+    StreamingOutput stream =
+        output ->
+            searchRepository.exportSearchResultsCsvStream(
+                request, subjectContext, effectiveTotal, from, output);
+
+    return Response.ok(stream)
+        .header("Content-Disposition", "attachment; filename=\"search_export.csv\"")
+        .build();
+  }
+
+  private SearchRequest buildExportSearchRequest(
+      SubjectContext subjectContext,
+      String query,
+      String index,
+      Boolean deleted,
+      String queryFilter,
+      String postFilter,
+      String sortFieldParam,
+      String sortOrder) {
+    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+
+    List<EntityReference> domains = new ArrayList<>();
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    return new SearchRequest()
+        .withQuery(resolvedQuery)
+        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+        .withQueryFilter(queryFilter)
+        .withPostFilter(postFilter)
+        .withDeleted(deleted)
+        .withSortFieldParam(sortFieldParam)
+        .withSortOrder(sortOrder)
+        .withDomains(domains)
+        .withApplyDomainFilter(
+            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
   }
 
   @POST
@@ -337,9 +520,12 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values")
+      @Parameter(
+              description =
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(description = "Sort the search results by field")
           @DefaultValue("_score")
           @QueryParam("sort_field")
@@ -460,10 +646,18 @@ public class SearchResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @DefaultValue("false")
           @QueryParam("deleted")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
+    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   @GET
@@ -664,12 +858,6 @@ public class SearchResource {
   public Response reindexEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
-          @DefaultValue("false")
-          @QueryParam("recreate")
-          boolean recreate,
       @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
           @DefaultValue("5")
           @QueryParam("timeoutMinutes")
@@ -716,9 +904,8 @@ public class SearchResource {
                   long startTime = System.currentTimeMillis();
 
                   LOG.info(
-                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      "Starting reindex job for {} entities. Timeout: {} minutes",
                       totalEntities,
-                      recreate,
                       timeoutMinutes);
 
                   for (EntityReference ref : entities) {
@@ -787,27 +974,18 @@ public class SearchResource {
                             reducedSize);
                       }
 
-                      if (recreate) {
-                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
-                        LOG.debug(
-                            "Deleted entity {} ({}) from index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
-                        LOG.debug(
-                            "Recreated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      } else {
-                        searchRepository.updateEntityIndex(entity);
-                        LOG.debug(
-                            "Updated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      }
+                      searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                      LOG.debug(
+                          "Deleted entity {} ({}) from index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
+                      searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                      LOG.debug(
+                          "Recreated entity {} ({}) in index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
 
                       successCount++;
 

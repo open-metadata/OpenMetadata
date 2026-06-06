@@ -26,7 +26,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
+import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,10 +56,6 @@ import {
   Column,
   Table as TableType,
 } from '../../../generated/entity/data/table';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -75,6 +71,7 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
+import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getEntityBulkEditPath,
@@ -84,7 +81,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -92,7 +89,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
-  getAllRowKeysByKeyName,
+  getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -161,7 +158,6 @@ const SchemaTable = () => {
   const {
     permissions: tablePermissions,
     data: table,
-    onThreadLinkSelect,
     openColumnDetailPanel,
     setDisplayedColumns,
   } = useGenericContext<TableType>();
@@ -255,7 +251,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange]
+    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder]
   );
 
   const fetchTableColumns = useCallback(
@@ -295,7 +291,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange]
+    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -356,6 +352,8 @@ const SchemaTable = () => {
       return;
     }
 
+    setPrevTableColumns(table.columns);
+
     const updatedColumns = table.columns;
     setTableColumns((prev) => {
       // Create a deep clone to avoid mutation of the previous state during updates
@@ -374,9 +372,7 @@ const SchemaTable = () => {
 
       return newColumns;
     });
-
-    setPrevTableColumns(table.columns);
-  }, [table?.columns, hasInitialLoad]);
+  }, [table?.columns, hasInitialLoad, prevTableColumns]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -388,7 +384,7 @@ const SchemaTable = () => {
         const activeCol = findColumnByEntityLink(
           tableFqn ?? '',
           prev,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (activeCol) {
@@ -418,7 +414,7 @@ const SchemaTable = () => {
     (suggestion: Suggestion) => {
       updateDescriptionTagFromSuggestions(suggestion);
     },
-    [tableColumns]
+    []
   );
 
   const handleEditColumn = (column: Column): void => {
@@ -486,59 +482,56 @@ const SchemaTable = () => {
     }
   };
 
-  const handleUpdate = (column: Column) => {
-    handleEditColumn(column);
-  };
+  const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> =
+    useCallback(
+      (dataTypeDisplay, record) => {
+        const displayValue = isEmpty(dataTypeDisplay)
+          ? record.dataType
+          : dataTypeDisplay;
 
-  const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
-    dataTypeDisplay,
-    record
-  ) => {
-    const displayValue = isEmpty(dataTypeDisplay)
-      ? record.dataType
-      : dataTypeDisplay;
+        if (isEmpty(displayValue)) {
+          return NO_DATA_PLACEHOLDER;
+        }
 
-    if (isEmpty(displayValue)) {
-      return NO_DATA_PLACEHOLDER;
-    }
-
-    return (
-      <Typography.Paragraph
-        className="cursor-pointer"
-        ellipsis={{ tooltip: displayValue, rows: 3 }}>
-        {highlightSearchArrayElement(dataTypeDisplay, searchText)}
-      </Typography.Paragraph>
+        return (
+          <Typography.Paragraph
+            className="cursor-pointer"
+            ellipsis={{ tooltip: displayValue, rows: 3 }}>
+            {highlightSearchArrayElement(dataTypeDisplay, searchText)}
+          </Typography.Paragraph>
+        );
+      },
+      [searchText]
     );
-  };
 
-  const renderDescription: TableCellRendered<Column, 'description'> = (
-    _,
-    record,
-    index
-  ) => {
-    return (
-      <>
-        <TableDescription
-          columnData={{
-            fqn: record.fullyQualifiedName ?? '',
-            field: highlightSearchText(record.description, searchText),
-            record,
-          }}
-          entityFqn={tableFqn}
-          entityType={EntityType.TABLE}
-          hasEditPermission={editDescriptionPermission}
-          index={index}
-          isReadOnly={deleted}
-          onClick={() => handleUpdate(record)}
-        />
-        {getFrequentlyJoinedColumns(
-          record?.name,
-          joins,
-          t('label.frequently-joined-column-plural')
-        )}
-      </>
+  const renderDescription: TableCellRendered<Column, 'description'> =
+    useCallback(
+      (_, record, index) => {
+        return (
+          <>
+            <TableDescription
+              columnData={{
+                fqn: record.fullyQualifiedName ?? '',
+                field: highlightSearchText(record.description, searchText),
+                record,
+              }}
+              entityFqn={tableFqn}
+              entityType={EntityType.TABLE}
+              hasEditPermission={editDescriptionPermission}
+              index={index}
+              isReadOnly={deleted}
+              onClick={() => handleEditColumn(record)}
+            />
+            {getFrequentlyJoinedColumns(
+              record?.name,
+              joins,
+              t('label.frequently-joined-column-plural')
+            )}
+          </>
+        );
+      },
+      [searchText, tableFqn, editDescriptionPermission, deleted, joins, t]
     );
-  };
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
       ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -555,9 +548,9 @@ const SchemaTable = () => {
     [expandedRowKeys]
   );
 
-  const handleEditDisplayNameClick = (record: Column) => {
+  const handleEditDisplayNameClick = useCallback((record: Column) => {
     setEditColumnDisplayName(record);
-  };
+  }, []);
 
   const handleEditColumnData = async (data: EntityName) => {
     const { displayName, constraint } = data as EntityNameWithAdditionFields;
@@ -591,7 +584,7 @@ const SchemaTable = () => {
   const tagFilter = useMemo(() => {
     const tags = getAllTags(tableColumns);
 
-    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+    return groupBy(tags, (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
@@ -655,6 +648,90 @@ const SchemaTable = () => {
     handlePageChange(1);
   }, [handlePageChange]);
 
+  const renderDisplayName = useCallback(
+    (name: Column['name'], record: Column) => {
+      const { displayName } = record;
+
+      return (
+        <div
+          className="d-inline-flex flex-column hover-icon-group"
+          style={{ maxWidth: '80%' }}>
+          <div className="d-inline-flex items-start gap-1 flex-column">
+            <div className="d-inline-flex items-baseline">
+              {prepareConstraintIcon({
+                columnName: name,
+                columnConstraint: record.constraint,
+                tableConstraints,
+              })}
+              <Typography.Text
+                className={classNames(
+                  'm-b-0 d-block break-word cursor-pointer text-link-color'
+                )}
+                data-testid="column-name">
+                {stringToHTML(highlightSearchText(name, searchText))}
+              </Typography.Text>
+            </div>
+            <div className="d-flex items-center">
+              {editDisplayNamePermission && (
+                <Tooltip placement="top" title={t('label.edit')}>
+                  <Button
+                    className="cursor-pointer hover-cell-icon flex-center"
+                    data-testid="edit-displayName-button"
+                    style={{
+                      color: DE_ACTIVE_COLOR,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                      width: '24px',
+                      height: '24px',
+                    }}
+                    onClick={() => handleEditDisplayNameClick(record)}>
+                    <IconEdit
+                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    />
+                  </Button>
+                </Tooltip>
+              )}
+              {record.fullyQualifiedName && (
+                <CopyLinkButton
+                  entityType={EntityType.TABLE}
+                  fieldFqn={record.fullyQualifiedName}
+                  testId="copy-column-link-button"
+                />
+              )}
+            </div>
+          </div>
+          {isEmpty(displayName) ? null : (
+            <Typography.Text
+              className="m-b-0 d-block break-word"
+              data-testid="column-display-name">
+              {stringToHTML(
+                highlightSearchText(getEntityName(record), searchText)
+              )}
+            </Typography.Text>
+          )}
+        </div>
+      );
+    },
+    [tableConstraints, searchText, editDisplayNamePermission]
+  );
+
+  const renderDataQuality = useCallback(
+    (_: string, record: Column) => {
+      const testCounts = testCaseCounts.find((column) => {
+        return isEqual(
+          getEntityColumnFQN(column.entityLink ?? ''),
+          record.fullyQualifiedName
+        );
+      });
+
+      return (
+        <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
+      );
+    },
+    [testCaseCounts]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -689,70 +766,7 @@ const SchemaTable = () => {
           onClick: (event) => handleColumnClick(record, event),
           'data-testid': 'column-name-cell',
         }),
-        render: (name: Column['name'], record: Column) => {
-          const { displayName } = record;
-
-          return (
-            <div
-              className="d-inline-flex flex-column hover-icon-group"
-              style={{ maxWidth: '80%' }}>
-              <div className="d-inline-flex items-start gap-1 flex-column">
-                <div className="d-inline-flex items-baseline">
-                  {prepareConstraintIcon({
-                    columnName: name,
-                    columnConstraint: record.constraint,
-                    tableConstraints,
-                  })}
-                  <Typography.Text
-                    className={classNames(
-                      'm-b-0 d-block break-word cursor-pointer text-link-color'
-                    )}
-                    data-testid="column-name">
-                    {stringToHTML(highlightSearchText(name, searchText))}
-                  </Typography.Text>
-                </div>
-                <div className="d-flex items-center">
-                  {editDisplayNamePermission && (
-                    <Tooltip placement="top" title={t('label.edit')}>
-                      <Button
-                        className="cursor-pointer hover-cell-icon flex-center"
-                        data-testid="edit-displayName-button"
-                        style={{
-                          color: DE_ACTIVE_COLOR,
-                          padding: 0,
-                          border: 'none',
-                          background: 'transparent',
-                          width: '24px',
-                          height: '24px',
-                        }}
-                        onClick={() => handleEditDisplayNameClick(record)}>
-                        <IconEdit
-                          style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                        />
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {record.fullyQualifiedName && (
-                    <CopyLinkButton
-                      entityType={EntityType.TABLE}
-                      fieldFqn={record.fullyQualifiedName}
-                      testId="copy-column-link-button"
-                    />
-                  )}
-                </div>
-              </div>
-              {isEmpty(displayName) ? null : (
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
-                  data-testid="column-display-name">
-                  {stringToHTML(
-                    highlightSearchText(getEntityName(record), searchText)
-                  )}
-                </Typography.Text>
-              )}
-            </div>
-          );
-        },
+        render: renderDisplayName,
       },
       {
         title: t('label.type'),
@@ -819,39 +833,23 @@ const SchemaTable = () => {
         dataIndex: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         key: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         width: 120,
-        render: (_: string, record: Column) => {
-          const testCounts = testCaseCounts.find((column) => {
-            return isEqual(
-              getEntityColumnFQN(column.entityLink ?? ''),
-              record.fullyQualifiedName
-            );
-          });
-
-          return (
-            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
-          );
-        },
+        render: renderDataQuality,
       },
     ],
     [
       tableFqn,
       deleted,
-      tableConstraints,
       editTagsPermission,
       editGlossaryTermsPermission,
-      editDisplayNamePermission,
-      handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      onThreadLinkSelect,
+      renderDisplayName,
+      renderDataQuality,
       tagFilter,
-      testCaseCounts,
-      searchText,
       sortBy,
       sortOrder,
       handleColumnHeaderSortToggle,
-      t,
     ]
   );
 
@@ -888,9 +886,11 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    setExpandedRowKeys(
-      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
-    );
+    setExpandedRowKeys((prev) => {
+      const autoKeys = getExpandAllKeysToDepth(tableColumns ?? [], 1);
+
+      return [...new Set([...autoKeys, ...prev])];
+    });
   }, [tableColumns]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation

@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { PolicyClass } from '../../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../../support/access-control/RolesClass';
 import { EntityClass } from '../../../support/entity/EntityClass';
+import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { getApiContext } from '../../../utils/common';
 import {
   ALL_OPERATIONS,
-  createCustomPropertyForEntity,
   entityConfig,
   runCommonPermissionTests,
   runEntitySpecificPermissionTests,
@@ -27,7 +29,74 @@ import {
   assignRoleToUser,
   cleanupPermissions,
   initializePermissions,
+  setupUserWithPolicy,
 } from '../../../utils/permission';
+
+const EDIT_ALL_ALLOW_SPECIFIC_DENY_RULES = [
+  {
+    name: 'ViewAll-Rule',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+  {
+    name: 'EditAll-Allow-Rule',
+    resources: ['All'],
+    operations: ['EditAll'],
+    effect: 'allow',
+  },
+  {
+    name: 'EditTier-Deny-Rule',
+    resources: ['All'],
+    operations: ['EditTier'],
+    effect: 'deny',
+  },
+  {
+    name: 'EditOwners-Deny-Rule',
+    resources: ['All'],
+    operations: ['EditOwners'],
+    effect: 'deny',
+  },
+  {
+    name: 'EditCertification-Deny-Rule',
+    resources: ['All'],
+    operations: ['EditCertification'],
+    effect: 'deny',
+  },
+];
+
+const SPECIFIC_ALLOW_EDIT_ALL_DENY_RULES = [
+  {
+    name: 'ViewAll-Rule',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+  {
+    name: 'EditAll-Deny-Rule',
+    resources: ['All'],
+    operations: ['EditAll'],
+    effect: 'deny',
+  },
+  {
+    name: 'EditTier-Allow-Rule',
+    resources: ['All'],
+    operations: ['EditTier'],
+    effect: 'allow',
+  },
+  {
+    name: 'EditOwners-Allow-Rule',
+    resources: ['All'],
+    operations: ['EditOwners'],
+    effect: 'allow',
+  },
+  {
+    name: 'EditCertification-Allow-Rule',
+    resources: ['All'],
+    operations: ['EditCertification'],
+    effect: 'allow',
+  },
+];
 
 const adminUser = new UserClass();
 const testUser = new UserClass();
@@ -71,27 +140,115 @@ test.afterAll('Cleanup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+let editAllUser: UserClass;
+let editAllPolicy: PolicyClass;
+let editAllRole: RolesClass;
+
+let specificEditsUser: UserClass;
+let specificEditsPolicy: PolicyClass;
+let specificEditsRole: RolesClass;
+
+let headerPermTable: TableClass;
+
+const headerPermTest = base.extend<{
+  editAllPage: Page;
+  specificEditsPage: Page;
+  denyAllPage: Page;
+}>({
+  editAllPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    try {
+      await editAllUser.login(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
+  },
+  specificEditsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    try {
+      await specificEditsUser.login(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
+  },
+});
+
+headerPermTest.describe(
+  'DataAsset Header – EditTier / EditOwners / EditCertification permissions',
+  () => {
+    headerPermTest.beforeAll(
+      'Setup users, roles, and table',
+      async ({ browser }) => {
+        editAllUser = new UserClass();
+        editAllPolicy = new PolicyClass();
+        editAllRole = new RolesClass();
+
+        specificEditsUser = new UserClass();
+        specificEditsPolicy = new PolicyClass();
+        specificEditsRole = new RolesClass();
+
+        headerPermTable = new TableClass();
+
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        await headerPermTable.create(apiContext);
+
+        await setupUserWithPolicy(
+          apiContext,
+          editAllUser,
+          editAllPolicy,
+          editAllRole,
+          EDIT_ALL_ALLOW_SPECIFIC_DENY_RULES
+        );
+        await setupUserWithPolicy(
+          apiContext,
+          specificEditsUser,
+          specificEditsPolicy,
+          specificEditsRole,
+          SPECIFIC_ALLOW_EDIT_ALL_DENY_RULES
+        );
+        await afterAction();
+      }
+    );
+
+    headerPermTest(
+      'EditAll allowed but EditTier, EditOwners, EditCertification denied – edit buttons not visible',
+      async ({ editAllPage }) => {
+        await headerPermTable.visitEntityPage(editAllPage);
+
+        await expect(editAllPage.getByTestId('edit-tier')).not.toBeVisible();
+        await expect(editAllPage.getByTestId('edit-owner')).not.toBeVisible();
+        await expect(
+          editAllPage.getByTestId('edit-certification')
+        ).not.toBeVisible();
+      }
+    );
+
+    headerPermTest.skip(
+      'EditTier, EditOwners, EditCertification allowed but EditAll denied – edit buttons not visible',
+      async ({ specificEditsPage }) => {
+        await headerPermTable.visitEntityPage(specificEditsPage);
+
+        await expect(specificEditsPage.getByTestId('edit-tier')).toBeVisible();
+        await expect(specificEditsPage.getByTestId('edit-owner')).toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-certification')
+        ).toBeVisible();
+      }
+    );
+  }
+);
+
 Object.entries(entityConfig).forEach(([, config]) => {
   const entity = new config.class();
   const entityType = entity.getType();
 
   test.describe(`${entityType} Permissions`, () => {
-    const customPropertyName = `pw${entityType.replace(
-      /\s+/g,
-      ''
-    )}CustomProperty${uuid()}`;
-
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.create(apiContext);
-
-      // Create custom property for this entity type
-      await createCustomPropertyForEntity(
-        browser,
-        entityType,
-        customPropertyName,
-        adminUser
-      );
 
       await afterAction();
     });

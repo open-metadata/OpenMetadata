@@ -31,14 +31,18 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -139,8 +143,25 @@ const DashboardDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityTaskCountsInto(decodedDashboardFQN, setFeedCount);
+    }
+  }, [decodedDashboardFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD,
+        decodedDashboardFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDashboardFQN]);
+
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedDashboardFQN]);
 
   const handleTabChange = (activeKey: string) => {

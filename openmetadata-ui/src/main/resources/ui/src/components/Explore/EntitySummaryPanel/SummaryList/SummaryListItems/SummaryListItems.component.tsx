@@ -14,8 +14,8 @@
 import { Col, Row, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
-import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
+import { getTagValue } from '../../../../../utils/TagsUtils';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';

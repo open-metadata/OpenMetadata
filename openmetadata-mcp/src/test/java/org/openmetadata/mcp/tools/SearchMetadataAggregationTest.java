@@ -242,4 +242,78 @@ class SearchMetadataAggregationTest {
     hits.put("total", total);
     return hits;
   }
+
+  @Test
+  void testResponseTrimmedWhenExceedingCharLimit() {
+    // 50 results each with 200 columns (~50 chars each) => ~500k chars, well over the 100k cap
+    Map<String, Object> searchResponse = createSearchResponseWithLargeResults(50, 200);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 50, Collections.emptyList(), false, 10);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertTrue(results.size() < 50, "Results should be trimmed below requested 50");
+    assertEquals(true, result.get("hasMore"), "hasMore must be true when trimmed by size cap");
+    assertEquals(results.size(), result.get("returnedCount"));
+    String message = (String) result.get("message");
+    assertTrue(message.contains("trimmed"), "Message should mention trimming");
+  }
+
+  @Test
+  void testResponseNotTrimmedWhenUnderCharLimit() {
+    // 5 results with 2 columns each — well under 100k
+    Map<String, Object> searchResponse = createSearchResponseWithLargeResults(5, 2);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 50, Collections.emptyList(), false, 10);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(5, results.size(), "Results should not be trimmed when under char limit");
+  }
+
+  @Test
+  void testResponseTrimmedToAtLeastOneResult() {
+    // Single result with enough columns to exceed 100k on its own
+    Map<String, Object> searchResponse = createSearchResponseWithLargeResults(1, 3000);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 50, Collections.emptyList(), false, 10);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+    assertEquals(1, results.size(), "At least one result must always be returned");
+  }
+
+  private Map<String, Object> createSearchResponseWithLargeResults(int count, int columnCount) {
+    Map<String, Object> response = new HashMap<>();
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      Map<String, Object> source = new HashMap<>();
+      source.put("name", "table_" + i);
+      source.put("fullyQualifiedName", "service.db.schema.table_" + i);
+      source.put("entityType", "table");
+      List<String> columnNames = new ArrayList<>();
+      for (int c = 0; c < columnCount; c++) {
+        columnNames.add("column_with_long_name_to_increase_payload_size_" + c);
+      }
+      source.put("columnNames", columnNames);
+      Map<String, Object> hit = new HashMap<>();
+      hit.put("_source", source);
+      hits.add(hit);
+    }
+
+    Map<String, Object> total = new HashMap<>();
+    total.put("value", count);
+    Map<String, Object> hitsObj = new HashMap<>();
+    hitsObj.put("hits", hits);
+    hitsObj.put("total", total);
+    response.put("hits", hitsObj);
+    return response;
+  }
 }

@@ -20,6 +20,7 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
   getScheduleDescriptionTexts,
@@ -71,6 +72,13 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
     expect(formatTimeDurationFromSeconds(60)).toBe(`00:01:00`);
+  });
+
+  it(`formatDurationToHHMMSS should show milliseconds for short runs`, () => {
+    expect(formatDurationToHHMMSS(0)).toBe('00:00:00');
+    expect(formatDurationToHHMMSS(210)).toBe('210 ms');
+    expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
+    expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {

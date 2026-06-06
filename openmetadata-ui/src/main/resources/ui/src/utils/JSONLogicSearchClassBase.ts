@@ -32,6 +32,7 @@ import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
+  KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
   TABLE_ENTITY_FIELDS_KEYS,
 } from '../constants/JSONLogicSearch.constants';
 import {
@@ -326,7 +327,6 @@ class JSONLogicSearchClassBase {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
-        fieldName: 'tags',
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {
@@ -656,6 +656,10 @@ class JSONLogicSearchClassBase {
     const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
       [SearchIndex.TABLE]: getFieldsByKeys(
         TABLE_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: getFieldsByKeys(
+        KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
         this.mapFields
       ),
       [SearchIndex.GLOSSARY_TERM]: getFieldsByKeys(

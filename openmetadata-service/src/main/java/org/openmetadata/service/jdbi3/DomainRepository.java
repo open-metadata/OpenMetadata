@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
@@ -27,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -59,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
@@ -144,6 +147,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
+    IntakeFormValidator.validate(entity, Entity.DOMAIN);
   }
 
   @Override
@@ -278,14 +282,27 @@ public class DomainRepository extends EntityRepository<Domain> {
       BulkAssets request,
       boolean isAdd,
       String userName) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate — schema marks assets optional, so a request without it is valid
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (dryRun) {
+        success.add(buildDryRunImpactResponse(entityId, ref, relationship, isAdd));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+        continue;
+      }
 
       cleanupOldDomain(ref, fromEntity, relationship);
       cleanupDataProducts(entityId, ref, relationship, isAdd);
@@ -296,6 +313,13 @@ public class DomainRepository extends EntityRepository<Domain> {
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
+      // The asset's stored entity JSON has `domains` stripped (FIELDS_STORED_AS_RELATIONSHIPS)
+      // and re-derived from entity_relationship on read. The relationship row is fresh, but
+      // the asset's cached entity bundle and the per-field domains/owners hash entry both
+      // hold the previous-domain view. Drop every cached variant so the next read rebuilds
+      // it from the freshly-written relationships.
+      invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
@@ -304,8 +328,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     result.withSuccessRequest(success);
 
-    // Create a Change Event on successful addition/removal of assets
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
@@ -320,6 +343,105 @@ public class DomainRepository extends EntityRepository<Domain> {
     return result;
   }
 
+  private BulkResponse buildDryRunImpactResponse(
+      UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
+    BulkResponse response;
+    try {
+      EntityReference currentDomain =
+          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+      List<EntityReference> affectedDataProducts =
+          getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+      boolean isMove =
+          isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
+      boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
+      String message =
+          buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage(message)
+              .withHasSideEffects(hasSideEffects);
+    } catch (Exception e) {
+      // Dry-run is a best-effort preview — a single asset whose impact can't be
+      // computed (e.g. a dangling relationship) must not abort the whole batch.
+      // Surface the failure on that asset's response and keep going.
+      LOG.warn("Failed to compute dry-run impact for asset {}", ref.getId(), e);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage("Impact could not be computed: " + e.getMessage())
+              .withHasSideEffects(false);
+    }
+    return response;
+  }
+
+  private List<EntityReference> getAffectedDataProductsForDryRun(
+      UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+    if (dataProducts.isEmpty()) {
+      return dataProducts;
+    }
+    if (!isAdd) {
+      return dataProducts;
+    }
+    return filterDataProductsByDomain(dataProducts, targetDomainId, relationship);
+  }
+
+  private String buildDryRunImpactMessage(
+      EntityReference ref,
+      EntityReference currentDomain,
+      UUID targetDomainId,
+      List<EntityReference> affectedDataProducts,
+      boolean isAdd) {
+    StringBuilder message = new StringBuilder();
+    if (isAdd) {
+      if (currentDomain == null) {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' will be added to the domain.");
+      } else if (currentDomain.getId().equals(targetDomainId)) {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' is already in this domain.");
+      } else {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' will be moved from domain '")
+            .append(currentDomain.getFullyQualifiedName())
+            .append("'.");
+      }
+      if (!affectedDataProducts.isEmpty()) {
+        message.append(" The following data product relationships will be removed: ");
+        message.append(
+            affectedDataProducts.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(", ")));
+        message.append(".");
+      }
+    } else {
+      message
+          .append(ref.getType())
+          .append(" '")
+          .append(ref.getFullyQualifiedName())
+          .append("' will be removed from the domain.");
+      if (!affectedDataProducts.isEmpty()) {
+        message.append(" The following data product relationships will also be removed: ");
+        message.append(
+            affectedDataProducts.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(", ")));
+        message.append(".");
+      }
+    }
+    return message.toString();
+  }
+
   private void cleanupOldDomain(EntityReference ref, String fromEntity, Relationship relationship) {
     EntityReference oldDomain =
         getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
@@ -332,32 +454,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
     if (dataProducts.isEmpty()) return;
 
-    // Map dataProduct -> domain
-    Map<UUID, UUID> associatedDomains =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
-                relationship.ordinal(),
-                DOMAIN)
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    rec -> UUID.fromString(rec.getToId()),
-                    rec -> UUID.fromString(rec.getFromId())));
-
-    // For isAdd, filter only those data products linked to a different domain.
-    // For isRemove, delete all data products.
     List<EntityReference> dataProductsToDelete =
-        isAdd
-            ? dataProducts.stream()
-                .filter(
-                    dp -> {
-                      UUID domainId = associatedDomains.get(dp.getId());
-                      return domainId != null && !domainId.equals(entityId);
-                    })
-                .collect(Collectors.toList())
-            : dataProducts;
+        isAdd ? filterDataProductsByDomain(dataProducts, entityId, relationship) : dataProducts;
 
     if (!dataProductsToDelete.isEmpty()) {
       daoCollection
@@ -372,6 +470,29 @@ public class DomainRepository extends EntityRepository<Domain> {
               relationship.ordinal());
       LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
     }
+  }
+
+  private List<EntityReference> filterDataProductsByDomain(
+      List<EntityReference> dataProducts, UUID targetDomainId, Relationship relationship) {
+    Map<UUID, UUID> associatedDomains =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
+                relationship.ordinal(),
+                DOMAIN)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    rec -> UUID.fromString(rec.getToId()),
+                    rec -> UUID.fromString(rec.getFromId())));
+    return dataProducts.stream()
+        .filter(
+            dp -> {
+              UUID domainId = associatedDomains.get(dp.getId());
+              return domainId != null && !domainId.equals(targetDomainId);
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -439,6 +560,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -474,6 +600,18 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       LOG.info("Domain FQN changed from {} to {}", oldFqn, newFqn);
 
+      // Drop cache entries for every descendant before we rewrite the DB: child domains and any
+      // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
+      // matches the old FQN prefix. The publish() fan-out handles peer instances.
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and the DAO updateFqn below.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedDomains =
+          invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
+          invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
 
@@ -484,6 +622,31 @@ public class DomainRepository extends EntityRepository<Domain> {
       updateEntityLinks(oldFqn, newFqn, updated);
       updateSearchIndexes(oldFqn, newFqn, updated);
       updateTagUsage(oldFqn, newFqn);
+
+      // Any asset (table/dashboard/...) that carries this domain in its `domains` reference
+      // now has a stale FQN embedded in its cache. Invalidate them so next read rebuilds with
+      // the new FQN. Covers both the renamed domain and every descendant domain we just bulk-
+      // updated above.
+      invalidateDomainReferencers(updated.getId());
+      for (Domain child : getNestedDomains(updated)) {
+        invalidateDomainReferencers(child.getId());
+      }
+
+      finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      finishInvalidateCacheForRenameCascade(Entity.DATA_PRODUCT, renamedDataProducts);
+    }
+
+    private void invalidateDomainReferencers(UUID domainId) {
+      // Pull the referencer FQN from the relationship record JSON so the by-name cache variant
+      // is evicted alongside the by-id one. Without it, GET-by-name for assets that embed this
+      // domain would keep returning the stale domain reference until TTL.
+      List<CollectionDAO.EntityRelationshipRecord> referencers =
+          daoCollection
+              .relationshipDAO()
+              .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
+      for (CollectionDAO.EntityRelationshipRecord record : referencers) {
+        invalidateCacheForReferencedEntity(record);
+      }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Domain updated) {
@@ -492,17 +655,15 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       // Update feed entity links for the domain
       EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       // Update feed entity links for all child domains
       List<Domain> childDomains = getNestedDomains(updated);
       for (Domain child : childDomains) {
         EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(childAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
       }
     }
 
@@ -580,22 +741,26 @@ public class DomainRepository extends EntityRepository<Domain> {
       return expertsMap;
     }
 
-    // Initialize empty lists for all domains
     domains.forEach(domain -> expertsMap.put(domain.getId(), new ArrayList<>()));
 
-    // Single batch query to get all expert relationships
     var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(domains), Relationship.EXPERT.ordinal(), Entity.USER);
 
-    // Group experts by domain ID
+    List<UUID> expertIds =
+        records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
+    Map<UUID, EntityReference> expertRefsById =
+        Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
+
     records.forEach(
         record -> {
           var domainId = UUID.fromString(record.getFromId());
-          var expertRef =
-              getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
-          expertsMap.get(domainId).add(expertRef);
+          var expertRef = expertRefsById.get(UUID.fromString(record.getToId()));
+          if (expertRef != null) {
+            expertsMap.get(domainId).add(expertRef);
+          }
         });
 
     return expertsMap;

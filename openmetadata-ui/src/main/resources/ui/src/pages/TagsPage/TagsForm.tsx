@@ -237,7 +237,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
+      label: t(field.label),
     };
   }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
 

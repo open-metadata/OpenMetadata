@@ -38,20 +38,15 @@ import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/Assets
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { EntityReference } from '../generated/entity/data/table';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { EntityReference } from '../generated/entity/data/table';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
-  convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
-} from './EntityReferenceUtils';
-
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -83,14 +78,13 @@ export interface DataProductDetailPageTabProps {
  * @returns JSX element representing the icon
  */
 export const getDataProductIconByUrl = (iconURL?: string) => {
-  if (iconURL) {
-    return (
-      <img
-        alt="data product icon"
-        className="data-product-icon-url"
-        src={iconURL}
-      />
-    );
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'tw:h-6 tw:w-6',
+  });
+
+  if (iconElement) {
+    return iconElement;
   }
 
   return <DefaultDataProductIcon className="data-product-default-icon" />;
@@ -345,26 +339,10 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
     </Space>
   );
 };
-export const convertDataProductsToEntityReferences = (
-  dataProducts: DataProduct[]
-): EntityReference[] => {
-  return convertDataProductsToEntityReferencesUtil(dataProducts);
-};
 
-export const convertEntityReferencesToDataProducts = (
-  refs: EntityReference[]
-): DataProduct[] => {
-  return convertEntityReferencesToDataProductsUtil(refs);
-};
-
-export const getQueryFilterForDataProductPorts = (
-  dataProductFqn: string
-): QueryFilterInterface => {
-  return {
-    query: {
-      bool: {
-        must: [{ term: { 'dataProducts.fullyQualifiedName': dataProductFqn } }],
-      },
-    },
-  };
-};
+// Re-exports from DataProductPureUtils (backward compat)
+export {
+  convertDataProductsToEntityReferences,
+  convertEntityReferencesToDataProducts,
+  getQueryFilterForDataProductPorts,
+} from './DataProductPureUtils';

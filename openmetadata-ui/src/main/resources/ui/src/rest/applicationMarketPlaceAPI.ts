@@ -13,7 +13,7 @@
 import { PagingResponse } from 'Models';
 import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps/marketplace';

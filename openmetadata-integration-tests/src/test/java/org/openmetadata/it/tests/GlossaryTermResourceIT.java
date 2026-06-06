@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,12 +23,15 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -35,14 +39,19 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -658,7 +667,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       User assigneeUser = SdkClients.adminClient().users().getByName(testUser1().getName());
       CreateThread createThread =
           new CreateThread()
-              .withFrom("admin")
               .withMessage("Please approve glossary term")
               .withAbout(String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName()))
               .withType(ThreadType.Task)
@@ -1058,16 +1066,25 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getReviewers());
     assertEquals(1, updated.getReviewers().size());
 
-    // Add another reviewer
-    updated.setReviewers(
+    // Add another reviewer — re-fetch first so the patch diff contains only the
+    // reviewer change. Adding the first reviewer triggers the async approval
+    // workflow which flips entityStatus to IN_REVIEW; patching the stale
+    // `updated` object (still APPROVED) would otherwise produce an IN_REVIEW ->
+    // APPROVED status diff that checkUpdatedByReviewer rejects because admin is
+    // not a reviewer.
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    // Remove a reviewer
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    // Remove a reviewer — re-fetch to pick up any async entityStatus change from the approval
+    // workflow so the patch diff contains only the reviewer removal, not an unintended status
+    // change
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
@@ -1110,6 +1127,187 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
     assertNotNull(updated3.getReferences());
     assertEquals(1, updated3.getReferences().size());
+  }
+
+  @Test
+  void patch_addSameRelatedTermWithDifferentRelationTypes(TestNamespace ns) {
+    // Reproduces the bug where adding the same related term with multiple relation types
+    // via separate PATCH calls collapses to a single relation. The entity_relationship row
+    // is keyed on (fromId, toId, relation) without the JSON-encoded relationType, so the
+    // second add UPSERTs over the first one and only the last relationType survives.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm sourceRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rel_source"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Source term for multi relation-type test");
+    GlossaryTerm sourceTerm = createEntity(sourceRequest);
+
+    CreateGlossaryTerm relatedRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rel_target"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Related term referenced with multiple relation types");
+    GlossaryTerm relatedTerm = createEntity(relatedRequest);
+
+    GlossaryTerm v1 = client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    v1.setRelatedTerms(
+        List.of(
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("synonym")));
+    patchEntity(v1.getId().toString(), v1);
+
+    GlossaryTerm afterFirstPatch =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterFirstPatch.getRelatedTerms());
+    assertEquals(1, afterFirstPatch.getRelatedTerms().size());
+    assertEquals(relatedTerm.getId(), afterFirstPatch.getRelatedTerms().get(0).getTerm().getId());
+    assertEquals("synonym", afterFirstPatch.getRelatedTerms().get(0).getRelationType());
+
+    GlossaryTerm v2 = client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    List<TermRelation> bothRelations = new ArrayList<>(v2.getRelatedTerms());
+    bothRelations.add(
+        new TermRelation().withTerm(relatedTerm.getEntityReference()).withRelationType("seeAlso"));
+    v2.setRelatedTerms(bothRelations);
+    patchEntity(v2.getId().toString(), v2);
+
+    GlossaryTerm afterSecondPatch =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterSecondPatch.getRelatedTerms());
+
+    List<String> relationTypesForRelatedTerm =
+        afterSecondPatch.getRelatedTerms().stream()
+            .filter(tr -> tr.getTerm() != null && relatedTerm.getId().equals(tr.getTerm().getId()))
+            .map(TermRelation::getRelationType)
+            .sorted()
+            .toList();
+
+    assertEquals(
+        List.of("seeAlso", "synonym"),
+        relationTypesForRelatedTerm,
+        "Both relation types should be preserved when the same term is added with different "
+            + "relationship types; got "
+            + relationTypesForRelatedTerm);
+    assertEquals(
+        2,
+        afterSecondPatch.getRelatedTerms().size(),
+        "relatedTerms should contain two entries for the same target term, one per relation type");
+  }
+
+  @Test
+  void patch_removeOneRelationTypeKeepsOtherTypeForSameTerm(TestNamespace ns) {
+    // Companion to patch_addSameRelatedTermWithDifferentRelationTypes — verifies the delete path
+    // for the multi-row case. With relationType in the entity_relationship primary key the same
+    // (fromId, toId, RELATED_TO) pair carries one row per type, so the PATCH that drops one type
+    // must delete only that row and leave the other intact.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm sourceRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_remove_one_source"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Source term for remove-one-relation-type test");
+    GlossaryTerm sourceTerm = createEntity(sourceRequest);
+
+    CreateGlossaryTerm relatedRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_remove_one_target"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Target term reached with two relation types");
+    GlossaryTerm relatedTerm = createEntity(relatedRequest);
+
+    GlossaryTerm withBoth =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    withBoth.setRelatedTerms(
+        List.of(
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("synonym"),
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("seeAlso")));
+    patchEntity(withBoth.getId().toString(), withBoth);
+
+    GlossaryTerm beforeRemoval =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertEquals(2, beforeRemoval.getRelatedTerms().size());
+
+    beforeRemoval.setRelatedTerms(
+        beforeRemoval.getRelatedTerms().stream()
+            .filter(tr -> !"synonym".equals(tr.getRelationType()))
+            .toList());
+    patchEntity(beforeRemoval.getId().toString(), beforeRemoval);
+
+    GlossaryTerm afterRemoval =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterRemoval.getRelatedTerms());
+
+    List<String> remainingTypes =
+        afterRemoval.getRelatedTerms().stream()
+            .filter(tr -> tr.getTerm() != null && relatedTerm.getId().equals(tr.getTerm().getId()))
+            .map(TermRelation::getRelationType)
+            .toList();
+    assertEquals(
+        List.of("seeAlso"),
+        remainingTypes,
+        "Removing the synonym relation must leave seeAlso intact; got " + remainingTypes);
+  }
+
+  @Test
+  void hardDeletingTaggedTable_clearsGlossaryTermUsage(TestNamespace ns) {
+    // Tag a Table with a GlossaryTerm, hard-delete the Table, and verify the term's
+    // usageCount drops back to zero. Glossary tags on entities live in tag_usage (not
+    // entity_relationship), but this exercises the cleanup branch that runs alongside
+    // the entity_relationship cascade — we want to be sure neither path was disturbed
+    // by the relationType PK change.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_usage_cleanup"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term applied to a table for usage-cleanup verification");
+    GlossaryTerm term = createEntity(termRequest);
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("usage_cleanup_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    tableRequest.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+
+    GlossaryTerm beforeDelete = client.glossaryTerms().get(term.getId().toString(), "usageCount");
+    assertEquals(
+        Integer.valueOf(1),
+        beforeDelete.getUsageCount(),
+        "Glossary term usageCount should be 1 while the tagged table exists");
+
+    java.util.Map<String, String> params = new java.util.HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    GlossaryTerm afterDelete = client.glossaryTerms().get(term.getId().toString(), "usageCount");
+    assertEquals(
+        Integer.valueOf(0),
+        afterDelete.getUsageCount(),
+        "Glossary term usageCount should drop to 0 after the tagged table is hard-deleted");
   }
 
   @Test
@@ -2269,14 +2467,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated1.getReviewers());
     assertEquals(1, updated1.getReviewers().size());
 
-    updated1.setReviewers(
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated1.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated1.getId().toString(), updated1);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
@@ -2669,6 +2869,57 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   private static class GlossaryTermResultList extends ResultList<GlossaryTerm> {}
 
   @Test
+  void test_searchGlossaryTermsWithOffsetPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a dedicated glossary for this test
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("offset_glossary"))
+            .withDescription("Glossary for offset pagination test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Create 5 terms
+    for (int i = 0; i < 5; i++) {
+      CreateGlossaryTerm create =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("offsetTerm" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Term for offset test");
+      createEntity(create);
+    }
+
+    // Search with no query (empty query path) — page 1
+    ResultList<GlossaryTerm> page1 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 0);
+    assertNotNull(page1.getData());
+    assertEquals(2, page1.getData().size());
+    assertEquals(5, page1.getPaging().getTotal());
+    assertEquals(0, page1.getPaging().getOffset());
+
+    // Offset=2 skips first 2 rows — this was the bug: offset > 0 with empty query would crash
+    ResultList<GlossaryTerm> page2 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 2);
+    assertNotNull(page2.getData());
+    assertEquals(2, page2.getData().size());
+    assertEquals(2, page2.getPaging().getOffset());
+
+    // Offset=4 skips first 4 rows — only 1 remaining
+    ResultList<GlossaryTerm> page3 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 4);
+    assertNotNull(page3.getData());
+    assertEquals(1, page3.getData().size());
+    assertEquals(4, page3.getPaging().getOffset());
+
+    // Verify no duplicates across pages
+    List<UUID> allIds = new ArrayList<>();
+    page1.getData().forEach(t -> allIds.add(t.getId()));
+    page2.getData().forEach(t -> allIds.add(t.getId()));
+    page3.getData().forEach(t -> allIds.add(t.getId()));
+    assertEquals(5, new java.util.HashSet<>(allIds).size(), "No duplicates across pages");
+  }
+
+  @Test
   void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -3001,6 +3252,119 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(result);
   }
 
+  @Test
+  void test_glossaryTermSearchIndexUpdatedWhenGlossaryOwnerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("owner_prop_glossary"))
+            .withDescription("Glossary for owner propagation test");
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("owner_prop_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for owner propagation test");
+    GlossaryTerm term = createEntity(termRequest);
+
+    Glossary fetchedGlossary = client.glossaries().get(glossary.getId().toString(), "owners");
+    fetchedGlossary.setOwners(List.of(testUser1().getEntityReference()));
+    client.glossaries().update(fetchedGlossary.getId().toString(), fetchedGlossary);
+
+    String termId = term.getId().toString();
+    Awaitility.await("GlossaryTerm search index should reflect inherited owner from glossary")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + termId)
+                      .index("glossary_term_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(), "GlossaryTerm should be in search index");
+
+              JsonNode source = hits.get(0).path("_source");
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isArray() && !owners.isEmpty(),
+                  "Owners should be propagated to glossary term search index");
+              boolean ownerFound = false;
+              for (JsonNode owner : owners) {
+                if (testUser1().getId().toString().equals(owner.path("id").asText())) {
+                  ownerFound = true;
+                  break;
+                }
+              }
+              assertTrue(ownerFound, "Owner should match user set on glossary");
+            });
+  }
+
+  @Test
+  void test_glossaryTermSearchIndexUpdatedWhenGlossaryReviewerChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("reviewer_prop_glossary"))
+            .withDescription("Glossary for reviewer propagation test")
+            .withReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("reviewer_prop_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for reviewer propagation test");
+    GlossaryTerm term = createEntity(termRequest);
+
+    String termId = term.getId().toString();
+    Awaitility.await("GlossaryTerm search index should reflect inherited reviewers from glossary")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollDelay(java.time.Duration.ofMillis(500))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + termId)
+                      .index("glossary_term_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(), "GlossaryTerm should be in search index");
+
+              JsonNode source = hits.get(0).path("_source");
+              JsonNode reviewers = source.path("reviewers");
+              assertTrue(
+                  reviewers.isArray() && !reviewers.isEmpty(),
+                  "Reviewers should be propagated to glossary term search index");
+              boolean reviewerFound = false;
+              for (JsonNode reviewer : reviewers) {
+                if (testUser1().getId().toString().equals(reviewer.path("id").asText())) {
+                  reviewerFound = true;
+                  break;
+                }
+              }
+              assertTrue(reviewerFound, "Reviewer should match user set on glossary");
+            });
+  }
+
   private String getAssetCounts(OpenMetadataClient client, String parent) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (parent != null) {
@@ -3033,5 +3397,500 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             "/v1/glossaryTerms/name/" + fqn + "/assets",
             null,
             optionsBuilder.build());
+  }
+
+  @Test
+  void softDeletedReviewer_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    String userName = ns.shortPrefix("reviewer_list");
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Reviewer user for glossary soft-delete list test"));
+
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_softdel_reviewer"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for soft-delete reviewer list test")
+            .withReviewers(List.of(reviewer.getEntityReference()));
+    GlossaryTerm term = createEntity(create);
+
+    client.users().delete(reviewer.getId().toString());
+
+    ListParams params =
+        new ListParams()
+            .setFields("reviewers")
+            .withLimit(100)
+            .addFilter("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> list = listEntities(params);
+    GlossaryTerm listed =
+        list.getData().stream()
+            .filter(t -> t.getId().equals(term.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("GlossaryTerm not found in list"));
+    assertTrue(
+        listed.getReviewers() == null || listed.getReviewers().isEmpty(),
+        "Soft-deleted reviewer must not appear in list endpoint");
+  }
+
+  // ===================================================================
+  // BULK REMOVE GLOSSARY FROM ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunTrue_doesNotRemove(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_true");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_true");
+
+    AddGlossaryToAssetsRequest dryRunRemove =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PUT, path, dryRunRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Awaitility.await("Glossary tag must remain on table after dryRun=true remove")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .during(Duration.ofSeconds(5))
+        .until(() -> tableHasTag(client, table.getId(), term.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunFalse_removes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_false");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_false");
+
+    AddGlossaryToAssetsRequest realRemove =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, realRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag should be removed from table when dryRun=false");
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddGlossaryToAssetsRequest dryRunAdd =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag should NOT be applied to table on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(
+        result.getDryRun(), "Omitted dryRun must deserialize to schema default=true (preview)");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag must remain on table when dryRun is omitted (default preview)");
+  }
+
+  private GlossaryTerm createGlossaryTermForBulk(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("br_g_" + suffix))
+                    .withDescription("Glossary for bulk remove dryRun test"));
+    return client
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("br_term_" + suffix))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Term for bulk remove dryRun test"));
+  }
+
+  private Table createBareTable(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.shortPrefix("br_db_" + suffix))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.shortPrefix("br_tbl_" + suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWithTerm(TestNamespace ns, GlossaryTerm term, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+
+    TagLabel termLabel =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(termLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Patched table should already have the glossary term applied");
+    return tagged;
+  }
+
+  private boolean tableHasTag(OpenMetadataClient client, UUID tableId, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "tags");
+    return refreshed.getTags() != null
+        && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /glossaryTerms/byIds — batch fetch tests
+  //
+  // Regression coverage for the Sentry-reported N+1 on the Relations Graph
+  // tab: the UI used to fan out N parallel `GET /glossaryTerms/{id}` calls
+  // (~180ms each) to hydrate related-term graphs. The byIds endpoint replaces
+  // that with a single batched call.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void getGlossaryTermsByIds_returnsAllRequestedTerms_inOneCall(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm term1 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term1"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 1"));
+    GlossaryTerm term2 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term2"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 2"));
+    GlossaryTerm term3 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term3"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 3"));
+
+    String idsParam = term1.getId() + "," + term2.getId() + "," + term3.getId();
+    String response = byIds(client, idsParam, null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertTrue(arr.isArray(), "Response must be a JSON array");
+    assertEquals(3, arr.size(), "All 3 requested terms should be returned");
+  }
+
+  @Test
+  void getGlossaryTermsByIds_honorsFieldsParam_hydratesRelatedTerms(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm related =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_related"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Related term"));
+    GlossaryTerm focused =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_focused"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Focused term")
+                .withRelatedTerms(List.of(related.getFullyQualifiedName())));
+
+    String response =
+        byIds(client, focused.getId().toString(), "relatedTerms,children,parent,owners");
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertEquals(1, arr.size());
+    JsonNode node = arr.get(0);
+    JsonNode relatedTerms = node.path("relatedTerms");
+    assertTrue(
+        relatedTerms.isArray() && relatedTerms.size() == 1,
+        "relatedTerms should be hydrated when requested via fields=relatedTerms");
+    // TermRelation shape is {relationType, term: {id, ...}} — the id lives
+    // nested under `term`, not at the top of the array element.
+    assertEquals(related.getId().toString(), relatedTerms.get(0).path("term").path("id").asText());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_silentlyOmitsMissingIds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm real =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_real"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Real term"));
+    UUID fake = UUID.randomUUID();
+
+    String response = byIds(client, real.getId() + "," + fake, null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertEquals(
+        1, arr.size(), "Missing Ids must be silently dropped, not raise a 404 for the batch");
+    assertEquals(real.getId().toString(), arr.get(0).path("id").asText());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_emptyIdsParam_returnsEmptyArray(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String response = byIds(client, "", null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertTrue(arr.isArray());
+    assertEquals(0, arr.size());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_malformedUuid_returns400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // The SDK throws InvalidRequestException ONLY for HTTP 400 — any
+    // other status surfaces as ApiException or a status-specific
+    // subclass, so the type assertion locks the status code while the
+    // message substring locks the error body.
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class, () -> byIds(client, "not-a-uuid,also-not-a-uuid", null));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("invalid"),
+        "Expected 'invalid' in the error body, got: " + ex.getMessage());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_tooManyIds_returns400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // 101 > MAX_BATCH_BY_IDS (100) — small enough that the URL stays well
+    // under Jetty's 8 KB request-header limit so the request reaches the
+    // resource's server-side cap and gets a real 400 (instead of being
+    // rejected upstream with 431 Request Header Fields Too Large).
+    StringBuilder ids = new StringBuilder();
+    for (int i = 0; i < 101; i++) {
+      if (i > 0) {
+        ids.append(',');
+      }
+      ids.append(UUID.randomUUID());
+    }
+
+    InvalidRequestException ex =
+        assertThrows(InvalidRequestException.class, () -> byIds(client, ids.toString(), null));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("too many"),
+        "Expected 'too many' in the error body, got: " + ex.getMessage());
+  }
+
+  private String byIds(OpenMetadataClient client, String idsParam, String fieldsParam) {
+    RequestOptions.Builder opts = RequestOptions.builder().queryParam("ids", idsParam);
+    if (fieldsParam != null) {
+      opts.queryParam("fields", fieldsParam);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(HttpMethod.GET, "/v1/glossaryTerms/byIds", null, opts.build());
+  }
+
+  // -------------------------------------------------------------------------
+  // Issue #28696: renaming a glossary term so the new name keeps the original
+  // name as a PREFIX (e.g. "Customer Lifetime Value" -> "Customer Lifetime
+  // Value Renamed") corrupted the glossary tagFQN on every linked asset in the
+  // search index. The term's asset page then showed 0 assets even though the
+  // database relationship stayed intact.
+  //
+  // Root cause: a non-idempotent prefix replace runs twice on the same asset
+  // doc. updateAssetIndexes (in-transaction) rewrites the tag old -> new, then
+  // propagateToRelatedEntities (post-commit, gated on the simultaneous
+  // displayName change a UI rename sends) re-runs replace(oldFqn, newFqn) on
+  // the already-renamed tag, producing "<newFqn> Renamed" because the new FQN
+  // still startsWith the old FQN.
+  // -------------------------------------------------------------------------
+  @Test
+  void test_renameGlossaryTermPrefixExtension_keepsAssetGlossaryTagInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Short, dot-free names: the FQN must stay unquoted so the new FQN literally
+    // startsWith the old one, and stay well under the tag_usage.tagFQN(256) limit.
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("clv_g"))
+                    .withDescription("Glossary for rename-prefix search regression (#28696)"));
+    GlossaryTerm term =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("clv"))
+                .withDisplayName("Customer Lifetime Value")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Term for rename-prefix search regression (#28696)"));
+    String oldFqn = term.getFullyQualifiedName();
+
+    Table table = createTableTaggedWithTerm(ns, term, "clv_asset");
+    String tableId = table.getId().toString();
+
+    awaitTableGlossaryTag(client, mapper, tableId, oldFqn);
+
+    // UI rename shape: the new name extends the old name as a prefix AND the
+    // displayName changes in the same PATCH (EntityNameModal submits both).
+    GlossaryTerm toRename = client.glossaryTerms().get(term.getId().toString(), "tags");
+    toRename.setName(term.getName() + " Renamed");
+    toRename.setDisplayName("Customer Lifetime Value Renamed");
+    GlossaryTerm renamed = patchEntity(term.getId().toString(), toRename);
+
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(
+        newFqn.startsWith(oldFqn),
+        "Reproduction requires the new FQN to extend the old FQN as a prefix: " + newFqn);
+
+    // The asset's glossary tag in search must equal the NEW FQN exactly. The
+    // regression produced "<newFqn> Renamed", dropping the asset from the term.
+    awaitTableGlossaryTag(client, mapper, tableId, newFqn);
+
+    // ...and the term's asset listing (search backed) must still surface the table.
+    awaitGlossaryTagAssetSearchable(client, mapper, newFqn, tableId);
+  }
+
+  private void awaitTableGlossaryTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedGlossaryFqn) {
+    Awaitility.await("table search doc carries glossary tag " + expectedGlossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> glossaryFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                if ("Glossary".equals(tag.path("source").asText())) {
+                  glossaryFqns.add(tag.path("tagFQN").asText());
+                }
+              }
+              assertTrue(
+                  glossaryFqns.contains(expectedGlossaryFqn),
+                  "Expected glossary tagFQN '"
+                      + expectedGlossaryFqn
+                      + "' on table search doc but found "
+                      + glossaryFqns);
+            });
+  }
+
+  private void awaitGlossaryTagAssetSearchable(
+      OpenMetadataClient client, ObjectMapper mapper, String glossaryFqn, String tableId) {
+    String queryFilter =
+        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"tags.tagFQN\":\"" + glossaryFqn + "\"}}]}}}";
+    Awaitility.await("asset is searchable by glossary tag " + glossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("*")
+                      .index("table_search_index")
+                      .queryFilter(queryFilter)
+                      .size(50)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (tableId.equals(hit.path("_id").asText())
+                    || tableId.equals(hit.path("_source").path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Glossary term assets page (search by tags.tagFQN="
+                      + glossaryFqn
+                      + ") must still include the linked table");
+            });
   }
 }

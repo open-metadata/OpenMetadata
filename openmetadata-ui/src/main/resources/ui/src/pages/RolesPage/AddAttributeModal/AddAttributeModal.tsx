@@ -28,7 +28,7 @@ import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './add-attribute-modal.less';
 

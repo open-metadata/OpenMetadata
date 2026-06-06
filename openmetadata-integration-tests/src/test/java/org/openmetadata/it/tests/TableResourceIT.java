@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -15,12 +18,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -72,6 +79,8 @@ import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.ProfileSampleConfig;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -82,6 +91,7 @@ import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -1557,13 +1567,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Create profiler config
     TableProfilerConfig config =
         new TableProfilerConfig()
-            .withProfileSample(50.0)
-            .withProfileSampleType(TableProfilerConfig.ProfileSampleType.PERCENTAGE);
+            .withProfileSampleConfig(
+                new ProfileSampleConfig()
+                    .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
+                    .withConfig(
+                        new StaticSamplingConfig()
+                            .withProfileSample(50.0)
+                            .withProfileSampleType(
+                                org.openmetadata.schema.type.TableProfile.ProfileSampleType
+                                    .PERCENTAGE)));
 
     // Update profiler config
     Table updated = client.tables().updateProfilerConfig(table.getId(), config);
     assertNotNull(updated.getTableProfilerConfig());
-    assertEquals(50.0, updated.getTableProfilerConfig().getProfileSample());
+    assertNotNull(updated.getTableProfilerConfig().getProfileSampleConfig());
+    StaticSamplingConfig staticConfig =
+        JsonUtils.convertValue(
+            updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
+            StaticSamplingConfig.class);
+    assertEquals(50.0, staticConfig.getProfileSample());
   }
 
   // ===================================================================
@@ -1743,6 +1765,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertFalse(
         result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier2")),
         "Table should not have Tier2 after dbt update");
+  }
+
+  @Test
+  void create_tableWithMultipleTags_persistsAllTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    List<TagLabel> expectedTags = List.of(personalDataTagLabel(), piiSensitiveTagLabel(), tier2Tag);
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("multi_tag_create_table"), ns).withTags(expectedTags);
+    Table created = createEntity(createRequest);
+
+    Table fetched = client.tables().get(created.getId().toString(), "tags");
+    Set<String> persistedTagFQNs =
+        fetched.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          persistedTagFQNs.contains(expected.getTagFQN()),
+          "Multi-tag create should persist tag " + expected.getTagFQN());
+    }
   }
 
   @Test
@@ -5370,6 +5415,313 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
+  // SEARCH INDEX PROPAGATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_ownerPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of(shared.USER1_REF));
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    String tableId = table.getId().toString();
+    Awaitility.await("Table search index should reflect inherited owner from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Table should be in search index");
+
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found in search hits");
+
+              JsonNode owners = source.path("owners");
+              assertTrue(owners.isArray() && !owners.isEmpty(), "Owners should be propagated");
+              assertTrue(
+                  StreamSupport.stream(owners.spliterator(), false)
+                      .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
+                  "Owner should match the user set on the database");
+            });
+  }
+
+  @Test
+  void test_domainPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("search_prop_domain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain for search propagation test"));
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("domain_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("domain_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("domain_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("domain_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+    String domainFqn = domain.getFullyQualifiedName();
+    Awaitility.await("Table search index should reflect inherited domain from service")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              Set<String> actualDomainFqns =
+                  StreamSupport.stream(source.path("domains").spliterator(), false)
+                      .map(d -> d.path("fullyQualifiedName").asText())
+                      .collect(Collectors.toSet());
+              assertTrue(
+                  actualDomainFqns.contains(domainFqn),
+                  "Table search index should contain domain '"
+                      + domainFqn
+                      + "', but got: "
+                      + actualDomainFqns);
+            });
+  }
+
+  @Test
+  void test_displayNamePropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("dn_prop_svc"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDisplayName("Original Display Name");
+    DatabaseService service = client.databaseServices().create(createService);
+
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dn_prop_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dn_prop_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("dn_prop_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    DatabaseService fetchedService = client.databaseServices().get(service.getId().toString(), "");
+    fetchedService.setDisplayName("Updated Display Name");
+    client.databaseServices().update(fetchedService.getId().toString(), fetchedService);
+
+    String tableId = table.getId().toString();
+    Awaitility.await(
+            "Table search index should reflect updated service displayName via nested field propagation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              JsonNode source = findSourceById(hits, tableId);
+              assertNotNull(source, "Table document not found");
+
+              String serviceDisplayName = source.path("service").path("displayName").asText();
+              assertEquals(
+                  "Updated Display Name",
+                  serviceDisplayName,
+                  "Service displayName should be propagated to table search index");
+            });
+  }
+
+  @Test
+  void test_ownerRemovalPropagationToSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    SharedEntities shared = SharedEntities.get();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database db =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("owner_rm_db"))
+                    .withService(service.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER1_REF)));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("owner_rm_schema"))
+                    .withDatabase(db.getFullyQualifiedName()));
+    Table table =
+        createEntity(
+            new CreateTable()
+                .withName(ns.prefix("owner_rm_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+
+    String tableId = table.getId().toString();
+
+    Awaitility.await("Table search index should have inherited owner before removal")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              assertTrue(
+                  source.path("owners").isArray() && !source.path("owners").isEmpty(),
+                  "Table should have inherited owner before removal");
+            });
+
+    Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
+    fetchedDb.setOwners(List.of());
+    client.databases().update(fetchedDb.getId().toString(), fetchedDb);
+
+    Awaitility.await("Table search index should reflect owner removal from database")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode source = findSourceById(root.path("hits").path("hits"), tableId);
+              assertNotNull(source, "Table document not found");
+              JsonNode owners = source.path("owners");
+              assertTrue(
+                  owners.isMissingNode() || owners.isEmpty(),
+                  "Owners should be removed from table search index after removal from database");
+            });
+  }
+
+  private JsonNode findSourceById(JsonNode hits, String entityId) {
+    if (hits == null || !hits.isArray()) return null;
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (entityId.equals(hit.path("_id").asText())
+          || entityId.equals(source.path("id").asText())) {
+        return source;
+      }
+    }
+    return null;
+  }
+
+  // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
 
@@ -5409,5 +5761,264 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       requests.add(request);
     }
     return requests;
+  }
+
+  // ===================================================================
+  // PERFORMANCE TESTS - Bulk listing with column tags (N+1 regression)
+  // ===================================================================
+
+  @Test
+  @Execution(ExecutionMode.SAME_THREAD)
+  void test_listTablesWithColumnTags_performance(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Setup: create a shared schema, classification, and tag
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("perf_classification"))
+            .withDescription("Classification for perf test");
+    Classification classification = client.classifications().create(createClassification);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(ns.prefix("perf_tag"))
+            .withDescription("Tag for perf test")
+            .withClassification(classification.getName());
+    Tag tag = client.tags().create(createTag);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create 100 tables with tagged columns via bulk API (kept small for CI stability)
+    int tableCount = 100;
+    int batchSize = 50;
+    for (int batch = 0; batch < tableCount / batchSize; batch++) {
+      List<CreateTable> requests = new ArrayList<>();
+      for (int i = 0; i < batchSize; i++) {
+        int idx = batch * batchSize + i;
+        CreateTable request = new CreateTable();
+        request.setName(ns.prefix("perf_table_" + idx));
+        request.setDatabaseSchema(schema.getFullyQualifiedName());
+        Column idCol = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+        idCol.setTags(List.of(tagLabel));
+        Column emailCol = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+        emailCol.setTags(List.of(tagLabel));
+        request.setColumns(
+            List.of(idCol, ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(), emailCol));
+        request.setTags(List.of(tagLabel));
+        requests.add(request);
+      }
+      BulkOperationResult result = client.tables().bulkCreateOrUpdate(requests);
+      assertEquals(batchSize, result.getNumberOfRowsPassed());
+    }
+
+    // Test 1: List with fields=columns,tags — verify correctness within timeout
+    ListParams paramsColumnsTags =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("columns,tags")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseColumnsTags =
+        assertTimeout(
+            java.time.Duration.ofSeconds(60),
+            () -> client.tables().list(paramsColumnsTags),
+            "Listing with columns+tags should complete within 60s for " + tableCount + " tables");
+
+    assertEquals(tableCount, responseColumnsTags.getData().size());
+
+    for (Table table : responseColumnsTags.getData()) {
+      assertNotNull(table.getTags(), "Table should have tags");
+      assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
+      assertNotNull(table.getColumns(), "Table should have columns");
+      assertEquals(3, table.getColumns().size());
+
+      // Verify tagged columns have the expected tag, untagged column does not
+      Column idCol = table.getColumns().get(0);
+      Column nameCol = table.getColumns().get(1);
+      Column emailCol = table.getColumns().get(2);
+
+      assertNotNull(idCol.getTags(), "id column tags should not be null");
+      assertTrue(
+          idCol.getTags().stream().anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+          "id column should have the expected tag");
+      assertNotNull(emailCol.getTags(), "email column tags should not be null");
+      assertTrue(
+          emailCol.getTags().stream()
+              .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+          "email column should have the expected tag");
+      assertTrue(
+          nameCol.getTags() == null || nameCol.getTags().isEmpty(),
+          "name column should have no tags");
+    }
+
+    // Test 2: List with fields=columns only — columns populated, no tags
+    ListParams paramsColumnsOnly =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("columns")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseColumnsOnly = client.tables().list(paramsColumnsOnly);
+
+    assertEquals(tableCount, responseColumnsOnly.getData().size());
+    for (Table table : responseColumnsOnly.getData()) {
+      assertNotNull(table.getColumns(), "Columns should be populated");
+      assertEquals(3, table.getColumns().size());
+    }
+
+    // Test 3: List with fields=tags only — table tags populated
+    ListParams paramsTagsOnly =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("tags")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseTagsOnly = client.tables().list(paramsTagsOnly);
+
+    assertEquals(tableCount, responseTagsOnly.getData().size());
+    for (Table table : responseTagsOnly.getData()) {
+      assertNotNull(table.getTags(), "Table tags should be populated");
+      assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
+    }
+  }
+
+  // ===================================================================
+  // REGRESSION TEST - columns API with fields=profile (collate#3488)
+  // ===================================================================
+
+  @Test
+  @Execution(ExecutionMode.SAME_THREAD)
+  void test_getColumnsWithProfileField_correctnessAndNoBatchRegression(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("cls"))
+            .withDescription("Classification for profile regression test");
+    Classification cls = client.classifications().create(createClassification);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(ns.prefix("tag"))
+            .withDescription("Tag for profile regression test")
+            .withClassification(cls.getName());
+    Tag tag = client.tags().create(createTag);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    Column idCol = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+    idCol.setTags(List.of(tagLabel));
+    Column emailCol = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+    emailCol.setTags(List.of(tagLabel));
+    Column nameCol = ColumnBuilder.of("name", "VARCHAR").dataLength(255).build();
+
+    CreateTable createRequest = createRequest(ns.prefix("profile_regression_table"), ns);
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(idCol, emailCol, nameCol));
+    Table table = client.tables().create(createRequest);
+
+    Long timestamp = System.currentTimeMillis();
+    ColumnProfile idProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withMin(1.0)
+            .withMax(999.0)
+            .withUniqueCount(100.0)
+            .withTimestamp(timestamp);
+    ColumnProfile emailProfile =
+        new ColumnProfile()
+            .withName("email")
+            .withNullCount(5.0)
+            .withNullProportion(0.05)
+            .withTimestamp(timestamp);
+
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(100.0).withColumnCount(3.0).withTimestamp(timestamp);
+
+    CreateTableProfile createProfile =
+        new CreateTableProfile()
+            .withTableProfile(tableProfile)
+            .withColumnProfile(List.of(idProfile, emailProfile));
+    client.tables().updateTableProfile(table.getId(), createProfile);
+
+    // Verify the three field combinations exercised below don't regress:
+    // (a) fields=profile — completes within 30s and returns the expected column profiles
+    TableColumnList withProfile =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "profile"),
+            "columns?fields=profile should complete within 30s");
+
+    assertEquals(3, withProfile.getData().size());
+    Column returnedId =
+        withProfile.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    Column returnedName =
+        withProfile.getData().stream()
+            .filter(c -> "name".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(returnedId, "id column should be present");
+    assertNotNull(returnedId.getProfile(), "id column should have profile data");
+    assertEquals(1.0, returnedId.getProfile().getMin(), "id column min should match");
+    assertEquals(999.0, returnedId.getProfile().getMax(), "id column max should match");
+    assertNotNull(returnedName, "name column should be present");
+    assertNull(returnedName.getProfile(), "name column has no profile, should be null");
+
+    // (b) fields=tags,customMetrics,extension,profile — the exact production query
+    TableColumnList withAllFields =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "tags,customMetrics,extension,profile"),
+            "columns?fields=tags,customMetrics,extension,profile should complete within 30s");
+
+    assertEquals(3, withAllFields.getData().size());
+
+    Column idResult =
+        withAllFields.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(idResult, "id column must be present");
+    assertNotNull(idResult.getProfile(), "id column must have profile");
+    assertNotNull(idResult.getTags(), "id column must have tags");
+    assertFalse(idResult.getTags().isEmpty(), "id column tags must not be empty");
+    assertTrue(
+        idResult.getTags().stream()
+            .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+        "id column should carry the test tag");
+
+    // (c) fields=tags,profile — both tags and profile are populated correctly when requested
+    //     together (the dedup of populateEntityFieldTags is exercised here, but this test
+    //     verifies the observable contract — tags + profile both present on the result —
+    //     not the internal call count)
+    TableColumnList withTagsAndProfile =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "tags,profile"),
+            "columns?fields=tags,profile should complete within 30s");
+
+    assertEquals(3, withTagsAndProfile.getData().size());
+    Column idTagsProfile =
+        withTagsAndProfile.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(idTagsProfile);
+    assertNotNull(idTagsProfile.getTags());
+    assertFalse(
+        idTagsProfile.getTags().isEmpty(), "Tags must be present even when profile requested");
+    assertNotNull(idTagsProfile.getProfile(), "Profile must be present when profile requested");
   }
 }

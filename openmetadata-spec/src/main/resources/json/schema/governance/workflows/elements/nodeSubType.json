@@ -22,6 +22,7 @@
     "createRecognizerFeedbackApprovalTask",
     "applyRecognizerFeedbackTask",
     "rejectRecognizerFeedbackTask",
-    "checkChangeDescriptionTask"
+    "checkChangeDescriptionTask",
+    "policyAgentTask"
   ]
 }
