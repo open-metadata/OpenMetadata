@@ -78,6 +78,17 @@ class ExternalSecretsManagerUnitTest {
   }
 
   @Test
+  void existSecretRecognizesANotFoundWrappedInAnotherException() {
+    RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
+    manager.readFailure =
+        new IllegalStateException("SDK client wrapper", new SecretNotFoundException(SECRET_NAME));
+
+    assertFalse(
+        manager.existSecret(SECRET_NAME),
+        "a not-found wrapped inside another exception must still be treated as absent");
+  }
+
+  @Test
   void existSecretSurfacesReadFailuresThatAreNotNotFound() {
     RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
     manager.readFailure = new RuntimeException("AccessDenied: cannot decrypt the KMS key");

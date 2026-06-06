@@ -39,6 +39,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
    */
   static final String RATE_LIMIT_PERMITS_PER_SECOND = "rateLimitPermitsPerSecond";
 
+  private static final int MAX_CAUSE_CHAIN_DEPTH = 25;
+
   private final SecretsManagerRateLimiter rateLimiter;
 
   protected ExternalSecretsManager(
@@ -155,11 +157,29 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     try {
       exists = getSecret(secretName) != null;
     } catch (RuntimeException e) {
-      if (!isNotFoundException(e)) {
+      if (!isNotFoundInCauseChain(e)) {
         throw readFailure(secretName, e);
       }
     }
     return exists;
+  }
+
+  /**
+   * Recognises a provider's not-found error even when it is wrapped inside another exception (an SDK
+   * or client-creation wrapper), so a genuinely missing secret is still reported absent and routed to
+   * create rather than surfaced as a read failure. Bounded to guard against pathological cause cycles.
+   */
+  private boolean isNotFoundInCauseChain(Throwable throwable) {
+    boolean notFound = false;
+    Throwable cause = throwable;
+    for (int depth = 0; cause != null && depth < MAX_CAUSE_CHAIN_DEPTH; depth++) {
+      if (cause instanceof Exception exception && isNotFoundException(exception)) {
+        notFound = true;
+        break;
+      }
+      cause = cause.getCause();
+    }
+    return notFound;
   }
 
   private SecretsManagerException readFailure(String secretName, RuntimeException cause) {
