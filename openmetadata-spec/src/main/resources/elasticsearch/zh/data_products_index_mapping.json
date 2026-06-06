@@ -70,6 +70,9 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -213,6 +216,22 @@
         }
       },
       "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "dataProductType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "portfolioPriority": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "lifecycleStage": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
@@ -610,6 +629,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

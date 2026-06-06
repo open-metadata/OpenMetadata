@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,9 +49,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -72,6 +75,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -80,6 +84,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -92,6 +97,7 @@ import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
+@Slf4j
 @Path("/v1/glossaryTerms")
 @Tag(
     name = "Glossaries",
@@ -107,6 +113,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+  // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
+  // separators) well below Jetty's default 8 KB request-header limit
+  // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
+  private static final int MAX_BATCH_BY_IDS = 100;
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -493,6 +503,103 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("includeRelations")
           String includeRelations) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+  }
+
+  @GET
+  @Path("/byIds")
+  @Operation(
+      operationId = "getGlossaryTermsByIds",
+      summary = "Get multiple glossary terms by Ids",
+      description =
+          "Get multiple glossary terms in a single request by passing a comma-separated list of UUIDs. "
+              + "Exists to eliminate the per-Id round-trip pattern when hydrating related-term "
+              + "graphs in the UI. Ids that are missing, deleted, or not visible to the caller "
+              + "are silently omitted from the response, so callers should compare the response "
+              + "size against the input.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of glossary terms (may be shorter than the input ids list)",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = GlossaryTerm.class)))),
+        @ApiResponse(responseCode = "400", description = "Invalid ids parameter")
+      })
+  public List<GlossaryTerm> getByIds(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Comma-separated list of glossary term Ids (UUIDs). Max 100 per call. "
+                      + "Omit or pass blank to receive an empty list.",
+              schema = @Schema(type = "string"))
+          @QueryParam("ids")
+          String idsParam,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    List<UUID> ids = parseIdsParam(idsParam);
+    List<GlossaryTerm> result = new ArrayList<>(ids.size());
+    for (UUID id : ids) {
+      try {
+        result.add(
+            getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
+      } catch (EntityNotFoundException | AuthorizationException ex) {
+        // Expected per-id misses — silently omit so a single bad Id doesn't
+        // 404/403 the whole batch. Matches the documented contract and the
+        // old Promise.allSettled semantics on the client.
+        LOG.debug("byIds: glossary term {} not found or not visible — {}", id, ex.getMessage());
+      } catch (RuntimeException ex) {
+        // Unexpected per-id failure (validation, downstream 5xx surfaced as
+        // WebApplicationException, etc.). Keep the batch best-effort —
+        // dropping one term beats failing the whole request — but log at
+        // WARN so a real bug isn't silently swallowed.
+        LOG.warn("byIds: unexpected error hydrating glossary term {}", id, ex);
+      }
+    }
+    return result;
+  }
+
+  private List<UUID> parseIdsParam(String idsParam) {
+    if (idsParam == null || idsParam.isBlank()) {
+      return List.of();
+    }
+    List<UUID> ids;
+    try {
+      ids =
+          Arrays.stream(idsParam.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .map(UUID::fromString)
+              .toList();
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("ids parameter contains an invalid UUID");
+    }
+    if (ids.size() > MAX_BATCH_BY_IDS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Too many ids: %d (max %d). Split the request into multiple batches.",
+              ids.size(), MAX_BATCH_BY_IDS));
+    }
+    return ids;
   }
 
   @GET

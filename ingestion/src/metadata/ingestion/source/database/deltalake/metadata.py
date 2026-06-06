@@ -11,8 +11,9 @@
 """
 Deltalake source methods.
 """
+
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -32,7 +33,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -52,7 +53,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MetaStoreNotFoundException(Exception):
+class MetaStoreNotFoundException(Exception):  # noqa: N818
     """
     Metastore is not passed thorugh file or url
     """
@@ -71,9 +72,7 @@ class DeltalakeSource(DatabaseServiceSource):
     ):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
 
         self.metadata = metadata
 
@@ -85,15 +84,11 @@ class DeltalakeSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DeltaLakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DeltaLakeConnection):
-            raise InvalidSourceException(
-                f"Expected DeltaLakeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DeltaLakeConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -108,9 +103,7 @@ class DeltalakeSource(DatabaseServiceSource):
 
         yield from self.client.get_database_names(self.service_connection)
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
@@ -135,18 +128,14 @@ class DeltalakeSource(DatabaseServiceSource):
                 schema_name=schema,
             )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else schema,
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema,  # pyright: ignore[reportAttributeAccessIssue]
             ):
                 self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
@@ -166,7 +155,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -176,9 +165,7 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        for table_info in self.client.get_table_info(
-            self.service_connection, schema_name=schema_name
-        ):
+        for table_info in self.client.get_table_info(self.service_connection, schema_name=schema_name):
             try:
                 table_fqn = fqn.build(
                     self.metadata,
@@ -190,9 +177,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 )
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table_info.name,
+                    table_fqn if self.source_config.useFqnForFiltering else table_info.name,
                 ):
                     self.status.filter(
                         table_fqn,
@@ -200,21 +185,15 @@ class DeltalakeSource(DatabaseServiceSource):
                     )
                     continue
 
-                if (
-                    self.source_config.includeTables
-                    and table_info._type != TableType.View
-                ):
-                    table_info = self.client.update_table_info(table_info)
+                if self.source_config.includeTables and table_info._type != TableType.View:
+                    table_info = self.client.update_table_info(table_info)  # noqa: PLW2901
                     self.context.get().table_description = table_info.description
                     self.context.get().table_columns = table_info.columns
                     self.context.get().table_partitions = table_info.table_partitions
                     yield table_info.name, table_info._type
 
-                if (
-                    self.source_config.includeViews
-                    and table_info._type == TableType.View
-                ):
-                    table_info = self.client.update_table_info(table_info)
+                if self.source_config.includeViews and table_info._type == TableType.View:
+                    table_info = self.client.update_table_info(table_info)  # noqa: PLW2901
                     self.context.get().table_description = table_info.description
                     self.context.get().table_columns = table_info.columns
                     self.context.get().table_partitions = table_info.table_partitions
@@ -223,13 +202,9 @@ class DeltalakeSource(DatabaseServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")
-                self.status.warnings.append(
-                    f"{self.config.serviceName}.{table_info.name}"
-                )
+                self.status.warnings.append(f"{self.config.serviceName}.{table_info.name}")
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -238,16 +213,10 @@ class DeltalakeSource(DatabaseServiceSource):
         schema_name = self.context.get().database_schema
 
         try:
-            view_definition = (
-                self.client.fetch_view_schema(table_name)
-                if table_type == TableType.View
-                else None
-            )
+            view_definition = self.client.fetch_view_schema(table_name) if table_type == TableType.View else None
 
             table_partitions = self.context.get().table_partitions
-            table_partition = (
-                TablePartition(columns=table_partitions) if table_partitions else None
-            )
+            table_partition = TablePartition(columns=table_partitions) if table_partitions else None
 
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
@@ -282,17 +251,13 @@ class DeltalakeSource(DatabaseServiceSource):
     def prepare(self):
         """Nothing to prepare"""
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't pick up tags from Delta"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:

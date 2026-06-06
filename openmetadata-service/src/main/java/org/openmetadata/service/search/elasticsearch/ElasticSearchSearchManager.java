@@ -169,7 +169,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -179,6 +180,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
+                    .from(from)
+                    .size(size)
                     .query(
                         q ->
                             q.bool(
@@ -1204,7 +1207,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       }
 
       if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        if (!sortField.equalsIgnoreCase("name.keyword")) {
+          requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        }
+        requestBuilder.sort("id.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
       }
     }
 

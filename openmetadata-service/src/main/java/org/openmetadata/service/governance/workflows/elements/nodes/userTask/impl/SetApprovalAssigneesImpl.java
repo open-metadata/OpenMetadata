@@ -19,17 +19,30 @@ import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
+  private static final int ADMIN_PAGE_SIZE = 50;
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
   private Expression inputNamespaceMapExpr;
@@ -49,95 +62,125 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(entityLink.getEntityType());
+      boolean entitySupportsReviewers = entityRepository.isSupportsReviewers();
+      String relationshipFields =
+          getRelationshipFieldsForAssigneeResolution(
+              entityLink.getEntityType(), entitySupportsReviewers);
+      EntityInterface entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
 
       Set<String> assignees = new LinkedHashSet<>();
 
-      // Process addReviewers flag
-      Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", true);
-      if (addReviewers) {
-        boolean entitySupportsReviewers =
-            Entity.getEntityRepository(entityLink.getEntityType()).isSupportsReviewers();
-
-        if (entitySupportsReviewers
-            && entity.getReviewers() != null
-            && !entity.getReviewers().isEmpty()) {
-          List<String> reviewerAssignees =
-              getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getReviewers());
-          assignees.addAll(reviewerAssignees);
-        } else if (!entitySupportsReviewers
-            && entity.getOwners() != null
-            && !entity.getOwners().isEmpty()) {
-          // Fallback to owners if entity doesn't support reviewers
-          List<String> ownerAssignees =
-              getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
-          assignees.addAll(ownerAssignees);
-        } else if (addReviewers && entity.getOwners() != null && !entity.getOwners().isEmpty()) {
-          // Final fallback to owners if no reviewers exist and addReviewers is true
-          List<String> ownerAssignees =
-              getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
-          assignees.addAll(ownerAssignees);
-        }
+      List<String> taskReviewers = resolveTaskProvidedAssignees(execution, "taskReviewers");
+      List<String> taskAssignees = resolveTaskProvidedAssignees(execution, "taskAssignees");
+      if (taskAssignees.isEmpty()) {
+        taskAssignees = resolveCurrentTaskAssignees(execution);
       }
+      boolean hasExplicitTaskAssignees = !taskAssignees.isEmpty();
+      LOG.info(
+          "[SetApprovalAssigneesImpl] process='{}' taskReviewers={} taskAssignees={}",
+          execution.getProcessInstanceId(),
+          taskReviewers,
+          taskAssignees);
+      assignees.addAll(taskReviewers);
+      assignees.addAll(taskAssignees);
 
-      // Process addOwners flag
-      Boolean addOwners = (Boolean) assigneesConfig.getOrDefault("addOwners", false);
-      if (addOwners && entity.getOwners() != null) {
-        List<String> ownerAssignees =
-            getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
-        assignees.addAll(ownerAssignees);
-      }
-
-      // Process users array
-      List<String> userFqns = (List<String>) assigneesConfig.get("users");
-      if (userFqns != null) {
-        for (String userFqn : userFqns) {
-          if (userFqn != null && !userFqn.trim().isEmpty()) {
-            assignees.add(new MessageParser.EntityLink("user", userFqn).getLinkString());
+      if (!hasExplicitTaskAssignees) {
+        // Process addReviewers flag
+        Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", true);
+        if (addReviewers) {
+          List<EntityReference> effectiveReviewers =
+              entitySupportsReviewers
+                  ? resolveEffectiveReviewers(entityLink.getEntityType(), entity)
+                  : List.of();
+          if (!effectiveReviewers.isEmpty()) {
+            List<String> reviewerAssignees =
+                getEntityLinkStringFromEntityReferenceWithTeamExpansion(effectiveReviewers);
+            assignees.addAll(reviewerAssignees);
+          } else if (!entitySupportsReviewers
+              && entity.getOwners() != null
+              && !entity.getOwners().isEmpty()) {
+            // Fallback to owners if entity doesn't support reviewers
+            List<String> ownerAssignees =
+                getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
+            assignees.addAll(ownerAssignees);
+          } else if (addReviewers && entity.getOwners() != null && !entity.getOwners().isEmpty()) {
+            // Final fallback to owners if no reviewers exist and addReviewers is true
+            List<String> ownerAssignees =
+                getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
+            assignees.addAll(ownerAssignees);
           }
         }
-      }
 
-      // Process teams array and expand to individual users
-      List<String> teamFqns = (List<String>) assigneesConfig.get("teams");
-      if (teamFqns != null) {
-        for (String teamFqn : teamFqns) {
-          if (teamFqn != null && !teamFqn.trim().isEmpty()) {
-            try {
-              MessageParser.EntityLink teamLink = new MessageParser.EntityLink("team", teamFqn);
-              Team team = Entity.getEntity(teamLink, "users", Include.ALL);
-              if (team.getUsers() != null) {
-                assignees.addAll(getEntityLinkStringFromEntityReference(team.getUsers()));
+        // Process addOwners flag
+        Boolean addOwners = (Boolean) assigneesConfig.getOrDefault("addOwners", false);
+        if (addOwners && entity.getOwners() != null) {
+          List<String> ownerAssignees =
+              getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
+          assignees.addAll(ownerAssignees);
+        }
+
+        // Process users array
+        List<String> userFqns = (List<String>) assigneesConfig.get("users");
+        if (userFqns != null) {
+          for (String userFqn : userFqns) {
+            if (userFqn != null && !userFqn.trim().isEmpty()) {
+              assignees.add(new MessageParser.EntityLink("user", userFqn).getLinkString());
+            }
+          }
+        }
+
+        // Process teams array and expand to individual users
+        List<String> teamFqns = (List<String>) assigneesConfig.get("teams");
+        if (teamFqns != null) {
+          for (String teamFqn : teamFqns) {
+            if (teamFqn != null && !teamFqn.trim().isEmpty()) {
+              try {
+                MessageParser.EntityLink teamLink = new MessageParser.EntityLink("team", teamFqn);
+                Team team = Entity.getEntity(teamLink, "users", Include.ALL);
+                if (team.getUsers() != null) {
+                  assignees.addAll(getEntityLinkStringFromEntityReference(team.getUsers()));
+                }
+              } catch (Exception e) {
+                LOG.warn("Failed to expand team {}: {}", teamFqn, e.getMessage());
               }
-            } catch (Exception e) {
-              LOG.warn("Failed to expand team {}: {}", teamFqn, e.getMessage());
             }
           }
         }
       }
 
+      boolean workflowManagedTask =
+          Boolean.TRUE.equals(execution.getVariable("taskWorkflowManaged"))
+              || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: Remove updatedBy user from assignees list
-      try {
-        String updatedBy =
-            (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
-        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
-          String updatedByEntityLink =
-              new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
-                  .getLinkString();
-          boolean removed = assigneeList.remove(updatedByEntityLink);
-          if (removed) {
-            LOG.debug(
-                "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
-                execution.getProcessInstanceId(),
-                updatedBy);
-          }
+      // Prevent self-approval: remove the requester from the assignees. For
+      // non-workflow-managed tasks only, keep them when no one else is available so the
+      // task stays actionable; workflow-managed tasks (e.g. Data Access Requests) rely on
+      // the admin fallback below instead.
+      String updatedByEntityLink = resolveUpdatedByEntityLink(varHandler);
+      if (updatedByEntityLink != null) {
+        boolean removed = assigneeList.remove(updatedByEntityLink);
+        if (removed && assigneeList.isEmpty() && !workflowManagedTask) {
+          assigneeList.add(updatedByEntityLink);
         }
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to retrieve updatedBy variable for self-approval prevention: {}",
-            e.getMessage());
+      }
+
+      // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
+      // assignee was the requester and was stripped above), apply the node's configured
+      // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
+      // self-approval can never happen. NONE keeps the default behavior.
+      String emptyAssigneeStrategy =
+          String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
+      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+        List<String> admins = resolveAdminAssignees();
+        admins.remove(updatedByEntityLink);
+        assigneeList.addAll(admins);
+        if (assigneeList.isEmpty()) {
+          LOG.warn(
+              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; task left unassigned",
+              execution.getProcessInstanceId());
+        }
       }
 
       // Persist the list as JSON array so TaskListener can read it.
@@ -145,7 +188,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       execution.setVariable(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assigneeList));
 
-      boolean hasAssignees = !assigneeList.isEmpty();
+      boolean hasAssignees = workflowManagedTask || !assigneeList.isEmpty();
       execution.setVariable("hasAssignees", hasAssignees);
 
       LOG.debug(
@@ -153,7 +196,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           execution.getProcessInstanceId(),
           hasAssignees,
           assigneeList.size(),
-          hasAssignees ? "create USER TASK" : "AUTO-APPROVE");
+          hasAssignees
+              ? (assigneeList.isEmpty() ? "create UNASSIGNED USER TASK" : "create USER TASK")
+              : "AUTO-APPROVE");
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -187,6 +232,51 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
     // No recognised source found: return empty list, which causes the task to be auto-approved.
     return List.of();
+  }
+
+  private String resolveUpdatedByEntityLink(WorkflowVariableHandler varHandler) {
+    String result = null;
+    try {
+      String updatedBy =
+          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+        result =
+            new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+                .getLinkString();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to retrieve updatedBy variable for self-approval prevention: {}", e.getMessage());
+    }
+    return result;
+  }
+
+  private List<String> resolveAdminAssignees() {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    ListFilter listFilter = new ListFilter(Include.NON_DELETED);
+    listFilter.addQueryParam("isAdmin", "true");
+    List<String> admins = new ArrayList<>();
+    String after = null;
+    try {
+      do {
+        ResultList<User> page =
+            userRepository.listAfter(
+                null, EntityUtil.Fields.EMPTY_FIELDS, listFilter, ADMIN_PAGE_SIZE, after);
+        page.getData()
+            .forEach(
+                user ->
+                    admins.add(
+                        new MessageParser.EntityLink(Entity.USER, user.getFullyQualifiedName())
+                            .getLinkString()));
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception e) {
+      // Degrade gracefully: a transient admin-lookup failure must not fail the whole
+      // approval workflow. Return whatever was collected so the task is created (possibly
+      // unassigned) rather than raising a BpmnError.
+      LOG.warn("Failed to resolve admin assignees for empty-assignee fallback: {}", e.getMessage());
+    }
+    return admins;
   }
 
   private List<String> getEntityLinkStringFromEntityReference(List<EntityReference> assignees) {
@@ -228,5 +318,119 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     }
 
     return result;
+  }
+
+  private List<String> resolveTaskProvidedAssignees(
+      DelegateExecution execution, String variableName) {
+    Object rawValue = execution.getVariable(variableName);
+    if (rawValue == null) {
+      return List.of();
+    }
+
+    try {
+      List<EntityReference> references =
+          rawValue instanceof String
+              ? JsonUtils.readValue(
+                  (String) rawValue,
+                  new com.fasterxml.jackson.core.type.TypeReference<List<EntityReference>>() {})
+              : JsonUtils.convertValue(
+                  rawValue,
+                  new com.fasterxml.jackson.core.type.TypeReference<List<EntityReference>>() {});
+
+      if (references == null || references.isEmpty()) {
+        return List.of();
+      }
+
+      return getEntityLinkStringFromEntityReferenceWithTeamExpansion(references);
+    } catch (Exception exc) {
+      LOG.warn(
+          "Failed to resolve workflow-provided assignees from '{}': {}",
+          variableName,
+          exc.getMessage());
+      return List.of();
+    }
+  }
+
+  private List<String> resolveCurrentTaskAssignees(DelegateExecution execution) {
+    Object taskEntityId = execution.getVariable("taskEntityId");
+    if (taskEntityId == null) {
+      return List.of();
+    }
+
+    try {
+      TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      Task task =
+          taskRepository.get(
+              null,
+              java.util.UUID.fromString(taskEntityId.toString()),
+              taskRepository.getFields(TaskRepository.FIELD_ASSIGNEES));
+      if (task.getAssignees() == null || task.getAssignees().isEmpty()) {
+        return List.of();
+      }
+      return getEntityLinkStringFromEntityReferenceWithTeamExpansion(task.getAssignees());
+    } catch (Exception exc) {
+      LOG.warn("Failed to resolve current task assignees from taskEntityId: {}", exc.getMessage());
+      return List.of();
+    }
+  }
+
+  private String getRelationshipFieldsForAssigneeResolution(
+      String entityType, boolean entitySupportsReviewers) {
+    if (!entitySupportsReviewers) {
+      return "owners";
+    }
+
+    return switch (entityType) {
+      case Entity.TAG -> "reviewers,owners,classification";
+      case Entity.GLOSSARY_TERM -> "reviewers,owners,parent,glossary";
+      default -> "reviewers,owners";
+    };
+  }
+
+  private List<EntityReference> resolveEffectiveReviewers(
+      String entityType, EntityInterface entity) {
+    if (entity.getReviewers() != null && !entity.getReviewers().isEmpty()) {
+      return entity.getReviewers();
+    }
+
+    return switch (entityType) {
+      case Entity.GLOSSARY_TERM -> resolveGlossaryTermReviewers((GlossaryTerm) entity);
+      case Entity.TAG -> resolveTagReviewers((Tag) entity);
+      default -> List.of();
+    };
+  }
+
+  private List<EntityReference> resolveGlossaryTermReviewers(GlossaryTerm term) {
+    if (term.getParent() != null) {
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              term.getParent().withType(Entity.GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
+      if (parentTerm.getReviewers() != null && !parentTerm.getReviewers().isEmpty()) {
+        return parentTerm.getReviewers();
+      }
+    }
+
+    if (term.getGlossary() != null) {
+      Glossary glossary = Entity.getEntity(term.getGlossary(), "reviewers", Include.NON_DELETED);
+      if (glossary.getReviewers() != null && !glossary.getReviewers().isEmpty()) {
+        return glossary.getReviewers();
+      }
+    }
+
+    return List.of();
+  }
+
+  private List<EntityReference> resolveTagReviewers(Tag tag) {
+    if (tag.getClassification() == null) {
+      return List.of();
+    }
+
+    Classification classification =
+        Entity.getEntity(tag.getClassification(), "reviewers", Include.NON_DELETED);
+    if (classification.getReviewers() != null && !classification.getReviewers().isEmpty()) {
+      return classification.getReviewers();
+    }
+
+    return List.of();
   }
 }

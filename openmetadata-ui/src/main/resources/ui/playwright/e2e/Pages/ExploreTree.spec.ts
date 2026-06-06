@@ -133,23 +133,32 @@ test.describe('Explore Tree scenarios', () => {
     await test.step('Click on tree item and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Glossaries').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryterm');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'glossaryterm' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('glossaryterm-checkbox')).toBeChecked();
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: tag');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'tag' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('tag-checkbox')).toBeChecked();
     });
 
     await test.step('Click on tree item metrics and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Metrics').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: metric');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'metric' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('metric-checkbox')).toBeChecked();
     });
   });
 
@@ -616,7 +625,11 @@ test.describe('Explore page', () => {
     await page.getByTestId('explore-tree-title-tableColumn').click();
     await filterRes;
 
-    const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-    await expect(quickFilter).toContainText('tablecolumn');
+    // Click on filter dropdown
+    await page.getByTestId('search-dropdown-Data Assets').click();
+    // assert on dropdown item visibility
+    await page.getByRole('menuitem', { name: 'tablecolumn' }).waitFor();
+    // assert on checkbox state
+    await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   });
 });

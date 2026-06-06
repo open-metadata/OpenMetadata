@@ -110,6 +110,19 @@
       "type": "boolean",
       "default": false
     },
+    "useAccessHistory": {
+      "title": "Use Access History for Lineage",
+      "description": "Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage. ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.",
+      "type": "boolean",
+      "default": true
+    },
+    "accessHistoryChunkSize": {
+      "title": "Access History Chunk Size (Days)",
+      "description": "Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage' is enabled. The lineage time window is split into chunks of this many days to keep each Snowflake query bounded and avoid client/server timeouts over long windows. Lower this value if queries still time out on very busy accounts.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -198,6 +211,17 @@
       "description": "Snowflake source host for the Snowflake account.",
       "type": "string",
       "default": "app.snowflake.com"
+    },
+    "policyAgentConfig": {
+      "title": "Policy Agent Config",
+      "description": "Policy agent configuration for access control extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/policyAgentConfig",
+      "default": {
+        "enabled": true,
+        "supportsColumnAccess": false,
+        "supportsFullAccess": true,
+        "supportsMaskedAccess": true
+      }
     }
   },
   "additionalProperties": false,

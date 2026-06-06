@@ -30,6 +30,7 @@ export const clickOnLogo = async (page: Page) => {
 export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
+    await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
     await page.hover('[data-testid="left-sidebar"]');
     await page.click(`[data-testid="${items[0]}"]`);
 

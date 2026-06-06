@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -64,8 +65,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: MssqlConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -73,9 +74,7 @@ def test_connection(
     """
     queries = {
         "GetQueries": MSSQL_TEST_GET_QUERIES,
-        "GetDatabases": MSSQL_GET_DATABASE
-        if service_connection.ingestAllDatabases
-        else MSSQL_GET_CURRENT_DATABASE,
+        "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
     }
 
     return test_connection_db_common(

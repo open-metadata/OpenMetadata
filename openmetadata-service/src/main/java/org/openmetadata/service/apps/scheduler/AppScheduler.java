@@ -465,7 +465,7 @@ public class AppScheduler {
       if (runRecord != null) {
         // Update status to STOPPED
         runRecord.withStatus(AppRunRecord.Status.STOPPED);
-        runRecord.withEndTime(System.currentTimeMillis());
+        OmAppJobListener.fillTerminalTimings(runRecord);
 
         // Get WebSocket channel name
         String webSocketChannelName =

@@ -28,7 +28,6 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import {
   PAGE_SIZE_LARGE,
-  ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
@@ -60,12 +59,12 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
-import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 import {
@@ -149,7 +148,7 @@ function AddObservabilityPage() {
       },
       {
         name: t('label.alert-plural'),
-        url: ROUTES.OBSERVABILITY_ALERTS,
+        url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
       },
       {
         name: fqn
@@ -175,7 +174,9 @@ function AddObservabilityPage() {
           updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            navigate(getObservabilityAlertDetailsPath(fqn));
+            navigate(
+              observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn)
+            );
           },
           setInlineAlertDetails,
         });

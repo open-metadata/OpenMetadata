@@ -253,6 +253,11 @@ public final class Pipelines {
     public PipelineDeleter delete() {
       return new PipelineDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Pipeline> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.pipelines(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

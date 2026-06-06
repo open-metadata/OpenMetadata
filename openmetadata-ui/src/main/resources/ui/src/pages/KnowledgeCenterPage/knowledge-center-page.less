@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.page-layout-rightpanel {
+  background-color: #fff;
+  border: 1px solid @border-color;
+  border-radius: 0;
+  padding-left: 0 !important;
+  border-top: 0;
+}
+
+.knowledge-add-btn {
+  position: sticky;
+  top: 10px;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.updated-by-container {
+  .ant-space-item > .profile-image {
+    vertical-align: middle;
+  }
+}
+
+.knowledge-page-layout {
+  .knowledge-page-layout-grid {
+    .knowledge-page-layout-content {
+      height: @knowledge-center-content-height;
+      overflow-y: auto;
+    }
+  }
+}
+
+.author-avatar-group {
+  .ant-space-item:not(:last-child) {
+    margin-right: -16px;
+    z-index: 5;
+  }
+
+  .ant-space-item {
+    span[data-testid='authorAvatar'] {
+      div {
+        border: 1px solid @background-color;
+      }
+    }
+  }
+
+  .ant-space-item:last-child > .editors-popover {
+    padding-left: 12px;
+  }
+}
+
+.content-change-text-success {
+  color: #008376;
+}
+
+.content-change-icon > svg {
+  vertical-align: middle;
+}
+
+.content-container {
+  padding-top: 24px;
+}
+
+.knowledge-version-page-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding-top: 16px;
+}
+
+.knowledge-card-title.ant-typography-ellipsis {
+  max-width: 650px;
+}

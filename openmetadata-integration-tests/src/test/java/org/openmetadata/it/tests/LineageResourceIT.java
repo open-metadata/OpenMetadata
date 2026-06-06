@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -55,6 +58,7 @@ import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -1671,5 +1675,682 @@ public class LineageResourceIT {
     deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
     cleanupTable(client, sourceTable);
     cleanupTable(client, targetTable);
+  }
+
+  // ====================================================================================
+  // Temporal-field preservation tests (§1 — createdAt/createdBy on re-emission)
+  // ====================================================================================
+
+  @Test
+  void createdAt_preservedOnReEmission() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "temporal_src_reemit");
+    Table target = createTable(client, namespace, "temporal_tgt_reemit");
+
+    long beforeFirstPut = System.currentTimeMillis();
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(source.getEntityReference())
+                    .withToEntity(target.getEntityReference()));
+    executeAddLineage(client, addLineage);
+
+    LineageDetails firstDetails = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    Long firstCreatedAt = firstDetails.getCreatedAt();
+    String firstCreatedBy = firstDetails.getCreatedBy();
+    assertNotNull(firstCreatedAt, "createdAt must be set on first emit");
+    assertTrue(
+        firstCreatedAt >= beforeFirstPut,
+        "createdAt should be >= the moment before first PUT, got " + firstCreatedAt);
+    assertEquals("admin", firstCreatedBy, "createdBy should be the requesting user");
+
+    Long lastUpdatedAt = firstDetails.getUpdatedAt();
+    for (int i = 0; i < 4; i++) {
+      executeAddLineage(client, addLineage);
+      LineageDetails reemitted = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+      assertEquals(
+          firstCreatedAt,
+          reemitted.getCreatedAt(),
+          "createdAt must be preserved across re-emissions (iteration " + i + ")");
+      assertEquals(
+          firstCreatedBy,
+          reemitted.getCreatedBy(),
+          "createdBy must be preserved across re-emissions (iteration " + i + ")");
+      assertNotNull(reemitted.getUpdatedAt(), "updatedAt must be present");
+      assertTrue(
+          reemitted.getUpdatedAt() >= lastUpdatedAt,
+          "updatedAt must advance (or stay equal) on re-emission");
+      lastUpdatedAt = reemitted.getUpdatedAt();
+      assertEquals("admin", reemitted.getUpdatedBy(), "updatedBy must reflect the latest user");
+    }
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void firstAddSetsCreatedAtToNow() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "temporal_first_src");
+    Table target = createTable(client, namespace, "temporal_first_tgt");
+
+    long before = System.currentTimeMillis();
+    addLineage(client, source, target);
+    long after = System.currentTimeMillis();
+
+    LineageDetails details = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    assertNotNull(details.getCreatedAt());
+    assertNotNull(details.getUpdatedAt());
+    assertNotNull(details.getCreatedBy());
+    assertNotNull(details.getUpdatedBy());
+    assertEquals(
+        details.getCreatedAt(),
+        details.getUpdatedAt(),
+        "On first add, createdAt should equal updatedAt");
+    assertEquals(
+        details.getCreatedBy(),
+        details.getUpdatedBy(),
+        "On first add, createdBy should equal updatedBy");
+    assertEquals("admin", details.getCreatedBy());
+    assertTrue(
+        details.getCreatedAt() >= before && details.getCreatedAt() <= after + 1000,
+        "createdAt should be within the test window, got " + details.getCreatedAt());
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void callerSuppliedTimestamps_areRespectedOnFirstAdd() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "temporal_supplied_src");
+    Table target = createTable(client, namespace, "temporal_supplied_tgt");
+
+    long suppliedTs = 1705314000000L;
+    LineageDetails seedDetails =
+        new LineageDetails()
+            .withCreatedAt(suppliedTs)
+            .withUpdatedAt(suppliedTs)
+            .withCreatedBy("ingestion-bot")
+            .withUpdatedBy("ingestion-bot");
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(source.getEntityReference())
+                    .withToEntity(target.getEntityReference())
+                    .withLineageDetails(seedDetails));
+    executeAddLineage(client, addLineage);
+
+    LineageDetails details = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    assertEquals(
+        suppliedTs, details.getCreatedAt(), "Caller-supplied createdAt should be respected");
+    assertEquals(
+        "ingestion-bot", details.getCreatedBy(), "Caller-supplied createdBy should be respected");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void outOfOrderTimestamps_applyMinMax() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "temporal_minmax_src");
+    Table target = createTable(client, namespace, "temporal_minmax_tgt");
+
+    long march = 1709251200000L;
+    long january = 1704067200000L;
+    long february = 1706745600000L;
+
+    putLineageWithTimestamps(client, source, target, march, march);
+    LineageDetails afterMarch = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    assertEquals(march, afterMarch.getCreatedAt());
+    assertEquals(march, afterMarch.getUpdatedAt());
+
+    putLineageWithTimestamps(client, source, target, january, january);
+    LineageDetails afterJanuary = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    assertEquals(
+        january,
+        afterJanuary.getCreatedAt(),
+        "createdAt should be minimized to the earlier timestamp");
+    assertEquals(
+        march,
+        afterJanuary.getUpdatedAt(),
+        "updatedAt should be maximized — late-arriving older event does not roll it back");
+
+    putLineageWithTimestamps(client, source, target, february, february);
+    LineageDetails afterFebruary = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    assertEquals(
+        january, afterFebruary.getCreatedAt(), "createdAt unchanged when middle event arrives");
+    assertEquals(
+        march, afterFebruary.getUpdatedAt(), "updatedAt unchanged when middle event arrives");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  // ====================================================================================
+  // Time-window filter tests (§4 — searchLineage startTime/endTime)
+  // ====================================================================================
+
+  @Test
+  void timeWindowFilter_excludesEdgesOutsideRange() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "window_excl_src");
+    Table earlyTarget = createTable(client, namespace, "window_excl_early");
+    Table midTarget = createTable(client, namespace, "window_excl_mid");
+    Table lateTarget = createTable(client, namespace, "window_excl_late");
+
+    long tEarly = 1704067200000L;
+    long tMid = 1706745600000L;
+    long tLate = 1709251200000L;
+
+    putLineageWithTimestamps(client, source, earlyTarget, tEarly, tEarly);
+    putLineageWithTimestamps(client, source, midTarget, tMid, tMid);
+    putLineageWithTimestamps(client, source, lateTarget, tLate, tLate);
+
+    waitForEdgeInSearchLineage(client, source, midTarget);
+
+    long windowStart = tEarly + 1_000_000L;
+    long windowEnd = tLate - 1_000_000L;
+
+    JsonNode filtered =
+        searchLineageWithWindow(
+            client, source.getFullyQualifiedName(), 0, 1, windowStart, windowEnd);
+    JsonNode nodes = filtered.get("nodes");
+    assertNotNull(nodes);
+    assertTrue(
+        nodes.has(midTarget.getFullyQualifiedName()), "Mid-window edge target should be present");
+    assertFalse(
+        nodes.has(earlyTarget.getFullyQualifiedName()), "Early edge target should be filtered out");
+    assertFalse(
+        nodes.has(lateTarget.getFullyQualifiedName()), "Late edge target should be filtered out");
+
+    deleteLineage(client, source.getEntityReference(), earlyTarget.getEntityReference());
+    deleteLineage(client, source.getEntityReference(), midTarget.getEntityReference());
+    deleteLineage(client, source.getEntityReference(), lateTarget.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, earlyTarget);
+    cleanupTable(client, midTarget);
+    cleanupTable(client, lateTarget);
+  }
+
+  @Test
+  void timeWindowFilter_includesOverlappingEdges() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "window_overlap_src");
+    Table target = createTable(client, namespace, "window_overlap_tgt");
+
+    long t1 = 1704067200000L;
+    long t8 = 1722470400000L;
+
+    putLineageWithTimestamps(client, source, target, t1, t8);
+    waitForEdgeInSearchLineage(client, source, target);
+
+    long windowStart = 1715000000000L;
+    long windowEnd = 1730000000000L;
+
+    JsonNode filtered =
+        searchLineageWithWindow(
+            client, source.getFullyQualifiedName(), 0, 1, windowStart, windowEnd);
+    JsonNode nodes = filtered.get("nodes");
+    assertNotNull(nodes);
+    assertTrue(
+        nodes.has(target.getFullyQualifiedName()),
+        "Edge with createdAt outside but updatedAt inside should be included via overlap");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void timeWindowFilter_excludesTimestampedManualSourceEdgesOutsideRange() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "window_manual_src");
+    Table target = createTable(client, namespace, "window_manual_tgt");
+
+    long outsideWindow = 1577836800000L;
+    LineageDetails manualDetails =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.MANUAL)
+            .withCreatedAt(outsideWindow)
+            .withUpdatedAt(outsideWindow);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(source.getEntityReference())
+                    .withToEntity(target.getEntityReference())
+                    .withLineageDetails(manualDetails));
+    executeAddLineage(client, addLineage);
+
+    waitForEdgeInSearchLineage(client, source, target);
+
+    long windowStart = 1704067200000L;
+    long windowEnd = 1709251200000L;
+    JsonNode filtered =
+        searchLineageWithWindow(
+            client, source.getFullyQualifiedName(), 0, 1, windowStart, windowEnd);
+    JsonNode nodes = filtered.get("nodes");
+    assertNotNull(nodes);
+    assertFalse(
+        nodes.has(target.getFullyQualifiedName()),
+        "Timestamped manual-source edge should be filtered by the time window");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void timeWindowFilter_emptyParamsReturnsAllEdges() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "window_all_src");
+    Table target = createTable(client, namespace, "window_all_tgt");
+
+    long ancient = 946684800000L;
+    putLineageWithTimestamps(client, source, target, ancient, ancient);
+    waitForEdgeInSearchLineage(client, source, target);
+
+    JsonNode unfiltered =
+        searchLineageWithWindow(client, source.getFullyQualifiedName(), 0, 1, null, null);
+    JsonNode nodes = unfiltered.get("nodes");
+    assertNotNull(nodes);
+    assertTrue(
+        nodes.has(target.getFullyQualifiedName()),
+        "Unfiltered query should return edges regardless of timestamps");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  // ====================================================================================
+  // Audit / change-event emission tests (§8)
+  // ====================================================================================
+
+  @Test
+  void addLineage_emitsEntityLineageAddedAuditEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_added_src");
+    Table target = createTable(client, namespace, "audit_added_tgt");
+
+    long startTs = System.currentTimeMillis() - 1000;
+    addLineage(client, source, target);
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    JsonNode entry =
+        awaitAuditLogEntry(client, "entityLineageAdded", expectedFqn, startTs)
+            .orElseThrow(
+                () ->
+                    new AssertionError(
+                        "Expected entityLineageAdded audit log entry for " + expectedFqn));
+
+    assertEquals("lineage", entry.path("entityType").asText());
+    assertEquals(expectedFqn, entry.path("entityFQN").asText());
+    JsonNode changeEvent = entry.path("changeEvent");
+    assertTrue(
+        changeEvent.isObject() && !changeEvent.isEmpty(), "changeEvent payload should be present");
+    JsonNode edge = changeEvent.path("entity");
+    assertEquals(
+        source.getId().toString(),
+        edge.path("fromEntity").path("id").asText(),
+        "Event payload should carry the from-entity reference");
+    assertEquals(
+        target.getId().toString(),
+        edge.path("toEntity").path("id").asText(),
+        "Event payload should carry the to-entity reference");
+    assertTrue(
+        edge.has("lineageDetails") || edge.path("lineageDetails").isNull(),
+        "Event payload should include a lineageDetails slot");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void deleteLineage_emitsEntityLineageDeletedAuditEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_deleted_src");
+    Table target = createTable(client, namespace, "audit_deleted_tgt");
+
+    addLineage(client, source, target);
+    LineageDetails preDelete = fetchEdgeLineageDetails(client, source, target).orElseThrow();
+    Long originalCreatedAt = preDelete.getCreatedAt();
+    String originalCreatedBy = preDelete.getCreatedBy();
+
+    long startTs = System.currentTimeMillis() - 1000;
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    JsonNode entry =
+        awaitAuditLogEntry(client, "entityLineageDeleted", expectedFqn, startTs)
+            .orElseThrow(
+                () ->
+                    new AssertionError(
+                        "Expected entityLineageDeleted audit log entry for " + expectedFqn));
+
+    assertEquals("lineage", entry.path("entityType").asText());
+    JsonNode lineageDetails = entry.path("changeEvent").path("entity").path("lineageDetails");
+    assertTrue(
+        lineageDetails.isObject(), "lineageDetails on delete should include pre-deletion snapshot");
+    assertEquals(
+        originalCreatedAt.longValue(),
+        lineageDetails.path("createdAt").asLong(),
+        "Delete event should retain the original createdAt");
+    assertEquals(
+        originalCreatedBy,
+        lineageDetails.path("createdBy").asText(),
+        "Delete event should retain the original createdBy");
+
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void buildExtendedLineage_doesNotEmitDerivedAuditEvents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_extended_src");
+    Table target = createTable(client, namespace, "audit_extended_tgt");
+
+    long startTs = System.currentTimeMillis() - 1000;
+    addLineage(client, source, target);
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    awaitAuditLogEntry(client, "entityLineageAdded", expectedFqn, startTs).orElseThrow();
+
+    List<JsonNode> events = listAuditLogs(client, "entityLineageAdded", startTs);
+    long forThisEdge =
+        events.stream().filter(e -> expectedFqn.equals(e.path("entityFQN").asText())).count();
+    assertEquals(
+        1,
+        forThisEdge,
+        "buildExtendedLineage cascades should NOT produce additional entityLineageAdded "
+            + "events for derived service/domain/dataProduct edges");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void reEmission_doesNotEmitDuplicateEvents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_reemit_src");
+    Table target = createTable(client, namespace, "audit_reemit_tgt");
+
+    long startTs = System.currentTimeMillis() - 1000;
+    addLineage(client, source, target);
+    addLineage(client, source, target);
+    addLineage(client, source, target);
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    awaitAuditLogEntry(client, "entityLineageAdded", expectedFqn, startTs).orElseThrow();
+
+    List<JsonNode> addedEvents = listAuditLogs(client, "entityLineageAdded", startTs);
+    long addedCount =
+        addedEvents.stream().filter(e -> expectedFqn.equals(e.path("entityFQN").asText())).count();
+    assertEquals(
+        1,
+        addedCount,
+        "Idempotent re-emissions should NOT produce additional entityLineageAdded events");
+
+    List<JsonNode> updatedEvents = listAuditLogs(client, "entityLineageUpdated", startTs);
+    long updatedCount =
+        updatedEvents.stream()
+            .filter(e -> expectedFqn.equals(e.path("entityFQN").asText()))
+            .count();
+    assertEquals(
+        0,
+        updatedCount,
+        "Idempotent re-emissions with unchanged payload should NOT emit entityLineageUpdated");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void contentChange_emitsEntityLineageUpdatedEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_content_src");
+    Table target = createTable(client, namespace, "audit_content_tgt");
+
+    long startTs = System.currentTimeMillis() - 1000;
+    putLineageWithSqlQuery(client, source, target, "SELECT a FROM t");
+    putLineageWithSqlQuery(client, source, target, "SELECT b FROM t");
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    awaitAuditLogEntry(client, "entityLineageAdded", expectedFqn, startTs).orElseThrow();
+    JsonNode updatedEntry =
+        awaitAuditLogEntry(client, "entityLineageUpdated", expectedFqn, startTs).orElseThrow();
+
+    List<JsonNode> addedEvents = listAuditLogs(client, "entityLineageAdded", startTs);
+    long addedCount =
+        addedEvents.stream().filter(e -> expectedFqn.equals(e.path("entityFQN").asText())).count();
+    assertEquals(
+        1, addedCount, "Exactly one entityLineageAdded event should be emitted for first add");
+
+    List<JsonNode> updatedEvents = listAuditLogs(client, "entityLineageUpdated", startTs);
+    long updatedCount =
+        updatedEvents.stream()
+            .filter(e -> expectedFqn.equals(e.path("entityFQN").asText()))
+            .count();
+    assertEquals(
+        1,
+        updatedCount,
+        "Exactly one entityLineageUpdated event should be emitted on content change");
+
+    JsonNode updatedSql =
+        updatedEntry.path("changeEvent").path("entity").path("lineageDetails").path("sqlQuery");
+    assertEquals(
+        "SELECT b FROM t",
+        updatedSql.asText(),
+        "Updated event payload should carry the new sqlQuery");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  @Test
+  void onlyTimestampChange_doesNotEmitUpdatedEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table source = createTable(client, namespace, "audit_ts_only_src");
+    Table target = createTable(client, namespace, "audit_ts_only_tgt");
+
+    long startTs = System.currentTimeMillis() - 1000;
+    putLineageWithSqlQuery(client, source, target, "SELECT x FROM y");
+    putLineageWithSqlQuery(client, source, target, "SELECT x FROM y");
+
+    String expectedFqn =
+        source.getFullyQualifiedName() + "--upstream-->" + target.getFullyQualifiedName();
+    awaitAuditLogEntry(client, "entityLineageAdded", expectedFqn, startTs).orElseThrow();
+
+    List<JsonNode> updatedEvents = listAuditLogs(client, "entityLineageUpdated", startTs);
+    long updatedCount =
+        updatedEvents.stream()
+            .filter(e -> expectedFqn.equals(e.path("entityFQN").asText()))
+            .count();
+    assertEquals(
+        0,
+        updatedCount,
+        "Re-PUT with identical content (only timestamp bumps) should NOT emit "
+            + "entityLineageUpdated");
+
+    deleteLineage(client, source.getEntityReference(), target.getEntityReference());
+    cleanupTable(client, source);
+    cleanupTable(client, target);
+  }
+
+  private void putLineageWithSqlQuery(
+      OpenMetadataClient client, Table from, Table to, String sqlQuery) {
+    LineageDetails details = new LineageDetails().withSqlQuery(sqlQuery);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from.getEntityReference())
+                    .withToEntity(to.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+  }
+
+  // ====================================================================================
+  // Helpers for temporal/window/audit tests
+  // ====================================================================================
+
+  private void putLineageWithTimestamps(
+      OpenMetadataClient client, Table from, Table to, long createdAt, long updatedAt) {
+    LineageDetails details = new LineageDetails().withCreatedAt(createdAt).withUpdatedAt(updatedAt);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from.getEntityReference())
+                    .withToEntity(to.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+  }
+
+  private Optional<LineageDetails> fetchEdgeLineageDetails(
+      OpenMetadataClient client, Table from, Table to) throws Exception {
+    EntityLineage lineage = getLineage(client, "table", from.getId().toString(), "0", "1");
+    return lineage.getDownstreamEdges().stream()
+        .filter(
+            e ->
+                e.getFromEntity().equals(from.getId())
+                    && e.getToEntity().equals(to.getId())
+                    && e.getLineageDetails() != null)
+        .map(Edge::getLineageDetails)
+        .findFirst();
+  }
+
+  private JsonNode searchLineageWithWindow(
+      OpenMetadataClient client,
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      Long startTime,
+      Long endTime)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("fqn", fqn)
+            .queryParam("type", "table")
+            .queryParam("upstreamDepth", String.valueOf(upstreamDepth))
+            .queryParam("downstreamDepth", String.valueOf(downstreamDepth))
+            .queryParam("includeDeleted", "false");
+    if (startTime != null) {
+      options.queryParam("startTime", String.valueOf(startTime));
+    }
+    if (endTime != null) {
+      options.queryParam("endTime", String.valueOf(endTime));
+    }
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/getLineage", null, options.build());
+    return OBJECT_MAPPER.readTree(response);
+  }
+
+  private void waitForEdgeInSearchLineage(OpenMetadataClient client, Table from, Table to) {
+    Awaitility.await("ES index has edge " + from.getName() + " → " + to.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              JsonNode result =
+                  searchLineageWithWindow(client, from.getFullyQualifiedName(), 0, 3, null, null);
+              JsonNode nodes = result.get("nodes");
+              return nodes != null && nodes.has(to.getFullyQualifiedName());
+            });
+  }
+
+  private Optional<JsonNode> awaitAuditLogEntry(
+      OpenMetadataClient client, String eventType, String entityFqn, long startTs) {
+    JsonNode[] holder = new JsonNode[1];
+    Awaitility.await("Audit log entry " + eventType + " for " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              List<JsonNode> entries = listAuditLogs(client, eventType, startTs);
+              for (JsonNode entry : entries) {
+                if (entityFqn.equals(entry.path("entityFQN").asText())) {
+                  holder[0] = entry;
+                  return true;
+                }
+              }
+              return false;
+            });
+    return Optional.ofNullable(holder[0]);
+  }
+
+  private List<JsonNode> listAuditLogs(OpenMetadataClient client, String eventType, long startTs)
+      throws Exception {
+    Map<String, String> params = new HashMap<>();
+    params.put("eventType", eventType);
+    params.put("entityType", "lineage");
+    params.put("startTs", String.valueOf(startTs));
+    params.put("limit", "200");
+    RequestOptions.Builder options = RequestOptions.builder();
+    for (Map.Entry<String, String> entry : params.entrySet()) {
+      options.queryParam(entry.getKey(), entry.getValue());
+    }
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/audit/logs", null, options.build());
+    JsonNode root = OBJECT_MAPPER.readTree(response);
+    JsonNode data = root.path("data");
+    List<JsonNode> out = new ArrayList<>();
+    if (data.isArray()) {
+      data.forEach(out::add);
+    }
+    return out;
   }
 }

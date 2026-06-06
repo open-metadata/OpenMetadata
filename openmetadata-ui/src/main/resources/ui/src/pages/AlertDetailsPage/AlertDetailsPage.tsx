@@ -60,13 +60,12 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
-  getObservabilityAlertDetailsPath,
-  getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -195,7 +194,7 @@ function AlertDetailsPage({
             },
             {
               name: t('label.alert-plural'),
-              url: ROUTES.OBSERVABILITY_ALERTS,
+              url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
             },
             {
               name: getEntityName(alertDetails),
@@ -208,16 +207,16 @@ function AlertDetailsPage({
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
       ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
-      : navigate(ROUTES.OBSERVABILITY_ALERTS);
-  }, [history]);
+      : navigate(observabilityRouterClassBase.getObservabilityAlertsListPath());
+  }, [navigate, isNotificationAlert]);
 
   const handleAlertEdit = useCallback(async () => {
     navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
-        : getObservabilityAlertsEditPath(fqn)
+        : observabilityRouterClassBase.getObservabilityAlertsEditPath(fqn)
     );
-  }, [history]);
+  }, [navigate, fqn, isNotificationAlert]);
 
   const handleAlertSync = useCallback(async () => {
     try {
@@ -309,11 +308,14 @@ function AlertDetailsPage({
       navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : getObservabilityAlertDetailsPath(fqn, activeKey),
+          : observabilityRouterClassBase.getObservabilityAlertDetailsPath(
+              fqn,
+              activeKey
+            ),
         { replace: true }
       );
     },
-    [history, fqn]
+    [navigate, fqn, isNotificationAlert]
   );
 
   const hideDeleteModal = useCallback(() => {

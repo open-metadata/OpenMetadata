@@ -57,6 +57,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe.serial('Domain Widget Filter', () => {
   test('Setup Domains widget on landing page', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
 
