@@ -54,7 +54,7 @@ from metadata.ingestion.models.patch_request import (
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.utils.helpers import find_column_in_table
 
-from ..integration_base import (
+from ..integration_base import (  # noqa: TID252
     generate_name,
     get_create_entity,
     get_create_service,
@@ -64,7 +64,7 @@ from ..integration_base import (
     get_create_test_suite,
     get_create_user_entity,
 )
-from .conftest import _safe_delete
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def patch_with_retry(metadata, retries=3, delay=1, **kwargs):
@@ -342,7 +342,7 @@ class TestOMetaPatch:
 
         assert force_updated.description.root == "Forced new"
 
-    def test_patch_description_TestCase(self, metadata, patch_test_case):
+    def test_patch_description_TestCase(self, metadata, patch_test_case):  # noqa: N802
         """Update description and force"""
         new_description = "Description " + str(datetime.now())
         updated: TestCaseEntity = metadata.patch_description(
@@ -413,7 +413,7 @@ class TestOMetaPatch:
     def test_patch_column_tags(self, metadata, patch_table):
         """Update column tags"""
         updated: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -426,7 +426,7 @@ class TestOMetaPatch:
         assert updated_col.tags[0].tagFQN.root == "PII.Sensitive"
 
         updated_again: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -605,7 +605,7 @@ class TestOMetaPatch:
         created: Table = metadata.create_or_update(create)
 
         with_tags: Table = metadata.patch_column_tags(
-            table=created,
+            entity=created,
             column_tags=[
                 ColumnTag(
                     column_fqn=created.fullyQualifiedName.root + ".struct.id",

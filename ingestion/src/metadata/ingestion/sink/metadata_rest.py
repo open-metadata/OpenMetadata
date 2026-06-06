@@ -16,7 +16,7 @@ to the OM API.
 
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -79,6 +79,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -99,7 +100,6 @@ from metadata.ingestion.models.pipeline_status import (
 )
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResolutionStatus,
@@ -119,7 +119,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -129,10 +128,11 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: Optional[str] = None
+    api_endpoint: Optional[str] = None  # noqa: UP045
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
+    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -160,14 +160,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.deferred_lifecycle_processed = False
         # Track entity names in buffer for O(1) duplicate checking
         # Key: (entity_type, name), Value: True
-        self.buffered_entity_names: Dict[tuple, bool] = {}
+        self.buffered_entity_names: dict[tuple, bool] = {}
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -181,7 +181,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
@@ -323,7 +322,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
+            result = self.metadata.bulk_create_or_update(
+                entities=self.buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
@@ -379,7 +382,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=patched_entity)
 
     @_run_dispatch.register
-    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[dict]:
         """
         Create or update the custom properties
         """
@@ -434,7 +437,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=tag)
 
     @_run_dispatch.register
-    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
@@ -442,7 +445,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
-    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[Dict[str, Any]]:
+    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
         """
         Writes the override lineage for the given lineage request.
 
@@ -477,28 +480,41 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
 
-    def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
+    @_run_dispatch.register
+    def write_barrier(self, record: Barrier) -> Either[Entity]:
+        """Flush the buffer synchronously so subsequent records in the same
+        stream see committed entities."""
+        if self.buffer:
+            logger.debug(
+                "Barrier flush: %d entities, reason=%s",
+                len(self.buffer),
+                record.reason,
+            )
+            return self._flush_buffer()
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
+
+    def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """
         Internal helper method for write_user
         """
         try:
             role = self.metadata.create_or_update(create_role)
             self.role_entities[role.name] = str(role.id.root)
-            return role
+            return role  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error creating role [{create_role}]: {exc}")
 
         return None
 
-    def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:
+    def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:  # noqa: UP045
         """
         Internal helper method for write_user
         """
         try:
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.root] = str(team.id.root)
-            return team
+            return team  # noqa: TRY300
         except LimitsException as _:
             if type(create_team).__name__ in self.limit_reached:
                 # Note: We do not have a way to patch the team,
@@ -548,7 +564,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 try:
                     team_entity = self.metadata.get_by_name(entity=Team, fqn=str(team.name.root))
                     if not team_entity:
-                        raise APIError(error={"message": f"Creating a new team {team.name.root}"})
+                        raise APIError(error={"message": f"Creating a new team {team.name.root}"})  # noqa: TRY301
                     team_ids.append(team_entity.id.root)
                 except APIError:
                     team_entity = self._create_team(team)
@@ -585,12 +601,36 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
-        self.metadata.delete(
-            entity=type(record.entity),
-            entity_id=record.entity.id,
-            recursive=record.mark_deleted_entities,
-        )
-        return Either(right=record)
+        # record.entity is declared as a bare pydantic BaseModel; the runtime value is a
+        # generated entity that exposes `id` and `fullyQualifiedName`, but basedpyright can't
+        # see those attributes through the BaseModel alias. Pull them via getattr so the type
+        # checker stays quiet without changing the runtime behavior.
+        entity_obj: Any = record.entity
+        entity_id = entity_obj.id
+        fqn = entity_obj.fullyQualifiedName.root
+        recursive = bool(record.recursive)
+        if record.dispatch_async:
+            # Server-side async cascade — returns 202 + jobId immediately so ingestion
+            # doesn't block on large subtrees (issue #4003). The actual work runs on the
+            # server's executor; we surface the jobId in the log for operator correlation.
+            response = self.metadata.delete_async(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+            job_id = (response or {}).get("jobId")
+            logger.debug(
+                "Dispatched async delete for %s (jobId=%s)",
+                fqn,
+                job_id,
+            )
+        else:
+            self.metadata.delete(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+        return Either(left=None, right=record)
 
     @_run_dispatch.register
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> Either[PipelineStatus]:
@@ -715,7 +755,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(left=None, right=record)
 
     @_run_dispatch.register
-    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[Union[TopicSampleData, Topic]]:
+    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[Union[TopicSampleData, Topic]]:  # noqa: UP007
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -732,7 +772,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_search_index_sample_data(
         self, record: OMetaIndexSampleData
-    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:
+    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:  # noqa: UP007
         """
         Ingest Search Index Sample Data
         """
@@ -790,42 +830,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return True
         return False
 
-    @singledispatchmethod
-    def _patch_entity_column_tags(self, entity, column_tags: List[ColumnTag]):
-        """
-        Generic dispatcher for patching column tags on any classifiable entity.
-        Uses singledispatchmethod for polymorphic dispatch based on entity type.
-
-        Args:
-            entity: The classifiable entity
-            column_tags: Column tags to patch
-
-        Returns:
-            bool: Success status
-
-        Raises:
-            NotImplementedError: If entity type is not supported
-        """
-        raise NotImplementedError(f"Column tag patching not implemented for entity type {type(entity).__name__}")
-
-    @_patch_entity_column_tags.register
-    def _(self, entity: Table, column_tags: List[ColumnTag]) -> bool:
-        """Table-specific column tag patching implementation"""
-        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
-        if patched:
-            logger.debug(f"Successfully patched tags for {entity.fullyQualifiedName.root}")
-            return True
-        return False
-
-    @_patch_entity_column_tags.register
-    def _(self, entity: Container, column_tags: List[ColumnTag]) -> bool:
-        """Container-specific column tag patching implementation"""
-        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
-        if patched:
-            logger.debug(f"Successfully patched tags for {entity.fullyQualifiedName.root}")
-            return True
-        return False
-
     @_run_dispatch.register
     def write_sampler_response(self, record: SamplerResponse) -> Either[ClassifiableEntityType]:
         """Ingest the sample data - if needed - and the PII tags"""
@@ -850,18 +854,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
 
         if record.column_tags:
-            try:
-                success = self._patch_entity_column_tags(entity, column_tags=record.column_tags)
-                if not success:
-                    self.status.warning(
-                        key=entity.fullyQualifiedName.root,
-                        reason="Error patching tags for entity",
-                    )
-            except NotImplementedError as exc:
-                self.status.warning(
-                    key=entity.fullyQualifiedName.root,
-                    reason=str(exc),
-                )
+            patched = self.metadata.patch_column_tags(entity=entity, column_tags=record.column_tags)
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__
+            if patched:
+                logger.debug("Successfully patched tags for %s", entity_fqn)
+            else:
+                self.status.warning(key=entity_fqn, reason="Error patching tags for entity")
 
         return Either(right=record.entity)
 
@@ -922,7 +920,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
             if result:
                 return Either(right=result)
-            else:
+            else:  # noqa: RET505
                 error = f"Failed to create data contract result for {record.dataContractFQN}"
                 return Either(left=StackTraceError(name="DataContractResult", error=error, stackTrace=None))
 
@@ -975,7 +973,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     f"observability records for {record.table.fullyQualifiedName.root}"
                 )
                 return Either(right=updated_table)
-            else:
+            else:  # noqa: RET505
                 error = (
                     f"Failed to add pipeline observability for "
                     f"{record.table.fullyQualifiedName.root} - API returned None"

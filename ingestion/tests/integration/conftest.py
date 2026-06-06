@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -151,7 +151,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
+    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -166,12 +166,19 @@ logger = logging.getLogger(__name__)
 
 
 def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
-    """Delete with retry logic to handle transient server errors during parallel teardown."""
+    """Delete with retry logic to handle transient server errors during parallel teardown.
+
+    A 404 here means the entity is already gone (e.g., wiped as part of an earlier
+    cascade or another worker's teardown); treat it as success rather than retrying.
+    """
     for attempt in range(retries):
         try:
             metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
-            return
-        except Exception:
+            return  # noqa: TRY300
+        except Exception as exc:
+            if _is_not_found(exc):
+                logger.debug("Skipping %s %s delete — already gone", entity.__name__, entity_id)
+                return
             if attempt < retries - 1:
                 logger.warning(
                     "Retry %d/%d: delete %s %s",
@@ -183,6 +190,13 @@ def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
                 time.sleep(0.5 * (attempt + 1))
             else:
                 raise
+
+
+def _is_not_found(exc: BaseException) -> bool:
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status == 404:
+        return True
+    return "404" in str(exc)
 
 
 @pytest.fixture(scope="module")
@@ -273,7 +287,7 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
-            if isinstance(result, DatabaseService):
+            if isinstance(result, DatabaseService):  # noqa: SIM102
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
                     return unmask_password(result)
             return result
@@ -293,9 +307,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []
+    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
 
-    def inner(entity_type: Type[Entity], fqn: str):
+    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
         fqns.append((entity_type, fqn))
 
     yield inner

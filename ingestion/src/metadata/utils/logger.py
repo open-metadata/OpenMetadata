@@ -18,7 +18,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union  # noqa: UP035
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -64,6 +64,7 @@ class Loggers(Enum):
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
     REVERSE_INGESTION = "ReverseIngestion"
+    DIAGNOSTICS = "Diagnostics"
 
     @DynamicClassAttribute
     def value(self):
@@ -187,7 +188,22 @@ def query_runner_logger():
     return logging.getLogger(Loggers.QUERY_RUNNER.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):
+def diag_logger():
+    """
+    Method to get the DIAGNOSTICS logger.
+
+    The diagnostics subsystem (heartbeats, watchdog warnings,
+    non-signal-context dumps) emits through this logger so output is
+    picked up by whatever handlers the workflow has configured —
+    console, StreamableLogHandler (S3), file, etc. Signal-handler
+    paths still write to raw stderr because Python's logging module is
+    not signal-safe (per-handler RLocks).
+    """
+
+    return logging.getLogger(Loggers.DIAGNOSTICS.value)
+
+
+def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
     """
     Set all loggers levels
     :param level: logging level
@@ -196,7 +212,7 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None,
+    color: Optional[ANSI] = None,  # noqa: UP045
     bold: bool = False,
     message: str = "",
     level=logging.INFO,
@@ -208,10 +224,10 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> Optional[str]:
+def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
     try:
         if hasattr(record, "name"):
-            return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
         if hasattr(record, "table") and hasattr(record.table, "name"):
             return f"{type(record).__name__} [{record.table.name.root}]"
         return f"{type(record).__name__} [{record.entity.name.root}]"
@@ -273,7 +289,7 @@ def _(record: TableAndTests) -> str:
 @get_log_name.register
 def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return ",".join(set(result.testCase.name.root for result in record.test_results))
+    return ",".join(set(result.testCase.name.root for result in record.test_results))  # noqa: C401
 
 
 @get_log_name.register
@@ -356,7 +372,7 @@ def sanitize_url_credentials(message: str) -> str:
     return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
-def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
     config_copy = deepcopy(config)
 
     def traverse_and_modify(obj):

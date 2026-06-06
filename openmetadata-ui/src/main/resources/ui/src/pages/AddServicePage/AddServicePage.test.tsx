@@ -18,7 +18,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
-import { getServiceLogo } from '../../utils/CommonUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import {
@@ -162,7 +162,7 @@ jest.mock('../../rest/applicationAPI', () => ({
   triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
 

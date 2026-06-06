@@ -11,7 +11,7 @@
 """Mode source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -62,19 +62,19 @@ class ModeSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.workspace_name = config.serviceConnection.root.config.workspaceName
-        self.filter_query_param = config.serviceConnection.root.config.filterQueryParam
+        self.workspace_name = config.serviceConnection.root.config.workspaceName  # pyright: ignore[reportAttributeAccessIssue]
+        self.filter_query_param = config.serviceConnection.root.config.filterQueryParam  # pyright: ignore[reportAttributeAccessIssue]
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
             raise InvalidSourceException(f"Expected ModeConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Get List of all dashboards
         """
@@ -130,7 +130,7 @@ class ModeSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (
@@ -169,7 +169,7 @@ class ModeSource(DashboardServiceSource):
                 )
                 query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
-                    database_schema_name, table = fqn.split(str(table))[-2:]
+                    database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
                     database_schema_name = self.check_database_schema_name(database_schema_name)
 
                     if prefix_table_name and table and prefix_table_name.lower() != str(table).lower():

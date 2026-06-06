@@ -69,7 +69,7 @@ def _sample_data_exists() -> bool:
             headers=AUTH_HEADERS,
             timeout=5,
         )
-        return resp.status_code == 200
+        return resp.status_code == 200  # noqa: TRY300
     except Exception:
         return False
 
@@ -118,7 +118,7 @@ def _send_ol_event(
     job_name: str,
     inputs: list,
     outputs: list,
-    run_id: str = None,
+    run_id: str = None,  # noqa: RUF013
 ) -> dict:
     event = {
         "eventType": "COMPLETE",

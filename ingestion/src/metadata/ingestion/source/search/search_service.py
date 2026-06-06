@@ -13,10 +13,10 @@ Base class for ingesting search index services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -77,7 +77,6 @@ class SearchServiceTopology(ServiceTopology):
                 processor="yield_create_request_search_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["search_index", "search_index_template"],
@@ -91,7 +90,6 @@ class SearchServiceTopology(ServiceTopology):
                 context="search_index",
                 processor="yield_search_index",
                 consumer=["search_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaIndexSampleData,
@@ -111,7 +109,6 @@ class SearchServiceTopology(ServiceTopology):
                     context="search_index_template",
                     processor="yield_search_index_template",
                     consumer=["search_service"],
-                    use_cache=True,
                 )
             ],
         )
@@ -131,7 +128,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = SearchServiceTopology()
     context = TopologyContextManager(topology)
-    index_source_state: Set = set()
+    index_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -162,7 +159,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to Get Sample Data of Search Index Entity"""
 
     @abstractmethod
-    def get_search_index_list(self) -> Optional[List[Any]]:
+    def get_search_index_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get List of all search index"""
 
     @abstractmethod
@@ -188,7 +185,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Templates"""
 
-    def get_search_index_template_list(self) -> Optional[List[Any]]:
+    def get_search_index_template_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get list of all search index templates"""
 
     def get_search_index_template_name(self, search_index_template_details: Any) -> str:
@@ -230,7 +227,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
+                recursive=self.source_config.markDeletedSearchIndexes,
                 params={"service": self.context.get().search_service},
             )
 

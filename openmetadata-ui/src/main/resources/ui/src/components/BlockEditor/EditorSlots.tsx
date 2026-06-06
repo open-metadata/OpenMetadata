@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, ReactRenderer } from '@tiptap/react';
+import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';

@@ -16,11 +16,11 @@ import copy
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
-from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.base import Engine  # noqa: TC002
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
@@ -46,7 +46,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -69,10 +69,6 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
-from metadata.utils.execution_time_tracker import (
-    calculate_execution_time,
-    calculate_execution_time_generator,
-)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -84,8 +80,8 @@ logger = ingestion_logger()
 class ColumnAndReferredColumn(BaseModel):
     table_name: str
     schema_name: str
-    db_name: Optional[str]
-    column: Dict
+    db_name: Optional[str]  # noqa: UP045
+    column: Dict  # noqa: UP006
 
 
 class TableNameAndType(BaseModel):
@@ -179,7 +175,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         try:
             self.engine.dispose()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning(f"Failed to dispose engine: {exc}")
+            logger.error(f"Failed to dispose engine: {exc}")
         self.engine = None
         self.connection_obj = None
 
@@ -198,25 +194,24 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         yield database_name
 
-    def get_database_description(self, database_name: str) -> Optional[str]:
+    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the database description
         by default there will be no database description
         """
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         by default there will be no schema description
         """
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the stored procedure description
         by default there will be no stored procedure description
         """
 
-    @calculate_execution_time_generator()
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
@@ -257,7 +252,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names():
+            for schema_name in self.inspector.get_schema_names():  # noqa: UP028
                 yield schema_name
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -266,7 +261,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         yield from self._get_filtered_schema_names()
 
-    @calculate_execution_time_generator()
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
@@ -313,7 +307,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
-    @calculate_execution_time()
     def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
@@ -353,7 +346,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -363,9 +356,15 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        try:
-            if self.source_config.includeTables:
-                for table_and_type in self.query_table_names_and_types(schema_name):
+        if self.source_config.includeTables:
+            try:
+                table_iter = self.query_table_names_and_types(schema_name)
+            except Exception as err:
+                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
+                logger.debug(traceback.format_exc())
+                table_iter = []
+            for table_and_type in table_iter:
+                try:
                     table_name = self.standardize_table_name(schema_name, table_and_type.name)
                     table_fqn = fqn.build(
                         self.metadata,
@@ -385,10 +384,21 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                             "Table Filtered Out",
                         )
                         continue
-                    yield table_name, table_and_type.type_
+                except Exception as err:
+                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+                yield table_name, table_and_type.type_
 
-            if self.source_config.includeViews:
-                for view_and_type in self.query_view_names_and_types(schema_name):
+        if self.source_config.includeViews:
+            try:
+                view_iter = self.query_view_names_and_types(schema_name)
+            except Exception as err:
+                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
+                logger.debug(traceback.format_exc())
+                view_iter = []
+            for view_and_type in view_iter:
+                try:
                     view_name = self.standardize_table_name(schema_name, view_and_type.name)
                     view_fqn = fqn.build(
                         self.metadata,
@@ -408,19 +418,19 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                             "Table Filtered Out",
                         )
                         continue
-                    yield view_name, view_and_type.type_
-        except Exception as err:
-            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
-            logger.debug(traceback.format_exc())
+                except Exception as err:
+                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+                yield view_name, view_and_type.type_
 
-    @calculate_execution_time()
     def get_schema_definition(
         self,
         table_type: TableType,
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Get the DDL statement or View Definition for a table
         """
@@ -438,7 +448,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
                 schema_definition = inspector.get_table_ddl(self.connection, table_name, schema_name)
             schema_definition = str(schema_definition).strip() if schema_definition is not None else None
-            return schema_definition
+            return schema_definition  # noqa: RET504, TRY300
 
         except NotImplementedError:
             logger.debug("Schema definition not implemented")
@@ -461,7 +471,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """
         check if the table is partitioned table and return the partition details
         """
@@ -483,19 +493,22 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         by default there will be no location path
         """
 
-    def get_table_extensions(self, table_name: str):
+    def get_table_extensions(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        table_type: TableType | None = None,  # pyright: ignore[reportUnusedParameter]
+    ):
         """
         Method to fetch the extensions of the table
         """
 
-    @calculate_execution_time_generator()
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -569,14 +582,18 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 ),
                 owners=self.get_owner_ref(table_name=table_name),
                 locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
-                extension=self.get_table_extensions(table_name=table_name),
+                extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
-            if is_partitioned:
+            if is_partitioned and table_type not in (
+                TableType.View,
+                TableType.MaterializedView,
+            ):
                 table_request.tableType = TableType.Partitioned.value
+            if is_partitioned:
                 table_request.tablePartition = partition_details
 
             yield Either(right=table_request)
@@ -594,11 +611,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,
-        column: Dict,
+        column: Dict,  # noqa: UP006
         table_name: str,
         schema_name: str,
         db_name: str,
-        columns: List[Column],
+        columns: List[Column],  # noqa: UP006
         add_to_global: bool = True,
     ):
         """
@@ -651,9 +668,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_name,
         schema_name,
         db_name,
-        foreign_columns: List[Dict],
-        columns: List[Column],
-    ) -> List[TableConstraint]:
+        foreign_columns: List[Dict],  # noqa: UP006
+        columns: List[Column],  # noqa: UP006
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -670,7 +687,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         return foreign_constraints
 
-    @calculate_execution_time()
     def update_table_constraints(
         self,
         table_name,
@@ -679,7 +695,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         table_constraints,
         foreign_columns,
         columns,
-    ) -> List[TableConstraint]:
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         From topology.
         process the table constraints of all tables
@@ -722,7 +738,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
     def close(self):
         self._release_engine()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
-            self.ssl_manager = cast(SSLManager, self.ssl_manager)
+            self.ssl_manager = cast(SSLManager, self.ssl_manager)  # noqa: TC006
             self.ssl_manager.cleanup_temp_files()
 
     def fetch_table_tags(
@@ -747,11 +763,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         By default the source url is not supported for
         """
@@ -801,7 +817,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 yield Either(
                     left=StackTraceError(
                         name=str(foreign_table.table_name),
-                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",
+                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )

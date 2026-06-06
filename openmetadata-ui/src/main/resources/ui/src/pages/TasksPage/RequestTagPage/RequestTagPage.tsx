@@ -40,6 +40,7 @@ import {
   TaskPriority,
 } from '../../../rest/tasksAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   applyTaskFormSchemaDefaults,
   getResolvedTaskFormSchema,
@@ -118,8 +119,7 @@ const RequestTag = () => {
       category: TaskCategory.MetadataUpdate,
       type: TaskEntityType.TagUpdate,
       priority: TaskPriority.Medium,
-      about: entityFQN,
-      aboutType: entityType,
+      about: getEntityFeedLink(entityType, entityFQN),
       assignees: assignees.map((assignee) => assignee.name ?? ''),
       payload: applyTaskFormSchemaDefaults(payload, taskFormSchema?.formSchema),
     };

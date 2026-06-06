@@ -13,7 +13,7 @@ Redshift source ingestion
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -95,7 +95,6 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
@@ -152,7 +151,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[RedshiftIncrementalTableProcessor] = None
+        self.incremental_table_processor: Optional[RedshiftIncrementalTableProcessor] = None  # noqa: UP045
         self.external_location_map = {}
 
         if self.incremental.enabled:
@@ -162,15 +161,15 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(f"Expected RedshiftConnection, but got {connection}")
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, incremental_config)
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
@@ -236,7 +235,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         """
         return []
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -279,8 +278,8 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self._set_incremental_table_processor(configured_db)
             self.set_external_location_map(configured_db)
             yield configured_db
@@ -309,7 +308,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:
+    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
         """
         Process DIST_KEY & SORT_KEY column properties
         """
@@ -346,7 +345,6 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     continue
                 yield stored_procedure
 
-    @calculate_execution_time_generator()
     def yield_stored_procedure(
         self, stored_procedure: RedshiftStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
@@ -394,7 +392,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.get_global().deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()

@@ -21,12 +21,16 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -71,6 +75,20 @@ const GlossaryDetails = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY, fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -164,7 +182,8 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(

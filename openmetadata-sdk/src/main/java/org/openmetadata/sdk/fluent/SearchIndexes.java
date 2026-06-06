@@ -180,6 +180,11 @@ public final class SearchIndexes {
     public SearchIndexDeleter delete() {
       return new SearchIndexDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<SearchIndex> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.searchIndexes(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

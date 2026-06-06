@@ -18,7 +18,7 @@ class Entity(BaseModel):
     id: Uuid
     type: str
     name: EntityName
-    fullyQualifiedName: FullyQualifiedEntityName
+    fullyQualifiedName: FullyQualifiedEntityName  # noqa: N815
     description: Markdown
 
 
@@ -26,7 +26,7 @@ class EntityFactory(factory.Factory):
     id = RootSubFactory(UuidFactory)
     type = "entity"
     name = factory.LazyAttribute(lambda o: o.fullyQualifiedName)
-    fullyQualifiedName = factory.fuzzy.FuzzyText()
+    fullyQualifiedName = factory.fuzzy.FuzzyText()  # noqa: N815
     description = RootSubFactory(Markdown)
 
     class Meta:
@@ -37,7 +37,7 @@ class EntityReferenceFactory(factory.Factory):
     id = factory.LazyAttribute(lambda x: x.entity.id.root)
     type = factory.LazyAttribute(lambda x: type(x.entity).__name__.lower())
     name = factory.LazyAttribute(lambda x: x.entity.name.root)
-    fullyQualifiedName = factory.LazyAttribute(lambda x: x.entity.fullyQualifiedName.root)
+    fullyQualifiedName = factory.LazyAttribute(lambda x: x.entity.fullyQualifiedName.root)  # noqa: N815
     description = factory.LazyAttribute(lambda x: x.entity.description.root)
 
     class Meta:

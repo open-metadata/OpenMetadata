@@ -13,27 +13,16 @@ Base sampler for storage services (S3, GCS, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    TableData,
-)
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.storageService import StorageConnection
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    ProcessingEngine,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_config import StorageSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -43,7 +32,8 @@ logger = sampler_logger()
 
 class StorageSampler(SamplerInterface):
     """
-    Base sampler for storage services that reads data from cloud storage buckets
+    Base sampler for storage services that reads data from cloud storage buckets.
+    Accepts a StorageSamplerConfig — no database-specific fields required.
     """
 
     def __init__(
@@ -51,72 +41,17 @@ class StorageSampler(SamplerInterface):
         service_connection_config: StorageConnection,
         ometa_client: OpenMetadata,
         entity: Container,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
-        sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[PartitionProfilerConfig] = None,
-        sample_query: Optional[str] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        config: Optional[StorageSamplerConfig] = None,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            entity,
-            include_columns,
-            exclude_columns,
-            sample_config,
-            partition_details,
-            sample_query,
-            storage_config,
-            sample_data_count,
-            processing_engine,
-            **kwargs,
-        )
-        self.client = self.get_client()
-
-    @classmethod
-    def create(
-        cls,
-        service_connection_config: StorageConnection,
-        ometa_client: OpenMetadata,
-        entity: Container,
-        schema_entity=None,
-        database_entity=None,
-        table_config=None,
-        storage_config: Optional[DataStorageConfig] = None,
-        default_sample_config: Optional[SampleConfig] = None,
-        default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
-        **kwargs,
-    ) -> "StorageSampler":
-        """Create storage sampler instance
-
-        Args:
-            service_connection_config: Storage service connection config
-            ometa_client: OpenMetadata client
-            entity: Container entity to sample
-            schema_entity: Ignored for storage samplers (Table-specific)
-            database_entity: Ignored for storage samplers (Table-specific)
-            table_config: Ignored for storage samplers (Table-specific)
-            storage_config: Optional storage config for sample data
-            default_sample_config: Default sample config
-            default_sample_data_count: Number of rows to sample
-            processing_engine: Ignored for storage samplers (Table-specific)
-            **kwargs: Additional arguments
-        """
-        return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
             entity=entity,
-            sample_config=default_sample_config or SampleConfig(),
-            storage_config=storage_config,
-            sample_data_count=default_sample_data_count,
-            processing_engine=processing_engine,
+            config=config or StorageSamplerConfig(),
             **kwargs,
         )
+        self.client = self.get_client()
 
     @property
     def raw_dataset(self):
@@ -129,7 +64,7 @@ class StorageSampler(SamplerInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_sample_file_path(self) -> Optional[str]:
+    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
         """Get a sample file path from the container"""
         raise NotImplementedError
 
@@ -153,9 +88,9 @@ class StorageSampler(SamplerInterface):
 
     def get_dataset(self, **kwargs):
         """Not used for storage samplers"""
-        return None
+        return None  # noqa: RET501
 
-    def get_columns(self) -> List[SQALikeColumn]:
+    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """Get columns from container's data model"""
         if self._columns:
             return self._columns
@@ -167,7 +102,7 @@ class StorageSampler(SamplerInterface):
         self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]
         return self._columns
 
-    def _get_file_format(self) -> Optional[SupportedTypes]:
+    def _get_file_format(self) -> Optional[SupportedTypes]:  # noqa: UP045
         """Extract file format from container"""
         if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
@@ -180,7 +115,7 @@ class StorageSampler(SamplerInterface):
             logger.warning(f"Unsupported file format: {file_format}")
             return None
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         """Fetch sample data from storage container"""
         sample_file_path = self._get_sample_file_path()
         if not sample_file_path:

@@ -30,13 +30,17 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -118,6 +122,22 @@ const PipelineDetails = ({
 
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.PIPELINE, pipelineFQN, handleFeedCount);
+
+  const fetchTaskCounts = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityTaskCountsInto(pipelineFQN, setFeedCount);
+    }
+  }, [pipelineFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.PIPELINE,
+        pipelineFQN,
+        setFeedCount
+      );
+    }
+  }, [pipelineFQN]);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -286,8 +306,9 @@ const PipelineDetails = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    fetchTaskCounts();
+    fetchActivityCount();
+  }, [pipelineFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

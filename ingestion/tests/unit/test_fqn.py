@@ -105,8 +105,27 @@ class TestFqn(TestCase):
             fqn.quote_name('a"b')
         self.assertEqual('Invalid name a"b', str(context.exception))
 
+    def test_quote_name_rejects_newline(self):
+        """
+        Names with embedded newlines (which Snowflake's ``information_schema``
+        occasionally returns when source tables were created from scripts that
+        forgot to strip a trailing ``\\n``) are not valid OpenMetadata FQN
+        components — the OM server's ``quoteName`` rejects them too. Python's
+        ``quote_name`` therefore raises here to keep the client/server
+        contract consistent. The defensive try/except added to
+        ``_get_schema_columns`` (snowflake/utils.py) and
+        ``CommonDbSourceService.get_tables_name_and_type``
+        (common_db_source.py) catch this ValueError and let the rest of the
+        schema continue ingesting.
+        """
+        with self.assertRaises(ValueError) as context:
+            fqn.quote_name("REPRO_BACKUP\n  ")
+        self.assertIn("Invalid name", str(context.exception))
+        with self.assertRaises(ValueError):
+            fqn.quote_name("a\nb")
+
     def test_invalid(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             fqn.split('a.."')
 
     def test_build_table(self):

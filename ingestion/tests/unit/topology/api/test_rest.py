@@ -15,6 +15,7 @@ Test REST/OpenAPI.
 import json
 from copy import deepcopy
 from io import BytesIO
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -52,6 +53,8 @@ from metadata.ingestion.source.api.rest.parser import (
     parse_openapi_schema_from_s3,
 )
 
+LOCAL_OPENAPI_SCHEMA_PATH = str(Path(__file__).parents[4] / "examples" / "openapi" / "sample.json")
+
 mock_rest_config = {
     "source": {
         "type": "rest",
@@ -59,7 +62,7 @@ mock_rest_config = {
         "serviceConnection": {
             "config": {
                 "type": "Rest",
-                "openAPISchemaConnection": {"openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json"},
+                "openAPISchemaConnection": {"openAPISchemaFilePath": LOCAL_OPENAPI_SCHEMA_PATH},
                 "docURL": "https://petstore3.swagger.io/",
             }
         },
@@ -136,24 +139,6 @@ EXPECTED_COLLECTION_REQUEST = [
 ]
 MOCK_STORE_URL = AnyUrl("https://petstore3.swagger.io/#/store")
 MOCK_STORE_ORDER_URL = AnyUrl("https://petstore3.swagger.io/#/store/placeOrder")
-MOCK_JSON_RESPONSE = {
-    "paths": {
-        "/user/login": {
-            "get": {
-                "tags": ["user"],
-                "summary": "Logs user into the system",
-                "operationId": "loginUser",
-            }
-        }
-    },
-    "tags": [
-        {
-            "name": "pet",
-            "description": "Everything about your Pets",
-        },
-        {"name": "store", "description": "Access to Petstore orders"},
-    ],
-}
 
 # Mock data for testing process_schema_fields
 MOCK_SCHEMA_RESPONSE_SIMPLE = {
@@ -426,7 +411,7 @@ MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful oper
 
 class RESTTest(TestCase):
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_rest_config)
@@ -455,10 +440,8 @@ class RESTTest(TestCase):
         assert collection_request == EXPECTED_COLLECTION_REQUEST
 
     def test_all_collections(self):
-        with patch.object(self.rest_source.connection, "json", return_value=MOCK_JSON_RESPONSE):
-            collections = list(self.rest_source.get_api_collections())
-        MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)
-        MOCK_COLLECTIONS_COPY[2].description = Markdown(root="Operations about user")
+        collections = list(self.rest_source.get_api_collections())
+        MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)  # noqa: N806
         MOCK_COLLECTIONS_COPY.append(
             RESTCollection(
                 name=EntityName(root="default"),
@@ -1311,6 +1294,39 @@ class TestParseOpenAPISchemaFromS3:
         creds = AWSCredentials(awsRegion="us-east-1")
         with pytest.raises(OpenAPIParseError, match="Failed to parse S3 JSON file"):
             parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_json_array_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .json S3 object containing an array reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.json"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_yaml_scalar_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .yaml S3 object with a bare scalar reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"just a string")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.yaml"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.yaml", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_unknown_extension_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """An unknown-extension S3 object that fails both JSON and YAML reports s3://bucket/key."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.txt"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.txt", creds)
 
 
 class TestGetConnectionS3:

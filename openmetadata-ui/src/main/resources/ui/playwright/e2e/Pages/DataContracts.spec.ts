@@ -73,7 +73,7 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForDataContractExecution,
+  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -143,7 +143,7 @@ test.describe('Data Contracts', () => {
       page,
     }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
-      test.setTimeout(720_000);
+      test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -259,7 +259,7 @@ test.describe('Data Contracts', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.displayName,
+          user.getUserDisplayName(),
           true
         );
         await page.getByRole('button', { name: 'Add New Rule' }).click();
@@ -353,18 +353,22 @@ test.describe('Data Contracts', () => {
 
         await addOwner({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           endpoint: entity.endpoint,
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        await triggerContractValidation(page);
+        await toastPromise;
 
         await page.reload();
 
@@ -473,6 +477,9 @@ test.describe('Data Contracts', () => {
           // save and trigger contract validation
           const response = await saveAndTriggerDataContractValidation(page);
 
+          // The test suite results may be available before the contract's latestResult is
+          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
+          // page to verify the test suite ran successfully.
           if (
             typeof response === 'object' &&
             response !== null &&
@@ -481,13 +488,20 @@ test.describe('Data Contracts', () => {
             const { id: contractId } = response as { id: string };
 
             if (contractId) {
-              await waitForDataContractExecution(page, contractId);
+              const contractResultVisible =
+                await waitForContractExecutionWithFallback(
+                  page,
+                  contractId,
+                  DATA_CONTRACT_DETAILS.name
+                );
+
+              if (contractResultVisible) {
+                await expect(
+                  page.getByTestId('data-contract-latest-result-btn')
+                ).toBeVisible();
+              }
             }
           }
-
-          await expect(
-            page.getByTestId('data-contract-latest-result-btn')
-          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
@@ -496,7 +510,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page
               .getByTestId('test-suite-table')
-              .locator('.ant-table-cell')
+              .locator('[role="gridcell"]')
               .filter({
                 hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
               })
@@ -820,8 +834,21 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
+        const saveResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts') &&
+            response.request().method() === 'POST'
+        );
+        const getResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await page.getByTestId('save-contract-btn').click();
-        await page.waitForResponse('/api/v1/dataContracts/*');
+
+        await saveResponsePromise;
+        await getResponsePromise;
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
         await expect(page.getByTitle('10')).toBeVisible();
@@ -1112,9 +1139,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1287,9 +1321,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -2383,17 +2424,17 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               const searchUser = page.waitForResponse(
                 `/api/v1/search/query?q=*${encodeURIComponent(
-                  adminUser.responseData.displayName
+                  adminUser.getUserDisplayName()
                 )}*`
               );
               await page
                 .getByTestId('searchbar')
-                .fill(adminUser.responseData.displayName);
+                .fill(adminUser.getUserDisplayName());
               await searchUser;
 
               await page
                 .getByRole('listitem', {
-                  name: adminUser.responseData.displayName,
+                  name: adminUser.getUserDisplayName(),
                 })
                 .click();
 

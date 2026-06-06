@@ -56,7 +56,7 @@ from metadata.profiler.processor.default import get_default_metrics
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -90,7 +90,7 @@ class FakeConnection:
 class PandasInterfaceTest(TestCase):
     import pandas as pd
 
-    col_names = [
+    col_names = [  # noqa: RUF012
         "name",
         "fullname",
         "nickname",
@@ -102,10 +102,10 @@ class PandasInterfaceTest(TestCase):
         "json",
         "array",
     ]
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: PTH100, PTH120
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)  # noqa: PTH118
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)  # noqa: PTH118
 
     table_entity = Table(
         id=uuid4(),
@@ -162,7 +162,7 @@ class PandasInterfaceTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUp(cls, mock_get_connection, *_) -> None:
@@ -245,7 +245,7 @@ class PandasInterfaceTest(TestCase):
                 )
             )
             for query_metric in self.query_metrics:
-                query_metrics.append(
+                query_metrics.append(  # noqa: PERF401
                     ThreadPoolMetrics(
                         metrics=query_metric,
                         metric_type=MetricTypes.Query,
@@ -284,8 +284,8 @@ class PandasInterfaceTest(TestCase):
 
         assert profile_request.tableProfile.columnCount == 10
         assert profile_request.tableProfile.rowCount == 6
-        name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]
-        age_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "age"][0]
+        name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]  # noqa: RUF015
+        age_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "age"][0]  # noqa: RUF015
         assert name_column_profile.nullCount == 2.0
         assert age_column_profile.median == 31.0
 

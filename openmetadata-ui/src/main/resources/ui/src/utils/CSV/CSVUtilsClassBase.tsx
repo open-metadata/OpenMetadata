@@ -14,9 +14,10 @@
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, toString } from 'lodash';
 import { ReactNode, useRef } from 'react';
-import { RenderEditCellProps, textEditor } from 'react-data-grid';
+import type { RenderEditCellProps } from 'react-data-grid';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
@@ -34,9 +35,9 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
-import { removeOuterEscapes } from '../CommonUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { removeOuterEscapes } from '../StringUtils';
 import { getCustomPropertyEntityType } from './CSV.utils';
 
 class CSVUtilsClassBase {
@@ -522,7 +523,7 @@ class CSVUtilsClassBase {
           );
         };
       default:
-        return textEditor;
+        return lazyTextEditor;
     }
   }
 }

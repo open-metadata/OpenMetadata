@@ -32,7 +32,10 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -111,8 +114,7 @@ export const TestCaseStatusModal = ({
       name: `Incident: ${testCaseName}`,
       category: TaskCategory.Incident,
       type: TaskEntityType.TestCaseResolution,
-      about: testCaseFqn,
-      aboutType: 'testCase',
+      about: getEntityFeedLink('testCase', testCaseFqn),
     });
 
     if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {

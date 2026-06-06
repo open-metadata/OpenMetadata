@@ -36,7 +36,7 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 
 class Base(DeclarativeBase):
@@ -113,18 +113,18 @@ class TestGreatExpectationIntegration(TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
-        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")
-        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")
-        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")
+        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")  # noqa: PTH118, PTH120
+        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")  # noqa: PTH118
+        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")  # noqa: PTH118
 
         for suite_name in ["users_query_suite.json", "orders_query_suite.json"]:
-            suite_file = os.path.join(gx_expectations_dir, suite_name)
-            if os.path.exists(suite_file):
-                os.remove(suite_file)
+            suite_file = os.path.join(gx_expectations_dir, suite_name)  # noqa: PTH118
+            if os.path.exists(suite_file):  # noqa: PTH110
+                os.remove(suite_file)  # noqa: PTH107
 
-        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")
-        if os.path.exists(checkpoint_file):
-            os.remove(checkpoint_file)
+        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")  # noqa: PTH118
+        if os.path.exists(checkpoint_file):  # noqa: PTH110
+            os.remove(checkpoint_file)  # noqa: PTH107
 
         try:
             User.__table__.create(bind=cls.engine)
@@ -253,10 +253,10 @@ class TestGreatExpectationIntegration(TestCase):
         assert not orders_table.testSuite
 
         # GE config file
-        ge_folder = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
+        ge_folder = os.path.join(  # noqa: PTH118
+            os.path.dirname(os.path.abspath(__file__)),  # noqa: PTH100, PTH120
         )
-        ometa_config = os.path.join(ge_folder, "gx/ometa_config")
+        ometa_config = os.path.join(ge_folder, "gx/ometa_config")  # noqa: PTH118
         context = gx.get_context(project_root_dir=ge_folder)
 
         # Create query-based expectation suite for users table

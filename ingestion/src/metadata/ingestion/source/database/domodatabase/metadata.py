@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -90,7 +90,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDatabaseConnection = config.serviceConnection.root.config
@@ -130,7 +130,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
@@ -147,8 +147,8 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
 
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table["name"],
+                    self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table["name"],  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(
                         table_fqn,
@@ -165,7 +165,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:
+    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:  # noqa: UP045
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -174,7 +174,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
@@ -273,8 +273,8 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,
-    ) -> Optional[str]:
+        table_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for domodatabase
         """

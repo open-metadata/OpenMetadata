@@ -13,7 +13,7 @@ Generic source to build database connectors.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple  # noqa: UP035
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -40,12 +40,12 @@ class SqlAlchemySource(ABC):
     engine: Engine
     metadata: OpenMetadata
     context: TopologyContextManager
-    database_source_state: Set
+    database_source_state: Set  # noqa: UP006
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
 
     @abstractmethod
-    def standardize_table_name(self, schema_name: str, table: str) -> Tuple[str, str]:
+    def standardize_table_name(self, schema_name: str, table: str) -> Tuple[str, str]:  # noqa: UP006
         """
         Method formats Table names if required
         """
@@ -67,7 +67,7 @@ class SqlAlchemySource(ABC):
     @abstractmethod
     def get_columns_and_constraints(
         self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
+    ) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """
         Method to fetch table columns data
         """
@@ -75,7 +75,7 @@ class SqlAlchemySource(ABC):
     @abstractmethod
     def get_schema_definition(
         self, table_type, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch schema definition
         """

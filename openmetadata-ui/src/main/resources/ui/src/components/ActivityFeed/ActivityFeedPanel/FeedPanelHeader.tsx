@@ -18,8 +18,8 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityField,

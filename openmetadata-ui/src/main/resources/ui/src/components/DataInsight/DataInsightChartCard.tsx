@@ -48,11 +48,11 @@ import {
   getChartPreviewByName,
 } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/CommonUtils';
+import { entityChartColor } from '../../utils/ColorUtils';
+import { renderDataInsightLineChart } from '../../utils/DataInsightChartUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
-  renderDataInsightLineChart,
 } from '../../utils/DataInsightUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';

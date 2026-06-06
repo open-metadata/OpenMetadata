@@ -13,10 +13,10 @@
 Test MySql connector with CLI
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -54,7 +54,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM openmetadata_db.persons;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         """
             INSERT INTO persons (id, varchar_col, text_col, tinyint_col, smallint_col, mediumint_col, int_col, bigint_col, float_col, double_col, decimal_col, date_col, datetime_col, timestamp_col, time_col, year_col, binary_col,varbinary_col,blob_col,text2_col,enum_col,set_col) VALUES
             (1,'value1','text1',1,2,3,4,5,6.1,7.2,'8.3', '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 06:04:45', '06:06:45', 2023,X'010203',X'010203',X'010203','text2', 'value1','value1,value2')""",
@@ -100,15 +100,15 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_mysql.default.openmetadata_db.persons"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["openmetadata_db.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["entity_*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return [".*bot.*"]
 
     @staticmethod

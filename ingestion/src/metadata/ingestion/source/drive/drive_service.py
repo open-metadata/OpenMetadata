@@ -14,10 +14,10 @@ Base class for ingesting drive services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -57,7 +57,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label
@@ -86,7 +85,6 @@ class DriveServiceTopology(ServiceTopology):
                 processor="yield_create_request_drive_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["directory", "spreadsheet"],
@@ -112,15 +110,12 @@ class DriveServiceTopology(ServiceTopology):
                 context="directory",
                 processor="yield_directory",
                 consumer=["drive_service"],
-                cache_entities=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=File,
                 context="file",
                 processor="yield_file",
                 consumer=["drive_service", "directory"],
-                use_cache=True,
             ),
         ],
         children=[],
@@ -141,15 +136,12 @@ class DriveServiceTopology(ServiceTopology):
                 context="spreadsheet",
                 processor="yield_spreadsheet",
                 consumer=["drive_service"],
-                cache_entities=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=Worksheet,
                 context="worksheet",
                 processor="yield_worksheet",
                 consumer=["drive_service", "spreadsheet"],
-                use_cache=True,
             ),
         ],
         children=[],
@@ -171,10 +163,10 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     source_config: DriveServiceMetadataPipeline
     config: WorkflowSource
-    directory_source_state: Set = set()
-    file_source_state: Set = set()
-    spreadsheet_source_state: Set = set()
-    worksheet_source_state: Set = set()
+    directory_source_state: Set = set()  # noqa: RUF012, UP006
+    file_source_state: Set = set()  # noqa: RUF012, UP006
+    spreadsheet_source_state: Set = set()  # noqa: RUF012, UP006
+    worksheet_source_state: Set = set()  # noqa: RUF012, UP006
 
     # Big union of types we want to fetch dynamically
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
@@ -335,7 +327,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     # Utility methods for tags and FQN handling
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
+    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Pick up the tags registered in the context
         searching by entity FQN
@@ -352,7 +344,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                     tag_labels.append(tag_label)
         return tag_labels or None
 
-    def get_directory_tag_labels(self, directory_name: str) -> Optional[List[TagLabel]]:
+    def get_directory_tag_labels(self, directory_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get directory tags
         This will only get executed if the tags context
@@ -366,7 +358,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=directory_fqn)
 
-    def get_file_tag_labels(self, file_name: str) -> Optional[List[TagLabel]]:
+    def get_file_tag_labels(self, file_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get file tags
         This will only get executed if the tags context
@@ -381,7 +373,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=file_fqn)
 
-    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> Optional[List[TagLabel]]:
+    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get spreadsheet tags
         This will only get executed if the tags context
@@ -395,7 +387,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=spreadsheet_fqn)
 
-    def get_worksheet_tag_labels(self, worksheet_name: str) -> Optional[List[TagLabel]]:
+    def get_worksheet_tag_labels(self, worksheet_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Method to get worksheet tags
         This will only get executed if the tags context
@@ -412,7 +404,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     # Record registration methods for tracking processed entities
 
-    @calculate_execution_time()
     def register_record_directory(self, directory_request: CreateDirectoryRequest) -> None:
         """
         Mark the directory record as scanned and update the directory_source_state
@@ -425,7 +416,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         self.directory_source_state.add(directory_fqn)
 
-    @calculate_execution_time()
     def register_record_file(self, file_request: CreateFileRequest) -> None:
         """
         Mark the file record as scanned and update the file_source_state
@@ -439,7 +429,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         self.file_source_state.add(file_fqn)
 
-    @calculate_execution_time()
     def register_record_spreadsheet(self, spreadsheet_request: CreateSpreadsheetRequest) -> None:
         """
         Mark the spreadsheet record as scanned and update the spreadsheet_source_state
@@ -452,7 +441,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         self.spreadsheet_source_state.add(spreadsheet_fqn)
 
-    @calculate_execution_time()
     def register_record_worksheet(self, worksheet_request: CreateWorksheetRequest) -> None:
         """
         Mark the worksheet record as scanned and update the worksheet_source_state
@@ -491,8 +479,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     # Owner reference methods
 
-    @calculate_execution_time()
-    def get_owner_ref(self, entity_name: str) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, entity_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the entity owners
         """
@@ -520,7 +507,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Directory,
                 entity_source_state=self.directory_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDirectories,
+                recursive=self.source_config.markDeletedDirectories,
                 params={"service": self.context.get().drive_service},
             )
 
@@ -540,7 +527,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=File,
                 entity_source_state=self.file_source_state,
-                mark_deleted_entity=self.source_config.markDeletedFiles,
+                recursive=self.source_config.markDeletedFiles,
                 params=params,
             )
 
@@ -556,7 +543,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Spreadsheet,
                 entity_source_state=self.spreadsheet_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSpreadsheets,
+                recursive=self.source_config.markDeletedSpreadsheets,
                 params={"service": self.context.get().drive_service},
             )
 
@@ -585,7 +572,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 metadata=self.metadata,
                 entity_type=Worksheet,
                 entity_source_state=self.worksheet_source_state,
-                mark_deleted_entity=self.source_config.markDeletedWorksheets,
+                recursive=self.source_config.markDeletedWorksheets,
                 params={"spreadsheet": spreadsheet_fqn},
             )
 

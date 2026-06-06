@@ -352,6 +352,8 @@ public class CronOMJobReconciler
     copy.setResources(source.getResources());
     copy.setNodeSelector(
         source.getNodeSelector() != null ? new HashMap<>(source.getNodeSelector()) : null);
+    copy.setTolerations(
+        source.getTolerations() != null ? new ArrayList<>(source.getTolerations()) : null);
     copy.setSecurityContext(source.getSecurityContext());
     copy.setLabels(source.getLabels() != null ? new HashMap<>(source.getLabels()) : null);
     copy.setAnnotations(

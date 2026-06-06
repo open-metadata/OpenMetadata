@@ -47,6 +47,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_ACCESS_HISTORY_PROBE,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
@@ -65,7 +66,7 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnectionConfig
     engine: Any
-    database_name: Optional[str] = None
+    database_name: Optional[str] = None  # noqa: UP045
 
 
 def _init_database(engine_wrapper: SnowflakeEngineWrapper):
@@ -114,6 +115,28 @@ def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
     )
 
 
+def probe_access_history_available(engine: Engine, account_usage_schema: str) -> bool:
+    """
+    Check whether the configured Snowflake role can read ACCOUNT_USAGE.ACCESS_HISTORY.
+
+    Required for the ACCESS_HISTORY-based lineage path. Standard Edition accounts
+    or roles without `IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE` will fail this
+    probe and the caller should fall back to the legacy parser path.
+
+    Logs failures at INFO (not WARNING) — Standard Edition is a legitimate state.
+    """
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+    except Exception as exc:
+        logger.info(
+            f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "
+            f"Ensure the role has IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE and the account is Enterprise+."
+        )
+        return False
+    return True
+
+
 class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         """
@@ -155,7 +178,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:
+    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:  # noqa: UP045
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -182,10 +205,10 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            return pkb
+            return pkb  # noqa: RET504
         return None
 
-    def _get_client_session_keep_alive(self) -> Optional[bool]:
+    def _get_client_session_keep_alive(self) -> Optional[bool]:  # noqa: UP045
         connection = self.service_connection
         if connection.clientSessionKeepAlive:
             return connection.clientSessionKeepAlive
@@ -205,6 +228,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if keep_alive := self._get_client_session_keep_alive():
             connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
 
+        # Bound the Snowflake socket so a silently-severed TCP connection
+        # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
+        # error within 10 minutes instead of hanging the worker indefinitely.
+        # User-supplied connectionArguments win via setdefault.
+        if connection.connectionArguments.root is not None:
+            connection.connectionArguments.root.setdefault("network_timeout", 600)
+
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
@@ -217,8 +247,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -262,6 +292,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             "GetQueries": partial(
                 test_query,
                 statement=SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema),
+                engine=self.client,
+            ),
+            "GetAccessHistory": partial(
+                test_query,
+                statement=SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                    account_usage=self.service_connection.accountUsageSchema
+                ),
                 engine=self.client,
             ),
             "GetTags": partial(

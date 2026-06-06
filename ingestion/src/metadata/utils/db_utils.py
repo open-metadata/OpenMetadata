@@ -15,7 +15,7 @@ Helpers module for db sources
 
 import time
 import traceback
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -36,7 +36,6 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -49,15 +48,14 @@ def get_host_from_host_port(uri: str) -> str:
     if uri is like "localhost:9000"
     then return the host "localhost"
     """
-    return uri.split(":")[0]
+    return uri.split(":")[0]  # noqa: PLC0207
 
 
 #  pylint: disable=too-many-locals
-@calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],
+    service_names: Union[str, List[str]],  # noqa: UP006, UP007
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,

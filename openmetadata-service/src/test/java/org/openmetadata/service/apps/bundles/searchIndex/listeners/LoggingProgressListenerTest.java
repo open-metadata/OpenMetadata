@@ -36,8 +36,6 @@ class LoggingProgressListenerTest {
             .maxConcurrentRequests(8)
             .payloadSize(2L * 1024 * 1024)
             .autoTune(true)
-            .recreateIndex(true)
-            .useDistributedIndexing(true)
             .build();
 
     listener.onJobConfigured(context, config);
@@ -53,8 +51,7 @@ class LoggingProgressListenerTest {
     assertEquals("8", details.get("Max Concurrent Requests"));
     assertEquals("2.0 MB", details.get("Payload Size"));
     assertEquals("Enabled", details.get("Auto-tune"));
-    assertEquals("Yes", details.get("Recreate Index"));
-    assertEquals("Yes", details.get("Distributed Mode"));
+    assertEquals("Staged indexes with alias promotion", details.get("Indexing Mode"));
   }
 
   @Test

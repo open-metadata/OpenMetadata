@@ -47,8 +47,8 @@ from metadata.ingestion.ometa.task_models import (
     TaskResolutionType,
 )
 
-from ..integration_base import generate_name, get_create_entity, get_create_service
-from .conftest import _safe_delete
+from ..integration_base import generate_name, get_create_entity, get_create_service  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def _create_bot(metadata: OpenMetadata) -> tuple[User, Bot]:
@@ -153,8 +153,7 @@ def _create_description_suggestion_task(metadata: OpenMetadata, table: Table, de
             description="Create a description suggestion task",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about=table.fullyQualifiedName.root,
-            aboutType="table",
+            about=f"<#E::table::{table.fullyQualifiedName.root}>",
             payload={
                 "suggestionType": "Description",
                 "fieldPath": "description",
@@ -172,8 +171,7 @@ def _create_tag_suggestion_task(metadata: OpenMetadata, table: Table, labels: li
             description="Create a tag suggestion task",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about=table.fullyQualifiedName.root,
-            aboutType="table",
+            about=f"<#E::table::{table.fullyQualifiedName.root}>",
             payload={
                 "suggestionType": "Tag",
                 "fieldPath": "tags",

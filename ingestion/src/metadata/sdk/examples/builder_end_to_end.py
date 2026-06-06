@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
 )
-from metadata.sdk import OpenMetadata, OpenMetadataConfig
+from metadata.sdk import configure
 from metadata.sdk.entities.database_services import DatabaseServices
 from metadata.sdk.entities.databases import Databases
 from metadata.sdk.entities.databaseschemas import DatabaseSchemas
@@ -57,26 +57,29 @@ logger = logging.getLogger(__name__)
 class DatabaseServiceBuilderPy:
     """Builder for creating database service requests."""
 
-    name_val: Optional[str] = None
-    description_val: Optional[str] = None
-    type_val: Optional[DatabaseServiceType] = None
-    connection_val: Optional[DatabaseConnection] = None
+    name_val: Optional[str] = None  # noqa: UP045
+    description_val: Optional[str] = None  # noqa: UP045
+    type_val: Optional[DatabaseServiceType] = None  # noqa: UP045
+    connection_val: Optional[DatabaseConnection] = None  # noqa: UP045
 
-    def name(self, name: str) -> "DatabaseServiceBuilderPy":
+    def name(self, name: str) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         self.name_val = name
         return self
 
-    def description(self, desc: str) -> "DatabaseServiceBuilderPy":
+    def description(self, desc: str) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         self.description_val = desc
         return self
 
-    def service_type(self, st: DatabaseServiceType) -> "DatabaseServiceBuilderPy":
+    def service_type(self, st: DatabaseServiceType) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         self.type_val = st
         return self
 
     def mysql_connection(
-        self, host_port: str, username: str, database: Optional[str] = None
-    ) -> "DatabaseServiceBuilderPy":
+        self,
+        host_port: str,
+        username: str,
+        database: Optional[str] = None,  # noqa: UP045
+    ) -> "DatabaseServiceBuilderPy":  # noqa: UP037
         """Configure a MySQL connection for the database service."""
         conn = DatabaseConnection(
             config=MysqlConnection(
@@ -103,6 +106,7 @@ class DatabaseServiceBuilderPy:
                 supportsUsageExtraction=None,
                 supportsLineageExtraction=None,
                 useSlowLogs=False,
+                queryHistoryTable=None,
             )
         )
         self.connection_val = conn
@@ -135,19 +139,19 @@ class DatabaseServiceBuilderPy:
 class DatabaseBuilderPy:
     """Builder for creating database requests."""
 
-    name_val: Optional[str] = None
-    description_val: Optional[str] = None
-    service_fqn_val: Optional[str] = None
+    name_val: Optional[str] = None  # noqa: UP045
+    description_val: Optional[str] = None  # noqa: UP045
+    service_fqn_val: Optional[str] = None  # noqa: UP045
 
-    def name(self, name: str) -> "DatabaseBuilderPy":
+    def name(self, name: str) -> "DatabaseBuilderPy":  # noqa: UP037
         self.name_val = name
         return self
 
-    def description(self, desc: str) -> "DatabaseBuilderPy":
+    def description(self, desc: str) -> "DatabaseBuilderPy":  # noqa: UP037
         self.description_val = desc
         return self
 
-    def in_service(self, service_fqn: str) -> "DatabaseBuilderPy":
+    def in_service(self, service_fqn: str) -> "DatabaseBuilderPy":  # noqa: UP037
         self.service_fqn_val = service_fqn
         return self
 
@@ -181,19 +185,19 @@ class DatabaseBuilderPy:
 class SchemaBuilderPy:
     """Builder for creating database schema requests."""
 
-    name_val: Optional[str] = None
-    description_val: Optional[str] = None
-    database_fqn_val: Optional[str] = None
+    name_val: Optional[str] = None  # noqa: UP045
+    description_val: Optional[str] = None  # noqa: UP045
+    database_fqn_val: Optional[str] = None  # noqa: UP045
 
-    def name(self, name: str) -> "SchemaBuilderPy":
+    def name(self, name: str) -> "SchemaBuilderPy":  # noqa: UP037
         self.name_val = name
         return self
 
-    def description(self, desc: str) -> "SchemaBuilderPy":
+    def description(self, desc: str) -> "SchemaBuilderPy":  # noqa: UP037
         self.description_val = desc
         return self
 
-    def in_database(self, database_fqn: str) -> "SchemaBuilderPy":
+    def in_database(self, database_fqn: str) -> "SchemaBuilderPy":  # noqa: UP037
         self.database_fqn_val = database_fqn
         return self
 
@@ -226,24 +230,24 @@ class SchemaBuilderPy:
 class TableBuilderPy:
     """Builder for creating table requests."""
 
-    name_val: Optional[str] = None
-    description_val: Optional[str] = None
-    schema_fqn_val: Optional[str] = None
-    columns_val: List[Column] = field(default_factory=list)
+    name_val: Optional[str] = None  # noqa: UP045
+    description_val: Optional[str] = None  # noqa: UP045
+    schema_fqn_val: Optional[str] = None  # noqa: UP045
+    columns_val: List[Column] = field(default_factory=list)  # noqa: UP006
 
-    def name(self, name: str) -> "TableBuilderPy":
+    def name(self, name: str) -> "TableBuilderPy":  # noqa: UP037
         self.name_val = name
         return self
 
-    def description(self, desc: str) -> "TableBuilderPy":
+    def description(self, desc: str) -> "TableBuilderPy":  # noqa: UP037
         self.description_val = desc
         return self
 
-    def in_schema(self, schema_fqn: str) -> "TableBuilderPy":
+    def in_schema(self, schema_fqn: str) -> "TableBuilderPy":  # noqa: UP037
         self.schema_fqn_val = schema_fqn
         return self
 
-    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":
+    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":  # noqa: UP037, UP045
         """Add a column to the table."""
         col = Column(
             name=ColumnName(name),
@@ -306,12 +310,11 @@ class TableBuilderPy:
 
 def main() -> None:
     """Run the builder-style end-to-end example."""
-    config = OpenMetadataConfig(
-        server_url="http://localhost:8585",
+    configure(
+        host="http://localhost:8585/api",
         jwt_token="YOUR_JWT_OR_API_KEY",
         verify_ssl=False,
     )
-    _ = OpenMetadata.initialize(config)
 
     # 1) Service (builder)
     service = (

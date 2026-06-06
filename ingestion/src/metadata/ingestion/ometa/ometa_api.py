@@ -19,7 +19,7 @@ import traceback
 from collections import OrderedDict
 from collections.abc import Generator
 from itertools import chain
-from typing import (
+from typing import (  # noqa: UP035
     Any,
     Dict,
     Generator,  # noqa: F811
@@ -114,20 +114,20 @@ T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
 
 
-class MissingEntityTypeException(Exception):
+class MissingEntityTypeException(Exception):  # noqa: N818
     """
     We are receiving an Entity Type[T] not covered
     in our suffix generation list
     """
 
 
-class InvalidEntityException(Exception):
+class InvalidEntityException(Exception):  # noqa: N818
     """
     We receive an entity not supported in an operation
     """
 
 
-class EmptyPayloadException(Exception):
+class EmptyPayloadException(Exception):  # noqa: N818
     """
     Raise when receiving no data, even if no exception
     during the API call is received
@@ -178,7 +178,7 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
                 if hasattr(field_annotation, "model_fields"):
                     normalized_rest = self._normalize_env_key_recursive(remaining_key, field_annotation.model_fields)
                     return f"{field_name}{self.env_nested_delimiter}{normalized_rest}"
-                else:
+                else:  # noqa: RET505
                     return f"{field_name}{self.env_nested_delimiter}{remaining_key}"
 
         return key
@@ -309,7 +309,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
-        additional_client_config_arguments: Optional[Dict[str, Any]] = None,
+        additional_client_config_arguments: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
     ):
         self.config = config
 
@@ -324,7 +324,7 @@ class OpenMetadata(
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
-        extra_headers: Optional[dict[str, str]] = None
+        extra_headers: Optional[dict[str, str]] = None  # noqa: UP045
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
 
@@ -370,7 +370,7 @@ class OpenMetadata(
         return cls(settings.connection)
 
     @staticmethod
-    def get_suffix(entity: Type[T]) -> str:
+    def get_suffix(entity: Type[T]) -> str:  # noqa: UP006
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
@@ -382,7 +382,7 @@ class OpenMetadata(
 
         return route
 
-    def get_module_path(self, entity: Type[T]) -> Optional[str]:
+    def get_module_path(self, entity: Type[T]) -> Optional[str]:  # noqa: UP006, UP045
         """
         Based on the entity, return the module path
         it is found inside generated
@@ -397,7 +397,7 @@ class OpenMetadata(
             return "events"
         return entity.__module__.split(".")[-2]
 
-    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
+    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:  # noqa: UP006
         """
         imports and returns the Create Type from an Entity Type T.
         We are following the expected path structure to import
@@ -409,10 +409,10 @@ class OpenMetadata(
 
         class_name = f"Create{entity.__name__}Request"
         create_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
-        return create_class
+        return create_class  # noqa: RET504
 
     @staticmethod
-    def update_file_name(create: Type[C], file_name: str) -> str:
+    def update_file_name(create: Type[C], file_name: str) -> str:  # noqa: UP006
         """
         Update the filename for services and schemas
         """
@@ -431,7 +431,7 @@ class OpenMetadata(
 
         return file_name
 
-    def get_entity_from_create(self, create: Type[C]) -> Type[T]:
+    def get_entity_from_create(self, create: Type[C]) -> Type[T]:  # noqa: UP006
         """
         Inversely, import the Entity type based on the create Entity class
         """
@@ -471,7 +471,7 @@ class OpenMetadata(
             )
         )
         entity_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
-        return entity_class
+        return entity_class  # noqa: RET504
 
     def _create(self, data: C, method: str) -> T:
         """
@@ -523,12 +523,12 @@ class OpenMetadata(
 
     def get_by_name(
         self,
-        entity: Type[T],
-        fqn: Union[str, FullyQualifiedEntityName],
-        fields: Optional[List[str]] = None,
+        entity: Type[T],  # noqa: UP006
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
         nullable: bool = True,
-        include: Optional[str] = None,
-    ) -> Optional[T]:
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         Return entity by name or None
         """
@@ -543,11 +543,11 @@ class OpenMetadata(
 
     def get_by_id(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-        fields: Optional[List[str]] = None,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
         nullable: bool = True,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Return entity by ID or None
         """
@@ -560,12 +560,12 @@ class OpenMetadata(
 
     def _get(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         path: str,
-        fields: Optional[List[str]] = None,
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
         nullable: bool = True,
-        include: Optional[str] = None,
-    ) -> Optional[T]:
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         Generic GET operation for an entity
         :param entity: Entity Class
@@ -596,9 +596,9 @@ class OpenMetadata(
                 err.status_code,
                 err,
             )
-            raise err
+            raise err  # noqa: TRY201
 
-    def get_entity_reference(self, entity: Type[T], fqn: str) -> Optional[EntityReference]:
+    def get_entity_reference(self, entity: Type[T], fqn: str) -> Optional[EntityReference]:  # noqa: UP006, UP045
         """
         Helper method to obtain an EntityReference from
         a FQN and the Entity class.
@@ -621,14 +621,14 @@ class OpenMetadata(
     # pylint: disable=too-many-locals, too-many-arguments
     def list_entities(
         self,
-        entity: Type[T],
-        fields: Optional[List[str]] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
+        entity: Type[T],  # noqa: UP006
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        after: Optional[str] = None,  # noqa: UP045
+        before: Optional[str] = None,  # noqa: UP045
         limit: int = 100,
-        params: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
         skip_on_failure: bool = False,
-        include: Optional[str] = None,
+        include: Optional[str] = None,  # noqa: UP045
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -661,18 +661,18 @@ class OpenMetadata(
             entities = [entity(**elmt) for elmt in resp["data"]]
 
         total = resp["paging"]["total"]
-        after = resp["paging"]["after"] if "after" in resp["paging"] else None
-        before = resp["paging"]["before"] if "before" in resp["paging"] else None
+        after = resp["paging"]["after"] if "after" in resp["paging"] else None  # noqa: SIM401
+        before = resp["paging"]["before"] if "before" in resp["paging"] else None  # noqa: SIM401
         return EntityList(entities=entities, total=total, after=after, before=before)
 
     def list_all_entities(
         self,
-        entity: Type[T],
-        fields: Optional[List[str]] = None,
+        entity: Type[T],  # noqa: UP006
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
         limit: int = 100,
-        params: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
         skip_on_failure: bool = False,
-        include: Optional[str] = None,
+        include: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -709,7 +709,7 @@ class OpenMetadata(
             yield from entity_list.entities
             after = entity_list.after
 
-    def list_versions(self, entity_id: Union[str, basic.Uuid], entity: Type[T]) -> EntityVersionHistory:
+    def list_versions(self, entity_id: Union[str, basic.Uuid], entity: Type[T]) -> EntityVersionHistory:  # noqa: UP006, UP007
         """
         Version history of an entity
         """
@@ -722,7 +722,7 @@ class OpenMetadata(
             return resp
         return EntityVersionHistory(**resp)
 
-    def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
+    def list_services(self, entity: Type[T]) -> List[EntityList[T]]:  # noqa: UP006
         """
         Service listing does not implement paging
         """
@@ -741,8 +741,8 @@ class OpenMetadata(
 
     def delete(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
         recursive: bool = False,
         hard_delete: bool = False,
     ) -> None:
@@ -760,11 +760,74 @@ class OpenMetadata(
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
+    def delete_stale_entities(
+        self,
+        entity: Type[T],  # noqa: UP006
+        scope_params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+        live_fqns: Iterable[str],
+        recursive: bool = True,
+    ) -> Optional[BulkOperationResult]:  # noqa: UP045
+        """
+        Ask the server to soft-delete entities of `entity` within a scope that were not reported
+        by the connector in the current run.
+
+        `scope_params` is a single-key dict such as {"database": fqn}, {"databaseSchema": fqn} or
+        {"service": fqn}: the key is the scope entity type and the value is the scope FQN. The
+        connector sends `live_fqns` (the FQNs it produced this run); the server soft-deletes the
+        in-scope entities that are not in that set.
+
+        Returns the BulkOperationResult, or None when the server does not expose the endpoint
+        (older server) so the caller can fall back to the legacy paginate-and-diff path.
+        """
+        if not scope_params:
+            raise ValueError("delete_stale_entities requires a scope, e.g. {'database': fqn}")
+
+        scope_entity_type, scope_fqn = next(iter(scope_params.items()))
+        request = {
+            "scopeFqn": scope_fqn,
+            "scopeEntityType": scope_entity_type,
+            "seenFqns": list(live_fqns),
+            "recursive": recursive,
+        }
+        url = f"{self.get_suffix(entity)}/deleteStale"
+        try:
+            resp = self.client.put(url, json=request)
+        except APIError as err:
+            if err.status_code == 404:
+                logger.debug(
+                    "deleteStale endpoint unavailable for %s; falling back to legacy delete",
+                    entity.__name__,
+                )
+                return None
+            raise
+        return BulkOperationResult.model_validate(resp) if resp else None
+
+    def delete_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async delete.
+
+        Issues ``DELETE /<entity>/async/{id}?recursive=...&hardDelete=...`` (the dedicated
+        async-delete endpoint defined by ``EntityResource.deleteByIdAsync``) and returns
+        the 202 payload ``{"jobId": ..., "message": ...}``. The actual cascade runs on the
+        server's executor so ingestion can avoid blocking on large hierarchies. Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/async/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        response = self.client.delete(url)
+        return response if isinstance(response, dict) else None
+
     def restore(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-    ) -> Optional[T]:
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
         """
         API call to restore a soft-deleted entity from entity ID
 
@@ -794,7 +857,24 @@ class OpenMetadata(
             )
             return None
 
-    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
+    def restore_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async restore.
+
+        Issues ``PUT /<entity>/restore?async=true`` and returns the 202 payload
+        ``{"jobId": ..., "message": ...}``. Use this when restoring entities with large
+        subtrees so ingestion doesn't block on the cascade (issue #4003). Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/restore?async=true"
+        data = {"id": model_str(entity_id)}
+        response = self.client.put(url, json=data)
+        return response if isinstance(response, dict) else None
+
+    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:  # noqa: UP006, UP007
         """
         Compute an entity usage percentile
         """
@@ -802,7 +882,7 @@ class OpenMetadata(
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
 
-    def _group_entities_by_type(self, entities: List[Type[T]]) -> Dict[Type[T], List[Type[T]]]:
+    def _group_entities_by_type(self, entities: List[Type[T]]) -> Dict[Type[T], List[Type[T]]]:  # noqa: UP006
         """Group entities by type so we can process them in the correct order when
         creating the entities from bulk API.
 
@@ -818,7 +898,7 @@ class OpenMetadata(
             ordered by hierarchy depth
         """
 
-        grouped: Dict[Type[T], List[Type[T]]] = {}
+        grouped: Dict[Type[T], List[Type[T]]] = {}  # noqa: UP006
 
         for entity in entities:
             entity_class = type(entity)
@@ -835,14 +915,22 @@ class OpenMetadata(
             )
         )
 
-        return sorted_grouped
+        return sorted_grouped  # noqa: RET504
 
-    def _execute_bulk_operation(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:
+    def _execute_bulk_operation(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
         """Execute a bulk operation for a list of entities.
 
         Args:
             entities (List[Type[T]]): List of entities to execute the bulk operation for
             use_async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
 
         Returns:
             BulkOperationResult: Result containing success/failure details
@@ -850,7 +938,7 @@ class OpenMetadata(
         type_ = type(entities[0])
         data: list[str] = [entity.model_dump(mode="json", exclude_unset=True, exclude_none=True) for entity in entities]
         url = f"{self.get_suffix(type_)}/bulk"
-        url += f"?async={str(use_async).lower()}"
+        url += f"?async={str(use_async).lower()}&overrideMetadata={str(override_metadata).lower()}"
         try:
             resp = self.client.put(url, json=data)
         except Exception as exc:
@@ -870,12 +958,20 @@ class OpenMetadata(
             )
         return BulkOperationResult(**resp)
 
-    def bulk_create_or_update(self, entities: List[Type[T]], use_async: bool = False) -> BulkOperationResult:
+    def bulk_create_or_update(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
         """Bulk create or update (PUT) multiple entities in a single API call.
 
         Args:
             entities (List[Type[T]]): List of entities to create or update
             async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
 
         Returns:
             BulkOperationResult: Result containing success/failure details
@@ -892,14 +988,14 @@ class OpenMetadata(
         type_idx = OrderedDict.fromkeys(map(type, entities))
         if len(type_idx) > 1:
             grouped = self._group_entities_by_type(entities)
-            for _, entities in grouped.items():
+            for _, entities in grouped.items():  # noqa: PERF102, PLR1704
                 try:
-                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
                 except Exception as exc:
                     logger.debug("Failed to execute bulk operation: %s", exc)
                     logger.debug(traceback.format_exc())
         else:
-            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
 
         failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
         return BulkOperationResult(

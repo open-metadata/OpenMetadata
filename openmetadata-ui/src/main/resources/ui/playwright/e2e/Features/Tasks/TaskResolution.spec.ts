@@ -63,8 +63,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -152,8 +151,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
 
     const taskResponse = await apiContext.post('/api/v1/tasks', {
       data: {
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [assigneeUser.responseData.name],
@@ -215,8 +213,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     try {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: tableFqn,
-          aboutType: 'table',
+          about: `<#E::table::${tableFqn}>`,
           type: 'DataQualityReview',
           category: 'Review',
           assignees: [createdByName],
@@ -317,8 +314,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [team.responseData.name],
@@ -446,8 +442,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to user without edit permission
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithoutEditPermission.responseData.name],
@@ -494,8 +489,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to owner (who has edit permission)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithEditPermission.responseData.name],
@@ -573,8 +567,7 @@ test.describe('Task Resolution - Close by Creator', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task Close - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           priority: 'Medium',

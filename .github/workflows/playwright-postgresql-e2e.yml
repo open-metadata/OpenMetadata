@@ -47,7 +47,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -101,6 +101,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: test
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
       matrix:

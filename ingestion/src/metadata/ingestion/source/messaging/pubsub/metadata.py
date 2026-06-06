@@ -13,7 +13,7 @@ Google Cloud Pub/Sub source ingestion
 """
 
 import traceback
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union  # noqa: UP035
 
 from google.api_core.exceptions import GoogleAPIError
 from google.protobuf.duration_pb2 import Duration
@@ -75,14 +75,14 @@ class PubsubSource(MessagingServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.pubsub = self.connection
         self.project_id = self.pubsub.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PubSubConnection = config.serviceConnection.root.config
         if not isinstance(connection, PubSubConnection):
@@ -168,7 +168,7 @@ class PubsubSource(MessagingServiceSource):
             kms_key_name=topic.kms_key_name if topic.kms_key_name else None,
         )
 
-    def _get_topic_subscriptions(self, topic_name: str) -> List[PubSubSubscription]:
+    def _get_topic_subscriptions(self, topic_name: str) -> List[PubSubSubscription]:  # noqa: UP006
         """
         Get all subscriptions for a topic
         """
@@ -204,13 +204,13 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to get subscription {sub_path}: {err}")
+                    logger.error(f"Failed to get subscription {sub_path}: {err}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to list subscriptions for {topic_name}: {err}")
+            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")
         return subscriptions
 
-    def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:
+    def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:  # noqa: UP045
         """
         Get schema information from Pub/Sub Schema Registry
         """
@@ -227,7 +227,7 @@ class PubsubSource(MessagingServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema {schema_name}: {err}")
+            logger.error(f"Failed to get schema {schema_name}: {err}")
         return None
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
@@ -289,7 +289,7 @@ class PubsubSource(MessagingServiceSource):
                 )
             )
 
-    def _parse_retention(self, duration: Optional[Union[Duration, str]]) -> float:
+    def _parse_retention(self, duration: Optional[Union[Duration, str]]) -> float:  # noqa: UP007, UP045
         """
         Parse retention duration to milliseconds.
 
@@ -309,7 +309,7 @@ class PubsubSource(MessagingServiceSource):
 
             duration_str = str(duration)
             if "seconds" in duration_str:
-                seconds = float(duration_str.split()[0])
+                seconds = float(duration_str.split()[0])  # noqa: PLC0207
                 return seconds * 1000
             if duration_str.endswith("s"):
                 return float(duration_str[:-1]) * 1000
@@ -327,7 +327,7 @@ class PubsubSource(MessagingServiceSource):
         }
         return mapping.get(pubsub_type, SchemaType.Other)
 
-    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> Optional[List]:
+    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> Optional[List]:  # noqa: UP006, UP045
         """
         Parse schema text using the schema parser registry.
 
@@ -345,7 +345,7 @@ class PubsubSource(MessagingServiceSource):
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse schema for {topic_name}: {exc}")
+            logger.error(f"Failed to parse schema for {topic_name}: {exc}")
         return None
 
     def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:

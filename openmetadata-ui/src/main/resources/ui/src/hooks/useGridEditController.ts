@@ -13,7 +13,7 @@
 
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Column } from 'react-data-grid';
+import type { Column } from 'react-data-grid';
 
 export type Range = {
   startRow: number;
@@ -838,11 +838,31 @@ export function useGridEditController({
   }, [gridContainer, getCellIndices]);
 
   useEffect(() => {
-    if (isEmpty(dataSource)) {
+    if (isEmpty(dataSource) || !gridContainer) {
       return;
     }
-    focusFirstCell();
-  }, [isEmpty(dataSource), focusFirstCell]);
+
+    // The grid is lazy-loaded via <LazyDataGrid> (React.lazy/Suspense), so when this effect
+    // first fires the {@code gridContainer} ref points at the wrapper div but the
+    // {@code .rdg-cell} children haven't been mounted yet — focusFirstCell would no-op.
+    // Watch the container for the first cell to appear and fire focus then.
+    const firstCellSelector = '.rdg-cell[role="gridcell"]';
+    if (gridContainer.querySelector(firstCellSelector)) {
+      focusFirstCell();
+
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (gridContainer.querySelector(firstCellSelector)) {
+        focusFirstCell();
+        observer.disconnect();
+      }
+    });
+    observer.observe(gridContainer, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [isEmpty(dataSource), focusFirstCell, gridContainer]);
 
   return {
     selectedRange,

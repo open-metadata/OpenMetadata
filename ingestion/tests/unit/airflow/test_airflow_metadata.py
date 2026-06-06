@@ -283,23 +283,22 @@ class TestTaskDetailAccess:
         mock_session.query.return_value.first.return_value = first_return_value
         return mock_session
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", True)
-    def test_airflow3_queries_dag_id_only(self):
-        """Airflow 3.x: data column is NULL; must fall back to dag_id query without error."""
+    def test_compressed_dag_falls_back_to_dag_id_query(self):
+        """Data column is NULL (COMPRESS_SERIALIZED_DAGS enabled); must fall back to dag_id query."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )
 
         dag_id_row = ("my_dag",)
-        session = self._make_session(first_return_value=dag_id_row)
+        mock_session = MagicMock()
+        mock_session.query.return_value.first.side_effect = [(None,), dag_id_row]
 
-        result = _test_task_detail_access(session)
+        result = _test_task_detail_access(mock_session)
 
         assert result == dag_id_row
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", False)
     def test_airflow2_returns_tasks_when_data_is_valid(self):
-        """Airflow 2.x: extracts and returns the task list from serialized DAG data."""
+        """Uncompressed DAG: extracts and returns the task list from serialized DAG data."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )
@@ -312,9 +311,8 @@ class TestTaskDetailAccess:
 
         assert result == tasks_payload
 
-    @patch("metadata.ingestion.source.pipeline.airflow.connection.IS_AIRFLOW_3", False)
     def test_airflow2_returns_none_when_table_empty(self):
-        """Airflow 2.x: empty serialized_dag table returns None without raising."""
+        """Empty serialized_dag table returns None without raising."""
         from metadata.ingestion.source.pipeline.airflow.connection import (
             _test_task_detail_access,
         )

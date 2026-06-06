@@ -59,7 +59,7 @@ class Base(DeclarativeBase):
     pass
 
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -92,7 +92,7 @@ class ProfilerTest(TestCase):
 
     import pandas as pd
 
-    col_names = [
+    col_names = [  # noqa: RUF012
         "name",
         "fullname",
         "nickname",
@@ -105,10 +105,10 @@ class ProfilerTest(TestCase):
         "array",
     ]
 
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: PTH100, PTH120
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)
-    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)  # noqa: PTH118
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)  # noqa: PTH118
     table_entity = Table(
         id=uuid4(),
         name="user",
@@ -164,7 +164,7 @@ class ProfilerTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUp(cls, mock_get_connection, *_) -> None:
@@ -398,7 +398,7 @@ class ProfilerTest(TestCase):
             )
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             profiler._check_profile_and_handle(
                 CreateTableProfileRequest(
                     tableProfile=TableProfile(

@@ -14,10 +14,10 @@ Base class for ingesting Object Storage services
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -117,7 +117,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -140,7 +139,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
-                use_cache=True,
             ),
         ],
     )
@@ -160,9 +158,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
-    container_source_state: Set = set()
+    container_source_state: Set = set()  # noqa: RUF012, UP006
 
-    global_manifest: Optional[ManifestMetadataConfig]
+    global_manifest: Optional[ManifestMetadataConfig]  # noqa: UP045
 
     @retry_with_docker_host()
     def __init__(
@@ -182,13 +180,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
         # Try to get the global manifest
-        self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()
+        self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()  # noqa: UP045
 
     @property
     def name(self) -> str:
         return self.service_connection.type.name
 
-    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
+    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:  # noqa: UP045
         if self.source_config.storageMetadataConfigSource and not isinstance(
             self.source_config.storageMetadataConfigSource,
             NoMetadataConfigurationSource,
@@ -205,9 +203,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Override per provider (S3/GCS/Azure). Default returns None so the
         resolution logic falls back to the next source.
         """
-        return None
+        return None  # noqa: RET501
 
-    def _parsed_default_manifest(self) -> Optional[ManifestMetadataConfig]:
+    def _parsed_default_manifest(self) -> Optional[ManifestMetadataConfig]:  # noqa: UP045
         """Parse the ``defaultManifest`` JSON string from the pipeline
         config. Cached on first use; returns ``None`` if unset or invalid.
 
@@ -221,7 +219,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             return self._default_manifest_cache
 
         raw = getattr(self.source_config, "defaultManifest", None)
-        parsed: Optional[ManifestMetadataConfig] = None
+        parsed: Optional[ManifestMetadataConfig] = None  # noqa: UP045
         if raw and isinstance(raw, str) and raw.strip():
             try:
                 payload = json.loads(raw)
@@ -254,7 +252,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self._default_manifest_cache = parsed
         return parsed
 
-    def _resolve_manifest_entries(self, bucket_name: str) -> List[MetadataEntry]:
+    def _resolve_manifest_entries(self, bucket_name: str) -> List[MetadataEntry]:  # noqa: UP006
         """Resolve manifest entries for a bucket using this precedence:
 
         1. Global manifest (``storageMetadataConfigSource``), filtered to
@@ -351,7 +349,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                mark_deleted_entity=self.source_config.markDeletedContainers,
+                recursive=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 
@@ -361,7 +359,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     @staticmethod
     def _manifest_entries_to_metadata_entries_by_container(
         container_name: str, manifest: ManifestMetadataConfig
-    ) -> List[MetadataEntry]:
+    ) -> List[MetadataEntry]:  # noqa: UP006
         """
         Convert manifest entries (which have an extra bucket property) to bucket-level metadata entries, filtered by
         a given bucket. Wildcard-related fields are preserved so downstream
@@ -388,7 +386,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         ]
 
     @staticmethod
-    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:
+    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:  # noqa: UP045
         """
         Return a prefix if we have structure data to read
         """
@@ -409,7 +407,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         client: Any,
         metadata_entry: MetadataEntry,
         session: Any = None,
-    ) -> List[Column]:
+    ) -> List[Column]:  # noqa: UP006
         """Extract Column related metadata from s3"""
         data_structure_details, raw_data = fetch_dataframe_first_chunk(
             config_source=config_source,
@@ -435,8 +433,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _partition_columns_to_table_columns(
-        partition_columns: Optional[List[PartitionColumn]],
-    ) -> List[TableColumn]:
+        partition_columns: Optional[List[PartitionColumn]],  # noqa: UP006, UP045
+    ) -> List[TableColumn]:  # noqa: UP006
         """Convert lightweight manifest PartitionColumn entries into full
         table Column objects expected by ContainerDataModel."""
         if not partition_columns:
@@ -459,7 +457,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
         session: Any = None,
-    ) -> Optional[List[Column]]:
+    ) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
             container_name,
@@ -472,7 +470,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         partition_cols = self._partition_columns_to_table_columns(metadata_entry.partitionColumns)
         return partition_cols + (extracted_cols or [])
 
-    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
+    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:  # noqa: UP006
         """List (key, size_bytes) pairs for files under prefix.
 
         Must be overridden by each provider to enable glob-style
@@ -504,7 +502,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         exclude_paths = set(entry.excludePaths) if entry.excludePaths is not None else DEFAULT_EXCLUDE_PATHS
         exclude_regexes = [pattern_to_regex(ep) for ep in (entry.excludePatterns or [])]
 
-        matched: List[Tuple[str, int]] = []
+        matched: List[Tuple[str, int]] = []  # noqa: UP006
         scanned = 0
         for key, size in self.list_keys(bucket_name, static_prefix):
             scanned += 1
@@ -599,7 +597,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 unstructuredData=False,
             )
 
-    def expand_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:
+    def expand_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:  # noqa: UP006
         """Expand all entries whose dataPath is a glob. Literal paths pass
         through. Returns a concrete list safe to iterate multiple times.
 
@@ -609,7 +607,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         processing. Failures are logged and reported to the workflow
         status so the user can see which entry went bad.
         """
-        result: List[MetadataEntry] = []
+        result: List[MetadataEntry] = []  # noqa: UP006
         for entry in entries:
             try:
                 result.extend(self.expand_entry(bucket_name, entry))
@@ -625,7 +623,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     self.status.warning(bucket_name, msg)
         return result
 
-    def filter_manifest_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:
+    def filter_manifest_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:  # noqa: UP006
         """Drop manifest entries whose ``dataPath`` should not become a
         container, applying:
 
@@ -642,11 +640,11 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Called by the source after ``expand_entries`` so both literal
         and expanded entries are filtered uniformly.
         """
-        from metadata.utils.filters import filter_by_container
-        from metadata.utils.storage_utils import is_excluded_artifact
+        from metadata.utils.filters import filter_by_container  # noqa: PLC0415
+        from metadata.utils.storage_utils import is_excluded_artifact  # noqa: PLC0415
 
         pattern = getattr(self.source_config, "containerFilterPattern", None)
-        filtered: List[MetadataEntry] = []
+        filtered: List[MetadataEntry] = []  # noqa: UP006
         for entry in entries:
             path = entry.dataPath or ""
             # 1. Default skip list — never let Spark artifacts become

@@ -24,7 +24,7 @@ import {
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';

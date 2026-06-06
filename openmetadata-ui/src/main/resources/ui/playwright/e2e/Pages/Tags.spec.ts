@@ -692,3 +692,123 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     await afterAction();
   }
 });
+
+test('Adds one tag and removes another in the same save preserves appliedBy on the kept tag', async ({
+  browser,
+  page,
+}) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  const fixtureTable = new TableClass();
+  const addedTag = new TagClass({ classification: classification.data.name });
+
+  try {
+    await fixtureTable.create(apiContext);
+    await addedTag.create(apiContext);
+
+    const keptTagFqn = tag.responseData.fullyQualifiedName;
+    const removedTagFqn = tag1.responseData.fullyQualifiedName;
+    const addedTagFqn = addedTag.responseData.fullyQualifiedName;
+
+    await fixtureTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags',
+          value: [
+            {
+              tagFQN: keptTagFqn,
+              source: 'Classification',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+            {
+              tagFQN: removedTagFqn,
+              source: 'Classification',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          ],
+        },
+      ],
+    });
+
+    const seededResponse = await apiContext.get(
+      `/api/v1/tables/${fixtureTable.entityResponseData?.id}?fields=tags`
+    );
+    const seededBody = await seededResponse.json();
+    const seededKept = (
+      seededBody.tags as { tagFQN: string; appliedBy?: string }[]
+    ).find((t) => t.tagFQN === keptTagFqn);
+
+    expect(seededKept?.appliedBy).toBeTruthy();
+
+    await fixtureTable.visitEntityPage(page);
+
+    const tagsPanel = page
+      .getByTestId('KnowledgePanel.Tags')
+      .getByTestId('tags-container');
+
+    await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
+    await expect(tagsPanel.getByTestId(`tag-${removedTagFqn}`)).toBeVisible();
+
+    await tagsPanel.getByTestId('edit-button').first().click();
+
+    await expect(page.locator('#tagsForm_tags')).toBeVisible();
+
+    await page
+      .getByTestId('tag-selector')
+      .getByTestId(`selected-tag-${removedTagFqn}`)
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    await page.locator('#tagsForm_tags').click();
+    await page.locator('#tagsForm_tags').fill(addedTag.data.name);
+
+    await expect(page.getByTestId(`tag-${addedTagFqn}`).first()).toBeVisible();
+    await page.getByTestId(`tag-${addedTagFqn}`).first().click();
+
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
+
+    const patchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tables/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    const response = await patchResponse;
+
+    expect(response.status()).toBe(200);
+
+    const patchedTable = await response.json();
+    const patchedTags = (patchedTable.tags ?? []) as {
+      tagFQN: string;
+      appliedBy?: string;
+    }[];
+    const patchedFqns = patchedTags.map((t) => t.tagFQN);
+
+    expect(patchedFqns).toContain(keptTagFqn);
+    expect(patchedFqns).toContain(addedTagFqn);
+    expect(patchedFqns).not.toContain(removedTagFqn);
+
+    const survivingTag = patchedTags.find((t) => t.tagFQN === keptTagFqn);
+
+    expect(survivingTag?.appliedBy).toBe(seededKept?.appliedBy);
+
+    await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
+    await expect(tagsPanel.getByTestId(`tag-${addedTagFqn}`)).toBeVisible();
+    await expect(
+      tagsPanel.getByTestId(`tag-${removedTagFqn}`)
+    ).not.toBeVisible();
+  } finally {
+    await addedTag.delete(apiContext);
+    await fixtureTable.delete(apiContext);
+    await afterAction();
+  }
+});

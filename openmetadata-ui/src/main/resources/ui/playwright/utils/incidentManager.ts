@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { getEncodedFqn } from '../../src/utils/StringsUtils';
+import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -42,10 +42,10 @@ export const acknowledgeTask = async (data: {
     page.locator(`[data-testid="status-badge-${testCase}"]`)
   ).toContainText('Failed');
 
-  await page
-    .locator(`[data-testid="${testCase}-status"] >> text=New`)
-    .waitFor();
-  await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText('New');
+  await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
@@ -53,9 +53,9 @@ export const acknowledgeTask = async (data: {
   const statusChangeResponse = waitForTaskResolveResponse(page);
   await page.click('#update-status-button');
   await statusChangeResponse;
-  await page
-    .locator(`[data-testid="${testCase}-status"] >> text=Ack`)
-    .waitFor();
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText('Ack');
 
   await expect(
     page.locator(
@@ -74,15 +74,13 @@ export const addAssigneeFromPopoverWidget = async (data: {
 
   if (testCaseName) {
     const incidentRow = page
-      .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+      .locator('tr')
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
       .first();
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
-    if (await editOwnerButton.isVisible().catch(() => false)) {
-      await editOwnerButton.click();
-    } else {
-      await incidentRow.locator('td').last().getByRole('button').click();
-    }
+    await expect(editOwnerButton).toBeVisible();
+    await editOwnerButton.click();
   } else if (await taskTabEditAssigneesButton.isVisible().catch(() => false)) {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
@@ -184,7 +182,7 @@ export const assignIncident = async (data: {
     .poll(
       async () => {
         const incidentRow = page
-          .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+          .getByTestId(`test-case-${testCaseName}`)
           .first();
         const incidentLink = page
           .getByRole('link', { name: testCaseName })

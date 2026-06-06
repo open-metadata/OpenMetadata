@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.service.Entity;
 
@@ -19,6 +20,13 @@ public class PipelineIndex implements DataAssetIndex {
   @Override
   public String getEntityTypeName() {
     return Entity.PIPELINE;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("tasks");
+    return java.util.Collections.unmodifiableSet(fields);
   }
 
   @Override

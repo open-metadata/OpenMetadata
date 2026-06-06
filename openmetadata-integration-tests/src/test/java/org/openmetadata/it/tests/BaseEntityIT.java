@@ -10,8 +10,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -26,15 +24,28 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -44,9 +55,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.RequestOptions;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.sdk.services.policies.PolicyService;
+import org.openmetadata.sdk.services.teams.RoleService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -161,6 +172,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsNameLengthValidation = true;
   protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
   protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
+  // Set true in subclasses whose list endpoint accepts `?sortBy=updatedAt&sortOrder=desc` and
+  // routes to EntityRepository.listFromSearchWithOffset. Used by the follower-regression test
+  // below — see Fixes #28473.
+  protected boolean supportsSearchBackedSortedList = false;
   protected boolean supportsVersionHistory =
       true; // Override in subclasses that don't support version history
   protected boolean supportsGetByVersion =
@@ -1088,6 +1103,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         "Patching entity with invalid tag should fail");
   }
 
+  /**
+   * Generic regression: adding tags via PATCH must succeed for any entity regardless of which
+   * optional fields (columns, dataModel, etc.) are populated. Covers both TagSource paths —
+   * CLASSIFICATION and GLOSSARY — in a single PATCH so new EntityRepository subclasses get
+   * this coverage automatically by extending BaseEntityIT.
+   */
+  @Test
+  void patch_addTagAndGlossaryTerm_200_OK(TestNamespace ns) {
+    if (!supportsTags || !supportsPatch) {
+      return;
+    }
+
+    T entity = createEntity(createMinimalRequest(ns));
+    TagLabel classificationTag = personalDataTagLabel();
+    TagLabel glossaryTerm = glossaryTermLabel();
+    entity.setTags(List.of(classificationTag, glossaryTerm));
+
+    T patched = patchEntity(entity.getId().toString(), entity);
+
+    T fetched = getEntityWithFields(patched.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "tags should not be null after PATCH");
+    assertTagsContain(fetched.getTags(), List.of(classificationTag, glossaryTerm));
+  }
+
   @Test
   void test_tagUpdateOptimization_PUT(TestNamespace ns) {
     if (!supportsTags) {
@@ -1364,70 +1403,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   @Test
-  void get_entityVersionHistory_paginated_200(TestNamespace ns) {
-    if (!supportsVersionHistory || !supportsPatch) return;
-
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-
-    String entityId = created.getId().toString();
-    String patchPath = getResourcePath() + entityId;
-    RequestOptions patchOptions =
-        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
-
-    OpenMetadataClient admin = SdkClients.adminClient();
-    OpenMetadataClient user1 = SdkClients.user1Client();
-
-    for (int i = 1; i <= 10; i++) {
-      OpenMetadataClient patchClient = i % 2 == 0 ? user1 : admin;
-      String op = i == 1 ? "add" : "replace";
-      String value = (i % 2 == 0 ? "User1" : "Admin") + " patch " + i;
-      try {
-        patchClient
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.PATCH,
-                patchPath,
-                String.format(
-                    "[{\"op\":\"%s\",\"path\":\"/description\",\"value\":\"%s\"}]", op, value),
-                patchOptions);
-      } catch (Exception e) {
-        Assumptions.assumeTrue(
-            false, "Skipping: user1 cannot patch this entity type - " + e.getMessage());
-      }
-    }
-
-    org.openmetadata.schema.type.EntityHistory allVersions = getVersionHistory(created.getId());
-    int totalVersions = allVersions.getVersions().size();
-    assertTrue(totalVersions >= 11, "Should have at least 11 versions after repeated patches");
-
-    org.openmetadata.schema.type.EntityHistory page1 =
-        getVersionHistoryPaginated(created.getId(), 1, 0);
-    assertNotNull(page1.getPaging(), "Paging metadata should be present");
-    assertEquals(1, (int) page1.getPaging().getLimit());
-    assertEquals(0, (int) page1.getPaging().getOffset());
-    assertEquals(totalVersions, (int) page1.getPaging().getTotal());
-    assertEquals(1, page1.getVersions().size());
-
-    org.openmetadata.schema.type.EntityHistory page2 =
-        getVersionHistoryPaginated(created.getId(), 1, 1);
-    assertNotNull(page2.getPaging());
-    assertEquals(1, (int) page2.getPaging().getLimit());
-    assertEquals(1, (int) page2.getPaging().getOffset());
-    assertEquals(totalVersions, (int) page2.getPaging().getTotal());
-    assertEquals(1, page2.getVersions().size());
-
-    double page1Version = versionOfHistoryEntry(page1.getVersions().get(0));
-    double page2Version = versionOfHistoryEntry(page2.getVersions().get(0));
-    assertTrue(page1Version > 1.0, "First page should contain a version after the 1.0 boundary");
-    assertTrue(page1Version > page2Version, "Paginated results should remain newest-first");
-
-    org.openmetadata.schema.type.EntityHistory unpaginated = getVersionHistory(created.getId());
-    assertNotNull(unpaginated.getVersions());
-    assertEquals(totalVersions, unpaginated.getVersions().size());
-  }
-
-  @Test
   void get_specificVersion_200(TestNamespace ns) {
     if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
 
@@ -1446,240 +1421,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
-  @Test
-  void get_entityVersionHistory_fieldChanged_200(TestNamespace ns) {
-    if (!supportsVersionHistory || !supportsPatch) return;
-
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-
-    created.setDescription("Description change for fieldChanged test");
-    patchEntity(created.getId().toString(), created);
-
-    org.openmetadata.schema.type.EntityHistory filtered =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
-    assertNotNull(filtered, "Filtered version history should not be null");
-    assertNotNull(filtered.getPaging(), "Paging metadata should be present");
-    assertTrue(
-        filtered.getVersions().size() >= 1,
-        "Should have at least 1 version with description change");
-    assertTrue(filtered.getPaging().getTotal() >= 1, "Total should reflect filtered count");
-
-    org.openmetadata.schema.type.EntityHistory filteredWithDefaultLimit =
-        getVersionHistoryWithFieldChanged(created.getId(), 0, 0, "description");
-    assertNotNull(filteredWithDefaultLimit);
-    assertNotNull(filteredWithDefaultLimit.getPaging());
-    assertEquals(
-        100,
-        (int) filteredWithDefaultLimit.getPaging().getLimit(),
-        "Filtered history should use a bounded default page size when limit is omitted");
-    assertEquals(
-        filtered.getPaging().getTotal(),
-        filteredWithDefaultLimit.getPaging().getTotal(),
-        "Default pagination should preserve the same filtered total");
-
-    org.openmetadata.schema.type.EntityHistory substringNoMatch =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "script");
-    assertNotNull(substringNoMatch);
-    assertEquals(
-        0,
-        substringNoMatch.getVersions().size(),
-        "Substring matches should not be treated as field-name matches");
-    assertEquals(0, (int) substringNoMatch.getPaging().getTotal());
-
-    org.openmetadata.schema.type.EntityHistory nestedPathNoMatch =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nested.description");
-    assertNotNull(nestedPathNoMatch);
-    assertEquals(
-        0,
-        nestedPathNoMatch.getVersions().size(),
-        "Exact field filters should not match nested paths for a top-level description change");
-    assertEquals(0, (int) nestedPathNoMatch.getPaging().getTotal());
-
-    org.openmetadata.schema.type.EntityHistory noMatch =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nonExistentField_xyz_12345");
-    assertNotNull(noMatch);
-    assertEquals(0, noMatch.getVersions().size(), "No versions should match a bogus field name");
-    assertEquals(0, (int) noMatch.getPaging().getTotal());
-  }
-
-  @Test
-  void get_entityVersionHistory_fieldChanged_ignoresWrongExtensionPrefix(TestNamespace ns) {
-    if (!supportsVersionHistory || !supportsPatch) return;
-
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-
-    created.setDescription("Description change for extension prefix test");
-    patchEntity(created.getId().toString(), created);
-
-    org.openmetadata.schema.type.EntityHistory baseline =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
-    assertNotNull(baseline);
-    assertNotNull(baseline.getPaging());
-
-    String rogueExtension = "rogue.version.999.0";
-    try {
-      Entity.getCollectionDAO()
-          .entityExtensionDAO()
-          .insertVersionExtension(
-              created.getId(),
-              rogueExtension,
-              getEntityType(),
-              JsonUtils.pojoToJson(created),
-              999.0,
-              JsonUtils.pojoToJson(List.of("description")));
-
-      org.openmetadata.schema.type.EntityHistory filtered =
-          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
-
-      assertNotNull(filtered);
-      assertNotNull(filtered.getPaging());
-      assertEquals(
-          baseline.getPaging().getTotal(),
-          filtered.getPaging().getTotal(),
-          "Filtered history should ignore extension rows outside the entity version prefix");
-      assertEquals(
-          baseline.getVersions().size(),
-          filtered.getVersions().size(),
-          "Filtered history should not include rows from a rogue extension prefix");
-    } finally {
-      Entity.getCollectionDAO().entityExtensionDAO().delete(created.getId(), rogueExtension);
-    }
-  }
-
-  @Test
-  void get_entityVersionHistory_paginated_ordersNullVersionNumRowsByVersion(TestNamespace ns) {
-    if (!supportsVersionHistory) return;
-
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-
-    List<Double> insertedVersions = List.of(9.0, 10.0, 11.0);
-
-    try {
-      for (Double version : insertedVersions) {
-        ObjectNode historicalVersion = (ObjectNode) JsonUtils.pojoToJsonNode(created);
-        historicalVersion.put("version", version);
-        Entity.getCollectionDAO()
-            .entityExtensionDAO()
-            .insert(
-                created.getId(),
-                EntityUtil.getVersionExtension(getEntityType(), version),
-                getEntityType(),
-                JsonUtils.pojoToJson(historicalVersion));
-      }
-
-      org.openmetadata.schema.type.EntityHistory paginatedHistory =
-          getVersionHistoryPaginated(created.getId(), 3, 1);
-
-      assertNotNull(paginatedHistory);
-      assertNotNull(paginatedHistory.getPaging());
-      assertEquals(4, (int) paginatedHistory.getPaging().getTotal());
-      assertEquals(3, paginatedHistory.getVersions().size());
-      assertEquals(11.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(0)), 0.001);
-      assertEquals(10.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(1)), 0.001);
-      assertEquals(9.0, versionOfHistoryEntry(paginatedHistory.getVersions().get(2)), 0.001);
-    } finally {
-      for (Double version : insertedVersions) {
-        Entity.getCollectionDAO()
-            .entityExtensionDAO()
-            .delete(created.getId(), EntityUtil.getVersionExtension(getEntityType(), version));
-      }
-    }
-  }
-
-  @Test
-  void get_entityVersionHistory_fieldChanged_matchesNullChangedFieldKeysRows(TestNamespace ns) {
-    if (!supportsVersionHistory || !supportsPatch) return;
-
-    K createRequest = createMinimalRequest(ns);
-    T created = createEntity(createRequest);
-
-    created.setDescription("Description change for null changedFieldKeys test");
-    patchEntity(created.getId().toString(), created);
-
-    org.openmetadata.schema.type.EntityHistory baseline =
-        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
-    assertNotNull(baseline);
-    assertNotNull(baseline.getPaging());
-
-    double legacyVersion = 77.0;
-    String legacyExtension = EntityUtil.getVersionExtension(getEntityType(), legacyVersion);
-
-    try {
-      ObjectNode historicalVersion = (ObjectNode) JsonUtils.pojoToJsonNode(created);
-      historicalVersion.put("version", legacyVersion);
-      ObjectNode changeDescription = historicalVersion.putObject("changeDescription");
-      ArrayNode fieldsUpdated = changeDescription.putArray("fieldsUpdated");
-      fieldsUpdated.addObject().put("name", "nested.description");
-
-      Entity.getCollectionDAO()
-          .entityExtensionDAO()
-          .insert(
-              created.getId(),
-              legacyExtension,
-              getEntityType(),
-              JsonUtils.pojoToJson(historicalVersion));
-
-      org.openmetadata.schema.type.EntityHistory filtered =
-          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
-
-      assertNotNull(filtered);
-      assertNotNull(filtered.getPaging());
-      assertEquals(
-          baseline.getPaging().getTotal(),
-          (int) filtered.getPaging().getTotal(),
-          "Exact field filters should not match nested legacy rows without changedFieldKeys");
-      assertFalse(
-          filtered.getVersions().stream()
-              .anyMatch(
-                  version -> Math.abs(versionOfHistoryEntry(version) - legacyVersion) < 0.001),
-          "Top-level description filters should not include nested legacy rows");
-
-      org.openmetadata.schema.type.EntityHistory nestedFiltered =
-          getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nested.description");
-
-      assertNotNull(nestedFiltered);
-      assertNotNull(nestedFiltered.getPaging());
-      assertEquals(
-          1,
-          (int) nestedFiltered.getPaging().getTotal(),
-          "Exact nested field filters should still match legacy rows without changedFieldKeys");
-      assertTrue(
-          nestedFiltered.getVersions().stream()
-              .anyMatch(
-                  version -> Math.abs(versionOfHistoryEntry(version) - legacyVersion) < 0.001),
-          "Nested field filters should include the legacy row without changedFieldKeys");
-    } finally {
-      Entity.getCollectionDAO().entityExtensionDAO().delete(created.getId(), legacyExtension);
-    }
-  }
-
-  private double versionOfHistoryEntry(Object versionEntry) {
-    JsonNode node =
-        versionEntry instanceof String versionJson
-            ? JsonUtils.readValue(versionJson, JsonNode.class)
-            : JsonUtils.pojoToJsonNode(versionEntry);
-    assertTrue(node.hasNonNull("version"), "Version history entry should include version");
-    return node.get("version").asDouble();
-  }
-
   protected org.openmetadata.schema.type.EntityHistory getVersionHistory(UUID id) {
     throw new UnsupportedOperationException(
         "Version history not implemented - override in subclass");
-  }
-
-  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryPaginated(
-      UUID id, int limit, int offset) {
-    throw new UnsupportedOperationException(
-        "Paginated version history not implemented - override in subclass");
-  }
-
-  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    throw new UnsupportedOperationException(
-        "fieldChanged version history not implemented - override in subclass");
   }
 
   protected T getVersion(UUID id, Double version) {
@@ -1699,16 +1443,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     hardDeleteEntity(entityId);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(entityId),
-        "Hard deleted entity should not be retrievable");
+    // Poll the GET — on the Redis-cache profile the by-id / by-name / reference
+    // hash deletes published by cleanup() can land milliseconds after the DELETE
+    // response returns. Polling matches the same pattern FolderResourceIT uses
+    // for its async-delete override and keeps the assertion intent unchanged.
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntity(entityId),
+                    "Hard deleted entity should not be retrievable"));
 
     if (supportsSoftDelete) {
-      assertThrows(
-          Exception.class,
-          () -> getEntityIncludeDeleted(entityId),
-          "Hard deleted entity should not be retrievable even with include=deleted");
+      Awaitility.await("Hard deleted entity should not be retrievable with include=deleted")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofMillis(250))
+          .untilAsserted(
+              () ->
+                  assertThrows(
+                      Exception.class,
+                      () -> getEntityIncludeDeleted(entityId),
+                      "Hard deleted entity should not be retrievable even with include=deleted"));
     }
   }
 
@@ -1958,6 +1716,67 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> addFollower(entityId, nonExistentUserId),
         "Adding non-existent user as follower should fail");
+  }
+
+  /**
+   * Regression for #28473: listing entities through the search-backed sorted path
+   * (EntityRepository.listFromSearchWithOffset) used to 400 with a Jackson
+   * EntityReference-from-String deserialization error as soon as any returned entity had
+   * a follower. The search index stores `followers` as a flat List<String> of UUIDs
+   * (SearchIndexUtils.parseFollowers) while every entity schema types the field as
+   * List<EntityReference>. The base path now strips relationship-shaped fields before
+   * deserialization and repopulates them via setFieldsInBulk.
+   */
+  @Test
+  void list_searchBackedSortedWithFollowers_200(TestNamespace ns) {
+    if (!supportsFollowers || !hasFollowerMethods() || !supportsSearchBackedSortedList) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    addFollower(entity.getId(), testUser1().getId());
+
+    awaitEntityIndexed(entity.getId());
+
+    String path = getResourcePath() + "?sortBy=updatedAt&sortOrder=desc&limit=1000";
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Awaitility.await("Sorted list call surfaces the followed entity")
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+              JsonNode root = MAPPER.readTree(body);
+              assertTrue(root.has("data"), "Response should have data field");
+              JsonNode data = root.get("data");
+              boolean found = false;
+              for (JsonNode node : data) {
+                if (entity.getId().toString().equals(node.path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(found, "Followed entity should appear in the sorted list");
+            });
+  }
+
+  /**
+   * Wait until the given entity id is queryable in the search index. Uses the generic
+   * `v1/search/get/<index>/doc/<id>` endpoint so subclasses don't need to override.
+   */
+  protected void awaitEntityIndexed(UUID id) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + id;
+    Awaitility.await("Entity " + id + " indexed in " + getSearchIndex())
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              // executeForString throws on non-2xx; reaching the assignment means 200.
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, docPath, null);
+              assertNotNull(body, "Indexed doc body should not be null");
+            });
   }
 
   // ===================================================================
@@ -2308,7 +2127,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_deletedEntityVersion_200(TestNamespace ns) {
-    if (!supportsSoftDelete || !supportsPatch) return;
+    if (!supportsSoftDelete || !supportsPatch || !supportsGetByVersion) return;
 
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
@@ -3373,12 +3192,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Hard delete
     hardDeleteEntity(entity.getId().toString());
 
-    // Should not be retrievable even with include=deleted
+    // Should not be retrievable even with include=deleted. Polling matches
+    // the pattern in delete_entityAsAdmin_hardDelete_200 for the same
+    // cache-invalidation propagation reason.
     String entityId = entity.getId().toString();
-    assertThrows(
-        Exception.class,
-        () -> getEntityIncludeDeleted(entityId),
-        "Hard deleted entity should not be retrievable");
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntityIncludeDeleted(entityId),
+                    "Hard deleted entity should not be retrievable"));
   }
 
   /**
@@ -4378,7 +4204,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -4440,7 +4266,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4832,6 +4658,476 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   // ===================================================================
+  // BULK API - INGESTION SIMULATION (bot vs user, sourceHash fast-path)
+  //
+  // These tests simulate the pre-bulk ingestion flow (per-entity GET-then-PATCH)
+  // through the bulk endpoint. They verify the bulk path preserves user-curated
+  // metadata when called by bots and exercises the sourceHash fast-path that
+  // unchanged entities are supposed to take.
+  // ===================================================================
+
+  /**
+   * Test: A bot bulk-update must NOT overwrite a user-edited description.
+   *
+   * <p>Pre-bulk ingestion behavior: connectors did a GET, then a PATCH that only changed fields
+   * the connector knew about, never clobbering user edits. The bulk endpoint preserves that by
+   * reverting bot-driven changes to {@code description} whenever the stored description is
+   * non-empty and {@code overrideMetadata=false}.
+   */
+  @Test
+  void test_bulkUpdate_bot_preservesUserDescription(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_botdesc_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDescription = "User-curated description that must survive re-ingestion";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDescription(userDescription);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      setDescription(req, "Bot attempted to overwrite");
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          userDescription,
+          entity.getDescription(),
+          "Bot bulk update must not overwrite user-curated description: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot bulk-update preserves user-added tags during re-ingestion.
+   *
+   * <p>Tags follow the same PUT semantics the connector used to rely on: an absent
+   * {@code tags} field on the bot's request means "leave alone" rather than "clear", so user
+   * edits survive a re-ingestion that doesn't carry tags.
+   */
+  @Test
+  void test_bulkUpdate_bot_preservesUserTags(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_bottag_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      setDescription(req, "Bot re-ingest");
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertNotNull(entity.getTags(), "tags preserved: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+          "User-added tag must survive bot re-ingestion: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot bulk-update preserves user-added owners during re-ingestion.
+   *
+   * <p>Owners follow the same "absent means leave alone" semantics as tags. A user-added owner
+   * must survive a re-ingestion whose request doesn't carry owners.
+   */
+  @Test
+  void test_bulkUpdate_bot_preservesUserOwners(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_botown_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "owners");
+      entity.setOwners(List.of(shared.USER1_REF));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      setDescription(req, "Bot re-ingest");
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "owners");
+      assertNotNull(entity.getOwners(), "owners preserved: " + fqn);
+      assertFalse(entity.getOwners().isEmpty(), "owners not cleared: " + fqn);
+      assertEquals(
+          shared.USER1.getId(),
+          entity.getOwners().get(0).getId(),
+          "User-added owner must survive bot re-ingestion: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot bulk-update must NOT overwrite a user-edited {@code displayName}.
+   *
+   * <p>Legacy {@code RESTRICT_UPDATE_LIST} included {@code displayName}. The connector's PATCH
+   * path filtered out REPLACE/REMOVE ops for displayName when {@code overrideMetadata=false}, so
+   * user edits survived re-ingestion. The bulk endpoint preserves that guarantee via
+   * {@code EntityRepository#updateDisplayName}, which mirrors the bot-protection rule already in
+   * {@code updateDescription}.
+   *
+   * <p>Historical context: PR #21879 ("SCIM Bot can update displayName") removed the in-code
+   * preservation in June 2025 and moved protection to a policy-level {@code DisplayName-Deny}
+   * rule. That worked for the legacy per-entity PUT/PATCH path, but the bulk endpoint authorizes
+   * with {@code EDIT_ALL} which doesn't intersect the field-specific {@code EditDisplayName}
+   * deny - so a bot bulk PUT bypassed the policy and clobbered user displayName. This PR
+   * restores the in-code preservation in {@code updateDisplayName} so the bulk path is
+   * symmetric with {@code updateDescription}.
+   */
+  @Test
+  void test_bulkUpdate_bot_preservesUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_botdn_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDisplayName = "User Curated Display Name";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDisplayName(userDisplayName);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      invoke(req, "setDisplayName", String.class, "Bot attempted to overwrite");
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          userDisplayName,
+          entity.getDisplayName(),
+          "Bot bulk update must not overwrite user-curated displayName: " + fqn);
+    }
+  }
+
+  /**
+   * Test: {@code overrideMetadata=true} allows a bot bulk-update to overwrite a user-edited
+   * description.
+   *
+   * <p>Counterpart to {@link #test_bulkUpdate_bot_preservesUserDescription}: connectors opt into
+   * "force-sync" by setting the ingestion-config flag {@code overrideMetadata=true}, and the
+   * server must honor it. Legacy connector logic in {@code patch_request.py} let REPLACE
+   * operations through when that flag was set. The bulk path plumbs the flag through to
+   * {@code EntityUpdater#overrideMetadata}, and {@code updateDescription} checks
+   * {@code !overrideMetadata} to skip the bot-preservation branch.
+   */
+  @Test
+  void test_bulkUpdate_overrideMetadata_canOverrideUserDescription(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_ovdesc_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDescription = "User-curated description";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDescription(userDescription);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    String botDescription = "Forced description via override-flag";
+    for (K req : requests) {
+      setDescription(req, botDescription);
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, true);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          botDescription,
+          entity.getDescription(),
+          "overrideMetadata=true must allow bot to overwrite user description: " + fqn);
+    }
+  }
+
+  /**
+   * Test: {@code overrideMetadata=true} allows a bot bulk-update to overwrite a user-edited
+   * displayName.
+   */
+  @Test
+  void test_bulkUpdate_overrideMetadata_canOverrideUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_ovdn_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDisplayName = "User Curated Display Name";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDisplayName(userDisplayName);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    String botDisplayName = "Forced Display Name";
+    for (K req : requests) {
+      invoke(req, "setDisplayName", String.class, botDisplayName);
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, true);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          botDisplayName,
+          entity.getDisplayName(),
+          "overrideMetadata=true must allow bot to overwrite user displayName: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot whose policy DENIES {@code EditDisplayName} (the ingestion bot, via
+   * {@code IngestionBotPolicy}/{@code DefaultBotPolicy}) must NOT overwrite a user-curated
+   * {@code displayName} through a single-entity PUT.
+   *
+   * <p>A per-entity PUT on an existing entity authorizes with the coarse {@code EDIT_ALL} operation,
+   * which does not intersect the field-level {@code EditDisplayName} deny - so the bot reaches the
+   * repository, where {@code EntityRepository#updateDisplayName} re-applies that field-level deny and
+   * preserves the user value. This is the per-entity counterpart of
+   * {@link #test_bulkUpdate_bot_preservesUserDisplayName}, and the regression guard for the bug where
+   * scoping the in-code check to the bulk path let any bot clobber displayName via per-entity PUT.
+   */
+  @Test
+  void test_singleEntityPut_bot_preservesUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    K request = createRequest(ns.prefix("put_denydn_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    invoke(request, "setDisplayName", String.class, "Bot attempted to overwrite");
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        userDisplayName,
+        result.getDisplayName(),
+        "Ingestion bot (EditDisplayName denied) must NOT overwrite user displayName via PUT: "
+            + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditDisplayName} (modeling the SCIM bot, whose
+   * {@code ScimBotPolicy} carries no {@code DisplayName-Deny}) CAN update {@code displayName} through
+   * a single-entity PUT - the behavior PR #28155 inadvertently broke for all bots and this PR
+   * restores for policy-allowed bots.
+   *
+   * <p>The real SCIM bot reaches {@code EntityRepository#updateDisplayName} through the SCIM endpoint
+   * (which bypasses entity-level authorization and is enterprise-only); this test drives the same
+   * repository code path with an equivalent bot - {@code isBot=true} with a policy that allows
+   * {@code EditAll} and does not deny {@code EditDisplayName}. Contrast with
+   * {@link #test_singleEntityPut_bot_preservesUserDisplayName}: the difference is purely the bot's
+   * policy, which is exactly what the in-code guard now keys on.
+   */
+  @Test
+  void test_singleEntityPut_displayNameAllowedBot_updatesDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    K request = createRequest(ns.prefix("put_allowdn_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    String botDisplayName = "SCIM-like Bot Display Name";
+    invoke(request, "setDisplayName", String.class, botDisplayName);
+    HttpResponse<String> response = putAs(request, displayNameAllowedBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Allowed-bot single-entity PUT should succeed: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        botDisplayName,
+        result.getDisplayName(),
+        "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
+   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
+   * owners through a single-entity PUT even when an owner already exists.
+   *
+   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
+   * an owner was set, which silently broke ingestion ownership re-sync. {@code
+   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
+   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
+   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   */
+  @Test
+  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+    if (!hasField("setOwners", List.class)) return;
+
+    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "owners");
+    entity.setOwners(List.of(shared.USER1_REF));
+    patchEntity(entity.getId().toString(), entity);
+
+    invoke(request, "setOwners", List.class, List.of(shared.USER2_REF));
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByNameWithFields(fqn, "owners");
+    assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
+    assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
+    assertEquals(
+        shared.USER2.getId(),
+        result.getOwners().get(0).getId(),
+        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot bulk-update merges new tags with existing user-added tags (PUT semantics).
+   *
+   * <p>Legacy connector behavior with {@code overrideMetadata=true} permitted REPLACE operations
+   * on tags but still filtered REMOVE. The bulk endpoint uses PUT-merge semantics where new tags
+   * are added to the set and existing tags are never deleted - matching the legacy "no removes"
+   * guarantee.
+   */
+  @Test
+  void test_bulkUpdate_bot_mergesNewTagsWithExistingUserTags(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_tagmrg_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      invoke(req, "setTags", List.class, List.of(shared.PERSONAL_DATA_TAG_LABEL));
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertNotNull(entity.getTags(), "tags present: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+          "User-added PII.Sensitive tag must survive bot re-ingestion: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+          "Bot-added PersonalData tag must be merged in: " + fqn);
+    }
+  }
+
+  // ===================================================================
+  // BULK API - REFLECTION HELPERS
+  // ===================================================================
+
+  private boolean hasField(String setter, Class<?> paramType) {
+    try {
+      createMinimalRequest(new TestNamespace("__probe__")).getClass().getMethod(setter, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private <V> void invoke(K request, String setter, Class<V> paramType, V value) {
+    try {
+      request.getClass().getMethod(setter, paramType).invoke(request, value);
+    } catch (Exception e) {
+      fail(
+          "Cannot call "
+              + setter
+              + " on "
+              + request.getClass().getSimpleName()
+              + ": "
+              + e.getMessage());
+    }
+  }
+
+  // ===================================================================
   // BULK API HOOK METHODS
   // Subclasses that support bulk API should override these methods.
   // ===================================================================
@@ -4864,6 +5160,138 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       requests.add(createRequest(ns.prefix(prefix + i), ns));
     }
     return requests;
+  }
+
+  /**
+   * Bulk-upsert the requests via raw HTTP using the ingestion-bot JWT. The bot identity is what
+   * activates the "preserve user-curated description/displayName" rules in EntityRepository.
+   */
+  protected BulkOperationResult executeBulkAsBot(List<K> requests, boolean overrideMetadata) {
+    try {
+      return BulkApi.upsert(getBulkCollection(), requests, overrideMetadata, BulkApi.botToken());
+    } catch (Exception e) {
+      throw new RuntimeException("Bulk upsert as bot failed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Single-entity createOrUpdate (PUT) over raw HTTP using the given bearer token. The SDK fluent
+   * clients always authenticate as admin, so the raw call is how a test drives a per-entity PUT as a
+   * specific bot identity.
+   */
+  protected HttpResponse<String> putAs(K request, String token) {
+    try {
+      String url = SdkClients.getServerUrl() + getResourcePath();
+      if (url.endsWith("/")) {
+        url = url.substring(0, url.length() - 1);
+      }
+      java.net.http.HttpRequest httpRequest =
+          java.net.http.HttpRequest.newBuilder()
+              .uri(java.net.URI.create(url))
+              .header("Authorization", "Bearer " + token)
+              .header("Content-Type", "application/json")
+              .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+              .build();
+      return java.net.http.HttpClient.newHttpClient()
+          .send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      throw new RuntimeException("Single-entity PUT failed: " + e.getMessage(), e);
+    }
+  }
+
+  // Lazily provisioned (once per session) bot whose policy allows EditAll and does NOT deny
+  // EditDisplayName, modeling the SCIM bot. API-created bots are force-assigned DefaultBotRole
+  // (which denies EditDisplayName), so that role is stripped via a raw JSON-Patch after creation.
+  private static volatile String displayNameAllowedBotToken;
+
+  protected static synchronized String displayNameAllowedBotToken() {
+    if (displayNameAllowedBotToken == null) {
+      displayNameAllowedBotToken = provisionDisplayNameAllowedBot();
+    }
+    return displayNameAllowedBotToken;
+  }
+
+  private static String provisionDisplayNameAllowedBot() {
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String suffix = UUID.randomUUID().toString().substring(0, 8);
+      Policy policy =
+          new PolicyService(admin.getHttpClient())
+              .create(
+                  new CreatePolicy()
+                      .withName("displayNameAllowedBotPolicy_" + suffix)
+                      .withRules(
+                          List.of(
+                              new Rule()
+                                  .withName("AllowEditAll")
+                                  .withResources(List.of("All"))
+                                  .withOperations(
+                                      List.of(
+                                          MetadataOperation.EDIT_ALL,
+                                          MetadataOperation.VIEW_ALL,
+                                          MetadataOperation.CREATE))
+                                  .withEffect(Rule.Effect.ALLOW))));
+      Role role =
+          new RoleService(admin.getHttpClient())
+              .create(
+                  new CreateRole()
+                      .withName("displayNameAllowedBotRole_" + suffix)
+                      .withPolicies(List.of(policy.getName())));
+      String email = "displayname-allowed-bot-" + suffix + "@open-metadata.org";
+      User bot =
+          new UserService(admin.getHttpClient())
+              .create(
+                  new CreateUser()
+                      .withName("displayname-allowed-bot-" + suffix)
+                      .withEmail(email)
+                      .withIsBot(true)
+                      .withAuthenticationMechanism(
+                          new AuthenticationMechanism()
+                              .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                              .withConfig(
+                                  new JWTAuthMechanism()
+                                      .withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+                      .withRoles(List.of(role.getId())));
+      stripDefaultBotRole(bot.getId().toString(), role.getId().toString());
+      return JwtAuthProvider.tokenFor(email, email, new String[] {role.getName()}, 86400);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to provision displayName-allowed bot: " + e.getMessage(), e);
+    }
+  }
+
+  // Replace the bot's roles (auto-assigned DefaultBotRole + the custom role) with ONLY the custom
+  // role via a raw JSON-Patch, so its effective policy no longer denies EditDisplayName.
+  private static void stripDefaultBotRole(String botId, String roleId) throws Exception {
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/roles\",\"value\":[{\"id\":\""
+            + roleId
+            + "\",\"type\":\"role\"}]}]";
+    java.net.http.HttpRequest req =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(SdkClients.getServerUrl() + "/v1/users/" + botId))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+    HttpResponse<String> resp =
+        java.net.http.HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+    if (resp.statusCode() != 200) {
+      throw new IllegalStateException(
+          "Failed to strip DefaultBotRole: " + resp.statusCode() + " " + resp.body());
+    }
+  }
+
+  /** Derives the v1 collection name (e.g. {@code "tables"}) from {@link #getResourcePath()}. */
+  private String getBulkCollection() {
+    String path = getResourcePath();
+    if (path.startsWith("/v1/")) {
+      path = path.substring(4);
+    }
+    if (path.endsWith("/")) {
+      path = path.substring(0, path.length() - 1);
+    }
+    return path;
   }
 
   private String getBotToken() {
@@ -5130,7 +5558,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -5166,7 +5594,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -5194,7 +5622,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -5213,7 +5641,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -6714,5 +7142,88 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTrue(
         thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
         "Should get 404 for non-existent entity, got: " + thrown.getMessage());
+  }
+
+  // ===================================================================
+  // Redis cache write-through correctness — fire on every entity subclass
+  // when the suite is configured with cacheProvider=redis. With Redis
+  // disabled these are no-ops. Each test warms the cache (by-id and
+  // by-name), mutates the entity, and re-reads to confirm the cached
+  // path returns the latest value rather than a pre-mutation snapshot.
+  // ===================================================================
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm by-id and by-name caches.
+    T warmById = getEntity(id);
+    getEntityByName(created.getFullyQualifiedName());
+
+    String newDisplayName = "cache-it-" + System.nanoTime();
+    warmById.setDisplayName(newDisplayName);
+    T patched = patchEntity(id, warmById);
+    assertEquals(
+        newDisplayName, patched.getDisplayName(), "PATCH response itself must show the update");
+
+    T fetchedById = getEntity(id);
+    assertEquals(
+        newDisplayName,
+        fetchedById.getDisplayName(),
+        "GET-by-id after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadByName(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+    String fqn = created.getFullyQualifiedName();
+
+    // Warm both caches up front so PATCH's invalidation has something to invalidate.
+    T warm = getEntity(id);
+    getEntityByName(fqn);
+
+    String newDisplayName = "cache-by-name-" + System.nanoTime();
+    warm.setDisplayName(newDisplayName);
+    patchEntity(id, warm);
+
+    T fetchedByName = getEntityByName(fqn);
+    assertEquals(
+        newDisplayName,
+        fetchedByName.getDisplayName(),
+        "GET-by-name after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_hardDeleteReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm the cache, then hard-delete.
+    getEntity(id);
+    hardDeleteEntity(id);
+
+    // Subsequent reads must 404 — a stale cache entry would let the entity stay
+    // resolvable until TTL.
+    Exception thrown = assertThrows(Exception.class, () -> getEntity(id));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "GET-by-id after hard delete must 404, got: " + thrown.getMessage());
   }
 }

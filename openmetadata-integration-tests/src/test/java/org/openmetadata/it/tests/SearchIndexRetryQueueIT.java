@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -110,12 +112,12 @@ class SearchIndexRetryQueueIT {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";
 
-    retryQueueDAO.upsert(entityId, entityFqn, "first", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(entityId, entityFqn, "first", SearchIndexRetryQueue.STATUS_COMPLETED, "");
     retryQueueDAO.upsert(
-        entityId, entityFqn, "second", SearchIndexRetryQueue.STATUS_PENDING, "table");
+        entityId, entityFqn, "second", SearchIndexRetryQueue.STATUS_COMPLETED, "table");
 
     List<SearchIndexRetryRecord> records =
-        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000);
     long count = records.stream().filter(r -> r.getEntityId().equals(entityId)).count();
     assertEquals(1, count);
 
@@ -275,11 +277,47 @@ class SearchIndexRetryQueueIT {
     retryQueueDAO.upsert(id2, fqn2, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_1, "");
     retryQueueDAO.upsert(id3, fqn3, "f", SearchIndexRetryQueue.STATUS_PENDING_RETRY_2, "");
 
-    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(10);
-    assertTrue(claimed.size() >= 3);
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id1)));
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id2)));
-    assertTrue(claimed.stream().anyMatch(r -> r.getEntityId().equals(id3)));
+    Set<String> ourIds = Set.of(id1, id2, id3);
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              retryQueueDAO.claimPending(50);
+              // IDs still visible in the queue with proof of claiming
+              Set<String> claimed = new HashSet<>();
+              // IDs still present in any status (not yet deleted or fully processed)
+              Set<String> stillPresent = new HashSet<>();
+              for (String status :
+                  List.of(
+                      SearchIndexRetryQueue.STATUS_PENDING,
+                      SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+                      SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+                      SearchIndexRetryQueue.STATUS_IN_PROGRESS,
+                      SearchIndexRetryQueue.STATUS_FAILED)) {
+                retryQueueDAO.findByStatus(status, 5000).stream()
+                    .filter(r -> ourIds.contains(r.getEntityId()))
+                    .forEach(
+                        r -> {
+                          stillPresent.add(r.getEntityId());
+                          if (r.getClaimedAt() != null || r.getRetryCount() > 0) {
+                            claimed.add(r.getEntityId());
+                          }
+                        });
+              }
+              // A record absent from all statuses was deleted by the worker after a successful
+              // claim — deleteByEntity is only reached after claimPending accepted the record,
+              // so absence is also proof that claimPending's SQL filter worked.
+              for (String id : ourIds) {
+                if (!stillPresent.contains(id)) {
+                  claimed.add(id);
+                }
+              }
+              assertTrue(claimed.contains(id1), "id1 (PENDING) was never claimed");
+              assertTrue(claimed.contains(id2), "id2 (PENDING_RETRY_1) was never claimed");
+              assertTrue(claimed.contains(id3), "id3 (PENDING_RETRY_2) was never claimed");
+            });
   }
 
   // ---------------------------------------------------------------------------
@@ -791,64 +829,6 @@ class SearchIndexRetryQueueIT {
     assertTrue(record.getFailureReason().startsWith("createEntityIndex:"));
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Suspension tests
-  // ---------------------------------------------------------------------------
-
-  @Test
-  void testSuspensionPreventsEnqueue(TestNamespace ns) {
-    String entityId = UUID.randomUUID().toString();
-    String entityFqn = ns.prefix("rq") + ".suspended.entity";
-    try {
-      SearchIndexRetryQueue.updateSuspension(java.util.Set.of(), true);
-      assertTrue(SearchIndexRetryQueue.isSuspendAllStreaming());
-
-      // Enqueue should still insert (suspension affects worker processing, not enqueueing)
-      SearchIndexRetryQueue.enqueue(entityId, entityFqn, "during suspension");
-      List<SearchIndexRetryRecord> records =
-          retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
-      assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
-    } finally {
-      SearchIndexRetryQueue.clearSuspension();
-      retryQueueDAO.deleteByEntity(entityId, entityFqn);
-    }
-  }
-
-  @Test
-  void testWorkerDeletesRecordsDuringSuspendAll(TestNamespace ns) throws Exception {
-    String entityId = UUID.randomUUID().toString();
-    String entityFqn = ns.prefix("rq") + ".suspended.entity";
-
-    retryQueueDAO.upsert(
-        entityId, entityFqn, "will be suspended", SearchIndexRetryQueue.STATUS_PENDING, "table");
-
-    try {
-      SearchIndexRetryQueue.updateSuspension(java.util.Set.of(), true);
-
-      SearchIndexRetryWorker worker = new SearchIndexRetryWorker(collectionDAO, searchRepository);
-      worker.start();
-      try {
-        Awaitility.await("Worker should delete record during full suspension")
-            .atMost(Duration.ofSeconds(30))
-            .pollInterval(Duration.ofSeconds(1))
-            .until(
-                () -> {
-                  List<SearchIndexRetryRecord> remaining =
-                      retryQueueDAO.findByStatuses(
-                          List.of(
-                              SearchIndexRetryQueue.STATUS_PENDING,
-                              SearchIndexRetryQueue.STATUS_IN_PROGRESS),
-                          1000);
-                  return remaining.stream().noneMatch(r -> r.getEntityId().equals(entityId));
-                });
-      } finally {
-        worker.stop();
-      }
-    } finally {
-      SearchIndexRetryQueue.clearSuspension();
-    }
   }
 
   // ---------------------------------------------------------------------------

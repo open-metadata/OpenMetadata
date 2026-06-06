@@ -43,7 +43,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { generatePalette } from '../../styles/colorPallet';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
@@ -104,6 +103,7 @@ const AppearanceConfigSettingsPage = () => {
           successColor: values?.successColor ?? '',
           warningColor: values?.warningColor ?? '',
           infoColor: values?.infoColor ?? '',
+          panelBackgroundColor: values?.panelBackgroundColor ?? '',
         },
       };
 
@@ -137,6 +137,7 @@ const AppearanceConfigSettingsPage = () => {
           successColor: '',
           warningColor: '',
           infoColor: '',
+          panelBackgroundColor: '',
         },
       };
       const configData = {
@@ -208,6 +209,22 @@ const AppearanceConfigSettingsPage = () => {
       ],
       props: {
         'data-testid': 'hoverColor',
+      },
+    },
+    {
+      name: 'panelBackgroundColor',
+      id: 'panelBackgroundColor',
+      label: t('label.panel-background-color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+      props: {
+        'data-testid': 'panelBackgroundColor',
       },
     },
     {
@@ -418,9 +435,7 @@ const AppearanceConfigSettingsPage = () => {
                 <PageHeader
                   data={{
                     header: t('label.theme'),
-                    subHeader: t('message.appearance-configuration-message', {
-                      brandName: brandClassBase.getPageTitle(),
-                    }),
+                    subHeader: t('message.appearance-configuration-message'),
                   }}
                 />
                 <Button

@@ -12,7 +12,7 @@
 SAP ERP API models
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -25,8 +25,8 @@ class SapErpTable(BaseModel):
     """
 
     tabname: str
-    tabclass: Optional[str] = None
-    ddtext: Optional[str] = None
+    tabclass: Optional[str] = None  # noqa: UP045
+    ddtext: Optional[str] = None  # noqa: UP045
 
 
 class SapErpColumn(BaseModel):
@@ -35,17 +35,17 @@ class SapErpColumn(BaseModel):
     """
 
     tabname: str
-    fieldname: Optional[str] = None
-    precfield: Optional[str] = None
-    datatype: Optional[str] = None
-    POS: Optional[int] = None
-    notnull: Optional[str] = None
-    keyflag: Optional[bool] = None
-    scrtext_l: Optional[str] = None
-    i_ddtext: Optional[str] = None
-    dd_text: Optional[str] = None
-    leng: Optional[str] = None
-    decimals: Optional[str] = None
+    fieldname: Optional[str] = None  # noqa: UP045
+    precfield: Optional[str] = None  # noqa: UP045
+    datatype: Optional[str] = None  # noqa: UP045
+    POS: Optional[int] = None  # noqa: UP045
+    notnull: Optional[str] = None  # noqa: UP045
+    keyflag: Optional[bool] = None  # noqa: UP045
+    scrtext_l: Optional[str] = None  # noqa: UP045
+    i_ddtext: Optional[str] = None  # noqa: UP045
+    dd_text: Optional[str] = None  # noqa: UP045
+    leng: Optional[str] = None  # noqa: UP045
+    decimals: Optional[str] = None  # noqa: UP045
 
 
 class SapErpTableList(BaseModel):
@@ -53,8 +53,8 @@ class SapErpTableList(BaseModel):
     SAP ERP Table List model
     """
 
-    count: Optional[int] = Field(alias="__count")
-    results: Optional[List[SapErpTable]] = None
+    count: Optional[int] = Field(alias="__count")  # noqa: UP045
+    results: Optional[List[SapErpTable]] = None  # noqa: UP006, UP045
 
 
 class SapErpTableResponse(BaseModel):
@@ -62,7 +62,7 @@ class SapErpTableResponse(BaseModel):
     SAP ERP Tables Response model
     """
 
-    d: Optional[SapErpTableList] = None
+    d: Optional[SapErpTableList] = None  # noqa: UP045
 
 
 class SapErpColumnList(BaseModel):
@@ -70,8 +70,8 @@ class SapErpColumnList(BaseModel):
     SAP ERP Column List model
     """
 
-    count: Optional[int] = Field(alias="__count")
-    results: Optional[List[SapErpColumn]] = None
+    count: Optional[int] = Field(alias="__count")  # noqa: UP045
+    results: Optional[List[SapErpColumn]] = None  # noqa: UP006, UP045
 
 
 class SapErpColumnResponse(BaseModel):
@@ -79,7 +79,7 @@ class SapErpColumnResponse(BaseModel):
     SAP ERP Columns Response model
     """
 
-    d: Optional[SapErpColumnList] = None
+    d: Optional[SapErpColumnList] = None  # noqa: UP045
 
 
 class ColumnsAndConstraints(BaseModel):
@@ -87,8 +87,8 @@ class ColumnsAndConstraints(BaseModel):
     Wrapper Model for columns and constraints
     """
 
-    columns: Optional[List[Column]]
-    table_constraints: Optional[List[TableConstraint]]
+    columns: Optional[List[Column]]  # noqa: UP006, UP045
+    table_constraints: Optional[List[TableConstraint]]  # noqa: UP006, UP045
 
 
 class TableConstraintsModel(BaseModel):
@@ -96,5 +96,5 @@ class TableConstraintsModel(BaseModel):
     Wrapper Model for table constraints and primary key columns list
     """
 
-    table_constraints: Optional[List[TableConstraint]] = None
-    pk_columns: List[str] = []
+    table_constraints: Optional[List[TableConstraint]] = None  # noqa: UP006, UP045
+    pk_columns: List[str] = []  # noqa: UP006
