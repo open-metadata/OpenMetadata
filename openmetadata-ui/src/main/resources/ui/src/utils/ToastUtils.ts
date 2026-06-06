@@ -16,14 +16,14 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { AxiosError } from 'axios';
-import { get, isEmpty, isString } from 'lodash';
+import { get, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
@@ -69,22 +69,6 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
         type: 'info',
       };
   }
-};
-
-export const hashCode = (str: string) => {
-  let hash = 0,
-    i,
-    chr;
-  if (isEmpty(str)) {
-    return hash;
-  }
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-
-  return hash;
 };
 
 /**

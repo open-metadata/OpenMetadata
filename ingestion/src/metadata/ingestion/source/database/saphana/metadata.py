@@ -11,8 +11,9 @@
 """
 SAP Hana source module
 """
+
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -53,15 +54,11 @@ class SaphanaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(
-                f"Expected SapHanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -71,16 +68,14 @@ class SaphanaSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-        if getattr(self.service_connection.connection, "database"):
+        if getattr(self.service_connection.connection, "database"):  # noqa: B009
             yield self.service_connection.connection.database
 
         else:
             try:
-                yield self.connection.execute(
-                    text("SELECT DATABASE_NAME FROM M_DATABASE")
-                ).fetchone()[0]
+                yield self.connection.execute(text("SELECT DATABASE_NAME FROM M_DATABASE")).fetchone()[0]
             except Exception as err:
-                raise RuntimeError(
+                raise RuntimeError(  # noqa: B904
                     f"Error retrieving database name from the source - [{err}]."
                     " A way through this error is by specifying the `database` in the service connection."
                 )
@@ -89,7 +84,7 @@ class SaphanaSource(CommonDbSourceService):
         if self.service_connection.connection.__dict__.get("databaseSchema"):
             yield self.service_connection.connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names():
+            for schema_name in self.inspector.get_schema_names():  # noqa: UP028
                 yield schema_name
 
     def get_stored_procedures(self) -> Iterable[SapHanaStoredProcedure]:
@@ -104,17 +99,12 @@ class SaphanaSource(CommonDbSourceService):
                     ).all()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error fetching table functions for schema"
-                    f" [{schema_name}]: {exc}"
-                )
+                logger.warning(f"Error fetching table functions for schema [{schema_name}]: {exc}")
                 return
 
             for row in results:
                 try:
-                    stored_procedure = SapHanaStoredProcedure.model_validate(
-                        row._asdict()
-                    )
+                    stored_procedure = SapHanaStoredProcedure.model_validate(row._asdict())
                     if self.is_stored_procedure_filtered(stored_procedure.name):
                         continue
                     yield stored_procedure

@@ -128,8 +128,6 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
 });
 
 test.afterAll('Cleanup Customize tests', async ({ browser }) => {
-  test.slow();
-
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await user.delete(apiContext);
@@ -619,7 +617,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
+        await expect(adminPage.getByTestId('add-widget-modal')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 

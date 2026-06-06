@@ -12,8 +12,9 @@
 """
 Test Tableau connector with CLI - Enhanced with comprehensive lineage and metadata testing
 """
+
 from pathlib import Path
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -22,8 +23,8 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.ingestion.api.status import Status
 
-from .base.test_cli import PATH_TO_RESOURCES
-from .common.test_cli_dashboard import CliCommonDashboard
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
 
 
 class TableauExpectedValues:
@@ -43,21 +44,21 @@ class TableauExpectedValues:
     SERVICE_NAME = "local_tableau"
 
     # Expected entity names
-    EXPECTED_DASHBOARD_NAMES = ["Analytics Workbook"]
+    EXPECTED_DASHBOARD_NAMES = ["Analytics Workbook"]  # noqa: RUF012
 
-    EXPECTED_CHART_NAMES = [
+    EXPECTED_CHART_NAMES = [  # noqa: RUF012
         "Product Measure Sheet",
         "Sales Story",
         "Product vs Category Dashboard",
         "Category Measure Sheet",
     ]
 
-    EXPECTED_DATAMODEL_NAMES = [
+    EXPECTED_DATAMODEL_NAMES = [  # noqa: RUF012
         "Sales Summary"  # Appears in both TableauEmbeddedDatasource and TableauPublishedDatasource
     ]
 
     # Expected data model columns/fields
-    EXPECTED_DATAMODEL_FIELDS = [
+    EXPECTED_DATAMODEL_FIELDS = [  # noqa: RUF012
         "state",
         "category_name",
         "order_date",
@@ -74,7 +75,7 @@ class TableauExpectedValues:
     ]
 
     # Expected tags
-    EXPECTED_TAGS = ["Analytics", "workbook"]
+    EXPECTED_TAGS = ["Analytics", "workbook"]  # noqa: RUF012
 
     # Expected chart type
     EXPECTED_CHART_TYPE = "ChartType.Other"
@@ -83,7 +84,7 @@ class TableauExpectedValues:
     EXPECTED_FIELD_TYPE = "tableau field"
 
     # Expected data model types
-    EXPECTED_DATAMODEL_TYPES = [
+    EXPECTED_DATAMODEL_TYPES = [  # noqa: RUF012
         "DataModelType.TableauEmbeddedDatasource",
         "DataModelType.TableauPublishedDatasource",
     ]
@@ -114,7 +115,7 @@ class TableauExpectedValues:
         inventory.categories AS cat ON p.category_id = cat.category_id"""
 
     # Lineage expectations: Tables -> TableauPublishedDatasource -> TableauEmbeddedDatasource -> Dashboard
-    EXPECTED_SOURCE_TABLES = [
+    EXPECTED_SOURCE_TABLES = [  # noqa: RUF012
         "categories",
         "customers",
         "order_items",
@@ -123,12 +124,12 @@ class TableauExpectedValues:
     ]
 
     # Filter patterns
-    INCLUDE_DASHBOARDS = [".*Analytics.*"]
-    EXCLUDE_DASHBOARDS = ["Sample.*"]
-    INCLUDE_CHARTS = [".*Sheet.*", ".*Product.*", ".*Sales.*"]
-    EXCLUDE_CHARTS = ["Obesity"]
-    INCLUDE_DATAMODELS = [".*Sales.*", ".*Summary.*"]
-    EXCLUDE_DATAMODELS = ["Random.*"]
+    INCLUDE_DASHBOARDS = [".*Analytics.*"]  # noqa: RUF012
+    EXCLUDE_DASHBOARDS = ["Sample.*"]  # noqa: RUF012
+    INCLUDE_CHARTS = [".*Sheet.*", ".*Product.*", ".*Sales.*"]  # noqa: RUF012
+    EXCLUDE_CHARTS = ["Obesity"]  # noqa: RUF012
+    INCLUDE_DATAMODELS = [".*Sales.*", ".*Summary.*"]  # noqa: RUF012
+    EXCLUDE_DATAMODELS = ["Random.*"]  # noqa: RUF012
 
 
 class TableauCliTest(CliCommonDashboard.TestSuite):
@@ -138,12 +139,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
 
     def prepare(self) -> None:
         """Prepare test environment by setting up required database service"""
-        redshift_file_path = str(
-            Path(
-                PATH_TO_RESOURCES
-                + f"/dashboard/{self.get_connector_name()}/redshift.yaml"
-            )
-        )
+        redshift_file_path = str(Path(PATH_TO_RESOURCES + f"/dashboard/{self.get_connector_name()}/redshift.yaml"))
         self.run_command(test_file_path=redshift_file_path)
 
     @staticmethod
@@ -154,22 +150,22 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
     # FILTER CONFIGURATION METHODS
     # ================================
 
-    def get_includes_dashboards(self) -> List[str]:
+    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_DASHBOARDS
 
-    def get_excludes_dashboards(self) -> List[str]:
+    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_DASHBOARDS
 
-    def get_includes_charts(self) -> List[str]:
+    def get_includes_charts(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_CHARTS
 
-    def get_excludes_charts(self) -> List[str]:
+    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_CHARTS
 
-    def get_includes_datamodels(self) -> List[str]:
+    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_DATAMODELS
 
-    def get_excludes_datamodels(self) -> List[str]:
+    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_DATAMODELS
 
     # ================================
@@ -246,9 +242,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             entity=Dashboard, params={"service": TableauExpectedValues.SERVICE_NAME}
         ).entities
 
-        self.assertGreaterEqual(
-            len(dashboards), len(TableauExpectedValues.EXPECTED_DASHBOARD_NAMES)
-        )
+        self.assertGreaterEqual(len(dashboards), len(TableauExpectedValues.EXPECTED_DASHBOARD_NAMES))
 
         dashboard_names = [dashboard.displayName for dashboard in dashboards]
         for expected_name in TableauExpectedValues.EXPECTED_DASHBOARD_NAMES:
@@ -277,9 +271,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             entity=Chart, params={"service": TableauExpectedValues.SERVICE_NAME}
         ).entities
 
-        self.assertGreaterEqual(
-            len(charts), len(TableauExpectedValues.EXPECTED_CHART_NAMES)
-        )
+        self.assertGreaterEqual(len(charts), len(TableauExpectedValues.EXPECTED_CHART_NAMES))
 
         chart_names = [chart.displayName for chart in charts]
         for expected_name in TableauExpectedValues.EXPECTED_CHART_NAMES:
@@ -298,15 +290,13 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
 
         # Should have at least one "Sales Summary" data model
         datamodel_names = [dm.displayName for dm in datamodels]
-        self.assertIn(
-            "Sales Summary", datamodel_names, "Sales Summary data model not found"
-        )
+        self.assertIn("Sales Summary", datamodel_names, "Sales Summary data model not found")
 
         # Validate data model types
         datamodel_types = []
         for dm in datamodels:
             if hasattr(dm, "dataModelType") and dm.dataModelType:
-                datamodel_types.append(str(dm.dataModelType))
+                datamodel_types.append(str(dm.dataModelType))  # noqa: PERF401
 
         for expected_type in TableauExpectedValues.EXPECTED_DATAMODEL_TYPES:
             self.assertIn(
@@ -376,9 +366,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             params={"service": TableauExpectedValues.SERVICE_NAME},
         ).entities
 
-        sales_summary_models = [
-            dm for dm in datamodels if dm.displayName == "Sales Summary"
-        ]
+        sales_summary_models = [dm for dm in datamodels if dm.displayName == "Sales Summary"]
         for datamodel in sales_summary_models:
             lineage = self.openmetadata.get_lineage_by_name(
                 entity=DashboardDataModel,
@@ -393,9 +381,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
                     if lineage_query := edge["lineageDetails"].get("sqlQuery"):
                         self.assertEqual(
                             " ".join(lineage_query.split()),
-                            " ".join(
-                                TableauExpectedValues.EXPECTED_DATAMODEL_SQL.split()
-                            ),
+                            " ".join(TableauExpectedValues.EXPECTED_DATAMODEL_SQL.split()),
                             "Lineage SQL query does't match expected SQL query",
                         )
 
@@ -406,9 +392,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             params={"service": TableauExpectedValues.SERVICE_NAME},
         ).entities
 
-        sales_summary_models = [
-            dm for dm in datamodels if dm.name.root == "Sales Summary"
-        ]
+        sales_summary_models = [dm for dm in datamodels if dm.name.root == "Sales Summary"]
 
         for datamodel in sales_summary_models:
             if hasattr(datamodel, "columns") and datamodel.columns:
@@ -433,25 +417,15 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             params={"service": TableauExpectedValues.SERVICE_NAME},
         ).entities
 
-        sales_summary_models = [
-            dm for dm in datamodels if dm.name.root == "Sales Summary"
-        ]
+        sales_summary_models = [dm for dm in datamodels if dm.name.root == "Sales Summary"]
 
         for datamodel in sales_summary_models:
             if hasattr(datamodel, "sql") and datamodel.sql:
-                sql_content = (
-                    datamodel.sql.root
-                    if hasattr(datamodel.sql, "root")
-                    else str(datamodel.sql)
-                )
+                sql_content = datamodel.sql.root if hasattr(datamodel.sql, "root") else str(datamodel.sql)
 
                 # Check for key SQL elements
-                self.assertIn(
-                    "SELECT", sql_content.upper(), "SQL should contain SELECT statement"
-                )
-                self.assertIn(
-                    "JOIN", sql_content.upper(), "SQL should contain JOIN statements"
-                )
+                self.assertIn("SELECT", sql_content.upper(), "SQL should contain SELECT statement")
+                self.assertIn("JOIN", sql_content.upper(), "SQL should contain JOIN statements")
 
                 # Check for expected table references
                 for table in TableauExpectedValues.EXPECTED_SOURCE_TABLES:
@@ -484,11 +458,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         """Validate tag assignment to entities"""
         # Check Analytics Workbook dashboard
         analytics_dashboard = self.get_entity_by_name(Dashboard, "Analytics Workbook")
-        if (
-            analytics_dashboard
-            and hasattr(analytics_dashboard, "tags")
-            and analytics_dashboard.tags
-        ):
+        if analytics_dashboard and hasattr(analytics_dashboard, "tags") and analytics_dashboard.tags:
             dashboard_tags = {str(tag.name) for tag in analytics_dashboard.tags}
             for expected_tag in TableauExpectedValues.EXPECTED_TAGS:
                 self.assertIn(
@@ -559,19 +529,15 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         # We can have a diff of 1 element if we are counting the service, which is only marked as ingested in the
         # first go
         self.assertTrue(
-            self.expected_dashboards_and_charts()
-            <= (len(source_status.records) + len(source_status.updated_records))
+            self.expected_dashboards_and_charts() <= (len(source_status.records) + len(source_status.updated_records))
         )
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(
-            self.expected_dashboards_and_charts()
-            <= (len(sink_status.records) + len(sink_status.updated_records))
+            self.expected_dashboards_and_charts() <= (len(sink_status.records) + len(sink_status.updated_records))
         )
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) >= 5)
@@ -586,9 +552,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertGreaterEqual(
             (len(sink_status.records) + len(sink_status.updated_records)),
-            self.expected_dashboards_and_charts_after_patch()
-            + self.expected_tags()
-            + self.expected_datamodels(),
+            self.expected_dashboards_and_charts_after_patch() + self.expected_tags() + self.expected_datamodels(),
         )
 
     def get_entity_by_name(
@@ -596,7 +560,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         entity_type,
         name: str,
         service: str = TableauExpectedValues.SERVICE_NAME,
-        fields: List = ["tags", "charts"],
+        fields: List = ["tags", "charts"],  # noqa: B006, UP006
     ):
         """Helper to get entity by name or displayName"""
         entities = self.openmetadata.list_entities(
@@ -605,31 +569,19 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
 
         for entity in entities:
             # Check both name and displayName for matches
-            entity_name = (
-                entity.name.root if hasattr(entity.name, "root") else str(entity.name)
-            )
+            entity_name = entity.name.root if hasattr(entity.name, "root") else str(entity.name)
             entity_display_name = (
                 entity.displayName.root
-                if hasattr(entity, "displayName")
-                and entity.displayName
-                and hasattr(entity.displayName, "root")
-                else (
-                    str(entity.displayName)
-                    if hasattr(entity, "displayName") and entity.displayName
-                    else None
-                )
+                if hasattr(entity, "displayName") and entity.displayName and hasattr(entity.displayName, "root")
+                else (str(entity.displayName) if hasattr(entity, "displayName") and entity.displayName else None)
             )
 
-            if entity_name == name or entity_display_name == name:
+            if entity_name == name or entity_display_name == name:  # noqa: PLR1714
                 return entity
         return None
 
-    def validate_entity_exists(
-        self, entity_type, name: str, service: str = TableauExpectedValues.SERVICE_NAME
-    ):
+    def validate_entity_exists(self, entity_type, name: str, service: str = TableauExpectedValues.SERVICE_NAME):
         """Helper to validate entity exists"""
         entity = self.get_entity_by_name(entity_type, name, service)
-        self.assertIsNotNone(
-            entity, f"{entity_type.__name__} '{name}' not found in service '{service}'"
-        )
+        self.assertIsNotNone(entity, f"{entity_type.__name__} '{name}' not found in service '{service}'")
         return entity

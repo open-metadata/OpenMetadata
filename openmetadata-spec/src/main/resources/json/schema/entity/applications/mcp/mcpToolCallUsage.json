@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/mcp/mcpToolCallUsage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpToolCallUsage",
+  "description": "Single MCP tool-call usage record. One row written per tool invocation to the apps_extension_time_series table with extension='limits' (reusing the existing per-app usage extension; rows are isolated by appName='McpApplication'). Used to surface MCP traffic as a product growth metric. Not billed, no enforcement.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.mcp.McpToolCallUsage",
+  "definitions": {
+    "errorCategory": {
+      "description": "Coarse bucket for failed tool invocations. Drives the 'Failed' tile subtext and the errorByCategory aggregate on the redesigned Billing > MCP page.",
+      "type": "string",
+      "enum": [
+        "AUTH",
+        "RATE_LIMIT",
+        "VALIDATION",
+        "TIMEOUT",
+        "INTERNAL",
+        "OTHER"
+      ]
+    }
+  },
+  "properties": {
+    "appId": {
+      "description": "Unique identifier of the McpApplication.",
+      "$ref": "../../../type/basic.json#/definitions/uuid"
+    },
+    "appName": {
+      "description": "Name of the application (McpApplication).",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "timestamp": {
+      "description": "Time the tool call completed (epoch millis, UTC).",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "extension": {
+      "$ref": "../../applications/appExtension.json#/definitions/extensionType",
+      "default": "limits"
+    },
+    "toolName": {
+      "description": "Name of the MCP tool that was invoked (e.g. search_metadata, create_glossary, nlq_search).",
+      "type": "string"
+    },
+    "userName": {
+      "description": "Principal name from the MCP request's security context.",
+      "type": "string"
+    },
+    "success": {
+      "description": "True if the tool call returned without an error result.",
+      "type": "boolean"
+    },
+    "latencyMs": {
+      "description": "Wall-clock duration of the tool call in milliseconds. Measured around DefaultToolContext.callTool(). Null when timing was not captured (e.g. legacy rows written before Phase 3).",
+      "existingJavaType": "java.lang.Long",
+      "type": "integer",
+      "format": "int64"
+    },
+    "errorCategory": {
+      "description": "Populated only when success=false. Drives the 'Failed' tile subtext and the errorByCategory aggregate on the Billing > MCP page.",
+      "$ref": "#/definitions/errorCategory"
+    },
+    "clientName": {
+      "description": "Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI / claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor. Empty when the client did not identify itself. Bounded to 64 chars because the source header is attacker-controlled.",
+      "type": "string",
+      "maxLength": 64
+    }
+  },
+  "additionalProperties": false,
+  "required": ["extension"]
+}

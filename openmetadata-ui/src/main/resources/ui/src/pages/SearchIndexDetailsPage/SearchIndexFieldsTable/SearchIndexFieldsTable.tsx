@@ -64,7 +64,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import {
   getAllTags,
   searchTagInData,

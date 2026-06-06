@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -616,8 +615,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
         for (Table table : tables) {
           // Add the table entity
           addEntityToCSV(csvFile, table, TABLE);
-          tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags")));
-          // Add all columns as separate rows
+          // Columns and their tags are already bulk-populated by listAllForCSV above (columns +
+          // tags requested), so no per-table re-scan is needed here.
           tableRepository.exportColumnsRecursively(table, csvFile);
         }
 
@@ -721,6 +720,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE_SCHEMA;
       String entityFQN =
           csvRecord.size() > 13 ? StringEscapeUtils.unescapeCsv(csvRecord.get(13)) : null;
+      rowEntityType = entityType;
 
       if (DATABASE_SCHEMA.equals(entityType)) {
         createSchemaEntity(printer, csvRecord, entityFQN);

@@ -12,8 +12,9 @@
 """
 Read files as string from S3
 """
+
 import traceback
-from typing import Dict, List
+from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -27,7 +28,7 @@ logger = ingestion_logger()
 AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 
 
-def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:
+def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:  # noqa: UP006
     """
     Build the Azure Storage options to pass to the readers.
     We are not adding the `account_name` since it is added in the path.
@@ -50,18 +51,16 @@ class ADLSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(
-        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
-    ) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:  # noqa: RUF013
         try:
             container_client = self.client.get_container_client(bucket_name)
             return container_client.get_blob_client(path).download_blob().readall()
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from ADLS: {err}")
+            raise ReadException(f"Error fetching file [{path}] from ADLS: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:
+    def _get_tree(self) -> List[str]:  # noqa: UP006
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need
@@ -74,17 +73,15 @@ class ADLSReader(Reader):
         path: str,
         local_file_path: str,
         *,
-        bucket_name: str = None,
+        bucket_name: str = None,  # noqa: RUF013
         verbose: bool = True,
         **__,
     ):
         try:
             container_client = self.client.get_container_client(bucket_name)
-            with open(local_file_path, "wb") as download_file:
-                download_file.write(
-                    container_client.get_blob_client(path).download_blob().readall()
-                )
+            with open(local_file_path, "wb") as download_file:  # noqa: PTH123
+                download_file.write(container_client.get_blob_client(path).download_blob().readall())
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error downloading file [{path}] from ADLS: {err}")
+            raise ReadException(f"Error downloading file [{path}] from ADLS: {err}")  # noqa: B904

@@ -98,8 +98,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
-  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
-
   public DataInsightSystemChartRepository() {
     super(
         DataInsightSystemChartResource.COLLECTION_PATH,
@@ -156,6 +154,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    */
   private List<Map> getIngestionPipelineStatus(String serviceName) {
     List<Map> combinedStatus = new ArrayList<>();
+    final int pageSize = 100;
+    final int maxResults = 5000;
 
     try {
       if (serviceName == null || serviceName.trim().isEmpty()) {
@@ -175,16 +175,27 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
       if (searchClient != null) {
         try {
-          // Search for ingestion pipelines with the service name
-          var response =
-              searchClient.searchByField(
-                  "service.name.keyword", serviceName, INGESTION_PIPELINE, false);
+          // Search for ingestion pipelines with the service name, paging through all results.
+          for (int from = 0; from < maxResults; from += pageSize) {
+            var response =
+                searchClient.searchByField(
+                    "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
 
-          if (response != null && response.getStatus() == 200) {
-            // Parse the response to extract pipeline information
+            if (response == null || response.getStatus() != 200) {
+              break;
+            }
+
             String responseBody =
                 (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
-            combinedStatus.addAll(parseIngestionPipelineResponse(responseBody));
+            List<Map> pageStatuses = parseIngestionPipelineResponse(responseBody);
+            if (pageStatuses.isEmpty()) {
+              break;
+            }
+
+            combinedStatus.addAll(pageStatuses);
+            if (pageStatuses.size() < pageSize) {
+              break;
+            }
           }
         } catch (Exception e) {
           LOG.error("Error searching for ingestion pipelines for service: {}", serviceName, e);

@@ -480,6 +480,7 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement,
     apiResponseUrl,
     searchQuery,
+    altApiResponseUrl,
   }: {
     widgetKey: string;
     entitySelector: string;
@@ -488,22 +489,29 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement?: string;
     apiResponseUrl: string;
     searchQuery: string | string[];
+    altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query
-  const response = page.waitForResponse((response) => {
-    if (!response.url().includes(apiResponseUrl)) {
+  // Wait for API response matching the search query with timeout fallback
+  const response = Promise.race([
+    page.waitForResponse((response) => {
+      // Check primary API URL
+      if (response.url().includes(apiResponseUrl)) {
+        if (Array.isArray(searchQuery)) {
+          return searchQuery.every((query) => response.url().includes(query));
+        }
+        return response.url().includes(searchQuery);
+      }
+
+      // Check alternative API URL (for Task API migration)
+      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+        return true;
+      }
+
       return false;
-    }
-
-    // Handle multiple query parts (for complex queries like Data Assets)
-    if (Array.isArray(searchQuery)) {
-      return searchQuery.every((query) => response.url().includes(query));
-    }
-
-    // Handle single query string
-    return response.url().includes(searchQuery);
-  });
+    }),
+    page.waitForTimeout(10000),
+  ]);
 
   await redirectToHomePage(page);
 

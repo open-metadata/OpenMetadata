@@ -29,7 +29,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

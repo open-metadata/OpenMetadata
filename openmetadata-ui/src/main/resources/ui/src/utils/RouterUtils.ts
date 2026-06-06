@@ -43,16 +43,16 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
-import { EntityAction, EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
-import { getPartialNameFromFQN } from './CommonUtils';
+import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -455,19 +455,6 @@ export const getLogsViewerPath = (
   path = path.replace(LOG_ENTITY_TYPE, logEntityType);
   path = path.replace(LOG_ENTITY_NAME, logEntityName);
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
-
-  return path;
-};
-
-export const getGlossaryPathWithAction = (
-  fqn: string,
-  action: EntityAction
-) => {
-  let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_ACTION, action);
 
   return path;
 };
@@ -901,16 +888,6 @@ export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
-
-  return path;
-};
-
-export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
-  let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    getEncodedFqn(entityTypeFQN)
-  );
 
   return path;
 };
