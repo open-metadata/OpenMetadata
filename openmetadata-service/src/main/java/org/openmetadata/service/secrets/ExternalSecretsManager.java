@@ -16,18 +16,28 @@ package org.openmetadata.service.secrets;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
+@Slf4j
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
 
   /**
-   * Default ceiling on calls to the external backend. Ten per second (one every ~100ms) keeps a
-   * multi-field encrypt clear of the lowest write quota among the supported providers while staying
-   * imperceptible for the common single-field case.
+   * Default write rate to the external backend, used when {@link #RATE_LIMIT_PERMITS_PER_SECOND} is
+   * not configured. Ten per second keeps a multi-field encrypt clear of the lowest write quota among
+   * the supported providers while staying imperceptible for the common single-field case.
    */
   static final double DEFAULT_PERMITS_PER_SECOND = 10.0;
+
+  /**
+   * Optional {@code secretsManager.parameters} key (e.g. in {@code openmetadata.yaml}) overriding the
+   * write rate. The limiter is process-global by design — it protects a per-account provider quota
+   * that is itself shared across the whole deployment — so operators on higher-quota accounts can
+   * raise this to speed up bulk or concurrent saves.
+   */
+  static final String RATE_LIMIT_PERMITS_PER_SECOND = "rateLimitPermitsPerSecond";
 
   private final SecretsManagerRateLimiter rateLimiter;
 
@@ -36,7 +46,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     this(
         secretsManagerProvider,
         secretsConfig,
-        SecretsManagerRateLimiter.perSecond(DEFAULT_PERMITS_PER_SECOND));
+        SecretsManagerRateLimiter.perSecond(permitsPerSecond(secretsConfig)));
   }
 
   @VisibleForTesting
@@ -46,6 +56,44 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       SecretsManagerRateLimiter rateLimiter) {
     super(secretsManagerProvider, secretsConfig);
     this.rateLimiter = rateLimiter;
+  }
+
+  @VisibleForTesting
+  static double permitsPerSecond(SecretsConfig secretsConfig) {
+    double permits = DEFAULT_PERMITS_PER_SECOND;
+    String configured = optionalParameter(secretsConfig, RATE_LIMIT_PERMITS_PER_SECOND);
+    if (configured != null) {
+      try {
+        double parsed = Double.parseDouble(configured.trim());
+        if (parsed > 0) {
+          permits = parsed;
+        } else {
+          LOG.warn(
+              "Ignoring non-positive {}=[{}]; using default {} permits/sec",
+              RATE_LIMIT_PERMITS_PER_SECOND,
+              configured,
+              DEFAULT_PERMITS_PER_SECOND);
+        }
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Ignoring unparseable {}=[{}]; using default {} permits/sec",
+            RATE_LIMIT_PERMITS_PER_SECOND,
+            configured,
+            DEFAULT_PERMITS_PER_SECOND);
+      }
+    }
+    return permits;
+  }
+
+  private static String optionalParameter(SecretsConfig secretsConfig, String key) {
+    String value = null;
+    if (secretsConfig != null && secretsConfig.parameters() != null) {
+      Object raw = secretsConfig.parameters().getAdditionalProperties().get(key);
+      if (raw != null) {
+        value = raw.toString();
+      }
+    }
+    return value;
   }
 
   @Override
@@ -102,7 +150,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   public boolean existSecret(String secretName) {
     boolean exists = false;
-    throttle();
+    // Reads are not rate-limited: the limiter protects the (much scarcer) write quota, and charging
+    // the existence read against it would needlessly halve write throughput.
     try {
       exists = getSecret(secretName) != null;
     } catch (RuntimeException e) {
@@ -129,7 +178,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   protected abstract boolean isNotFoundException(Exception exception);
 
-  /** Blocks, if necessary, to keep calls to the external backend within its API quota. */
+  /**
+   * Blocks, if necessary, to keep <em>write</em> calls to the external backend within its API quota.
+   * The limiter is shared across the process (the secrets manager is a singleton), so this is a
+   * deployment-wide write rate, not per-thread. Call it before each create/update, not before reads.
+   */
   protected void throttle() {
     rateLimiter.acquire();
   }

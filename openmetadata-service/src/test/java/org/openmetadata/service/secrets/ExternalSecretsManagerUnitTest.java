@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
@@ -43,7 +44,7 @@ class ExternalSecretsManagerUnitTest {
   private final SecretsManagerRateLimiter recordingLimiter = throttleCalls::incrementAndGet;
 
   @Test
-  void upsertCreatesWhenSecretIsAbsentAndGatesReadThenWrite() {
+  void upsertCreatesWhenSecretIsAbsentAndGatesOnlyTheWrite() {
     RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
 
     manager.upsertSecret(SECRET_NAME, "first-value");
@@ -51,7 +52,7 @@ class ExternalSecretsManagerUnitTest {
     assertEquals(List.of(SECRET_NAME), manager.stored, "an absent secret must be created");
     assertTrue(manager.updated.isEmpty(), "the create path must not call update");
     assertEquals("first-value", manager.store.get(SECRET_NAME));
-    assertEquals(2, throttleCalls.get(), "upsert must gate the existence read and the write");
+    assertEquals(1, throttleCalls.get(), "only the write is rate-limited, not the existence read");
   }
 
   @Test
@@ -65,15 +66,15 @@ class ExternalSecretsManagerUnitTest {
     assertEquals(List.of(SECRET_NAME), manager.updated, "an existing secret must be updated");
     assertEquals(1, manager.stored.size(), "update must not create a second secret");
     assertEquals("rotated-value", manager.store.get(SECRET_NAME));
-    assertEquals(2, throttleCalls.get(), "upsert must gate the existence read and the write");
+    assertEquals(1, throttleCalls.get(), "only the write is rate-limited, not the existence read");
   }
 
   @Test
-  void existSecretReturnsFalseOnGenuineNotFound() {
+  void existSecretIsNotRateLimited() {
     RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
 
     assertFalse(manager.existSecret("/prefix/missing"));
-    assertEquals(1, throttleCalls.get(), "an existence check gates exactly one read");
+    assertEquals(0, throttleCalls.get(), "a read must not consume a write permit");
   }
 
   @Test
@@ -129,6 +130,38 @@ class ExternalSecretsManagerUnitTest {
   }
 
   @Test
+  void permitsPerSecondDefaultsWhenNotConfigured() {
+    assertEquals(
+        ExternalSecretsManager.DEFAULT_PERMITS_PER_SECOND,
+        ExternalSecretsManager.permitsPerSecond(CONFIG),
+        "an unset rate must fall back to the default");
+  }
+
+  @Test
+  void permitsPerSecondReadsTheConfiguredOverride() {
+    assertEquals(
+        25.0,
+        ExternalSecretsManager.permitsPerSecond(configWithRate("25")),
+        "a configured rate must override the default");
+  }
+
+  @Test
+  void permitsPerSecondFallsBackToDefaultForInvalidOrNonPositiveValues() {
+    assertEquals(
+        ExternalSecretsManager.DEFAULT_PERMITS_PER_SECOND,
+        ExternalSecretsManager.permitsPerSecond(configWithRate("not-a-number")),
+        "an unparseable rate must fall back to the default");
+    assertEquals(
+        ExternalSecretsManager.DEFAULT_PERMITS_PER_SECOND,
+        ExternalSecretsManager.permitsPerSecond(configWithRate("0")),
+        "a zero rate must fall back to the default");
+    assertEquals(
+        ExternalSecretsManager.DEFAULT_PERMITS_PER_SECOND,
+        ExternalSecretsManager.permitsPerSecond(configWithRate("-3")),
+        "a negative rate must fall back to the default");
+  }
+
+  @Test
   void theInjectedLimiterIsTheOneConsulted() {
     RecordingExternalSecretsManager manager =
         new RecordingExternalSecretsManager(SecretsManagerRateLimiter.noOp());
@@ -138,6 +171,13 @@ class ExternalSecretsManagerUnitTest {
     assertEquals(List.of(SECRET_NAME), manager.stored, "the backend write must still happen");
     assertEquals(
         0, throttleCalls.get(), "a manager built with noOp must not touch the recording limiter");
+  }
+
+  private static SecretsManager.SecretsConfig configWithRate(String value) {
+    Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty(ExternalSecretsManager.RATE_LIMIT_PERMITS_PER_SECOND, value);
+    return new SecretsManager.SecretsConfig(
+        "openmetadata", "prefix", new ArrayList<>(), parameters);
   }
 
   private static class RecordingExternalSecretsManager extends ExternalSecretsManager {

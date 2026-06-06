@@ -238,7 +238,6 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   @Override
   public boolean existSecret(String secretName) {
     boolean exists;
-    throttle();
     try {
       apiClient.readNamespacedSecret(secretName, namespace).execute();
       exists = true;
