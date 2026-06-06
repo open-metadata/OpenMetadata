@@ -14,7 +14,6 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
-import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
   entityDisplayName,
   getBackendFormat,
@@ -26,6 +25,7 @@ import {
   getFrontEndFormat,
   suggestions,
 } from './FeedUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 
 jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
@@ -46,7 +46,7 @@ jest.mock('../rest/searchAPI', () => ({
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => encodeURIComponent(fqn)),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));
@@ -60,9 +60,13 @@ jest.mock('./FeedUtils', () => ({
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
 }));
 
-jest.mock('./CommonUtils', () => ({
-  getPartialNameFromTableFQN: jest.fn(),
+jest.mock('./EntityDisplayUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
+}));
+
+jest.mock('./FqnUtils', () => ({
+  ...jest.requireActual('./FqnUtils'),
+  getPartialNameFromTableFQN: jest.fn(),
 }));
 
 describe('Feed Utils', () => {

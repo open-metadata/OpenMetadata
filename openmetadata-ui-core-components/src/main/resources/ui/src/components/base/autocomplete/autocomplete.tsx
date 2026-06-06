@@ -73,7 +73,7 @@ interface AutocompleteTriggerProps extends AriaGroupProps {
   size: 'sm' | 'md';
   isDisabled?: boolean;
   placeholder?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
@@ -88,10 +88,11 @@ export interface AutocompleteProps
   items?: SelectItemType[];
   popoverClassName?: string;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
   onItemCleared?: (key: Key) => void;
+  onFocus?: FocusEventHandler;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
@@ -253,7 +254,7 @@ const InnerAutocomplete = ({
           !multiple && !isSelectionEmpty && 'tw:hidden'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -266,7 +267,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = SearchLg,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -320,6 +321,7 @@ export const AutocompleteBase = ({
   popoverClassName,
   renderTag,
   filterOption,
+  onFocus,
   multiple = true,
   onSearchChange,
   maxVisibleItems,
@@ -416,7 +418,7 @@ export const AutocompleteBase = ({
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ fontSize: 'md' as const, size: 'sm' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
     []
   );
 
@@ -464,11 +466,14 @@ export const AutocompleteBase = ({
 
               <div className="tw:relative tw:w-full" ref={triggerRef}>
                 <AutocompleteTrigger
+                  icon={props.icon}
                   isInvalid={isInvalid}
                   placeholder={placeholder}
-                  placeholderIcon={props.placeholderIcon}
                   size="sm"
-                  onFocus={onResize}
+                  onFocus={(event) => {
+                    onResize();
+                    onFocus?.(event);
+                  }}
                   onPointerEnter={onResize}
                 />
               </div>

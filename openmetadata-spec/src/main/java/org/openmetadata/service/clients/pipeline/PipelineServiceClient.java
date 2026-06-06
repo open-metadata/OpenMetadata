@@ -248,10 +248,21 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   }
 
   public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+    List<PipelineStatus> result = new ArrayList<>();
     if (pipelineServiceClientEnabled) {
-      return getQueuedPipelineStatusInternal(ingestionPipeline);
+      try {
+        List<PipelineStatus> internal = getQueuedPipelineStatusInternal(ingestionPipeline);
+        if (internal != null) {
+          result.addAll(internal);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to fetch queued pipeline status for {}: {}. Returning stored statuses only.",
+            ingestionPipeline.getFullyQualifiedName(),
+            e.getMessage());
+      }
     }
-    return new ArrayList<>();
+    return result;
   }
 
   protected abstract PipelineServiceClientResponse getServiceStatusInternal();

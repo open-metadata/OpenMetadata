@@ -16,13 +16,14 @@ import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import Services from '../../components/Settings/Services/Services';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -56,13 +57,31 @@ const ServicesPage = () => {
       ? 'pipelines'
       : 'services');
 
-  const serviceName = useMemo(
-    () =>
-      tab === GlobalSettingOptions.DATA_OBSERVABILITY
-        ? 'dataObservabilityServices'
-        : SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
-    [tab]
+  const serviceCategoryValues = useMemo(
+    () => new Set<string>(Object.values(ServiceCategory)),
+    []
   );
+
+  const isValidTab =
+    tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
+    Boolean(SERVICE_CATEGORY[tab]) ||
+    serviceCategoryValues.has(tab);
+
+  const serviceName = useMemo(() => {
+    if (tab === GlobalSettingOptions.DATA_OBSERVABILITY) {
+      return 'dataObservabilityServices';
+    }
+
+    if (SERVICE_CATEGORY[tab]) {
+      return SERVICE_CATEGORY[tab];
+    }
+
+    if (serviceCategoryValues.has(tab)) {
+      return tab as ServiceCategory;
+    }
+
+    return ServiceCategory.DATABASE_SERVICES;
+  }, [tab, serviceCategoryValues]);
 
   const { permissions } = usePermissionProvider();
 
@@ -76,20 +95,48 @@ const ServicesPage = () => {
     );
   }, [permissions]);
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.SERVICES,
-        tab === GlobalSettingOptions.DATA_OBSERVABILITY
-          ? t('label.data-observability')
-          : capitalize(tab)
-      ),
-    []
-  );
+  const isEmbedded = location.pathname.startsWith('/askCollate');
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    const crumbs = getSettingPageEntityBreadCrumb(
+      GlobalSettingsMenuCategory.SERVICES,
+      tab === GlobalSettingOptions.DATA_OBSERVABILITY
+        ? t('label.data-observability')
+        : capitalize(tab)
+    );
+
+    if (isEmbedded) {
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name:
+            tab === GlobalSettingOptions.DATA_OBSERVABILITY
+              ? t('label.data-observability')
+              : capitalize(tab),
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
+
+    return crumbs;
+  }, [tab, t, isEmbedded]);
+
+  if (!isValidTab) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
 
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={serviceName}>
-      <Row gutter={[0, 16]}>
+      {isEmbedded && <div className="tw:h-4" />}
+      <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

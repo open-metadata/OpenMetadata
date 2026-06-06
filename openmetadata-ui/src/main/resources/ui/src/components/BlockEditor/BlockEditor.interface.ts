@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor } from '@tiptap/react';
-import { SuggestionKeyDownProps } from '@tiptap/suggestion';
+import type { Editor } from '@tiptap/react';
+import type { SuggestionKeyDownProps } from '@tiptap/suggestion';
 import { EntityType } from '../../enums/entity.enum';
 
 export type MenuType = 'bubble' | 'bar';
@@ -52,6 +52,23 @@ export interface ExtensionOptions {
   utilityExtensions?: boolean;
   tableExtensions?: boolean;
   advancedContextExtensions?: boolean;
+  /**
+   * Enable section node extension to preserve <section data-id data-highlighted> elements.
+   * Required when rendering connector documentation with scroll-to-field support.
+   * @default false
+   */
+  enableSectionNode?: boolean;
+  /**
+   * Enable admonition node extension to render <div data-admonition="type"> blocks.
+   * Required when rendering connector documentation with $$note/$$warning/etc. blocks.
+   * @default false
+   */
+  enableAdmonitionNode?: boolean;
+  /**
+   * Replace the default code block with one that includes a copy-to-clipboard button.
+   * @default false
+   */
+  enableCodeBlockCopy?: boolean;
 }
 
 export interface BlockEditorProps {

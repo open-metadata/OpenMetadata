@@ -13,9 +13,11 @@
 
 import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import {
   getEntityFQN,
@@ -24,8 +26,11 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
+import ActivityDescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
+import ActivityOwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed';
 import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
+import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
@@ -34,6 +39,7 @@ import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 const FeedCardBodyNew = ({
   isPost = false,
   feed,
+  activity,
   isEditPost,
   message,
   onUpdate,
@@ -44,14 +50,18 @@ const FeedCardBodyNew = ({
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
+  const isActivityEvent = !isUndefined(activity);
 
   const { entityFQN, entityType, cardStyle } = useMemo(() => {
+    const aboutValue = feed?.about ?? activity?.about ?? '';
+
     return {
-      entityFQN: getEntityFQN(feed.about) ?? '',
-      entityType: getEntityType(feed.about) ?? '',
-      cardStyle: feed.cardStyle ?? '',
+      entityFQN:
+        getEntityFQN(aboutValue) ?? activity?.entity?.fullyQualifiedName ?? '',
+      entityType: getEntityType(aboutValue) ?? activity?.entity?.type ?? '',
+      cardStyle: feed?.cardStyle ?? '',
     };
-  }, [feed]);
+  }, [feed, activity]);
 
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
@@ -62,7 +72,42 @@ const FeedCardBodyNew = ({
   };
 
   const feedBodyStyleCardsRender = useMemo(() => {
-    if (!isPost) {
+    if (isActivityEvent && activity) {
+      const eventType = activity.eventType;
+
+      if (
+        eventType === ActivityEventType.TagsUpdated ||
+        eventType === ActivityEventType.ColumnTagsUpdated
+      ) {
+        return <ActivityTagsFeed activity={activity} />;
+      }
+
+      if (
+        eventType === ActivityEventType.DescriptionUpdated ||
+        eventType === ActivityEventType.ColumnDescriptionUpdated
+      ) {
+        return <ActivityDescriptionFeed activity={activity} />;
+      }
+
+      if (eventType === ActivityEventType.OwnerUpdated) {
+        return (
+          <ActivityOwnersFeed
+            activity={activity}
+            isForFeedTab={isForFeedTab}
+            showThread={showThread}
+          />
+        );
+      }
+
+      return (
+        <RichTextEditorPreviewerNew
+          className="text-wrap"
+          markdown={getFrontEndFormat(activity.summary ?? message)}
+        />
+      );
+    }
+
+    if (!isPost && feed) {
       if (cardStyle === CardStyle.Description) {
         return <DescriptionFeedNew feed={feed} />;
       }
@@ -93,10 +138,22 @@ const FeedCardBodyNew = ({
     return (
       <RichTextEditorPreviewerNew
         className="text-wrap"
-        markdown={getFrontEndFormat(feed.message)}
+        markdown={getFrontEndFormat(feed?.message ?? message)}
       />
     );
-  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+  }, [
+    isPost,
+    message,
+    postMessage,
+    cardStyle,
+    feed,
+    entityType,
+    entityFQN,
+    isActivityEvent,
+    activity,
+    isForFeedTab,
+    showThread,
+  ]);
 
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
@@ -139,10 +196,10 @@ const FeedCardBodyNew = ({
     <div
       className={classNames(
         showThread ? 'show-thread' : 'hide-thread',
-        feed.cardStyle === 'description' ? 'description' : '',
+        feed?.cardStyle === 'description' ? 'description' : '',
         !showThread &&
-          feed.cardStyle === 'description' &&
-          feed.fieldOperation === 'updated'
+          feed?.cardStyle === 'description' &&
+          feed?.fieldOperation === 'updated'
           ? 'updated'
           : '',
         isFeedWidget && 'feed-widget-body'

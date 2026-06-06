@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -79,9 +80,9 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
-            from google.cloud.sql.connectors import Connector
+            from google.cloud.sql.connectors import Connector  # noqa: PLC0415
         except ImportError:
-            raise ImportError(
+            raise ImportError(  # noqa: B904
                 "google-cloud-sql-connector is required for GCP CloudSQL connections. "
                 "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
             )
@@ -92,11 +93,7 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         self._cloud_sql_connector = Connector()
         instance_connection_name = connection.hostPort
         enable_iam_auth = connection.authType.enableIamAuth or False
-        password = (
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else ""
-        )
+        password = connection.authType.password.get_secret_value() if connection.authType.password else ""
 
         def getconn():
             connect_kwargs = {
@@ -133,17 +130,22 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
+        if self.service_connection.useSlowLogs:
+            test_query_template = MYSQL_TEST_GET_QUERIES_SLOW_LOGS
+            default_query_history_table = "mysql.slow_log"
+        else:
+            test_query_template = MYSQL_TEST_GET_QUERIES
+            default_query_history_table = "mysql.general_log"
+        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
         queries = {
-            "GetQueries": MYSQL_TEST_GET_QUERIES
-            if not self.service_connection.useSlowLogs
-            else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+            "GetQueries": test_query_template.format(query_history_table=query_history_table),
         }
         return test_connection_db_schema_sources(
             metadata=metadata,

@@ -55,7 +55,7 @@ public abstract class EmbeddingClient {
   protected static int resolveMaxConcurrent(ElasticSearchConfiguration config) {
     NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
     if (nlsCfg != null) {
-      Integer value = nlsCfg.getMaxConcurrentEmbeddingRequests();
+      Integer value = nlsCfg.getMaxConcurrentRequests();
       if (value != null && value > 0) {
         return value;
       }

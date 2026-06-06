@@ -57,6 +57,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useScheduleDescriptionTexts } from '../../hooks/useScheduleDescriptionTexts';
 import {
   getApplicationByName,
   getExternalApplicationRuns,
@@ -67,10 +68,7 @@ import {
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { ExtraInfoLabel } from '../../utils/DataAssetsHeader.utils';
-import {
-  getEpochMillisForPastDays,
-  getScheduleDescriptionTexts,
-} from '../../utils/date-time/DateTimeUtils';
+import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   downloadAppLogs,
@@ -82,6 +80,46 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
 
+const ScheduleSummaryValue = ({
+  cronExpression,
+}: {
+  cronExpression: string;
+}) => {
+  const theme = useTheme();
+  const { descriptionFirstPart, descriptionSecondPart } =
+    useScheduleDescriptionTexts(cronExpression);
+
+  return (
+    <Stack alignItems="center" direction="row" spacing={1}>
+      <TimeDateIcon className="m-t-xss" height={20} width={20} />
+      <Stack spacing={1}>
+        <Typography
+          data-testid="schedule-primary-details"
+          sx={{
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: '16px',
+            marginBottom: '0px !important',
+          }}
+          variant="body1">
+          {descriptionFirstPart}
+        </Typography>
+        <Typography
+          data-testid="schedule-secondary-details"
+          sx={{
+            fontSize: 12,
+            lineHeight: '14px',
+            marginBottom: '0px !important',
+            color: theme.palette.grey[500],
+          }}
+          variant="body1">
+          {descriptionSecondPart}
+        </Typography>
+      </Stack>
+    </Stack>
+  );
+};
+
 const LogsViewerPage = () => {
   const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
@@ -89,7 +127,6 @@ const LogsViewerPage = () => {
   const runId = searchParams.get('runId') ?? undefined;
 
   const { t } = useTranslation();
-  const theme = useTheme();
   const { progress, reset, updateProgress } = useDownloadProgressStore();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [logs, setLogs] = useState<string>('');
@@ -397,42 +434,14 @@ const LogsViewerPage = () => {
           divider={<Divider flexItem orientation="vertical" />}
           spacing={2}>
           {Object.entries(logSummaries).map(([key, value]) => {
-            let valueText = value;
-
-            if (key === 'Schedule') {
-              const { descriptionFirstPart, descriptionSecondPart } =
-                getScheduleDescriptionTexts((value ?? '') as string);
-
-              valueText = (
-                <Stack alignItems="center" direction="row" spacing={1}>
-                  <TimeDateIcon className="m-t-xss" height={20} width={20} />
-                  <Stack spacing={1}>
-                    <Typography
-                      data-testid="schedule-primary-details"
-                      sx={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        lineHeight: '16px',
-                        marginBottom: '0px !important',
-                      }}
-                      variant="body1">
-                      {descriptionFirstPart}
-                    </Typography>
-                    <Typography
-                      data-testid="schedule-secondary-details"
-                      sx={{
-                        fontSize: 12,
-                        lineHeight: '14px',
-                        marginBottom: '0px !important',
-                        color: theme.palette.grey[500],
-                      }}
-                      variant="body1">
-                      {descriptionSecondPart}
-                    </Typography>
-                  </Stack>
-                </Stack>
+            const valueText =
+              key === 'Schedule' ? (
+                <ScheduleSummaryValue
+                  cronExpression={(value ?? '') as string}
+                />
+              ) : (
+                value
               );
-            }
 
             return (
               <Fragment key={key}>

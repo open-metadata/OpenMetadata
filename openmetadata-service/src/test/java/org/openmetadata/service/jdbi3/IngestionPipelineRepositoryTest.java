@@ -1,10 +1,12 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -284,6 +286,19 @@ class IngestionPipelineRepositoryTest {
     sourceConfig.setConfig(metadataConfig);
     pipeline.setSourceConfig(sourceConfig);
     return pipeline;
+  }
+
+  @Test
+  @DisplayName("closeStream is a no-op when log storage is not configured")
+  void testCloseStream_LogStorageNotConfigured_NoOp() {
+    IngestionPipelineRepository repo = mock(IngestionPipelineRepository.class);
+    when(repo.isLogStorageEnabled()).thenReturn(false);
+    doCallRealMethod()
+        .when(repo)
+        .closeStream(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(UUID.class));
+
+    assertDoesNotThrow(() -> repo.closeStream("test-service.test-pipeline", UUID.randomUUID()));
   }
 
   private static IngestionPipeline createBasicPipeline() {

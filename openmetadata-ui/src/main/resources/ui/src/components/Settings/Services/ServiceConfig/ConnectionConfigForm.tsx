@@ -12,7 +12,7 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 
@@ -29,13 +29,15 @@ import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/Airf
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
-  getConnectionSchemas,
+  buildValidConfig,
+  ConnectionSchemaResult,
+  EMPTY_CONNECTION_SCHEMA,
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
+  loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -65,6 +67,18 @@ const ConnectionConfigForm = ({
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
+  const [connSch, setConnSch] = useState<ConnectionSchemaResult['connSch']>(
+    EMPTY_CONNECTION_SCHEMA
+  );
+
+  // {@code validConfig} is the sanitized initial form data — it only depends on the
+  // {@code data} prop, NOT on {@code serviceType}/{@code serviceCategory}. Keep it as a
+  // sync {@link useMemo} so RJSF's {@code formData} prop has a stable reference until the
+  // parent commits a new {@code data} (after a successful PATCH). The earlier async
+  // {@link useState} approach re-derived {@code validConfig} every time the schema fetch
+  // re-fired, which collided with RJSF's controlled-formData reset and wiped the user's
+  // edits mid-input.
+  const validConfig = useMemo(() => buildValidConfig(data), [data]);
 
   const fetchHostIp = async () => {
     try {
@@ -85,6 +99,29 @@ const ConnectionConfigForm = ({
     }
   }, [isAirflowAvailable]);
 
+  // Schema only depends on serviceCategory + serviceType. Re-fetching it on every
+  // {@code data} change (which was the previous useEffect dep list) tore down the form
+  // state mid-edit because the async resolve re-set {@code connSch} and re-rendered the
+  // RJSF form with a fresh schema reference.
+  useEffect(() => {
+    let cancelled = false;
+    loadConnectionSchema(serviceCategory, serviceType)
+      .then((schema) => {
+        if (!cancelled) {
+          setConnSch(schema);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnSch(EMPTY_CONNECTION_SCHEMA);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceCategory, serviceType]);
+
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());
   };
@@ -100,15 +137,7 @@ const ConnectionConfigForm = ({
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
-  const { connSch, validConfig } = useMemo(
-    () =>
-      getConnectionSchemas({
-        data,
-        serviceCategory,
-        serviceType,
-      }),
-    [data, serviceCategory, serviceType]
-  );
+  const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {
     return (
@@ -121,23 +150,23 @@ const ConnectionConfigForm = ({
     );
   }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
-  // Remove the filters property from the schema
-  // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
-    () => getFilteredSchema(connSch.schema.properties),
-    [connSch.schema.properties]
+    () =>
+      getFilteredSchema(
+        connectionSchema.properties as Record<string, unknown> | undefined
+      ),
+    [connectionSchema.properties]
   );
 
-  const schemaWithoutDefaultFilterPatternFields = useMemo(
+  const schemaWithoutDefaultFilterPatternFields = useMemo<RJSFSchema>(
     () => ({
-      ...connSch.schema,
-      properties: propertiesWithoutDefaultFilterPatternFields,
+      ...connectionSchema,
+      properties:
+        propertiesWithoutDefaultFilterPatternFields as RJSFSchema['properties'],
     }),
-    [connSch.schema, propertiesWithoutDefaultFilterPatternFields]
+    [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
   );
 
-  // UI Schema to hide the nested default filter pattern fields
-  // Since some connections have reference to the other connections
   const uiSchema = useMemo(() => {
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);
@@ -152,6 +181,48 @@ const ConnectionConfigForm = ({
       setIngestionRunner(undefined);
     }
   }, [formRef.current?.state?.formData]);
+
+  const formChildren = (
+    <>
+      {isEmpty(connSch.schema) && (
+        <div
+          className="text-grey-muted text-center"
+          data-testid="no-config-available">
+          {t('message.no-config-available')}
+        </div>
+      )}
+      {shouldShowIPAlert && (
+        <Alert
+          className="tw:mt-2 tw:rounded-lg"
+          data-testid="ip-address"
+          description={
+            <Transi18next
+              i18nKey="message.airflow-host-ip-address"
+              renderElement={<strong />}
+              values={{ hostIp }}
+            />
+          }
+          type="info"
+        />
+      )}
+      {!isEmpty(connSch.schema) &&
+        isAirflowAvailable &&
+        formRef.current?.state?.formData && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            hostIp={hostIp}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
+      {!isUndefined(inlineAlertDetails) && (
+        <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+      )}
+    </>
+  );
 
   return (
     <Fragment>
@@ -171,42 +242,7 @@ const ConnectionConfigForm = ({
         onCancel={onCancel}
         onFocus={onFocus}
         onSubmit={handleSave}>
-        {isEmpty(connSch.schema) && (
-          <div
-            className="text-grey-muted text-center"
-            data-testid="no-config-available">
-            {t('message.no-config-available')}
-          </div>
-        )}
-        {shouldShowIPAlert && (
-          <Alert
-            data-testid="ip-address"
-            description={
-              <Transi18next
-                i18nKey="message.airflow-host-ip-address"
-                renderElement={<strong />}
-                values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
-              />
-            }
-            type="info"
-          />
-        )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              hostIp={hostIp}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
-        {!isUndefined(inlineAlertDetails) && (
-          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
-        )}
+        {formChildren}
       </FormBuilder>
     </Fragment>
   );

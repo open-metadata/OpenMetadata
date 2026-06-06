@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from simple_salesforce.api import Salesforce
@@ -40,18 +41,13 @@ def get_connection(connection: SalesforceConnection) -> Salesforce:
     return Salesforce(
         username=connection.username,
         password=connection.password and connection.password.get_secret_value(),
-        security_token=connection.securityToken
-        and connection.securityToken.get_secret_value(),
+        security_token=connection.securityToken and connection.securityToken.get_secret_value(),
         consumer_key=connection.consumerKey,
-        consumer_secret=connection.consumerSecret
-        and connection.consumerSecret.get_secret_value(),
+        consumer_secret=connection.consumerSecret and connection.consumerSecret.get_secret_value(),
         organizationId=connection.organizationId,
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
-        **(
-            (connection.connectionArguments and connection.connectionArguments.root)
-            or {}
-        ),
+        **((connection.connectionArguments and connection.connectionArguments.root) or {}),
     )
 
 
@@ -59,8 +55,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: Salesforce,
     service_connection: SalesforceConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

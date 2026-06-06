@@ -176,21 +176,12 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  PipelineServiceType.OpenLineage,
-  PipelineServiceType.Wherescape,
-  DatabaseServiceType.Cassandra,
-  MetadataServiceType.AlationSink,
-  DatabaseServiceType.Cockroach,
-  SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
   DatabaseServiceType.Ssas,
-  DashboardServiceType.ThoughtSpot,
-  SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
-  DashboardServiceType.Grafana,
   DashboardServiceType.Hex,
+  DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
-  DatabaseServiceType.Timescale,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
@@ -199,8 +190,11 @@ export const BETA_SERVICES = [
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
+  DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.QuestDB,
+  DashboardServiceType.SapS4Hana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -220,6 +214,8 @@ export const TEST_CONNECTION_WARNING_MESSAGE =
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
+  'useAccessHistory',
+  'accessHistoryChunkSize',
   'scheme',
   'sampleDataStorageConfig',
   'computeTableMetrics',
@@ -243,7 +239,6 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
-  'sessionExpiry',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -271,6 +266,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [

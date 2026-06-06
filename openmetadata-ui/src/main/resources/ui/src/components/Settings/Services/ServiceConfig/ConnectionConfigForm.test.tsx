@@ -18,7 +18,7 @@ import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
+import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -73,43 +73,43 @@ const formData = {
 };
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
-  getDatabaseConfig: jest.fn().mockReturnValue({
+  getDatabaseConfig: jest.fn().mockResolvedValue({
     schema: MOCK_ATHENA_SERVICE,
   }),
 }));
 
 jest.mock('../../../../utils/DashboardServiceUtils', () => ({
-  getDashboardConfig: jest.fn().mockReturnValue({
+  getDashboardConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/MessagingServiceUtils', () => ({
-  getMessagingConfig: jest.fn().mockReturnValue({
+  getMessagingConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/MetadataServiceUtils', () => ({
-  getMetadataConfig: jest.fn().mockReturnValue({
+  getMetadataConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/MlmodelServiceUtils', () => ({
-  getMlmodelConfig: jest.fn().mockReturnValue({
+  getMlmodelConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/PipelineServiceUtils', () => ({
-  getPipelineConfig: jest.fn().mockReturnValue({
+  getPipelineConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/SearchServiceUtils', () => ({
-  getSearchServiceConfig: jest.fn().mockReturnValue({
+  getSearchServiceConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
@@ -119,15 +119,11 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockReturnValue({
-    connSch: {
-      schema: {
-        name: 'test',
-      },
-      uiSchema: {},
-    },
-    validConfig: {},
-  }),
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest
+    .fn()
+    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
+  EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
 }));
@@ -139,13 +135,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
       <div data-testid="airflowMessageBanner">AirflowMessageBanner</div>
     );
 });
-
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
@@ -229,7 +218,9 @@ describe('ServiceConfig', () => {
   });
 
   it('should not render no config available message if form data has schema', async () => {
-    render(<ConnectionConfigForm {...mockProps} />);
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
 
     expect(screen.queryByTestId('no-config-available')).not.toBeInTheDocument();
   });
@@ -247,12 +238,9 @@ describe('ServiceConfig', () => {
   });
 
   it('should render no config available if form data has no schema', async () => {
-    (getConnectionSchemas as jest.Mock).mockReturnValueOnce({
-      connSch: {
-        schema: {},
-        uiSchema: {},
-      },
-      validConfig: {},
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {},
+      uiSchema: {},
     });
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
@@ -269,7 +257,9 @@ describe('ServiceConfig', () => {
     ).mockImplementation(() => ({
       ...formData,
     }));
-    render(<ConnectionConfigForm {...mockProps} />);
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
     const submitButton = await screen.findByTestId('submit-button');
 
     fireEvent.click(submitButton);
@@ -278,10 +268,10 @@ describe('ServiceConfig', () => {
   });
 
   it('should not display host ip if unable to fetch', async () => {
-    (getPipelineServiceHostIp as jest.Mock).mockRejectedValue(new Error());
+    (getPipelineServiceHostIp as jest.Mock).mockRejectedValueOnce(new Error());
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
-      expect(await screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
     });
   });
 
@@ -294,16 +284,14 @@ describe('ServiceConfig', () => {
     }));
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
-      expect(await screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
     });
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
-    // Mock Transi18next to actually render interpolated values
+  it('should render with correct brandName keys', async () => {
     const mockTransi18next = jest.fn(({ values }) => (
       <div data-testid="transi18next-mock">
         {values?.hostIp && `Host IP: ${values.hostIp}`}
-        {values?.brandName && ` Brand: ${values.brandName}`}
       </div>
     ));
 
@@ -317,16 +305,11 @@ describe('ServiceConfig', () => {
 
     expect(ipAddress).toBeInTheDocument();
 
-    // Verify actual brand name is rendered
-    expect(ipAddress.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(ipAddress.textContent).not.toContain('{{brandName}}');
-
-    // Verify Transi18next was called with brandName parameter
     expect(mockTransi18next).toHaveBeenCalledWith(
       expect.objectContaining({
         i18nKey: 'message.airflow-host-ip-address',
         values: expect.objectContaining({
-          brandName: 'OpenMetadata',
+          hostIp: '192.168.0.1',
         }),
       }),
       expect.anything()

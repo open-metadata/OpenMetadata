@@ -50,6 +50,7 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.Google;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -106,6 +107,7 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
+  private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -765,8 +767,21 @@ public class SystemRepository {
               nlpConfig.getOpenai().getEmbeddingDimension(),
               deploymentInfo);
         }
+        case "google" -> {
+          Google googleCfg = nlpConfig.getGoogle();
+          if (googleCfg == null) {
+            yield "Google provider selected but google configuration block is missing";
+          }
+          String googleEndpoint =
+              nullOrEmpty(googleCfg.getEndpoint())
+                  ? "generativelanguage.googleapis.com"
+                  : googleCfg.getEndpoint();
+          yield String.format(
+              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
+              googleEndpoint, googleCfg.getEmbeddingModelId(), googleCfg.getEmbeddingDimension());
+        }
         default -> String.format(
-            "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
+            "Unknown provider '%s'. Supported providers: djl, bedrock, openai, google", provider);
       };
     } catch (Exception e) {
       LOG.error("Error getting embedding configuration", e);
@@ -822,12 +837,17 @@ public class SystemRepository {
     }
   }
 
-  private List<String> findMissingIndexes(SearchRepository searchRepository) {
+  @VisibleForTesting
+  List<String> findMissingIndexes(SearchRepository searchRepository) {
     List<String> missing = new ArrayList<>();
+    boolean semanticSearchEnabled = searchRepository.isVectorEmbeddingEnabled();
     try {
       Map<String, org.openmetadata.search.IndexMapping> indexMap =
           searchRepository.getEntityIndexMap();
       for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
+        if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
+          continue;
+        }
         if (!searchRepository.indexExists(entry.getValue())) {
           missing.add(entry.getKey());
         }

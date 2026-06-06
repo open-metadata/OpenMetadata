@@ -18,13 +18,6 @@ import java.util.function.Consumer;
 
 /**
  * Interface for notifying servers about distributed job events.
- *
- * <p>This abstraction allows for different notification mechanisms:
- *
- * <ul>
- *   <li>Redis Pub/Sub - instant push notifications when Redis is available
- *   <li>Database polling - fallback when Redis is not configured
- * </ul>
  */
 public interface DistributedJobNotifier {
 

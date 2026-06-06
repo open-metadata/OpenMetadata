@@ -230,6 +230,29 @@ describe('IconUtils', () => {
       expect(result.src).toBeUndefined();
     });
 
+    it('should use ICON_MAP icon as placeholderIcon for valid icon names', () => {
+      const result = getEntityAvatarProps({
+        style: { iconURL: 'Bank' },
+        entityType: 'domain',
+      });
+
+      expect(result.src).toBeUndefined();
+
+      const { container } = render(<result.placeholderIcon />);
+
+      expect(container.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('should fall back to default entity icon for unknown icon names', () => {
+      const result = getEntityAvatarProps({
+        style: { iconURL: 'UnknownIcon' },
+        entityType: 'domain',
+      });
+
+      expect(result.src).toBeUndefined();
+      expect(result.placeholderIcon).toBeDefined();
+    });
+
     it('should return undefined src when no iconURL', () => {
       const result = getEntityAvatarProps({ entityType: 'domain' });
 

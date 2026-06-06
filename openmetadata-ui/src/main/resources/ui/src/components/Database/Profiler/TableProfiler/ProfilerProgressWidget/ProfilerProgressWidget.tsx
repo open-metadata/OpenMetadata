@@ -14,7 +14,7 @@
 import { Col, Progress, Row } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
-import { calculatePercentage } from '../../../../../utils/CommonUtils';
+import { calculatePercentage } from '../../../../../utils/NumberUtils';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
 const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({

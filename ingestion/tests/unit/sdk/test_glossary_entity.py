@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Glossary and GlossaryTerm entities with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -92,9 +93,7 @@ class TestGlossaryEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.glossary_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=GlossaryEntity, fqn=self.glossary_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=GlossaryEntity, fqn=self.glossary_fqn, fields=None)
 
     def test_update_glossary(self):
         """Test updating a glossary"""

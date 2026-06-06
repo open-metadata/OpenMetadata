@@ -38,7 +38,7 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   descriptionTableObject,
   tagTableObject,

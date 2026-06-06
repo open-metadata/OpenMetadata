@@ -89,7 +89,7 @@
       "title": "Recreate RDF Store",
       "description": "Clear the RDF store before indexing.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "batchSize": {
       "title": "Batch Size",

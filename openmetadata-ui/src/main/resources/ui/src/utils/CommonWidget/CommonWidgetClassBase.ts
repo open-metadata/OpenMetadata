@@ -10,13 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import KnowledgePages from '../../components/KnowledgeCenter/KnowledgePages/KnowledgePages';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 
 export class CommonWidgetClassBase {
   public getCommonWidgetsFromConfig(
-    _widgetConfig: WidgetConfig
+    widgetConfig: WidgetConfig
   ): null | React.FC {
-    // this will be overridden to show additional widgets
+    const widgetKey = widgetConfig.i;
+    const knowledgeArticleKey = DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
+    const isKnowledgeArticle =
+      widgetKey === knowledgeArticleKey ||
+      widgetKey.startsWith(knowledgeArticleKey + '-') ||
+      widgetKey.toLowerCase() === knowledgeArticleKey.toLowerCase() ||
+      widgetKey
+        .toLowerCase()
+        .startsWith(knowledgeArticleKey.toLowerCase() + '-');
+    if (isKnowledgeArticle) {
+      return KnowledgePages;
+    }
+
     return null;
   }
 }

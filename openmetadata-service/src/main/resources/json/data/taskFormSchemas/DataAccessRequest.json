@@ -1,0 +1,131 @@
+{
+  "name": "DataAccessRequest",
+  "displayName": "Data Access Request",
+  "description": "Form schema for requesting access to a Table, Data Product, or other data asset.",
+  "taskType": "DataAccessRequest",
+  "taskCategory": "DataAccess",
+  "workflowDefinitionRef": "DataAccessRequestTaskWorkflow",
+  "formSchema": {
+    "type": "object",
+    "required": ["accessType", "reason"],
+    "properties": {
+      "accessType": {
+        "type": "string",
+        "title": "Access Type",
+        "enum": ["FullAccess", "ColumnLevel", "Masked"],
+        "default": "FullAccess"
+      },
+      "columns": {
+        "type": "array",
+        "title": "Selected Columns",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "requestedAccess": {
+        "type": "string",
+        "title": "Permission Level",
+        "enum": ["Read", "Write", "Admin"],
+        "default": "Read"
+      },
+      "duration": {
+        "type": "string",
+        "title": "Duration"
+      },
+      "reason": {
+        "type": "string",
+        "title": "Access Reason"
+      },
+      "ticketId": {
+        "type": "string",
+        "title": "External Ticket ID"
+      }
+    }
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "dataAccessRequest",
+      "permission": "EDIT_ALL"
+    },
+    "ui:order": [
+      "accessType",
+      "columns",
+      "requestedAccess",
+      "duration",
+      "reason",
+      "ticketId"
+    ],
+    "accessType": {
+      "ui:widget": "radio"
+    },
+    "columns": {
+      "ui:widget": "columnSelector"
+    },
+    "requestedAccess": {
+      "ui:widget": "select"
+    },
+    "duration": {
+      "ui:widget": "durationSelector"
+    },
+    "reason": {
+      "ui:widget": "textarea"
+    }
+  },
+  "transitionForms": {
+    "approve": {
+      "requiresComment": false,
+      "formSchema": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string",
+            "title": "Approval Comment"
+          }
+        }
+      },
+      "uiSchema": {
+        "comment": {
+          "ui:widget": "textarea"
+        }
+      }
+    },
+    "reject": {
+      "requiresComment": true,
+      "formSchema": {
+        "type": "object",
+        "required": ["comment"],
+        "properties": {
+          "comment": {
+            "type": "string",
+            "title": "Rejection Reason"
+          }
+        }
+      },
+      "uiSchema": {
+        "comment": {
+          "ui:widget": "textarea"
+        }
+      }
+    },
+    "revoke": {
+      "requiresComment": true,
+      "formSchema": {
+        "type": "object",
+        "required": ["comment"],
+        "properties": {
+          "comment": {
+            "type": "string",
+            "title": "Reason for Revoking Access"
+          }
+        }
+      },
+      "uiSchema": {
+        "comment": {
+          "ui:widget": "textarea"
+        }
+      }
+    }
+  },
+  "fullyQualifiedName": "DataAccessRequest"
+}

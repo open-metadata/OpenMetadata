@@ -14,7 +14,7 @@ Openlineage Source Model module
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 
 
 @dataclass
@@ -24,11 +24,11 @@ class OpenLineageEvent:
     OpenlineageSource connector.
     """
 
-    run_facet: Dict
-    job: Dict
+    run_facet: Dict  # noqa: UP006
+    job: Dict  # noqa: UP006
     event_type: str
-    inputs: List[Any]
-    outputs: List[Any]
+    inputs: List[Any]  # noqa: UP006
+    outputs: List[Any]  # noqa: UP006
 
 
 @dataclass
@@ -74,7 +74,7 @@ class LineageNode:
     """
 
     uuid: str
-    fqn: Union[TableFQN, TopicFQN, PipelineFQN]
+    fqn: Union[TableFQN, TopicFQN, PipelineFQN]  # noqa: UP007
     node_type: str = "table"
 
 
@@ -96,7 +96,20 @@ class TableDetails:
 
     name: str
     schema: str
-    database: Optional[str] = None
+    database: Optional[str] = None  # noqa: UP045
+
+
+@dataclass
+class ResolvedTable:
+    """
+    An OpenLineage dataset resolved to an existing OpenMetadata table.
+
+    The fqn is the matched Table FQN; the details field holds the identity
+    candidate (top-level or symlink) that produced the match.
+    """
+
+    fqn: str
+    details: TableDetails
 
 
 @dataclass
@@ -118,8 +131,8 @@ class EntityDetails:
     """
 
     entity_type: str
-    table_details: Optional[TableDetails] = None
-    topic_details: Optional[TopicDetails] = None
+    table_details: Optional[TableDetails] = None  # noqa: UP045
+    topic_details: Optional[TopicDetails] = None  # noqa: UP045
 
 
 class EventType(str, Enum):
@@ -133,3 +146,19 @@ class EventType(str, Enum):
     ABORT = "ABORT"
     FAIL = "FAIL"
     OTHER = "OTHER"
+
+
+class SymlinkType(str, Enum):
+    """
+    OpenLineage symlink identifier types.
+
+    TABLE is a logical/catalog identity (Hive, Glue catalog) and is what
+    OpenMetadata database services hold. LOCATION is a physical path
+    (S3, HDFS) which this connector cannot resolve to a table or topic.
+
+    Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+            src/main/java/io/openlineage/client/utils/DatasetIdentifier.java
+    """
+
+    TABLE = "TABLE"
+    LOCATION = "LOCATION"

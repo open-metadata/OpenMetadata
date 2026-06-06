@@ -332,7 +332,8 @@ test('should display correct status badge color and icon', async ({ page }) => {
 
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(statusBadge).toHaveText('In Review');
+    await expect(statusBadge).toHaveClass(/inReview/);
 
     await expect(statusBadge).toBeVisible();
   } finally {
@@ -525,7 +526,7 @@ test.describe('Workflow History', () => {
     );
 
     if (await approveBtn.isVisible()) {
-      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      const taskResolve = page.waitForResponse('/api/v1/tasks/*/resolve');
       await approveBtn.click();
       await taskResolve;
     }

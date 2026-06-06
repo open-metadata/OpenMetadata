@@ -12,6 +12,7 @@
  */
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -195,6 +196,25 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+export const searchFromSearchInput = async (
+  page: Page,
+  searchInput: Locator,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
+
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -636,6 +656,23 @@ export const generateRandomUsername = (prefix = '') => {
     lastName,
     email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
+  };
+};
+
+export const generateRandomAdminUsername = (prefix = '') => {
+  const timestamp = Date.now();
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
+  const name = toLower(`${firstName}.${lastName}.${timestamp}`);
+  const password = 'Admin@OMD123';
+
+  return {
+    name,
+    displayName: `${firstName}${lastName}`,
+    email: `${name}@example.com`,
+    password,
+    confirmPassword: password,
+    isAdmin: true,
   };
 };
 

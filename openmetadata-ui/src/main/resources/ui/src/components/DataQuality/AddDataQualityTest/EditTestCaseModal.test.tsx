@@ -26,7 +26,10 @@ import {
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../mocks/TestSuite.mock';
-import { getTestDefinitionById } from '../../../rest/testAPI';
+import {
+  getTestDefinitionById,
+  updateTestCaseById,
+} from '../../../rest/testAPI';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import EditTestCaseModal from './EditTestCaseModal';
 
@@ -38,7 +41,12 @@ const mockProps: EditTestCaseModalProps = {
 };
 
 jest.mock('../../../utils/DataQuality/DataQualityUtils', () => {
+  const actual = jest.requireActual(
+    '../../../utils/DataQuality/DataQualityUtils'
+  );
+
   return {
+    ...actual,
     createTestCaseParameters: jest.fn().mockImplementation(() => []),
   };
 });
@@ -203,6 +211,43 @@ describe('EditTestCaseModal Component', () => {
 
     await waitFor(() => {
       expect(mockProps.onUpdate).toHaveBeenCalled();
+    });
+  });
+
+  it('should not emit a phantom add /tags op when editing display name of a tagless test case', async () => {
+    (updateTestCaseById as jest.Mock).mockClear();
+    render(
+      <EditTestCaseModal
+        {...mockProps}
+        testCase={{ ...MOCK_TEST_CASE[0], tags: undefined }}
+      />
+    );
+
+    const displayNameInput = await screen.findByLabelText('label.display-name');
+
+    await act(async () => {
+      fireEvent.change(displayNameInput, {
+        target: { value: 'Updated Display Name' },
+      });
+    });
+
+    await act(async () => {
+      userEvent.click(await screen.findByText('label.save'));
+    });
+
+    await waitFor(() => {
+      expect(updateTestCaseById).toHaveBeenCalled();
+    });
+
+    const patch = (updateTestCaseById as jest.Mock).mock.calls[0][1];
+
+    expect(patch).not.toContainEqual(
+      expect.objectContaining({ path: '/tags' })
+    );
+    expect(patch).toContainEqual({
+      op: 'replace',
+      path: '/displayName',
+      value: 'Updated Display Name',
     });
   });
 

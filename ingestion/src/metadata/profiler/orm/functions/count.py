@@ -12,6 +12,7 @@
 """
 Define Count function
 """
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.sqltypes import NVARCHAR, TEXT
@@ -49,7 +50,7 @@ def _(element, compiler, **kw):
 def _(element, compiler, **kw):
     col_type = element.clauses.clauses[0].type
     if isinstance(col_type, (NVARCHAR, TEXT)):
-        return "cast(%s as [nvarchar])" % compiler.process(element.clauses, **kw)
+        return "cast(%s as [nvarchar])" % compiler.process(element.clauses, **kw)  # noqa: UP031
     if isinstance(col_type, CustomImage):
-        return "cast(%s as [varbinary])" % compiler.process(element.clauses, **kw)
+        return "cast(%s as [varbinary])" % compiler.process(element.clauses, **kw)  # noqa: UP031
     return compiler.process(element.clauses, **kw)

@@ -122,9 +122,29 @@ public class SearchIndexJob {
     private long processedRecords;
     private long successRecords;
     private long failedRecords;
+
+    /**
+     * Records read but not indexed for a non-failure reason — chiefly stale-relationship
+     * orphans (e.g. a {@code testCaseResolutionStatus} whose parent test case was hard-deleted).
+     * Counted separately so {@code totalRecords = successRecords + failedRecords + warningRecords}.
+     */
+    @Builder.Default private long warningRecords = 0;
+
     private int totalPartitions;
     private int completedPartitions;
     private int failedPartitions;
+
+    /** Cumulative time (ms) spent in the Reader stage for this entity (DB read latency). */
+    @Builder.Default private long readerTimeMs = 0;
+
+    /** Cumulative time (ms) spent building search docs for this entity (CPU). */
+    @Builder.Default private long processTimeMs = 0;
+
+    /** Cumulative time (ms) spent in OpenSearch / Elasticsearch bulk writes for this entity. */
+    @Builder.Default private long sinkTimeMs = 0;
+
+    /** Cumulative time (ms) spent generating embeddings for this entity. */
+    @Builder.Default private long vectorTimeMs = 0;
 
     public double getProgressPercent() {
       if (totalRecords <= 0) return 0.0;
@@ -143,5 +163,9 @@ public class SearchIndexJob {
     private int totalPartitions;
     private int completedPartitions;
     private int processingPartitions;
+    @Builder.Default private long readerTimeMs = 0;
+    @Builder.Default private long processTimeMs = 0;
+    @Builder.Default private long sinkTimeMs = 0;
+    @Builder.Default private long vectorTimeMs = 0;
   }
 }

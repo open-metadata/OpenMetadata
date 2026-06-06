@@ -1,0 +1,134 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+@add-first-page-btn-bg-color: #00000006;
+@active-bg-color: #f5f5f5;
+
+.knowledge-pages-hierarchy-wrapper {
+  .ant-tree-treenode {
+    position: relative;
+  }
+
+  .ant-tree.ant-tree-directory
+    .ant-tree-treenode.ant-tree-treenode-selected::before {
+    background: @radio-button-checked-bg;
+    border-left: 2px solid @radio-button-checked-bg;
+  }
+
+  .knowledge-hierarchy-action-btn {
+    background-color: @active-bg-color;
+    display: none;
+  }
+
+  .ant-tree .ant-tree-treenode-draggable .ant-tree-draggable-icon {
+    cursor: grab;
+    visibility: hidden;
+    flex-shrink: 0;
+
+    & svg {
+      vertical-align: middle;
+      width: 12px;
+      height: 8px;
+    }
+  }
+
+  .ant-tree.ant-tree-directory .ant-tree-treenode:hover {
+    .knowledge-hierarchy-action-btn {
+      display: flex;
+      position: absolute;
+      right: 2px;
+      top: 0;
+    }
+
+    .knowledge-hierarchy-action-btn-item {
+      padding: 0px 8px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ant-tree-draggable-icon {
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+
+  .knowledge-hierarchy-page-title-wrapper {
+    &.leaf-node-title {
+      padding-left: 18px;
+    }
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ant-tree .ant-tree-node-content-wrapper {
+    padding: 0px;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .node-page-icon {
+    > svg {
+      vertical-align: middle;
+    }
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    flex: none;
+    align-self: stretch;
+    margin: 0;
+    width: 18px;
+    line-height: 24px;
+    text-align: center;
+  }
+
+  .ant-tree-switcher-noop {
+    display: none;
+  }
+
+  .ant-tree-switcher {
+    justify-content: normal;
+    width: 18px;
+
+    > .ant-tree-switcher-icon {
+      width: 12px;
+      height: 12px;
+      color: @grey-4;
+    }
+  }
+
+  .anchor-no-underline {
+    &:hover,
+    &:focus {
+      text-decoration: none;
+    }
+  }
+
+  .ant-tree.ant-tree-directory .ant-tree-treenode.ant-tree-treenode-selected {
+    font-weight: 700;
+  }
+}
+
+.add-first-page-btn {
+  width: 100%;
+  margin-top: 48px;
+  background: @add-first-page-btn-bg-color;
+}

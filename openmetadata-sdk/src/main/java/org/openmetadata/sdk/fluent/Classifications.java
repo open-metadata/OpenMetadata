@@ -175,6 +175,11 @@ public final class Classifications {
     public ClassificationDeleter delete() {
       return new ClassificationDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Classification> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.classifications(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

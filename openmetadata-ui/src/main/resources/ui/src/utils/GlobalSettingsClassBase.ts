@@ -69,6 +69,7 @@ import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
+import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -79,7 +80,6 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
-import brandClassBase from './BrandData/BrandClassBase';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -131,6 +131,10 @@ class GlobalSettingsClassBase {
     [GlobalSettingsMenuCategory.GOVERNANCE]: {
       name: t('label.governance'),
       url: GlobalSettingsMenuCategory.GOVERNANCE,
+    },
+    [GlobalSettingOptions.WORKFLOW_DEFINITIONS]: {
+      name: t('label.workflow-plural'),
+      url: `${GlobalSettingsMenuCategory.GOVERNANCE}/${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
     },
   };
 
@@ -304,9 +308,7 @@ class GlobalSettingsClassBase {
         category: t('label.team-user-management'),
         key: GlobalSettingsMenuCategory.MEMBERS,
         icon: ManagementIcon,
-        description: t('message.team-member-management-description', {
-          brandName: brandClassBase.getPageTitle(),
-        }),
+        description: t('message.team-member-management-description'),
         items: [
           {
             label: t('label.team-plural'),
@@ -390,15 +392,11 @@ class GlobalSettingsClassBase {
         category: t('label.preference-plural'),
         key: GlobalSettingsMenuCategory.PREFERENCES,
         icon: this.getPreferenceIcon(),
-        description: t('message.customize-brand-description', {
-          brandName: brandClassBase.getPageTitle(),
-        }),
+        description: t('message.customize-brand-description'),
         items: [
           {
             label: t('label.theme'),
-            description: t('message.appearance-configuration-message', {
-              brandName: brandClassBase.getPageTitle(),
-            }),
+            description: t('message.appearance-configuration-message'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APPEARANCE}`,
             icon: AppearanceIcon,
@@ -661,10 +659,8 @@ class GlobalSettingsClassBase {
             icon: LineageIcon,
           },
           {
-            label: t('label.open-metadata-url'),
-            description: t('message.om-url-configuration-message', {
-              brandName: brandClassBase.getPageTitle(),
-            }),
+            label: t('label.brand-name-url'),
+            description: t('message.om-url-configuration-message'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,
@@ -935,6 +931,31 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
             icon: GlossaryIcon,
           },
+          {
+            label: t('label.workflow-plural'),
+            description: t(
+              'message.governance-workflow-definitions-description'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
+            icon: WorkflowsSettingsIcon,
+          },
+          {
+            label: t('label.intake-form-plural'),
+            description: t('message.intake-form-plural-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.INTAKE_FORMS}`,
+            icon: GovernanceIcon,
+          },
+          // TODO: Re-enable Task Forms once the feature is ready
+          // {
+          //   label: 'Task Forms',
+          //   description:
+          //     'Manage the payload schemas and UI schemas used to create tasks.',
+          //   isProtected: Boolean(isAdminUser),
+          //   key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.TASK_FORMS}`,
+          //   icon: GovernanceIcon,
+          // },
         ],
       },
     ];

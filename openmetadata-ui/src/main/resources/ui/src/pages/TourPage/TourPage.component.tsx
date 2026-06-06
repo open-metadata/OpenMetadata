@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -21,6 +21,76 @@ import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
 import TableDetailsPageV1 from '../TableDetailsPageV1/TableDetailsPageV1';
+
+const TOUR_FEED_WIDGET_SELECTOR = '#feedWidgetData';
+const REQUIRED_STABLE_LAYOUT_FRAMES = 3;
+
+type TourTargetRect = {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+};
+
+const getTourFeedWidgetRect = (): TourTargetRect | undefined => {
+  const feedWidget = document.querySelector(TOUR_FEED_WIDGET_SELECTOR);
+  const feedWidgetRect = feedWidget?.getBoundingClientRect();
+
+  if (!feedWidgetRect?.width || !feedWidgetRect.height) {
+    return;
+  }
+
+  return {
+    height: feedWidgetRect.height,
+    left: feedWidgetRect.left,
+    top: feedWidgetRect.top,
+    width: feedWidgetRect.width,
+  };
+};
+
+const isSameWidgetRect = (
+  currentRect?: TourTargetRect,
+  previousRect?: TourTargetRect
+) => {
+  return (
+    currentRect?.height === previousRect?.height &&
+    currentRect?.left === previousRect?.left &&
+    currentRect?.top === previousRect?.top &&
+    currentRect?.width === previousRect?.width
+  );
+};
+
+const waitForTourFeedWidget = (onReady: () => void) => {
+  let animationFrameId = 0;
+  let stableLayoutFrames = 0;
+  let previousRect: TourTargetRect | undefined;
+
+  const waitForFeedWidget = () => {
+    const currentRect = getTourFeedWidgetRect();
+
+    if (currentRect && isSameWidgetRect(currentRect, previousRect)) {
+      stableLayoutFrames += 1;
+    } else {
+      stableLayoutFrames = 0;
+    }
+
+    previousRect = currentRect;
+
+    if (stableLayoutFrames >= REQUIRED_STABLE_LAYOUT_FRAMES) {
+      onReady();
+
+      return;
+    }
+
+    animationFrameId = window.requestAnimationFrame(waitForFeedWidget);
+  };
+
+  waitForFeedWidget();
+
+  return () => {
+    window.cancelAnimationFrame(animationFrameId);
+  };
+};
 
 const TourPage = () => {
   const {
@@ -33,28 +103,24 @@ const TourPage = () => {
   const { t } = useTranslation();
   const [isTourReady, setIsTourReady] = useState(false);
 
-  const clearSearchTerm = () => {
+  const clearSearchTerm = useCallback(() => {
     updateTourSearch('');
-  };
+  }, [updateTourSearch]);
 
   useEffect(() => {
-    updateIsTourOpen(true);
-
-    let attempts = 0;
-    const maxAttempts = 60;
-
-    const waitForElement = () => {
-      const el = document.querySelector('#feedWidgetData');
-      if (el) {
+    let tourMountFrameId = 0;
+    const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
+      updateIsTourOpen(true);
+      tourMountFrameId = window.requestAnimationFrame(() => {
         setIsTourReady(true);
-      } else if (attempts < maxAttempts) {
-        attempts++;
-        setTimeout(waitForElement, 100);
-      }
-    };
+      });
+    });
 
-    waitForElement();
-  }, []);
+    return () => {
+      cancelFeedWidgetWait();
+      window.cancelAnimationFrame(tourMountFrameId);
+    };
+  }, [updateIsTourOpen]);
 
   const currentPageComponent = useMemo(() => {
     switch (currentTourPage) {
@@ -72,19 +138,21 @@ const TourPage = () => {
     }
   }, [currentTourPage]);
 
+  const tourSteps = useMemo(
+    () =>
+      getTourSteps({
+        searchTerm: TOUR_SEARCH_TERM,
+        clearSearchTerm,
+        updateActiveTab,
+        updateTourPage,
+      }),
+    [clearSearchTerm, updateActiveTab, updateTourPage]
+  );
+
   return (
     <>
       {currentPageComponent}
-      {isTourReady && (
-        <Tour
-          steps={getTourSteps({
-            searchTerm: TOUR_SEARCH_TERM,
-            clearSearchTerm,
-            updateActiveTab,
-            updateTourPage,
-          })}
-        />
-      )}
+      {isTourReady && <Tour steps={tourSteps} />}
     </>
   );
 };
