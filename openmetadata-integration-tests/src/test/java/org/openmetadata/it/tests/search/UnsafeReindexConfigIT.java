@@ -50,8 +50,8 @@ import org.openmetadata.service.Entity;
 class UnsafeReindexConfigIT {
 
   private static final int SEED_TABLES = 25;
-  private static final Duration ACCEPT_TIMEOUT = Duration.ofSeconds(30);
-  private static final Duration TERMINAL_TIMEOUT = Duration.ofMinutes(5);
+  private static final Duration ACCEPT_TIMEOUT = ReindexHelpers.reindexTimeout();
+  private static final Duration TERMINAL_TIMEOUT = ReindexHelpers.reindexTimeout();
 
   private static ServerHandle server;
   private static String tableAlias;

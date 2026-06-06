@@ -24,10 +24,24 @@ public final class ReindexHelpers {
 
   private static final Set<String> TERMINAL_STATUSES =
       Set.of("success", "failed", "completed", "stopped", "activeError");
-  private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+  private static final String REINDEX_TIMEOUT_MIN_PROP = "jpw.reindex.timeoutMin";
+  private static final int DEFAULT_TIMEOUT_MINUTES = 60;
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   private ReindexHelpers() {}
+
+  /**
+   * Max wait for a reindex run to reach a terminal status — and for the singleton SearchIndexApp
+   * lock to free so a fresh trigger is accepted. Reindex duration scales with catalog size and
+   * cluster load: on a large shared/external cluster a single run can take ~20 minutes, and a
+   * concurrent test's run holds the lock for that whole window. So this defaults high and is
+   * overridable via {@code -Djpw.reindex.timeoutMin}. The waits poll run status and return the
+   * instant it goes terminal, so a large cap never slows a fast run — it only bounds the failure.
+   */
+  public static Duration reindexTimeout() {
+    return Duration.ofMinutes(
+        Integer.getInteger(REINDEX_TIMEOUT_MIN_PROP, DEFAULT_TIMEOUT_MINUTES));
+  }
 
   /** Triggers the named app via {@code POST /v1/apps/trigger/{name}}. */
   public static void triggerApp(final ServerHandle server, final String appName) {
@@ -57,7 +71,7 @@ public final class ReindexHelpers {
       final ServerHandle server,
       final Map<String, Object> config,
       final Duration acceptanceTimeout) {
-    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, reindexTimeout());
     Awaitility.await("trigger SearchIndexApp with config")
         .atMost(acceptanceTimeout)
         .pollInterval(Duration.ofSeconds(2))
@@ -117,14 +131,14 @@ public final class ReindexHelpers {
 
   /** Trigger SearchIndexingApplication and block until the latest run reaches a terminal state. */
   public static AppRunRecord triggerSearchIndexAndWait(final ServerHandle server) {
-    return triggerSearchIndexAndWait(server, DEFAULT_TIMEOUT);
+    return triggerSearchIndexAndWait(server, reindexTimeout());
   }
 
   public static AppRunRecord triggerSearchIndexAndWait(
       final ServerHandle server, final Duration timeout) {
-    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, reindexTimeout());
     final long triggeredAtMillis = System.currentTimeMillis();
-    triggerWhenAccepted(server, Duration.ofSeconds(60));
+    triggerWhenAccepted(server, reindexTimeout());
     return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
   }
 
@@ -161,8 +175,7 @@ public final class ReindexHelpers {
     // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
     // running" (notably at class transitions in the serial search-it suite). This waits for the
     // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
-    triggerSearchIndexWithConfigWhenIdle(
-        server, Map.of("recreateIndex", true), Duration.ofSeconds(60));
+    triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
     return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
   }
 

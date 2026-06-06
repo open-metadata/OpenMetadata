@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public final class SearchClusterResetExtension implements BeforeEachCallback {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchClusterResetExtension.class);
-  private static final Duration REBUILD_TIMEOUT = Duration.ofMinutes(5);
+  private static final Duration REBUILD_TIMEOUT = ReindexHelpers.reindexTimeout();
 
   @Override
   public void beforeEach(final ExtensionContext context) {

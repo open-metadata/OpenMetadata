@@ -52,7 +52,7 @@ class DistributedAutoTuneReindexUIIT {
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int PARALLEL_INGEST_WORKERS = 16;
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
   private static final int PROBE_PAGE_SIZE = 1;
 

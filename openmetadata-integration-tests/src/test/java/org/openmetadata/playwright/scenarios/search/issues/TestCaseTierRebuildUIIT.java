@@ -42,7 +42,7 @@ import org.openmetadata.service.Entity;
 class TestCaseTierRebuildUIIT {
 
   private static final String TIER_FQN = "Tier.Tier1";
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final Duration INDEX_TIMEOUT = Duration.ofMinutes(2);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(3);
 

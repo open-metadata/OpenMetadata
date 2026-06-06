@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -125,7 +126,7 @@ class SelectiveFieldReindexUIIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(SelectiveFieldReindexUIIT.class);
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final String STATUS_SUCCESS = "Success";
 
   // Pattern adopted from SimpleReindexTriggerUIIT: "Run Now" Success means the app finished,

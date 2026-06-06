@@ -13,6 +13,7 @@ import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoadSummary;
 import org.openmetadata.it.factories.EntityLoader;
 import org.openmetadata.it.search.IndexAliasInspector;
+import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.TestNamespace;
@@ -62,7 +63,7 @@ class SimpleReindexTriggerUIIT {
   private static final int COLUMNS_PER_TABLE = Integer.getInteger("jpw.simpleReindex.cols", 5);
   private static final int PARALLEL_WORKERS = Integer.getInteger("jpw.simpleReindex.workers", 16);
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final String STATUS_SUCCESS = "Success";
   // After Run Now reports Success the alias has swapped, but the ES refresh on the new index can
   // lag by a refresh interval. Poll the count until it converges rather than asserting once.

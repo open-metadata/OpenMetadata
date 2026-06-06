@@ -73,7 +73,7 @@ class SearchAvailableDuringReindexUIIT {
   private static final String TABLE_INDEX_ALIAS = "table_search_index";
   private static final int PROBE_PAGE_SIZE = TABLES + 100;
   private static final Duration PROBE_INTERVAL = Duration.ofMillis(1500);
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   // ES refresh interval is 1s; give ourselves a 3s grace before asserting eventual
   // consistency on the post-reindex probe so we don't flake on a yet-to-refresh segment.
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
