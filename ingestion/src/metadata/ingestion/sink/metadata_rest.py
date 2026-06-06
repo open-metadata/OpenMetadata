@@ -396,7 +396,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def write_query(self, record: CreateQueryRequest) -> Either[Entity]:
         """Buffer queries on a dedicated bulk path.
 
-        A query create request carries no name; the server derives it from the SQL
+        A query create request carries no name, so the server derives it from the SQL
         checksum. Identical SQL (e.g. a scheduled stored procedure running the same
         statement) therefore produces the same checksum and would collide in the bulk
         API. Keeping queries on their own buffer and flush isolates that checksum dedup,
@@ -444,7 +444,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
         """Record a query bulk response. Already-present queries are reported as warnings
         (not failures) so a lineage run is not marked failed over queries that lost no
-        metadata; any other failure is still recorded as a failure."""
+        metadata. Any other failure is still recorded as a failure."""
         if not result:
             return Either(right=None)  # pyright: ignore[reportCallIssue]
 
