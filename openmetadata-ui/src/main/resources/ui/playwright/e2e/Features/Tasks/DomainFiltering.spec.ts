@@ -110,8 +110,7 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Task-DomainA-${domainA.responseData.name}`,
-          about: tableInDomainA.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${tableInDomainA.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: ['admin'],
@@ -121,8 +120,7 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Task-DomainB-${domainB.responseData.name}`,
-          about: tableInDomainB.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${tableInDomainB.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: ['admin'],
@@ -245,8 +243,7 @@ test.describe('Domain Filtering - Task Counts Update', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Count-Task-${domain.responseData.name}`,
-          about: tableInDomain.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: ['admin'],
@@ -319,8 +316,7 @@ test.describe('Domain Filtering - Entity Page Activity Feed', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `EntityPage-Task-${domain.responseData.name}`,
-          about: tableInDomain.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: ['admin'],
@@ -418,8 +414,7 @@ test.describe('Domain Filtering - API Validation', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `API-Validation-Task-${domain.responseData.name}`,
-          about: tableInDomain.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: ['admin'],

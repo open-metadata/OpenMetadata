@@ -76,7 +76,7 @@ import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../utils/StringsUtils';
+} from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';

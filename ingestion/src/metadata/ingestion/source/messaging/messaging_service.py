@@ -13,10 +13,10 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast
+from typing import Any, Iterable, List, Optional, Set, cast  # noqa: UP035
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -74,9 +74,7 @@ class MessagingServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -85,15 +83,12 @@ class MessagingServiceTopology(ServiceTopology):
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             )
         ],
         children=["topic"],
         post_process=["mark_topics_as_deleted"],
     )
-    topic: Annotated[
-        TopologyNode, Field(description="Topic Processing Node")
-    ] = TopologyNode(
+    topic: Annotated[TopologyNode, Field(description="Topic Processing Node")] = TopologyNode(
         producer="get_topic",
         stages=[
             NodeStage(
@@ -101,7 +96,6 @@ class MessagingServiceTopology(ServiceTopology):
                 context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=TopicSampleData,
@@ -128,11 +122,11 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MessagingConnection.model_fields["config"].annotation
+    service_connection: MessagingConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
-    topic_source_state: Set = set()
+    topic_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -143,9 +137,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.source_config: MessagingServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: MessagingServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
@@ -168,15 +160,14 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             settings = self.metadata.get_profiler_config_settings()
             if not settings or not settings.config_value:
                 return False
-            profiler_config = cast(ProfilerConfiguration, settings.config_value)
+            profiler_config = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
             sample_data_config = profiler_config.sampleDataConfig
             if sample_data_config is None:
                 return False
-            sample_data_config = cast(SampleDataIngestionConfig, sample_data_config)
+            sample_data_config = cast(SampleDataIngestionConfig, sample_data_config)  # noqa: TC006
             if not sample_data_config.storeSampleData:
                 logger.info(
-                    "Global profiler configuration disables storing "
-                    "of sample data. Overriding source configuration."
+                    "Global profiler configuration disables storing of sample data. Overriding source configuration."
                 )
                 return True
         except Exception as exc:
@@ -189,23 +180,19 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Messaging Entity
         """
 
-    def yield_topic_sample_data(
-        self, topic_details: Any
-    ) -> Iterable[Either[TopicSampleData]]:
+    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
 
-    def yield_topic_lineage(
-        self, topic_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_topic_lineage(self, topic_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to Get Lineage for Messaging Entity.
         Override this method in subclasses to provide lineage information.
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:
+    def get_topic_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """
         Get List of all topics
         """
@@ -231,11 +218,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             yield topic_details
 
     def yield_create_request_messaging_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=MessagingService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=MessagingService, config=config))
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -244,9 +227,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """By default, nothing to prepare"""
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_topics_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the topics as deleted"""
@@ -255,7 +236,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTopics,
+                recursive=self.source_config.markDeletedTopics,
                 params={"service": self.context.get().messaging_service},
             )
 

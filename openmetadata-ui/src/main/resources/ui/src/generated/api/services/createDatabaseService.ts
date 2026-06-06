@@ -107,6 +107,8 @@ export interface DatabaseConnection {
  *
  * Salesforce Connection Config
  *
+ * SAP SuccessFactors Connection Config
+ *
  * SingleStore Database Connection Config
  *
  * Snowflake Connection Config
@@ -168,6 +170,8 @@ export interface DatabaseConnection {
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
+ *
+ * QuestDB Connection Config
  */
 export interface Connection {
     /**
@@ -264,6 +268,8 @@ export interface Connection {
      * Host and port of the Informix service.
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      */
     hostPort?: string;
     /**
@@ -463,6 +469,8 @@ export interface Connection {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -545,6 +553,11 @@ export interface Connection {
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
      *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
+     *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
      *
@@ -604,6 +617,8 @@ export interface Connection {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      */
     username?: string;
     /**
@@ -646,6 +661,8 @@ export interface Connection {
      *
      * Choose Auth Configuration Type.
      *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
@@ -673,7 +690,15 @@ export interface Connection {
      */
     httpPath?: string;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
      */
     queryHistoryTable?: string;
     /**
@@ -854,6 +879,51 @@ export interface Connection {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API version.
+     */
+    apiVersion?: string;
+    /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
+     *
+     * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
+     */
+    clientId?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
+     * Client SSL verification.
+     */
+    verifySSL?: VerifySSL;
+    /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -890,10 +960,6 @@ export interface Connection {
      */
     includeTransientTables?: boolean;
     /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
-    /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
      */
@@ -910,6 +976,13 @@ export interface Connection {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -944,14 +1017,6 @@ export interface Connection {
      * API Host to connect to DOMO instance
      */
     apiHost?: string;
-    /**
-     * Client ID for DOMO
-     *
-     * Azure Application (client) ID for service principal authentication.
-     *
-     * Azure Application (client) ID for Service Principal authentication.
-     */
-    clientId?: string;
     /**
      * URL of your Domo instance, e.g., https://openmetadata.domo.com
      */
@@ -1023,7 +1088,6 @@ export interface Connection {
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      */
     paginationLimit?: number;
-    verifySSL?:       VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
      *
@@ -1472,10 +1536,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 export interface AuthenticationModeObject {
@@ -1941,6 +2011,12 @@ export interface HiveMetastoreConnectionDetails {
      */
     databaseSchema?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -2150,6 +2226,28 @@ export interface OracleConnectionType {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -2163,7 +2261,7 @@ export enum ConfigScheme {
     ClickhouseNative = "clickhouse+native",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
@@ -2262,12 +2360,14 @@ export enum ConfigType {
     PinotDB = "PinotDB",
     Postgres = "Postgres",
     Presto = "Presto",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
@@ -2282,6 +2382,8 @@ export enum ConfigType {
 }
 
 /**
+ * Client SSL verification.
+ *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  */
 export enum VerifySSL {
@@ -2392,12 +2494,14 @@ export enum DatabaseServiceType {
     Postgres = "Postgres",
     Presto = "Presto",
     QueryLog = "QueryLog",
+    QuestDB = "QuestDB",
     Redshift = "Redshift",
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",

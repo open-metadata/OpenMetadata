@@ -12,6 +12,7 @@
 """
 Test Container sampler processor functionality
 """
+
 import uuid
 from unittest.mock import MagicMock, Mock, patch
 
@@ -93,9 +94,7 @@ def workflow_config():
             type="s3",
             serviceName="s3_service",
             sourceConfig=SourceConfig(
-                config=StorageServiceAutoClassificationPipeline(
-                    storeSampleData=True, sampleDataCount=50
-                ),
+                config=StorageServiceAutoClassificationPipeline(storeSampleData=True, sampleDataCount=50),
             ),
         ),
         processor=Processor(type="orm-profiler", config={}),
@@ -114,12 +113,9 @@ def workflow_config():
 
 
 @patch("metadata.sampler.processor.import_sampler_class")
-def test_sampler_processor_handles_container(
-    mock_import_sampler, container_entity, workflow_config
-):
+def test_sampler_processor_handles_container(mock_import_sampler, container_entity, workflow_config):
     """Test that SamplerProcessor can handle Container entities"""
 
-    # Setup mocks
     mock_sampler_class = MagicMock()
     mock_sampler_instance = MagicMock()
     mock_sampler_instance.generate_sample_data.return_value = TableData(
@@ -136,7 +132,6 @@ def test_sampler_processor_handles_container(
     mock_sampler_class.create.return_value = mock_sampler_instance
     mock_import_sampler.return_value = mock_sampler_class
 
-    # Create processor
     metadata_mock = MagicMock()
     metadata_mock.get_profiler_config_settings.return_value = None
 
@@ -145,16 +140,11 @@ def test_sampler_processor_handles_container(
         metadata=metadata_mock,
     )
 
-    # Create profiler source and entity
     profiler_source = MagicMock()
-    record = ProfilerSourceAndEntity.model_construct(
-        profiler_source=profiler_source, entity=container_entity
-    )
+    record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
-    # Process the container
     result = processor._run(record)
 
-    # Assertions
     assert result.right is not None
     assert result.left is None
     assert result.right.entity == container_entity
@@ -163,12 +153,9 @@ def test_sampler_processor_handles_container(
 
 
 @patch("metadata.sampler.processor.import_sampler_class")
-def test_sampler_processor_handles_table(
-    mock_import_sampler, table_entity, workflow_config
-):
+def test_sampler_processor_handles_table(mock_import_sampler, table_entity, workflow_config):
     """Test that SamplerProcessor still handles Table entities correctly"""
 
-    # Setup mocks
     mock_sampler_class = MagicMock()
     mock_sampler_instance = MagicMock()
     mock_sampler_instance.generate_sample_data.return_value = TableData(
@@ -184,50 +171,48 @@ def test_sampler_processor_handles_table(
     mock_sampler_class.create.return_value = mock_sampler_instance
     mock_import_sampler.return_value = mock_sampler_class
 
-    # Create processor
     metadata_mock = MagicMock()
     metadata_mock.get_profiler_config_settings.return_value = None
 
-    # Mock get_context_entities to return database entity
-    with patch("metadata.sampler.processor.get_context_entities") as mock_get_context:
-        mock_get_context.return_value = (Mock(), Mock(), None)
+    with patch("metadata.utils.profiler_utils.get_context_entities") as mock_get_context:
+        mock_database_entity = MagicMock()
+        mock_get_context.return_value = (None, mock_database_entity, None)
 
-        with patch(
-            "metadata.sampler.processor.SamplerProcessor._copy_service_config"
-        ) as mock_copy_config:
-            mock_copy_config.return_value = {}
+        with patch("metadata.sampler.entity_adapters.build_database_service_conn_config") as mock_build_conn:
+            mock_build_conn.return_value = {}
 
-            processor = SamplerProcessor(
-                config=workflow_config,
-                metadata=metadata_mock,
-            )
+            with patch("metadata.sampler.entity_adapters.get_profile_sample_config") as mock_sample_cfg:
+                from metadata.sampler.models import SampleConfig
 
-            # Create profiler source and entity
-            profiler_source = MagicMock()
-            record = ProfilerSourceAndEntity.model_construct(
-                profiler_source=profiler_source, entity=table_entity
-            )
+                mock_sample_cfg.return_value = SampleConfig()
 
-            # Process the table
-            result = processor._run(record)
+                with patch("metadata.sampler.entity_adapters.get_sample_data_count_config") as mock_count:
+                    mock_count.return_value = 50
 
-            # Assertions
-            assert result.right is not None
-            assert result.left is None
-            assert result.right.entity == table_entity
+                    processor = SamplerProcessor(
+                        config=workflow_config,
+                        metadata=metadata_mock,
+                    )
+
+                    profiler_source = MagicMock()
+                    record = ProfilerSourceAndEntity.model_construct(
+                        profiler_source=profiler_source, entity=table_entity
+                    )
+
+                    result = processor._run(record)
+
+                    assert result.right is not None
+                    assert result.left is None
+                    assert result.right.entity == table_entity
 
 
-def test_sampler_processor_run_for_container_no_context_entities(
-    container_entity, workflow_config
-):
-    """Test that _run_for_container doesn't require database/schema context"""
+def test_sampler_processor_container_no_context_entities_needed(container_entity, workflow_config):
+    """Test that container sampling doesn't require database/schema context"""
 
     with patch("metadata.sampler.processor.import_sampler_class") as mock_import:
         mock_sampler_class = MagicMock()
         mock_sampler_instance = MagicMock()
-        mock_sampler_instance.generate_sample_data.return_value = TableData(
-            columns=[], rows=[]
-        )
+        mock_sampler_instance.generate_sample_data.return_value = TableData(columns=[], rows=[])
         mock_sampler_class.create.return_value = mock_sampler_instance
         mock_import.return_value = mock_sampler_class
 
@@ -240,23 +225,19 @@ def test_sampler_processor_run_for_container_no_context_entities(
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=container_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
-        result = processor._run_for_container(container_entity, record)
+        processor._run(record)
 
-        # Verify sampler was created with None for schema/database entities
         call_args = mock_sampler_class.create.call_args
-        assert call_args.kwargs["schema_entity"] is None
-        assert call_args.kwargs["database_entity"] is None
+        assert "schema_entity" not in call_args.kwargs
+        assert "database_entity" not in call_args.kwargs
         assert call_args.kwargs["entity"] == container_entity
 
 
 def test_sampler_processor_unsupported_entity_type(workflow_config):
     """Test that processor rejects unsupported entity types"""
 
-    # Create an unsupported entity type (just a mock object)
     unsupported_entity = MagicMock()
     unsupported_entity.fullyQualifiedName.root = "unsupported.entity"
 
@@ -270,13 +251,10 @@ def test_sampler_processor_unsupported_entity_type(workflow_config):
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=unsupported_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=unsupported_entity)
 
         result = processor._run(record)
 
-        # Should return error for unsupported type
         assert result.left is not None
         assert result.right is None
         assert "Unsupported entity type" in result.left.error
@@ -285,15 +263,12 @@ def test_sampler_processor_unsupported_entity_type(workflow_config):
 def test_sample_data_store_flag_respected(container_entity, workflow_config):
     """Test that storeSampleData flag is properly passed to SampleData"""
 
-    # Test with storeSampleData=False
     workflow_config.source.sourceConfig.config.storeSampleData = False
 
     with patch("metadata.sampler.processor.import_sampler_class") as mock_import:
         mock_sampler_class = MagicMock()
         mock_sampler_instance = MagicMock()
-        mock_sampler_instance.generate_sample_data.return_value = TableData(
-            columns=[], rows=[]
-        )
+        mock_sampler_instance.generate_sample_data.return_value = TableData(columns=[], rows=[])
         mock_sampler_class.create.return_value = mock_sampler_instance
         mock_import.return_value = mock_sampler_class
 
@@ -306,10 +281,8 @@ def test_sample_data_store_flag_respected(container_entity, workflow_config):
         )
 
         profiler_source = MagicMock()
-        record = ProfilerSourceAndEntity.model_construct(
-            profiler_source=profiler_source, entity=container_entity
-        )
+        record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=container_entity)
 
-        result = processor._run_for_container(container_entity, record)
+        result = processor._run(record)
 
         assert result.right.sample_data.store is False

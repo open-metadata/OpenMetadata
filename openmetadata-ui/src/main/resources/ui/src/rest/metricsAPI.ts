@@ -21,7 +21,7 @@ import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export const getMetrics = async (params: ListParams) => {
@@ -68,13 +68,9 @@ export const restoreMetric = async (id: string) => {
   return response.data;
 };
 
-export const getMetricVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getMetricVersions = async (id: string) => {
   const response = await APIClient.get<EntityHistory>(
-    `/metrics/${id}/versions`,
-    { params }
+    `/metrics/${id}/versions`
   );
 
   return response.data;

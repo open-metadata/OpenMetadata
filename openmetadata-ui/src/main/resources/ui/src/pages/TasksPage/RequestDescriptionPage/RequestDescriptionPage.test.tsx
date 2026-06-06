@@ -147,8 +147,7 @@ describe('RequestDescriptionPage', () => {
       category: 'MetadataUpdate',
       type: 'DescriptionUpdate',
       priority: 'Medium',
-      about: 'sample_data.ecommerce_db.shopify.dim_location',
-      aboutType: 'table',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
         newDescription: '',

@@ -63,7 +63,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(await page.locator('.ant-table-row').count()).toBe(15);
+    expect(
+      await page
+        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
+        .count()
+    ).toBe(15);
   });
 
   test('Table search with sorting should work', async ({
@@ -700,35 +704,27 @@ test.describe('Large Table Column Search & Copy Link', () => {
     );
     expect(clipboardText).toContain(targetColumnName);
 
-    // 5. Visit the copied Link
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('fields=') &&
-          response.request().method() === 'GET'
-      ),
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('profile') &&
-          response.request().method() === 'GET',
-        { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-      ),
-      page.goto(clipboardText),
-    ]);
+    // 5. Visit the copied Link — assert single-column GET fires with
+    // entityType/fields query params.
+    const columnGetResponsePromise = page.waitForResponse((response) => {
+      if (
+        !response.url().includes('/api/v1/columns/name/') ||
+        response.request().method() !== 'GET'
+      ) {
+        return false;
+      }
+      const url = new URL(response.url());
+
+      return (
+        url.searchParams.get('entityType') === 'table' &&
+        url.searchParams.get('fields') ===
+          'tags,customMetrics,extension,profile'
+      );
+    });
+    await page.goto(clipboardText);
+    const columnGetResponse = await columnGetResponsePromise;
+
+    expect(columnGetResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open

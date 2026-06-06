@@ -162,7 +162,8 @@ export const NULL_CONDITIONS = {
 };
 
 export const showAdvancedSearchDialog = async (page: Page) => {
-  await page.getByTestId('advance-search-button').click();
+  await page.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
@@ -210,12 +211,7 @@ export const selectOption = async (
   // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .locator('.ant-select-item-option')
-    .filter({
-      hasText: new RegExp(
-        `^${optionTitle.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
-      ),
-    })
+    .getByTitle(optionTitle, { exact: true })
     .first();
   await expect(optionLocator).toBeVisible();
 
@@ -690,6 +686,43 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await page.waitForTimeout(1000);
 
   await expect(dropdownText).not.toContainText('Loading...');
+};
+
+// For fields backed by hard-coded listValues (no aggregate API call), options are
+// rendered immediately — use selectOption directly instead of fillRule which waits
+// for a network response that never comes.
+export const fillStaticListRule = async (
+  page: Page,
+  {
+    fieldLabel,
+    condition,
+    value,
+    ruleIndex,
+  }: {
+    fieldLabel: string;
+    condition: string;
+    value: string;
+    ruleIndex: number;
+  }
+) => {
+  const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    fieldLabel,
+    true
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    condition
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.widget--widget > .ant-select'),
+    value
+  );
 };
 
 export const getFieldsSuggestionSearchText = (

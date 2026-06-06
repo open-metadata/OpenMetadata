@@ -93,6 +93,12 @@ const waitForDirectionalColumnLineageResponse = (
     return true;
   });
 
+const expectImpactAnalysisTextVisible = async (page: Page, text: string) => {
+  await expect(
+    page.getByTestId('lineage-card-table').getByText(text)
+  ).toBeVisible();
+};
+
 test.describe('Impact Analysis', () => {
   let tableColumns: string[] = [];
   let table2Columns: string[] = [];
@@ -353,15 +359,16 @@ test.describe('Impact Analysis', () => {
       table2.entityResponseData.displayName ?? table2.entity.displayName,
     ];
     for (const node of tableDownstreamNodes) {
-      await expect(page.getByText(node)).toBeVisible();
+      await expectImpactAnalysisTextVisible(page, node);
     }
 
     // Verify Dashboard is visible in Impact Analysis for Upstream
     await page.getByRole('button', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
 
     await dashboard.visitEntityPage(page);
     await visitLineageTab(page);
@@ -387,7 +394,7 @@ test.describe('Impact Analysis', () => {
     ];
 
     for (const node of dashboardDownstreamNodes) {
-      await expect(page.getByText(node)).toBeVisible();
+      await expectImpactAnalysisTextVisible(page, node);
     }
   });
 
@@ -395,9 +402,10 @@ test.describe('Impact Analysis', () => {
     // Verify Dashboard is visible in Impact Analysis for Upstream
     await page.getByRole('button', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
 
     await topic.visitEntityPage(page);
     await visitLineageTab(page);
@@ -416,14 +424,14 @@ test.describe('Impact Analysis', () => {
     // Verify Table is visible in Impact Analysis for Upstream of Topic
     await page.getByRole('button', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(
-        table.entityResponseData.displayName ?? table.entity.displayName
-      )
-    ).toBeVisible();
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      table.entityResponseData.displayName ?? table.entity.displayName
+    );
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
   });
 
   test('verify owner filter for Asset level impact analysis', async ({

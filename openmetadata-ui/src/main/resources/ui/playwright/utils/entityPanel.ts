@@ -58,12 +58,14 @@ export const openEntitySummaryPanel = async ({
   endpoint,
   fullyQualifiedName,
   exploreTab,
+  dataAssetTypeLeftPanelTestId,
 }: {
   page: Page;
   entityName: string;
   endpoint?: string;
   fullyQualifiedName?: string;
   exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
 }) => {
   if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
     await page.getByTestId('global-search-selector').waitFor({
@@ -105,6 +107,12 @@ export const openEntitySummaryPanel = async ({
     await cardByFqn.getByTestId('description-text').click();
 
     return;
+  }
+
+  if (dataAssetTypeLeftPanelTestId) {
+    const knowledgeCenterItem = page.getByTestId(dataAssetTypeLeftPanelTestId);
+    await knowledgeCenterItem.waitFor({ state: 'visible' });
+    await knowledgeCenterItem.click();
   }
 
   await page

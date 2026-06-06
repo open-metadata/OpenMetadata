@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
@@ -22,6 +25,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
@@ -150,19 +154,6 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().classifications().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().classifications().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .classifications()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -774,6 +765,114 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
                   client.tags().get(tag2.getId().toString());
               assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
               assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
+            });
+  }
+
+  // ===================================================================
+  // Issue #28696 (classification analogue): renaming a classification so the new
+  // name keeps the old name as a PREFIX must rewrite child tag FQNs on linked
+  // assets correctly AND must NOT corrupt a sibling classification that merely
+  // shares a textual prefix. Classification asset-tag propagation runs through
+  // the shared, now boundary-aware UPDATE_FQN_PREFIX_SCRIPT
+  // (propagateToRelatedEntities, gated on the displayName change a UI rename
+  // sends). Unlike glossary it is single-pass, so the exact rename was already
+  // fine; the sibling assertion is what the boundary fix protects.
+  // ===================================================================
+  @Test
+  void test_renameClassificationPrefixExtension_rewritesChildTagsButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    TableResourceIT tableResourceIT = new TableResourceIT();
+
+    // Dot-free classification name; sibling shares the prefix WITHOUT a '.' boundary.
+    String nameA = "clf_" + ns.shortPrefix();
+    Classification a =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA)
+                .withDisplayName("Sensitivity")
+                .withDescription("Classification renamed via prefix extension (#28696)"));
+    Classification sibling =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA + "x")
+                .withDescription("Sibling classification sharing the textual prefix"));
+
+    Tag tagA =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("sensitive")
+                    .withClassification(a.getFullyQualifiedName())
+                    .withDescription("child tag of the renamed classification"));
+    Tag tagSibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("foo")
+                    .withClassification(sibling.getFullyQualifiedName())
+                    .withDescription("child tag of the sibling classification"));
+    String tagAFqn = tagA.getFullyQualifiedName();
+    String siblingTagFqn = tagSibling.getFullyQualifiedName();
+
+    Table assetA = createTableWithTag(tableResourceIT, ns, "a", tagAFqn);
+    Table assetSibling = createTableWithTag(tableResourceIT, ns, "s", siblingTagFqn);
+
+    awaitTableTag(client, mapper, assetA.getId().toString(), tagAFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+
+    a.setName(nameA + " Renamed");
+    a.setDisplayName("Sensitivity Renamed");
+    Classification renamed = patchEntity(a.getId().toString(), a);
+    String newNameA = renamed.getFullyQualifiedName();
+    assertNotEquals(nameA, newNameA);
+    assertTrue(newNameA.startsWith(nameA), "rename must extend the name as a prefix: " + newNameA);
+
+    // Child tag FQN on the linked asset follows the renamed classification...
+    awaitTableTag(client, mapper, assetA.getId().toString(), newNameA + ".sensitive");
+    // ...and the prefix-sharing sibling's asset tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+  }
+
+  private Table createTableWithTag(
+      TableResourceIT tableResourceIT, TestNamespace ns, String suffix, String tagFqn) {
+    Table table =
+        tableResourceIT.createEntity(
+            tableResourceIT.createRequest(ns.shortPrefix("clf_tbl_" + suffix), ns).withTags(null));
+    table.setTags(List.of(new TagLabel().withTagFQN(tagFqn)));
+    return tableResourceIT.patchEntity(table.getId().toString(), table);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
             });
   }
 }

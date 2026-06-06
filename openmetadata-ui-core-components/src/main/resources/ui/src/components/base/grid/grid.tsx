@@ -102,7 +102,7 @@ export interface GridItemProps extends HTMLAttributes<HTMLDivElement> {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const GridItem = ({
+export const GridItem = ({
   span = GRID_COLUMNS,
   start,
   className,

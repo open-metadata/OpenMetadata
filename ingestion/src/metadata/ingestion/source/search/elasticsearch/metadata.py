@@ -11,12 +11,13 @@
 """
 Elasticsearch source to extract metadata
 """
+
 import shutil
 import traceback
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional  # noqa: UP035
 
-from elasticsearch8 import Elasticsearch
+from elasticsearch8 import Elasticsearch  # noqa: TC002
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -59,15 +60,11 @@ class ElasticsearchSource(SearchServiceSource):
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
-            raise InvalidSourceException(
-                f"Expected ElasticsearchConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ElasticsearchConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_search_index_list(self) -> Iterable[dict]:
@@ -76,7 +73,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         try:
             index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
-            for index in index_list.keys():
+            for index in index_list.keys():  # noqa: SIM118
                 try:
                     yield self.client.indices.get(index=str(index))
                 except Exception as exc:
@@ -89,20 +86,18 @@ class ElasticsearchSource(SearchServiceSource):
                 f"Failed to retrieve index list from Elasticsearch: {exc}. "
                 "Please check your Elasticsearch connection and cluster health."
             )
-            raise exc
+            raise exc  # noqa: TRY201
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
+    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get Search Index Name
         """
         if search_index_details and len(search_index_details) == 1:
-            return list(search_index_details.keys())[0]
+            return list(search_index_details.keys())[0]  # noqa: RUF015
 
         return None
 
-    def yield_search_index(
-        self, search_index_details: Any
-    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+    def yield_search_index(self, search_index_details: Any) -> Iterable[Either[CreateSearchIndexRequest]]:
         """
         Method to Get Search Index Entity
         """
@@ -111,21 +106,15 @@ class ElasticsearchSource(SearchServiceSource):
             search_index_request = CreateSearchIndexRequest(
                 name=EntityName(index_name),
                 displayName=index_name,
-                searchIndexSettings=search_index_details.get(index_name, {}).get(
-                    "settings", {}
-                ),
+                searchIndexSettings=search_index_details.get(index_name, {}).get("settings", {}),
                 service=FullyQualifiedEntityName(self.context.get().search_service),
-                fields=parse_es_index_mapping(
-                    search_index_details.get(index_name, {}).get("mappings")
-                ),
+                fields=parse_es_index_mapping(search_index_details.get(index_name, {}).get("mappings")),
                 indexType=IndexType.Index,
             )
             yield Either(right=search_index_request)
             self.register_record(search_index_request=search_index_request)
 
-    def yield_search_index_sample_data(
-        self, search_index_details: Any
-    ) -> Iterable[Either[OMetaIndexSampleData]]:
+    def yield_search_index_sample_data(self, search_index_details: Any) -> Iterable[Either[OMetaIndexSampleData]]:
         """
         Method to Get Sample Data of Search Index Entity
         """
@@ -144,9 +133,7 @@ class ElasticsearchSource(SearchServiceSource):
                     service_name=self.context.get().search_service,
                     search_index_name=self.context.get().search_index,
                 )
-                search_index_entity = self.metadata.get_by_name(
-                    entity=SearchIndex, fqn=search_index_fqn
-                )
+                search_index_entity = self.metadata.get_by_name(entity=SearchIndex, fqn=search_index_fqn)
 
                 if not search_index_entity:
                     logger.error(
@@ -160,12 +147,7 @@ class ElasticsearchSource(SearchServiceSource):
                     right=OMetaIndexSampleData(
                         entity=search_index_entity,
                         data=SearchIndexSampleData(
-                            messages=[
-                                str(message)
-                                for message in sample_data.get("hits", {}).get(
-                                    "hits", []
-                                )
-                            ]
+                            messages=[str(message) for message in sample_data.get("hits", {}).get("hits", [])]
                         ),
                     )
                 )
@@ -186,9 +168,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(
-        self, search_index_template_details: dict
-    ) -> Optional[str]:
+    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get Search Index Template Name
         """
@@ -202,30 +182,20 @@ class ElasticsearchSource(SearchServiceSource):
         """
         try:
             if self.source_config.includeIndexTemplate:
-                index_name = self.get_search_index_template_name(
-                    search_index_template_details
-                )
+                index_name = self.get_search_index_template_name(search_index_template_details)
                 index_template = search_index_template_details["index_template"]
                 if index_name:
                     search_index_template_request = CreateSearchIndexRequest(
                         name=EntityName(index_name),
                         displayName=index_name,
-                        searchIndexSettings=index_template.get("template", {}).get(
-                            "settings", {}
-                        ),
-                        service=FullyQualifiedEntityName(
-                            self.context.get().search_service
-                        ),
-                        fields=parse_es_index_mapping(
-                            index_template.get("template", {}).get("mappings")
-                        ),
+                        searchIndexSettings=index_template.get("template", {}).get("settings", {}),
+                        service=FullyQualifiedEntityName(self.context.get().search_service),
+                        fields=parse_es_index_mapping(index_template.get("template", {}).get("mappings")),
                         indexType=IndexType.IndexTemplate,
                         description=index_template.get("_meta", {}).get("description"),
                     )
                     yield Either(right=search_index_template_request)
-                    self.register_record(
-                        search_index_request=search_index_template_request
-                    )
+                    self.register_record(search_index_request=search_index_template_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Could not include index templates due to {exc}")

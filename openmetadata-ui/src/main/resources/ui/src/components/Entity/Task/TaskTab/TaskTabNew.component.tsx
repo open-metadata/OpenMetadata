@@ -40,15 +40,29 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
+import icAssignees, {
+  ReactComponent as AssigneesIcon,
+} from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
+import icUserProfile, {
+  ReactComponent as UserIcon,
+} from '../../../../assets/svg/ic-user-profile.svg';
+import icAccessLevel from '../../../../assets/svg/ic_access-level.svg';
+import icAccessType from '../../../../assets/svg/ic_access-type.svg';
+import icColumnRequested from '../../../../assets/svg/ic_column-requested.svg';
+import icDuration from '../../../../assets/svg/ic_duration.svg';
+import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
+import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import {
+  TaskAvailableTransition,
+  TaskCategory,
+} from '../../../../generated/entity/tasks/task';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
@@ -72,16 +86,16 @@ import {
   closeTask as closeTaskAPI,
   patchTask,
   resolveTask as resolveTaskAPI,
-  TaskAvailableTransition,
   TaskEntityStatus,
   TaskEntityType,
   TaskPayload,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import { getNameFromFQN } from '../../../../utils/CommonUtils';
+import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getErrorText } from '../../../../utils/StringsUtils';
+import { getErrorText } from '../../../../utils/StringUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
@@ -124,6 +138,19 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
+
+const DAR_FIELD_ICONS: Record<string, string> = {
+  accessType: icAccessType,
+  columns: icColumnRequested,
+  duration: icDuration,
+  reason: icReasonAccess,
+  requestedAccess: icAccessLevel,
+  ticketId: icTicket,
+};
+
+const DAR_FIELD_FORMATTERS: Record<string, (value: unknown) => string> = {
+  duration: (value) => formatIsoDuration(String(value ?? '')),
+};
 
 export const TaskTabNew = ({
   task,
@@ -365,6 +392,56 @@ export const TaskTabNew = ({
   const shouldRenderTaskPayload = useMemo(() => {
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
+
+  const darHeaderRows = useMemo(() => {
+    if (
+      !isWorkflowDrivenTask ||
+      !shouldRenderTaskPayload ||
+      task.category !== TaskCategory.DataAccess
+    ) {
+      return undefined;
+    }
+
+    return [
+      {
+        iconSrc: icUserProfile,
+        label: t('label.created-by'),
+        value: (
+          <Link
+            className="no-underline flex items-center gap-2"
+            to={getUserPath(task.createdBy?.name ?? '')}>
+            <UserPopOverCard userName={task.createdBy?.name ?? ''}>
+              <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
+            </UserPopOverCard>
+            <Typography.Text>{task.createdBy?.name}</Typography.Text>
+          </Link>
+        ),
+      },
+      {
+        iconSrc: icAssignees,
+        label: t('label.assignee-plural'),
+        value: (
+          <div className="d-flex flex-wrap gap-2">
+            {task.assignees?.map((assignee) => (
+              <div className="d-flex items-center gap-2" key={assignee.id}>
+                <UserPopOverCard userName={assignee.name ?? ''}>
+                  <ProfilePicture name={assignee.name ?? ''} width="24" />
+                </UserPopOverCard>
+                <Typography.Text>{getEntityName(assignee)}</Typography.Text>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+    ];
+  }, [
+    isWorkflowDrivenTask,
+    shouldRenderTaskPayload,
+    t,
+    task.category,
+    task.assignees,
+    task.createdBy,
+  ]);
 
   const isOwner = owners?.some((owner) => isEqual(owner.id, currentUser?.id));
   const isCreator = isEqual(task.createdBy?.name, currentUser?.name);
@@ -1518,7 +1595,7 @@ export const TaskTabNew = ({
         {taskLinkTitleElement}
       </Col>
       <Divider className="m-0" type="horizontal" />
-      <Col span={24}>{taskHeader}</Col>
+      {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
       <Col span={24}>
         {isTaskRecognizerFeedbackApproval && task.payload && (
           <div className="feedback-details-container">
@@ -1530,6 +1607,17 @@ export const TaskTabNew = ({
             className="task-payload-details-container"
             data-testid="task-payload-details">
             <TaskPayloadSchemaFields
+              formatters={
+                task.category === TaskCategory.DataAccess
+                  ? DAR_FIELD_FORMATTERS
+                  : undefined
+              }
+              headerRows={darHeaderRows}
+              icons={
+                task.category === TaskCategory.DataAccess
+                  ? DAR_FIELD_ICONS
+                  : undefined
+              }
               mode="read"
               payload={readOnlyTaskPayload}
               schema={taskFormSchema?.formSchema}

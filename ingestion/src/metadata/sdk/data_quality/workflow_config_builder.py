@@ -12,7 +12,7 @@
 """Builder for creating OpenMetadata workflow configurations for test suite execution."""
 # pyright: reportOptionalMemberAccess=false
 
-from typing import Any, List, Optional, Type, TypeVar, cast
+from typing import Any, List, Optional, Type, TypeVar, cast  # noqa: UP035
 
 from typing_extensions import Self
 
@@ -80,9 +80,9 @@ class WorkflowConfigBuilder:
         """
         self.client: OMeta[Any, Any] = client
 
-        self.table: Optional[Table] = None
-        self.service_connection: Optional[DatabaseConnection] = None
-        self.test_definitions: List[TestCaseDefinition] = []
+        self.table: Optional[Table] = None  # noqa: UP045
+        self.service_connection: Optional[DatabaseConnection] = None  # noqa: UP045
+        self.test_definitions: List[TestCaseDefinition] = []  # noqa: UP006
         self.force_test_update: bool = True
         self.log_level: LogLevels = LogLevels.INFO
         self.raise_on_error: bool = False
@@ -100,7 +100,7 @@ class WorkflowConfigBuilder:
         self.test_definitions.append(test_definition)
         return self
 
-    def add_test_definitions(self, test_definitions: List[TestCaseDefinition]) -> Self:
+    def add_test_definitions(self, test_definitions: List[TestCaseDefinition]) -> Self:  # noqa: UP006
         """Add test definitions to the workflow configuration.
 
         Args:
@@ -125,10 +125,10 @@ class WorkflowConfigBuilder:
             ],
         )
 
-        service_id = cast(EntityReference, self.table.service).id
+        service_id = cast(EntityReference, self.table.service).id  # noqa: TC006
         service = self._safe_get_by_id(DatabaseService, service_id)
 
-        self.service_connection = cast(DatabaseConnection, service.connection)
+        self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
         return self
 
     def with_force_test_update(self, force_test_update: bool) -> Self:
@@ -163,22 +163,15 @@ class WorkflowConfigBuilder:
         Returns:
             Complete OpenMetadataWorkflowConfig ready for execution
         """
-        assert (
-            self.table is not None
-        ), "Table entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
-        assert (
-            self.service_connection is not None
-        ), "DatabaseConnection entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        assert self.table is not None, "Table entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        assert self.service_connection is not None, (
+            "DatabaseConnection entity not provided. Call `WorkflowConfigBuilder.add_table()` first.`"
+        )
 
         test_suite_pipeline = TestSuitePipeline(
-            entityFullyQualifiedName=FullyQualifiedEntityName(
-                root=self.table.fullyQualifiedName.root
-            ),
+            entityFullyQualifiedName=FullyQualifiedEntityName(root=self.table.fullyQualifiedName.root),
             type=TestSuiteConfigType.TestSuite,
             serviceConnections=None,
-            profileSample=None,
-            profileSampleType=None,
-            samplingMethodType=None,
             testCases=None,
         )
 
@@ -221,21 +214,17 @@ class WorkflowConfigBuilder:
             ingestionRunnerName=None,
         )
 
-        return config
+        return config  # noqa: RET504
 
     @staticmethod
-    def _convert_ometa_exception(
-        entity: Type[T], identifier: str | Uuid, e: Exception
-    ) -> Exception:
+    def _convert_ometa_exception(entity: Type[T], identifier: str | Uuid, e: Exception) -> Exception:  # noqa: UP006
         """Handle OpenMetadata exceptions."""
         if not isinstance(e, APIError):
             return e
 
-        status_code = cast(int, e.status_code)
+        status_code = cast(int, e.status_code)  # noqa: TC006
         if status_code == 404:
-            return ValueError(
-                f"{entity.__name__} '{identifier}' not found in OpenMetadata."
-            )
+            return ValueError(f"{entity.__name__} '{identifier}' not found in OpenMetadata.")
 
         if status_code in (401, 403):
             return ValueError(
@@ -245,9 +234,7 @@ class WorkflowConfigBuilder:
 
         return e
 
-    def _safe_get_by_name(
-        self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None
-    ) -> T:
+    def _safe_get_by_name(self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None) -> T:  # noqa: UP006, UP045
         """Safely fetch entity by name with exception handling.
 
         Args:
@@ -262,18 +249,18 @@ class WorkflowConfigBuilder:
             ValueError: If entity not found or fetch fails
         """
         try:
-            typed_client = cast(OMeta[T, Any], self.client)
+            typed_client = cast(OMeta[T, Any], self.client)  # noqa: TC006
             entity = typed_client.get_by_name(
                 entity=entity_type,
                 fqn=fqn,
                 fields=fields,
                 nullable=False,
             )
-            return cast(T, entity)
+            return cast(T, entity)  # noqa: TC006
         except Exception as exc:
-            raise self._convert_ometa_exception(entity_type, fqn, exc)
+            raise self._convert_ometa_exception(entity_type, fqn, exc)  # noqa: B904
 
-    def _safe_get_by_id(self, entity_type: Type[T], entity_id: str | Uuid) -> T:
+    def _safe_get_by_id(self, entity_type: Type[T], entity_id: str | Uuid) -> T:  # noqa: UP006
         """Safely fetch entity by ID with exception handling.
 
         Args:
@@ -287,8 +274,8 @@ class WorkflowConfigBuilder:
             ValueError: If entity not found or fetch fails
         """
         try:
-            typed_client = cast(OMeta[T, Any], self.client)
+            typed_client = cast(OMeta[T, Any], self.client)  # noqa: TC006
             entity = typed_client.get_by_id(entity_type, entity_id, nullable=False)
-            return cast(T, entity)
+            return cast(T, entity)  # noqa: TC006
         except Exception as exc:
-            raise self._convert_ometa_exception(entity_type, entity_id, exc)
+            raise self._convert_ometa_exception(entity_type, entity_id, exc)  # noqa: B904

@@ -21,17 +21,23 @@ import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconSuggestionsActive } from '../../../assets/svg/ic-suggestions-active.svg';
+import { ReactComponent as IconSuggestionsBlue } from '../../../assets/svg/ic-suggestions-blue.svg';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceRecentSearches } from '../../../hooks/useMarketplaceRecentSearches';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
-import { searchQuery } from '../../../rest/searchAPI';
+import {
+  getNLPEnabledStatus,
+  nlqSearch,
+  searchQuery,
+} from '../../../rest/searchAPI';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import './marketplace-search-bar.less';
 
 const PAGE_SIZE = 5;
@@ -40,6 +46,8 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
+  const [isNLPEnabled, setIsNLPEnabled] = useState(false);
+  const [isNLQActive, setIsNLQActive] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
@@ -48,41 +56,73 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { addSearch } = useMarketplaceRecentSearches();
 
-  const fetchResults = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setDataProducts([]);
-      setDomains([]);
-
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const [dpRes, domainRes] = await Promise.all([
-        searchQuery({
-          query,
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE,
-          searchIndex: SearchIndex.DATA_PRODUCT,
-        }),
-        searchQuery({
-          query,
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE,
-          searchIndex: SearchIndex.DOMAIN,
-        }),
-      ]);
-
-      setDataProducts(
-        dpRes.hits.hits.map((hit) => hit._source) as DataProduct[]
-      );
-      setDomains(domainRes.hits.hits.map((hit) => hit._source) as Domain[]);
-    } catch {
-      setDataProducts([]);
-      setDomains([]);
-    } finally {
-      setIsSearching(false);
-    }
+  useEffect(() => {
+    getNLPEnabledStatus()
+      .then(setIsNLPEnabled)
+      .catch(() => setIsNLPEnabled(false));
   }, []);
+
+  const fetchResults = useCallback(
+    async (query: string) => {
+      if (!query.trim()) {
+        setDataProducts([]);
+        setDomains([]);
+
+        return;
+      }
+      setIsSearching(true);
+      try {
+        if (isNLPEnabled && isNLQActive) {
+          const res = await nlqSearch({
+            query,
+            pageNumber: INITIAL_PAGING_VALUE,
+            pageSize: PAGE_SIZE * 2,
+            searchIndex: SearchIndex.MARKETPLACE,
+          });
+
+          const hits = res.hits.hits;
+          setDataProducts(
+            hits
+              .filter((h) => h._source.entityType === SearchIndex.DATA_PRODUCT)
+              .slice(0, PAGE_SIZE)
+              .map((h) => h._source as unknown as DataProduct)
+          );
+          setDomains(
+            hits
+              .filter((h) => h._source.entityType === SearchIndex.DOMAIN)
+              .slice(0, PAGE_SIZE)
+              .map((h) => h._source as unknown as Domain)
+          );
+        } else {
+          const [dpRes, domainRes] = await Promise.all([
+            searchQuery({
+              query,
+              pageNumber: INITIAL_PAGING_VALUE,
+              pageSize: PAGE_SIZE,
+              searchIndex: SearchIndex.DATA_PRODUCT,
+            }),
+            searchQuery({
+              query,
+              pageNumber: INITIAL_PAGING_VALUE,
+              pageSize: PAGE_SIZE,
+              searchIndex: SearchIndex.DOMAIN,
+            }),
+          ]);
+
+          setDataProducts(
+            dpRes.hits.hits.map((hit) => hit._source) as DataProduct[]
+          );
+          setDomains(domainRes.hits.hits.map((hit) => hit._source) as Domain[]);
+        }
+      } catch {
+        setDataProducts([]);
+        setDomains([]);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [isNLPEnabled, isNLQActive]
+  );
 
   const debouncedFetch = useMemo(
     () => debounce(fetchResults, 400),
@@ -248,27 +288,50 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
       className="marketplace-search-bar"
       data-testid="marketplace-search-bar"
       ref={containerRef}>
-      <Input
-        autoComplete="off"
-        data-testid="marketplace-search-input"
-        fontSize="sm"
-        icon={SearchLg}
-        iconClassName="tw:!size-4"
-        inputClassName="tw:!pl-9"
-        isDisabled={isEditView}
-        placeholder={t('label.search-for-type', {
-          type:
-            t('label.data-product-plural') + ', ' + t('label.domain-plural'),
-        })}
-        value={searchValue}
-        wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
-        onChange={(value) => handleChange(value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            handleSearch(searchValue);
-          }
-        }}
-      />
+      <div className="tw:relative">
+        <div className="tw:absolute tw:left-3 tw:top-1/2 tw:-translate-y-1/2 tw:z-10 tw:flex tw:items-center">
+          {isNLPEnabled ? (
+            <button
+              className={`marketplace-nlq-button${
+                isNLQActive ? ' active' : ''
+              }`}
+              data-testid="marketplace-nlq-toggle"
+              title={
+                isNLQActive
+                  ? t('message.natural-language-search-active')
+                  : t('label.use-natural-language-search')
+              }
+              onClick={() => setIsNLQActive((prev) => !prev)}>
+              {isNLQActive ? (
+                <IconSuggestionsActive />
+              ) : (
+                <IconSuggestionsBlue />
+              )}
+            </button>
+          ) : (
+            <SearchLg className="tw:size-4 tw:text-text-tertiary" />
+          )}
+        </div>
+        <Input
+          autoComplete="off"
+          data-testid="marketplace-search-input"
+          fontSize="sm"
+          inputClassName="tw:!pl-11"
+          isDisabled={isEditView}
+          placeholder={t('label.search-for-type', {
+            type:
+              t('label.data-product-plural') + ', ' + t('label.domain-plural'),
+          })}
+          value={searchValue}
+          wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
+          onChange={(value) => handleChange(value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSearch(searchValue);
+            }
+          }}
+        />
+      </div>
       <SelectPopover
         isNonModal
         className="!tw:max-h-[400px]"

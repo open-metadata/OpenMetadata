@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { ComponentType, lazy } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
@@ -24,24 +24,69 @@ import MyDataImg from '../assets/img/my-data-widget.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
-import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
-import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
-import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
-import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
-import DataProductsWidget from '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component';
-import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
-import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
-import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
-import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
+import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
+
+const KnowledgeCenterWidget = lazy(
+  () =>
+    import(
+      '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget'
+    )
+);
+const MyFeedWidget = lazy(() =>
+  import('../components/MyData/FeedWidget/FeedWidget.component').then((m) => ({
+    default: m.MyFeedWidget,
+  }))
+);
+const MyDataWidget = lazy(() =>
+  import('../components/MyData/MyDataWidget/MyDataWidget.component').then(
+    (m) => ({ default: m.MyDataWidget })
+  )
+);
+const FollowingWidget = lazy(
+  () => import('../components/MyData/RightSidebar/FollowingWidget')
+);
+const CuratedAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget'
+    )
+);
+const DataAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component'
+    )
+);
+const DataProductsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component'
+    )
+);
+const DomainsWidget = lazy(
+  () => import('../components/MyData/Widgets/DomainsWidget/DomainsWidget')
+);
+const KPIWidget = lazy(
+  () => import('../components/MyData/Widgets/KPIWidget/KPIWidget.component')
+);
+const MyTaskWidget = lazy(
+  () => import('../components/MyData/Widgets/MyTaskWidget/MyTaskWidget')
+);
+const TotalDataAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component'
+    )
+);
 
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
@@ -61,6 +106,7 @@ class CustomizeMyDataPageClassBase {
     curatedAssets: 3,
     myTask: 3,
     domains: 3,
+    knowledgeCenter: 3,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -111,18 +157,26 @@ class CustomizeMyDataPageClassBase {
       static: false,
     },
     {
-      h: this.landingPageWidgetDefaultHeights.myData,
-      i: LandingPageWidgetKeys.MY_DATA,
+      h: this.landingPageWidgetDefaultHeights.knowledgeCenter,
+      i: LandingPageWidgetKeys.KNOWLEDGE_CENTER,
       w: 1,
       x: 2,
       y: 0,
       static: false,
     },
     {
+      h: this.landingPageWidgetDefaultHeights.myData,
+      i: LandingPageWidgetKeys.MY_DATA,
+      w: 1,
+      x: 0,
+      y: 1,
+      static: false,
+    },
+    {
       h: this.landingPageWidgetDefaultHeights.kpi,
       i: LandingPageWidgetKeys.KPI,
       w: 1,
-      x: 0,
+      x: 1,
       y: 1,
       static: false,
     },
@@ -130,7 +184,7 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.totalAssets,
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 1,
-      x: 1,
+      x: 2,
       y: 1,
       static: false,
     },
@@ -138,8 +192,8 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.following,
       i: LandingPageWidgetKeys.FOLLOWING,
       w: 1,
-      x: 2,
-      y: 1,
+      x: 0,
+      y: 2,
       static: false,
     },
   ];
@@ -166,7 +220,9 @@ class CustomizeMyDataPageClassBase {
     }
   >
    */
-  public getWidgetsFromKey(widgetKey: string): FC<WidgetCommonProps> {
+  public getWidgetsFromKey(
+    widgetKey: string
+  ): ComponentType<WidgetCommonProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
@@ -196,6 +252,9 @@ class CustomizeMyDataPageClassBase {
     }
     if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
       return DomainsWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.KNOWLEDGE_CENTER)) {
+      return KnowledgeCenterWidget;
     }
 
     return (() => null) as React.FC;
@@ -241,6 +300,10 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.DOMAINS: {
         return DomainsImg;
       }
+      case LandingPageWidgetKeys.KNOWLEDGE_CENTER:
+      case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE: {
+        return KnowledgeCenterWidgetImg;
+      }
       default: {
         return '';
       }
@@ -281,6 +344,9 @@ class CustomizeMyDataPageClassBase {
 
       case 'Domains':
         return this.landingPageWidgetDefaultHeights.domains;
+
+      case 'KnowledgeCenter':
+        return this.landingPageWidgetDefaultHeights.knowledgeCenter;
 
       default:
         return this.defaultWidgetHeight;

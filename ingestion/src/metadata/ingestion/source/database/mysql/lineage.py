@@ -11,6 +11,7 @@
 """
 MYSQL lineage module
 """
+
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mysql.queries import MYSQL_SQL_STATEMENT
 from metadata.ingestion.source.database.mysql.query_parser import MysqlQueryParserSource

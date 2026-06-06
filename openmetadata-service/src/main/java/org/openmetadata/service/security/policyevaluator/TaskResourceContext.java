@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
-import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,10 +22,15 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /**
- * Task-specific resource context that maps task assignees as owners for policy evaluation. This
- * allows the existing isOwner() policy condition to work with task assignees, and SubjectContext
- * handles team expansion automatically.
+ * Task-specific resource context.
+ *
+ * <p>{@code getOwners()} returns the owners of the entity the task is <em>about</em>, so the
+ * standard {@code isOwner()} SpEL condition retains its conventional meaning ("user owns the
+ * target entity"). The filer / assignee / reviewer roles are exposed via dedicated SpEL
+ * conditions ({@code isTaskFiler()}, {@code isTaskAssignee()}, {@code isTaskReviewer()}) which
+ * read the Task entity directly through this context's {@link #getEntity()}.
  */
+@Slf4j
 public class TaskResourceContext implements ResourceContextInterface {
   private final Task task;
 
@@ -40,14 +45,22 @@ public class TaskResourceContext implements ResourceContextInterface {
 
   @Override
   public List<EntityReference> getOwners() {
-    List<EntityReference> owners = new ArrayList<>();
-    if (task.getAssignees() != null) {
-      owners.addAll(task.getAssignees());
+    EntityReference about = task.getAbout();
+    if (about == null) {
+      return List.of();
     }
-    if (task.getCreatedBy() != null) {
-      owners.add(task.getCreatedBy());
+    try {
+      return Entity.getOwners(about);
+    } catch (Exception e) {
+      // The target entity may have been hard-deleted while the task still exists. Degrade to no
+      // owners rather than surfacing a 500 from a policy evaluation path.
+      LOG.debug(
+          "TaskResourceContext.getOwners: failed to resolve owners for task {} about {} ({})",
+          task.getId(),
+          about.getFullyQualifiedName(),
+          e.getMessage());
+      return List.of();
     }
-    return owners;
   }
 
   @Override

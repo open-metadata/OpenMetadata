@@ -1,0 +1,327 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: PR Metadata Validation
+
+# Fails the PR check unless it links a GitHub issue that (a) has a real
+# description and (b) is tracked in the "Shipping" project with the Status,
+# Source, Priority, Domain and Release fields set.
+#
+# Projects v2 data is only available via GraphQL and the default GITHUB_TOKEN
+# cannot read org-level projects, so a PROJECTS_TOKEN secret (a PAT or GitHub
+# App token with `read:project`) is required for the project checks. Only PR /
+# issue / project metadata is read through the API — no untrusted checkout —
+# so pull_request_target is safe here.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to validate"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: write
+
+concurrency:
+  # Serialize runs per PR (avoids duplicate sticky comments) but never cancel:
+  # this check gates merges, so every event must reach a definitive conclusion.
+  group: pr-metadata-validation-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate-pr-metadata:
+    name: Validate PR Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check linked issue and Shipping project fields
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+        with:
+          script: |
+            const CHECK_MARKER = '<!-- pr-metadata-check -->';
+            const BYPASS_LABEL = 'skip-pr-checks';
+
+            const { owner, repo } = context.repo;
+
+            function escapeRegExp(value) {
+              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            // ---- Linked issue + description ------------------------------------
+            const REQUIRE_LINKED_ISSUE = true;
+            const MIN_DESCRIPTION_WORDS = 25;
+            const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
+            const ISSUE_REF_REGEX = new RegExp(`\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*#(\\d+)`, 'gi');
+            // Only same-repo issue URLs count; a cross-repo URL would otherwise be validated
+            // against this repository (wrong issue), so such links are intentionally ignored.
+            const ISSUE_URL_REGEX = new RegExp(
+              `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*https?://github\\.com/` +
+              `${escapeRegExp(owner)}/${escapeRegExp(repo)}/issues/(\\d+)`,
+              'gi'
+            );
+
+            // ---- Shipping project (Projects v2) on the linked issue ------------
+            const PROJECT_NAME = 'Shipping';
+            const REQUIRED_PROJECT_FIELDS = ['Status', 'Source', 'Priority', 'Domain', 'Release'];
+            const FAIL_WHEN_PROJECT_UNVERIFIABLE = true;
+
+            const ISSUE_PROJECT_QUERY = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    projectItems(first: 25) {
+                      nodes {
+                        project { title }
+                        fieldValues(first: 50) {
+                          nodes {
+                            __typename
+                            ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldIterationValue { title field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { name } } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+
+            async function loadPullRequest() {
+              if (context.payload.pull_request) {
+                return context.payload.pull_request;
+              }
+              const pull_number = Number(context.payload.inputs.pr_number);
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number });
+              return data;
+            }
+
+            function extractIssueNumbers(text) {
+              const numbers = new Set();
+              for (const regex of [ISSUE_REF_REGEX, ISSUE_URL_REGEX]) {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                  numbers.add(Number(match[1]));
+                }
+              }
+              return [...numbers];
+            }
+
+            function hasProperDescription(body) {
+              if (!body) {
+                return false;
+              }
+              const meaningful = body.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\s+/g, ' ').trim();
+              const wordCount = meaningful ? meaningful.split(' ').filter(Boolean).length : 0;
+              return wordCount >= MIN_DESCRIPTION_WORDS;
+            }
+
+            async function loadIssueProjectItems(issueNumber) {
+              const token = process.env.PROJECTS_TOKEN;
+              if (!token) {
+                return { error: 'missing-token' };
+              }
+              try {
+                const projectsClient = new github.constructor({ auth: token });
+                const data = await projectsClient.graphql(ISSUE_PROJECT_QUERY, {
+                  owner,
+                  repo,
+                  number: issueNumber,
+                });
+                return { items: data.repository.issue.projectItems.nodes };
+              } catch (error) {
+                return { error: error.message };
+              }
+            }
+
+            function resolveFieldValue(fieldValue) {
+              const candidates = [fieldValue.name, fieldValue.text, fieldValue.title, fieldValue.date];
+              const text = candidates.find((value) => value != null && String(value).trim() !== '');
+              if (text != null) {
+                return text;
+              }
+              return fieldValue.number != null ? String(fieldValue.number) : null;
+            }
+
+            function collectSetFields(item) {
+              const setFields = new Map();
+              for (const fieldValue of item.fieldValues.nodes) {
+                const fieldName = fieldValue.field && fieldValue.field.name;
+                const resolved = resolveFieldValue(fieldValue);
+                if (fieldName && resolved != null) {
+                  setFields.set(fieldName, resolved);
+                }
+              }
+              return setFields;
+            }
+
+            async function collectProjectProblems(issueNumber) {
+              const result = await loadIssueProjectItems(issueNumber);
+              if (result.error) {
+                if (!FAIL_WHEN_PROJECT_UNVERIFIABLE) {
+                  core.warning(`Skipping project validation for #${issueNumber}: ${result.error}`);
+                  return [];
+                }
+                core.warning(`Project verification failed for #${issueNumber}: ${result.error}`);
+                const detail = result.error === 'missing-token'
+                  ? 'the `PROJECTS_TOKEN` secret (a token with `read:project`) is not configured'
+                  : 'the project query could not be completed (see the workflow run logs)';
+                return [`Could not verify the **${PROJECT_NAME}** project on issue #${issueNumber}: ${detail}.`];
+              }
+              const projectItem = (result.items || []).find(
+                (item) => item.project && item.project.title === PROJECT_NAME
+              );
+              if (!projectItem) {
+                return [`Linked issue #${issueNumber} is not added to the **${PROJECT_NAME}** project.`];
+              }
+              const setFields = collectSetFields(projectItem);
+              const problems = [];
+              for (const field of REQUIRED_PROJECT_FIELDS) {
+                if (!setFields.has(field)) {
+                  problems.push(`Issue #${issueNumber} is missing **${PROJECT_NAME} → ${field}**.`);
+                }
+              }
+              return problems;
+            }
+
+            async function validateIssue(issueNumber) {
+              let issue;
+              try {
+                const response = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+                issue = response.data;
+              } catch (error) {
+                if (error.status === 404) {
+                  return { issueNumber, problems: [`Linked issue #${issueNumber} does not exist.`] };
+                }
+                throw error;
+              }
+              if (issue.pull_request) {
+                return { issueNumber, problems: [`#${issueNumber} is a pull request, not an issue.`] };
+              }
+              const problems = [];
+              if (!hasProperDescription(issue.body)) {
+                problems.push(
+                  `Linked issue #${issueNumber} needs a real description ` +
+                  `(at least ${MIN_DESCRIPTION_WORDS} words covering the problem, repro, and expected behavior).`
+                );
+              }
+              problems.push(...(await collectProjectProblems(issueNumber)));
+              return { issueNumber, problems };
+            }
+
+            async function collectIssueProblems(pr) {
+              const issueNumbers = extractIssueNumbers(`${pr.title || ''}\n${pr.body || ''}`);
+              if (issueNumbers.length === 0) {
+                return [
+                  'No GitHub issue is linked. Add a closing reference such as `Fixes #12345` to the PR description ' +
+                  '(accepted keywords: `Fixes`, `Closes`, `Resolves`).',
+                ];
+              }
+              const validations = await Promise.all(issueNumbers.map(validateIssue));
+              const validIssues = validations.filter((validation) => validation.problems.length === 0);
+              const problems = [];
+              if (validIssues.length === 0) {
+                for (const validation of validations) {
+                  problems.push(...validation.problems);
+                }
+              }
+              return problems;
+            }
+
+            function buildFailureComment(problems) {
+              const lines = [
+                CHECK_MARKER,
+                '### ❌ PR checklist incomplete',
+                '',
+                'This PR cannot be merged until the following are addressed on its linked issue:',
+                '',
+              ];
+              for (const problem of problems) {
+                lines.push(`- ${problem}`);
+              }
+              lines.push('');
+              lines.push(
+                `The fields live on the **linked issue** in the **${PROJECT_NAME}** project ` +
+                '(open the issue → right sidebar → **Projects**). After you set them, ' +
+                '**re-run this check** (or push a commit) — issue/project changes do not re-trigger it automatically.'
+              );
+              lines.push('');
+              lines.push(`_Maintainers can bypass this check by adding the \`${BYPASS_LABEL}\` label._`);
+              return lines.join('\n');
+            }
+
+            function buildSuccessComment() {
+              return [
+                CHECK_MARKER,
+                '### ✅ PR checks passed',
+                '',
+                `The linked issue has a description and all required **${PROJECT_NAME}** project fields set. Thanks!`,
+              ].join('\n');
+            }
+
+            async function syncStickyComment(prNumber, body, hadFailure) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100,
+              });
+              const existing = comments.find((comment) => comment.body && comment.body.includes(CHECK_MARKER));
+              if (hadFailure) {
+                if (existing) {
+                  await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                } else {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+                }
+              } else if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              }
+            }
+
+            const pr = await loadPullRequest();
+
+            if (pr.draft) {
+              core.info('Draft PR — skipping metadata validation.');
+              return;
+            }
+            if (pr.user && pr.user.type === 'Bot') {
+              core.info(`PR opened by bot ${pr.user.login} — skipping metadata validation.`);
+              return;
+            }
+            const labels = (pr.labels || []).map((label) => label.name);
+            if (labels.includes(BYPASS_LABEL)) {
+              core.info(`'${BYPASS_LABEL}' label present — skipping metadata validation.`);
+              return;
+            }
+
+            const problems = [];
+            if (REQUIRE_LINKED_ISSUE) {
+              problems.push(...(await collectIssueProblems(pr)));
+            }
+
+            const hadFailure = problems.length > 0;
+            const body = hadFailure ? buildFailureComment(problems) : buildSuccessComment();
+            await syncStickyComment(pr.number, body, hadFailure);
+
+            if (hadFailure) {
+              core.setFailed(
+                `PR metadata checklist incomplete: ${problems.length} item(s) need attention. See the PR comment.`
+              );
+            } else {
+              core.info('All PR metadata checks passed.');
+            }

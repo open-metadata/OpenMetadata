@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Column, CopyEvent, PasteEvent } from 'react-data-grid';
+import type { Column, CopyEvent, PasteEvent } from 'react-data-grid';
 
 export interface TableTypePropertyEditTableProps {
   columns: Column<Record<string, string>[]>[];

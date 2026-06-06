@@ -243,6 +243,16 @@ public class JsonLdTranslator {
     String omType = entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
     entityResource.addProperty(RDF.type, model.createResource(omNamespace + omType));
 
+    // Add PROV-O class typing (prov:Entity/Activity/Agent) so PROV-O reasoners can
+    // apply standard rules. Skipped when the primary rdfType is already a PROV-O
+    // class (e.g. pipeline → prov:Activity) to avoid duplicate triples.
+    String provType = RdfUtils.getProvType(entityType);
+    if (provType != null && !provType.equals(rdfType)) {
+      String provNamespace = model.getNsPrefixURI("prov");
+      String provLocalName = provType.substring(provType.indexOf(':') + 1);
+      entityResource.addProperty(RDF.type, model.createResource(provNamespace + provLocalName));
+    }
+
     RdfPropertyMapper propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
     propertyMapper.mapEntityToRdf(entity, entityResource, model);
 

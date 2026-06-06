@@ -14,17 +14,16 @@
 import {
   Card,
   Input,
-  SlideoutMenu,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
-import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
@@ -34,6 +33,7 @@ import {
   useOntologyExplorer,
 } from './hooks/useOntologyExplorer';
 import OntologyControlButtons from './OntologyControlButtons';
+import { OntologyEntityPanel } from './OntologyEntityPanel';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
   ExplorationMode,
@@ -43,6 +43,7 @@ import OntologyGraph from './OntologyGraphG6';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import {
   ASSET_NODE_TYPE,
+  ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
@@ -53,11 +54,9 @@ const ONTOLOGY_GRAPH_BACKDROP_CLASS =
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
 
-const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
-
 interface GraphEmptyStateProps {
-  message: string;
-  testId: string;
+  readonly message: string;
+  readonly testId: string;
 }
 
 function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
@@ -91,6 +90,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const {
     graphRef,
     loading,
+    fetchError,
     isLoadingMore,
     glossaries,
     relationTypes,
@@ -104,10 +104,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
-    graphSearchHighlight,
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
+    hasMoreTerms,
+    loadedTermCount,
+    totalTermCount,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -120,12 +122,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleModeChange,
     handleViewModeChange,
     handleRefresh,
+    handleLoadMore,
     handleScrollNearEdge,
     handleSettingsChange,
     handleFiltersChange,
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   } = useOntologyExplorer({
     scope,
     entityId,
@@ -134,6 +138,29 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     onStatsChange,
     onLoadingChange,
   });
+
+  const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const lastSelectedNodeRef = useRef(selectedNode);
+  if (selectedNode) {
+    lastSelectedNodeRef.current = selectedNode;
+  }
+  const activeNode = selectedNode ?? lastSelectedNodeRef.current;
+  const searchInputRef = useRef(searchInput);
+  searchInputRef.current = searchInput;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, searchQuery: searchInput }));
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, setFilters]);
+
+  useEffect(() => {
+    if (filters.searchQuery !== searchInputRef.current) {
+      setSearchInput(filters.searchQuery);
+    }
+  }, [filters.searchQuery]);
 
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
@@ -159,6 +186,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     });
     const hasNoMatchingRelationEdges =
       hasRelationFilter && termToTermEdges.length === 0;
+
+    if (fetchError && !loading && !graphDataToShow) {
+      return (
+        <GraphEmptyState
+          message={t('server.entity-fetch-error', {
+            entity: t('label.graph'),
+          })}
+          testId="ontology-graph-error"
+        />
+      );
+    }
 
     if (loading && hasNoVisibleNodes) {
       return (
@@ -191,16 +229,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      if (hasRelationFilter) {
+        return (
+          <GraphEmptyState
+            message={t('message.no-relations-for-selected-filter')}
+            testId="ontology-graph-no-relations"
+          />
+        );
+      }
+
       const hasActiveFilter =
-        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
-        hasRelationFilter;
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
 
       return (
         <GraphEmptyState
           message={
-            hasRelationFilter
-              ? t('message.no-relations-for-selected-filter')
-              : hasActiveFilter
+            hasActiveFilter
               ? t('message.no-data-available-for-selected-filter')
               : t('message.no-glossary-terms-found')
           }
@@ -223,15 +267,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     return (
-      <>
-        {filters.searchQuery.trim() ? (
-          <div
-            aria-hidden
-            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
-            data-testid="ontology-search-overlay"
-          />
-        ) : null}
-        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+      <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+        <ErrorBoundary
+          fallback={
+            <GraphEmptyState
+              message={t('server.entity-fetch-error', {
+                entity: t('label.graph'),
+              })}
+              testId="ontology-graph-render-error"
+            />
+          }>
           <OntologyGraph
             edges={graphDataToShow.edges}
             expandedTermIds={
@@ -245,7 +290,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             }
             glossaries={glossaries}
             glossaryColorMap={glossaryColorMap}
-            graphSearchHighlight={graphSearchHighlight}
             hierarchyCombos={
               isHierarchyView && hierarchyGraphData
                 ? hierarchyGraphData.combos.map((c) => ({
@@ -258,6 +302,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             nodePositions={hierarchyBakedPositions}
             nodes={graphDataToShow.nodes}
             ref={graphRef}
+            relationTypes={relationTypes}
             selectedNodeId={
               explorationMode === 'data' && expandedTermIds.size > 1
                 ? null
@@ -269,27 +314,43 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             onPaneClick={handleGraphPaneClick}
             onScrollNearEdge={handleScrollNearEdge}
           />
-          {isLoadingMore && (
-            <>
-              <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
-              <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
-                <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
-                  <div
-                    aria-label={t('label.loading')}
-                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
-                    role="status"
-                  />
-                  <Typography size="text-sm" weight="medium">
-                    {t('label.loading-more-terms')}
-                  </Typography>
-                </div>
+        </ErrorBoundary>
+        {isLoadingMore && (
+          <>
+            <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
+            <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+                <div
+                  aria-label={t('label.loading')}
+                  className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                  role="status"
+                />
+                <Typography size="text-sm" weight="medium">
+                  {t('label.loading-more-terms')}
+                </Typography>
               </div>
-            </>
-          )}
-        </div>
-      </>
+            </div>
+          </>
+        )}
+      </div>
     );
   };
+
+  if (scope === 'term' && !entityId) {
+    return (
+      <div
+        className={classNames(
+          'tw:flex tw:items-center tw:justify-center tw:overflow-hidden',
+          className
+        )}
+        data-testid="ontology-explorer-no-entity"
+        style={{ height }}>
+        <Typography as="p" className="tw:text-center tw:text-tertiary">
+          {t('message.no-glossary-terms-found')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -307,10 +368,21 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           <FilterToolbar
             filters={filters}
             glossaries={glossaries}
+            hasMoreTerms={hasMoreTerms && explorationMode !== 'data'}
+            isLoading={loading || isLoadingMore}
+            isLoadingMore={isLoadingMore}
+            loadedTermCount={loadedTermCount}
             relationTypes={relationTypes}
+            totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
-            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onClearAll={() =>
+              setFilters((prev) => ({
+                ...DEFAULT_FILTERS,
+                viewMode: prev.viewMode,
+              }))
+            }
             onFiltersChange={handleFiltersChange}
+            onLoadMore={handleLoadMore}
             onViewModeChange={handleViewModeChange}
           />
         </Card>
@@ -357,10 +429,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               icon={SearchMd}
               inputClassName="tw:pl-10"
               placeholder={t('label.search-in-graph')}
-              value={filters.searchQuery}
-              onChange={(value) =>
-                setFilters((prev) => ({ ...prev, searchQuery: value }))
-              }
+              value={searchInput}
+              onChange={setSearchInput}
             />
             <ExportGraphPanel
               onExportPng={handleExportPng}
@@ -404,49 +474,42 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             {renderGraphContent()}
           </div>
 
-          {selectedNode && (
-            <SlideoutMenu
-              isDismissable
-              isOpen
-              className="tw:z-2"
-              dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
-              width={ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH}
-              onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                  setSelectedNode(null);
-                }
-              }}>
-              {({ close }) => (
-                <EntitySummaryPanel
-                  isSideDrawer
-                  entityDetails={buildOntologySlideoutEntityDetails(
-                    selectedNode
+          <OntologyEntityPanel
+            afterEntityUpdate={
+              selectedNode
+                ? (updatedData) =>
+                    handleNodeDataUpdate(selectedNode.id, updatedData)
+                : undefined
+            }
+            entityDetails={
+              activeNode
+                ? buildOntologySlideoutEntityDetails(activeNode)
+                : { details: {} as never }
+            }
+            isOpen={Boolean(selectedNode)}
+            key={selectedNode?.id}
+            ontologyRelationsSlot={
+              selectedNode && !isDataAssetLikeNode(selectedNode) ? (
+                <OntologyNodeRelationsContent
+                  edges={(filteredGraphData?.edges ?? []).filter(
+                    (e) => e.relationType !== ASSET_RELATION_TYPE
                   )}
-                  handleClosePanel={() => {
-                    setSelectedNode(null);
-                    close();
-                  }}
-                  key={selectedNode.id}
-                  ontologyExplorerRelationsSlot={
-                    isDataAssetLikeNode(selectedNode) ? undefined : (
-                      <OntologyNodeRelationsContent
-                        edges={filteredGraphData?.edges ?? []}
-                        node={selectedNode}
-                        nodes={filteredGraphData?.nodes ?? []}
-                        relationTypes={relationTypes}
-                      />
-                    )
-                  }
-                  panelPath={
-                    isDataAssetLikeNode(selectedNode)
-                      ? 'glossary-term-assets-tab'
-                      : 'ontology-explorer'
-                  }
-                  sideDrawerOverviewOnly={isDataAssetLikeNode(selectedNode)}
+                  node={selectedNode}
+                  nodes={filteredGraphData?.nodes ?? []}
+                  relationTypes={relationTypes}
                 />
-              )}
-            </SlideoutMenu>
-          )}
+              ) : undefined
+            }
+            panelPath={
+              selectedNode && isDataAssetLikeNode(selectedNode)
+                ? 'glossary-term-assets-tab'
+                : 'ontology-explorer'
+            }
+            sideDrawerOverviewOnly={
+              selectedNode ? isDataAssetLikeNode(selectedNode) : false
+            }
+            onClose={() => setSelectedNode(null)}
+          />
         </div>
       </div>
     </div>

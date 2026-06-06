@@ -619,8 +619,7 @@ test('My Tasks Widget', async ({ page }) => {
     await apiContext.post('/api/v1/tasks', {
       data: {
         name: `My Tasks Widget Test - ${Date.now()}`,
-        about: glossary1.responseData.fullyQualifiedName,
-        aboutType: 'glossary',
+        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [adminUser.responseData.name],
@@ -662,6 +661,8 @@ test('My Tasks Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    // wait for first card visible before applying filters
+    await expect(page.getByTestId('task-feed-card').first()).toBeVisible();
     await verifyTaskFilters(page, widgetKey);
   });
 

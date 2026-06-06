@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -47,14 +48,16 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  searchIndexQueryFn,
+  searchIndexQueryKey,
+} from '../../rest/queries/searchIndexQuery';
+import {
   addFollower,
-  getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -62,10 +65,16 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtils';
+import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
@@ -85,10 +94,10 @@ function SearchIndexDetailsPage() {
   const { t } = useTranslation();
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -103,29 +112,56 @@ function SearchIndexDetailsPage() {
     [searchIndexPermissions]
   );
 
-  const fetchSearchIndexDetails = async () => {
-    setLoading(true);
-    try {
-      const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
-        fields,
-      });
+  const searchIndexCacheKey = useMemo(
+    () => searchIndexQueryKey(decodedSearchIndexFQN, defaultFields),
+    [decodedSearchIndexFQN]
+  );
 
-      setSearchIndexDetails(details);
-      addToRecentViewed({
-        displayName: getEntityName(details),
-        entityType: EntityType.SEARCH_INDEX,
-        fqn: details.fullyQualifiedName ?? '',
-        serviceType: details.serviceType,
-        timestamp: 0,
-        id: details.id,
-      });
-    } catch {
-      // Error here
-    } finally {
-      setLoading(false);
+  const {
+    data: searchIndexDetails,
+    isLoading: searchIndexLoading,
+    error: searchIndexError,
+  } = useQuery({
+    queryKey: searchIndexCacheKey,
+    queryFn: searchIndexQueryFn(decodedSearchIndexFQN, defaultFields),
+    enabled: Boolean(
+      decodedSearchIndexFQN && viewPermission && !permissionsLoading
+    ),
+  });
+
+  useEffect(() => {
+    if (!searchIndexDetails) {
+      return;
     }
-  };
+    addToRecentViewed({
+      displayName: getEntityName(searchIndexDetails),
+      entityType: EntityType.SEARCH_INDEX,
+      fqn: searchIndexDetails.fullyQualifiedName ?? '',
+      serviceType: searchIndexDetails.serviceType,
+      timestamp: 0,
+      id: searchIndexDetails.id,
+    });
+  }, [searchIndexDetails]);
+
+  const setSearchIndexDetails = useCallback(
+    (
+      updater:
+        | SearchIndex
+        | undefined
+        | ((prev: SearchIndex | undefined) => SearchIndex | undefined)
+    ) => {
+      queryClient.setQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey,
+        updater
+      );
+    },
+    [queryClient, searchIndexCacheKey]
+  );
+
+  const refetchSearchIndexDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: searchIndexCacheKey }),
+    [queryClient, searchIndexCacheKey]
+  );
 
   const {
     searchIndexTags,
@@ -211,6 +247,7 @@ function SearchIndexDetailsPage() {
 
   const fetchResourcePermission = useCallback(
     async (entityFQN: string) => {
+      setPermissionsLoading(true);
       try {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.SEARCH_INDEX,
@@ -219,7 +256,7 @@ function SearchIndexDetailsPage() {
 
         setSearchIndexPermissions(searchIndexPermission);
       } finally {
-        setLoading(false);
+        setPermissionsLoading(false);
       }
     },
     [getEntityPermissionByFqn]
@@ -235,6 +272,22 @@ function SearchIndexDetailsPage() {
       decodedSearchIndexFQN,
       handleFeedCount
     );
+
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityTaskCountsInto(decodedSearchIndexFQN, setFeedCount);
+    }
+  }, [decodedSearchIndexFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.SEARCH_INDEX,
+        decodedSearchIndexFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedSearchIndexFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -344,7 +397,7 @@ function SearchIndexDetailsPage() {
       feedCount,
       activeTab,
       getEntityFeedCount,
-      fetchSearchIndexDetails,
+      fetchSearchIndexDetails: refetchSearchIndexDetails,
       handleFeedCount,
       viewSampleDataPermission,
       deleted: deleted ?? false,
@@ -379,6 +432,7 @@ function SearchIndexDetailsPage() {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    refetchSearchIndexDetails,
   ]);
 
   const onTierUpdate = useCallback(
@@ -432,75 +486,93 @@ function SearchIndexDetailsPage() {
     }
   };
 
-  const followSearchIndex = useCallback(async () => {
-    try {
-      const res = await addFollower(searchIndexId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setSearchIndexDetails((prev) => {
-        if (!prev) {
-          return prev;
-        }
+  const isFollowing = useMemo(
+    () => followers?.some(({ id }) => id === USERId),
+    [followers, USERId]
+  );
 
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: SearchIndex | undefined }
+  >({
+    mutationFn: async () => {
+      if (!searchIndexId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(searchIndexId, USERId);
+      } else {
+        await addFollower(searchIndexId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: searchIndexCacheKey });
+      const previous = queryClient.getQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey
+      );
+      queryClient.setQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USERId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USERId, type: 'user' },
+            ] as SearchIndex['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<SearchIndex | undefined>(
+          searchIndexCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(searchIndexDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(searchIndexDetails),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(searchIndexDetails),
+            })
       );
-    }
-  }, [USERId, searchIndexId]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: searchIndexCacheKey });
+    },
+  });
 
-  const unFollowSearchIndex = useCallback(async () => {
-    try {
-      const res = await removeFollower(searchIndexId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setSearchIndexDetails((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(searchIndexDetails),
-        })
-      );
-    }
-  }, [USERId, searchIndexId]);
+  const handleFollowSearchIndex = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateSearchIndexVotes(id, data);
-      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
-        fields: defaultFields,
-      });
-      setSearchIndexDetails(details);
+      await queryClient.invalidateQueries({ queryKey: searchIndexCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const { isFollowing } = useMemo(() => {
-    return {
-      isFollowing: followers?.some(({ id }) => id === USERId),
-    };
-  }, [followers, USERId]);
-
-  const handleFollowSearchIndex = useCallback(async () => {
-    isFollowing ? await unFollowSearchIndex() : await followSearchIndex();
-  }, [isFollowing, unFollowSearchIndex, followSearchIndex]);
 
   const versionHandler = useCallback(() => {
     version &&
@@ -518,14 +590,17 @@ function SearchIndexDetailsPage() {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as SearchIndex;
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as SearchIndex;
 
-    setSearchIndexDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setSearchIndexDetails((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setSearchIndexDetails]
+  );
 
   useEffect(() => {
     if (decodedSearchIndexFQN) {
@@ -535,8 +610,8 @@ function SearchIndexDetailsPage() {
 
   useEffect(() => {
     if (viewPermission) {
-      fetchSearchIndexDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
@@ -564,7 +639,7 @@ function SearchIndexDetailsPage() {
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
     [tabs[0], activeTab]
   );
-  if (isLoading || loading) {
+  if (isLoading || permissionsLoading || searchIndexLoading) {
     return <Loader />;
   }
 
@@ -580,7 +655,7 @@ function SearchIndexDetailsPage() {
     );
   }
 
-  if (!searchIndexDetails) {
+  if (searchIndexError || !searchIndexDetails) {
     return <ErrorPlaceHolder className="m-0" />;
   }
 

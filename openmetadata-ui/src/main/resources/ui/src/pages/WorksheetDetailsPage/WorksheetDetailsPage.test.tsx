@@ -31,10 +31,8 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import WorksheetDetailsPage from './WorksheetDetailsPage';
@@ -226,12 +224,15 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 }));
 
 // Mock utils
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Worksheet not found'),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
+}));
+
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Worksheet'),
 }));
 

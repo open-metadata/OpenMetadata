@@ -49,7 +49,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { TagRenderer } from '../TagRenderer/TagRenderer';

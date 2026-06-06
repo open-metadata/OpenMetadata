@@ -15,6 +15,34 @@
 .marketplace-search-bar {
   margin-bottom: 8px;
   position: relative;
+
+  .marketplace-nlq-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0.5px solid @nlp-border-color;
+    border-radius: @border-rad-xs;
+    padding: 4px;
+    background-color: @primary-button-background;
+    cursor: pointer;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      fill: transparent;
+    }
+
+    &.active {
+      padding: 0;
+      border: none;
+
+      svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+      }
+    }
+  }
 }
 
 .marketplace-search-results {

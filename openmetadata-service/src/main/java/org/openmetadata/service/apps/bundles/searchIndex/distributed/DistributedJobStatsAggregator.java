@@ -35,6 +35,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.socket.WebSocketManager;
 
@@ -53,6 +54,15 @@ public class DistributedJobStatsAggregator {
   /** Minimum polling interval to avoid excessive DB load */
   private static final long MIN_POLL_INTERVAL_MS = 500;
 
+  /**
+   * Once the underlying job has been in a non-running state (STOPPING or any terminal status) for
+   * longer than this, the aggregator self-stops. The executor's {@code finally} block in {@code
+   * execute()} is supposed to call {@link #stop()}, but if a worker thread is wedged that block
+   * never runs and the aggregator polls forever — burning CPU and continuously broadcasting a
+   * status that overwrites the user-visible STOPPED in the UI.
+   */
+  static final long SHUTDOWN_GRACE_MS = 30_000L;
+
   private final DistributedSearchIndexCoordinator coordinator;
   private final UUID jobId;
   private final UUID appId;
@@ -69,6 +79,7 @@ public class DistributedJobStatsAggregator {
   private volatile BulkSink bulkSink;
   private String cachedRunType;
   private AppSchedule cachedScheduleInfo;
+  private volatile long shutdownObservedAtMs = 0L;
 
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
     this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
@@ -161,22 +172,35 @@ public class DistributedJobStatsAggregator {
   }
 
   /**
-   * Stop the stats aggregation.
+   * Stop the stats aggregation. Idempotent — repeated calls (e.g. executor stop racing
+   * self-stop) shut the scheduler down at most once.
    */
   public void stop() {
-    if (running.compareAndSet(true, false)) {
-      if (scheduler != null) {
-        scheduler.shutdown();
-        try {
-          if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-            scheduler.shutdownNow();
-          }
-        } catch (InterruptedException e) {
-          scheduler.shutdownNow();
-          Thread.currentThread().interrupt();
-        }
-      }
+    boolean wasRunning = running.compareAndSet(true, false);
+    // Use the running CAS to gate the LOG line, but always attempt scheduler shutdown so a
+    // caller that previously flipped running=false (self-stop) can still drive the scheduler
+    // termination on a separate thread without deadlocking on its own task.
+    shutdownScheduler();
+    if (wasRunning) {
       LOG.info("Stopped stats aggregator for job {}", jobId);
+    }
+  }
+
+  private final java.util.concurrent.atomic.AtomicBoolean schedulerShutDown =
+      new java.util.concurrent.atomic.AtomicBoolean(false);
+
+  private void shutdownScheduler() {
+    if (scheduler == null || !schedulerShutDown.compareAndSet(false, true)) {
+      return;
+    }
+    scheduler.shutdown();
+    try {
+      if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+        scheduler.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      scheduler.shutdownNow();
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -201,6 +225,12 @@ public class DistributedJobStatsAggregator {
         return;
       }
 
+      IndexJobStatus status = job.getStatus();
+      boolean shutdownInitiated = status == IndexJobStatus.STOPPING || job.isTerminal();
+      if (shouldSelfStop(shutdownInitiated, status)) {
+        return;
+      }
+
       // Skip broadcast if stats haven't changed (reduces log noise and DB load)
       boolean statsChanged =
           job.getSuccessRecords() != lastBroadcastSuccess
@@ -220,22 +250,73 @@ public class DistributedJobStatsAggregator {
       // Convert to WebSocket message format
       AppRunRecord appRecord = convertToAppRunRecord(job, serverStats);
 
-      // Broadcast via WebSocket
-      broadcastStats(appRecord);
-
-      // Notify progress listener
-      notifyProgressListener(job, serverStats);
+      // Broadcast via WebSocket AND notify progress listener — but skip both during the user-
+      // initiated STOPPING phase. The {@code AppScheduler.updateAndBroadcastStoppedStatus} path
+      // already wrote AppRunRecord.status=STOPPED. If we keep building AppRunRecord from the
+      // search_index_job row (still STOPPING), we overwrite that STOPPED in the UI for the
+      // entire drain period and the user's Stop click looks like it did nothing.
+      //
+      // The progress listener has its own override path: {@code QuartzProgressListener.
+      // onProgressUpdate} flips the in-memory status back to RUNNING when {@code pendingErrors
+      // > 0} and broadcasts a fresh AppRunRecord — so we have to skip it too, not just
+      // {@code broadcastStats}. STOPPING is non-terminal in {@code notifyProgressListener}'s
+      // switch, so skipping it doesn't drop any onJobStopped/onJobCompleted callbacks; those
+      // fire when the job moves to STOPPED/COMPLETED and we resume notifying.
+      if (status != IndexJobStatus.STOPPING) {
+        broadcastStats(appRecord);
+        notifyProgressListener(job, serverStats);
+      }
 
       if (job.isTerminal()) {
         LOG.info(
-            "Job {} is in terminal state {}, waiting for executor to stop aggregator",
+            "Job {} reached terminal state {}, aggregator will self-stop within {}ms",
             jobId,
-            job.getStatus());
+            status,
+            SHUTDOWN_GRACE_MS);
       }
 
     } catch (Exception e) {
       LOG.error("Error aggregating stats for job {}", jobId, e);
     }
+  }
+
+  /**
+   * Track when shutdown was first observed. If we sit in STOPPING (or any terminal state) past
+   * {@link #SHUTDOWN_GRACE_MS} without the executor calling {@link #stop()}, self-stop. Returns
+   * true when the aggregator self-stopped and the caller should bail out of this cycle.
+   */
+  private boolean shouldSelfStop(boolean shutdownInitiated, IndexJobStatus status) {
+    if (!shutdownInitiated) {
+      shutdownObservedAtMs = 0L;
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    if (shutdownObservedAtMs == 0L) {
+      shutdownObservedAtMs = now;
+      return false;
+    }
+    if (now - shutdownObservedAtMs > SHUTDOWN_GRACE_MS) {
+      LOG.warn(
+          "Job {} stuck in {} for >{}ms, self-stopping aggregator (executor never called stop)",
+          jobId,
+          status,
+          SHUTDOWN_GRACE_MS);
+      // The polling task runs ON `scheduler`. Calling stop() inline would deadlock —
+      // scheduler.awaitTermination(5s) blocks waiting for *this* task to finish, and the task
+      // can't finish until awaitTermination returns. We split the work: flip `running=false`
+      // synchronously (so the next poll cycle bails out immediately and isRunning() reflects
+      // the new state), and hand the scheduler termination off to a daemon thread that runs
+      // after this task returns. Both paths converge in stop(): wherever it's called, the
+      // schedulerShutDown CAS makes scheduler.shutdown() run at most once.
+      running.set(false);
+      Thread shutdownThread =
+          new Thread(this::shutdownScheduler, "stats-aggregator-self-stop-" + jobId);
+      shutdownThread.setDaemon(true);
+      shutdownThread.start();
+      LOG.info("Stopped stats aggregator for job {} (self-stop)", jobId);
+      return true;
+    }
+    return false;
   }
 
   private CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats fetchServerStats(
@@ -363,6 +444,14 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        stepStats.setWarningRecords(safeToInt(es.getWarningRecords()));
+        // Per-entity stage timing — surface ALL four stage timings on the entity-level
+        // StepStats so the UI table can render Reader / Process / Sink / Vector avg latencies
+        // side-by-side. Job-level totals still use the per-stage StepStats.totalTimeMs.
+        stepStats.setReaderTimeMs(es.getReaderTimeMs());
+        stepStats.setProcessTimeMs(es.getProcessTimeMs());
+        stepStats.setSinkTimeMs(es.getSinkTimeMs());
+        stepStats.setVectorTimeMs(es.getVectorTimeMs());
 
         CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
             vectorByEntity.get(entry.getKey());
@@ -388,6 +477,7 @@ public class DistributedJobStatsAggregator {
           safeToInt(Math.min(serverStatsAggr.readerSuccess(), partitionTruth)));
       readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
       readerStats.setWarningRecords(safeToInt(serverStatsAggr.readerWarnings()));
+      readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
     } else {
       readerStats.setSuccessRecords(safeToInt(partitionTruth));
       readerStats.setFailedRecords(0);
@@ -402,6 +492,7 @@ public class DistributedJobStatsAggregator {
       processStats.setTotalRecords(safeToInt(processTotal));
       processStats.setSuccessRecords(safeToInt(processSuccess));
       processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
+      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
     } else {
       processStats.setTotalRecords(safeToInt(partitionTruth));
       processStats.setSuccessRecords(safeToInt(partitionTruth));
@@ -416,6 +507,7 @@ public class DistributedJobStatsAggregator {
       sinkStats.setTotalRecords(safeToInt(sinkTotal));
       sinkStats.setSuccessRecords(safeToInt(sinkSuccess));
       sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+      sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
     } else {
       sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
@@ -430,6 +522,7 @@ public class DistributedJobStatsAggregator {
       vectorStats.setTotalRecords(safeToInt(vectorTotal));
       vectorStats.setSuccessRecords(safeToInt(serverStatsAggr.vectorSuccess()));
       vectorStats.setFailedRecords(safeToInt(serverStatsAggr.vectorFailed()));
+      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
     } else {
       vectorStats.setTotalRecords(0);
       vectorStats.setSuccessRecords(0);
@@ -471,6 +564,7 @@ public class DistributedJobStatsAggregator {
     appRecord.setStartTime(appStartTime != null ? appStartTime : job.getStartedAt());
     appRecord.setEndTime(job.getCompletedAt());
     appRecord.setTimestamp(job.getUpdatedAt());
+    OmAppJobListener.fillTerminalTimings(appRecord);
 
     // Add stats as success context
     SuccessContext successContext = new SuccessContext();

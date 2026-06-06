@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -232,6 +233,9 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
+      if (isApproveTransition(selectedTransition)) {
+        captureApprover(taskRepository, taskId, user);
+      }
       return refreshTask(taskId);
     }
 
@@ -265,6 +269,28 @@ public class TaskWorkflowHandler {
           e.getMessage());
       return task;
     }
+  }
+
+  private void captureApprover(TaskRepository taskRepository, UUID taskId, String user) {
+    try {
+      EntityReference approver =
+          Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED);
+      taskRepository.persistApprover(taskId, approver, user);
+    } catch (Exception e) {
+      // Pass the exception so SLF4J appends the full stack trace — losing it makes
+      // production approver-capture failures effectively undiagnosable.
+      LOG.warn("[TaskWorkflowHandler] Failed to capture approver for task '{}'", taskId, e);
+    }
+  }
+
+  /**
+   * Identify an approval transition by its target status rather than its `id` string. Every
+   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
+   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
+   */
+  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
+    return selectedTransition != null
+        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**
@@ -337,6 +363,11 @@ public class TaskWorkflowHandler {
       task.setWorkflowStageId(selectedTransition.getTargetStageId());
       task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
       task.setAvailableTransitions(List.of());
+      if (isApproveTransition(selectedTransition)) {
+        task.setApprovedBy(resolvedByRef);
+        task.setApprovedById(resolvedByRef.getId().toString());
+        task.setApprovedAt(System.currentTimeMillis());
+      }
     }
 
     task = taskRepository.resolveTask(task, resolution, user);
@@ -851,7 +882,8 @@ public class TaskWorkflowHandler {
           user,
           action.entityField(),
           value == null ? null : String.valueOf(value),
-          true);
+          true,
+          WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
       LOG.error(
           "[TaskWorkflowHandler] Failed to apply patchEntityField action for task '{}': {}",
@@ -1140,6 +1172,7 @@ public class TaskWorkflowHandler {
       case Rejected, AutoRejected -> "reject";
       case Completed -> "complete";
       case Cancelled -> "cancel";
+      case Revoked -> "revoke";
       case TimedOut -> "timeout";
     };
   }
@@ -1168,6 +1201,27 @@ public class TaskWorkflowHandler {
     return defaultWorkflowResult(resolutionType);
   }
 
+  /**
+   * Map a transition to a {@link TaskResolutionType} for the resolveTask path. Cascade:
+   *
+   * <ol>
+   *   <li>Caller-supplied {@code requestedResolutionType} (explicit override).
+   *   <li>Transition-declared {@code resolutionType} from the workflow JSON — the canonical
+   *       signal that a transition is terminal.
+   *   <li>Fallback by {@code targetTaskStatus} — only for the unambiguously terminal statuses
+   *       (Rejected, Completed, Cancelled, Revoked, Failed). {@code Approved} and
+   *       {@code Granted} are intentionally NOT mapped here: Data Access Request (and any
+   *       future workflow that uses Approved/Granted as a non-terminal "awaiting next step"
+   *       state) would otherwise close the task prematurely on the approve transition.
+   * </ol>
+   *
+   * <p>Convention for custom workflows: any transition that is intended to be terminal MUST
+   * declare an explicit {@code resolutionType} in the workflow JSON, matching the seeded
+   * GlossaryApproval / DescriptionUpdate / etc. definitions. Returning {@code null} here is
+   * the explicit signal that the transition is non-terminal — callers route through the
+   * workflow advancement path instead of {@code applyTaskResolution}, so the task stays
+   * alive on the next user-task node.
+   */
   private TaskResolutionType resolveResolutionType(
       Task task,
       TaskResolutionType requestedResolutionType,
@@ -1182,12 +1236,12 @@ public class TaskWorkflowHandler {
 
     if (selectedTransition != null && selectedTransition.getTargetTaskStatus() != null) {
       return switch (selectedTransition.getTargetTaskStatus()) {
-        case Approved -> TaskResolutionType.Approved;
         case Rejected -> TaskResolutionType.Rejected;
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
+        case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
-        case Open, InProgress, Pending -> null;
+        case Open, InProgress, Pending, Approved, Granted -> null;
       };
     }
 

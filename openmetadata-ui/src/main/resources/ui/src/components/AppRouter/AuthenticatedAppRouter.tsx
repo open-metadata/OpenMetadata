@@ -309,6 +309,10 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const ContextCenterRouter = withSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
+);
+
 const MetricListPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
@@ -836,6 +840,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<Navigate to={ROUTES.MY_DATA} />}
         path={ROUTES.FORGOT_PASSWORD}
+      />
+      <Route
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
