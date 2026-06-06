@@ -18,6 +18,76 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import ObservabilityAlertsPage from './ObservabilityAlertsPage';
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockTable = ({
+    children,
+    'data-testid': testId,
+  }: React.PropsWithChildren<{
+    'data-testid'?: string;
+    [key: string]: unknown;
+  }>) => <table data-testid={testId}>{children}</table>;
+
+  MockTable.Header = ({
+    columns,
+    children,
+  }: {
+    columns: unknown[];
+    children: (col: unknown) => React.ReactNode;
+  }) => (
+    <thead>
+      <tr>{(columns || []).map((col) => children(col))}</tr>
+    </thead>
+  );
+
+  MockTable.Head = ({
+    className,
+    label,
+    id,
+  }: {
+    className?: string;
+    label?: string;
+    id?: string;
+  }) => (
+    <th className={className} id={id}>
+      {label}
+    </th>
+  );
+
+  MockTable.Body = ({
+    items,
+    children,
+    renderEmptyState,
+  }: {
+    items?: unknown[];
+    children: (item: unknown) => React.ReactNode;
+    renderEmptyState?: () => React.ReactNode;
+  }) => (
+    <tbody>
+      {items && items.length > 0
+        ? items.map((item) => children(item))
+        : renderEmptyState?.()}
+    </tbody>
+  );
+
+  MockTable.Row = ({
+    children,
+    id,
+  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
+
+  MockTable.Cell = ({
+    children,
+    className,
+  }: React.PropsWithChildren<{ className?: string }>) => (
+    <td className={className}>{children}</td>
+  );
+
+  const MockTableCard = {
+    Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  };
+
+  return { Table: MockTable, TableCard: MockTableCard };
+});
+
 const MOCK_DATA = [
   {
     id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
@@ -72,6 +142,19 @@ jest.mock('../../rest/alertsAPI', () => ({
       paging: { total: 1 },
     })
   ),
+}));
+
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewNew',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => <span>RichTextPreview</span>),
+  })
+);
+
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>NextPrevious</div>),
 }));
 
 jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
@@ -235,6 +318,19 @@ describe('Observability Alerts Page Tests', () => {
     fireEvent.click(addButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts/add');
+  });
+
+  it('should render table border separator wrapper', async () => {
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const tableElement = await screen.findByTestId('alert-table');
+    const borderWrapper = tableElement.parentElement;
+
+    expect(borderWrapper).toHaveClass('tw:border-b', 'tw:border-secondary');
   });
 
   it('should not render add, edit and delete buttons for alerts without permissions', async () => {

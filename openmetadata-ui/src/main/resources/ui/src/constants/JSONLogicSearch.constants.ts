@@ -40,3 +40,8 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.VERSION,
   EntityReferenceFields.ENTITY_STATUS,
 ];
+
+export const KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.REVIEWERS,
+  EntityReferenceFields.UPDATED_BY,
+];

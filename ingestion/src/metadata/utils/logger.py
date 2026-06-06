@@ -13,11 +13,12 @@ Module centralising logger configs
 """
 
 import logging
+import re
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union  # noqa: UP035
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -39,9 +40,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
 
 METADATA_LOGGER = "metadata"
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
-)
+BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
 REDACTED_KEYS = {"serviceConnection", "securityConfig"}
@@ -65,6 +64,7 @@ class Loggers(Enum):
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
     REVERSE_INGESTION = "ReverseIngestion"
+    DIAGNOSTICS = "Diagnostics"
 
     @DynamicClassAttribute
     def value(self):
@@ -188,7 +188,22 @@ def query_runner_logger():
     return logging.getLogger(Loggers.QUERY_RUNNER.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):
+def diag_logger():
+    """
+    Method to get the DIAGNOSTICS logger.
+
+    The diagnostics subsystem (heartbeats, watchdog warnings,
+    non-signal-context dumps) emits through this logger so output is
+    picked up by whatever handlers the workflow has configured —
+    console, StreamableLogHandler (S3), file, etc. Signal-handler
+    paths still write to raw stderr because Python's logging module is
+    not signal-safe (per-handler RLocks).
+    """
+
+    return logging.getLogger(Loggers.DIAGNOSTICS.value)
+
+
+def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
     """
     Set all loggers levels
     :param level: logging level
@@ -197,7 +212,7 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None,
+    color: Optional[ANSI] = None,  # noqa: UP045
     bold: bool = False,
     message: str = "",
     level=logging.INFO,
@@ -209,10 +224,10 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> Optional[str]:
+def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
     try:
         if hasattr(record, "name"):
-            return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
         if hasattr(record, "table") and hasattr(record.table, "name"):
             return f"{type(record).__name__} [{record.table.name.root}]"
         return f"{type(record).__name__} [{record.entity.name.root}]"
@@ -242,9 +257,7 @@ def _(record: AddLineageRequest) -> str:
     type_ = record.edge.fromEntity.type
 
     # name can be informed or not
-    name_str = (
-        f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
-    )
+    name_str = f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
 
     return f"{type_} [{name_str}id: {id_}]"
 
@@ -276,7 +289,7 @@ def _(record: TableAndTests) -> str:
 @get_log_name.register
 def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return ",".join(set(result.testCase.name.root for result in record.test_results))
+    return ",".join(set(result.testCase.name.root for result in record.test_results))  # noqa: C401
 
 
 @get_log_name.register
@@ -322,7 +335,44 @@ def _(record: OMetaUserProfile) -> str:
     )
 
 
-def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+class StatusWarningHandler(logging.Handler):
+    """
+    Logging handler that intercepts WARNING-level records from our metadata
+    loggers and forwards them to the workflow Status object so the final
+    summary reflects the true warning count.
+
+    Records from Status.failed() (module="status") and the Step framework
+    error handling (module="step") are skipped — those are already counted
+    as failures, not warnings.
+    """
+
+    _SKIP_MODULES = frozenset({"status", "step"})
+
+    def __init__(self, status: Any) -> None:
+        super().__init__(level=logging.WARNING)
+        self._status = status
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Only capture WARNING; ERROR/CRITICAL are already tracked as failures by Step.run()
+        if record.levelno != logging.WARNING:
+            return
+        if record.module in self._SKIP_MODULES:
+            return
+        try:
+            self._status.warning(
+                key=record.module,
+                reason=record.getMessage(),
+            )
+        except Exception:  # pylint: disable=broad-except
+            self.handleError(record)
+
+
+def sanitize_url_credentials(message: str) -> str:
+    """Mask credentials embedded in URLs (e.g., https://token@host)"""
+    return re.sub(r"https://[^@]+@", "https://****@", message)
+
+
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
     config_copy = deepcopy(config)
 
     def traverse_and_modify(obj):

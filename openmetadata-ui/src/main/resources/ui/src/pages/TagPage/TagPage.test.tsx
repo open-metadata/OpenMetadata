@@ -11,14 +11,61 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
+
+const render = renderWithQueryClient;
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  Dialog: Object.assign(
+    jest.fn().mockImplementation(({ children, title }) => (
+      <div role="dialog">
+        <div>{title}</div>
+        {children}
+      </div>
+    )),
+    {
+      Content: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Footer: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+    }
+  ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ModalOverlay: jest
+    .fn()
+    .mockImplementation(({ children, isOpen }) =>
+      isOpen ? <div>{children}</div> : null
+    ),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
 
 jest.mock('../../hooks/useCustomPages', () => ({
   useCustomPages: jest

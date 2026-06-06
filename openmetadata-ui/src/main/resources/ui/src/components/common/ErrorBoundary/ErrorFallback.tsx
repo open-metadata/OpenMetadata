@@ -18,7 +18,6 @@ import { FallbackProps } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as OmUpgradeIcon } from '../../../assets/svg/om-upgrade.svg';
 import { ERROR500 } from '../../../constants/constants';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { t } from '../../../utils/i18next/LocalUtil';
 
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -27,16 +26,20 @@ const ErrorFallback: React.FC<FallbackProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const isChunkLoadError = error.message?.startsWith('Loading chunk');
+  const isChunkLoadError =
+    error?.name === 'ChunkLoadError' ||
+    error.message?.startsWith('Loading chunk') || // Legacy Webpack
+    error.message
+      ?.toLowerCase()
+      .includes('failed to fetch dynamically imported module') || // Vite
+    error.message?.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
 
   const message = isChunkLoadError
     ? t('message.please-refresh-the-page')
     : error.message;
 
   const title = isChunkLoadError
-    ? t('message.look-like-upgraded-om', {
-        brandName: brandClassBase.getPageTitle(),
-      })
+    ? t('message.look-like-upgraded-om')
     : ERROR500;
 
   const handleReset = () => {

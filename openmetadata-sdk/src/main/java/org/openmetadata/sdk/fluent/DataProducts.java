@@ -180,6 +180,11 @@ public final class DataProducts {
     public DataProductDeleter delete() {
       return new DataProductDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DataProduct> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dataProducts(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

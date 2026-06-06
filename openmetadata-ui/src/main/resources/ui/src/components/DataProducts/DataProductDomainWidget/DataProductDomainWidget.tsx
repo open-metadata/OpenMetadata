@@ -12,18 +12,14 @@
  */
 
 import { Modal } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
-import { patchDataProduct } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
@@ -64,33 +60,26 @@ export const DataProductDomainWidget = () => {
 
   const performDomainUpdate = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      if (!dataProduct) {
+      if (!dataProduct || !onUpdate) {
         return;
       }
 
       setIsLoading(true);
       try {
-        const domains = Array.isArray(selectedDomain)
+        const rawDomains = Array.isArray(selectedDomain)
           ? selectedDomain
           : isEmpty(selectedDomain)
           ? []
           : [selectedDomain];
 
-        const jsonPatch = compare(dataProduct, {
-          ...dataProduct,
-          domains,
-        });
+        const domains: EntityReference[] = rawDomains.map((d) => ({
+          id: d.id,
+          type: d.type,
+          name: d.name,
+          fullyQualifiedName: d.fullyQualifiedName,
+        }));
 
-        const updatedDataProduct = await patchDataProduct(
-          dataProduct.id,
-          jsonPatch
-        );
-
-        if (onUpdate) {
-          onUpdate(updatedDataProduct);
-        }
-      } catch (err) {
-        showErrorToast(err as AxiosError);
+        await onUpdate({ ...dataProduct, domains });
       } finally {
         setIsLoading(false);
         setIsConfirmModalOpen(false);

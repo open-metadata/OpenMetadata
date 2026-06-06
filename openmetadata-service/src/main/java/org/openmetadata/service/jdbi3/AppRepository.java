@@ -399,6 +399,43 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  /**
+   * Page through extensions inside a half-open {@code [startTime, endTime)} window. Unlike
+   * {@link #listAppExtensionAfterTimeByName}, the SQL filter excludes rows at or after
+   * {@code endTime} so OFFSET pagination stays correct even when new rows are inserted
+   * concurrently. Useful for any counter that aggregates across multiple pages.
+   *
+   * <p><b>Known limitation:</b> the {@code apps_extension_time_series} table has no surrogate
+   * primary key, so the ORDER BY tie-breaker is limited to {@code timestamp}. Two writes that
+   * land in the same millisecond can be ordered non-deterministically across separate page
+   * queries, causing one row near a page boundary to be skipped or counted twice. At
+   * {@link org.openmetadata.service.resources.mcp.McpUsageResource}'s page size (1000) the risk
+   * is bounded and acceptable for a growth-metric dashboard. Adding a deterministic
+   * tie-breaker would require a schema migration to introduce a surrogate id column.
+   */
+  public <T> List<T> listAppExtensionInWindowByName(
+      App app,
+      long startTime,
+      long endTime,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    if (limitParam <= 0) {
+      return new ArrayList<>();
+    }
+    List<String> jsons =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionInWindowByName(
+                app.getName(), limitParam, offset, startTime, endTime, extensionType.toString());
+    List<T> entities = new ArrayList<>(jsons.size());
+    for (String json : jsons) {
+      entities.add(JsonUtils.readValue(json, clazz));
+    }
+    return entities;
+  }
+
   public <T> ResultList<T> listAppExtensionAfterTimeById(
       App app,
       long startTime,

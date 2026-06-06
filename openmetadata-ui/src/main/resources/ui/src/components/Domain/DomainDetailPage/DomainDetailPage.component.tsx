@@ -11,28 +11,33 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   addFollower,
-  getDomainByName,
   patchDomains,
   removeFollower,
   updateDomainVotes,
 } from '../../../rest/domainAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  domainQueryFn,
+  domainQueryKey,
+  DOMAIN_DEFAULT_FIELDS,
+} from '../../../rest/queries/domainQuery';
+import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -47,12 +52,64 @@ const DomainDetailPage = () => {
   const { fqn: domainFqn } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { domainBasePath } = useMarketplaceStore();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
-  const [isMainContentLoading, setIsMainContentLoading] = useState(false);
-  const [activeDomain, setActiveDomain] = useState<Domain>();
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
+
+  const [viewBasicDomainPermission, viewAllDomainPermission] = useMemo(() => {
+    return [
+      checkPermission(Operation.ViewBasic, ResourceEntity.DOMAIN, permissions),
+      checkPermission(Operation.ViewAll, ResourceEntity.DOMAIN, permissions),
+    ];
+  }, [permissions]);
+
+  const canViewDomain = viewBasicDomainPermission || viewAllDomainPermission;
+
+  const domainCacheKey = useMemo(
+    () => domainQueryKey(domainFqn, DOMAIN_DEFAULT_FIELDS),
+    [domainFqn]
+  );
+
+  const {
+    data: activeDomain,
+    isLoading: domainLoading,
+    error: domainError,
+  } = useQuery({
+    queryKey: domainCacheKey,
+    queryFn: domainQueryFn(domainFqn, DOMAIN_DEFAULT_FIELDS),
+    enabled: Boolean(domainFqn) && canViewDomain,
+  });
+
+  const isError = useMemo(
+    () => (domainError as AxiosError | undefined)?.response?.status === 404,
+    [domainError]
+  );
+
+  useEffect(() => {
+    if (domainError && !isError) {
+      showErrorToast(
+        domainError as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.domain-lowercase'),
+        })
+      );
+    }
+  }, [domainError, isError, t]);
+
+  const setActiveDomain = useCallback(
+    (
+      updater:
+        | Domain
+        | undefined
+        | ((prev: Domain | undefined) => Domain | undefined)
+    ) => {
+      queryClient.setQueryData<Domain | undefined>(domainCacheKey, updater);
+    },
+    [queryClient, domainCacheKey]
+  );
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -61,13 +118,6 @@ const DomainDetailPage = () => {
       ),
     };
   }, [activeDomain?.followers, currentUserId]);
-
-  const [viewBasicDomainPermission, viewAllDomainPermission] = useMemo(() => {
-    return [
-      checkPermission(Operation.ViewBasic, ResourceEntity.DOMAIN, permissions),
-      checkPermission(Operation.ViewAll, ResourceEntity.DOMAIN, permissions),
-    ];
-  }, [permissions]);
 
   const handleDomainUpdate = async (updatedData: Domain) => {
     if (activeDomain) {
@@ -89,137 +139,106 @@ const DomainDetailPage = () => {
   };
 
   const handleDomainDelete = () => {
-    // Navigate back to domains listing page after deletion
-    navigate(ROUTES.DOMAIN);
+    navigate(domainBasePath);
   };
 
-  const fetchDomainByName = async (domainFqn: string) => {
-    setIsMainContentLoading(true);
-    try {
-      const data = await getDomainByName(domainFqn, {
-        fields: [
-          TabSpecificField.CHILDREN,
-          TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
-          TabSpecificField.EXPERTS,
-          TabSpecificField.TAGS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.EXTENSION,
-          TabSpecificField.VOTES,
-          TabSpecificField.CERTIFICATION,
-        ],
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Domain | undefined }
+  >({
+    mutationFn: async () => {
+      if (!activeDomain?.id) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(activeDomain.id, currentUserId);
+      } else {
+        await addFollower(activeDomain.id, currentUserId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: domainCacheKey });
+      const previous = queryClient.getQueryData<Domain | undefined>(
+        domainCacheKey
+      );
+      queryClient.setQueryData<Domain | undefined>(domainCacheKey, (prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const currentFollowers = prev.followers ?? [];
+        if (isFollowing) {
+          return {
+            ...prev,
+            followers: currentFollowers.filter(
+              ({ id }) => id !== currentUserId
+            ),
+          };
+        }
+
+        return {
+          ...prev,
+          followers: [
+            ...currentFollowers,
+            { id: currentUserId, type: 'user' },
+          ] as Domain['followers'],
+        };
       });
-      setActiveDomain(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.domain-lowercase'),
-        })
-      );
-    } finally {
-      setIsMainContentLoading(false);
-    }
-  };
 
-  const followDomain = async () => {
-    try {
-      if (!activeDomain?.id) {
-        return;
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Domain | undefined>(
+          domainCacheKey,
+          context.previous
+        );
       }
-      const res = await addFollower(activeDomain.id, currentUserId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setActiveDomain(
-        (prev) =>
-          ({
-            ...prev,
-            followers: [...(prev?.followers ?? []), ...newValue],
-          } as Domain)
-      );
-    } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(activeDomain),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(activeDomain),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(activeDomain),
+            })
       );
-    }
-  };
-
-  const unFollowDomain = async () => {
-    try {
-      if (!activeDomain?.id) {
-        return;
-      }
-      const res = await removeFollower(activeDomain.id, currentUserId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-      const filteredFollowers = activeDomain.followers?.filter(
-        (follower) => follower.id !== oldValue[0].id
-      );
-
-      setActiveDomain(
-        (prev) =>
-          ({
-            ...prev,
-            followers: filteredFollowers ?? [],
-          } as Domain)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(activeDomain),
-        })
-      );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: domainCacheKey });
+    },
+  });
 
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
-    isFollowing ? await unFollowDomain() : await followDomain();
-    setIsFollowingLoading(false);
-  }, [isFollowing, unFollowDomain, followDomain]);
+    try {
+      await followMutation.mutateAsync();
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  }, [followMutation]);
 
   const handleUpdateVote = useCallback(
     async (data: QueryVote, id: string) => {
       try {
         await updateDomainVotes(id, data);
-        const response = await getDomainByName(domainFqn, {
-          fields: [
-            TabSpecificField.CHILDREN,
-            TabSpecificField.OWNERS,
-            TabSpecificField.PARENT,
-            TabSpecificField.EXPERTS,
-            TabSpecificField.TAGS,
-            TabSpecificField.FOLLOWERS,
-            TabSpecificField.EXTENSION,
-            TabSpecificField.VOTES,
-            TabSpecificField.CERTIFICATION,
-          ],
-        });
-        setActiveDomain(response);
+        await queryClient.invalidateQueries({ queryKey: domainCacheKey });
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [domainFqn]
+    [queryClient, domainCacheKey]
   );
 
   useEffect(() => {
-    if (domainFqn) {
-      fetchDomainByName(domainFqn);
-    }
-  }, [domainFqn]);
-
-  // If no domain FQN is provided, redirect to domains listing
-  useEffect(() => {
     if (!domainFqn) {
-      navigate(ROUTES.DOMAIN);
+      navigate(domainBasePath);
     }
-  }, [domainFqn, navigate]);
+  }, [domainFqn, navigate, domainBasePath]);
 
-  if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
+  if (!canViewDomain) {
     return (
       <ErrorPlaceHolder
         className="mt-0-important"
@@ -232,8 +251,16 @@ const DomainDetailPage = () => {
     );
   }
 
-  if (isMainContentLoading) {
+  if (domainLoading) {
     return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('domain', domainFqn)}
+      </ErrorPlaceHolder>
+    );
   }
 
   if (!activeDomain) {

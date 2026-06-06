@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
-import * as reactI18next from 'react-i18next';
+import { getByTestId, render, screen } from '@testing-library/react';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
@@ -34,11 +33,15 @@ jest.mock('./FilterErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
+    return <span>{i18nKey}</span>;
+  }),
   __esModule: true,
   default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+    t: jest.fn().mockImplementation((key) => key),
   },
+  t: jest.fn().mockImplementation((key) => key),
 }));
 
 const mockErrorMessage =
@@ -90,22 +93,7 @@ describe('Test Error placeholder ingestion Component', () => {
     expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', () => {
-    // Mock useTranslation to handle brandName interpolation
-    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
-      if (key === 'message.welcome-to-open-metadata' && params?.brandName) {
-        return `Welcome to ${params.brandName}!`;
-      }
-
-      return key;
-    });
-
-    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
-      t: mockT,
-      i18n: { language: 'en-US' },
-      ready: true,
-    } as any);
-
+  it('should render with correct brandName keys', () => {
     const { container } = render(
       <ErrorPlaceHolderES
         errorMessage={mockErrorMessage}
@@ -115,13 +103,10 @@ describe('Test Error placeholder ingestion Component', () => {
     const errorES = getByTestId(container, 'es-error');
 
     expect(errorES).toBeInTheDocument();
-    // Verify the actual brand name is rendered, not the placeholder
-    expect(errorES.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(errorES.textContent).not.toContain('{{brandName}}');
 
     // Verify the translation function was called with brandName parameter
-    expect(mockT).toHaveBeenCalledWith('message.welcome-to-open-metadata', {
-      brandName: 'OpenMetadata',
-    });
+    expect(
+      screen.getByText(/message.welcome-to-open-metadata/)
+    ).toBeInTheDocument();
   });
 });

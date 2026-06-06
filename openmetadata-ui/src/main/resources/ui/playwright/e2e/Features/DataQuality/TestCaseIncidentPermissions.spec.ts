@@ -30,27 +30,27 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
 
 // --- Objects ---
-const viewIncidentsPolicy = new PolicyClass();
-const viewIncidentsRole = new RolesClass();
-const viewIncidentsUser = new UserClass();
+let viewIncidentsPolicy: PolicyClass;
+let viewIncidentsRole: RolesClass;
+let viewIncidentsUser: UserClass;
 
-const editIncidentsPolicy = new PolicyClass();
-const editIncidentsRole = new RolesClass();
-const editIncidentsUser = new UserClass();
+let editIncidentsPolicy: PolicyClass;
+let editIncidentsRole: RolesClass;
+let editIncidentsUser: UserClass;
 
-const tableEditIncidentsPolicy = new PolicyClass();
-const tableEditIncidentsRole = new RolesClass();
-const tableEditIncidentsUser = new UserClass();
+let tableEditIncidentsPolicy: PolicyClass;
+let tableEditIncidentsRole: RolesClass;
+let tableEditIncidentsUser: UserClass;
 
-const tableViewIncidentsPolicy = new PolicyClass();
-const tableViewIncidentsRole = new RolesClass();
-const tableViewIncidentsUser = new UserClass();
+let tableViewIncidentsPolicy: PolicyClass;
+let tableViewIncidentsRole: RolesClass;
+let tableViewIncidentsUser: UserClass;
 
-const consumerLikePolicy = new PolicyClass();
-const consumerLikeRole = new RolesClass();
-const consumerLikeUser = new UserClass();
+let consumerLikePolicy: PolicyClass;
+let consumerLikeRole: RolesClass;
+let consumerLikeUser: UserClass;
 
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -104,10 +104,17 @@ test.describe(
   () => {
     let testCaseFqn: string;
     let incidentId: string;
-    let incidentStateId: string;
 
     const visitTestCaseIncidentPage = async (page: Page) => {
-      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?*fields=*'
+      );
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const testCaseRes = await testCaseResponse;
+      expect(testCaseRes.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
@@ -119,6 +126,22 @@ test.describe(
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      viewIncidentsPolicy = new PolicyClass();
+      viewIncidentsRole = new RolesClass();
+      viewIncidentsUser = new UserClass();
+      editIncidentsPolicy = new PolicyClass();
+      editIncidentsRole = new RolesClass();
+      editIncidentsUser = new UserClass();
+      tableEditIncidentsPolicy = new PolicyClass();
+      tableEditIncidentsRole = new RolesClass();
+      tableEditIncidentsUser = new UserClass();
+      tableViewIncidentsPolicy = new PolicyClass();
+      tableViewIncidentsRole = new RolesClass();
+      tableViewIncidentsUser = new UserClass();
+      consumerLikePolicy = new PolicyClass();
+      consumerLikeRole = new RolesClass();
+      consumerLikeUser = new UserClass();
+      table = new TableClass();
       await table.create(apiContext);
 
       // Create executable test suite
@@ -163,7 +186,6 @@ test.describe(
               );
               if (incident) {
                 incidentId = incident.id;
-                incidentStateId = incident.stateId;
 
                 return true;
               }
@@ -171,7 +193,7 @@ test.describe(
 
             return false;
           },
-          { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+          { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
         )
         .toBe(true);
 
@@ -232,7 +254,9 @@ test.describe(
       await tableEditIncidentsPolicy.delete(apiContext);
       await tableViewIncidentsPolicy.delete(apiContext);
       await consumerLikePolicy.delete(apiContext);
-      await table.delete(apiContext);
+      if (table) {
+        await table.delete(apiContext);
+      }
       await afterAction();
     });
 

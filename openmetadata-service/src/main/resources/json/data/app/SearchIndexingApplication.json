@@ -5,7 +5,6 @@
     "entities": [
       "all"
     ],
-    "recreateIndex": true,
     "batchSize": "100",
     "payLoadSize": 104857600,
     "producerThreads": 1,
@@ -21,7 +20,7 @@
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "30 0 * * *"
+    "cronExpression": "30 0 * * 0"
   },
   "supportsInterrupt": true
 }

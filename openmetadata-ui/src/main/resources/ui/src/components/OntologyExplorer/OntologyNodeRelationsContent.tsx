@@ -22,7 +22,9 @@ import {
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
+import { getEffectiveRelationColor } from './utils/graphStyles';
 
 export interface OntologyNodeRelationsContentProps {
   readonly node: OntologyNode;
@@ -77,26 +79,30 @@ export const OntologyNodeRelationsContent: React.FC<
   const getDisplayName = useCallback(
     (relationType: string) => {
       const relationMeta = relationTypeMap.get(relationType);
+      const builtInLabelKey = RELATION_META[relationType]?.labelKey;
 
       return (
-        relationMeta?.displayName ??
-        relationLabelOverrides[relationType] ??
-        relationType
+        (relationMeta?.displayName ||
+          relationMeta?.name ||
+          relationLabelOverrides[relationType]) ??
+        (builtInLabelKey ? t(builtInLabelKey) : relationType)
       );
     },
-    [relationTypeMap, relationLabelOverrides]
+    [relationTypeMap, relationLabelOverrides, t]
   );
 
   const totalRelations =
     nodeRelations.incoming.length + nodeRelations.outgoing.length;
 
   const relatedDisplayName = useCallback(
-    (rel: RelationRow, end: 'from' | 'to') => {
+    (rel: RelationRow) => {
       return (
-        rel.relatedNode?.originalLabel ?? rel.relatedNode?.label ?? rel[end]
+        rel.relatedNode?.originalLabel ??
+        rel.relatedNode?.label ??
+        t('label.term-not-available')
       );
     },
-    []
+    [t]
   );
 
   const renderSection = (
@@ -104,8 +110,7 @@ export const OntologyNodeRelationsContent: React.FC<
     count: number,
     rows: RelationRow[],
     labelTestId: string,
-    countTestId: string,
-    otherEnd: 'from' | 'to'
+    countTestId: string
   ) => {
     if (rows.length === 0) {
       return null;
@@ -129,23 +134,47 @@ export const OntologyNodeRelationsContent: React.FC<
         <Card className="tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:p-4">
           <ul className="tw:m-0 tw:list-none tw:p-0">
             {rows.map((rel, rowIndex) => {
-              const labelText = relatedDisplayName(rel, otherEnd);
+              const labelText = relatedDisplayName(rel);
               const hasRowBelow = rowIndex < rows.length - 1;
+
+              const customRelation = relationTypeMap.get(rel.relationType);
+              const effectiveColor = getEffectiveRelationColor(
+                rel.relationType,
+                customRelation
+              );
+              const meta = effectiveColor
+                ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()]
+                : undefined;
 
               return (
                 <li
                   className="tw:flex tw:flex-col tw:gap-2 tw:py-1"
-                  key={`${rel.from}-${rel.to}-${rel.relationType}`}>
+                  key={`${rel.from}-${rel.to}-${rel.relationType}`}
+                  style={
+                    meta
+                      ? ({
+                          '--rel-bg': meta.background,
+                          '--rel-color': meta.color,
+                        } as React.CSSProperties)
+                      : undefined
+                  }>
                   <div className="tw:grid tw:w-full tw:grid-cols-2 tw:items-center tw:gap-3">
-                    <Badge color="gray" type="modern">
+                    <Badge
+                      className={
+                        meta
+                          ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:ring-0'
+                          : 'tw:ring-0'
+                      }
+                      size="sm"
+                      type="color">
                       {getDisplayName(rel.relationType)}
                     </Badge>
                     <div className="tw:min-w-0">
-                      <Tooltip placement="top" title={labelText}>
+                      <Tooltip arrow placement="top" title={labelText}>
                         <TooltipTrigger className="tw:block tw:w-full">
                           <Typography
-                            as="span"
-                            className="tw:block tw:truncate tw:text-primary"
+                            as="p"
+                            className="tw:block tw:truncate tw:text-left tw:text-primary"
                             size="text-sm"
                             weight="regular">
                             {labelText}
@@ -183,16 +212,14 @@ export const OntologyNodeRelationsContent: React.FC<
         nodeRelations.outgoing.length,
         nodeRelations.outgoing,
         'outgoing-relation-label',
-        'outgoing-relation-count',
-        'to'
+        'outgoing-relation-count'
       )}
       {renderSection(
         t('label.incoming-relation-plural'),
         nodeRelations.incoming.length,
         nodeRelations.incoming,
         'incoming-relation-label',
-        'incoming-relation-count',
-        'from'
+        'incoming-relation-count'
       )}
     </>
   );

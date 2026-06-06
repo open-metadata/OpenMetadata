@@ -30,7 +30,6 @@ import {
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
-import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
@@ -39,9 +38,9 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
-import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
-import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getEntityTypeExploreQueryFilter } from '../../../../utils/FilterQueryUtils';
+import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -104,12 +103,7 @@ const DataProductsWidget = ({
 
   const handleDataProductClick = useCallback(
     (dataProduct: DataProduct) => {
-      navigate(
-        getEntityDetailsPath(
-          EntityType.DATA_PRODUCT,
-          dataProduct.fullyQualifiedName ?? ''
-        )
-      );
+      navigate(getDataProductDetailsPath(dataProduct.fullyQualifiedName ?? ''));
     },
     [navigate]
   );

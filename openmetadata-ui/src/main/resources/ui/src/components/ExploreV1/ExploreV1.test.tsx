@@ -11,15 +11,169 @@
  *  limitations under the License.
  */
 import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
+import {
+  exportSearchResultsCsvStream,
+  searchQuery,
+} from '../../rest/searchAPI';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import ExploreV1 from './ExploreV1.component';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Button = ({
+    children,
+    iconLeading,
+    iconTrailing,
+    onClick,
+    onPress,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+    iconLeading?: import('react').ReactNode;
+    iconTrailing?: import('react').ReactNode;
+    onClick?: () => void;
+    onPress?: () => void;
+  } & Record<string, unknown>) => (
+    <button type="button" onClick={onPress ?? onClick} {...rest}>
+      {iconLeading}
+      {children}
+      {iconTrailing}
+    </button>
+  );
+
+  const Typography = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <span {...rest}>{children}</span>;
+
+  const Card = ({
+    children,
+    isSelected,
+    isClickable,
+    onClick,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+    isSelected?: boolean;
+    isClickable?: boolean;
+    onClick?: () => void;
+  } & Record<string, unknown>) => (
+    <div
+      data-clickable={Boolean(isClickable)}
+      data-selected={Boolean(isSelected)}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}
+      {...rest}>
+      {children}
+    </div>
+  );
+
+  const Alert = ({
+    title,
+    ...rest
+  }: {
+    title?: import('react').ReactNode;
+  } & Record<string, unknown>) => <span {...rest}>{title}</span>;
+
+  const Box = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <div {...rest}>{children}</div>;
+
+  const Dropdown = {
+    Root: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => <div {...props}>{children}</div>,
+    Popover: ({ children }: { children?: import('react').ReactNode }) => (
+      <div>{children}</div>
+    ),
+    Menu: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    ),
+    Item: ({
+      children,
+      label,
+      onClick,
+      onPress,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+      label?: string;
+      onClick?: () => void;
+      onPress?: () => void;
+    } & Record<string, unknown>) => (
+      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+        {label ?? children}
+      </div>
+    ),
+  };
+
+  const Divider = () => <hr />;
+
+  const Toggle = ({
+    isSelected,
+    onChange,
+    ...props
+  }: {
+    isSelected?: boolean;
+    onChange?: (value: boolean) => void;
+  } & Record<string, unknown>) => (
+    <input
+      checked={isSelected}
+      type="checkbox"
+      onChange={(e) => onChange?.(e.target.checked)}
+      {...props}
+    />
+  );
+
+  return { Alert, Box, Button, Card, Divider, Dropdown, Toggle, Typography };
+});
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
+  Download01: () => <span data-testid="download-01-icon" />,
+}));
+
+jest.mock('../../rest/searchAPI', () => ({
+  exportSearchResultsCsvStream: jest
+    .fn()
+    .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: { total: { value: 100 }, hits: [] },
+  }),
+}));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ search: '' }));
@@ -88,6 +242,7 @@ jest.mock(
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
+      queryFilter: undefined,
       onResetAllFilters: jest.fn(),
     })),
   })
@@ -95,7 +250,50 @@ jest.mock(
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Alert: jest.fn().mockReturnValue(<span>Index Not Found Alert</span>),
+  Modal: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        open,
+        onCancel,
+        onOk,
+        okButtonProps,
+        okText,
+        cancelText,
+        className,
+        'data-testid': dataTestId,
+      }: {
+        children?: React.ReactNode;
+        open?: boolean;
+        onCancel?: () => void;
+        onOk?: () => void;
+        okButtonProps?: { disabled?: boolean };
+        okText?: React.ReactNode;
+        cancelText?: React.ReactNode;
+        className?: string;
+        'data-testid'?: string;
+      }) =>
+        open ? (
+          <div className={className} data-testid={dataTestId} role="dialog">
+            {children}
+            <button type="button" onClick={onCancel}>
+              {cancelText}
+            </button>
+            <button
+              disabled={okButtonProps?.disabled}
+              type="button"
+              onClick={onOk}>
+              {okText}
+            </button>
+          </div>
+        ) : null
+    ),
+  Alert: jest
+    .fn()
+    .mockImplementation(({ message }: { message?: React.ReactNode }) => (
+      <span>{message ?? 'Index Not Found Alert'}</span>
+    )),
 }));
 
 jest.mock('../SearchedData/SearchedData', () =>
@@ -115,17 +313,6 @@ jest.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-component">
-        {i18nKey} {values && JSON.stringify(values)}
-        {renderElement}
-      </div>
-    )),
 }));
 
 jest.mock('../../utils/AdvancedSearchUtils', () => ({
@@ -210,7 +397,7 @@ const props = {
   },
 };
 
-const mockThemeColors: ThemeColors = {
+const mockThemeColors = {
   white: '#FFFFFF',
   blue: {
     50: '#E6F4FF',
@@ -226,7 +413,7 @@ const mockThemeColors: ThemeColors = {
     700: '#374151',
     900: '#111827',
   },
-} as ThemeColors;
+};
 
 const theme: Theme = createTheme({
   palette: {
@@ -235,13 +422,23 @@ const theme: Theme = createTheme({
       paper: '#FFFFFF',
     },
   },
-});
+} as Parameters<typeof createTheme>[0]);
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
 describe('ExploreV1', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: { total: { value: 100 }, hits: [] },
+    });
+    (exportSearchResultsCsvStream as jest.Mock).mockResolvedValue(
+      new Blob([''], { type: 'text/csv' })
+    );
+  });
+
   it('renders component without errors', async () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
@@ -262,5 +459,113 @@ describe('ExploreV1', () => {
     expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
 
     expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
+  });
+
+  it('shows inline export error in modal and keeps modal open on export failure', async () => {
+    const errorMessage = 'Export failed due to a server error.';
+    (exportSearchResultsCsvStream as jest.Mock).mockRejectedValueOnce({
+      response: {
+        data: errorMessage,
+      },
+    });
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
+    const modal = await screen.findByTestId('export-scope-modal');
+
+    const exportButton = within(modal).getByRole('button', {
+      name: 'label.export',
+    });
+    await waitFor(() => expect(exportButton).toBeEnabled());
+    fireEvent.click(exportButton);
+
+    expect(await within(modal).findByText(errorMessage)).toBeInTheDocument();
+    expect(modal).toBeVisible();
+  });
+
+  it('disables export button while count is loading when modal opens', async () => {
+    let resolveCountRequest:
+      | ((value: { hits: { total: { value: number } } }) => void)
+      | undefined;
+    (searchQuery as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCountRequest = resolve;
+        })
+    );
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
+    const modal = await screen.findByTestId('export-scope-modal');
+    const exportButton = within(modal).getByRole('button', {
+      name: 'label.export',
+    });
+
+    expect(exportButton).toBeDisabled();
+
+    if (!resolveCountRequest) {
+      throw new Error('Expected searchQuery resolver to be initialized');
+    }
+
+    resolveCountRequest({ hits: { total: { value: 100 } } });
+    await waitFor(() => expect(exportButton).toBeEnabled());
+  });
+
+  it('passes updated onFieldValueSelect to ExploreTree when onChangeAdvancedSearchQuickFilters prop changes', () => {
+    const callbackV1 = jest.fn();
+    const callbackV2 = jest.fn();
+    const ExploreTreeMock = ExploreTree as jest.Mock;
+
+    const { rerender } = render(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV1} />,
+      { wrapper: Wrapper }
+    );
+
+    rerender(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV2} />
+    );
+
+    const lastCallProps =
+      ExploreTreeMock.mock.calls[ExploreTreeMock.mock.calls.length - 1][0];
+    lastCallProps.onFieldValueSelect([]);
+
+    expect(callbackV2).toHaveBeenCalledTimes(1);
+    expect(callbackV1).not.toHaveBeenCalled();
+  });
+
+  it('disables export and shows alert when all matching assets exceed export limit', async () => {
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: { total: { value: 200001 }, hits: [] },
+    });
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
+    const modal = await screen.findByTestId('export-scope-modal');
+    const exportButton = within(modal).getByRole('button', {
+      name: 'label.export',
+    });
+
+    expect(
+      await within(modal).findByText('message.export-assets-limit-exceeded')
+    ).toBeInTheDocument();
+    expect(exportButton).toBeDisabled();
   });
 });

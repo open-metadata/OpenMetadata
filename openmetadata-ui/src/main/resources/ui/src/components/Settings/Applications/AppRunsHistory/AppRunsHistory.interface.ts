@@ -28,5 +28,5 @@ export interface AppRunsHistoryProps {
   maxRecords?: number;
   appData?: App;
   showPagination?: boolean;
-  jsonSchema: RJSFSchema;
+  jsonSchema?: RJSFSchema;
 }

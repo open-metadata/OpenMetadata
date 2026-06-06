@@ -99,6 +99,10 @@ ENTITY_TYPE
     | 'query'
     | 'directory'
     | 'file'
+    | 'folder'
+    | 'contextFile'
+    | 'contextFileContent'
+    | 'contextMemory'
     | 'type'
     | 'aiApplication'
     | 'llmModel'
@@ -108,8 +112,10 @@ ENTITY_TYPE
     | 'workflow'
     | 'document'
     | 'learningResource'
-    | 'mcpServer'
     | 'mcpService'
+    | 'mcpServer'
+    | 'mcpExecution'
+    | 'intakeForm'
     ;
 
 ENTITY_FIELD

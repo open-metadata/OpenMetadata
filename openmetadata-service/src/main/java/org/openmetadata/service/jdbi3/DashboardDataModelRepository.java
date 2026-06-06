@@ -54,6 +54,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+
   public DashboardDataModelRepository() {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
@@ -61,7 +63,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -163,6 +166,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+    return entity.getColumns();
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();
@@ -251,11 +259,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Then, if columns field is requested, also fetch column-level tags
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          dataModels,
-          entityType,
-          DashboardDataModel::getColumns,
-          DashboardDataModel::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
     }
   }
 
@@ -404,6 +408,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     String after = toIndex < total ? String.valueOf(toIndex) : null;
 
     return new ResultList<>(paginatedColumns, before, after, total);
+  }
+
+  public Column enrichSingleColumnFields(
+      DashboardDataModel dataModel, Column column, String fieldsParam) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+    }
+    return column;
   }
 
   public ResultList<Column> searchDataModelColumnsById(

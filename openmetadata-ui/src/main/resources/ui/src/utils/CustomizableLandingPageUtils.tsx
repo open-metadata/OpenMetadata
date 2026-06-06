@@ -12,16 +12,17 @@
  */
 
 import Icon from '@ant-design/icons';
-import i18next from 'i18next';
 import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash';
-import { DOMAttributes } from 'react';
+import { DOMAttributes, Suspense } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
+import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
+import i18n from './i18next/LocalUtil';
 
 /**
  * Ensures widget width doesn't exceed the maximum allowed width of 2
@@ -371,11 +372,11 @@ export const getRemoveWidgetHandler =
 export const getWidgetWidthLabelFromKey = (widgetKey: string): string => {
   switch (widgetKey) {
     case 'large':
-      return i18next.t('label.large');
+      return i18n.t('label.large');
     case 'medium':
-      return i18next.t('label.medium');
+      return i18n.t('label.medium');
     case 'small':
-      return i18next.t('label.small');
+      return i18n.t('label.small');
     default:
       return capitalize(widgetKey);
   }
@@ -423,15 +424,17 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <Widget
-      currentLayout={currentLayout}
-      handleLayoutUpdate={handleLayoutUpdate}
-      handleRemoveWidget={handleRemoveWidget}
-      handleSaveLayout={handleSaveLayout}
-      isEditView={isEditView}
-      selectedGridSize={widgetConfig.w}
-      widgetKey={widgetConfig.i}
-    />
+    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
+      <Widget
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        handleSaveLayout={handleSaveLayout}
+        isEditView={isEditView}
+        selectedGridSize={widgetConfig.w}
+        widgetKey={widgetConfig.i}
+      />
+    </Suspense>
   );
 };
 

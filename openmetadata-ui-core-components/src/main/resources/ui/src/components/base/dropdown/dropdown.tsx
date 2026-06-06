@@ -1,5 +1,7 @@
-import type { FC, HTMLAttributes, RefAttributes } from 'react';
+import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { cx } from '@/utils/cx';
 import { DotsVertical } from '@untitledui/icons';
+import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   MenuItemProps as AriaMenuItemProps,
@@ -17,7 +19,6 @@ import {
   Popover as AriaPopover,
   Separator as AriaSeparator,
 } from 'react-aria-components';
-import { cx } from '@/utils/cx';
 
 interface DropdownItemProps extends AriaMenuItemProps {
   /** The label of the item to be displayed. */
@@ -28,6 +29,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   unstyled?: boolean;
   /** An icon to be displayed on the left side of the item. */
   icon?: FC<{ className?: string }>;
+  /** If true, shows a checkbox on the left to indicate selection state. */
+  showCheckbox?: boolean;
 }
 
 const DropdownItem = ({
@@ -36,6 +39,7 @@ const DropdownItem = ({
   addon,
   icon: Icon,
   unstyled,
+  showCheckbox,
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
@@ -57,16 +61,26 @@ const DropdownItem = ({
       {(state) => (
         <div
           className={cx(
-            'tw:relative tw:flex tw:items-center tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
             !state.isDisabled && 'tw:group-hover:bg-primary_hover',
             state.isFocused && 'tw:bg-primary_hover',
-            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
+            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
+            state.isSelected && 'tw:bg-active'
           )}>
+          {showCheckbox && (
+            <CheckboxBase
+              isDisabled={state.isDisabled}
+              isFocusVisible={state.isFocusVisible}
+              isSelected={state.isSelected}
+              size="sm"
+            />
+          )}
+
           {Icon && (
             <Icon
               aria-hidden="true"
               className={cx(
-                'tw:mr-2 tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
+                'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : 'tw:text-fg-quaternary'
@@ -76,7 +90,7 @@ const DropdownItem = ({
 
           <span
             className={cx(
-              'tw:grow tw:truncate tw:text-sm tw:font-semibold',
+              'tw:grow tw:truncate tw:text-sm',
               state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
               state.isFocused && 'tw:text-secondary_hover'
             )}>
@@ -87,7 +101,7 @@ const DropdownItem = ({
           {addon && (
             <span
               className={cx(
-                'tw:ml-3 tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:ring-1 tw:ring-secondary tw:ring-inset',
+                'tw:ml-auto tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:ring-1 tw:ring-secondary tw:ring-inset',
                 state.isDisabled ? 'tw:text-disabled' : 'tw:text-quaternary'
               )}>
               {addon}
@@ -122,10 +136,12 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
+  const { placement = 'bottom right', ...rest } = props;
+
   return (
     <AriaPopover
-      placement="bottom right"
-      {...props}
+      placement={placement}
+      {...rest}
       className={(state) =>
         cx(
           'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-auto tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:will-change-transform',

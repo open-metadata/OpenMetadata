@@ -406,8 +406,17 @@ class RecognizerFeedbackRepositoryTest {
     feedback.setCreatedBy(createUserReference("admin"));
     feedback.setStatus(RecognizerFeedback.Status.PENDING);
 
-    RecognizerFeedback created = repository.create(feedback);
-    RecognizerFeedback result = repository.applyFeedback(created, "admin");
+    // Insert directly to DAO to bypass publishChangeEvent — repository.create() publishes a
+    // ChangeEvent that triggers ApplyRecognizerFeedbackImpl asynchronously. That workflow call
+    // races with the direct applyFeedback below: by the time the workflow runs, the GENERATED tag
+    // is already removed, so getRecognizerIdFromTagLabel returns null and the workflow falls back
+    // to ALL recognizers, contaminating recognizer2.
+    feedback.setId(UUID.randomUUID());
+    feedback.setCreatedAt(System.currentTimeMillis());
+    Entity.getCollectionDAO()
+        .recognizerFeedbackDAO()
+        .insert(org.openmetadata.schema.utils.JsonUtils.pojoToJson(feedback));
+    RecognizerFeedback result = repository.applyFeedback(feedback, "admin");
 
     assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
 

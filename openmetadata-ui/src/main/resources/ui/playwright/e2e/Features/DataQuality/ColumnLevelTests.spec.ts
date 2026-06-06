@@ -34,9 +34,10 @@ test.describe(
   'Column Level Data Quality Test Cases',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
   () => {
-    const table = new TableClass();
+    let table: TableClass;
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      table = new TableClass();
       await table.create(apiContext);
       await afterAction();
     });

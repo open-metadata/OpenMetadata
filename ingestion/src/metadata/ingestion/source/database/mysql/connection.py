@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -24,6 +25,9 @@ from metadata.generated.schema.entity.services.connections.database.common.azure
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.common.gcpCloudSqlConfig import (
+    GcpCloudsqlConfigurationSource,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MySQLConnectionConfig,
@@ -46,7 +50,7 @@ from metadata.ingestion.source.database.mysql.queries import (
     MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
 )
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import get_azure_access_token
+from metadata.utils.credentials import get_azure_access_token, set_google_credentials
 
 
 class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
@@ -59,11 +63,63 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         if isinstance(connection.authType, AzureConfigurationSource):
             access_token = get_azure_access_token(connection.authType)
             connection.authType = BasicAuth(password=access_token)  # type: ignore
+            return create_generic_db_connection(
+                connection=connection,
+                get_connection_url_fn=get_connection_url_common,
+                get_connection_args_fn=get_connection_args_common,
+            )
+
+        if isinstance(connection.authType, GcpCloudsqlConfigurationSource):
+            return self._get_cloudsql_engine(connection)
+
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url_common,
             get_connection_args_fn=get_connection_args_common,
         )
+
+    def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
+        try:
+            from google.cloud.sql.connectors import Connector  # noqa: PLC0415
+        except ImportError:
+            raise ImportError(  # noqa: B904
+                "google-cloud-sql-connector is required for GCP CloudSQL connections. "
+                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
+            )
+
+        if connection.authType.gcpConfig:
+            set_google_credentials(connection.authType.gcpConfig)
+
+        self._cloud_sql_connector = Connector()
+        instance_connection_name = connection.hostPort
+        enable_iam_auth = connection.authType.enableIamAuth or False
+        password = connection.authType.password.get_secret_value() if connection.authType.password else ""
+
+        def getconn():
+            connect_kwargs = {
+                "instance_connection_string": instance_connection_name,
+                "driver": "pymysql",
+                "user": connection.username,
+                "db": connection.databaseSchema or "",
+            }
+            if connection.databaseSchema:
+                connect_kwargs["db"] = connection.databaseSchema
+            if enable_iam_auth:
+                connect_kwargs["enable_iam_auth"] = True
+            else:
+                connect_kwargs["password"] = password
+            return self._cloud_sql_connector.connect(**connect_kwargs)
+
+        return create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=lambda _: f"{connection.scheme.value}://",
+            get_connection_args_fn=get_connection_args_common,
+            creator=getconn,
+        )
+
+    def __del__(self):
+        if hasattr(self, "_cloud_sql_connector"):
+            self._cloud_sql_connector.close()
 
     def get_connection_dict(self) -> dict:
         """
@@ -74,17 +130,22 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
+        if self.service_connection.useSlowLogs:
+            test_query_template = MYSQL_TEST_GET_QUERIES_SLOW_LOGS
+            default_query_history_table = "mysql.slow_log"
+        else:
+            test_query_template = MYSQL_TEST_GET_QUERIES
+            default_query_history_table = "mysql.general_log"
+        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
         queries = {
-            "GetQueries": MYSQL_TEST_GET_QUERIES
-            if not self.service_connection.useSlowLogs
-            else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+            "GetQueries": test_query_template.format(query_history_table=query_history_table),
         }
         return test_connection_db_schema_sources(
             metadata=metadata,

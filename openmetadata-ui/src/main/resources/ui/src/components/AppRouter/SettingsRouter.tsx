@@ -34,13 +34,13 @@ import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfigura
 import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
 import UrlConfigurationPage from '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage';
-import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import GlossaryTermRelationSettingsPage from '../../pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings';
+import IntakeFormsPage from '../../pages/IntakeForms/IntakeFormsPage';
 import { LearningResourcesPage } from '../../pages/LearningResourcesPage/LearningResourcesPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
@@ -59,9 +59,12 @@ import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPa
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
 import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
+import TaskFormSettingsPage from '../../pages/TaskFormSettingsPage/TaskFormSettingsPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
+import WorkflowBuilderPage from '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder';
+import WorkflowsListPage from '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -604,22 +607,6 @@ const SettingsRouter = () => {
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
-              Operation.EditAll,
-              ResourceEntity.PERSONA,
-              permissions
-            )}>
-            <CustomPageSettings />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
-        )}
-      />
 
       <Route
         element={<ServicesPage />}
@@ -681,6 +668,51 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.GLOSSARY_TERM_RELATIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS,
+          true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <IntakeFormsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.INTAKE_FORMS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <TaskFormSettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.TASK_FORMS
         )}
       />
     </Routes>

@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { forwardRef, type ReactNode } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { MemoryRouter } from 'react-router-dom';
@@ -26,6 +27,8 @@ import TeamHierarchy from './TeamHierarchy';
 const teamHierarchyPropsData: TeamHierarchyProps = {
   data: MOCK_TABLE_DATA,
   currentTeam: MOCK_CURRENT_TEAM,
+  isSearchLoading: false,
+  isTeamBasicDataLoading: false,
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
   showDeletedTeam: false,
@@ -38,12 +41,23 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
 
 const mockShowErrorToast = jest.fn();
 
-// mock library imports
-jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }) => <a href="#">{children}</a>),
-}));
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  const MockLink = forwardRef<
+    HTMLAnchorElement,
+    { children?: ReactNode; to?: unknown }
+  >(({ children, to: _to, ...props }, ref) => (
+    <a href="#" ref={ref} {...props}>
+      {children}
+    </a>
+  ));
+
+  return {
+    ...actual,
+    Link: MockLink,
+  };
+});
 
 jest.mock('../../../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
@@ -59,17 +73,19 @@ jest.mock('../../../../rest/teamsAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
 }));
 
-jest.mock('../../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../../utils/StringsUtils'),
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => {
-  return {
-    getEntityName: jest.fn().mockReturnValue('entityName'),
-    highlightSearchText: jest.fn((text) => text),
-  };
-});
+jest.mock('../../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
 
 jest.mock('../../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn().mockReturnValue([]),

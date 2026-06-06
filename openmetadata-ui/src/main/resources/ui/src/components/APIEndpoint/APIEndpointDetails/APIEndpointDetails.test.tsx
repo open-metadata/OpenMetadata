@@ -89,7 +89,7 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   }),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FeedUtils', () => ({
   getFeedCounts: jest.fn(),
 }));
 

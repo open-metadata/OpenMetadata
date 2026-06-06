@@ -14,6 +14,7 @@
 
 name: Postgresql PR Playwright E2E Tests
 on:
+  merge_group:
   workflow_dispatch:
   pull_request_target:
     types:
@@ -46,7 +47,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -66,7 +67,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -100,6 +101,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: test
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
       matrix:
@@ -120,7 +127,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Download Maven build artifact
         uses: actions/download-artifact@v4
@@ -144,7 +151,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install --with-deps
+        run: npx playwright@1.57.0 install chromium --with-deps
       - name: Run Playwright tests
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -158,6 +165,7 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
+              --project=SearchRBAC \
 
           else
             # Shards 2-6 run common chromium tests equally distributed (5-way sharding)

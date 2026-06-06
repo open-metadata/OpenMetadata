@@ -20,7 +20,7 @@ import { CreateAppRequest } from '../generated/entity/applications/createAppRequ
 import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps';
@@ -102,9 +102,15 @@ export const getExternalApplicationRuns = async (
   return response.data;
 };
 
-export const getLatestApplicationRuns = async (appName: string) => {
+export const getLatestApplicationRuns = async (
+  appName: string,
+  runId?: string
+) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`,
+    {
+      params: runId ? { runId } : undefined,
+    }
   );
 
   return response.data;
@@ -155,14 +161,25 @@ export const restoreApp = async (id: string) => {
   return response.data;
 };
 
-export const stopApp = async (name: string) => {
-  return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
+export const stopApp = async (name: string, runId?: string) => {
+  return await APIClient.post(
+    `${BASE_URL}/stop/${getEncodedFqn(name)}`,
+    undefined,
+    {
+      params: runId ? { runId } : undefined,
+    }
+  );
 };
 
-export const getApplicationLogs = (appName: string, after?: string) => {
+export const getApplicationLogs = (
+  appName: string,
+  after?: string,
+  runId?: string
+) => {
   return APIClient.get(`${BASE_URL}/name/${appName}/logs`, {
     params: {
       after,
+      ...(runId && { runId }),
     },
   });
 };

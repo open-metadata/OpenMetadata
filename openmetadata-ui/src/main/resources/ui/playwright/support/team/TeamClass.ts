@@ -137,4 +137,17 @@ export class TeamClass {
 
     return await response.json();
   }
+
+  async addUser(apiContext: APIRequestContext, userId: string) {
+    return this.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/users/-',
+        value: {
+          id: userId,
+          type: 'user',
+        },
+      },
+    ]);
+  }
 }
