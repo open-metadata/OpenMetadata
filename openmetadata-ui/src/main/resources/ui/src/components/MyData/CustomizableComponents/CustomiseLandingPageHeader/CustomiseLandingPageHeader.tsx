@@ -24,22 +24,22 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.s
 import LandingPageBg from '../../../../assets/svg/landing-page-header-bg.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
-import { getActiveAnnouncement } from '../../../../rest/feedsAPI';
 import {
-  getRecentlyViewedData,
-  isLinearGradient,
-} from '../../../../utils/CommonUtils';
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../../rest/announcementsAPI';
+import { isLinearGradient } from '../../../../utils/ColorUtils';
 import {
   CustomNextArrow,
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getDomainDisplayName } from '../../../../utils/EntityUtils';
+import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
@@ -60,18 +60,33 @@ const CustomiseLandingPageHeader = ({
   onHomePage = false,
   overlappedContainer = false,
   placeholderWidgetKey,
+  announcements: announcementsFromParent,
+  isAnnouncementLoading: isAnnouncementLoadingFromParent,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, applicationConfig } = useApplicationStore();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
+  // Internal fallback state — only used when the parent doesn't pass announcements through.
+  // The landing page (MyDataPage) already fetches global announcements for the sidebar
+  // widget; passing them down here de-duplicates the {@code GET /announcements/active} call.
+  // Standalone callers (customize-page preview, header-theme picker) still hit the API.
+  const [internalAnnouncements, setInternalAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
+  const [internalIsAnnouncementLoading, setInternalIsAnnouncementLoading] =
+    useState(true);
+  const announcements = announcementsFromParent ?? internalAnnouncements;
+  const isAnnouncementLoading =
+    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading;
   const [showAnnouncements, setShowAnnouncements] = useState(false);
-  const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
+  const adminPanelBackgroundColor =
+    applicationConfig?.customTheme?.panelBackgroundColor;
+  const bgColor =
+    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)
@@ -108,16 +123,16 @@ const CustomiseLandingPageHeader = ({
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncement();
+      setInternalIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncements();
 
-      setAnnouncements(response.data);
+      setInternalAnnouncements(response.data);
       setShowAnnouncements(response.data.length > 0);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setShowAnnouncements(false);
     } finally {
-      setIsAnnouncementLoading(false);
+      setInternalIsAnnouncementLoading(false);
     }
   }, []);
 
@@ -155,8 +170,15 @@ const CustomiseLandingPageHeader = ({
   };
 
   useEffect(() => {
+    // Skip the duplicate fetch when the parent already provided announcements. Keep showing
+    // them when non-empty, mirroring what the internal fetch path does.
+    if (announcementsFromParent !== undefined) {
+      setShowAnnouncements(announcementsFromParent.length > 0);
+
+      return;
+    }
     fetchAnnouncements();
-  }, [fetchAnnouncements]);
+  }, [announcementsFromParent, fetchAnnouncements]);
 
   return (
     <div

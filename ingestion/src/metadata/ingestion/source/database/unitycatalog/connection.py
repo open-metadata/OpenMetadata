@@ -12,14 +12,15 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from databricks.sdk import WorkspaceClient
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -47,6 +48,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -58,13 +62,14 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
-from metadata.utils.logger import ingestion_logger
 
-logger = ingestion_logger()
+suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: UnityCatalogConnection) -> str:
     url = f"{connection.scheme.value}://{connection.hostPort}"
+    if connection.catalog:
+        url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
 
 
@@ -77,19 +82,13 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
         client_params["token"] = connection.authType.token.get_secret_value()
     elif isinstance(connection.authType, DatabricksOauth):
         client_params["client_id"] = connection.authType.clientId
-        client_params[
-            "client_secret"
-        ] = connection.authType.clientSecret.get_secret_value()
+        client_params["client_secret"] = connection.authType.clientSecret.get_secret_value()
     elif isinstance(connection.authType, AzureAdSetup):
         client_params["azure_client_id"] = connection.authType.azureClientId
-        client_params[
-            "azure_client_secret"
-        ] = connection.authType.azureClientSecret.get_secret_value()
+        client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(
-        host=get_host_from_host_port(connection.hostPort), **client_params
-    )
+    return WorkspaceClient(host=get_host_from_host_port(connection.hostPort), **client_params)
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
@@ -97,9 +96,10 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     Create sqlalchemy connection
     """
 
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
     auth_args = get_auth_config(connection)
@@ -121,8 +121,8 @@ def test_connection(
     metadata: OpenMetadata,
     connection: WorkspaceClient,
     service_connection: UnityCatalogConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -130,18 +130,6 @@ def test_connection(
     """
     table_obj = DatabricksTable()
     engine = get_sqlalchemy_connection(service_connection)
-
-    def test_database_query(engine: Engine, statement: str):
-        """
-        Method used to execute the given query and fetch a result
-        to test if user has access to the tables specified
-        in the sql statement
-        """
-        try:
-            with engine.connect() as connection:
-                connection.execute(text(statement)).fetchone()
-        except DatabaseError as soe:
-            logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
     def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
         for catalog in connection.catalogs.list():
@@ -157,29 +145,19 @@ def test_connection(
 
     def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
         if table_obj.catalog_name and table_obj.schema_name:
-            for table in connection.tables.list(
-                catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
-            ):
+            for table in connection.tables.list(catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name):
                 table_obj.name = table.name
                 break
 
-    def get_tags(
-        service_connection: UnityCatalogConnection, table_obj: DatabricksTable
-    ):
+    def get_tags(service_connection: UnityCatalogConnection, table_obj: DatabricksTable):
         engine = get_sqlalchemy_connection(service_connection)
-        with engine.connect() as connection:
+        with engine.connect() as connection:  # noqa: PLR1704
             connection.execute(
-                text(
-                    UNITY_CATALOG_GET_CATALOGS_TAGS.format(
-                        database=table_obj.catalog_name
-                    ).replace(";", " limit 1;")
-                )
+                text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
             )
             connection.execute(
                 text(
-                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(
-                        database=table_obj.catalog_name
-                    ).replace(";", " limit 1;")
+                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;")
                 )
             )
             connection.execute(

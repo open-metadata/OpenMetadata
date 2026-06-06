@@ -13,6 +13,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -29,6 +30,61 @@ import {
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
 
+function writeNodePositions(
+  container: HTMLDivElement | null,
+  positions: Record<string, { x: number; y: number }>
+) {
+  if (container) {
+    container.dataset.nodePositions = JSON.stringify(positions);
+  }
+}
+
+function writeSearchHighlightIds(
+  container: HTMLDivElement | null,
+  ids: readonly string[] | null
+) {
+  if (!container) {
+    return;
+  }
+  if (ids) {
+    container.dataset.searchHighlightIds = JSON.stringify(ids);
+  } else {
+    delete container.dataset.searchHighlightIds;
+  }
+}
+
+function writeEdges(
+  container: HTMLDivElement | null,
+  edges: ReadonlyArray<{
+    from: string;
+    to: string;
+    relationType: string;
+    inverseRelationType?: string;
+  }>
+) {
+  if (container) {
+    container.dataset.edges = JSON.stringify(
+      edges.map((e) => ({
+        from: e.from,
+        to: e.to,
+        relationType: e.relationType,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
+      }))
+    );
+  }
+}
+
+function writeCardinalityMap(
+  container: HTMLDivElement | null,
+  map: Record<string, { startLabelText: string; endLabelText: string }>
+) {
+  if (container) {
+    container.dataset.cardinalityMap = JSON.stringify(map);
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -37,6 +93,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       settings,
       selectedNodeId,
       expandedTermIds,
+      glossaries,
       glossaryColorMap,
       dataSignature = '',
       explorationMode = 'model',
@@ -45,10 +102,10 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
-      onNodeContextMenu,
       onPaneClick,
       onScrollNearEdge,
       nodePositions,
+      relationTypes,
     },
     ref
   ) => {
@@ -68,6 +125,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       neighborSet,
       computeNodeColor,
       assetToTermMap,
+      cardinalityLabelMap,
     } = useGraphDataBuilder({
       inputNodes,
       inputEdges,
@@ -76,37 +134,50 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       selectedNodeId: selectedNodeId ?? null,
       expandedTermIds,
       clickedEdgeId,
+      glossaries,
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
       layoutType,
       nodePositions,
+      relationTypes,
     });
 
-    const { graphRef, extractNodePositions, suppressEdgeCheck } =
-      useOntologyGraph({
-        containerRef,
-        graphData,
-        inputNodes,
-        mergedEdgesList,
-        explorationMode,
-        settings,
-        layoutType,
-        focusNodeId,
-        selectedNodeId,
-        expandedTermIds,
-        dataSignature,
-        onNodeClick,
-        onNodeDoubleClick,
-        onNodeContextMenu,
-        onPaneClick,
-        onScrollNearEdge,
-        setClickedEdgeId,
-        neighborSet,
-        glossaryColorMap,
-        computeNodeColor,
-        assetToTermMap,
-      });
+    const {
+      graphRef,
+      extractNodePositions,
+      suppressEdgeCheck,
+      emitPagePositions,
+    } = useOntologyGraph({
+      containerRef,
+      graphData,
+      inputNodes,
+      mergedEdgesList,
+      explorationMode,
+      settings,
+      layoutType,
+      focusNodeId,
+      selectedNodeId,
+      expandedTermIds,
+      dataSignature,
+      onNodeClick,
+      onNodeDoubleClick,
+      onPaneClick,
+      onScrollNearEdge,
+      setClickedEdgeId,
+      neighborSet,
+      glossaryColorMap,
+      computeNodeColor,
+      assetToTermMap,
+      onPositionsReady: (positions) => {
+        writeNodePositions(containerRef.current, positions);
+        if (containerRef.current && graphRef.current) {
+          containerRef.current.dataset.graphZoom = String(
+            graphRef.current.getZoom()
+          );
+        }
+      },
+    });
 
     useImperativeHandle(
       ref,
@@ -116,8 +187,10 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          writeNodePositions(containerRef.current, {});
           suppressEdgeCheck(800);
           await fitViewWithMinZoom(graph, 300);
+          emitPagePositions(graph);
         },
         zoomIn: () => {
           suppressEdgeCheck();
@@ -177,6 +250,23 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
+
+    useEffect(() => {
+      writeSearchHighlightIds(
+        containerRef.current,
+        graphSearchHighlight?.active
+          ? graphSearchHighlight.highlightedNodeIds
+          : null
+      );
+    }, [graphSearchHighlight]);
+
+    useEffect(() => {
+      writeEdges(containerRef.current, mergedEdgesList);
+    }, [mergedEdgesList]);
+
+    useEffect(() => {
+      writeCardinalityMap(containerRef.current, cardinalityLabelMap);
+    }, [cardinalityLabelMap]);
 
     return (
       <div

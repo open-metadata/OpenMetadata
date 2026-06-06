@@ -23,7 +23,7 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
-import { getQueryWithSlash } from '../utils/SearchUtils';
+import { getQueryWithSlash } from '../utils/StringUtils';
 import APIClient from './index';
 
 const getSearchIndexParam: (

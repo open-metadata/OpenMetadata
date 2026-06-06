@@ -11,21 +11,48 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
-const table = new TableClass();
+const waitForChangeSummarySource = async (
+  apiContext: APIRequestContext,
+  tableId: string,
+  expectedSource: string,
+  fieldKey = 'description'
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/changeSummary/table/${tableId}`
+        );
+        if (!response.ok()) {
+          return null;
+        }
+        const data = await response.json();
+
+        return data?.changeSummary?.[fieldKey]?.changeSource ?? null;
+      },
+      { timeout: 30000, intervals: [500, 1000, 2000] }
+    )
+    .toBe(expectedSource);
+};
 
 test.describe(
   'ChangeSummary DescriptionSourceBadge',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
+    let table: TableClass;
+
     test.beforeAll('Setup test entities', async ({ browser }) => {
+      test.slow();
+      table = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
@@ -42,8 +69,6 @@ test.describe(
         queryParams: { changeSource: 'Suggested' },
       });
 
-      const columnName = table.entityResponseData?.columns?.[0]?.name;
-
       await table.patch({
         apiContext,
         patchData: [
@@ -56,22 +81,11 @@ test.describe(
         queryParams: { changeSource: 'Suggested' },
       });
 
-      const changeSummaryResponse = await apiContext.get(
-        `/api/v1/changeSummary/table/${table.entityResponseData?.id}`
-      );
-
-      expect(changeSummaryResponse.status()).toBe(200);
-
-      const changeSummaryData = await changeSummaryResponse.json();
-
-      expect(changeSummaryData.changeSummary).toHaveProperty('description');
-      expect(changeSummaryData.changeSummary.description.changeSource).toBe(
+      await waitForChangeSummarySource(
+        apiContext,
+        table.entityResponseData?.id,
         'Suggested'
       );
-
-      expect(
-        changeSummaryData.changeSummary[`columns.${columnName}.description`]
-      ).toBeDefined();
 
       await afterAction();
     });
@@ -115,6 +129,28 @@ test.describe(
 
         await expect(tooltip).toBeVisible();
       });
+
+      await test.step('Verify AI badge on table description in Explore summary panel', async () => {
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/table/')
+        );
+
+        await navigateToExploreAndSelectEntity({
+          page,
+          entityName: table.entity.name,
+          fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
+        });
+
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const badge = page
+          .locator('.entity-summary-panel-container')
+          .getByTestId('ai-suggested-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
+      });
     });
 
     test('AI badge should appear on column description with Suggested source', async ({
@@ -136,6 +172,34 @@ test.describe(
           .getByTestId('ai-suggested-badge');
 
         await expect(descriptionCells.first()).toBeVisible();
+      });
+
+      await test.step('Verify AI badge on column description in Explore summary panel', async () => {
+        const column = table.entityResponseData?.columns?.[0];
+
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/table/')
+        );
+
+        await navigateToExploreAndSelectEntity({
+          page,
+          entityName: column?.name ?? '',
+          exploreTab: 'Column',
+        });
+
+        await page
+          .getByTestId(`table-data-card_${column?.fullyQualifiedName}`)
+          .click();
+
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const badge = page
+          .locator('.entity-summary-panel-container')
+          .getByTestId('ai-suggested-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
       });
     });
 
@@ -173,6 +237,12 @@ test.describe(
           ],
           queryParams: { changeSource: 'Automated' },
         });
+
+        await waitForChangeSummarySource(
+          apiContext,
+          automatedTable.entityResponseData?.id,
+          'Automated'
+        );
 
         await afterAction();
       });
@@ -232,6 +302,12 @@ test.describe(
           ],
           queryParams: { changeSource: 'Propagated' },
         });
+
+        await waitForChangeSummarySource(
+          apiContext,
+          propagatedTable.entityResponseData?.id,
+          'Propagated'
+        );
 
         await afterAction();
       });

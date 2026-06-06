@@ -112,16 +112,16 @@ const SearchPreview = ({
 
     return (
       <>
-        {data.map(({ _score, _source, _id = '' }) => (
+        {data.map(({ _score, _source, _id = '', highlight }) => (
           <ExploreSearchCard
             showEntityIcon
             className="search-card"
             classNameForBreadcrumb="breadcrumb-width"
             data-testid="searched-data-card"
+            highlight={highlight}
             id={_id}
             key={_source.fullyQualifiedName}
             score={_score}
-            searchValue={searchValue}
             showTags={false}
             source={_source}
           />

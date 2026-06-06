@@ -614,13 +614,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     MessageParser.EntityLink newAbout = new MessageParser.EntityLink(entityType, newFqn);
 
-    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+    Entity.getFeedRepository()
+        .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
     for (GlossaryTerm child : childTerms) {
       newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
-      daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
   }
 
@@ -638,6 +640,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
       renameAllowed = true;
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Transaction
@@ -672,6 +679,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -691,6 +705,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {

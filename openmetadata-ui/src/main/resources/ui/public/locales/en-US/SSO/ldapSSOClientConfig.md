@@ -1,20 +1,18 @@
----
-title: LDAP Authentication Configuration | OpenMetadata
-description: Configure LDAP Authentication for OpenMetadata with complete field reference
-slug: /main-concepts/metadata-standard/schemas/security/client/ldap-auth
----
 
 LDAP authentication enables users to log in with their LDAP directory credentials (Active Directory, OpenLDAP, etc.).
 
-## <span data-id="enableSelfSignup">Enable Self Signup</span>
+$$section
+## Enable Self Signup $(id="enableSelfSignup")
 
 - **Definition:** Allows users to automatically create accounts on first LDAP login.
 - **Options:** Enabled | Disabled
 - **Example:** Enabled
 - **Why it matters:** Controls whether new LDAP users can join automatically or need manual approval.
 - **Note:** Disable for stricter control over user access
+$$
 
-## <span data-id="host">LDAP Host</span>
+$$section
+## LDAP Host $(id="host")
 
 - **Definition:** LDAP server address without scheme.
 - **Example:** ldap.company.com or 192.168.1.100
@@ -22,8 +20,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Note:**
   - Don't include protocol (ldap:// or ldaps://)
   - Can be hostname or IP address
+$$
 
-## <span data-id="port">LDAP Port</span>
+$$section
+## LDAP Port $(id="port")
 
 - **Definition:** Port number for LDAP server connection.
 - **Example:** 389 (standard LDAP) or 636 (LDAPS)
@@ -32,16 +32,20 @@ LDAP authentication enables users to log in with their LDAP directory credential
   - Standard LDAP: 389
   - LDAPS (secure): 636
   - Custom ports may be used
+$$
 
-## <span data-id="maxPoolSize">Max Pool Size</span>
+$$section
+## Max Pool Size $(id="maxPoolSize")
 
 - **Definition:** Maximum number of connections to maintain in the LDAP connection pool.
 - **Default:** 3
 - **Example:** 5
 - **Why it matters:** Affects performance and resource usage.
 - **Note:** Higher values support more concurrent users but use more resources
+$$
 
-## <span data-id="isFullDn">Full DN Required</span>
+$$section
+## Full DN Required $(id="isFullDn")
 
 - **Definition:** Whether users must provide their full Distinguished Name to login.
 - **Default:** false
@@ -50,22 +54,28 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Note:**
   - false: Users can login with username only
   - true: Users must provide full DN (e.g., cn=john,ou=users,dc=company,dc=com)
+$$
 
-## <span data-id="dnAdminPrincipal">Admin Principal DN</span>
+$$section
+## Admin Principal DN $(id="dnAdminPrincipal")
 
 - **Definition:** Distinguished Name of admin user with search capabilities.
 - **Example:** cn=admin,ou=system,dc=company,dc=com
 - **Why it matters:** OpenMetadata uses this account to search for and authenticate users.
 - **Note:** This user needs read access to user and group entries
+$$
 
-## <span data-id="dnAdminPassword">Admin Password</span>
+$$section
+## Admin Password $(id="dnAdminPassword")
 
 - **Definition:** Password for the LDAP admin user.
 - **Example:** adminPassword123
 - **Why it matters:** Required for OpenMetadata to authenticate as the admin user.
 - **Note:** Store securely and use a dedicated service account
+$$
 
-## <span data-id="sslEnabled">SSL Enabled</span>
+$$section
+## SSL Enabled $(id="sslEnabled")
 
 - **Definition:** Whether to use LDAPS (secure LDAP) connection.
 - **Default:** false
@@ -74,22 +84,28 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Note:**
   - true: Use LDAPS (typically port 636)
   - false: Use plain LDAP (typically port 389)
+$$
 
-## <span data-id="userBaseDN">User Base DN</span>
+$$section
+## User Base DN $(id="userBaseDN")
 
 - **Definition:** Base Distinguished Name where user accounts are located.
 - **Example:** ou=users,dc=company,dc=com
 - **Why it matters:** Tells OpenMetadata where to search for user accounts.
 - **Note:** Should contain all users who need access to OpenMetadata
+$$
 
-## <span data-id="groupBaseDN">Group Base DN</span>
+$$section
+## Group Base DN $(id="groupBaseDN")
 
 - **Definition:** Base Distinguished Name where group objects are located.
 - **Example:** ou=groups,dc=company,dc=com
 - **Why it matters:** Used for group-based authorization and role mapping.
 - **Note:** Optional if not using LDAP groups for authorization
+$$
 
-## <span data-id="roleAdminName">Admin Role Name</span>
+$$section
+## Admin Role Name $(id="roleAdminName")
 
 - **Definition:** Special marker used in role mapping to grant admin privileges instead of regular roles.
 - **Example:** Admin
@@ -98,8 +114,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   - This is NOT an LDAP group name
   - It's a special string used in the Auth Roles Mapping to indicate admin access
   - Example: Map `cn=admins,ou=groups,dc=company,dc=com` → `["Admin"]` to grant admin privileges
+$$
 
-## <span data-id="allAttributeName">All Attribute Name</span>
+$$section
+## All Attribute Name $(id="allAttributeName")
 
 - **Definition:** Special wildcard character to retrieve all attributes from LDAP group objects.
 - **Default:** \*
@@ -107,8 +125,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Note:**
   - Always use "\*" (asterisk) to retrieve all attributes
   - This is used internally when querying groups - you rarely need to change this
+$$
 
-## <span data-id="mailAttributeName">Email Attribute Name</span>
+$$section
+## Email Attribute Name $(id="mailAttributeName")
 
 - **Definition:** LDAP attribute that contains user email addresses.
 - **Example:** mail
@@ -123,8 +143,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   - OpenLDAP: `mail`, `email`
 - **How to find in phpLDAPadmin:** Open a user object and look for the attribute containing their email address
 - **Validation:** OpenMetadata verifies this attribute exists on actual users before saving
+$$
 
-## <span data-id="groupAttributeName">Group Attribute Name</span>
+$$section
+## Group Attribute Name $(id="groupAttributeName")
 
 - **Definition:** Attribute name used to identify and filter group objects in LDAP.
 - **Example:** objectClass
@@ -139,8 +161,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   3. Use `objectClass` as the attribute name
   4. Use one of its values (e.g., `groupOfNames`) as the attribute value
 - **Validation:** OpenMetadata verifies groups can be found with this filter
+$$
 
-## <span data-id="groupAttributeValue">Group Attribute Value</span>
+$$section
+## Group Attribute Value $(id="groupAttributeValue")
 
 - **Definition:** Value for the group attribute to identify group objects.
 - **Example:** groupOfNames
@@ -156,8 +180,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   2. Find the `objectClass` attribute
   3. Use one of the objectClass values here (e.g., `groupOfNames`)
 - **Validation:** OpenMetadata tests that groups exist with this combination
+$$
 
-## <span data-id="groupMemberAttributeName">Group Member Attribute Name</span>
+$$section
+## Group Member Attribute Name $(id="groupMemberAttributeName")
 
 - **Definition:** Attribute in group objects that lists the members of that group.
 - **Example:** member
@@ -173,8 +199,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   3. The attribute name is what you need (e.g., `member`, `uniqueMember`)
   4. Example: `member: cn=john,ou=users,dc=company,dc=com` → use `member`
 - **Validation:** OpenMetadata checks this attribute exists on actual group objects
+$$
 
-## <span data-id="authRolesMapping">Auth Roles Mapping</span>
+$$section
+## Auth Roles Mapping $(id="authRolesMapping")
 
 - **Definition:** Mapping between LDAP groups and OpenMetadata roles.
 - **Example:** Map "cn=admins,ou=groups,dc=company,dc=com" to "Admin" role
@@ -184,8 +212,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
   - Map to existing OpenMetadata role names
   - Users in mapped LDAP groups will automatically receive the corresponding roles
   - Validation ensures all mapped roles exist in OpenMetadata
+$$
 
-## <span data-id="authReassignRoles">Auth Reassign Roles</span>
+$$section
+## Auth Reassign Roles $(id="authReassignRoles")
 
 - **Definition:** Roles that should be reassigned every time user logs in.
 - **Example:** ["Admin", "DataConsumer"]
@@ -197,8 +227,10 @@ LDAP authentication enables users to log in with their LDAP directory credential
 ## Authorizer Configuration
 
 The following settings control authorization and access control across OpenMetadata. These settings apply globally to all authentication providers.
+$$
 
-### <span data-id="adminPrincipals">Admin Principals</span>
+$$section
+### Admin Principals $(id="adminPrincipals")
 
 - **Definition:** List of user principals who will have admin access to OpenMetadata.
 - **Example:** ["john.doe", "jane.admin", "admin"]
@@ -208,23 +240,29 @@ The following settings control authorization and access control across OpenMetad
   - At least one admin principal is required
   - **Critical:** If a user's email is `john.doe@company.com`, their username will be `john.doe`
   - The username is NOT derived from LDAP CN or UID attributes - only from the email address
+$$
 
-### <span data-id="principalDomain">Principal Domain</span>
+$$section
+### Principal Domain $(id="principalDomain")
 
 - **Definition:** Default domain for user principals.
 - **Example:** company.com
 - **Why it matters:** Used to construct full user principals when only username is provided.
 - **Note:** Typically your organization's domain
+$$
 
-### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+$$section
+### Enforce Principal Domain $(id="enforcePrincipalDomain")
 
 - **Definition:** Whether to enforce that all users belong to the principal domain.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
+$$
 
-### <span data-id="allowedDomains">Allowed Domains</span>
+$$section
+### Allowed Domains $(id="allowedDomains")
 
 - **Definition:** List of email domains that are permitted to access OpenMetadata.
 - **Example:** ["company.com", "partner.com", "contractor-company.com"]
@@ -238,21 +276,27 @@ The following settings control authorization and access control across OpenMetad
 ---
 
 ## Advanced Configuration
+$$
 
-## <span data-id="truststoreFormat">Truststore Format</span>
+$$section
+## Truststore Format $(id="truststoreFormat")
 
 - **Definition:** Format of truststore for SSL/TLS connections.
 - **Example:** PKCS12 or JKS
 - **Why it matters:** Required when using SSL and custom certificates.
 - **Note:** Only needed if using custom SSL certificates
+$$
 
-## <span data-id="trustStoreConfig">Trust Store Configuration</span>
+$$section
+## Trust Store Configuration $(id="trustStoreConfig")
 
 - **Definition:** SSL truststore configuration for secure LDAP connections.
 - **Why it matters:** Required for LDAPS connections with custom certificates.
 - **Note:** Contains certificate validation settings and truststore details
+$$
 
-## <span data-id="truststoreConfigType">Trust Store Configuration Type</span>
+$$section
+## Trust Store Configuration Type $(id="truststoreConfigType")
 
 - **Definition:** Type of SSL truststore configuration for secure LDAP connections.
 - **Options:** TrustAll | JVMDefault | HostName | CustomTrustStore
@@ -265,78 +309,101 @@ The following settings control authorization and access control across OpenMetad
   - **CustomTrustStore:** Use custom certificate store
 
 ### Trust Store Types:
+$$
 
-#### <span data-id="customTrustManagerConfig">Custom Trust Manager</span>
+$$section
+#### Custom Trust Manager $(id="customTrustManagerConfig")
 
 - **Definition:** Custom certificate validation configuration.
 - **Use case:** When using self-signed or internal CA certificates.
+$$
 
-#### <span data-id="hostNameConfig">Hostname Verification</span>
+$$section
+#### Hostname Verification $(id="hostNameConfig")
 
 - **Definition:** Hostname verification settings for SSL connections.
 - **Use case:** When certificate hostname doesn't match LDAP server hostname.
+$$
 
-#### <span data-id="jvmDefaultConfig">JVM Default Trust Store</span>
+$$section
+#### JVM Default Trust Store $(id="jvmDefaultConfig")
 
 - **Definition:** Use Java's default certificate trust store.
 - **Use case:** When LDAP server uses publicly trusted certificates.
+$$
 
-#### <span data-id="trustAllConfig">Trust All Certificates</span>
+$$section
+#### Trust All Certificates $(id="trustAllConfig")
 
 - **Definition:** Accept all certificates without validation.
 - **Use case:** Development/testing only - NOT recommended for production.
 - **Security Warning:** This bypasses all SSL security checks.
 
 ### Additional Trust Store Configuration Fields
+$$
 
-#### <span data-id="verifyHostname">Verify Hostname</span>
+$$section
+#### Verify Hostname $(id="verifyHostname")
 
 - **Definition:** Whether to verify the hostname in the certificate matches the LDAP server hostname.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Prevents man-in-the-middle attacks by ensuring certificate hostname matches.
 - **Note:** Enable for production security
+$$
 
-#### <span data-id="examineValidityDates">Examine Validity Dates</span>
+$$section
+#### Examine Validity Dates $(id="examineValidityDates")
 
 - **Definition:** Check if certificates are within their valid date range.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Prevents using expired or not-yet-valid certificates.
 - **Note:** Should be enabled in production
+$$
 
-#### <span data-id="trustStoreFilePath">Trust Store File Path</span>
+$$section
+#### Trust Store File Path $(id="trustStoreFilePath")
 
 - **Definition:** Path to the Java truststore file containing trusted CA certificates.
 - **Example:** /path/to/truststore.jks
 - **Why it matters:** Specifies which certificates are trusted for SSL connections.
 - **Note:** Required when using custom trust manager
+$$
 
-#### <span data-id="trustStoreFilePassword">Trust Store File Password</span>
+$$section
+#### Trust Store File Password $(id="trustStoreFilePassword")
 
 - **Definition:** Password to access the truststore file.
 - **Example:** truststorePassword123
 - **Why it matters:** Required to read certificates from the truststore.
 - **Note:** Store securely and use strong passwords
+$$
 
-#### <span data-id="trustStoreFileFormat">Trust Store File Format</span>
+$$section
+#### Trust Store File Format $(id="trustStoreFileFormat")
 
 - **Definition:** Format of the truststore file.
 - **Example:** JKS or PKCS12
 - **Why it matters:** Tells the system how to read the truststore file.
 - **Note:** JKS is the traditional Java format, PKCS12 is the modern standard
+$$
 
-#### <span data-id="allowWildCards">Allow Wildcards</span>
+$$section
+#### Allow Wildcards $(id="allowWildCards")
 
 - **Definition:** Whether to accept wildcard certificates (\*.company.com).
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Controls acceptance of wildcard SSL certificates.
 - **Note:** Enable if your LDAP server uses wildcard certificates
+$$
 
-#### <span data-id="acceptableHostNames">Acceptable Host Names</span>
+$$section
+#### Acceptable Host Names $(id="acceptableHostNames")
 
 - **Definition:** List of hostnames that are acceptable for certificate validation.
 - **Example:** ["ldap.company.com", "ldap-backup.company.com"]
 - **Why it matters:** Defines which hostnames are trusted for connections.
 - **Note:** Add all valid LDAP server hostnames
+$$

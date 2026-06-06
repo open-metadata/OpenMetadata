@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
@@ -67,6 +68,7 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
@@ -147,6 +149,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
           .map(appConfig -> appConfig.optString("type", null))
           .ifPresent(ingestionPipeline::setApplicationType);
+    }
+  }
+
+  @Override
+  public void setInheritedFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    EntityReference serviceRef = ingestionPipeline.getService();
+    if (serviceRef == null) {
+      return;
+    }
+    try {
+      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      inheritOwners(ingestionPipeline, fields, parent);
+      inheritDomains(ingestionPipeline, fields, parent);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Parent service {} not found for ingestion pipeline {}; skipping owner/domain inheritance",
+          serviceRef.getFullyQualifiedName(),
+          ingestionPipeline.getFullyQualifiedName());
     }
   }
 
@@ -632,7 +652,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
-      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+      allPipelineStatusList.addAll(
+          pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline));
     }
     allPipelineStatusList.addAll(pipelineStatusList);
     allPipelineStatusList.sort(
@@ -925,13 +946,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
-
     JSONObject sourceConfigJson =
         new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    String profileSampleType = sourceConfigJson.optString("profileSampleType");
-    double profileSample = sourceConfigJson.optDouble("profileSample");
-
-    EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    JSONObject profileSampleConfig = sourceConfigJson.optJSONObject("profileSampleConfig");
+    if (profileSampleConfig == null) {
+      return;
+    }
+    JSONObject config = profileSampleConfig.optJSONObject("config");
+    if (config == null) {
+      return;
+    }
+    String profileSampleType = config.optString("profileSampleType", "");
+    double profileSample = config.optDouble("profileSample", Double.NaN);
+    if (!profileSampleType.isEmpty() && !Double.isNaN(profileSample)) {
+      EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    }
   }
 
   /**
@@ -983,12 +1012,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void closeStream(String pipelineFQN, UUID runId) {
+    if (!isLogStorageEnabled()) {
+      // Closing a stream is idempotent: if log storage isn't configured there
+      // is nothing to close, so we treat this as a no-op rather than an error.
+      // This lets defensive callers (e.g. exit handlers, cleanup paths) call
+      // close() without first having to know whether streaming was enabled.
+      LOG.debug(
+          "Log storage not configured; closeStream is a no-op for pipeline: {}, runId: {}",
+          pipelineFQN,
+          runId);
+      return;
+    }
     try {
-      if (isLogStorageEnabled()) {
-        logStorage.closeStream(pipelineFQN, runId);
-      } else {
-        throw new IllegalStateException("Log storage is not configured");
-      }
+      logStorage.closeStream(pipelineFQN, runId);
     } catch (Exception e) {
       LOG.error("Failed to close stream for pipeline: {}, runId: {}", pipelineFQN, runId, e);
       throw new RuntimeException("Failed to close stream", e);

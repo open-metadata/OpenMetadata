@@ -14,29 +14,42 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/services/storageService';
-import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
-import gcsConnection from '../jsons/connectionSchemas/connections/storage/gcsConnection.json';
-import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 
-export const getStorageConfig = (type: StorageServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const storageSchemaLoaders: Partial<Record<StorageServiceType, SchemaLoader>> =
+  {
+    [StorageServiceType.S3]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/s3Connection.json'
+      ),
+    [StorageServiceType.Gcs]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/gcsConnection.json'
+      ),
+    [StorageServiceType.CustomStorage]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/customStorageConnection.json'
+      ),
+  };
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getStorageConfig = async (type: StorageServiceType) => {
+  const loader = storageSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type as unknown as StorageServiceType) {
-    case StorageServiceType.S3: {
-      schema = s3Connection;
 
-      break;
-    }
-    case StorageServiceType.Gcs: {
-      schema = gcsConnection;
-
-      break;
-    }
-    case StorageServiceType.CustomStorage: {
-      schema = customConnection;
-
-      break;
-    }
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

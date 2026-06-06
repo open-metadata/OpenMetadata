@@ -11,6 +11,7 @@
 """
 Closeable abstract class to be extended by Workflow pieces
 """
+
 from abc import abstractmethod
 
 

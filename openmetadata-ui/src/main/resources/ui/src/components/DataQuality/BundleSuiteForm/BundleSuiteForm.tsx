@@ -54,18 +54,18 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   createScrollToErrorHandler,
   generateFormFields,
 } from '../../../utils/formUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
+import {
+  generateUUID,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';

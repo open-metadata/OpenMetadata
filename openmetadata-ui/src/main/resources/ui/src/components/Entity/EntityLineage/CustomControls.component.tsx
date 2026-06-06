@@ -69,6 +69,7 @@ import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
+import LineageTimeFilter from './LineageTimeFilter.component';
 
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
@@ -93,6 +94,8 @@ const CustomControls: FC<{
     nodes,
     selectedQuickFilters,
     onExportClick,
+    timeFilter,
+    setTimeFilter,
   } = useLineageProvider();
   const {
     lineageConfig,
@@ -293,8 +296,18 @@ const CustomControls: FC<{
         nodeDepth: nodeDepth,
         maxDepth: nodeDepth,
         query_filter: quickFilters,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       }),
-    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+    [
+      fqn,
+      entityType,
+      lineageDirection,
+      nodeDepth,
+      quickFilters,
+      timeFilter?.startTime,
+      timeFilter?.endTime,
+    ]
   );
 
   const handleExportClick = useCallback(() => {
@@ -426,7 +439,7 @@ const CustomControls: FC<{
             <Tabs
               selectedKey={activeTab}
               onSelectionChange={(key) => handleTabChange(key as string)}>
-              <Tabs.List size="sm" type="button-brand">
+              <Tabs.List size="sm" type="button-border">
                 <Tabs.Item id="lineage" key="lineage">
                   {t('label.lineage')}
                 </Tabs.Item>
@@ -437,6 +450,11 @@ const CustomControls: FC<{
             </Tabs>
           )}
 
+          <LineageTimeFilter
+            endTime={timeFilter?.endTime}
+            startTime={timeFilter?.startTime}
+            onChange={setTimeFilter}
+          />
           {lineageEditButton}
           <Tooltip
             placement="top"

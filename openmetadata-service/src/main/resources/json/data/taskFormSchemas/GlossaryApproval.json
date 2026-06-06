@@ -1,0 +1,25 @@
+{
+  "name": "GlossaryApproval",
+  "displayName": "Glossary Approval",
+  "taskType": "GlossaryApproval",
+  "taskCategory": "Approval",
+  "formSchema": {
+    "type": "object",
+    "properties": {
+      "comment": {
+        "type": "string",
+        "title": "Approval Comment"
+      }
+    }
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "approval",
+      "permission": "EDIT_ALL"
+    },
+    "comment": {
+      "ui:widget": "textarea"
+    }
+  },
+  "fullyQualifiedName": "GlossaryApproval"
+}

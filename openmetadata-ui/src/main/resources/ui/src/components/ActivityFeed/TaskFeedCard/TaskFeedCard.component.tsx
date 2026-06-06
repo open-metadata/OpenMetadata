@@ -28,13 +28,13 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';

@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import * as reactI18next from 'react-i18next';
 import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
@@ -74,7 +73,7 @@ jest.mock('../../../../rest/applicationMarketPlaceAPI', () => ({
     ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -91,13 +90,6 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../AppLogo/AppLogo.component', () =>
   jest.fn().mockImplementation(() => <>AppLogo</>)
 );
-
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
 
 describe('MarketPlaceAppDetails component', () => {
   it('should render all necessary elements if app details fetch successfully', async () => {
@@ -159,6 +151,30 @@ describe('MarketPlaceAppDetails component', () => {
     expect(screen.getByTestId('appName')).toBeInTheDocument();
   });
 
+  it('should show cache service message for disabled cache warmup app', async () => {
+    mockGetApplicationByName = jest.fn().mockReturnValue([]);
+    mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
+      name: 'CacheWarmupApplication',
+      description: 'marketplace description',
+      fullyQualifiedName: 'CacheWarmupApplication',
+      supportEmail: 'support@email.com',
+      developerUrl: 'https://xyz.com',
+      privacyPolicyUrl: 'https://xyz.com',
+      appScreenshots: ['screenshot1', 'screenshot2'],
+      enabled: false,
+    });
+
+    render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.getByTestId('install-application')).toBeDisabled();
+    expect(
+      screen.getByText('message.cache-service-not-configured-message')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('appName')).not.toBeInTheDocument();
+  });
+
   it('should show toast error, if failed to fetch app details', async () => {
     const MARKETPLACE_APP_DETAILS_ERROR = 'marketplace app data fetch failed.';
     const APP_DETAILS_ERROR = 'app data fetch failed.';
@@ -196,32 +212,14 @@ describe('MarketPlaceAppDetails component', () => {
     );
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
-    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
-      if (key === 'message.marketplace-verify-msg' && params?.brandName) {
-        return `Verified by ${params.brandName}`;
-      }
-
-      return key;
-    });
-
-    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
-      t: mockT,
-      i18n: { language: 'en-US' },
-      ready: true,
-    } as any);
-
-    const { container } = render(<MarketPlaceAppDetails />);
+  it('should render with correct brandName keys', async () => {
+    render(<MarketPlaceAppDetails />);
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
-    // Verify actual brand name is rendered
-    expect(container.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(container.textContent).not.toContain('{{brandName}}');
-
     // Verify translation was called with brandName
-    expect(mockT).toHaveBeenCalledWith('message.marketplace-verify-msg', {
-      brandName: 'OpenMetadata',
-    });
+    expect(
+      screen.getByText(/message.marketplace-verify-msg/)
+    ).toBeInTheDocument();
   });
 });

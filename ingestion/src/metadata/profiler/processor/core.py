@@ -12,14 +12,15 @@
 """
 Main Profile definition and queries to execute
 """
+
 from __future__ import annotations
 
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast  # noqa: UP035
 
 from pydantic import ValidationError
-from sqlalchemy import Column
+from sqlalchemy import Column  # noqa: TC002
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -34,13 +35,16 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
-from metadata.generated.schema.settings.settings import Settings
-from metadata.generated.schema.tests.customMetric import (
-    CustomMetric as CustomMetricEntity,
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType as TableProfileSampleType,
 )
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.settings.settings import Settings  # noqa: TC001
+from metadata.generated.schema.tests.customMetric import (
+    CustomMetric as CustomMetricEntity,  # noqa: TC001
+)
+from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
 from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.profiler_interface import ProfilerInterface  # noqa: TC001
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     HybridMetric,
@@ -58,7 +62,7 @@ logger = profiler_logger()
 CREATE_DATETIME = "createDateTime"
 
 
-class MissingMetricException(Exception):
+class MissingMetricException(Exception):  # noqa: N818
     """
     Raise when building the profiler with Composed Metrics
     and not all the required metrics are present
@@ -79,11 +83,11 @@ class Profiler(Generic[TMetric]):
 
     def __init__(
         self,
-        *metrics: Type[TMetric],
+        *metrics: Type[TMetric],  # noqa: UP006
         profiler_interface: ProfilerInterface,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
-        global_profiler_configuration: Optional[Settings] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
+        exclude_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
+        global_profiler_configuration: Optional[Settings] = None,  # noqa: UP045
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -92,8 +96,8 @@ class Profiler(Generic[TMetric]):
         :param ignore_cols: List of columns to ignore when computing the profile
         :param profile_sample: % of rows to use for sampling column metrics
         """
-        self.global_profiler_configuration: Optional[ProfilerConfiguration] = (
-            cast(ProfilerConfiguration, global_profiler_configuration.config_value)
+        self.global_profiler_configuration: Optional[ProfilerConfiguration] = (  # noqa: UP045
+            cast(ProfilerConfiguration, global_profiler_configuration.config_value)  # noqa: TC006
             if global_profiler_configuration
             else None
         )
@@ -114,12 +118,12 @@ class Profiler(Generic[TMetric]):
         self.validate_composed_metric()
 
         # Initialize profiler results
-        self._table_results: Dict[str, Any] = {}
-        self._column_results: Dict[str, Any] = {}
-        self._system_results: Optional[List[Dict]] = []
+        self._table_results: Dict[str, Any] = {}  # noqa: UP006
+        self._column_results: Dict[str, Any] = {}  # noqa: UP006
+        self._system_results: Optional[List[Dict]] = []  # noqa: UP006, UP045
 
         # We will get columns from the property
-        self._columns: Optional[List[Column]] = None
+        self._columns: Optional[List[Column]] = None  # noqa: UP006, UP045
         self.data_frame_list = None
 
     @property
@@ -127,15 +131,15 @@ class Profiler(Generic[TMetric]):
         return self.profiler_interface.table
 
     @property
-    def metrics(self) -> Tuple[Type[TMetric], ...]:
+    def metrics(self) -> Tuple[Type[TMetric], ...]:  # noqa: UP006
         return self._metrics
 
     @property
-    def ignore_cols(self) -> List[str]:
+    def ignore_cols(self) -> List[str]:  # noqa: UP006
         return self._get_excluded_columns()
 
     @property
-    def use_cols(self) -> List[Column]:
+    def use_cols(self) -> List[Column]:  # noqa: UP006
         """
         Columns to use.
 
@@ -150,7 +154,7 @@ class Profiler(Generic[TMetric]):
         return self._profile_ts
 
     @property
-    def columns(self) -> List[Column]:
+    def columns(self) -> List[Column]:  # noqa: UP006
         """
         Return the list of columns to profile
         by skipping the columns to ignore.
@@ -163,8 +167,7 @@ class Profiler(Generic[TMetric]):
             self._columns = [
                 column
                 for column in self.profiler_interface.get_columns()
-                if column.name in self._get_included_columns()
-                or self._get_included_columns() == {"all"}
+                if column.name in self._get_included_columns() or self._get_included_columns() == {"all"}
             ]
 
         if not self._get_included_columns():
@@ -176,21 +179,19 @@ class Profiler(Generic[TMetric]):
 
         return self._columns
 
-    def _get_excluded_columns(self) -> Optional[Set[str]]:
+    def _get_excluded_columns(self) -> Optional[Set[str]]:  # noqa: UP006, UP045
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
         return {}
 
-    def _get_included_columns(self) -> Optional[Set[str]]:
+    def _get_included_columns(self) -> Optional[Set[str]]:  # noqa: UP006, UP045
         """Get include columns for table being profiled"""
         if self.include_columns:
             return {include_col.columnName for include_col in self.include_columns}
         return {}
 
-    def _check_profile_and_handle(
-        self, profile: CreateTableProfileRequest
-    ) -> CreateTableProfileRequest:
+    def _check_profile_and_handle(self, profile: CreateTableProfileRequest) -> CreateTableProfileRequest:
         """Check if the profile data are empty. if empty then raise else return
 
         Args:
@@ -203,10 +204,7 @@ class Profiler(Generic[TMetric]):
             CreateTableProfileRequest:
         """
         for attrs, val in profile.tableProfile:
-            if (
-                attrs not in {"timestamp", "profileSample", "profileSampleType"}
-                and val is not None
-            ):
+            if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val is not None:
                 return
 
         for col_element in profile.columnProfile:
@@ -218,9 +216,7 @@ class Profiler(Generic[TMetric]):
             f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.root}"
         )
 
-    def get_custom_metrics(
-        self, column_name: Optional[str] = None
-    ) -> Optional[List[CustomMetricEntity]]:
+    def get_custom_metrics(self, column_name: Optional[str] = None) -> Optional[List[CustomMetricEntity]]:  # noqa: UP006, UP045
         """Get custom metrics for a table or column
 
         Args:
@@ -234,11 +230,7 @@ class Profiler(Generic[TMetric]):
 
         # if we have a column we'll get the custom metrics for this column
         column = next(
-            (
-                clmn
-                for clmn in self.profiler_interface.table_entity.columns
-                if clmn.name.root == column_name
-            ),
+            (clmn for clmn in self.profiler_interface.table_entity.columns if clmn.name.root == column_name),
             None,
         )
         if column:
@@ -264,11 +256,9 @@ class Profiler(Generic[TMetric]):
 
         Data should be saved under self.results
         """
-        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)  # noqa: UP006
         if not current_col_results:
-            logger.debug(
-                "We do not have any results to base our Composed Metrics. Stopping!"
-            )
+            logger.debug("We do not have any results to base our Composed Metrics. Stopping!")
             return
 
         for metric in self.metric_filter.get_column_metrics(
@@ -277,9 +267,7 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_composed_metrics(
+            self._column_results[col.name][metric.name()] = self.profiler_interface.get_composed_metrics(
                 col,
                 metric,
                 current_col_results,
@@ -292,25 +280,21 @@ class Profiler(Generic[TMetric]):
             col (Column): column to run distribution metrics on
         """
         logger.debug("Running distribution metrics...")
-        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)  # noqa: UP006
         if not current_col_results:
-            logger.debug(
-                "We do not have any results to base our Hybrid Metrics. Stopping!"
-            )
+            logger.debug("We do not have any results to base our Hybrid Metrics. Stopping!")
             return
         for metric in self.metric_filter.get_column_metrics(
             HybridMetric, col, self.profiler_interface.table_entity.serviceType
         ):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_hybrid_metrics(
+            self._column_results[col.name][metric.name()] = self.profiler_interface.get_hybrid_metrics(
                 col,
                 metric,
                 current_col_results,
             )
 
-    def _prepare_table_metrics(self) -> List:
+    def _prepare_table_metrics(self) -> List:  # noqa: UP006
         """prepare table metrics"""
         metrics = []
 
@@ -351,7 +335,7 @@ class Profiler(Generic[TMetric]):
 
         return metrics
 
-    def _prepare_system_metrics(self) -> List:
+    def _prepare_system_metrics(self) -> List:  # noqa: UP006
         """prepare system metrics"""
         system_metrics = self.metric_filter.system_metrics
 
@@ -368,17 +352,13 @@ class Profiler(Generic[TMetric]):
 
         return []
 
-    def _prepare_column_metrics(self) -> List:
+    def _prepare_column_metrics(self) -> List:  # noqa: UP006
         """prepare column metrics"""
         column_metrics_for_thread_pool = []
         if self.source_config and not self.source_config.computeColumnMetrics:
             return column_metrics_for_thread_pool
 
-        columns = [
-            column
-            for column in self.columns
-            if column.type.__class__.__name__ not in NOT_COMPUTE
-        ]
+        columns = [column for column in self.columns if column.type.__class__.__name__ not in NOT_COMPUTE]
         static_metrics = [
             ThreadPoolMetrics(
                 metrics=[
@@ -479,9 +459,7 @@ class Profiler(Generic[TMetric]):
         in a Dict in the shape {col_name: Profiler}
         """
 
-        logger.debug(
-            f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
-        )
+        logger.debug(f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}...")
         self.compute_metrics()
 
         profile = self.get_profile()
@@ -492,7 +470,7 @@ class Profiler(Generic[TMetric]):
             profile=profile,
         )
 
-        return table_profile
+        return table_profile  # noqa: RET504
 
     def get_profile(self) -> CreateTableProfileRequest:
         """
@@ -523,23 +501,18 @@ class Profiler(Generic[TMetric]):
             # Let's filter those out.
             column_profile = [
                 ColumnProfile(
-                    **self.column_results.get(
-                        col.name
-                        if not isinstance(col.name, ColumnName)
-                        else col.name.root
-                    )
+                    **self.column_results.get(col.name if not isinstance(col.name, ColumnName) else col.name.root)
                 )
                 for col in self.columns
-                if self.column_results.get(
-                    col.name if not isinstance(col.name, ColumnName) else col.name.root
-                )
+                if self.column_results.get(col.name if not isinstance(col.name, ColumnName) else col.name.root)
             ]
 
-            raw_create_date: Optional[datetime] = self._table_results.get(
-                CREATE_DATETIME
-            )
+            raw_create_date: Optional[datetime] = self._table_results.get(CREATE_DATETIME)  # noqa: UP045
             if raw_create_date:
                 raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
+
+            sampler = self.profiler_interface.sampler
+            sample_config = sampler._sample_config
 
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
@@ -547,24 +520,17 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
-                profileSample=(
-                    self.profiler_interface.sampler.sample_config.profileSample
-                    if self.profiler_interface.sampler.sample_config
-                    else None
-                ),
-                profileSampleType=(
-                    self.profiler_interface.sampler.sample_config.profileSampleType
-                    if self.profiler_interface.sampler.sample_config
-                    else None
+                profileSample=(sample_config.profileSample if sample_config else None),
+                profileSampleType=TableProfileSampleType(
+                    sample_config.profileSampleType
+                    if sample_config and sample_config.profileSampleType
+                    else ProfileSampleType.PERCENTAGE
                 ),
                 customMetrics=self._table_results.get("customMetrics"),
             )
 
             if self._system_results:
-                system_profile = [
-                    SystemProfile.model_validate(system_result)
-                    for system_result in self._system_results
-                ]
+                system_profile = [SystemProfile.model_validate(system_result) for system_result in self._system_results]
             else:
                 system_profile = None
 
@@ -577,7 +543,7 @@ class Profiler(Generic[TMetric]):
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Cannot transform profiler results to TableProfile: {err}")
-            raise err
+            raise err  # noqa: TRY201
 
     @property
     def column_results(self):

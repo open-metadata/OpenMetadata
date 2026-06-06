@@ -97,26 +97,24 @@ import {
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import {
-  filterSelectOptions,
-  replaceAllSpacialCharWith_,
-  Transi18next,
-} from '../../../../utils/CommonUtils';
-import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { filterSelectOptions } from '../../../../utils/FilterQueryUtils';
 import {
   createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
   generateUUID,
-} from '../../../../utils/StringsUtils';
+  replaceAllSpacialCharWith_,
+} from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';

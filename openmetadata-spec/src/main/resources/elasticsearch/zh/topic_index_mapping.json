@@ -308,6 +308,10 @@
                     "type": "keyword"
                   }
                 }
+              },
+              "children": {
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -315,6 +319,10 @@
       },
       "fieldNames": {
         "type": "keyword"
+      },
+      "fieldNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "cleanupPolicies": {
         "type": "keyword"
@@ -607,6 +615,26 @@
           },
           "sqlQueryKey": {
             "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -724,6 +752,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

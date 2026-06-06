@@ -53,14 +53,17 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getCountBadge,
+  getEntityDeleteMessage,
+} from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getErrorText } from '../../utils/StringUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
@@ -693,6 +696,7 @@ const TagsPage = () => {
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography
+                  ellipsis
                   as="p"
                   className={classNames('tw:truncate', {
                     'tw:font-bold tw:text-brand-600':

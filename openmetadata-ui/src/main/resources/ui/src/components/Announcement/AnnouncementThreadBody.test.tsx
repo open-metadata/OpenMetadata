@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,45 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
-import { getAllFeeds } from '../../rest/feedsAPI';
+import { listAnnouncements } from '../../rest/announcementsAPI';
 import AnnouncementThreadBody from './AnnouncementThreadBody.component';
 
-jest.mock('../../rest/feedsAPI', () => ({
-  getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
+jest.mock('../../rest/announcementsAPI', () => ({
+  listAnnouncements: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('./AnnouncementThreads', () =>
   jest
     .fn()
-    .mockImplementation(({ postFeed, updateThreadHandler, onConfirmation }) => (
+    .mockImplementation(({ updateAnnouncementHandler, onConfirmation }) => (
       <>
         <p>AnnouncementThreads</p>
-        <button onClick={() => postFeed('valueId', 'id')}>
-          PostFeedButton
-        </button>
         <button
           onClick={() =>
             onConfirmation({
               state: true,
               threadId: 'threadId',
-              postId: 'postId',
-              isThread: false,
+              postId: 'threadId',
+              isThread: true,
             })
           }>
           ConfirmationButton
         </button>
-        <button
-          onClick={() =>
-            updateThreadHandler('threadId', 'postId', true, {
-              op: 'replace',
-              path: '/announcement/description',
-              value: 'Cypress announcement description.',
-            })
-          }>
-          UpdateThreadButton
+        <button onClick={() => updateAnnouncementHandler('threadId', [])}>
+          UpdateAnnouncementButton
         </button>
       </>
     ))
@@ -64,9 +67,9 @@ jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
   ))
 );
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
-});
+jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>)
+);
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -76,200 +79,74 @@ const mockProps = {
   threadLink: 'threadLink',
   refetchThread: false,
   editPermission: true,
-  postFeedHandler: jest.fn(),
-  deletePostHandler: jest.fn(),
-  updateThreadHandler: jest.fn(),
+  deleteAnnouncementHandler: jest.fn(),
+  updateAnnouncementHandler: jest.fn(),
 };
 
-describe('Test AnnouncementThreadBody Component', () => {
-  it('should call getAllFeeds when component is mount', async () => {
+describe('AnnouncementThreadBody', () => {
+  it('should call listAnnouncements when component mounts', async () => {
     render(<AnnouncementThreadBody {...mockProps} />);
 
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      'threadLink',
-      undefined,
-      'Announcement',
-      'ALL'
-    );
+    expect(listAnnouncements).toHaveBeenCalledWith({
+      entityLink: 'threadLink',
+      limit: 100,
+      after: undefined,
+    });
   });
 
-  it('should render empty placeholder when data is not there', async () => {
+  it('should render empty placeholder when no announcements are returned', async () => {
     await act(async () => {
       render(<AnnouncementThreadBody {...mockProps} />);
     });
 
-    const emptyPlaceholder = screen.getByText('ErrorPlaceHolder');
-
-    expect(emptyPlaceholder).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
-  it('Check if all child elements rendered', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
-    );
-
-    await act(async () => {
-      render(<AnnouncementThreadBody {...mockProps} />);
-    });
-
-    const component = screen.getByTestId('announcement-thread-body');
-    const announcementThreads = screen.getByText('AnnouncementThreads');
-    const confirmationModal = screen.getByText('Confirmation Modal is close');
-
-    expect(component).toBeInTheDocument();
-    expect(confirmationModal).toBeInTheDocument();
-    expect(announcementThreads).toBeInTheDocument();
-  });
-
-  // Confirmation Modal
-
-  it('should open delete confirmation modal', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
+  it('should render announcement list and confirmation modal', async () => {
+    (listAnnouncements as jest.Mock).mockResolvedValueOnce(
+      MOCK_ANNOUNCEMENT_DATA
     );
 
     await act(async () => {
       render(<AnnouncementThreadBody {...mockProps} />);
     });
 
-    const confirmationCloseModal = screen.getByText(
-      'Confirmation Modal is close'
-    );
-
-    expect(confirmationCloseModal).toBeInTheDocument();
-
-    const confirmationButton = screen.getByText('ConfirmationButton');
-    act(() => {
-      fireEvent.click(confirmationButton);
-    });
-    const confirmationOpenModal = screen.getByText(
-      'Confirmation Modal is open'
-    );
-
-    expect(confirmationOpenModal).toBeInTheDocument();
-  });
-
-  it('should trigger onConfirm in confirmation modal', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
-    );
-
-    await act(async () => {
-      render(<AnnouncementThreadBody {...mockProps} />);
-    });
-
-    const confirmationButton = screen.getByText('ConfirmationButton');
-    act(() => {
-      fireEvent.click(confirmationButton);
-    });
-
-    expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
-
-    const confirmConfirmationButton = screen.getByText(
-      'Confirm Confirmation Modal'
-    );
-
-    act(() => {
-      fireEvent.click(confirmConfirmationButton);
-    });
-
-    expect(mockProps.deletePostHandler).toHaveBeenCalledWith(
-      'threadId',
-      'postId',
-      false
-    );
-
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      'threadLink',
-      undefined,
-      'Announcement',
-      'ALL'
-    );
-  });
-
-  it('should trigger onCancel in confirmation modal', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
-    );
-
-    await act(async () => {
-      render(<AnnouncementThreadBody {...mockProps} />);
-    });
-
-    const confirmationButton = screen.getByText('ConfirmationButton');
-    act(() => {
-      fireEvent.click(confirmationButton);
-    });
-
-    expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
-
-    const cancelConfirmationButton = screen.getByText(
-      'Cancel Confirmation Modal'
-    );
-
-    act(() => {
-      fireEvent.click(cancelConfirmationButton);
-    });
-
+    expect(screen.getByTestId('announcement-thread-body')).toBeInTheDocument();
+    expect(screen.getByText('AnnouncementThreads')).toBeInTheDocument();
     expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
   });
 
-  // AnnouncementThreads Component
-
-  it('should trigger postFeedHandler', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
+  it('should confirm delete with announcement id', async () => {
+    (listAnnouncements as jest.Mock).mockResolvedValueOnce(
+      MOCK_ANNOUNCEMENT_DATA
     );
 
     await act(async () => {
       render(<AnnouncementThreadBody {...mockProps} />);
     });
 
-    const postFeedButton = screen.getByText('PostFeedButton');
-    act(() => {
-      fireEvent.click(postFeedButton);
-    });
+    fireEvent.click(screen.getByText('ConfirmationButton'));
+    fireEvent.click(screen.getByText('Confirm Confirmation Modal'));
 
-    expect(mockProps.postFeedHandler).toHaveBeenCalledWith('valueId', 'id');
-
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      'threadLink',
-      undefined,
-      'Announcement',
-      'ALL'
+    expect(mockProps.deleteAnnouncementHandler).toHaveBeenCalledWith(
+      'threadId'
     );
   });
 
-  it('should trigger updateThreadHandler', async () => {
-    (getAllFeeds as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(MOCK_ANNOUNCEMENT_DATA)
+  it('should trigger updateAnnouncementHandler', async () => {
+    (listAnnouncements as jest.Mock).mockResolvedValueOnce(
+      MOCK_ANNOUNCEMENT_DATA
     );
 
     await act(async () => {
       render(<AnnouncementThreadBody {...mockProps} />);
     });
 
-    const postFeedButton = screen.getByText('UpdateThreadButton');
-    act(() => {
-      fireEvent.click(postFeedButton);
-    });
+    fireEvent.click(screen.getByText('UpdateAnnouncementButton'));
 
-    expect(mockProps.updateThreadHandler).toHaveBeenCalledWith(
+    expect(mockProps.updateAnnouncementHandler).toHaveBeenCalledWith(
       'threadId',
-      'postId',
-      true,
-      {
-        op: 'replace',
-        path: '/announcement/description',
-        value: 'Cypress announcement description.',
-      }
-    );
-
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      'threadLink',
-      undefined,
-      'Announcement',
-      'ALL'
+      []
     );
   });
 });

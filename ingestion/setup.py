@@ -1,4 +1,4 @@
-# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -13,14 +13,13 @@
 Python Dependencies
 """
 
-import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Set  # noqa: UP035
 
 from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.7",
+    "airflow": "apache-airflow==3.2.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -29,7 +28,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs~=2023.12.1",
+    "gcsfs": "gcsfs~=2026.3",
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -49,16 +48,16 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=2.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
-    "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
+    "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
-    "snowflake": "snowflake-sqlalchemy>=1.6.1",
-    "snowflake-connector": "snowflake-connector-python~=3.18.0",
+    "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -70,16 +69,24 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
-    "s3fs": "s3fs~=2023.12.1",
+    "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
+    "rarfile": "rarfile~=4.2",
+    "py7zr": "py7zr~=1.1.0",
 }
 
 COMMONS = {
+    "storage-archive": {
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        VERSIONS["rarfile"],
+        VERSIONS["py7zr"],
+    },
     "datalake": {
         VERSIONS["asammdf"],
         VERSIONS["avro"],
@@ -104,10 +111,8 @@ COMMONS = {
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
-        VERSIONS[
-            "grpc-tools"
-        ],  # grpcio-tools already depends on grpcio. No need to add separately
-        "protobuf",
+        VERSIONS["grpc-tools"],  # grpcio-tools already depends on grpcio. No need to add separately
+        "protobuf>=5.29.6",  # CVE-2026-0994 JSON recursion depth bypass
     },
     "postgres": {
         VERSIONS["pymysql"],
@@ -146,46 +151,60 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography>=46.0.5",  # CVE-2026-26007
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
+    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
+    "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
+    "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
+    "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
     "mypy_extensions>=0.4.3",
+    "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.23",
+    "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.0.2",
+    "collate-sqllineage>=2.1.3",
     "tabulate==0.9.0",
+    "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
+    "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.9",
+    "collate-data-diff>=0.11.11",
+    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
+    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
+    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
+    "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
-    "jaraco.context==6.0.1",
-    # TODO: Remove one once we have updated datadiff version
-    VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=8.0.29;python_version<'3.9'",
-    "mysql-connector-python>=9.1;python_version>='3.9'",
+    "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {
+plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
+        # Transitive floor pins for Airflow 3.x stack — Dependabot CVEs.
+        "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
+        "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
+        "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
+        "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
+        "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
+        "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
+        "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
@@ -193,6 +212,9 @@ plugins: Dict[str, Set[str]] = {
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
+    "googledrive": {
+        "google-api-python-client>=2.0.0",
+    },
     "bigquery": {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
@@ -230,14 +252,12 @@ plugins: Dict[str, Set[str]] = {
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
     },
     "databricks": {
-        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
+        VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
-        "pyasn1~=0.6.0",
-        # databricks has a dependency on pyhive for metadata as well as profiler
-        VERSIONS["pyhive"],
+        "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
+        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -263,6 +283,8 @@ plugins: Dict[str, Set[str]] = {
         "deltalake>=0.19.0,<0.20",
         "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
+    "s3": {*COMMONS["storage-archive"]},
+    "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
@@ -278,7 +300,7 @@ plugins: Dict[str, Set[str]] = {
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
         "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=3.1.0,<4",
+        "exasol-integration-test-docker-environment>=6.0.0,<7",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -315,16 +337,21 @@ plugins: Dict[str, Set[str]] = {
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython~=3.1.34",
+        "gitpython>=3.1.50",
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=3.6.0"},
+    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
+    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
-        "sqlalchemy-pytds~=0.3",
+        # 1.0+ moved internal `tds.skipall` calls to `tds_base.skipall`, matching
+        # the python-tds 1.x layout. 0.3.x raises AttributeError on every
+        # server-side cursor fetch (TABNAME / COLINFO tokens) when paired with
+        # python-tds 1.x.
+        "sqlalchemy-pytds~=1.0",
         DATA_DIFF["mssql"],
     },
     "mssql-odbc": {
@@ -352,20 +379,25 @@ plugins: Dict[str, Set[str]] = {
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
+    "questdb": {"psycopg2-binary"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
+        "sqlalchemy-redshift~=1.0.0",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
+    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
+    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
+    # CVE-2026-28802 (alg:none bypass).
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["spacy"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -393,16 +425,19 @@ plugins: Dict[str, Set[str]] = {
 }
 
 dev = {
-    "black==22.3.0",
+    "ruff~=0.15.12",
     "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
-    "isort",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
+    "nox",
     "pre-commit",
-    "pycln",
-    "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
-    "basedpyright~=1.14",
+    "basedpyright==1.39.3",
     # For publishing
     "twine",
     "build",
@@ -420,6 +455,8 @@ test_unit = {
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
     VERSIONS["factory-boy"],
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 test = {
@@ -461,15 +498,14 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers~=4.8.0;python_version>='3.9'",
+    "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests>=2.31.0,<3",
+    "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
@@ -488,14 +524,14 @@ test = {
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
+    "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {
     VERSIONS["griffe2md"],
 }
-
-if sys.version_info >= (3, 9):
-    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
@@ -523,16 +559,10 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:
+def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
     """Filter out requirements from base_requirements"""
     return list(
-        base_requirements.union(
-            *[
-                requirements
-                for plugin, requirements in plugins.items()
-                if plugin not in filtered
-            ]
-        )
+        base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])
     )
 
 
@@ -548,9 +578,7 @@ setup(
         # FIXME: all-dev-env is a temporary solution to install all dependencies except
         #   those that might conflict with each other or cause issues in the dev environment
         #   This covers all development cases where none of the plugins are used
-        "all-dev-env": filter_requirements(
-            {"airflow", "db2", "great-expectations", "pymssql"}
-        ),
+        "all-dev-env": filter_requirements({"airflow", "db2", "great-expectations", "pymssql"}),
         # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
