@@ -109,7 +109,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                 }
                 return;
               }
-              org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
+              org.openmetadata.service.jdbi3.EntityCacheInvalidator.onRemoteCacheInvalidate(
                   msg.type(), msg.id(), msg.fqn());
               if (msg.id() != null && cachedReadBundle != null) {
                 cachedReadBundle.invalidate(msg.type(), msg.id());
@@ -220,7 +220,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   /**
    * Fan an entity-write invalidation out to every registered {@link Invalidatable}. Today
-   * this is invoked from {@code EntityRepository.invalidateCacheForEntity(type, id, fqn)}
+   * this is invoked from {@code EntityCacheInvalidator.invalidateCacheForEntity(type, id, fqn)}
    * (the static helper called from {@code postCreate} and other mutation paths), from the
    * pub-sub handler above when a remote pod publishes a write, and from the admin
    * {@code POST /system/cache/invalidate} endpoint.

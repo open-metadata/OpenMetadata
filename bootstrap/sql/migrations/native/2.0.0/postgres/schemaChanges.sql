@@ -329,3 +329,24 @@ CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING bt
 CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
 CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
 CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Perf: UsageDAO.computePercentile runs four correlated COUNT(*) subqueries that each
+-- filter entity_usage on (entityType, usageDate). The only existing index is
+-- UNIQUE (id, usageDate), which is unusable for that predicate, so every run sequential-scans
+-- the table once per subquery. A composite (entityType, usageDate) index turns the
+-- percentile subqueries into range scans.
+CREATE INDEX IF NOT EXISTS idx_entity_usage_entitytype_usagedate
+    ON entity_usage (entityType, usageDate);
+
+-- Correctness: migration 1.6.3 defined the Postgres isBot generated column as
+-- (json ->> 'deleted')::boolean instead of (json ->> 'isBot'), so on Postgres isBot has
+-- always mirrored `deleted` rather than the real bot flag. countDailyActiveUsers (and any
+-- isBot column filter) was therefore wrong on Postgres. Postgres cannot alter a generated
+-- column's expression in place, so backfill any rows missing $.isBot, drop the column
+-- (this also drops idx_isBot) and recreate it reading the correct path.
+UPDATE user_entity SET json = jsonb_set(json, '{isBot}', 'false'::jsonb, true)
+    WHERE (json ->> 'isBot') IS NULL;
+ALTER TABLE user_entity DROP COLUMN IF EXISTS isBot;
+ALTER TABLE user_entity
+    ADD COLUMN isBot BOOLEAN GENERATED ALWAYS AS ((json ->> 'isBot')::boolean) STORED NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_isBot ON user_entity (isBot);

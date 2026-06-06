@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityCacheInvalidator;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -140,7 +141,7 @@ public final class PolicyConditionUpdater {
           // DAO.update skips EntityUpdater.invalidateCachesAfterStore, so the cached policy
           // still has the pre-rewrite condition embedded. Drop every cache variant for this
           // policy so the next read rebuilds from the freshly-updated row.
-          EntityRepository.invalidateCacheForEntity(
+          EntityCacheInvalidator.invalidateCacheForEntity(
               Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
           anyChanged = true;
           LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());

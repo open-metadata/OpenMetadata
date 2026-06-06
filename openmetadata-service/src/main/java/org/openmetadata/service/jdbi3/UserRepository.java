@@ -84,8 +84,8 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -835,12 +835,43 @@ public class UserRepository extends EntityRepository<User> {
       userToRoles.computeIfAbsent(userId, k -> new ArrayList<>()).add(roleRef);
     }
 
+    Map<UUID, List<EntityReference>> userToTeams = batchFetchTeamsForUsers(userIds);
+
     for (User user : users) {
       List<EntityReference> roleRefs = userToRoles.get(user.getId());
       user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
-      // Also set inherited roles
-      user.withInheritedRoles(getInheritedRoles(user));
+      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId())));
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchTeamsForUsers(List<String> userIds) {
+    Map<UUID, List<EntityReference>> userToTeams = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> teamRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, Include.ALL);
+    for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference teamRef =
+          Entity.getEntityReferenceById(
+              Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+      if (!Boolean.TRUE.equals(teamRef.getDeleted())) {
+        userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+      }
+    }
+    return userToTeams;
+  }
+
+  private List<EntityReference> getInheritedRoles(User user, List<EntityReference> teams) {
+    List<EntityReference> roles;
+    if (Boolean.TRUE.equals(user.getIsBot())) {
+      roles = Collections.emptyList();
+    } else {
+      List<EntityReference> effectiveTeams =
+          nullOrEmpty(teams) ? new ArrayList<>(List.of(getOrganization())) : teams;
+      roles = SubjectContext.getRolesForTeams(effectiveTeams);
+    }
+    return roles;
   }
 
   private void fetchAndSetOwns(List<User> users, Fields fields) {
@@ -1288,8 +1319,10 @@ public class UserRepository extends EntityRepository<User> {
     // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
     // and its cache-invalidate hook — without explicit eviction the next GET on a
     // previously-read task returns the stale cached row even though the DB row is gone.
-    // FQN is required because tasks expose both GET /v1/tasks/{id} (CACHE_WITH_ID-keyed) and
-    // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
+    // FQN is required because tasks expose both GET /v1/tasks/{id}
+    // (EntityCaches.CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (EntityCaches.CACHE_WITH_NAME-keyed); dropping only by id would
+    // leave a
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
         daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
@@ -1312,7 +1345,7 @@ public class UserRepository extends EntityRepository<User> {
       if (task.id == null) {
         continue;
       }
-      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      EntityCacheInvalidator.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
       if (pubsub != null) {
         pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
       }

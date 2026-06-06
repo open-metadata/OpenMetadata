@@ -52,9 +52,9 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;

@@ -44,7 +44,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -350,13 +350,13 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and tagDAO.updateFqn below. The
       // pass below runs after updateFqn but inside this transaction — see
-      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTags =
-          invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with any tag under this
       // classification. Tags live in the TAG entity table with FQNs starting with the
       // classification FQN, so the descendant helper finds them correctly.
-      invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
+      EntityCacheInvalidator.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
       daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
       daoCollection
           .tagUsageDAO()
@@ -372,7 +372,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       invalidateClassification(updated.getId());
-      finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
@@ -393,7 +393,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
     private void invalidateClassification(UUID classificationId) {
       // Name of the classification changed. Invalidate the classification and all the children tags
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(CLASSIFICATION, classificationId));
+      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(CLASSIFICATION, classificationId));
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(classificationId, CLASSIFICATION, Relationship.CONTAINS, TAG);
       for (EntityRelationshipRecord tagRecord : tagRecords) {
@@ -405,7 +405,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }

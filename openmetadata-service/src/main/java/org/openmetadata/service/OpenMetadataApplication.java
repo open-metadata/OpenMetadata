@@ -108,6 +108,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityCaches;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -1230,8 +1231,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void stop() throws InterruptedException, SchedulerException {
-      LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
-      LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
+      LOG.info("Cache with Id Stats {}", EntityCaches.CACHE_WITH_ID.stats());
+      LOG.info("Cache with name Stats {}", EntityCaches.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();

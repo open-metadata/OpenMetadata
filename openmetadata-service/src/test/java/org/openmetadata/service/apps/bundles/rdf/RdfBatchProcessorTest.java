@@ -40,7 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 

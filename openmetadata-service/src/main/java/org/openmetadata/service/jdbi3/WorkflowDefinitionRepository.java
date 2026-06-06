@@ -376,7 +376,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(true);
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityCacheInvalidator.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -400,7 +401,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(false);
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityCacheInvalidator.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);

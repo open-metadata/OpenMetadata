@@ -49,7 +49,7 @@ import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityCaches;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -87,14 +87,14 @@ class RuleEvaluatorTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
+                    EntityCaches.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
                     Team.class));
     Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                        EntityRepository.CACHE_WITH_ID.get(
+                        EntityCaches.CACHE_WITH_ID.get(
                             new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
                         Team.class)
                     .getEntityReference());
@@ -103,7 +103,7 @@ class RuleEvaluatorTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_NAME.get(
+                    EntityCaches.CACHE_WITH_NAME.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
                     Team.class));
 
@@ -113,7 +113,7 @@ class RuleEvaluatorTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
+                    EntityCaches.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
@@ -123,7 +123,7 @@ class RuleEvaluatorTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
+                    EntityCaches.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
@@ -152,7 +152,7 @@ class RuleEvaluatorTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
+                    EntityCaches.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.DOMAIN, i.getArgument(1))),
                     Domain.class));
 
@@ -178,9 +178,9 @@ class RuleEvaluatorTest {
     DatabaseSchema schema = new DatabaseSchema().withId(UUID.randomUUID()).withName("testSchema");
     schema.setDatabase(databaseRef);
     database.setOwners(List.of(ownerRef));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DATABASE_SCHEMA, schema.getId()), JsonUtils.pojoToJson(schema));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DATABASE, database.getId()), JsonUtils.pojoToJson(database));
     Mockito.when(databaseSchemaRepository.getParentEntity(any(DatabaseSchema.class), anyString()))
         .thenAnswer(
@@ -189,7 +189,7 @@ class RuleEvaluatorTest {
               EntityReference dbRef = cachedSchema.getDatabase();
               if (dbRef == null) return null;
               return JsonUtils.readValue(
-                  EntityRepository.CACHE_WITH_ID.get(
+                  EntityCaches.CACHE_WITH_ID.get(
                       new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
                   Database.class);
             });
@@ -208,9 +208,9 @@ class RuleEvaluatorTest {
             .withName("testDataProduct")
             .withFullyQualifiedName("testDataProduct")
             .withDomains(List.of(domain.getEntityReference()));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DATA_PRODUCT, dataProduct.getId()),
         JsonUtils.pojoToJson(dataProduct));
     resourceContextDataProduct =
@@ -360,7 +360,7 @@ class RuleEvaluatorTest {
             .withName("testGlossary")
             .withReviewers(List.of(reviewerRef));
 
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), JsonUtils.pojoToJson(glossary));
 
     SubjectContext subjectContext = new SubjectContext(reviewer, null);
@@ -730,7 +730,7 @@ class RuleEvaluatorTest {
           Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
       team.setParents(listOf(parentTeam));
     }
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }
@@ -746,7 +746,7 @@ class RuleEvaluatorTest {
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getDefaultRoles()));
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getInheritedRoles()));
     }
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }
@@ -754,7 +754,7 @@ class RuleEvaluatorTest {
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
     return role;
   }
@@ -795,14 +795,14 @@ class RuleEvaluatorTest {
             .withFullyQualifiedName("Marketing");
 
     // Cache domains for Entity.getEntity calls
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, rootDomain.getId()), JsonUtils.pojoToJson(rootDomain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, subDomain.getId()), JsonUtils.pojoToJson(subDomain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, subSubDomain.getId()),
         JsonUtils.pojoToJson(subSubDomain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, unrelatedDomain.getId()),
         JsonUtils.pojoToJson(unrelatedDomain));
 
@@ -885,14 +885,14 @@ class RuleEvaluatorTest {
             .withParent(company.getEntityReference());
 
     // Cache domains
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, company.getId()), JsonUtils.pojoToJson(company));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, engineering.getId()), JsonUtils.pojoToJson(engineering));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, dataEngineering.getId()),
         JsonUtils.pojoToJson(dataEngineering));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, analytics.getId()), JsonUtils.pojoToJson(analytics));
 
     // Test: User with Engineering domain should have access to DataEngineering resources
@@ -994,7 +994,7 @@ class RuleEvaluatorTest {
   private Domain createDomain(String name, String fqn) {
     Domain domain =
         new Domain().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
     return domain;
   }
@@ -1026,13 +1026,13 @@ class RuleEvaluatorTest {
             .withParent(accountingDomain.getEntityReference());
 
     // Cache domains for Entity.getEntity calls
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, financeDomain.getId()),
         JsonUtils.pojoToJson(financeDomain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, accountingDomain.getId()),
         JsonUtils.pojoToJson(accountingDomain));
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.DOMAIN, payrollDomain.getId()),
         JsonUtils.pojoToJson(payrollDomain));
 

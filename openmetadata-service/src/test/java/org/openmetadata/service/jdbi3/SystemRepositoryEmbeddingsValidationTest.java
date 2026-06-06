@@ -18,7 +18,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.VectorIndexService;
