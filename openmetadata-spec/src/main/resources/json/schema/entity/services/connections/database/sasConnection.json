@@ -123,7 +123,7 @@
       "title": "Verify SSL",
       "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
-      "default": "validate"
+      "default": "ignore"
     }
   },
   "required": ["username", "password", "serverHost"],

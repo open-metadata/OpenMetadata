@@ -60,7 +60,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
             logger.debug("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value from secrets manager: {err}")
+            logger.error(f"Couldn't get value for secret [{secret_id}] from secrets manager: {err}")
             raise err  # noqa: TRY201
         if "SecretString" in response:
             return response["SecretString"] if response["SecretString"] != NULL_VALUE else None
