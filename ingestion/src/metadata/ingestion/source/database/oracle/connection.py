@@ -24,7 +24,7 @@ import weakref
 import zipfile
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 import oracledb
@@ -78,7 +78,10 @@ logger = ingestion_logger()
 class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def __init__(self, connection: OracleConnectionConfig):
         super().__init__(connection)
-        self._wallet_temp_dir: str | None = None
+        # Use typing.Optional rather than `str | None` for consistency with the
+        # rest of the connector codebase (which targets older runtimes that
+        # cannot use PEP 604 union syntax in evaluated annotations).
+        self._wallet_temp_dir: Optional[str] = None  # noqa: UP045
         self._wallet_cleanup_finalizer: Any = None
 
     def _set_wallet_temp_dir(self, wallet_temp_dir: str) -> None:
@@ -132,20 +135,27 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 continue
 
             OracleConnection._mkdir_secure_within(member_path.parent, target_root)
-            # O_EXCL: refuse to overwrite an existing file, so a malicious zip
-            # with duplicate entries cannot replace previously extracted wallet
-            # files. O_NOFOLLOW: refuse to follow a symlink at the final path
-            # component, hardening against attacker-controlled symlinks in the
-            # target directory.
             with (
                 zip_ref.open(member, "r") as source_file,
                 open(
                     member_path,
                     "wb",
-                    opener=lambda path, flags: os.open(path, flags | os.O_EXCL | os.O_NOFOLLOW, 0o600),
+                    opener=OracleConnection._secure_open,
                 ) as target_file,
             ):
                 shutil.copyfileobj(source_file, target_file)
+
+    # O_EXCL: refuse to overwrite an existing file, so a malicious zip with
+    # duplicate entries cannot replace previously extracted wallet files.
+    # O_NOFOLLOW: refuse to follow a symlink at the final path component on
+    # platforms that support it (POSIX). On Windows the attribute does not
+    # exist, so we fall back to a 0 mask — the symlink-pre-place attack model
+    # is Unix-shared-tmp specific.
+    _O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+
+    @staticmethod
+    def _secure_open(path: str, flags: int) -> int:
+        return os.open(path, flags | os.O_EXCL | OracleConnection._O_NOFOLLOW, 0o600)
 
     @staticmethod
     def _mkdir_secure_within(path: Path, root: Path) -> None:
@@ -175,6 +185,11 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         # Strip whitespace/newlines so wrapped base64 (e.g. from `base64 -i` on macOS,
         # which inserts line breaks every 76 chars) decodes the same as a single line.
         sanitized = "".join(wallet_content.get_secret_value().split())
+        # Reject empty / whitespace-only walletContent explicitly. An empty
+        # string would otherwise decode to b"" and only fail later as a zip
+        # error, hiding the real cause (the field was never set).
+        if not sanitized:
+            raise ValueError("walletContent is empty. Provide a base64-encoded wallet zip.")
         try:
             decoded_wallet = base64.b64decode(sanitized, validate=True)
         except (binascii.Error, TypeError) as exc:
@@ -206,7 +221,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         if self.service_connection.connectionArguments.root is None:
             self.service_connection.connectionArguments.root = {}
 
-        connection_arguments: dict[str, Any] = self.service_connection.connectionArguments.root
+        connection_arguments: Dict[str, Any] = self.service_connection.connectionArguments.root  # noqa: UP006
 
         wallet_path = autonomous.walletPath
         if autonomous.walletContent:

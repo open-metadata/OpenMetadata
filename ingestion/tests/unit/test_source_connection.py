@@ -1462,6 +1462,48 @@ class SourceConnectionTest(TestCase):
         with self.assertRaises(ValidationError):
             OracleAutonomousConnection(tnsAlias="myadb_high")
 
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_empty_rejected(self, mock_create_generic_db_connection):
+        # An empty SecretStr walletContent must be treated as missing — not as
+        # a valid wallet payload that just happens to decode to b"".
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletPath="/tmp/my_wallet",
+                walletContent="",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+        # walletContent is empty -> code path falls back to walletPath, which is
+        # set, so configuration succeeds.
+        oracle_connection._configure_autonomous_connection_arguments()
+        assert oracle_connection.service_connection.connectionArguments.root["config_dir"] == "/tmp/my_wallet"
+        assert oracle_connection._wallet_temp_dir is None
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_whitespace_only_rejected(self, mock_create_generic_db_connection):
+        # A whitespace-only walletContent must raise a clear error instead of
+        # silently decoding to b"" and failing later as an opaque zip error.
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent="   \n  \t  ",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        with self.assertRaises(ValueError) as error:
+            oracle_connection._get_client()
+
+        assert "walletContent is empty" in str(error.exception)
+        assert oracle_connection._wallet_temp_dir is None
+
     def test_oracle_mkdir_secure_within_rejects_path_outside_root(self):
         # _safe_extract_wallet_archive validates containment before calling
         # _mkdir_secure_within, but the helper must also be defensive on its own
