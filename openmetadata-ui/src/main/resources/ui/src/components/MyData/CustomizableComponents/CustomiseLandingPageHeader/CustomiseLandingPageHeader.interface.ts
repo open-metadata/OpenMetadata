@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Document } from '../../../../generated/entity/docStore/document';
+import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 
 export interface CustomiseLandingPageHeaderProps {
   addedWidgetsList?: string[];
@@ -27,4 +28,12 @@ export interface CustomiseLandingPageHeaderProps {
   onHomePage?: boolean;
   overlappedContainer?: boolean;
   placeholderWidgetKey?: string;
+  /**
+   * When the parent already fetches global announcements (the landing page does, for the
+   * sidebar widget), pass them through here so the header skips its own duplicate fetch.
+   * Backwards-compatible: when omitted, the header keeps its own fetch for callers that
+   * mount it standalone (e.g. the customize-page preview and the header-theme picker).
+   */
+  announcements?: AnnouncementEntity[];
+  isAnnouncementLoading?: boolean;
 }

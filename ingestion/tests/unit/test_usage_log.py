@@ -41,9 +41,7 @@ mock_query_log_config = {
                 },
             }
         },
-        "sourceConfig": {
-            "config": {"type": "DatabaseUsage", "queryLogFilePath": str(dataset)}
-        },
+        "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogFilePath": str(dataset)}},
     },
     "processor": {"type": "query-parser", "config": {}},
     "stage": {"type": "table-usage", "config": {"filename": "/tmp/query_log_usage"}},
@@ -148,12 +146,10 @@ class QueryLogSourceTest(TestCase):
     Usage & Lineage via Query Log
     """
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_query_log_config)
-        with patch(
-            "metadata.ingestion.source.database.query.usage.QueryLogUsageSource.test_connection"
-        ):
+        with patch("metadata.ingestion.source.database.query.usage.QueryLogUsageSource.test_connection"):
             self.source = QueryLogUsageSource.create(
                 mock_query_log_config["source"],
                 self.config.workflowConfig.openMetadataServerConfig,
@@ -178,6 +174,4 @@ class QueryLogSourceTest(TestCase):
                 # we don't know in which order the files are processed
                 expected_queries_list = EXPECTED_QUERIES_FILE_2
             for index in range(len(single_file_queries.queries)):
-                assert (
-                    single_file_queries.queries[index] == expected_queries_list[index]
-                )
+                assert single_file_queries.queries[index] == expected_queries_list[index]

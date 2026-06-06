@@ -10,8 +10,9 @@
 #  limitations under the License.
 
 """DataFrame validation API."""
+
 import warnings
-from typing import Any, Callable, Iterable, List, Optional, cast, final
+from typing import Any, Callable, Iterable, List, Optional, cast, final  # noqa: UP035
 
 from pandas import DataFrame
 
@@ -53,11 +54,11 @@ class DataFrameValidator:
 
     def __init__(
         self,
-        client: Optional[  # pyright: ignore[reportRedeclaration]
+        client: Optional[  # pyright: ignore[reportRedeclaration]  # noqa: UP045
             OMeta[Any, Any]
         ] = None,
     ):
-        self._test_cases: List[TestCase] = []
+        self._test_cases: List[TestCase] = []  # noqa: UP006
 
         if client is None:
             metadata: OpenMetadata = get_client()
@@ -83,7 +84,7 @@ class DataFrameValidator:
 
     def add_openmetadata_test(self, test_fqn: str) -> None:
         test_case = cast(
-            TestCase,
+            TestCase,  # noqa: TC006
             self._client.get_by_name(
                 TestCase,
                 test_fqn,
@@ -133,7 +134,7 @@ class DataFrameValidator:
         if not test_names:
             return
 
-        warnings.warn(
+        warnings.warn(  # noqa: B028
             WholeTableTestsWarning(
                 "Running tests that require the whole table on chunks could lead to false positives. "
                 + "For example, a DataFrame with 200 rows split in chunks of 50 could pass tests expecting "
@@ -184,7 +185,7 @@ class DataFrameValidator:
         """
         self._check_full_table_tests_included()
 
-        results: List[ValidationResult] = []
+        results: List[ValidationResult] = []  # noqa: UP006
 
         for df in data:
             validation_result = self.validate(df, mode)

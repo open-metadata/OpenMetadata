@@ -113,9 +113,7 @@ SAMPLE_PROJECT_NO_OWNER = Project(
 EXAMPLE_TABLE = Table(
     id="0bd6bd6f-7fea-4a98-98c7-3b37073629c7",
     name="sales_data",
-    fullyQualifiedName=FullyQualifiedEntityName(
-        "mock_snowflake.sales_db.public.sales_data"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName("mock_snowflake.sales_db.public.sales_data"),
     columns=[],
 )
 
@@ -123,9 +121,7 @@ EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="proj_123456789",
     displayName="Sales Analytics Dashboard",
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
-    ),
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
 )
 
 # Mock configuration
@@ -191,9 +187,7 @@ class TestHexSource(TestCase):
 
         # Mock client
         self.hex_source.client = MagicMock()
-        self.hex_source.client.get_projects = MagicMock(
-            return_value=[SAMPLE_PROJECT, SAMPLE_PROJECT_2]
-        )
+        self.hex_source.client.get_projects = MagicMock(return_value=[SAMPLE_PROJECT, SAMPLE_PROJECT_2])
         self.hex_source.client.get_project_url = MagicMock(
             return_value="https://app.hex.tech/app/projects/proj_123456789"
         )
@@ -223,26 +217,18 @@ class TestHexSource(TestCase):
         """Test getting dashboard details"""
         details = self.hex_source.get_dashboard_details(SAMPLE_PROJECT)
         self.assertEqual(details.id, "proj_123456789")
-        self.assertEqual(
-            details.description, "Monthly sales performance metrics and KPIs"
-        )
+        self.assertEqual(details.description, "Monthly sales performance metrics and KPIs")
 
     def test_get_owner_ref_with_owner(self):
         """Test getting owner reference when owner exists"""
         mock_owner_ref = EntityReferenceList(
-            root=[
-                EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")
-            ]
+            root=[EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")]
         )
-        self.hex_source.metadata.get_reference_by_email = MagicMock(
-            return_value=mock_owner_ref
-        )
+        self.hex_source.metadata.get_reference_by_email = MagicMock(return_value=mock_owner_ref)
 
         owner_ref = self.hex_source.get_owner_ref(SAMPLE_PROJECT)
 
-        self.hex_source.metadata.get_reference_by_email.assert_called_once_with(
-            "john.doe@company.com"
-        )
+        self.hex_source.metadata.get_reference_by_email.assert_called_once_with("john.doe@company.com")
         self.assertEqual(owner_ref, mock_owner_ref)
 
     def test_get_owner_ref_with_creator_fallback(self):
@@ -255,19 +241,13 @@ class TestHexSource(TestCase):
         )
 
         mock_owner_ref = EntityReferenceList(
-            root=[
-                EntityReference(id="d3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")
-            ]
+            root=[EntityReference(id="d3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")]
         )
-        self.hex_source.metadata.get_reference_by_email = MagicMock(
-            return_value=mock_owner_ref
-        )
+        self.hex_source.metadata.get_reference_by_email = MagicMock(return_value=mock_owner_ref)
 
         owner_ref = self.hex_source.get_owner_ref(project)
 
-        self.hex_source.metadata.get_reference_by_email.assert_called_once_with(
-            "creator@company.com"
-        )
+        self.hex_source.metadata.get_reference_by_email.assert_called_once_with("creator@company.com")
         self.assertEqual(owner_ref, mock_owner_ref)
 
     def test_get_owner_ref_no_owner(self):
@@ -322,9 +302,7 @@ class TestHexSource(TestCase):
 
         # Mock owner ref
         mock_owner_ref = EntityReferenceList(
-            root=[
-                EntityReference(id="e3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")
-            ]
+            root=[EntityReference(id="e3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")]
         )
         self.hex_source.get_owner_ref = MagicMock(return_value=mock_owner_ref)
 
@@ -351,9 +329,7 @@ class TestHexSource(TestCase):
 
     def test_yield_dashboard_error(self):
         """Test dashboard creation with error"""
-        self.hex_source.client.get_project_url = MagicMock(
-            side_effect=Exception("API Error")
-        )
+        self.hex_source.client.get_project_url = MagicMock(side_effect=Exception("API Error"))
 
         results = list(self.hex_source.yield_dashboard(SAMPLE_PROJECT))
 
@@ -425,9 +401,7 @@ class TestHexSource(TestCase):
         )
 
         # Mock get_db_service_prefixes
-        self.hex_source.get_db_service_prefixes = MagicMock(
-            return_value=["mock_snowflake"]
-        )
+        self.hex_source.get_db_service_prefixes = MagicMock(return_value=["mock_snowflake"])
 
         self.hex_source.prepare()
 
@@ -447,9 +421,7 @@ class TestHexSource(TestCase):
         table2 = Table(
             id="f3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="marketing_data",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                "mock_bigquery.marketing.public.campaigns"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName("mock_bigquery.marketing.public.campaigns"),
             columns=[],
         )
         lineage2 = HexProjectLineage(project_id="proj_123456789")
@@ -462,9 +434,7 @@ class TestHexSource(TestCase):
             ]
         )
 
-        self.hex_source.get_db_service_prefixes = MagicMock(
-            return_value=["mock_snowflake", "mock_bigquery"]
-        )
+        self.hex_source.get_db_service_prefixes = MagicMock(return_value=["mock_snowflake", "mock_bigquery"])
 
         self.hex_source.prepare()
 
@@ -481,9 +451,7 @@ class TestHexSource(TestCase):
             side_effect=Exception("Connection failed")
         )
 
-        self.hex_source.get_db_service_prefixes = MagicMock(
-            return_value=["mock_snowflake"]
-        )
+        self.hex_source.get_db_service_prefixes = MagicMock(return_value=["mock_snowflake"])
 
         # Should not raise exception
         self.hex_source.prepare()

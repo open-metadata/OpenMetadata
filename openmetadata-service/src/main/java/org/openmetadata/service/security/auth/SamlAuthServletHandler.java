@@ -2,23 +2,27 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
+import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.exception.SAMLException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -39,37 +43,77 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.session.SessionRefreshInProgressException;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
-  private static final String SESSION_REFRESH_TOKEN = "refreshToken";
-  private static final String SESSION_USER_ID = "userId";
-  private static final String SESSION_USERNAME = "username";
-  private static final String SESSION_REDIRECT_URI = "redirectUri";
-
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
+  final SessionService sessionService;
   private List<String> displayNameAttributes;
+
+  /**
+   * Bridge for handing a SAML-authenticated identity to the MCP OAuth flow. The MCP module
+   * (openmetadata-mcp) registers an implementation at startup via {@link
+   * #setMcpSamlCallbackHandler}; this service module cannot import openmetadata-mcp, so the
+   * dependency is inverted through this hook (mirrors {@code
+   * AuthenticationCodeFlowHandler.setMcpStateChecker} used by the OIDC bridge).
+   */
+  @FunctionalInterface
+  public interface McpSamlCallbackHandler {
+    void handle(
+        HttpServletRequest req,
+        HttpServletResponse resp,
+        String username,
+        String email,
+        String relayState)
+        throws Exception;
+  }
+
+  private static volatile McpSamlCallbackHandler mcpSamlCallbackHandler;
+
+  public static void setMcpSamlCallbackHandler(McpSamlCallbackHandler handler) {
+    mcpSamlCallbackHandler = handler;
+  }
 
   private static class Holder {
     private static volatile SamlAuthServletHandler instance;
     private static volatile AuthenticationConfiguration lastAuthConfig;
     private static volatile AuthorizerConfiguration lastAuthzConfig;
+    private static volatile SessionService lastSessionService;
   }
 
   public static SamlAuthServletHandler getInstance(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
-    // Check if configuration has changed
-    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null) {
+      throw new IllegalStateException("Session service is not initialized");
+    }
+    return getInstance(authConfig, authorizerConfig, sessionService);
+  }
+
+  public static SamlAuthServletHandler getInstance(
+      AuthenticationConfiguration authConfig,
+      AuthorizerConfiguration authorizerConfig,
+      SessionService sessionService) {
+    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig, sessionService)) {
       synchronized (SamlAuthServletHandler.class) {
-        if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
-          Holder.instance = new SamlAuthServletHandler(authConfig, authorizerConfig);
+        if (Holder.instance == null
+            || !isSameConfig(authConfig, authorizerConfig, sessionService)) {
+          Holder.instance =
+              new SamlAuthServletHandler(authConfig, authorizerConfig, sessionService);
           Holder.lastAuthConfig = authConfig;
           Holder.lastAuthzConfig = authorizerConfig;
+          Holder.lastSessionService = sessionService;
         }
       }
     }
@@ -77,14 +121,21 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private static boolean isSameConfig(
-      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
-    return authConfig == Holder.lastAuthConfig && authorizerConfig == Holder.lastAuthzConfig;
+      AuthenticationConfiguration authConfig,
+      AuthorizerConfiguration authorizerConfig,
+      SessionService sessionService) {
+    return authConfig == Holder.lastAuthConfig
+        && authorizerConfig == Holder.lastAuthzConfig
+        && sessionService == Holder.lastSessionService;
   }
 
-  private SamlAuthServletHandler(
-      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+  public SamlAuthServletHandler(
+      AuthenticationConfiguration authConfig,
+      AuthorizerConfiguration authorizerConfig,
+      SessionService sessionService) {
     this.authConfig = authConfig;
     this.authorizerConfig = authorizerConfig;
+    this.sessionService = sessionService;
     initializeConfiguration();
   }
 
@@ -118,9 +169,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
-      if (callbackUrl != null) {
-        req.getSession(true).setAttribute(SESSION_REDIRECT_URI, callbackUrl);
+      if (callbackUrl == null) {
+        callbackUrl = defaultSamlRedirectUri();
       }
+      callbackUrl =
+          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
+              callbackUrl, trustedSamlRedirects());
+      sessionService.createPendingSession(
+          req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -128,6 +184,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
       auth.login();
 
+    } catch (IllegalArgumentException e) {
+      LOG.error("Invalid SAML redirect URI", e);
+      sendError(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
     } catch (SAMLException e) {
       LOG.error("Error initiating SAML login", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML login initiation failed");
@@ -135,6 +194,57 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       LOG.error("Error handling SAML login", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
     }
+  }
+
+  /**
+   * Initiates a SAML login for the MCP OAuth flow, carrying the MCP authorization request id in the
+   * SAML {@code RelayState}. The IdP echoes RelayState back to the ACS, where {@link
+   * #tryHandleMcpSamlCallback} detects it. Unlike {@link #handleLogin}, this does not set a session
+   * redirect URI — MCP relies on RelayState (a SAML protocol field), not the session cookie.
+   */
+  public void initiateMcpLogin(
+      HttpServletRequest req, HttpServletResponse resp, String relayState) {
+    try {
+      javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
+      javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
+
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
+      auth.login(relayState); // returnTo becomes the SAML RelayState
+    } catch (Exception e) {
+      LOG.error("[SAML] Error initiating MCP SAML login", e);
+      throw new IllegalStateException("SAML MCP login initiation failed", e);
+    }
+  }
+
+  /**
+   * Detects an MCP-initiated SAML callback (RelayState = "mcp:{authRequestId}") and delegates the
+   * authenticated identity to the registered MCP handler. Returns true when the callback was an MCP
+   * flow and has been handled (the caller must stop processing); false for normal web SAML logins.
+   */
+  private boolean tryHandleMcpSamlCallback(
+      HttpServletRequest req, HttpServletResponse resp, String username, String email)
+      throws Exception {
+    String relayState = req.getParameter("RelayState");
+    if (relayState == null || !relayState.startsWith("mcp:")) {
+      return false; // normal web SAML login — not an MCP OAuth flow
+    }
+    // This IS an MCP OAuth login. If the MCP bridge is not registered (MCP disabled, init failure,
+    // or a startup race), fail closed — never fall through to the web login path, which would
+    // auto-provision the user and mint a web JWT, bypassing the MCP deny-unknown-user contract.
+    McpSamlCallbackHandler handler = mcpSamlCallbackHandler;
+    if (handler == null) {
+      LOG.error(
+          "[SAML] MCP OAuth callback received but no MCP handler is registered; failing the MCP "
+              + "login instead of falling back to web login");
+      sendError(
+          resp,
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          "MCP authentication is not available. Please contact your administrator.");
+      return true;
+    }
+    LOG.info("[SAML] MCP OAuth callback detected, delegating to MCP handler");
+    handler.handle(req, resp, username, email, relayState);
+    return true;
   }
 
   @Override
@@ -171,6 +281,20 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
+      // If this login was initiated by an MCP OAuth client (RelayState = "mcp:{authRequestId}"),
+      // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
+      // This fires before getOrCreateUser so MCP keeps the deny-unknown-user semantics of the
+      // OIDC MCP path (handleSSOCallbackWithDbState serves the "Access Denied" page).
+      if (tryHandleMcpSamlCallback(req, resp, username, email)) {
+        return;
+      }
+
+      UserSession pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
+      if (pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+        return;
+      }
+
       // Extract display name from SAML attributes (name, given_name, family_name)
       String displayName = extractDisplayNameFromSamlAttributes(auth);
 
@@ -196,27 +320,18 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // Get or create user
       User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
 
-      // Generate JWT tokens
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  getRoleListFromUser(user),
-                  !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-                  user.getEmail(),
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
-
       // Generate refresh token
       RefreshToken refreshToken = TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
-
-      // Store refresh token in session (server-side)
-      HttpSession session = req.getSession(true);
-      session.setAttribute(SESSION_REFRESH_TOKEN, refreshToken.getToken().toString());
-      session.setAttribute(SESSION_USER_ID, user.getId().toString());
-      session.setAttribute(SESSION_USERNAME, username);
+      UserSession activeSession =
+          sessionService
+              .activatePendingSession(
+                  req, resp, pendingSession, user, refreshToken.getToken().toString(), null)
+              .orElseGet(
+                  () -> {
+                    Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
+                    throw new AuthenticationException("Failed to activate SAML session");
+                  });
 
       // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -225,23 +340,24 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
       }
 
-      // Get stored redirect URI from session
-      String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
+      String redirectUri = pendingSession.getRedirectUri();
       LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
 
-      String callbackUrl;
-      if (redirectUri != null) {
-        callbackUrl =
-            redirectUri
-                + "?id_token="
-                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
-      } else {
-        callbackUrl =
-            "/auth/callback?id_token="
-                + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
-      }
+      String callbackUrl =
+          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
+              redirectUri == null ? defaultSamlRedirectUri() : redirectUri, trustedSamlRedirects());
+      callbackUrl =
+          org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
+              callbackUrl,
+              jwtAuthMechanism.getJWTToken(),
+              email,
+              displayName == null ? "" : displayName);
       resp.sendRedirect(callbackUrl);
 
+    } catch (IllegalArgumentException e) {
+      LOG.error("Invalid SAML redirect URI in callback", e);
+      sendError(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
     } catch (Exception e) {
       LOG.error("Error processing SAML callback", e);
       sendError(
@@ -251,17 +367,20 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   @Override
   public void handleRefresh(HttpServletRequest req, HttpServletResponse resp) {
+    UserSession leasedSession = null;
     try {
-      HttpSession session = req.getSession(false);
+      UserSession session = sessionService.acquireRefreshLease(req, resp).orElse(null);
+      leasedSession = session;
       if (session == null) {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No active session");
         return;
       }
 
-      String refreshToken = (String) session.getAttribute(SESSION_REFRESH_TOKEN);
-      String username = (String) session.getAttribute(SESSION_USERNAME);
+      String refreshToken = sessionService.decryptOmRefreshToken(session);
+      String username = session.getUsername();
 
       if (refreshToken == null || username == null) {
+        sessionService.revokeSession(req, resp);
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No refresh token in session");
         return;
       }
@@ -271,30 +390,32 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
           Entity.getEntityByName(
               Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
 
-      // Generate new access token
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  getRoleListFromUser(user),
-                  !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-                  user.getEmail(),
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
+      RefreshToken rotatedRefreshToken = rotateRefreshToken(session, user.getId(), refreshToken);
+      Optional<UserSession> completedSession =
+          completeRefresh(
+              req, resp, session, refreshToken, rotatedRefreshToken.getToken().toString());
+      if (completedSession.isEmpty()) {
+        return;
+      }
 
-      // Return JSON response WITHOUT refresh token (security: refresh token stays server-side)
+      JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, completedSession.get());
+
       JwtResponse responseToClient = new JwtResponse();
       responseToClient.setAccessToken(jwtAuthMechanism.getJWTToken());
       responseToClient.setTokenType("Bearer");
       responseToClient.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
-      // Explicitly NOT setting refresh token - it stays in session only
-
       resp.setStatus(HttpServletResponse.SC_OK);
       resp.setContentType("application/json");
       writeJsonResponse(resp, JsonUtils.pojoToJson(responseToClient));
 
+    } catch (SessionRefreshInProgressException e) {
+      resp.setHeader("Retry-After", Integer.toString(e.getRetryAfterSeconds()));
+      sendError(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
+    } catch (BadRequestException e) {
+      sessionService.releaseRefreshLease(leasedSession);
+      sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
     } catch (Exception e) {
+      sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling SAML refresh", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
     }
@@ -303,11 +424,18 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   @Override
   public void handleLogout(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      HttpSession session = req.getSession(false);
+      UserSession session = sessionService.getSession(req).orElse(null);
       if (session != null) {
         // Write logout audit event before invalidating session
-        String userId = (String) session.getAttribute(SESSION_USER_ID);
-        String username = (String) session.getAttribute(SESSION_USERNAME);
+        String userId = session.getUserId();
+        String username = session.getUsername();
+        if (username != null) {
+          SubjectCache.invalidateUser(username);
+        }
+        String refreshToken = sessionService.decryptOmRefreshToken(session);
+        if (refreshToken != null) {
+          Entity.getTokenRepository().deleteToken(refreshToken);
+        }
         if (userId != null && username != null && Entity.getAuditLogRepository() != null) {
           try {
             Entity.getAuditLogRepository()
@@ -317,9 +445,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             LOG.debug("Could not write logout audit event for user {}", username, e);
           }
         }
-        // Clear session
-        session.invalidate();
       }
+      sessionService.revokeSession(req, resp);
 
       // SAML Single Logout (SLO) if configured
       try {
@@ -333,8 +460,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       } catch (Exception e) {
         // If SAML logout fails, still return success for local logout
         LOG.warn("SAML Single Logout failed, but local session cleared", e);
-        resp.setStatus(HttpServletResponse.SC_OK);
-        writeJsonResponse(resp, "{\"message\":\"Logged out successfully (local only)\"}");
+        writeMessageResponse(
+            resp, HttpServletResponse.SC_OK, "Logged out successfully (local only)");
       }
 
     } catch (Exception e) {
@@ -434,14 +561,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       boolean shouldBeAdmin = getAdminPrincipals().contains(username);
       boolean needsUpdate = false;
 
-      LOG.info(
-          "SAML login - Username: {}, Email: {}, DisplayName: {}, Should be admin: {}, Current admin status: {}",
+      LOG.debug(
+          "SAML login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
           username,
           email,
-          displayName,
           shouldBeAdmin,
           existingUser.getIsAdmin());
-      LOG.info("Admin principals list: {}", getAdminPrincipals());
 
       if (nullOrEmpty(displayName)) {
         LOG.warn(
@@ -451,14 +576,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       if (shouldBeAdmin && !Boolean.TRUE.equals(existingUser.getIsAdmin())) {
-        LOG.info("Updating user {} to admin based on adminPrincipals", username);
+        LOG.debug("Updating user {} to admin based on adminPrincipals", username);
         existingUser.setIsAdmin(true);
         needsUpdate = true;
       }
 
       // Update display name only if user doesn't already have one set
       if (!nullOrEmpty(displayName) && nullOrEmpty(existingUser.getDisplayName())) {
-        LOG.info("Setting display name for user {} to '{}'", username, displayName);
+        LOG.debug("Setting display name for user {} to '{}'", username, displayName);
         existingUser.setDisplayName(displayName);
         needsUpdate = true;
       }
@@ -473,15 +598,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       return existingUser;
     } catch (Exception e) {
-      LOG.info("User not found, creating new user: {}", username);
+      LOG.debug("User not found, creating new user: {}", username);
       if (authConfig.getEnableSelfSignup()) {
         boolean isAdmin = getAdminPrincipals().contains(username);
-        LOG.info(
-            "Creating new user - Username: {}, DisplayName: {}, Should be admin: {}",
-            username,
-            displayName,
-            isAdmin);
-        LOG.info("Admin principals list: {}", getAdminPrincipals());
         User newUser =
             UserUtil.user(username, email.split("@")[1], username)
                 .withIsAdmin(isAdmin)
@@ -506,12 +625,117 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     return new HashSet<>(authorizerConfig.getAdminPrincipals());
   }
 
+  private Set<String> trustedSamlRedirects() {
+    return org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+        authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+  }
+
+  private String samlAuthCallback() {
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    String acs =
+        (samlConfig == null || samlConfig.getSp() == null) ? null : samlConfig.getSp().getAcs();
+    String authCallback = null;
+    if (!nullOrEmpty(acs)) {
+      try {
+        URI uri = new URI(acs);
+        if (uri.getScheme() != null && uri.getHost() != null) {
+          URI origin =
+              new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+          authCallback = origin + "/auth/callback";
+        }
+      } catch (URISyntaxException e) {
+        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
+      }
+    }
+    return authCallback;
+  }
+
+  private String defaultSamlRedirectUri() {
+    if (!nullOrEmpty(authConfig.getCallbackUrl())) {
+      return authConfig.getCallbackUrl();
+    }
+    return samlSpCallback();
+  }
+
+  private String samlSpCallback() {
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    if (samlConfig == null || samlConfig.getSp() == null) {
+      return null;
+    }
+    return samlConfig.getSp().getCallback();
+  }
+
   private void sendError(HttpServletResponse resp, int status, String message) {
     try {
-      resp.setStatus(status);
-      writeJsonResponse(resp, String.format("{\"error\":\"%s\"}", message));
+      writeErrorResponse(resp, status, message);
     } catch (IOException e) {
       LOG.error("Error writing error response", e);
     }
+  }
+
+  private RefreshToken rotateRefreshToken(
+      UserSession session, UUID userId, String currentRefreshToken) {
+    RefreshToken storedRefreshToken =
+        (RefreshToken) Entity.getTokenRepository().findByToken(currentRefreshToken);
+    if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
+      throw new BadRequestException("Expired token. Please login again.");
+    }
+    Entity.getTokenRepository().deleteToken(currentRefreshToken);
+    RefreshToken newRefreshToken = TokenUtil.getRefreshToken(userId, UUID.randomUUID());
+    Entity.getTokenRepository().insertToken(newRefreshToken);
+    return newRefreshToken;
+  }
+
+  private Optional<UserSession> completeRefresh(
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      UserSession session,
+      String previousRefreshToken,
+      String updatedRefreshToken) {
+    Optional<UserSession> completedSession =
+        sessionService.completeRefresh(session, updatedRefreshToken, null);
+    if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
+      deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
+      sessionService.revokeSession(req, resp);
+      sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "Session revoked during refresh");
+      return Optional.empty();
+    }
+    cleanupUnusedRefreshToken(previousRefreshToken, updatedRefreshToken, completedSession.get());
+    return completedSession;
+  }
+
+  private void cleanupUnusedRefreshToken(
+      String previousRefreshToken, String updatedRefreshToken, UserSession completedSession) {
+    if (updatedRefreshToken == null || updatedRefreshToken.equals(previousRefreshToken)) {
+      return;
+    }
+    String persistedRefreshToken = sessionService.decryptOmRefreshToken(completedSession);
+    if (!updatedRefreshToken.equals(persistedRefreshToken)) {
+      deleteRefreshTokenIfPresent(updatedRefreshToken);
+    }
+  }
+
+  private void deleteOrphanedRefreshToken(String previousRefreshToken, String updatedRefreshToken) {
+    if (updatedRefreshToken != null && !updatedRefreshToken.equals(previousRefreshToken)) {
+      deleteRefreshTokenIfPresent(updatedRefreshToken);
+    }
+  }
+
+  private void deleteRefreshTokenIfPresent(String refreshToken) {
+    if (refreshToken != null) {
+      Entity.getTokenRepository().deleteToken(refreshToken);
+    }
+  }
+
+  private JWTAuthMechanism generateJwtToken(User user, UserSession session) {
+    return JWTTokenGenerator.getInstance()
+        .generateJWTTokenForSession(
+            user.getName(),
+            getRoleListFromUser(user),
+            Boolean.TRUE.equals(user.getIsAdmin()),
+            user.getEmail(),
+            SamlSettingsHolder.getInstance().getTokenValidity(),
+            ServiceTokenType.OM_USER,
+            session.getId());
   }
 }

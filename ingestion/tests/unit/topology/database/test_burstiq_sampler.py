@@ -14,6 +14,7 @@ Unit tests for BurstIQSampler.
 Covers: get_client, raw_dataset pagination/sampling, fetch_sample_data,
 _cast_dataframe type coercion, and fallback methods.
 """
+
 import math
 from unittest.mock import Mock, PropertyMock, patch
 from uuid import uuid4
@@ -33,11 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.burstIQConne
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-    StaticSamplingConfig,
-)
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -48,10 +47,7 @@ class _ConcreteBurstIQSampler(BurstIQSampler):
     leaves abstract (it is normally supplied by the profiler interface layer)."""
 
     def get_columns(self):
-        return [
-            SQALikeColumn(name=col.name.root, type=col.dataType)
-            for col in (self.entity.columns or [])
-        ]
+        return [SQALikeColumn(name=col.name.root, type=col.dataType) for col in (self.entity.columns or [])]
 
 
 BURSTIQ_CONNECTION = BurstIQConnection(
@@ -82,16 +78,15 @@ def mock_client():
 @pytest.fixture
 def sampler(mock_client):
     with patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=mock_client,
     ):
         s = _ConcreteBurstIQSampler(
             service_connection_config=BURSTIQ_CONNECTION,
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
         )
-    return s
+    return s  # noqa: RET504
 
 
 class TestBurstIQSamplerGetClient:
@@ -109,15 +104,11 @@ class TestBurstIQSamplerRawDataset:
                 )
             )
         )
-        mock_client.get_records_by_tql.return_value = [
-            {"score": 1.0, "age": i} for i in range(3)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": 1.0, "age": i} for i in range(3)]
 
         dfs = list(sampler.raw_dataset())
 
-        mock_client.get_records_by_tql.assert_called_once_with(
-            "TestChain", limit=3, skip=0
-        )
+        mock_client.get_records_by_tql.assert_called_once_with("TestChain", limit=3, skip=0)
         assert len(dfs) == 1
         assert len(dfs[0]) == 3
 
@@ -131,23 +122,17 @@ class TestBurstIQSamplerRawDataset:
             )
         )
         mock_client.get_chain_metrics.return_value = {"TestChain": 100}
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(50)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(50)]
 
         dfs = list(sampler.raw_dataset())
 
         mock_client.get_chain_metrics.assert_called_once()
-        mock_client.get_records_by_tql.assert_called_once_with(
-            "TestChain", limit=50, skip=0
-        )
+        mock_client.get_records_by_tql.assert_called_once_with("TestChain", limit=50, skip=0)
         assert sum(len(df) for df in dfs) == 50
 
     def test_no_sample_fetches_all_via_pagination(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(10)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(10)]
 
         dfs = list(sampler.raw_dataset())
 
@@ -168,10 +153,7 @@ class TestBurstIQSamplerRawDataset:
         sampler.sample_config = SampleConfig()
         page1 = [{"score": float(i)} for i in range(_PAGE_SIZE)]
         page2 = [{"score": float(i)} for i in range(_PAGE_SIZE, _PAGE_SIZE * 2)]
-        page3 = [
-            {"score": float(i)}
-            for i in range(_PAGE_SIZE * 2, _PAGE_SIZE * 2 + _PAGE_SIZE // 2)
-        ]
+        page3 = [{"score": float(i)} for i in range(_PAGE_SIZE * 2, _PAGE_SIZE * 2 + _PAGE_SIZE // 2)]
         mock_client.get_records_by_tql.side_effect = [page1, page2, page3]
 
         dfs = list(sampler.raw_dataset())
@@ -184,9 +166,7 @@ class TestBurstIQSamplerRawDataset:
 
     def test_stops_early_on_short_page(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(5)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(5)]
 
         dfs = list(sampler.raw_dataset())
 
@@ -216,15 +196,6 @@ class TestBurstIQSamplerFetchSampleData:
             new_callable=PropertyMock,
             return_value=lambda: iter([df]),
         )
-
-    def test_empty_dataframe_returns_empty_tabledata(self, sampler):
-        cols = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
-        with self._patch_raw(sampler, pd.DataFrame()):
-            result = sampler.fetch_sample_data(cols)
-
-        col_names = [c.root for c in result.columns]
-        assert result.rows == []
-        assert col_names == ["score"]
 
     def test_respects_sample_limit(self, sampler):
         df = pd.DataFrame({"score": list(range(10)), "age": list(range(10))})
@@ -260,6 +231,13 @@ class TestBurstIQSamplerFetchSampleData:
         col_names = [c.root for c in result.columns]
         assert "score" in col_names
         assert "missing_col" not in col_names
+
+    def test_empty_dataframe_returns_empty_tabledata(self, sampler):
+        cols = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
+        with self._patch_raw(sampler, pd.DataFrame()):
+            result = sampler.fetch_sample_data(cols)
+
+        assert result.rows == []
 
     def test_truncates_oversized_cell_values(self, sampler):
         oversized = "x" * (SAMPLE_DATA_MAX_CELL_LENGTH + 100)
@@ -321,7 +299,7 @@ class TestBurstIQSamplerCastDataframe:
 
 
 class TestBurstIQSamplerFallbacks:
-    def test_rdn_sample_from_user_query_returns_raw_dataset(self, sampler):
+    def test_rdn_sample_from_user_query_returns_callable(self, sampler):
         sentinel = Mock()
         with patch.object(
             type(sampler),
@@ -331,13 +309,11 @@ class TestBurstIQSamplerFallbacks:
         ):
             result = sampler._rdn_sample_from_user_query()
 
-        assert result is sentinel
+        assert callable(result)
 
-    def test_fetch_sample_data_from_user_query_delegates_to_fetch_sample_data(
-        self, sampler
-    ):
-        sampler._columns = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
+    def test_fetch_sample_data_from_user_query_returns_table_data(self, sampler):
         df = pd.DataFrame({"score": [1.0, 2.0]})
+        sampler.sample_query = "score > 0"
         with patch.object(
             type(sampler),
             "raw_dataset",
@@ -347,4 +323,3 @@ class TestBurstIQSamplerFallbacks:
             result = sampler._fetch_sample_data_from_user_query()
 
         assert isinstance(result, TableData)
-        assert "score" in [c.root for c in result.columns]

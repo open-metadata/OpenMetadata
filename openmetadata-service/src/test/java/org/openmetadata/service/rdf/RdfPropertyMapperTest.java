@@ -17,7 +17,6 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -105,56 +104,26 @@ class RdfPropertyMapperTest {
   class VotesTests {
 
     @Test
-    @DisplayName("Votes should keep counts but omit voter relationship edges")
-    void testVotesStructured() throws Exception {
+    @DisplayName("Votes are ignored during RDF field processing (audit/helper data)")
+    void testVotesAreIgnored() throws Exception {
       ObjectNode votes = objectMapper.createObjectNode();
       votes.put("upVotes", 10);
       votes.put("downVotes", 2);
 
-      ArrayNode upVoters = objectMapper.createArrayNode();
-      ObjectNode voter = objectMapper.createObjectNode();
-      voter.put("id", UUID.randomUUID().toString());
-      voter.put("type", "user");
-      voter.put("name", "test_user");
-      upVoters.add(voter);
-      votes.set("upVoters", upVoters);
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      entityJson.set("votes", votes);
 
-      java.lang.reflect.Method method =
-          RdfPropertyMapper.class.getDeclaredMethod(
-              "addVotes", JsonNode.class, Resource.class, Model.class);
-      method.setAccessible(true);
-      method.invoke(propertyMapper, votes, entityResource, model);
+      invokePrivate(
+          "processContextMappings",
+          new Class[] {Map.class, JsonNode.class, Resource.class, Model.class},
+          Map.of("votes", Map.of("@id", "om:hasVotes", "@type", "@json")),
+          entityJson,
+          entityResource,
+          model);
 
-      // Verify structured RDF was created
-      Property hasVotes = model.createProperty(OM_NS, "hasVotes");
-      assertTrue(model.contains(entityResource, hasVotes), "Entity should have hasVotes property");
-
-      Resource votesResource =
-          model.listObjectsOfProperty(entityResource, hasVotes).next().asResource();
-
-      // Verify type
-      assertTrue(
-          model.contains(votesResource, RDF.type, model.createResource(OM_NS + "Votes")),
-          "Votes should have correct type");
-
-      // Verify upVotes is stored as integer
-      Property upVotesProp = model.createProperty(OM_NS, "upVotes");
-      assertTrue(model.contains(votesResource, upVotesProp), "Votes should have upVotes");
-      Statement stmt = model.getProperty(votesResource, upVotesProp);
-      assertEquals(10, stmt.getInt(), "upVotes should be 10");
-
-      // Verify downVotes is stored as integer
-      Property downVotesProp = model.createProperty(OM_NS, "downVotes");
-      assertTrue(model.contains(votesResource, downVotesProp), "Votes should have downVotes");
-      stmt = model.getProperty(votesResource, downVotesProp);
-      assertEquals(2, stmt.getInt(), "downVotes should be 2");
-
-      // Verify individual voter references are not stored as graph edges
-      Property upVotersProp = model.createProperty(OM_NS, "upVoters");
-      assertFalse(model.contains(votesResource, upVotersProp), "Votes should not expose upVoters");
       assertFalse(
-          model.contains(votesResource, model.createProperty(OM_NS, "downVoters")),
-          "Votes should not expose downVoters");
+          model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")),
+          "Votes helper nodes should not be emitted into RDF");
     }
   }
 
@@ -742,8 +711,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("container, votes, and extension helpers should cover remaining value branches")
-    void testContainerVotesAndExtensionHelpersCoverRemainingBranches() throws Exception {
+    @DisplayName("container and extension helpers should cover remaining value branches")
+    void testContainerAndExtensionHelpersCoverRemainingBranches() throws Exception {
       ArrayNode listOfReferences = objectMapper.createArrayNode();
       UUID upstreamId = UUID.randomUUID();
       listOfReferences.add(entityReferenceNode("table", upstreamId.toString(), "orders", null));
@@ -765,30 +734,6 @@ class RdfPropertyMapperTest {
           linkedEntities.iterator().toList().stream()
               .map(node -> node.asResource().getURI())
               .toList());
-
-      ObjectNode votes = objectMapper.createObjectNode();
-      votes.put("upVotes", 2);
-      ArrayNode downVoters = objectMapper.createArrayNode();
-      UUID reviewerId = UUID.randomUUID();
-      downVoters.add(entityReferenceNode("user", reviewerId.toString(), "reviewer", null));
-      votes.set("downVoters", downVoters);
-      invokePrivate(
-          "addVotes",
-          new Class[] {JsonNode.class, Resource.class, Model.class},
-          votes,
-          entityResource,
-          model);
-      Resource votesResource =
-          model
-              .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasVotes"))
-              .next()
-              .asResource();
-      assertFalse(
-          model.contains(
-              votesResource,
-              model.createProperty(OM_NS, "downVoters"),
-              model.createResource(BASE_URI + "entity/user/" + reviewerId)),
-          "Vote helpers should not emit voter references");
 
       ObjectNode extension = objectMapper.createObjectNode();
       extension.put("threshold", 2.5);
@@ -841,7 +786,9 @@ class RdfPropertyMapperTest {
           votes,
           entityResource,
           model);
-      assertTrue(model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")));
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")),
+          "votes is ignored by the structured-property dispatch");
 
       ObjectNode lifeCycle = objectMapper.createObjectNode();
       lifeCycle.set(
@@ -1118,6 +1065,85 @@ class RdfPropertyMapperTest {
     }
   }
 
+  @Nested
+  @DisplayName("addTypedProperty: blank xsd:string skip")
+  class AddTypedPropertyBlankString {
+
+    @Test
+    @DisplayName("Blank xsd:string value should not produce a literal triple")
+    void blankStringIsNotEmitted() throws Exception {
+      JsonNode blank = objectMapper.getNodeFactory().textNode("");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          blank,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertFalse(
+          model.contains(entityResource, pref),
+          "Blank xsd:string literals must not be emitted — they masked rdfs:label "
+              + "on the read side and rendered as empty UI labels");
+    }
+
+    @Test
+    @DisplayName("Whitespace-only xsd:string value should not produce a literal triple")
+    void whitespaceOnlyStringIsNotEmitted() throws Exception {
+      JsonNode whitespace = objectMapper.getNodeFactory().textNode("   ");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          whitespace,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertFalse(model.contains(entityResource, pref));
+    }
+
+    @Test
+    @DisplayName("Non-blank xsd:string value should still be emitted")
+    void nonBlankStringIsEmitted() throws Exception {
+      JsonNode value = objectMapper.getNodeFactory().textNode("Pretty Name");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          value,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertTrue(model.contains(entityResource, pref, "Pretty Name"));
+    }
+
+    @Test
+    @DisplayName("Blank value with a non-xsd:string type should still be emitted")
+    void blankNonStringIsEmitted() throws Exception {
+      // Non-string xsd types (numbers, booleans, dates) get their own validation
+      // path elsewhere — the skip is intentionally narrow to xsd:string so it
+      // doesn't accidentally drop "0" literals or similar.
+      JsonNode zero = objectMapper.getNodeFactory().textNode("0");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "om:counter",
+          zero,
+          "xsd:integer",
+          model);
+
+      Property counter = model.createProperty(OM_NS, "counter");
+      assertTrue(model.contains(entityResource, counter));
+    }
+  }
+
   private Object invokePrivate(String name, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     java.lang.reflect.Method method =
@@ -1322,6 +1348,55 @@ class RdfPropertyMapperTest {
 
     public void setAliases(List<String> aliases) {
       this.aliases = aliases;
+    }
+  }
+
+  @Nested
+  @DisplayName("TRANSLATOR_MANAGED_DIRECT_PREDICATES coverage")
+  class TranslatorManagedPredicatesTests {
+
+    @Test
+    @DisplayName("Set must contain core direct URI predicates emitted by the translator")
+    void testCoreSetMembership() {
+      // These are emitted by addProvAttribution / addTagLabel / addEntityReference /
+      // the structured-property handlers. If any are removed from the set, downstream
+      // cleanup (JenaFusekiStorage.storeEntity) will leak stale state on entity updates.
+      java.util.Set<String> required =
+          java.util.Set.of(
+              "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+              OM_NS + "hasOwner",
+              PROV_NS + "wasAttributedTo",
+              OM_NS + "hasTag",
+              OM_NS + "hasGlossaryTerm",
+              OM_NS + "hasTier",
+              OM_NS + "belongsToDomain",
+              OM_NS + "hasDataProduct",
+              DCT_NS + "source",
+              OM_NS + "sourceUrl",
+              OM_NS + "hasLifeCycle",
+              OM_NS + "hasCertification",
+              OM_NS + "hasExtension",
+              OM_NS + "hasCustomProperty");
+      for (String pred : required) {
+        assertTrue(
+            RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
+            "TRANSLATOR_MANAGED_DIRECT_PREDICATES must include " + pred);
+      }
+    }
+
+    @Test
+    @DisplayName("Set must not include hook-managed lineage predicates")
+    void testNoOverlapWithLineageHookPredicates() {
+      // These are written by RdfRepository.addLineageWithDetails — including them here
+      // would let storeEntity wipe lineage edges on every entity update.
+      java.util.Set<String> lineageHookPredicates =
+          java.util.Set.of(
+              OM_NS + "UPSTREAM", PROV_NS + "wasDerivedFrom", OM_NS + "hasLineageDetails");
+      for (String pred : lineageHookPredicates) {
+        assertFalse(
+            RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
+            "TRANSLATOR_MANAGED_DIRECT_PREDICATES must NOT include hook-managed " + pred);
+      }
     }
   }
 }

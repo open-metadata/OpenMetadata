@@ -13,7 +13,7 @@
 import { Col, Row, Space } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -27,6 +27,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { useAuth } from '../../../hooks/authHooks';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
   getSettingPageEntityBreadCrumb,
@@ -49,10 +50,33 @@ const GlobalSettingCategoryPage = () => {
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getSettingPageEntityBreadCrumb(settingCategory),
-    [settingCategory]
-  );
+  const { pathname } = useLocation();
+  const isEmbedded = pathname.startsWith('/askCollate');
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    const crumbs = getSettingPageEntityBreadCrumb(settingCategory);
+    if (isEmbedded) {
+      const categoryName = crumbs[crumbs.length - 1]?.name ?? '';
+
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name: categoryName,
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
+
+    return crumbs;
+  }, [settingCategory, isEmbedded, t]);
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
@@ -96,7 +120,14 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       default:
-        navigate(getSettingPath(category, option));
+        if (
+          connectionsRouterClassBase.isEmbeddedMode() &&
+          category === GlobalSettingsMenuCategory.SERVICES
+        ) {
+          navigate(connectionsRouterClassBase.getSettingsServicesPath(option));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
     }
@@ -104,6 +135,7 @@ const GlobalSettingCategoryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
+      {isEmbedded && <div className="tw:h-4" />}
       <Row gutter={[0, 20]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />

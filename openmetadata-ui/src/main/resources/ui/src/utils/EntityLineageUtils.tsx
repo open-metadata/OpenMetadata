@@ -32,18 +32,15 @@ import {
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
+import type { Connection, Edge, Node, ReactFlowInstance } from 'reactflow';
 import {
-  Connection,
-  Edge,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
   isNode,
   MarkerType,
-  Node,
   Position,
-  ReactFlowInstance,
 } from 'reactflow';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -100,7 +97,11 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
-import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  LineageDetails,
+  TempLineageTable,
+} from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { useLineageStore } from '../hooks/useLineageStore';
@@ -108,21 +109,17 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import entityUtilClassBase from '../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getNodeHeight } from './CanvasUtils';
-import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
+import { isDeleted } from './EntityStatusUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
-import { jsonToCSV } from './StringsUtils';
+import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 interface LayoutedElements {
-  node: Array<
-    Node & {
-      nodeHeight: number;
-      childrenHeight: number;
-    }
-  >;
+  node: Array<Node & { nodeHeight: number }>;
   edge: Edge[];
 }
 
@@ -139,7 +136,7 @@ export const centerNodePosition = (
 ) => {
   const { position, width } = node;
   reactFlowInstance?.setCenter(
-    position.x + (width ?? 1 / 2),
+    position.x + (width ?? 1) / 2,
     position.y + NODE_HEIGHT / 2,
     {
       zoom: zoomValue ?? ZOOM_VALUE,
@@ -206,6 +203,91 @@ export const getLayoutedElements = (
 
   return { node: uNode, edge: edgesRequired };
 };
+
+/**
+ * This function returns all the columns as children as well flattened children for subfield columns.
+ * It also returns the label for the children and the total height of the children.
+ *
+ * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
+ * @param {string[]} columnsHavingLineage - All nodes in the lineage.
+ * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
+ * An object containing the downstream nodes and edges.
+ */
+export function getEntityChildrenAndLabel(node: LineageNodeType) {
+  if (!node) {
+    return {
+      children: [],
+      childrenHeading: '',
+      childrenCount: 0,
+    };
+  }
+  const entityMappings: Record<
+    string,
+    { data: EntityChildren; label: string; childrenCount: number }
+  > = {
+    [EntityType.TABLE]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.DASHBOARD]: {
+      data: node.charts ?? [],
+      label: t('label.chart-plural'),
+      childrenCount: node.charts?.length ?? 0,
+    },
+    [EntityType.MLMODEL]: {
+      data: node.mlFeatures ?? [],
+      label: t('label.feature-plural'),
+      childrenCount: node.mlFeatures?.length ?? 0,
+    },
+    [EntityType.DASHBOARD_DATA_MODEL]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.CONTAINER]: {
+      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.dataModel?.columns?.length ?? 0,
+    },
+    [EntityType.TOPIC]: {
+      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
+    },
+    [EntityType.API_ENDPOINT]: {
+      data:
+        node.flattenChildren ??
+        node?.responseSchema?.schemaFields ??
+        node?.requestSchema?.schemaFields ??
+        [],
+      label: t('label.field-plural'),
+      childrenCount:
+        node?.responseSchema?.schemaFields?.length ??
+        node?.requestSchema?.schemaFields?.length ??
+        0,
+    },
+    [EntityType.SEARCH_INDEX]: {
+      data: node.flattenChildren ?? node.fields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.fields?.length ?? 0,
+    },
+  };
+
+  const { data, label, childrenCount } = entityMappings[
+    node.entityType as EntityType
+  ] || {
+    data: [],
+    label: '',
+    childrenCount: 0,
+  };
+
+  return {
+    children: data,
+    childrenHeading: label,
+    childrenCount,
+  };
+}
 
 export const getELKLayoutedElements = async (
   nodes: Node[],
@@ -571,91 +653,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   }
 };
 
-/**
- * This function returns all the columns as children as well flattened children for subfield columns.
- * It also returns the label for the children and the total height of the children.
- *
- * @param {Node} selectedNode - The node for which to retrieve the downstream nodes and edges.
- * @param {string[]} columnsHavingLineage - All nodes in the lineage.
- * @return {{ nodes: Node[]; edges: Edge[], nodeIds: string[], edgeIds: string[] }} -
- * An object containing the downstream nodes and edges.
- */
-export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
-  if (!node) {
-    return {
-      children: [],
-      childrenHeading: '',
-      childrenCount: 0,
-    };
-  }
-  const entityMappings: Record<
-    string,
-    { data: EntityChildren; label: string; childrenCount: number }
-  > = {
-    [EntityType.TABLE]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.DASHBOARD]: {
-      data: node.charts ?? [],
-      label: t('label.chart-plural'),
-      childrenCount: node.charts?.length ?? 0,
-    },
-    [EntityType.MLMODEL]: {
-      data: node.mlFeatures ?? [],
-      label: t('label.feature-plural'),
-      childrenCount: node.mlFeatures?.length ?? 0,
-    },
-    [EntityType.DASHBOARD_DATA_MODEL]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.CONTAINER]: {
-      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.dataModel?.columns?.length ?? 0,
-    },
-    [EntityType.TOPIC]: {
-      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
-    },
-    [EntityType.API_ENDPOINT]: {
-      data:
-        node.flattenChildren ??
-        node?.responseSchema?.schemaFields ??
-        node?.requestSchema?.schemaFields ??
-        [],
-      label: t('label.field-plural'),
-      childrenCount:
-        node?.responseSchema?.schemaFields?.length ??
-        node?.requestSchema?.schemaFields?.length ??
-        0,
-    },
-    [EntityType.SEARCH_INDEX]: {
-      data: node.flattenChildren ?? node.fields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.fields?.length ?? 0,
-    },
-  };
-
-  const { data, label, childrenCount } = entityMappings[
-    node.entityType as EntityType
-  ] || {
-    data: [],
-    label: '',
-    childrenCount: 0,
-  };
-
-  return {
-    children: data,
-    childrenHeading: label,
-    childrenCount,
-  };
-};
-
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
   switch (label) {
@@ -695,6 +692,65 @@ export const positionNodesUsingElk = async (
 
   return obj;
 };
+
+export function getUpstreamDownstreamNodesEdges(
+  edges: EdgeDetails[],
+  nodes: EntityReference[],
+  currentNode: string
+) {
+  const downstreamEdges: EdgeDetails[] = [];
+  const upstreamEdges: EdgeDetails[] = [];
+  const downstreamNodes: EntityReference[] = [];
+  const upstreamNodes: EntityReference[] = [];
+  const activeNode = nodes.find(
+    (node) => node.fullyQualifiedName === currentNode
+  );
+
+  if (!activeNode) {
+    return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+  }
+
+  function findDownstream(node: EntityReference) {
+    const directDownstream = edges.filter(
+      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
+    );
+    downstreamEdges.push(...directDownstream);
+    directDownstream.forEach((edge) => {
+      const toNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
+      );
+      if (!isUndefined(toNode)) {
+        if (!downstreamNodes.includes(toNode)) {
+          downstreamNodes.push(toNode);
+          findDownstream(toNode);
+        }
+      }
+    });
+  }
+
+  function findUpstream(node: EntityReference) {
+    const directUpstream = edges.filter(
+      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
+    );
+    upstreamEdges.push(...directUpstream);
+    directUpstream.forEach((edge) => {
+      const fromNode = nodes.find(
+        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
+      );
+      if (!isUndefined(fromNode)) {
+        if (!upstreamNodes.includes(fromNode)) {
+          upstreamNodes.push(fromNode);
+          findUpstream(fromNode);
+        }
+      }
+    });
+  }
+
+  findDownstream(activeNode);
+  findUpstream(activeNode);
+
+  return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
+}
 
 export const createNodes = (
   nodesData: LineageNodeType[],
@@ -1193,65 +1249,6 @@ export const createNewEdge = (edge: Edge) => {
   return selectedEdge;
 };
 
-export const getUpstreamDownstreamNodesEdges = (
-  edges: EdgeDetails[],
-  nodes: EntityReference[],
-  currentNode: string
-) => {
-  const downstreamEdges: EdgeDetails[] = [];
-  const upstreamEdges: EdgeDetails[] = [];
-  const downstreamNodes: EntityReference[] = [];
-  const upstreamNodes: EntityReference[] = [];
-  const activeNode = nodes.find(
-    (node) => node.fullyQualifiedName === currentNode
-  );
-
-  if (!activeNode) {
-    return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
-  }
-
-  function findDownstream(node: EntityReference) {
-    const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    downstreamEdges.push(...directDownstream);
-    directDownstream.forEach((edge) => {
-      const toNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
-      );
-      if (!isUndefined(toNode)) {
-        if (!downstreamNodes.includes(toNode)) {
-          downstreamNodes.push(toNode);
-          findDownstream(toNode);
-        }
-      }
-    });
-  }
-
-  function findUpstream(node: EntityReference) {
-    const directUpstream = edges.filter(
-      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    upstreamEdges.push(...directUpstream);
-    directUpstream.forEach((edge) => {
-      const fromNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
-      );
-      if (!isUndefined(fromNode)) {
-        if (!upstreamNodes.includes(fromNode)) {
-          upstreamNodes.push(fromNode);
-          findUpstream(fromNode);
-        }
-      }
-    });
-  }
-
-  findDownstream(activeNode);
-  findUpstream(activeNode);
-
-  return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
-};
-
 export const getExportEntity = (entity: LineageSourceType) => {
   const {
     name,
@@ -1520,31 +1517,21 @@ const processNodeArray = (
   );
 };
 
-const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
-  const pipelineEntityType = get(pipelineNode, 'entityType');
-
-  // Create two edges: fromEntity -> pipeline and pipeline -> toEntity
-  const edgeFromToPipeline = {
-    fromEntity: edge.fromEntity,
-    toEntity: {
-      id: pipelineNode.id,
-      type: pipelineEntityType,
-      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
-    },
-    extraInfo: edge,
+const processPipelineEdge = (
+  edge: EdgeDetails,
+  pipelineNode: Pipeline
+): EdgeDetails[] => {
+  const pipelineEntityType = String(get(pipelineNode, 'entityType'));
+  const pipelineRef = {
+    id: pipelineNode.id,
+    type: pipelineEntityType,
+    fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
   };
 
-  const edgePipelineToTo = {
-    fromEntity: {
-      id: pipelineNode.id,
-      type: pipelineEntityType,
-      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
-    },
-    toEntity: edge.toEntity,
-    extraInfo: edge,
-  };
-
-  return [edgeFromToPipeline, edgePipelineToTo];
+  return [
+    { fromEntity: edge.fromEntity, toEntity: pipelineRef, extraInfo: edge },
+    { fromEntity: pipelineRef, toEntity: edge.toEntity, extraInfo: edge },
+  ];
 };
 
 const processEdges = (
@@ -1615,6 +1602,83 @@ const processPagination = (
   return { newNodes, newEdges };
 };
 
+const getOrCreateTempNode = (
+  nameOrFqn: string,
+  existingByFqn: Map<string, LineageNodeType>,
+  newTempNodes: Map<string, LineageNodeType>
+): LineageNodeType => {
+  const existing = existingByFqn.get(nameOrFqn);
+  if (existing) {
+    return existing;
+  }
+  if (newTempNodes.has(nameOrFqn)) {
+    return newTempNodes.get(nameOrFqn) as LineageNodeType;
+  }
+  const tempNode: LineageNodeType = {
+    id: `temp_${nameOrFqn}`,
+    name: nameOrFqn,
+    displayName: nameOrFqn,
+    fullyQualifiedName: nameOrFqn,
+    type: EntityType.TABLE,
+    entityType: EntityType.TABLE,
+    isTempTable: true,
+    columns: [],
+  };
+  newTempNodes.set(nameOrFqn, tempNode);
+
+  return tempNode;
+};
+
+const extractTempLineageNodes = (
+  edges: EdgeDetails[],
+  existingNodes: LineageNodeType[]
+): { nodes: LineageNodeType[]; edges: EdgeDetails[] } => {
+  const newTempNodes = new Map<string, LineageNodeType>();
+  const newEdges: EdgeDetails[] = [];
+
+  const existingByFqn = new Map(
+    existingNodes
+      .filter((n) => n.fullyQualifiedName)
+      .map((n) => [n.fullyQualifiedName!, n])
+  );
+
+  edges.forEach((edge) => {
+    if (!edge.tempLineageTables?.length) {
+      return;
+    }
+    edge.tempLineageTables.forEach((hop: TempLineageTable) => {
+      const fromNode = getOrCreateTempNode(
+        hop.fromEntity,
+        existingByFqn,
+        newTempNodes
+      );
+      const toNode = getOrCreateTempNode(
+        hop.toEntity,
+        existingByFqn,
+        newTempNodes
+      );
+      newEdges.push({
+        fromEntity: {
+          id: fromNode.id,
+          type: fromNode.type ?? EntityType.TABLE,
+          fullyQualifiedName: fromNode.fullyQualifiedName,
+        },
+        toEntity: {
+          id: toNode.id,
+          type: toNode.type ?? EntityType.TABLE,
+          fullyQualifiedName: toNode.fullyQualifiedName,
+        },
+      });
+    });
+  });
+
+  const pureNewNodes = Array.from(newTempNodes.values()).filter(
+    (n) => !existingByFqn.has(n.fullyQualifiedName ?? '')
+  );
+
+  return { nodes: pureNewNodes, edges: newEdges };
+};
+
 export const parseLineageData = (
   data: LineageData,
   entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
@@ -1656,14 +1720,23 @@ export const parseLineageData = (
     ...newEdges,
   ];
 
+  const { nodes: tempNodes, edges: tempEdges } = extractTempLineageNodes(
+    finalEdges,
+    finalNodes
+  );
+
   // Find the main entity
   const entity = nodesArray.find(
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
+  const baseEdges = tempEdges.length
+    ? finalEdges.filter((e) => !e.tempLineageTables?.length)
+    : finalEdges;
+
   return {
-    nodes: finalNodes,
-    edges: finalEdges,
+    nodes: [...finalNodes, ...tempNodes],
+    edges: [...baseEdges, ...tempEdges],
     entity,
   };
 };

@@ -160,7 +160,7 @@ jest.mock('../../../../enums/common.enum', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest
     .fn()
     .mockReturnValue(<div data-testid="service-logo">ServiceLogo</div>),
@@ -720,7 +720,7 @@ describe('LineageTabContent', () => {
   describe('Service Logo Integration', () => {
     it('should call getServiceLogo with correct parameters', () => {
       const { getServiceLogo } = jest.requireMock(
-        '../../../../utils/CommonUtils'
+        '../../../../utils/EntityDisplayUtils'
       );
 
       render(<LineageTabContent {...defaultProps} />);
@@ -743,7 +743,7 @@ describe('LineageTabContent', () => {
       });
 
       const { getServiceLogo } = jest.requireMock(
-        '../../../../utils/CommonUtils'
+        '../../../../utils/EntityDisplayUtils'
       );
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);

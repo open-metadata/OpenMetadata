@@ -11,17 +11,31 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   getAllByTestId,
   getByTestId,
   getByText,
   render,
 } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';
+
+const TestWrapper = ({ children }: PropsWithChildren) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  );
+};
 
 const mockData: SearchedDataProps['data'] = [
   {
@@ -122,7 +136,7 @@ const MOCK_PROPS = {
 describe('Test SearchedData Component', () => {
   it('Component should render', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const searchedDataContainer = getByTestId(container, 'search-container');
@@ -132,7 +146,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card according to data provided in props', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
     const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
@@ -145,7 +159,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card with name and display name highlighted', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
@@ -168,7 +182,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card with description highlighted', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
@@ -193,7 +207,7 @@ describe('Test SearchedData Component', () => {
         <p>hello world</p>
       </SearchedData>,
       {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       }
     );
 
@@ -204,7 +218,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData {...MOCK_PROPS} data={[]} totalValue={0} />,
       {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       }
     );
 
@@ -213,7 +227,7 @@ describe('Test SearchedData Component', () => {
 
   it('Component should render highlights', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const searchedDataContainer = getByTestId(container, 'search-container');

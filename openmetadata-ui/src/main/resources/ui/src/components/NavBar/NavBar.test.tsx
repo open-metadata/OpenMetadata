@@ -70,10 +70,12 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
   hasNotificationPermission: jest.fn(),
   shouldRequestPermission: jest.fn(),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
+  getNameFromFQN: jest.fn().mockImplementation((value) => value),
+}));
+jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
-  getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -161,7 +163,6 @@ jest.mock('../../utils/BrandData/BrandClassBase', () => ({
   default: {
     getBrandName: jest.fn().mockReturnValue('OpenMetadata'),
     getMonogram: jest.fn().mockReturnValue({ src: 'monogram.svg' }),
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
   },
 }));
 

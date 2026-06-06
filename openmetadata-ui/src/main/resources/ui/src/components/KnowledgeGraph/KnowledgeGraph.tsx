@@ -15,7 +15,6 @@ import {
   EdgeData as G6EdgeData,
   ExtensionCategory,
   Graph,
-  IElementEvent,
   NodeData as G6NodeData,
   NodePortStyleProps,
   register,
@@ -46,7 +45,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import type { Selection } from 'react-aria-components';
+import type { Key, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-fullscreen.svg';
@@ -65,21 +64,16 @@ import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
+import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
+import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import {
-  downloadEntityGraph,
-  EntityGraphExportFormat,
-  getEntityGraphData,
-} from '../../rest/rdfAPI';
-import {
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-} from '../../utils/EntityUtils';
-import {
-  computeRadialPositions,
-  findHighlightPath,
-  MAX_NODE_WIDTH,
-  NODE_HEIGHT,
-  NODE_WIDTH,
+  applyInitialFocus,
+  assignRadialPorts,
+  computeELKPositions,
+  computeELKRadialPositions,
+  getNodeRenderKey,
+  setupGraphEventHandlers,
   transformToG6Format,
 } from '../../utils/KnowledgeGraph.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -88,23 +82,33 @@ import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
-import ExportGraphPanel, {
-  ExportFormat,
-} from '../OntologyExplorer/ExportGraphPanel';
+
+import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
+import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import CustomNode from './GraphElements/CustomNode';
 import {
+  ENTITY_UUID_REGEX,
+  EXPORT_FORMAT_MAP,
+  FIT_SCALE_FACTOR,
+  MAX_NODE_WIDTH,
+  NODE_HEIGHT,
+  PANEL_WIDTH,
+  ZOOM_DURATION_MS,
+  ZOOM_EASING,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
+} from './KnowledgeGraph.constants';
+import {
+  EdgeTooltipState,
   GraphData,
   GraphNode,
+  KnowledgeGraphLayout,
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
 
 register(ExtensionCategory.NODE, 'react-node', AntVReactNode);
-
-const ENTITY_UUID_REGEX = /\/([a-f0-9-]{36})$/;
-
-export type KnowledgeGraphLayout = 'dagre' | 'radial';
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
@@ -116,11 +120,15 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Graph | null>(null);
   const selectedNodeIdRef = useRef<string | null>(null);
+  const pendingHighlightRef = useRef<string | null>(null);
+
   const [loading, setLoading] = useState(true);
+  const [graphReady, setGraphReady] = useState(false);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [selectedDepth, setSelectedDepth] = useState(depth);
   const [layout, setLayout] = useState<KnowledgeGraphLayout>('dagre');
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltipState | null>(null);
   const [selectedEntityTypes, setSelectedEntityTypes] = useState<string[]>([]);
   const [selectedRelationshipTypes, setSelectedRelationshipTypes] = useState<
     string[]
@@ -168,7 +176,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     if (!entity?.id) {
       return;
     }
-
     setLoading(true);
     try {
       const data = await getEntityGraphData({
@@ -186,52 +193,48 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     entity?.id,
     entityType,
     selectedDepth,
-    t,
     selectedEntityTypes,
     selectedRelationshipTypes,
+    t,
   ]);
 
   const renderNode = useCallback(
-    (data: G6NodeData) => <CustomNode nodeData={data} />,
+    (data: G6NodeData) => (
+      <CustomNode nodeData={data} nodeRenderKey={getNodeRenderKey(data)} />
+    ),
     []
   );
 
-  const handleFit = () => {
-    if (networkRef.current) {
-      void networkRef.current.fitView().then(() => {
-        const currentZoom = networkRef.current?.getZoom() ?? 1;
-
-        // Since we have a floating toolbar inside the container
-        // zoom out a bit more and translate down to ensure the whole graph is visible
-        // and not obscured by the toolbar
-        networkRef.current?.zoomTo(currentZoom * 0.9);
-      });
+  const handleZoom = useCallback((factor: number) => {
+    if (!networkRef.current) {
+      return;
     }
-  };
+    const currentZoom = networkRef.current.getZoom();
+    void networkRef.current.zoomTo(currentZoom * factor, {
+      duration: ZOOM_DURATION_MS,
+      easing: ZOOM_EASING,
+    });
+  }, []);
 
-  const handleDepthChange = (value: number | number[]) => {
-    setSelectedDepth(isArray(value) ? value[0] : value);
-  };
+  const handleZoomIn = useCallback(
+    () => handleZoom(ZOOM_IN_FACTOR),
+    [handleZoom]
+  );
 
-  const handleZoomIn = () => {
-    if (networkRef.current) {
-      const currentZoom = networkRef.current.getZoom();
-      void networkRef.current.zoomTo(currentZoom * 1.2, {
-        duration: 300,
-        easing: 'easeCubic',
-      });
+  const handleZoomOut = useCallback(
+    () => handleZoom(ZOOM_OUT_FACTOR),
+    [handleZoom]
+  );
+
+  const handleFit = useCallback(() => {
+    if (!networkRef.current) {
+      return;
     }
-  };
-
-  const handleZoomOut = () => {
-    if (networkRef.current) {
-      const currentZoom = networkRef.current.getZoom();
-      void networkRef.current.zoomTo(currentZoom * 0.8, {
-        duration: 300,
-        easing: 'easeCubic',
-      });
-    }
-  };
+    void networkRef.current.fitView().then(() => {
+      const currentZoom = networkRef.current?.getZoom() ?? 1;
+      networkRef.current?.zoomTo(currentZoom * FIT_SCALE_FACTOR);
+    });
+  }, []);
 
   const handleFullscreen = useCallback(() => {
     navigate({
@@ -259,352 +262,352 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
   }, [t]);
 
-  const getExportHandler = (format: ExportFormat) => async () => {
-    if (!entity?.id || !entityType) {
-      showErrorToast(
-        t('label.no-entity-selected', { entity: t('label.asset') })
-      );
+  const handleExport = useCallback(
+    async (format: EntityGraphExportFormat) => {
+      if (!entity?.id || !entityType) {
+        showErrorToast(
+          t('label.no-entity-selected', { entity: t('label.asset') })
+        );
 
-      return;
+        return;
+      }
+      try {
+        await downloadEntityGraph({
+          entityId: entity.id,
+          entityType,
+          entityName:
+            entity.fullyQualifiedName ?? entity.name ?? 'knowledge-graph',
+          depth: selectedDepth,
+          entityTypes: selectedEntityTypes.length
+            ? selectedEntityTypes
+            : undefined,
+          relationshipTypes: selectedRelationshipTypes.length
+            ? selectedRelationshipTypes
+            : undefined,
+          format,
+        });
+      } catch {
+        showErrorToast(t('server.unexpected-error'));
+      }
+    },
+    [
+      entity?.id,
+      entity?.fullyQualifiedName,
+      entity?.name,
+      entityType,
+      selectedDepth,
+      selectedEntityTypes,
+      selectedRelationshipTypes,
+      t,
+    ]
+  );
+
+  const handleExportJsonLd = useCallback(
+    () =>
+      handleExport(
+        EXPORT_FORMAT_MAP[ExportFormat.JSONLD] as EntityGraphExportFormat
+      ),
+    [handleExport]
+  );
+
+  const handleExportTurtle = useCallback(
+    () =>
+      handleExport(
+        EXPORT_FORMAT_MAP[ExportFormat.TURTLE] as EntityGraphExportFormat
+      ),
+    [handleExport]
+  );
+
+  const handleEntityDropdownChange = useCallback((open: boolean) => {
+    setEntityDropdownOpen(open);
+    if (!open) {
+      setEntityFilterText('');
     }
+  }, []);
 
-    const apiFormatMap: Partial<Record<ExportFormat, EntityGraphExportFormat>> =
-      {
-        [ExportFormat.JSONLD]: 'jsonld',
-        [ExportFormat.TURTLE]: 'turtle',
-      };
-    const apiFormat = apiFormatMap[format];
-
-    if (!apiFormat) {
-      showErrorToast(t('server.unexpected-error'));
-
-      return;
+  const handleRelationshipDropdownChange = useCallback((open: boolean) => {
+    setRelationshipDropdownOpen(open);
+    if (!open) {
+      setRelationshipFilterText('');
     }
+  }, []);
 
-    try {
-      await downloadEntityGraph({
-        entityId: entity.id,
-        entityType,
-        entityName:
-          entity.fullyQualifiedName ?? entity.name ?? 'knowledge-graph',
-        depth: selectedDepth,
-        entityTypes: selectedEntityTypes.length
-          ? selectedEntityTypes
-          : undefined,
-        relationshipTypes: selectedRelationshipTypes.length
-          ? selectedRelationshipTypes
-          : undefined,
-        format: apiFormat,
-      });
-    } catch {
-      showErrorToast(t('server.unexpected-error'));
+  const handleLayoutChange = useCallback((key: Key) => {
+    setLayout(key as KnowledgeGraphLayout);
+  }, []);
+
+  const handleSlideoutClose = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      setSelectedNode(null);
     }
-  };
+  }, []);
 
-  // The main effect that initializes the graph after data is loaded and whenever
+  const handleEntityFilterChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEntityFilterText(e.target.value);
+    },
+    []
+  );
+
+  const handleRelationshipFilterChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setRelationshipFilterText(e.target.value);
+    },
+    []
+  );
+
+  const stopKeydownPropagation = useCallback(
+    (e: React.KeyboardEvent) => e.stopPropagation(),
+    []
+  );
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    void fetchGraphData();
+  }, [fetchGraphData]);
+
+  const handleDepthChange = useCallback((value: number | number[]) => {
+    setSelectedDepth(isArray(value) ? value[0] : value);
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current || !graphData || loading) {
       return;
     }
 
-    const g6Data = transformToG6Format(graphData);
-    const width = containerRef.current.offsetWidth || 800;
-    const height = containerRef.current.offsetHeight || 600;
+    let cancelled = false;
+    let graph: Graph | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let removeWheelListener: (() => void) | null = null;
 
-    // Set max edge length based on number of edges to help keep the graph flexible with larger datasets
-    // The base length of 300 works well for small graphs,
-    // while the scaling factor of 200 keeps larger graphs from becoming too cramped.
-    // These values can be adjusted based on testing with typical graph sizes in your application.
-    // The square root scaling provides diminishing returns as the graph grows,
-    // which helps prevent excessively long edges in very large graphs while still allowing for more space as needed.
-    const maxEdgeLen = Math.max(
-      300,
-      Math.sqrt(g6Data.nodes?.length ?? 0) * 200
-    );
+    const initGraph = async () => {
+      if (!containerRef.current) {
+        return;
+      }
 
-    const dagreNodesep = NODE_HEIGHT + 48;
-    const dagreRanksep = NODE_WIDTH + maxEdgeLen;
+      const g6Data = transformToG6Format(graphData);
+      const width = containerRef.current.offsetWidth || 800;
+      const height = containerRef.current.offsetHeight || 600;
 
-    const focusNodeId = entity?.id
-      ? (g6Data.nodes ?? []).find(
-          (n) => n.id === entity.id || n.id.endsWith(entity.id)
-        )?.id ?? entity.id
-      : '';
+      const focusNodeId = entity?.id
+        ? (g6Data.nodes ?? []).find(
+            // Server may prefix IDs (e.g. "table::<uuid>"); suffix-match the raw UUID to cover both forms.
+            (n) => n.id === entity.id || n.id.endsWith(entity.id)
+          )?.id ?? entity.id
+        : '';
 
-    // Focus node keeps fixed dimensions regardless of content
-    if (focusNodeId) {
-      g6Data.nodes = (g6Data.nodes ?? []).map((node) =>
-        node.id === focusNodeId
-          ? {
-              ...node,
-              style: {
-                ...node.style,
-                size: [MAX_NODE_WIDTH, NODE_HEIGHT] as [number, number],
-              },
-            }
-          : node
-      );
-    }
+      if (focusNodeId) {
+        g6Data.nodes = (g6Data.nodes ?? []).map((node) =>
+          node.id === focusNodeId
+            ? {
+                ...node,
+                style: {
+                  ...node.style,
+                  size: [MAX_NODE_WIDTH, NODE_HEIGHT] as [number, number],
+                },
+              }
+            : node
+        );
+      }
 
-    if (layout === 'radial' && entity?.id) {
-      const positions = computeRadialPositions(
-        g6Data.nodes ?? [],
-        g6Data.edges ?? [],
-        focusNodeId,
-        width / 2,
-        height / 2
-      );
-      g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
-        const pos = positions.get(node.id);
-
-        return pos
-          ? { ...node, style: { ...node.style, x: pos.x, y: pos.y } }
-          : node;
-      });
-
-      // Apply a uniform curveOffset to all radial edges. Because G6's offset
-      // is perpendicular to the travel direction, two edges that connect the
-      // same pair of nodes in opposite directions automatically curve to
-      // opposite sides with the same sign — keeping bidirectional arcs
-      // separated without any per-edge sign logic.
-      g6Data.edges = (g6Data.edges ?? []).map((edge) => ({
-        ...edge,
-        style: { ...edge.style, curveOffset: 50 },
-      }));
-    }
-
-    const dagrePorts: NodePortStyleProps[] = [
-      { key: 'left', placement: 'left', linkToCenter: false },
-      { key: 'right', placement: 'right', linkToCenter: false },
-    ];
-
-    const radialLeftPort = {
-      key: 'left',
-      placement: [-0.04, 0.5] as [number, number],
-      r: 6,
-      fill: WHITE_COLOR,
-      stroke: LITE_GRAY_COLOR,
-      lineWidth: 1.5,
-    };
-
-    const radialRightPort = {
-      key: 'right',
-      placement: [1.04, 0.5] as [number, number],
-      r: 6,
-      fill: WHITE_COLOR,
-      stroke: LITE_GRAY_COLOR,
-      lineWidth: 1.5,
-    };
-
-    if (layout === 'radial') {
-      // Build a position map from the already-updated node styles
-      const posMap = new Map<string, number>();
-      (g6Data.nodes ?? []).forEach((n) => {
-        posMap.set(n.id, (n.style?.x as number) ?? width / 2);
-      });
-
-      g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
-        if (node.id === focusNodeId) {
-          return node;
+      if (layout === 'radial' && entity?.id) {
+        const positions = await computeELKRadialPositions(
+          g6Data.nodes ?? [],
+          g6Data.edges ?? [],
+          focusNodeId,
+          width / 2,
+          height / 2
+        );
+        if (cancelled) {
+          return;
         }
+        g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
+          const pos = positions.get(node.id);
 
-        const myX = posMap.get(node.id) ?? width / 2;
-        let needsLeft = false;
-        let needsRight = false;
-
-        (g6Data.edges ?? []).forEach((edge) => {
-          let otherId: string | null = null;
-          if (edge.source === node.id) {
-            otherId = edge.target;
-          } else if (edge.target === node.id) {
-            otherId = edge.source;
-          }
-          if (otherId !== null) {
-            const otherX = posMap.get(otherId) ?? width / 2;
-            if (otherX < myX) {
-              needsLeft = true;
-            } else {
-              needsRight = true;
-            }
-          }
+          return pos
+            ? { ...node, style: { ...node.style, x: pos.x, y: pos.y } }
+            : node;
         });
+        g6Data.edges = (g6Data.edges ?? []).map((edge) => ({
+          ...edge,
+          style: { ...edge.style, curveOffset: 50 },
+        }));
+      } else if (layout === 'dagre') {
+        const positions = await computeELKPositions(
+          g6Data.nodes ?? [],
+          g6Data.edges ?? [],
+          focusNodeId
+        );
+        if (cancelled) {
+          return;
+        }
+        g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
+          const pos = positions.get(node.id);
 
-        const ports = [
-          ...(needsLeft ? [radialLeftPort] : []),
-          ...(needsRight ? [radialRightPort] : []),
-        ];
+          return pos
+            ? { ...node, style: { ...node.style, x: pos.x, y: pos.y } }
+            : node;
+        });
+      }
 
-        return { ...node, style: { ...node.style, ports } };
-      });
-    } else {
-      g6Data.nodes = (g6Data.nodes ?? []).map((node) => ({
-        ...node,
-        style: { ...node.style, ports: dagrePorts },
-      }));
-    }
+      const dagrePorts: NodePortStyleProps[] = [
+        { key: 'left', placement: 'left', linkToCenter: false },
+        { key: 'right', placement: 'right', linkToCenter: false },
+      ];
 
-    const graph = new Graph({
-      container: containerRef.current,
-      width,
-      height,
-      data: g6Data,
-      layout:
-        layout === 'dagre'
-          ? {
-              type: 'dagre',
-              rankdir: 'RL',
-              nodesep: dagreNodesep,
-              ranksep: dagreRanksep,
-              edgesep: 150,
-              radial: false,
-            }
-          : { type: 'preset' },
-      behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
-      node: {
-        type: 'react-node',
-        style: {
-          component: renderNode,
-        },
-      },
-      edge: {
-        type: (datum: G6EdgeData) =>
-          String(
-            datum.type ??
-              (layout === 'radial' ? 'quadratic' : 'cubic-horizontal')
-          ),
-        style: {
-          stroke: '#d9d9d9',
-          lineWidth: 1.5,
-          endArrow: true,
-          labelBackgroundPadding: [3, 6],
-        },
-        state: {
-          selected: {
-            stroke: brandColors?.primaryColor,
-            lineWidth: 1.5,
-            haloOpacity: 0,
+      const radialLeftPort = {
+        key: 'left',
+        placement: [-0.04, 0.5] as [number, number],
+        r: 6,
+        fill: WHITE_COLOR,
+        stroke: LITE_GRAY_COLOR,
+        lineWidth: 1.5,
+      };
+
+      const radialRightPort = {
+        key: 'right',
+        placement: [1.04, 0.5] as [number, number],
+        r: 6,
+        fill: WHITE_COLOR,
+        stroke: LITE_GRAY_COLOR,
+        lineWidth: 1.5,
+      };
+
+      if (layout === 'radial') {
+        g6Data.nodes = assignRadialPorts(
+          g6Data.nodes ?? [],
+          g6Data.edges ?? [],
+          focusNodeId,
+          width / 2,
+          radialLeftPort,
+          radialRightPort
+        );
+      } else {
+        g6Data.nodes = (g6Data.nodes ?? []).map((node) => ({
+          ...node,
+          style: { ...node.style, ports: dagrePorts },
+        }));
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      graph = new Graph({
+        container: containerRef.current,
+        width,
+        height,
+        animation: false,
+        data: g6Data,
+        layout: { type: 'preset' },
+        behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
+        node: {
+          type: 'react-node',
+          style: {
+            component: renderNode,
           },
         },
-      },
-    });
-
-    void graph.render().then(() => {
-      if (entity?.id) {
-        void graph.fitView();
-        void graph.focusElement(focusNodeId);
-        graph.updateNodeData(
-          (g6Data.nodes ?? []).map((n) => ({
-            id: n.id,
-            data: { ...n.data, highlighted: n.id === focusNodeId },
-          }))
-        );
-        void graph.draw();
-      }
-    });
-
-    const applyPathHighlight = (nodeId: string) => {
-      const { nodeIds: pathNodes, edgeIds: pathEdges } = findHighlightPath(
-        focusNodeId,
-        nodeId,
-        g6Data.nodes ?? [],
-        g6Data.edges ?? []
-      );
-      graph.updateNodeData(
-        (g6Data.nodes ?? []).map((n) => ({
-          id: n.id,
-          data: { ...n.data, highlighted: pathNodes.has(n.id) },
-        }))
-      );
-      void graph.draw();
-      (g6Data.edges ?? []).forEach((e) => {
-        const edgeId = String(e.id);
-        void graph.setElementState(
-          edgeId,
-          pathEdges.has(edgeId) ? 'selected' : []
-        );
+        edge: {
+          type: (datum: G6EdgeData) =>
+            String(
+              datum.type ??
+                (layout === 'radial' ? 'quadratic' : 'cubic-horizontal')
+            ),
+          style: {
+            endArrow: true,
+            labelBackgroundPadding: [3, 6],
+          },
+        },
       });
-    };
 
-    const clearAllHighlights = () => {
-      graph.updateNodeData(
-        (g6Data.nodes ?? []).map((n) => ({
-          id: n.id,
-          data: { ...n.data, highlighted: false },
-        }))
-      );
-      void graph.draw();
-      (g6Data.edges ?? []).forEach(
-        (e) => void graph.setElementState(String(e.id), [])
-      );
-    };
+      networkRef.current = graph;
 
-    graph.on('node:click', (evt: IElementEvent) => {
-      const nodeId = evt.target.id;
-      if (nodeId) {
-        const node = graphData.nodes.find((n) => n.id === nodeId);
-        setSelectedNode(node || null);
-        selectedNodeIdRef.current = nodeId;
-        applyPathHighlight(nodeId);
-      }
-    });
+      void graph.render().then(async () => {
+        if (cancelled) {
+          return;
+        }
+        if (graph) {
+          await applyInitialFocus(graph, focusNodeId);
+        }
+        if (!cancelled) {
+          setGraphReady(true);
+        }
+      });
 
-    graph.on('node:dblclick', (evt: IElementEvent) => {
-      const nodeId = evt.target.id;
-      if (nodeId) {
-        const node = graphData.nodes.find((n) => n.id === nodeId);
-        if (node?.type && node?.fullyQualifiedName) {
-          const path = getEntityLinkFromType(
-            node.fullyQualifiedName,
-            node.type as EntityType
+      setupGraphEventHandlers({
+        graph,
+        g6Nodes: g6Data.nodes ?? [],
+        g6Edges: g6Data.edges ?? [],
+        focusNodeId,
+        graphDataNodes: graphData.nodes,
+        brandColors,
+        pendingHighlightRef,
+        selectedNodeIdRef,
+        setSelectedNode,
+        setEdgeTooltip,
+        canvasRef: containerRef,
+      });
+
+      resizeObserver = new ResizeObserver(() => {
+        if (containerRef.current && networkRef.current) {
+          networkRef.current.resize(
+            containerRef.current.offsetWidth,
+            containerRef.current.offsetHeight
           );
-
-          window.open(path, '_blank', 'noopener,noreferrer');
         }
-      }
-    });
+      });
+      resizeObserver.observe(containerRef.current);
 
-    graph.on('node:pointerover', (evt: IElementEvent) => {
-      const nodeId = evt.target.id;
-      if (nodeId) {
-        applyPathHighlight(nodeId);
-      }
-    });
-
-    graph.on('node:pointerleave', (evt: IElementEvent) => {
-      const nodeId = evt.target.id;
-      if (nodeId) {
-        if (selectedNodeIdRef.current) {
-          applyPathHighlight(selectedNodeIdRef.current);
-        } else {
-          clearAllHighlights();
+      // Wheel events on react-node DOM overlays don't reach G6's <canvas> element
+      // (overlay divs and the canvas are siblings, not parent-child). Intercept at
+      // the container level and re-emit into G6's own event system so zoom-canvas
+      // handles zoom ratio, origin, and clamping exactly as for native canvas events.
+      const wheelContainer = containerRef.current;
+      const handleWheelOnOverlay = (e: WheelEvent) => {
+        if (!graph) {
+          return;
         }
-      }
-    });
+        const nativeCanvas =
+          wheelContainer.querySelector('canvas') ??
+          wheelContainer.querySelector('svg');
+        if (!nativeCanvas) {
+          return;
+        }
+        if (
+          nativeCanvas === e.target ||
+          nativeCanvas.contains(e.target as Node)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        const rect = wheelContainer.getBoundingClientRect();
+        graph.emit('wheel', {
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          viewport: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+        });
+      };
+      wheelContainer.addEventListener('wheel', handleWheelOnOverlay, {
+        passive: false,
+      });
+      removeWheelListener = () =>
+        wheelContainer.removeEventListener('wheel', handleWheelOnOverlay);
+    };
 
-    graph.on('canvas:click', () => {
-      setSelectedNode(null);
-      selectedNodeIdRef.current = null;
-      clearAllHighlights();
-    });
-
-    networkRef.current = graph;
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (containerRef.current && networkRef.current) {
-        networkRef.current.resize(
-          containerRef.current.offsetWidth,
-          containerRef.current.offsetHeight
-        );
-      }
-    });
-    resizeObserver.observe(containerRef.current);
+    void initGraph();
 
     return () => {
+      cancelled = true;
+      setGraphReady(false);
       if (networkRef.current === graph) {
         networkRef.current = null;
       }
-      graph.destroy();
-      resizeObserver.disconnect();
+      removeWheelListener?.();
+      graph?.destroy();
+      resizeObserver?.disconnect();
     };
   }, [graphData, loading, layout, entity?.id, isFullscreen]);
 
@@ -695,8 +698,23 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <div
         className="knowledge-graph-canvas"
         data-testid="knowledge-graph-canvas"
-        ref={containerRef}
-      />
+        ref={containerRef}>
+        {!graphReady && (
+          <div
+            className="knowledge-graph-loading"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 10,
+            }}>
+            <div className="tw:flex tw:items-center tw:justify-center">
+              <Loader />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div
         aria-hidden="true"
@@ -715,18 +733,39 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         ))}
       </div>
 
+      {edgeTooltip && (
+        <div
+          aria-hidden="true"
+          className="kg-edge-tooltip"
+          data-testid="edge-tooltip"
+          style={{
+            left: edgeTooltip.x + 12,
+            position: 'fixed',
+            top: edgeTooltip.y + 12,
+          }}>
+          <div className="kg-edge-tooltip__direction">
+            {`${edgeTooltip.sourceLabel} ${t('label.arrow-symbol')} ${
+              edgeTooltip.targetLabel
+            }`}
+          </div>
+          {edgeTooltip.labels.map((label) => (
+            <div
+              className="kg-edge-tooltip__label"
+              key={`${edgeTooltip.edgeId}-${label}`}>
+              {label}
+            </div>
+          ))}
+        </div>
+      )}
+
       {selectedNode?.fullyQualifiedName && (
         <SlideoutMenu
           isDismissable
           isOpen
           className="tw:z-1100"
           dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
-          width={576}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) {
-              setSelectedNode(null);
-            }
-          }}>
+          width={PANEL_WIDTH}
+          onOpenChange={handleSlideoutClose}>
           {({ close }) => (
             <EntitySummaryPanel
               isSideDrawer
@@ -742,7 +781,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 } as SearchSourceDetails,
               }}
               handleClosePanel={() => {
-                setSelectedNode(null);
+                handleClosePanel();
                 close();
               }}
             />
@@ -819,9 +858,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   className="tw:w-auto"
                   data-testid="layout-tabs"
                   selectedKey={layout}
-                  onSelectionChange={(key) =>
-                    setLayout(key as KnowledgeGraphLayout)
-                  }>
+                  onSelectionChange={handleLayoutChange}>
                   <Tabs.List
                     items={[
                       {
@@ -842,12 +879,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 <Divider orientation="vertical" />
                 <Dropdown.Root
                   isOpen={entityDropdownOpen}
-                  onOpenChange={(open) => {
-                    setEntityDropdownOpen(open);
-                    if (!open) {
-                      setEntityFilterText('');
-                    }
-                  }}>
+                  onOpenChange={handleEntityDropdownChange}>
                   <Button
                     color="secondary"
                     isDisabled={entityTypeOptions.length === 0}
@@ -873,8 +905,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                         placeholder={t('label.search')}
                         type="text"
                         value={entityFilterText}
-                        onChange={(e) => setEntityFilterText(e.target.value)}
-                        onKeyDown={(e) => e.stopPropagation()}
+                        onChange={handleEntityFilterChange}
+                        onKeyDown={stopKeydownPropagation}
                       />
                     </div>
                     <Dropdown.Menu
@@ -897,12 +929,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 <Divider orientation="vertical" />
                 <Dropdown.Root
                   isOpen={relationshipDropdownOpen}
-                  onOpenChange={(open) => {
-                    setRelationshipDropdownOpen(open);
-                    if (!open) {
-                      setRelationshipFilterText('');
-                    }
-                  }}>
+                  onOpenChange={handleRelationshipDropdownChange}>
                   <Button
                     color="secondary"
                     isDisabled={relationshipTypeOptions.length === 0}
@@ -928,10 +955,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                         placeholder={t('label.search')}
                         type="text"
                         value={relationshipFilterText}
-                        onChange={(e) =>
-                          setRelationshipFilterText(e.target.value)
-                        }
-                        onKeyDown={(e) => e.stopPropagation()}
+                        onChange={handleRelationshipFilterChange}
+                        onKeyDown={stopKeydownPropagation}
                       />
                     </div>
                     <Dropdown.Menu
@@ -982,9 +1007,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     ExportFormat.JSONLD,
                     ExportFormat.TURTLE,
                   ]}
-                  onExportJsonLd={getExportHandler(ExportFormat.JSONLD)}
+                  onExportJsonLd={handleExportJsonLd}
                   onExportPng={handleExportPng}
-                  onExportTurtle={getExportHandler(ExportFormat.TURTLE)}
+                  onExportTurtle={handleExportTurtle}
                 />
               </Box>
 
@@ -1042,7 +1067,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               <TooltipTrigger
                 className="kg-control-btn"
                 data-testid="refresh"
-                onPress={() => void fetchGraphData()}>
+                onPress={handleRefresh}>
                 <RefreshIcon />
               </TooltipTrigger>
             </Tooltip>

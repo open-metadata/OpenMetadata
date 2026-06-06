@@ -105,7 +105,10 @@ const EntityHealthStatusPieChartWidget = ({
   }, [chartFilter]);
 
   return (
-    <Card className={className} loading={isLoading}>
+    <Card
+      className={className}
+      data-testid="entity-health-pie-chart-widget"
+      loading={isLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background health-check-icon icon-container">

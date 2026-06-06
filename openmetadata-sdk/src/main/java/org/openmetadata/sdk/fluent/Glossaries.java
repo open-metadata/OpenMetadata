@@ -193,6 +193,11 @@ public final class Glossaries {
     public GlossaryDeleter delete() {
       return new GlossaryDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Glossary> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.glossaries(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

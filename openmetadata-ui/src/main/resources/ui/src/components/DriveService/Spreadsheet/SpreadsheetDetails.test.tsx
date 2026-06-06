@@ -22,7 +22,11 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -34,7 +38,11 @@ jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+jest.mock('../../../utils/FeedUtils', () => ({
+  getFeedCounts: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  fetchEntityActivityCountInto: jest.fn(),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/SpreadsheetClassBase', () => ({
@@ -121,6 +129,9 @@ const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
 const mockGetFeedCounts = getFeedCounts as jest.Mock;
+const mockFetchEntityTaskCountsInto = fetchEntityTaskCountsInto as jest.Mock;
+const mockFetchEntityActivityCountInto =
+  fetchEntityActivityCountInto as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockSpreadsheetDetails: Spreadsheet = {
@@ -305,11 +316,15 @@ describe('SpreadsheetDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderSpreadsheetDetails();
 
     await waitFor(() => {
-      expect(mockGetFeedCounts).toHaveBeenCalledWith(
+      expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+        'test-service.test-spreadsheet',
+        expect.any(Function)
+      );
+      expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
         EntityType.SPREADSHEET,
         'test-service.test-spreadsheet',
         expect.any(Function)

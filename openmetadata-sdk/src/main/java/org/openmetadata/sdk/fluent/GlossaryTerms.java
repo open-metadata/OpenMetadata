@@ -227,6 +227,11 @@ public final class GlossaryTerms {
     public GlossaryTermDeleter delete() {
       return new GlossaryTermDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<GlossaryTerm> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.glossaryTerms(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

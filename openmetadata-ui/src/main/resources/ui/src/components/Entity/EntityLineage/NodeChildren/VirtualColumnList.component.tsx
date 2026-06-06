@@ -13,7 +13,7 @@
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@untitledui/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/constants';
+import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import EntityLink from '../../../../utils/EntityLink';

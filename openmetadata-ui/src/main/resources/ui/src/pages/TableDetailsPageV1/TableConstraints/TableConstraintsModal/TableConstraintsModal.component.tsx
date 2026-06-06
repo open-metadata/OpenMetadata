@@ -37,7 +37,7 @@ import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+} from '../../../../utils/StringUtils';
 import {
   createTableConstraintObject,
   getColumnOptionsFromTableColumn,
