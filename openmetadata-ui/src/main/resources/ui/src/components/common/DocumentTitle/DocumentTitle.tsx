@@ -10,22 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC, useMemo } from 'react';
+import { FC } from 'react';
 import { Helmet } from 'react-helmet-async';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
+import { useTranslation } from 'react-i18next';
 
 interface DocumentTitleProps {
   title: string;
 }
 
 const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const pageTitle = useMemo(() => {
-    return brandClassBase.getPageTitle();
-  }, []);
+  const { t } = useTranslation();
 
   return (
     <Helmet>
-      <title>{`${title} | ${pageTitle}`}</title>
+      <title>{`${title} | ${t('label.brand-name')}`}</title>
     </Helmet>
   );
 };

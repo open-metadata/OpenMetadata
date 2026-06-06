@@ -73,7 +73,7 @@ interface AutocompleteTriggerProps extends AriaGroupProps {
   size: 'sm' | 'md';
   isDisabled?: boolean;
   placeholder?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
@@ -88,7 +88,7 @@ export interface AutocompleteProps
   items?: SelectItemType[];
   popoverClassName?: string;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
   onItemCleared?: (key: Key) => void;
@@ -267,7 +267,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = SearchLg,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -466,9 +466,9 @@ export const AutocompleteBase = ({
 
               <div className="tw:relative tw:w-full" ref={triggerRef}>
                 <AutocompleteTrigger
+                  icon={props.icon}
                   isInvalid={isInvalid}
                   placeholder={placeholder}
-                  placeholderIcon={props.placeholderIcon}
                   size="sm"
                   onFocus={(event) => {
                     onResize();

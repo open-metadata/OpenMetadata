@@ -791,8 +791,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Authentication is not set to basic. User creation is not supported.");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password user creation.",
+            authProvider);
         return 1;
       }
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -1007,8 +1009,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Auth Provider is Not Basic. Cannot apply Password");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password reset.", authProvider);
         return 1;
       }
 
