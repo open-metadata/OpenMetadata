@@ -81,15 +81,12 @@ import {
   ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../rest/testAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import {
-  getDataQualityPagePath,
-  getTestSuitePath,
-} from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.less';
@@ -105,7 +102,11 @@ const TestSuiteDetailsPage = () => {
   const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
-    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(
+      observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_SUITES
+      )
+    );
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 
@@ -186,14 +187,16 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(
+        url: observabilityRouterClassBase.getDataQualityPagePath(
           DataQualityPageTabs.TEST_SUITES,
           DataQualitySubTabs.BUNDLE_SUITES
         ),
       },
       {
         name: getEntityName(testSuite),
-        url: getTestSuitePath(testSuite?.fullyQualifiedName ?? ''),
+        url: observabilityRouterClassBase.getTestSuitePath(
+          testSuite?.fullyQualifiedName ?? ''
+        ),
       },
     ];
   }, [testSuite]);
@@ -268,7 +271,7 @@ const TestSuiteDetailsPage = () => {
     try {
       await addTestCasesToLogicalTestSuiteBulk(testSuiteId ?? '', payload);
       setIsTestCaseModalOpen(false);
-      await fetchTestCases();
+      await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -277,13 +280,17 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTS,
+        ],
         include: Include.All,
       });
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(
+          url: observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES,
             DataQualitySubTabs.BUNDLE_SUITES
           ),
@@ -532,10 +539,6 @@ const TestSuiteDetailsPage = () => {
     t,
   ]);
 
-  const selectedTestCases = useMemo(() => {
-    return testCaseResult.map((test) => test.name);
-  }, [testCaseResult]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -606,7 +609,6 @@ const TestSuiteDetailsPage = () => {
                               '[role="dialog"]'
                             ) as HTMLElement) ?? document.body
                           }
-                          selectedTest={selectedTestCases}
                           onCancel={() => setIsTestCaseModalOpen(false)}
                           onSubmit={handleAddTestCaseSubmit}
                         />

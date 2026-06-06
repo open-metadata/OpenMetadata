@@ -40,6 +40,7 @@ import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import presto from '../assets/img/service-icon-presto.png';
 import bigquery from '../assets/img/service-icon-query.png';
+import questdb from '../assets/img/service-icon-questdb.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import saperp from '../assets/img/service-icon-sap-erp.png';
@@ -75,6 +76,7 @@ import qliksense from '../assets/img/service-icon-qlik-sense.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
 import sigma from '../assets/img/service-icon-sigma.png';
+import ssrs from '../assets/img/service-icon-ssrs.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import hex from '../assets/svg/service-icon-hex.svg';
@@ -175,6 +177,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,
 
@@ -201,6 +204,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   microstrategy: microstrategy,
   grafana: grafana,
   hex: hex,
+  ssrs: ssrs,
   customdashboard: dashboarddefault,
 
   // Pipeline services
@@ -251,15 +255,25 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   // Default icons
   defaultservice: defaultservice,
   databasedefault: databasedefault,
+  databaseservice: databasedefault,
   topicdefault: topicdefault,
+  topicservice: topicdefault,
   dashboarddefault: dashboarddefault,
+  dashboardservice: dashboarddefault,
   pipelinedefault: pipelinedefault,
+  pipelineservice: pipelinedefault,
   mlmodeldefault: mlmodeldefault,
+  mlmodelservice: mlmodeldefault,
   storagedefault: storagedefault,
+  storageservice: storagedefault,
   drivedefault: drivedefault,
+  messagingservice: topicdefault,
+  driveservice: drivedefault,
   customdrivedefault: customdrivedefault,
   searchdefault: searchdefault,
+  searchservice: searchdefault,
   securitydefault: securitydefault,
+  securityservice: securitydefault,
   restservice: restservice,
   logo: logo,
   synapse: synapse,

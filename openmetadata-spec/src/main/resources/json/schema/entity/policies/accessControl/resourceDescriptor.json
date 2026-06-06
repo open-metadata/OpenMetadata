@@ -67,7 +67,10 @@
         "Impersonate",
         "AuditLogs",
         "ViewTestDefinitionLibrary",
-        "EditTestDefinitionLibrary"
+        "EditTestDefinitionLibrary",
+        "ResolveTask",
+        "CloseTask",
+        "ReassignTask"
       ]
     }
   },

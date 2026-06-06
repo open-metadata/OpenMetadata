@@ -199,6 +199,24 @@ const OntologyExplorerPage = withSuspenseFallback(
   )
 );
 
+const WorkflowsListPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowsPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
+      )
+  )
+);
+
+const WorkflowBuilderPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
+      )
+  )
+);
+
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -291,6 +309,10 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const ContextCenterRouter = withSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
+);
+
 const MetricListPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
@@ -359,6 +381,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<OntologyExplorerPage />}
         path={ROUTES.ONTOLOGY_EXPLORER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
       />
       <Route
         element={
@@ -802,6 +840,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<Navigate to={ROUTES.MY_DATA} />}
         path={ROUTES.FORGOT_PASSWORD}
+      />
+      <Route
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

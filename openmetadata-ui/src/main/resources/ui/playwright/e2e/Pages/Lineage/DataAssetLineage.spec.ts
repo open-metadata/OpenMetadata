@@ -140,8 +140,8 @@ test.describe('Data asset lineage', () => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      // 7 minute timeout
-      test.setTimeout(7 * 60 * 1000);
+      // 5 minute timeout
+      test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
         const { apiContext } = await getApiContext(page);
@@ -291,6 +291,7 @@ test.describe('Column Level Lineage', () => {
 
     entityKeys.forEach((targetKey) => {
       test(`Column lineage for ${key} -> ${targetKey}`, async ({ page }) => {
+        test.slow();
         const targetEntity = entities.get(targetKey) as EntityClassUnion;
         const { apiContext, afterAction } = await getApiContext(page);
 
@@ -443,6 +444,52 @@ test.describe('Column Level Lineage', () => {
     } finally {
       await table.delete(apiContext);
       await afterAction();
+    }
+  });
+});
+
+test.describe('Temp lineage table nodes', () => {
+  const RAW_ORDER_FQN = 'sample_data.ecommerce_db.shopify.raw_order';
+  const TEMP_TABLE_NAMES = ['tmp_order_staging', 'tmp_order_enriched'];
+
+  test.beforeAll('verify sample data entity exists', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    try {
+      const response = await apiContext.get(
+        `/api/v1/tables/name/${encodeURIComponent(RAW_ORDER_FQN)}`
+      );
+
+      if (!response.ok()) {
+        throw new Error(
+          `Sample entity '${RAW_ORDER_FQN}' not found. Ensure sample data is loaded before running temp lineage tests.`
+        );
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('should render temp lineage table nodes on canvas', async ({ page }) => {
+    await page.goto(`/table/${encodeURIComponent(RAW_ORDER_FQN)}`);
+    await waitForAllLoadersToDisappear(page);
+
+    await visitLineageTab(page);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('fit-screen').click();
+    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+
+    for (const tempTableName of TEMP_TABLE_NAMES) {
+      await expect(
+        page.getByTestId(`lineage-node-${tempTableName}`)
+      ).toBeVisible();
     }
   });
 });

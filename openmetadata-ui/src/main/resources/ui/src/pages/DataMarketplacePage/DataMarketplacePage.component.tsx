@@ -127,34 +127,36 @@ const DataMarketplacePage = () => {
   }
 
   return (
-    <div className="tw:mb-8">
-      <div
-        className="marketplace-header-bg"
-        style={
-          { '--marketplace-bg': `url(${marketplaceBg})` } as CSSProperties
-        }>
-        <div className="marketplace-grid-wrapper" dir="ltr">
-          <div className="p-x-box">
-            <MarketplaceGreetingBanner />
-            <MarketplaceSearchBar />
+    <div className="tw:h-full tw:overflow-y-auto">
+      <div className="tw:mb-8">
+        <div
+          className="marketplace-header-bg"
+          style={
+            { '--marketplace-bg': `url(${marketplaceBg})` } as CSSProperties
+          }>
+          <div className="marketplace-grid-wrapper" dir="ltr">
+            <div className="p-x-box">
+              <MarketplaceGreetingBanner />
+              <MarketplaceSearchBar />
+            </div>
           </div>
         </div>
-      </div>
-      <div className="marketplace-grid-wrapper" dir="ltr">
-        <div className="p-x-box">
-          <AnnouncementsWidgetV2 widgetKey="announcements" />
+        <div className="marketplace-grid-wrapper" dir="ltr">
+          <div className="p-x-box">
+            <AnnouncementsWidgetV2 widgetKey="announcements" />
+          </div>
+          <ReactGridLayout
+            className="grid-container p-x-box"
+            cols={TAB_GRID_MAX_COLUMNS}
+            containerPadding={[0, 0]}
+            isDraggable={false}
+            isResizable={false}
+            margin={[16, 30]}
+            rowHeight={156}
+            style={{ marginTop: 8 }}>
+            {widgets}
+          </ReactGridLayout>
         </div>
-        <ReactGridLayout
-          className="grid-container p-x-box"
-          cols={TAB_GRID_MAX_COLUMNS}
-          containerPadding={[0, 0]}
-          isDraggable={false}
-          isResizable={false}
-          margin={[16, 30]}
-          rowHeight={156}
-          style={{ marginTop: 8 }}>
-          {widgets}
-        </ReactGridLayout>
       </div>
     </div>
   );

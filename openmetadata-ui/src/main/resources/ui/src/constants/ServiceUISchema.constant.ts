@@ -33,6 +33,7 @@ export const DEF_UI_SCHEMA = {
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
+  policyAgentConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
@@ -48,6 +49,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  defaultManifest: { 'ui:widget': 'manifestJson' },
   'ui:order': [
     'rootProcessingEngine',
     'name',

@@ -12,6 +12,7 @@
 """
 Test GitHub Reader
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
@@ -28,8 +29,8 @@ class TestLookMLBitBucketReader(TestCase):
     """
 
     creds = BitBucketCredentials(
-        repositoryName="api",
-        repositoryOwner="pmbrull-trial-api",
+        repositoryName="looker-lkml-fixtures",
+        repositoryOwner="mohit-tilala-collate",
         branch="main",
     )
 
@@ -40,7 +41,7 @@ class TestLookMLBitBucketReader(TestCase):
         """
         We can parse the explore file.
 
-        We'll expand and find views from https://bitbucket.org/pmbrull-trial-api/api/src/main
+        We'll expand and find views from https://bitbucket.org/mohit-tilala-collate/looker-lkml-fixtures/src/main
         """
 
         explore_file = "cats.explore.lkml"
@@ -51,9 +52,7 @@ class TestLookMLBitBucketReader(TestCase):
         # Check file contents
         self.assertIn("explore: cats", contents)
 
-        view = self.parser.find_view(
-            view_name=ViewName("cats"), path=Includes(explore_file)
-        )
+        view = self.parser.find_view(view_name=ViewName("cats"), path=Includes(explore_file))
 
         # We can get views that are resolved even if the include does not contain `.lkml`
         self.assertIsNotNone(view)

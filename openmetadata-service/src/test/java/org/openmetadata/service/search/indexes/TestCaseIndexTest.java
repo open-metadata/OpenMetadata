@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -142,6 +144,28 @@ class TestCaseIndexTest {
 
     // Entity-specific
     assertNotNull(result.get("originEntityFQN"));
+  }
+
+  @Test
+  void testRequiredReindexFields_includesTestCaseResultAndIncidentId() {
+    // Regression test for the 1.12.7 reindex bug: testCaseResult and incidentId
+    // are stripped from the storage JSON and only loaded by
+    // TestCaseRepository.setFieldsInBulk when present in the requested field
+    // set. If they are not in getRequiredReindexFields(), the reindexer writes
+    // a doc with no testCaseStatus and the UI/search shows test cases with no
+    // status until a per-case write re-populates them.
+    TestCase tc = new TestCase().withId(UUID.randomUUID()).withName("tc");
+    Set<String> required = new TestCaseIndex(tc).getRequiredReindexFields();
+
+    assertTrue(
+        required.contains(Entity.TEST_CASE_RESULT),
+        "TestCaseIndex.getRequiredReindexFields() must include 'testCaseResult'");
+    assertTrue(
+        required.contains(TestCaseRepository.INCIDENTS_FIELD),
+        "TestCaseIndex.getRequiredReindexFields() must include 'incidentId'");
+    assertTrue(required.contains(TestCaseRepository.TEST_SUITE_FIELD));
+    assertTrue(required.contains(Entity.FIELD_TEST_SUITES));
+    assertTrue(required.contains(TestCaseRepository.TEST_DEFINITION_FIELD));
   }
 
   @Test

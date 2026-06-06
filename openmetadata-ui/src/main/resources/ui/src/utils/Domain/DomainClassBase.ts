@@ -21,6 +21,7 @@ import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/Asset
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -70,7 +71,8 @@ type DomainWidgetKeys =
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.EXPERTS
   | DetailPageWidgetKeys.DOMAIN_TYPE
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class DomainClassBase {
   defaultWidgetHeight: Record<DomainWidgetKeys, number>;
@@ -86,6 +88,7 @@ class DomainClassBase {
       [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -106,7 +109,7 @@ class DomainClassBase {
       key: EntityTabs.DATA_OBSERVABILITY,
       children: createElement(DataQualityDashboard, {
         isGovernanceView: true,
-        className: 'data-quality-governance-tab-wrapper tw:mt-2',
+        className: 'data-quality-governance-tab-wrapper',
         initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
           ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
           : undefined,
@@ -253,6 +256,7 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

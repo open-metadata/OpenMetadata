@@ -32,7 +32,7 @@ class ProfilerSourceInterface(ABC):
 
     @property
     @abstractmethod
-    def interface(self) -> Optional[ProfilerInterface]:
+    def interface(self) -> Optional[ProfilerInterface]:  # noqa: UP045
         """Interface property"""
         raise NotImplementedError
 
@@ -52,6 +52,4 @@ class ProfilerSourceInterface(ABC):
         config: DatabaseServiceProfilerPipeline,
     ) -> ProcessingEngine:
         """Get the processing engine based on the configuration."""
-        return config.processingEngine or ProcessingEngine(
-            root=NativeEngineConfiguration(type=Type.Native)
-        )
+        return config.processingEngine or ProcessingEngine(root=NativeEngineConfiguration(type=Type.Native))

@@ -48,9 +48,13 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 
   // Set up the response promise before navigation
-  const getAlerts = page.waitForResponse(
-    '/api/v1/events/subscriptions?*alertType=Observability*'
-  );
+  const getAlerts = page.waitForResponse((response) => {
+    const url = response.url();
+    return (
+      url.includes('/api/v1/events/subscriptions') &&
+      url.includes('alertType=Observability')
+    );
+  });
 
   // Set up navigation promise before clicking
   const navigationPromise = page.waitForURL('**/observability/alerts');
@@ -58,7 +62,8 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
 
   // Wait for both navigation and API response
-  await Promise.all([navigationPromise, getAlerts]);
+  await navigationPromise;
+  await getAlerts;
 };
 
 export const addExternalDestination = async ({
@@ -215,6 +220,7 @@ export const getObservabilityCreationDetails = ({
   domainDisplayName,
   userName,
   testSuiteFQN,
+  testSuiteName,
 }: {
   tableName1: string;
   tableName2: string;
@@ -224,6 +230,7 @@ export const getObservabilityCreationDetails = ({
   domainDisplayName: string;
   userName: string;
   testSuiteFQN: string;
+  testSuiteName: string;
 }): Array<ObservabilityCreationDetails> => {
   return [
     {
@@ -369,7 +376,9 @@ export const getObservabilityCreationDetails = ({
           inputs: [
             {
               inputSelector: 'test-suite-select',
+              // Options are labeled by test suite name; search by FQN, click by name.
               inputValue: testSuiteFQN,
+              inputValueId: testSuiteName,
               waitForAPI: true,
             },
             {
@@ -561,6 +570,7 @@ export const createCommonObservabilityAlert = async ({
     inputs?: Array<{
       inputSelector: string;
       inputValue: string;
+      inputValueId?: string;
       waitForAPI?: boolean;
     }>;
   }[];
@@ -582,6 +592,13 @@ export const createCommonObservabilityAlert = async ({
     await page.click(`[data-testid="filter-select-${filterNumber}"]`);
     await page.click(
       `.ant-select-dropdown:visible [data-testid="${filter.name}-filter-option"]`
+    );
+
+    // Focus the combobox first. Ant Design Select with mode="multiple" renders the
+    // search input as readonly until focused, which makes page.fill() fail. Click also
+    // opens the dropdown so the search query fires when we fill.
+    await page.click(
+      `[data-testid="${filter.inputSelector}"] [role="combobox"]`
     );
 
     // Search and select filter input value
@@ -639,6 +656,14 @@ export const createCommonObservabilityAlert = async ({
 
     if (action.inputs && action.inputs.length > 0) {
       for (const input of action.inputs) {
+        // Focus the combobox first. Ant Design Select with mode="multiple" renders
+        // the search input as readonly until focused; without the click, page.fill()
+        // (even with force: true) doesn't trigger AsyncSelect's onSearch handler, so
+        // the API call never fires and no options appear in the dropdown.
+        await page.click(
+          `[data-testid="${input.inputSelector}"] [role="combobox"]`
+        );
+
         const getSearchResult = page.waitForResponse(
           '/api/v1/search/query?q=*'
         );
@@ -652,10 +677,13 @@ export const createCommonObservabilityAlert = async ({
         if (input.waitForAPI) {
           await getSearchResult;
         }
-        await page.click(`[title="${input.inputValue}"]:visible`);
+        // Click the option whose title is the rendered label. Use inputValueId
+        // when the displayed label differs from the searched value.
+        const optionTitle = input.inputValueId ?? input.inputValue;
+        await page.click(`[title="${optionTitle}"]:visible`);
 
         await expect(page.getByTestId(input.inputSelector)).toHaveText(
-          input.inputValue
+          optionTitle
         );
 
         await clickOutside(page);

@@ -64,15 +64,18 @@ jobs:
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
 
+  # The openmetadata-service unit tests are pure JVM tests with no database
+  # interaction (no testcontainers, no JDBC). The {mysql, postgresql} matrix used
+  # to run the suite twice with different `-Pmysql` / `-Ppostgresql` profiles, but
+  # those profiles are only defined in openmetadata-sdk/pom.xml and only affect
+  # failsafe (integration) tests that aren't enabled in this workflow. Result:
+  # both matrix jobs ran an identical surefire suite. DB-specific coverage
+  # belongs in `openmetadata-integration-tests`, not here.
   openmetadata-service-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        database: [mysql, postgresql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -100,12 +103,12 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Run openmetadata-service unit tests (${{ matrix.database }})
+      - name: Run openmetadata-service unit tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis,${{ matrix.database }} \
+            -Pstatic-code-analysis \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
@@ -113,7 +116,7 @@ jobs:
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: openmetadata-service-surefire-reports-${{ matrix.database }}
+          name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
 
       - name: Publish Test Report
@@ -123,7 +126,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
-          check_name: "Test Report (${{ matrix.database }})"
+          check_name: "Test Report"
 
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest

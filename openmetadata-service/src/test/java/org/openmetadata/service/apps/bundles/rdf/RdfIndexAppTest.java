@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -655,8 +656,196 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      verify(mockRdfRepository).clearAll();
+      // Four-step recreate flow on TDB2:
+      //  1. clearAll()       — SPARQL CLEAR ALL (logical delete only)
+      //  2. compactStorage() — physically reclaim disk via /$/compact admin
+      //                        endpoint while the dataset is empty; MUST run
+      //                        before reloadOntologies so the ontology graph
+      //                        isn't copied through compaction needlessly.
+      //  3. reloadOntologies() — repopulate ontology/shapes graphs that
+      //                        CLEAR ALL wiped, so post-wipe inference /
+      //                        federated SPARQL queries keep working.
+      //  4. compactStorage() — final compaction at end of successful run to
+      //                        cap journal/free-list growth from the reindex
+      //                        churn itself. Fires on every successful run
+      //                        regardless of branch.
+      // Use InOrder so a future change reordering these calls fails this test.
+      InOrder recreateFlow = inOrder(mockRdfRepository);
+      recreateFlow.verify(mockRdfRepository).clearAll();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
+      recreateFlow.verify(mockRdfRepository).reloadOntologies();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+    }
+
+    @Test
+    @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
+    void testCompactStorageStillFiresOnIncrementalIndex() throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of("table"));
+      jobConfig.setRecreateIndex(false);
+      jobConfig.setUseDistributedIndexing(true);
+      jobConfig.setStatus(EventPublisherJob.Status.STARTED);
+
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+
+      @SuppressWarnings("unchecked")
+      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      @SuppressWarnings("unchecked")
+      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      lenient().when(repository.getDao()).thenReturn(entityDAO);
+      lenient().when(entityDAO.listTotalCount()).thenReturn(0);
+
+      JobExecutionContext context = mock(JobExecutionContext.class);
+      JobDetail jobDetail = mock(JobDetail.class);
+      JobDataMap jobDataMap = new JobDataMap();
+      when(context.getJobDetail()).thenReturn(jobDetail);
+      when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
+      when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+      RdfIndexJob completedJob =
+          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          var ignored =
+              mockConstruction(
+                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
+                      .class,
+                  (mock, mockContext) -> {
+                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
+                        .thenReturn(completedJob);
+                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                  })) {
+        entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
+
+        testApp.execute(context);
+      }
+
+      // Incremental runs do NOT enter clearRdfData() — clearAll and the
+      // pre-reindex compactStorage live behind the recreateIndex=true branch.
+      verify(mockRdfRepository, never()).clearAll();
+      verify(mockRdfRepository, never()).reloadOntologies();
+      // …but the FINAL compactStorage call still fires on every successful
+      // run regardless of branch. Pre-this-PR, the incremental path's
+      // clearAllGlossaryTermRelations + re-add cycle leaked free space on
+      // every weekly run with no compaction ever — the customer's
+      // 50 GB-on-2k-entities case. End-of-run compaction caps growth at
+      // one run's worth of churn even if no recreate ever runs.
+      verify(mockRdfRepository).compactStorage();
+    }
+
+    @Test
+    @DisplayName(
+        "Should call clearAllGlossaryTermRelations when glossaryTerm in entities and recreateIndex=false")
+    void testInitializeJobClearsGlossaryRelationsWhenIncremental() throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of(Entity.GLOSSARY_TERM, "table"));
+      jobConfig.setRecreateIndex(false);
+      jobConfig.setUseDistributedIndexing(true);
+      jobConfig.setStatus(EventPublisherJob.Status.STARTED);
+
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+
+      @SuppressWarnings("unchecked")
+      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      @SuppressWarnings("unchecked")
+      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      lenient().when(repository.getDao()).thenReturn(entityDAO);
+      lenient().when(entityDAO.listTotalCount()).thenReturn(0);
+
+      JobExecutionContext context = mock(JobExecutionContext.class);
+      JobDetail jobDetail = mock(JobDetail.class);
+      JobDataMap jobDataMap = new JobDataMap();
+      when(context.getJobDetail()).thenReturn(jobDetail);
+      when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
+      when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+      RdfIndexJob completedJob =
+          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          var ignored =
+              mockConstruction(
+                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
+                      .class,
+                  (mock, mockContext) -> {
+                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
+                        .thenReturn(completedJob);
+                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                  })) {
+        entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
+
+        testApp.execute(context);
+      }
+
+      // bulkAddGlossaryTermRelations has no per-batch DELETE side, so stale
+      // glossary-term relations would accumulate forever across reindex runs
+      // unless we explicitly clear them first. Verify the indexer wires that
+      // cleanup when recreateIndex=false (the case where clearAll wouldn't run).
+      verify(mockRdfRepository).clearAllGlossaryTermRelations();
+      // clearAll path should NOT run when recreateIndex=false
+      verify(mockRdfRepository, never()).clearAll();
+    }
+
+    @Test
+    @DisplayName("Should not call clearAllGlossaryTermRelations when glossaryTerm not in entities")
+    void testInitializeJobSkipsGlossaryClearWhenNoGlossaryEntity() throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of("table", "dashboard"));
+      jobConfig.setRecreateIndex(false);
+      jobConfig.setUseDistributedIndexing(true);
+      jobConfig.setStatus(EventPublisherJob.Status.STARTED);
+
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+
+      @SuppressWarnings("unchecked")
+      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      @SuppressWarnings("unchecked")
+      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      lenient().when(repository.getDao()).thenReturn(entityDAO);
+      lenient().when(entityDAO.listTotalCount()).thenReturn(0);
+
+      JobExecutionContext context = mock(JobExecutionContext.class);
+      JobDetail jobDetail = mock(JobDetail.class);
+      JobDataMap jobDataMap = new JobDataMap();
+      when(context.getJobDetail()).thenReturn(jobDetail);
+      when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
+      when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+      RdfIndexJob completedJob =
+          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          var ignored =
+              mockConstruction(
+                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
+                      .class,
+                  (mock, mockContext) -> {
+                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
+                        .thenReturn(completedJob);
+                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                  })) {
+        entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
+
+        testApp.execute(context);
+      }
+
+      verify(mockRdfRepository, never()).clearAllGlossaryTermRelations();
     }
   }
 
@@ -791,9 +980,11 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      // Verify bulkAddRelationships was called with the relationships
+      // Verify bulkAddRelationships was called with the relationships +
+      // batchSources (Fix-I — RdfBatchProcessor now passes its batchSources
+      // to scope the per-source DELETE inside JenaFusekiStorage).
       var captor = org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(mockRdfRepository).bulkAddRelationships(captor.capture());
+      verify(mockRdfRepository).bulkAddRelationships(captor.capture(), anySet());
 
       @SuppressWarnings("unchecked")
       List<org.openmetadata.schema.type.EntityRelationship> storedRelationships = captor.getValue();
@@ -881,7 +1072,16 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      verifyNoInteractions(mockRdfRepository);
+      // The eventSubscription edge is filtered out, so no relationships make it
+      // into the bulk insert. The batch's source entity still gets reconciled
+      // (any stale RDF state from prior runs cleared) — bulkAddRelationships
+      // takes an empty list + batchSources and emits the DELETE in the same
+      // SPARQL update. The separate clearOutgoingEntityRelationships call
+      // was retired when the clear was folded into bulkAddRelationships'
+      // atomic transaction; verify the 2-arg overload instead.
+      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
+      verify(mockRdfRepository, never())
+          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
 
     @Test
@@ -914,7 +1114,13 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      verifyNoInteractions(mockRdfRepository);
+      // Same expectation as the canonical-type variant: filtered relationships
+      // never reach the insert side; bulkAddRelationships is still invoked
+      // with an empty list + batchSources so the atomic clear+insert reconciles
+      // the source entity's existing RDF state.
+      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
+      verify(mockRdfRepository, never())
+          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
   }
 

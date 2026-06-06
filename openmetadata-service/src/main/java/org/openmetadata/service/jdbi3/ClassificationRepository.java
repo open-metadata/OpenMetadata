@@ -267,6 +267,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
+    searchRepository.deferIfFlushScopeActive(
+        () -> runAssetIndexRewrite(oldFqn, newFqn),
+        "classificationUpdateAssetIndexes",
+        null,
+        newFqn,
+        Entity.TAG);
+  }
+
+  private void runAssetIndexRewrite(String oldFqn, String newFqn) {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
@@ -288,6 +297,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public ClassificationUpdater(
         Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Transaction
@@ -332,6 +346,17 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and tagDAO.updateFqn below. The
+      // pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedTags =
+          invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+      // Drop cached entity JSON / bundle for every entity tagged with any tag under this
+      // classification. Tags live in the TAG entity table with FQNs starting with the
+      // classification FQN, so the descendant helper finds them correctly.
+      invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
       daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
       daoCollection
           .tagUsageDAO()
@@ -347,23 +372,22 @@ public class ClassificationRepository extends EntityRepository<Classification> {
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       invalidateClassification(updated.getId());
+      finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
       MessageParser.EntityLink newAbout = new MessageParser.EntityLink(CLASSIFICATION, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       List<Tag> childTags = getAllTagsByClassification(updated);
 
       for (Tag child : childTags) {
         newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

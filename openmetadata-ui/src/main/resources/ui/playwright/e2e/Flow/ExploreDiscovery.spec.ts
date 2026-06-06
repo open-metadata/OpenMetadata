@@ -313,7 +313,8 @@ test.describe('Explore Assets Discovery', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Click on the show deleted toggle button
-    await page.getByTestId('show-deleted').click();
+    await page.getByRole('button', { name: 'Tools' }).click();
+    await page.getByRole('menuitemradio', { name: 'Deleted' }).click();
 
     await waitForAllLoadersToDisappear(page);
 

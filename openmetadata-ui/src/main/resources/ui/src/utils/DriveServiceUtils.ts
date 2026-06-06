@@ -14,32 +14,39 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
-import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
-import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';
-import sftpConnection from '../jsons/connectionSchemas/connections/drive/sftpConnection.json';
 
-export const getDriveConfig = (type: DriveServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const driveSchemaLoaders: Partial<Record<DriveServiceType, SchemaLoader>> = {
+  [DriveServiceType.CustomDrive]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/drive/customDriveConnection.json'
+    ),
+  [DriveServiceType.GoogleDrive]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json'
+    ),
+  [DriveServiceType.SFTP]: () =>
+    import('../jsons/connectionSchemas/connections/drive/sftpConnection.json'),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getDriveConfig = async (type: DriveServiceType) => {
+  const loader = driveSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
 
-  switch (type) {
-    case DriveServiceType.CustomDrive: {
-      schema = customDriveConnection;
-
-      break;
-    }
-    case DriveServiceType.GoogleDrive: {
-      schema = googleDriveConnection;
-
-      break;
-    }
-    case DriveServiceType.SFTP: {
-      schema = sftpConnection;
-
-      break;
-    }
-    default:
-      break;
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

@@ -60,6 +60,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
@@ -344,6 +345,13 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> deleted = new ArrayList<>();
       recordListChange(
           "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
+      // Legacy names from existing data are not re-validated; only newly added ones.
+      for (CustomProperty property : added) {
+        String violations = ValidatorUtil.validate(property);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
+      }
       for (CustomProperty property : added) {
         storeCustomProperty(property);
       }
