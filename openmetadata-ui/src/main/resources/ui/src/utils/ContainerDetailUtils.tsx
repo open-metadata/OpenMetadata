@@ -155,7 +155,9 @@ export const getContainerDetailPageTabs = ({
               <TabsLabel
                 count={childrenCount}
                 id={EntityTabs.CHILDREN}
-                name={labelMap?.[EntityTabs.CHILDREN] ?? t('label.children')}
+                name={
+                  labelMap?.[EntityTabs.CHILDREN] ?? t('label.container-plural')
+                }
               />
             ),
             key: EntityTabs.CHILDREN,
@@ -179,7 +181,9 @@ export const getContainerDetailPageTabs = ({
               <TabsLabel
                 count={childrenCount}
                 id={EntityTabs.CHILDREN}
-                name={t('label.children')}
+                name={
+                  labelMap?.[EntityTabs.CHILDREN] ?? t('label.container-plural')
+                }
               />
             ),
             key: EntityTabs.CHILDREN,

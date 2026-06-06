@@ -11,7 +11,8 @@
 """
 SSRS Models
 """
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,12 +22,12 @@ class SsrsReport(BaseModel):
 
     id: str = Field(alias="Id")
     name: str = Field(alias="Name")
-    description: Optional[str] = Field(None, alias="Description")
+    description: Optional[str] = Field(None, alias="Description")  # noqa: UP045
     path: str = Field(alias="Path")
-    type: Optional[str] = Field(None, alias="Type")
+    type: Optional[str] = Field(None, alias="Type")  # noqa: UP045
     hidden: bool = Field(False, alias="Hidden")
-    has_data_sources: Optional[bool] = Field(None, alias="HasDataSources")
-    created_by: Optional[str] = Field(None, alias="CreatedBy")
+    has_data_sources: Optional[bool] = Field(None, alias="HasDataSources")  # noqa: UP045
+    created_by: Optional[str] = Field(None, alias="CreatedBy")  # noqa: UP045
 
 
 class SsrsFolder(BaseModel):
@@ -40,12 +41,12 @@ class SsrsFolder(BaseModel):
 class SsrsODataResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    odata_count: Optional[int] = Field(None, alias="@odata.count")
+    odata_count: Optional[int] = Field(None, alias="@odata.count")  # noqa: UP045
 
 
 class SsrsReportListResponse(SsrsODataResponse):
-    value: List[SsrsReport] = Field(default_factory=list)
+    value: List[SsrsReport] = Field(default_factory=list)  # noqa: UP006
 
 
 class SsrsFolderListResponse(SsrsODataResponse):
-    value: List[SsrsFolder] = Field(default_factory=list)
+    value: List[SsrsFolder] = Field(default_factory=list)  # noqa: UP006

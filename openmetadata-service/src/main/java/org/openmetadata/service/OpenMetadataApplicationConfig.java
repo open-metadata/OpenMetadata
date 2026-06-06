@@ -14,6 +14,7 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -77,6 +79,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
+
+  @JsonProperty("nlqHybridSearch")
+  private JsonNode nlqHybridSearch;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
@@ -165,6 +170,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
       adminOpsConfiguration.setEnabled(false);
     }
     return adminOpsConfiguration;
+  }
+
+  @JsonProperty("sentry")
+  private SentryConfiguration sentryConfiguration;
+
+  public SentryConfiguration getSentryConfiguration() {
+    if (sentryConfiguration == null) {
+      sentryConfiguration = new SentryConfiguration();
+    }
+    return sentryConfiguration;
   }
 
   @JsonProperty("mcpConfiguration")

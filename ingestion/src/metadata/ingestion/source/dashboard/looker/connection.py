@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import os
 from typing import Optional
 
@@ -39,9 +40,7 @@ def get_connection(connection: LookerConnection) -> Looker40SDK:
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
         os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
     if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-        os.environ[
-            "LOOKERSDK_CLIENT_SECRET"
-        ] = connection.clientSecret.get_secret_value()
+        os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.clientSecret.get_secret_value()
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = str(connection.hostPort)
 
@@ -52,8 +51,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: Looker40SDK,
     service_connection: LookerConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -70,9 +69,7 @@ def test_connection(
         """
         Make sure we get a True
         """
-        assert "4.0" in (
-            api_version.version for api_version in client.versions().supported_versions
-        )
+        assert "4.0" in (api_version.version for api_version in client.versions().supported_versions)
 
     test_fn = {
         "CheckAccess": client.me,

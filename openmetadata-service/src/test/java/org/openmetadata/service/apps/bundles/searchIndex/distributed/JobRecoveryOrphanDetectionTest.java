@@ -242,6 +242,21 @@ class JobRecoveryOrphanDetectionTest {
       when(record.lastError()).thenReturn(null);
       when(record.retryCount()).thenReturn(0);
       when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+      when(partitionDAO.updateIfProcessing(
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              any(),
+              anyInt()))
+          .thenReturn(1);
 
       // Mock job completion check — job still has pending partitions
       when(partitionDAO.findByJobIdAndStatus(JOB_ID.toString(), "PENDING"))
@@ -273,6 +288,21 @@ class JobRecoveryOrphanDetectionTest {
       when(record.lastError()).thenReturn(null);
       when(record.retryCount()).thenReturn(0);
       when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+      when(partitionDAO.updateIfProcessing(
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              any(),
+              anyInt()))
+          .thenReturn(1);
 
       when(partitionDAO.findByJobIdAndStatus(JOB_ID.toString(), "PENDING"))
           .thenReturn(List.of(record));

@@ -580,7 +580,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description',
+      'Description Status',
       true
     );
     await selectOption(

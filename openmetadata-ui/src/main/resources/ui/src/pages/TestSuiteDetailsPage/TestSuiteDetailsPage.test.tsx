@@ -27,6 +27,7 @@ import {
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -307,21 +308,27 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
     </div>
   ));
 });
+const mockDataQualityTab = jest.fn();
 jest.mock(
   '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
   () => {
-    return jest.fn().mockImplementation(({ onTestUpdate }) => (
-      <div>
-        DataQualityTab.component
-        <button
-          data-testid="update-test-btn"
-          onClick={() =>
-            onTestUpdate?.({ id: 'test-1', name: 'updated-test' })
-          }>
-          Update Test
-        </button>
-      </div>
-    ));
+    return jest.fn().mockImplementation((props) => {
+      const { onTestUpdate } = props;
+      mockDataQualityTab(props);
+
+      return (
+        <div>
+          DataQualityTab.component
+          <button
+            data-testid="update-test-btn"
+            onClick={() =>
+              onTestUpdate?.({ id: 'test-1', name: 'updated-test' })
+            }>
+            Update Test
+          </button>
+        </div>
+      );
+    });
   }
 );
 jest.mock('../../hooks/useApplicationStore', () => {
@@ -615,7 +622,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-        fields: ['owners', 'domains'],
+        fields: ['owners', 'domains', 'tests'],
         include: 'all',
       });
     });
@@ -626,6 +633,34 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    });
+
+    describe('observabilityRouterClassBase migration', () => {
+      it('DataQualityTab breadcrumbData should include test suite item with url from observabilityRouterClassBase.getTestSuitePath', async () => {
+        await act(async () => {
+          render(<TestSuiteDetailsPage />);
+        });
+
+        await waitFor(() => {
+          expect(mockDataQualityTab).toHaveBeenCalled();
+        });
+
+        const fqn = mockTestSuite.fullyQualifiedName;
+        const expectedUrl = observabilityRouterClassBase.getTestSuitePath(fqn);
+
+        const lastCallProps =
+          mockDataQualityTab.mock.calls[
+            mockDataQualityTab.mock.calls.length - 1
+          ][0];
+
+        expect(lastCallProps.breadcrumbData).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              url: expectedUrl,
+            }),
+          ])
+        );
+      });
     });
   });
 

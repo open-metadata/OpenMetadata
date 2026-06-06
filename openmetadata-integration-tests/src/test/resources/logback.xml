@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-        <encoder>
-            <pattern>[%thread] %-5level %logger{5} - %msg%n
-            </pattern>
-        </encoder>
-    </appender>
-    <!-- Slow request diagnostics -->
-    <logger name="org.openmetadata.slowrequest" level="WARN" />
-    <root level="INFO">
-        <appender-ref ref="STDOUT" />
-    </root>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="org.openmetadata.it" level="INFO" />
+  <logger name="org.openmetadata.service" level="WARN" />
+  <logger name="org.testcontainers" level="INFO" />
+  <logger name="org.elasticsearch" level="WARN" />
+  <logger name="org.opensearch" level="WARN" />
+  <logger name="om-server-container" level="INFO" />
+
+  <root level="WARN">
+    <appender-ref ref="STDOUT" />
+  </root>
 </configuration>

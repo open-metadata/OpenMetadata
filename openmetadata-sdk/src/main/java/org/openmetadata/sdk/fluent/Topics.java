@@ -115,26 +115,6 @@ public final class Topics {
     return getClient().topics().getVersionList(id);
   }
 
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset) {
-    return getClient().topics().getVersionList(id, limit, offset);
-  }
-
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset, String fieldChanged) {
-    return getClient().topics().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs) {
-    return getClient().topics().getEntityHistory(startTs, endTs);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs, int limit, String before, String after) {
-    return getClient().topics().getEntityHistory(startTs, endTs, limit, before, after);
-  }
-
   public static Topic getVersion(String id, Double version) {
     return getClient().topics().getVersion(id, version);
   }
@@ -257,6 +237,10 @@ public final class Topics {
 
     public TopicDeleter delete() {
       return new TopicDeleter(client, identifier);
+    }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Topic> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.topics(), identifier);
     }
   }
 

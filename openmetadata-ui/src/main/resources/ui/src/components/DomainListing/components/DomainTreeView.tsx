@@ -41,13 +41,13 @@ import {
   searchDomains,
 } from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';

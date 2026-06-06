@@ -33,7 +33,6 @@ import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
 import iomete from '../assets/img/service-icon-iomete.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
-import microsoftFabric from '../assets/img/service-icon-microsoftfabric.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -41,6 +40,7 @@ import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import presto from '../assets/img/service-icon-presto.png';
 import bigquery from '../assets/img/service-icon-query.png';
+import questdb from '../assets/img/service-icon-questdb.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import saperp from '../assets/img/service-icon-sap-erp.png';
@@ -177,9 +177,9 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,
-  microsoftfabric: microsoftFabric,
 
   // Messaging services
   kafka: kafka,
@@ -223,7 +223,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
-  microsoftfabricpipeline: microsoftFabric,
 
   // ML Model services
   mlflow: mlflow,
@@ -256,15 +255,25 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   // Default icons
   defaultservice: defaultservice,
   databasedefault: databasedefault,
+  databaseservice: databasedefault,
   topicdefault: topicdefault,
+  topicservice: topicdefault,
   dashboarddefault: dashboarddefault,
+  dashboardservice: dashboarddefault,
   pipelinedefault: pipelinedefault,
+  pipelineservice: pipelinedefault,
   mlmodeldefault: mlmodeldefault,
+  mlmodelservice: mlmodeldefault,
   storagedefault: storagedefault,
+  storageservice: storagedefault,
   drivedefault: drivedefault,
+  messagingservice: topicdefault,
+  driveservice: drivedefault,
   customdrivedefault: customdrivedefault,
   searchdefault: searchdefault,
+  searchservice: searchdefault,
   securitydefault: securitydefault,
+  securityservice: securitydefault,
   restservice: restservice,
   logo: logo,
   synapse: synapse,

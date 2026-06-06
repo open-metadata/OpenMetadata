@@ -1,0 +1,225 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+@import (reference) '../../../styles/variables.less';
+
+@border-color: #0000001a;
+
+.knowledge-center-layout {
+  // 80px navbar + 150px page header + 20px margin = 250px
+  height: calc(100vh - 250px);
+
+  &.knowledge-details-page {
+   // 80px navbar + 178px page header + 20px margin = 278px
+    height: calc(100vh - 278px);
+    padding-bottom: 20px;
+  }
+
+  &.knowledge-version-page {
+    // 80px navbar + 142px page header + 20px margin = 242px
+    height: calc(100vh - 242px);
+    padding-bottom: 20px;
+  }
+}
+
+.knowledge-center-layout.reflex-container {
+  justify-content: flex-start;
+  align-items: stretch;
+  align-content: stretch;
+  display: flex;
+  position: relative;
+  width: 100%;
+
+  .left-reflex-card {
+    > .ant-card-body {
+      padding: @padding-xs 0;
+      border-radius: @border-rad-sm;
+    }
+  }
+}
+
+.knowledge-center-layout.reflex-container.horizontal {
+  flex-direction: column;
+  min-height: 1px;
+}
+
+.knowledge-center-layout.reflex-container.vertical {
+  flex-direction: row;
+  min-width: 1px;
+}
+
+.knowledge-center-layout.reflex-container.vertical > .reflex-splitter {
+  cursor: col-resize;
+  height: 100%;
+  width: 1px;
+}
+
+.knowledge-center-layout.reflex-container > .reflex-element {
+  // hide the scrollbar
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// left panel css
+
+.knowledge-center-layout.reflex-container .left-panel {
+  position: relative;
+  overflow-y: scroll;
+
+  &.left-panel-collapsed {
+    flex: 0 !important; // to override the inline style
+    border-right: none;
+  }
+}
+
+.left-panel-collapse-button {
+  position: absolute;
+  top: 8px;
+  right: -18px;
+  padding: 4px 8px;
+  z-index: 10;
+  background: white;
+
+  .collapse-icon {
+    vertical-align: middle;
+    width: 16px;
+  }
+
+  &:hover,
+  &:focus {
+    background: white;
+  }
+}
+
+.left-panel-collapse-button.collapsed {
+  position: absolute;
+  top: 8px;
+  right: auto;
+  left: -30px;
+  padding: 4px 16px;
+  z-index: 10;
+  background: white;
+
+  .collapse-icon {
+    margin-left: 4px;
+    width: 20px;
+  }
+
+  &:hover,
+  &:focus {
+    background: white;
+  }
+}
+
+// right panel css
+
+.knowledge-center-layout.reflex-container .right-panel {
+  overflow-y: scroll;
+
+  &.right-panel-collapsed {
+    flex: 0 !important; // to override the inline style
+    border-left: none;
+  }
+}
+
+.right-panel-collapse-button {
+  position: absolute;
+  top: 8px;
+  left: -18px;
+  padding: 4px 8px;
+  z-index: 10;
+  background: white;
+
+  .collapse-icon {
+    vertical-align: middle;
+    width: 16px;
+  }
+
+  &:hover,
+  &:focus {
+    background: white;
+  }
+}
+
+.right-panel-collapse-button.collapsed {
+  position: absolute;
+  top: 8px;
+  left: auto;
+  right: -22px;
+  padding: 4px 12px;
+  z-index: 10;
+  background: white;
+
+  .collapse-icon {
+    margin-left: 4px;
+    width: 20px;
+  }
+
+  &:hover,
+  &:focus {
+    background: white;
+  }
+}
+
+// center panel css
+
+.knowledge-center-layout.reflex-container .center-panel {
+  overflow-y: scroll;
+}
+
+.center-panel {
+  .ant-card-body {
+    padding-left: 30px
+  }
+}
+
+// rtl css
+div[dir='rtl']#knowledge-center-layout-container {
+  .knowledge-center-layout.reflex-container {
+    .left-panel-collapse-button {
+      left: auto;
+      right: 258px;
+    }
+
+    .left-panel-collapse-button.collapsed {
+      left: auto;
+      right: -16px;
+
+      .collapse-icon {
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .knowledge-center-layout.reflex-container .left-panel {
+    border-left: 1px solid @border-color;
+    position: relative;
+  }
+
+  .knowledge-center-layout.reflex-container .left-panel.left-panel-collapsed {
+    border-left: none;
+  }
+
+  .knowledge-center-layout.reflex-container .right-panel {
+    border-right: 1px solid @border-color;
+    position: relative;
+  }
+
+  .knowledge-center-layout.reflex-container .right-panel.right-panel-collapsed {
+    border-right: none;
+  }
+}

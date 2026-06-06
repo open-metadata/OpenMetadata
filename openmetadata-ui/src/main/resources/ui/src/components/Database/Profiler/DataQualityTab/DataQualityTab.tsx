@@ -16,18 +16,18 @@ import {
   Button,
   Dropdown,
   Skeleton,
+  Table,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, DotsVertical } from '@untitledui/icons';
-import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
-import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isArray, isUndefined, sortBy, toLower } from 'lodash';
+import { isUndefined, sortBy, toLower } from 'lodash';
 import { PagingResponse } from 'Models';
-import { useEffect, useMemo, useRef, useState, type Key } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -47,26 +47,23 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
-import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
-import { replacePlus } from '../../../../utils/StringsUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
 import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
 import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteForm';
@@ -111,38 +108,78 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     TestCasePermission[]
   >([]);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(
+    new Set<string>()
+  );
   const [isAddToBundleSuiteModalOpen, setIsAddToBundleSuiteModalOpen] =
     useState(false);
   const [isBundleSuiteFormOpen, setIsBundleSuiteFormOpen] = useState(false);
   const [bundleSuiteFormInitialCases, setBundleSuiteFormInitialCases] =
     useState<TestCase[]>([]);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: '',
+    direction: 'ascending',
+  });
   const isApiSortingEnabled = useRef(false);
 
-  const sortedData = useMemo(
-    () =>
-      isApiSortingEnabled.current
-        ? testCases
-        : sortBy(testCases, (test) => {
-            switch (test.testCaseResult?.testCaseStatus) {
-              case TestCaseStatus.Failed:
-                return 0;
-              case TestCaseStatus.Aborted:
-                return 1;
-              case TestCaseStatus.Success:
-                return 2;
+  const sortedData = useMemo(() => {
+    let data = isApiSortingEnabled.current
+      ? testCases
+      : sortBy(testCases, (test) => {
+          switch (test.testCaseResult?.testCaseStatus) {
+            case TestCaseStatus.Failed:
+              return 0;
+            case TestCaseStatus.Aborted:
+              return 1;
+            case TestCaseStatus.Success:
+              return 2;
 
-              default:
-                return 3;
-            }
-          }),
-    [testCases]
-  );
+            default:
+              return 3;
+          }
+        });
 
-  const selectedTestCasesForBundle = useMemo(
-    () => sortedData.filter((tc) => selectedRowKeys.includes(tc.id ?? '')),
-    [sortedData, selectedRowKeys]
-  );
+    if (
+      sortDescriptor.column === 'table' ||
+      sortDescriptor.column === 'column'
+    ) {
+      data = sortBy(data, (test) => {
+        if (sortDescriptor.column === 'table') {
+          const tableFqn = getEntityFQN(test.entityLink);
+
+          return getNameFromFQN(tableFqn).toLowerCase();
+        } else {
+          return test.entityLink.includes('::columns::')
+            ? replacePlus(
+                getColumnNameFromEntityLink(test.entityLink) ?? ''
+              ).toLowerCase()
+            : '';
+        }
+      });
+      if (sortDescriptor.direction === 'descending') {
+        data = [...data].reverse();
+      }
+    }
+
+    return data;
+  }, [testCases, sortDescriptor]);
+
+  const selectedTestCasesForBundle = useMemo(() => {
+    if (selectedKeys === 'all') {
+      return sortedData;
+    }
+    const keySet = selectedKeys as Set<string>;
+
+    return sortedData.filter((tc) => keySet.has(tc.id ?? ''));
+  }, [sortedData, selectedKeys]);
+
+  const hasSelection = useMemo(() => {
+    if (selectedKeys === 'all') {
+      return true;
+    }
+
+    return (selectedKeys as Set<string>).size > 0;
+  }, [selectedKeys]);
 
   const handleCancel = () => {
     setSelectedTestCase(undefined);
@@ -180,7 +217,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
     setTestCaseStatus((prev) => {
       return prev.map((item) => {
-        if (item.stateId === value.stateId) {
+        if (
+          item.testCaseReference?.fullyQualifiedName ===
+          value.testCaseReference?.fullyQualifiedName
+        ) {
           return value;
         }
 
@@ -189,325 +229,66 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     });
   };
 
-  const columns = useMemo(() => {
-    const data: ColumnsType<TestCase> = [
-      {
-        title: t('label.status'),
-        dataIndex: 'testCaseResult',
-        key: 'status',
-        width: 120,
-        render: (result: TestCaseResult, record) => {
-          return result?.testCaseStatus ? (
-            <StatusBadge
-              dataTestId={`status-badge-${record.name}`}
-              label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
-              status={toLower(result.testCaseStatus) as StatusType}
-            />
-          ) : (
-            '--'
-          );
-        },
-      },
-      {
-        title: t('label.failed-slash-aborted-reason'),
-        dataIndex: 'testCaseResult',
-        key: 'reason',
-        width: 250,
-        render: (result: TestCaseResult, record: TestCase) => {
-          return result?.result &&
-            result.testCaseStatus !== TestCaseStatus.Success ? (
-            <Tooltip
-              containerClassName="tw:break-all"
-              placement="top"
-              title={result.result}>
-              <TooltipTrigger>
-                <Typography
-                  className="tw:m-0 tw:max-w-60 tw:line-clamp-2 tw:break-all"
-                  data-testid={`reason-text-${record.name}`}
-                  size="text-sm">
-                  {result.result}
-                </Typography>
-              </TooltipTrigger>
-            </Tooltip>
-          ) : (
-            '--'
-          );
-        },
-      },
-      {
-        title: t('label.last-run'),
-        dataIndex: 'testCaseResult',
-        key: 'lastRun',
-        width: 150,
-        sorter: true,
-        render: (result: TestCaseResult) => {
-          return <DateTimeDisplay timestamp={result?.timestamp} />;
-        },
-      },
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 150,
-        sorter: true,
-        sortDirections: ['ascend', 'descend'],
-        render: (name: string, record) => {
-          const urlData = {
-            pathname: getTestCaseDetailPagePath(
-              record.fullyQualifiedName ?? ''
-            ),
-          };
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    const isSameSort =
+      descriptor.column === sortDescriptor.column &&
+      descriptor.direction === sortDescriptor.direction;
 
-          return (
-            <p className="tw:m-0 tw:max-w-70" data-testid={name}>
-              <Link state={{ breadcrumbData }} to={urlData}>
-                {getEntityName(record)}
-              </Link>
-            </p>
-          );
-        },
+    if (isSameSort) {
+      setSortDescriptor({ column: '', direction: 'ascending' });
+      if (isApiSortingEnabled.current) {
+        isApiSortingEnabled.current = false;
+        fetchTestCases?.(undefined);
+      }
+
+      return;
+    }
+
+    setSortDescriptor(descriptor);
+
+    if (descriptor.column === 'lastRun' || descriptor.column === 'name') {
+      isApiSortingEnabled.current = true;
+      fetchTestCases?.({
+        sortField:
+          descriptor.column === 'lastRun'
+            ? 'testCaseResult.timestamp'
+            : 'name.keyword',
+        sortType:
+          descriptor.direction === 'ascending'
+            ? SORT_ORDER.ASC
+            : SORT_ORDER.DESC,
+      });
+    } else if (
+      descriptor.column === 'table' ||
+      descriptor.column === 'column'
+    ) {
+      if (isApiSortingEnabled.current) {
+        isApiSortingEnabled.current = false;
+        fetchTestCases?.(undefined);
+      }
+    }
+  };
+
+  const columnList = useMemo(() => {
+    const cols = [
+      { id: 'status', name: t('label.status') },
+      { id: 'reason', name: t('label.failed-slash-aborted-reason') },
+      { id: 'lastRun', name: t('label.last-run'), allowsSorting: true },
+      {
+        id: 'name',
+        name: t('label.name'),
+        allowsSorting: true,
       },
       ...(showTableColumn
-        ? ([
-            {
-              title: t('label.table'),
-              dataIndex: 'entityLink',
-              key: 'table',
-              width: 200,
-              render: (entityLink: string) => {
-                const tableFqn = getEntityFQN(entityLink);
-
-                return (
-                  <Link
-                    className="break-word"
-                    data-testid="table-link"
-                    to={getEntityDetailsPath(
-                      EntityType.TABLE,
-                      tableFqn,
-                      EntityTabs.PROFILER,
-                      ProfilerTabPath.DATA_QUALITY
-                    )}
-                    onClick={(e) => e.stopPropagation()}>
-                    {tableFqn}
-                  </Link>
-                );
-              },
-              sorter: (a, b) => {
-                // Extract table name from entity link
-                const tableAFqn = getEntityFQN(a.entityLink);
-                const tableA = getNameFromFQN(tableAFqn);
-                const tableBFqn = getEntityFQN(b.entityLink);
-                const tableB = getNameFromFQN(tableBFqn);
-
-                return tableA.localeCompare(tableB);
-              },
-              sortDirections: ['ascend', 'descend'],
-            },
-          ] as ColumnsType<TestCase>)
+        ? [{ id: 'table', name: t('label.table'), allowsSorting: true }]
         : []),
-      {
-        title: t('label.column'),
-        dataIndex: 'entityLink',
-        key: 'column',
-        width: 80,
-        render: (entityLink) => {
-          const isColumn = entityLink.includes('::columns::');
-          if (isColumn) {
-            const name = replacePlus(
-              getColumnNameFromEntityLink(entityLink) ?? ''
-            );
-
-            return (
-              <p className="tw:m-0 tw:max-w-30" data-testid={name}>
-                {name}
-              </p>
-            );
-          }
-
-          return '--';
-        },
-        sorter: (a, b) => {
-          // Extract column name from entity link if available
-          const columnA = a.entityLink.includes('::columns::')
-            ? replacePlus(getColumnNameFromEntityLink(a.entityLink))
-            : '--';
-
-          const columnB = b.entityLink.includes('::columns::')
-            ? replacePlus(getColumnNameFromEntityLink(b.entityLink))
-            : '--';
-
-          return columnA.localeCompare(columnB);
-        },
-        sortDirections: ['ascend', 'descend'],
-      },
-      {
-        title: t('label.incident'),
-        dataIndex: 'testCaseResult',
-        key: 'incident',
-        width: 80,
-        render: (_, record) => {
-          const testCaseResult = testCaseStatus.find(
-            (status) =>
-              status.testCaseReference?.fullyQualifiedName ===
-              record.fullyQualifiedName
-          );
-
-          if (isStatusLoading) {
-            return <Skeleton height={30} width={60} />;
-          }
-
-          if (!testCaseResult) {
-            return '--';
-          }
-
-          // Check if user has permission to edit incident status
-          const testCasePermission = testCasePermissions.find(
-            (permission) =>
-              permission.fullyQualifiedName === record.fullyQualifiedName
-          );
-          const hasEditPermission =
-            isEditAllowed || testCasePermission?.EditAll;
-
-          return (
-            <TestCaseIncidentManagerStatus
-              isInline
-              data={testCaseResult}
-              hasPermission={hasEditPermission}
-              onSubmit={handleStatusSubmit}
-            />
-          );
-        },
-      },
-      {
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 50,
-        fixed: 'right',
-        render: (_, record) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={30} width={30} />;
-          }
-
-          const dimensions = record.dimensionColumns ?? [];
-
-          const testCasePermission = testCasePermissions.find(
-            (permission) =>
-              permission.fullyQualifiedName === record.fullyQualifiedName
-          );
-
-          const testCaseEditPermission =
-            isEditAllowed || testCasePermission?.EditAll;
-          const testCaseDeletePermission =
-            removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
-
-          const deleteBtnLabel = removeFromTestSuite
-            ? t('label.remove')
-            : t('label.delete');
-
-          const hasAnyPermission =
-            testCaseEditPermission || testCaseDeletePermission;
-
-          const menuItems = [
-            {
-              id: 'edit',
-              isDisabled: !testCaseEditPermission,
-              label: t('label.edit'),
-              onAction: () => handleEdit(record),
-              testId: `edit-${record.name}`,
-            },
-            {
-              id: removeFromTestSuite ? 'remove' : 'delete',
-              isDisabled: !testCaseDeletePermission,
-              label: deleteBtnLabel,
-              onAction: () => handleDelete(record),
-              testId: removeFromTestSuite
-                ? `remove-${record.name}`
-                : `delete-${record.name}`,
-            },
-          ];
-
-          return (
-            <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
-              {dimensions.length > 0 && (
-                <Tooltip
-                  placement="top"
-                  title={t(
-                    dimensions.length === 1
-                      ? 'label.number-dimension-associated'
-                      : 'label.number-dimension-plural-associated',
-                    {
-                      number: dimensions.length,
-                    }
-                  )}>
-                  <Link
-                    to={getTestCaseDetailPagePath(
-                      record.fullyQualifiedName ?? '',
-                      TestCasePageTabs.DIMENSIONALITY
-                    )}>
-                    <div
-                      className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
-                      data-testid={`dimension-count-${record.name}`}>
-                      <DimensionIcon height={12} width={12} />
-                      <span className="tw:text-xs tw:font-medium">
-                        {dimensions.length}
-                      </span>
-                    </div>
-                  </Link>
-                </Tooltip>
-              )}
-              <Dropdown.Root
-                isOpen={activeRecordId === (record.id ?? null)}
-                onOpenChange={(isOpen) =>
-                  setActiveRecordId(isOpen ? record.id ?? null : null)
-                }>
-                <Button
-                  className="tw:h-6 tw:w-6 tw:p-0!"
-                  color="secondary"
-                  data-testid={`action-dropdown-${record.name}`}
-                  iconLeading={DotsVertical}
-                  isDisabled={!hasAnyPermission}
-                  size="sm"
-                />
-                <Dropdown.Popover className="tw:w-max">
-                  <Dropdown.Menu items={menuItems}>
-                    {(item) => (
-                      <Dropdown.Item
-                        data-testid={item.testId}
-                        id={item.id}
-                        isDisabled={item.isDisabled}
-                        label={item.label}
-                        onAction={item.onAction}
-                      />
-                    )}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </div>
-          );
-        },
-      },
+      { id: 'column', name: t('label.column'), allowsSorting: true },
+      { id: 'incident', name: t('label.incident') },
+      { id: 'actions', name: '' },
     ];
 
-    return data.map((col) =>
-      col.width && !col.fixed
-        ? {
-            ...col,
-            onCell: () => ({
-              style: { maxWidth: col.width, overflow: 'hidden' },
-            }),
-          }
-        : col
-    );
-  }, [
-    testCases,
-    testCaseStatus,
-    isStatusLoading,
-    isPermissionLoading,
-    testCasePermissions,
-    handleStatusSubmit,
-    isEditAllowed,
-    activeRecordId,
-  ]);
+    return cols;
+  }, [showTableColumn, t]);
 
   const fetchTestCaseStatus = async () => {
     try {
@@ -522,8 +303,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
         return acc;
       }, [] as Promise<PagingResponse<TestCaseResolutionStatus[]>>[]);
-      const testCaseStatus = await Promise.allSettled(promises);
-      const data = testCaseStatus.reduce((acc, status) => {
+      const testCaseStatusResults = await Promise.allSettled(promises);
+      const data = testCaseStatusResults.reduce((acc, status) => {
         if (status.status === 'fulfilled' && status.value.data.length) {
           return [...acc, status.value.data[0]];
         }
@@ -570,29 +351,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
-  const handleTableChange = (
-    _pagination: TablePaginationConfig,
-    _filters: Record<string, FilterValue | null>,
-    sorter: SorterResult<TestCase> | SorterResult<TestCase>[]
-  ) => {
-    if (!isArray(sorter) && fetchTestCases) {
-      if (sorter?.columnKey === 'lastRun' || sorter?.columnKey === 'name') {
-        const sortData = isUndefined(sorter.order)
-          ? undefined
-          : {
-              sortField:
-                sorter?.columnKey === 'lastRun'
-                  ? 'testCaseResult.timestamp'
-                  : 'name.keyword',
-              sortType:
-                sorter?.order === 'ascend' ? SORT_ORDER.ASC : SORT_ORDER.DESC,
-            };
-        isApiSortingEnabled.current = !isUndefined(sorter.order);
-        fetchTestCases(sortData);
-      }
-    }
-  };
-
   useEffect(() => {
     if (testCases.length) {
       fetchTestCaseStatus();
@@ -601,13 +359,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       setIsStatusLoading(false);
     }
   }, [testCases]);
-
-  const rowSelectionConfig = enableBulkActions
-    ? {
-        selectedRowKeys,
-        onChange: (keys: Key[]) => setSelectedRowKeys(keys),
-      }
-    : undefined;
 
   const handleOpenBundleSuiteForm = (cases: TestCase[]) => {
     setBundleSuiteFormInitialCases(cases);
@@ -618,15 +369,277 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const handleBundleSuiteSuccess = (testSuite: TestSuite) => {
     setIsBundleSuiteFormOpen(false);
     setBundleSuiteFormInitialCases([]);
-    setSelectedRowKeys([]);
+    setSelectedKeys(new Set<string>());
     if (testSuite.fullyQualifiedName) {
-      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
   const handleAddedToExistingBundleSuite = () => {
-    setSelectedRowKeys([]);
+    setSelectedKeys(new Set<string>());
     fetchTestCases?.();
+  };
+
+  const renderStatusCell = (
+    result: TestCaseResult | undefined,
+    name: string
+  ) => {
+    return result?.testCaseStatus ? (
+      <StatusBadge
+        dataTestId={`status-badge-${name}`}
+        label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
+        status={toLower(result.testCaseStatus) as StatusType}
+      />
+    ) : (
+      '--'
+    );
+  };
+
+  const renderReasonCell = (
+    result: TestCaseResult | undefined,
+    record: TestCase
+  ) => {
+    return result?.result &&
+      result.testCaseStatus !== TestCaseStatus.Success ? (
+      <Tooltip
+        containerClassName="tw:break-all"
+        placement="top"
+        title={result.result}>
+        <TooltipTrigger>
+          <Typography
+            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden"
+            data-testid={`reason-text-${record.name}`}
+            size="text-sm">
+            {result.result}
+          </Typography>
+        </TooltipTrigger>
+      </Tooltip>
+    ) : (
+      '--'
+    );
+  };
+
+  const renderIncidentCell = (record: TestCase) => {
+    const testCaseResult = testCaseStatus.find(
+      (status) =>
+        status.testCaseReference?.fullyQualifiedName ===
+        record.fullyQualifiedName
+    );
+
+    if (isStatusLoading) {
+      return <Skeleton height={30} width={60} />;
+    }
+
+    if (!testCaseResult) {
+      return '--';
+    }
+
+    const testCasePermission = testCasePermissions.find(
+      (permission) =>
+        permission.fullyQualifiedName === record.fullyQualifiedName
+    );
+    const hasEditPermission = isEditAllowed || testCasePermission?.EditAll;
+
+    return (
+      <TestCaseIncidentManagerStatus
+        isInline
+        data={testCaseResult}
+        hasPermission={hasEditPermission}
+        onSubmit={handleStatusSubmit}
+      />
+    );
+  };
+
+  const renderActionsCell = (record: TestCase) => {
+    if (isPermissionLoading) {
+      return <Skeleton height={30} width={30} />;
+    }
+
+    const dimensions = record.dimensionColumns ?? [];
+
+    const testCasePermission = testCasePermissions.find(
+      (permission) =>
+        permission.fullyQualifiedName === record.fullyQualifiedName
+    );
+
+    const testCaseEditPermission = isEditAllowed || testCasePermission?.EditAll;
+    const testCaseDeletePermission =
+      removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
+
+    const deleteBtnLabel = removeFromTestSuite
+      ? t('label.remove')
+      : t('label.delete');
+
+    const hasAnyPermission = testCaseEditPermission || testCaseDeletePermission;
+
+    const menuItems = [
+      {
+        id: 'edit',
+        isDisabled: !testCaseEditPermission,
+        label: t('label.edit'),
+        onAction: () => handleEdit(record),
+        testId: `edit-${record.name}`,
+      },
+      {
+        id: removeFromTestSuite ? 'remove' : 'delete',
+        isDisabled: !testCaseDeletePermission,
+        label: deleteBtnLabel,
+        onAction: () => handleDelete(record),
+        testId: removeFromTestSuite
+          ? `remove-${record.name}`
+          : `delete-${record.name}`,
+      },
+    ];
+
+    return (
+      <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
+        {dimensions.length > 0 && (
+          <Tooltip
+            placement="top"
+            title={t(
+              dimensions.length === 1
+                ? 'label.number-dimension-associated'
+                : 'label.number-dimension-plural-associated',
+              {
+                number: dimensions.length,
+              }
+            )}>
+            <Link
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+                record.fullyQualifiedName ?? '',
+                TestCasePageTabs.DIMENSIONALITY
+              )}>
+              <div
+                className="tw:flex tw:min-w-13 tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
+                data-testid={`dimension-count-${record.name}`}>
+                <DimensionIcon height={12} width={12} />
+                <span className="tw:text-xs tw:font-medium">
+                  {dimensions.length}
+                </span>
+              </div>
+            </Link>
+          </Tooltip>
+        )}
+        <Dropdown.Root
+          isOpen={activeRecordId === (record.id ?? null)}
+          onOpenChange={(isOpen) =>
+            setActiveRecordId(isOpen ? record.id ?? null : null)
+          }>
+          <Button
+            className="tw:h-6 tw:w-6 tw:p-0!"
+            color="secondary"
+            data-testid={`action-dropdown-${record.name}`}
+            iconLeading={DotsVertical}
+            isDisabled={!hasAnyPermission}
+            size="sm"
+          />
+          <Dropdown.Popover className="tw:w-max">
+            <Dropdown.Menu items={menuItems}>
+              {(item) => (
+                <Dropdown.Item
+                  data-testid={item.testId}
+                  id={item.id}
+                  isDisabled={item.isDisabled}
+                  label={item.label}
+                  onAction={item.onAction}
+                />
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </div>
+    );
+  };
+
+  const renderRow = (record: TestCase) => {
+    const entityLink = record.entityLink ?? '';
+    const tableFqn = getEntityFQN(entityLink);
+    const isColumn = entityLink.includes('::columns::');
+    const columnName = isColumn
+      ? replacePlus(getColumnNameFromEntityLink(entityLink) ?? '')
+      : null;
+
+    return (
+      <Table.Row id={record.id ?? record.name ?? ''} key={record.id}>
+        <Table.Cell className="tw:w-35 tw:overflow-hidden">
+          {renderStatusCell(record.testCaseResult, record.name ?? '')}
+        </Table.Cell>
+        <Table.Cell className="tw:max-w-60 tw:overflow-hidden">
+          {renderReasonCell(record.testCaseResult, record)}
+        </Table.Cell>
+        <Table.Cell className="tw:w-50 tw:overflow-hidden">
+          <DateTimeDisplay timestamp={record.testCaseResult?.timestamp} />
+        </Table.Cell>
+        <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
+          <div
+            data-testid={record.name}
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}>
+            <Link
+              className="break-word"
+              state={{ breadcrumbData }}
+              to={{
+                pathname:
+                  observabilityRouterClassBase.getTestCaseDetailPagePath(
+                    record.fullyQualifiedName ?? ''
+                  ),
+              }}>
+              {getEntityName(record)}
+            </Link>
+          </div>
+        </Table.Cell>
+        {showTableColumn && (
+          <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
+            <div
+              role="presentation"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}>
+              <Link
+                className="break-word"
+                data-testid="table-link"
+                to={getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.DATA_QUALITY
+                )}>
+                {tableFqn}
+              </Link>
+            </div>
+          </Table.Cell>
+        )}
+        <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
+          {columnName ? (
+            <p className="tw:m-0 tw:max-w-30" data-testid={columnName}>
+              {columnName}
+            </p>
+          ) : (
+            '--'
+          )}
+        </Table.Cell>
+        <Table.Cell className="tw:max-w-30 tw:overflow-hidden">
+          <div
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}>
+            {renderIncidentCell(record)}
+          </div>
+        </Table.Cell>
+        <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
+          <div
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}>
+            {renderActionsCell(record)}
+          </div>
+        </Table.Cell>
+      </Table.Row>
+    );
   };
 
   return (
@@ -637,7 +650,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {tableHeader && (
         <div className="data-quality-table-header">{tableHeader}</div>
       )}
-      {enableBulkActions && selectedRowKeys.length > 0 && (
+      {enableBulkActions && hasSelection && (
         <Box
           align="center"
           className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
@@ -646,7 +659,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           <Box>
             <Typography size="text-sm">
               {t('label.bundle-test-case-selected-count', {
-                count: selectedRowKeys.length,
+                count: selectedTestCasesForBundle.length,
               })}
             </Typography>
             <Typography
@@ -654,7 +667,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="tw:ml-2"
               data-testid="bulk-clear-test-case-selection"
               size="text-sm"
-              onClick={() => setSelectedRowKeys([])}>
+              onClick={() => setSelectedKeys(new Set<string>())}>
               {t('label.clear-selection')}
             </Typography>
           </Box>
@@ -698,51 +711,80 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Box>
         </Box>
       )}
-      <Table
-        columns={columns}
-        containerClassName={classNames('test-case-table-container', {
+      <div
+        className={classNames('tw:overflow-x-auto', {
+          'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
-        })}
-        {...(pagingData && showPagination
-          ? {
-              customPaginationProps: {
-                ...pagingData,
-                showPagination,
-              },
-            }
-          : {})}
-        data-testid="test-case-table"
-        dataSource={sortedData}
-        loading={isLoading}
-        locale={{
-          emptyText: (
-            <FilterTablePlaceHolder
-              placeholderText={
-                <Transi18next
-                  i18nKey="message.no-data-quality-test-case"
-                  renderElement={
-                    <a
-                      href={DATA_QUALITY_PROFILER_DOCS}
-                      rel="noreferrer"
-                      target="_blank"
-                      title="Data Quality Profiler Documentation"
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+            isUndefined(tableHeader) && !removeTableBorder,
+        })}>
+        <Table
+          aria-label={t('label.test-case-plural')}
+          data-testid="test-case-table"
+          selectedKeys={selectedKeys}
+          selectionMode={enableBulkActions ? 'multiple' : 'none'}
+          size="sm"
+          sortDescriptor={sortDescriptor}
+          onSelectionChange={setSelectedKeys}
+          onSortChange={handleSortChange}>
+          <Table.Header columns={columnList}>
+            {(col) => (
+              <Table.Head
+                allowsSorting={col.allowsSorting}
+                id={col.id}
+                key={col.id}
+                label={col.name}
+              />
+            )}
+          </Table.Header>
+          <Table.Body
+            dependencies={[
+              isStatusLoading,
+              isPermissionLoading,
+              testCaseStatus,
+              testCasePermissions,
+              activeRecordId,
+            ]}
+            items={isLoading ? [] : sortedData}
+            renderEmptyState={() =>
+              isLoading ? (
+                <div className="tw:p-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton
+                      className="tw:mb-2"
+                      height={40}
+                      key={i}
+                      width="100%"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <FilterTablePlaceHolder
+                  placeholderText={
+                    <Transi18next
+                      i18nKey="message.no-data-quality-test-case"
+                      renderElement={
+                        <a
+                          href={DATA_QUALITY_PROFILER_DOCS}
+                          rel="noreferrer"
+                          target="_blank"
+                          title="Data Quality Profiler Documentation"
+                        />
+                      }
+                      values={{
+                        explore: t('message.explore-our-guide-here'),
+                      }}
                     />
                   }
-                  values={{
-                    explore: t('message.explore-our-guide-here'),
-                  }}
                 />
-              }
-            />
-          ),
-        }}
-        pagination={false}
-        rowKey="id"
-        rowSelection={rowSelectionConfig}
-        scroll={{ x: true }}
-        onChange={handleTableChange}
-      />
+              )
+            }>
+            {(record) => renderRow(record)}
+          </Table.Body>
+        </Table>
+      </div>
+      {pagingData && showPagination && <NextPrevious {...pagingData} />}
       {enableBulkActions && (
         <AddToBundleSuiteModal
           open={isAddToBundleSuiteModalOpen}

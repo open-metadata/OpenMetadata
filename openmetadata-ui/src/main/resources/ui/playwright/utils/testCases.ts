@@ -342,6 +342,8 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
  * @returns Download object from Playwright
  */
 export const performTestCaseExport = async (page: Page) => {
+  const downloadPromise = page.waitForEvent('download');
+
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
   await page.locator('#export-form').waitFor({
@@ -349,8 +351,6 @@ export const performTestCaseExport = async (page: Page) => {
   });
   await expect(page.locator('#export-form')).toBeVisible();
   await expect(page.locator('#submit-button')).not.toBeDisabled();
-
-  const downloadPromise = page.waitForEvent('download');
   await page.locator('#submit-button').click();
   const download = await downloadPromise;
 

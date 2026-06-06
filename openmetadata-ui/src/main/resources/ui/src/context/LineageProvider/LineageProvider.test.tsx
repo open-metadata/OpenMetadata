@@ -81,6 +81,7 @@ jest.mock('../../hooks/useLineageStore', () => ({
     selectedColumn: undefined,
     isCreatingEdge: false,
     setIsCreatingEdge: jest.fn(),
+    setIsRepositioning: jest.fn(),
     columnsInCurrentPages: new Map(),
     setColumnsInCurrentPages: jest.fn(),
     updateColumnsInCurrentPages: jest.fn(),
@@ -305,16 +306,18 @@ describe('LineageProvider', () => {
     );
 
     await waitFor(() => {
-      expect(getLineageDataByFQN).toHaveBeenCalledWith({
-        entityType: 'table',
-        fqn: 'table1',
-        config: {
-          downstreamDepth: 1,
-          nodesPerLayer: 50,
-          upstreamDepth: 1,
-        },
-        queryFilter: '',
-      });
+      expect(getLineageDataByFQN).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'table',
+          fqn: 'table1',
+          config: {
+            downstreamDepth: 1,
+            nodesPerLayer: 50,
+            upstreamDepth: 1,
+          },
+          queryFilter: '',
+        })
+      );
     });
   });
 
@@ -526,5 +529,107 @@ describe('LineageProvider', () => {
         })
       );
     });
+  });
+
+  it('should fetch lineage when switching from impact analysis to lineage mode', async () => {
+    mockLocation.search = '?mode=impact_analysis';
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+      nodes: {},
+      downstreamEdges: {},
+      upstreamEdges: {},
+    });
+
+    const EntityDataComponent = () => {
+      const { updateEntityData } = useLineageProvider();
+
+      useEffect(() => {
+        updateEntityData(EntityType.TABLE, {
+          id: 'table1',
+          name: 'table1',
+          type: EntityType.TABLE,
+          entityType: EntityType.TABLE,
+          fullyQualifiedName: 'table1',
+        } as SourceType);
+      }, []);
+
+      return <div data-testid="entity-data-component" />;
+    };
+
+    const { rerender } = render(
+      <LineageProvider>
+        <EntityDataComponent />
+      </LineageProvider>
+    );
+
+    expect(getLineageDataByFQN).not.toHaveBeenCalled();
+
+    mockLocation.search = '?mode=lineage';
+    rerender(
+      <LineageProvider>
+        <EntityDataComponent />
+      </LineageProvider>
+    );
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: EntityType.TABLE,
+          fqn: 'table1',
+        })
+      );
+    });
+  });
+
+  it('should reuse loaded lineage when switching from lineage to impact analysis and back', async () => {
+    mockLocation.search = '?mode=lineage';
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+      nodes: {},
+      downstreamEdges: {},
+      upstreamEdges: {},
+    });
+
+    const EntityDataComponent = () => {
+      const { updateEntityData } = useLineageProvider();
+
+      useEffect(() => {
+        updateEntityData(EntityType.TABLE, {
+          id: 'table1',
+          name: 'table1',
+          type: EntityType.TABLE,
+          entityType: EntityType.TABLE,
+          fullyQualifiedName: 'table1',
+        } as SourceType);
+      }, []);
+
+      return <div data-testid="entity-data-component" />;
+    };
+
+    const { rerender } = render(
+      <LineageProvider>
+        <EntityDataComponent />
+      </LineageProvider>
+    );
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+    });
+
+    mockLocation.search = '?mode=impact_analysis';
+    rerender(
+      <LineageProvider>
+        <EntityDataComponent />
+      </LineageProvider>
+    );
+
+    mockLocation.search = '?mode=lineage';
+    rerender(
+      <LineageProvider>
+        <EntityDataComponent />
+      </LineageProvider>
+    );
+
+    await Promise.resolve();
+
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
   });
 });

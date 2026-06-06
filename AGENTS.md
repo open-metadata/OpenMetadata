@@ -52,8 +52,8 @@ cd ingestion
 make install_dev_env           # Install in development mode
 make generate                  # Generate Pydantic models from JSON schemas
 make unit_ingestion_dev_env    # Run unit tests
-make lint                      # Run pylint
-make py_format                 # Format with black, isort, pycln
+make py_format                 # Apply ruff lint-fix + format
+make py_format_check           # Verify lint + format (matches CI; catches non-auto-fixable issues)
 make static-checks             # Run type checking with basedpyright
 ```
 
@@ -193,7 +193,12 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
-- **Always mention** running `mvn spotless:apply` when generating/modifying .java files
+- **Always run `mvn spotless:apply`** before finishing any task that touched
+  `.java` files. CI runs `mvn spotless:check` and will fail the PR otherwise
+  (bot's exact phrasing: "Please run `mvn spotless:apply` in the root of your
+  repository and commit the changes to this PR"). Scope with `-pl <module>`
+  for speed if only one module changed. A reusable procedure is written up at
+  `.agents/skills/java-checkstyle/SKILL.md`.
 - Use clear, descriptive variable and method names instead of comments
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code
@@ -202,6 +207,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Do not import wild-card packages instead import exactly required packages
 
 ### TypeScript/Frontend Code Requirements
+- **Always run the UI checkstyle sequence** before finishing any task that
+  touched `.ts`/`.tsx`/`.js`/`.jsx`/`.json` under
+  `openmetadata-ui/src/main/resources/ui/src/`, `.../playwright/`, or
+  `openmetadata-ui-core-components/src/main/resources/ui/src/`. CI's
+  `UI Checkstyle / lint-src|lint-playwright|lint-core-components` jobs fail
+  the PR otherwise. Order matters: `organize-imports-cli` → `eslint --fix` →
+  `prettier --write`. A reusable procedure lives at
+  `.agents/skills/ui-checkstyle/SKILL.md`.
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)

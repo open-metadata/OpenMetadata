@@ -41,11 +41,11 @@ import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { Task } from '../rest/tasksAPI';
-import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
+import { calculatePercentageFromValue } from './NumberUtils';
 import { getGlossaryPath } from './RouterUtils';
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
@@ -510,29 +510,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     />
   );
 };
-const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
-  termList.forEach((term) => {
-    if (
-      term.childrenCount &&
-      term.childrenCount > 0 &&
-      term.fullyQualifiedName
-    ) {
-      keys.push(term.fullyQualifiedName);
-      if (term.children && term.children.length > 0) {
-        processTerms(term.children as ModifiedGlossary[], keys as string[]);
-      }
-    }
-  });
-};
-
-export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
-  const keys: string[] = [];
-
-  processTerms(terms, keys);
-
-  return keys;
-};
-
 export const validateReferenceURL = (url: string): boolean => {
   if (!url) {
     return true;

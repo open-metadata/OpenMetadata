@@ -91,7 +91,7 @@ import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+} from '../../../../utils/StringUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -779,7 +779,7 @@ const AssetsTabs = forwardRef(
       () =>
         data.length ? (
           <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }) => (
+            {data.map(({ _source, _id = '', highlight }) => (
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
@@ -813,9 +813,9 @@ const AssetsTabs = forwardRef(
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
+                highlight={highlight}
                 id={_id}
                 key={'assets_' + _id}
-                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}

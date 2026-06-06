@@ -533,7 +533,11 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames('table-container', rest.containerClassName)}
+      className={classNames(
+        'table-container',
+        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.containerClassName
+      )}
       ref={ref}>
       <div
         className={classNames('p-x-md', {
@@ -849,10 +853,10 @@ const TableV2 = <T extends object>(
                             }}>
                             <div
                               className={classNames(
-                                'tw:flex tw:items-start tw:gap-1 tw:max-w-full'
+                                'tw:flex tw:gap-1 tw:max-w-full'
                               )}>
                               {showExpandInCell && (
-                                <div className="tw:flex-shrink-0">
+                                <div className="tw:flex tw:items-center tw:shrink-0">
                                   {hasChildren ? (
                                     ExpandIcon ? (
                                       <ExpandIcon

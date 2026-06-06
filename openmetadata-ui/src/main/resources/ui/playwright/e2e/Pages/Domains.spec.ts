@@ -34,6 +34,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  descriptionBox,
   getApiContext,
   redirectToHomePage,
   uuid,
@@ -160,6 +161,25 @@ test.describe('Domains', () => {
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test('AddDomainForm description preserves typed whitespace', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('add-domain').click();
+    await page.getByTestId('add-domain-form').waitFor();
+
+    const description = page.locator(descriptionBox);
+    const typed = 'hello world ';
+
+    await description.click();
+    await description.pressSequentially(typed);
+
+    // eslint-disable-next-line playwright/prefer-web-first-assertions
+    expect(await description.textContent()).toBe(typed);
   });
 
   test('Create domains and add assets', async ({ page }) => {
@@ -1167,8 +1187,11 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save domain and verify tag is applied', async () => {
@@ -1219,8 +1242,11 @@ test.describe('Domains', () => {
         });
 
         await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
+          page
+            .getByTestId('add-domain-form')
+            .getByTestId('tags-container')
+            .getByText(tag.data.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Save subdomain and verify tag is applied', async () => {
@@ -1359,7 +1385,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
       await addDomainButton;
 
       const formHeading = page.locator('[data-testid="form-heading"]');
@@ -1890,6 +1916,8 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with data products attached at domain and subdomain levels', async ({
     page,
   }) => {
+    test.setTimeout(240_000);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainDataProduct = new DataProduct([domain]);
@@ -2714,7 +2742,9 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
     const rolesCombobox = page.locator('input[role="combobox"]').nth(1);

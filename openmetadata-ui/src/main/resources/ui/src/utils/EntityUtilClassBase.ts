@@ -62,6 +62,7 @@ import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchDomains } from '../rest/domainAPI';
 import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKnowledgePage } from '../rest/knowledgeCenterAPI';
 import { patchKPI } from '../rest/KpiAPI';
 import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
@@ -94,6 +95,7 @@ import {
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
+import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -200,6 +202,7 @@ class EntityUtilClassBase {
       patchPolicy(patch, id),
     [EntityType.CLASSIFICATION]: patchClassification,
     [EntityType.TEAM]: patchTeamDetail,
+    [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
   };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
@@ -447,6 +450,9 @@ class EntityUtilClassBase {
       case EntityType.KPI:
         return getKpiPath(fullyQualifiedName);
 
+      case EntityType.KNOWLEDGE_PAGE:
+        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -588,6 +594,10 @@ class EntityUtilClassBase {
       }
       case EntityType.WORKSHEET: {
         return ResourceEntity.WORKSHEET;
+      }
+      case EntityType.KNOWLEDGE_PAGE:
+      case 'knowledge-center': {
+        return ResourceEntity.KNOWLEDGE_PAGE;
       }
 
       default: {

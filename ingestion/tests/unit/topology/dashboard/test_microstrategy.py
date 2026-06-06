@@ -12,6 +12,7 @@
 """
 Test Microstrategy using the topology
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import TestCase
@@ -52,9 +53,7 @@ mock_micro_config = {
                 "password": "password",
             }
         },
-        "sourceConfig": {
-            "config": {"type": "DashboardMetadata", "includeOwners": True}
-        },
+        "sourceConfig": {"config": {"type": "DashboardMetadata", "includeOwners": True}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -111,13 +110,9 @@ class MicroStrategyUnitTest(TestCase):
     MicroStrategy Unit Testtest_dbt
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.connection.get_connection"
-    )
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    @patch("metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection")
+    @patch("metadata.ingestion.source.dashboard.microstrategy.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         get_connection.return_value = False
@@ -194,16 +189,14 @@ class MicroStrategyUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        MOCK_DASHBOARD_SERVICE = DashboardService(
+        MOCK_DASHBOARD_SERVICE = DashboardService(  # noqa: N806
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
             name="mock_microstrategy",
             fullyQualifiedName=FullyQualifiedEntityName("mock_microstrategy"),
             connection=DashboardConnection(),
             serviceType=DashboardServiceType.MicroStrategy,
         )
-        self.microstrategy.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.microstrategy.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         mock_details = MstrDashboardDetails(
             id="dash1",
             name="Test Dashboard",
@@ -219,12 +212,8 @@ class MicroStrategyUnitTest(TestCase):
                             key="pg1",
                             name="Page 1",
                             visualizations=[
-                                MstrVisualization(
-                                    key="v1", name="Chart A", visualizationType="grid"
-                                ),
-                                MstrVisualization(
-                                    key="v2", name="Chart B", visualizationType="bar"
-                                ),
+                                MstrVisualization(key="v1", name="Chart A", visualizationType="grid"),
+                                MstrVisualization(key="v2", name="Chart B", visualizationType="bar"),
                             ],
                         )
                     ],

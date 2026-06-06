@@ -40,8 +40,8 @@ import {
   Timezone,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
-import { filterSelectOptions } from '../../../utils/CommonUtils';
 import { generateSelectOptionsFromString } from '../../../utils/DataContract/DataContractUtils';
+import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

@@ -13,7 +13,7 @@
 Test unitycatalog using the topology
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -93,7 +93,7 @@ mock_unitycatalog_config = {
 }
 
 
-MOCK_CATALOG_INFO: List[CatalogInfo] = [
+MOCK_CATALOG_INFO: List[CatalogInfo] = [  # noqa: UP006
     CatalogInfo(
         browse_only=False,
         catalog_type=CatalogType.MANAGED_CATALOG,
@@ -423,9 +423,7 @@ EXPTECTED_TABLE_2 = [
                 dataType=DataType.NUMBER.value,
             ),
         ],
-        databaseSchema=FullyQualifiedEntityName(
-            "local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("local_unitycatalog.hive_metastore.do_it_all_with_default_schema"),
     )
 ]
 
@@ -445,9 +443,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="local_unitycatalog.hive_metastore",
     displayName="hive_metastore",
     description=Markdown(""),
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -564,20 +560,16 @@ EXPTECTED_TABLE = [
 ]
 
 
-class unitycatalogUnitTest(TestCase):
+class unitycatalogUnitTest(TestCase):  # noqa: N801
     """
     unitycatalog unit tests
     """
 
-    @patch(
-        "metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection")
+    @patch("metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
         mock_sqlalchemy_connection,
     ) -> None:
@@ -587,46 +579,34 @@ class unitycatalogUnitTest(TestCase):
         mock_engine = MagicMock()
         mock_sqlalchemy_connection.return_value = mock_engine
 
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_unitycatalog_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
         self.unitycatalog_source = UnitycatalogSource.create(
             mock_unitycatalog_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.unitycatalog_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.unitycatalog_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.unitycatalog_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.unitycatalog_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
-        self.unitycatalog_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.unitycatalog_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
     def test_get_database_names_raw(self, mock_list):
         mock_list.return_value = MOCK_CATALOG_INFO
-        assert ["demo", "main", "postgres_catalog", "system"] == list(
-            self.unitycatalog_source.get_database_names_raw()
-        )
+        assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
 
     @patch("databricks.sdk.service.catalog.SchemasAPI.list")
     def test_database_schema_names(self, mock_schema_list):
         mock_schema_list.return_value = MOCK_SCHEMA_INFO
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
-            self.unitycatalog_source.get_database_schema_names()
-        )
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
 
     def test_yield_table(self):
         table_list = []
         self.unitycatalog_source.context.get().table_data = MOCK_TABLE_INFO
         for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
             if isinstance(table, Either):
-                table_list.append(table)
+                table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_get_schema_definition(self):
@@ -661,26 +641,19 @@ class unitycatalogUnitTest(TestCase):
         )
 
         mock_cursor = MagicMock()
-        mock_cursor.fetchone.return_value = [
-            "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
-        ]
+        mock_cursor.fetchone.return_value = ["CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"]
 
         mock_connection = MagicMock()
         mock_connection.execute.return_value = mock_cursor
 
-        with patch.object(
-            self.unitycatalog_source.engine, "connect", return_value=mock_connection
-        ):
+        with patch.object(self.unitycatalog_source.engine, "connect", return_value=mock_connection):
             table_with_ddl_result = self.unitycatalog_source.get_schema_definition(
                 table_name="test_table",
                 table_type=TableType.Regular,
                 table=mock_regular_table,
             )
 
-        assert (
-            table_with_ddl_result
-            == "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
-        )
+        assert table_with_ddl_result == "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
 
         # Check schema definition when includeDDL is False
         self.unitycatalog_source.source_config.includeDDL = False

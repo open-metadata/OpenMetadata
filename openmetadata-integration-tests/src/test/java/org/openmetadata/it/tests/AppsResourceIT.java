@@ -81,8 +81,15 @@ public class AppsResourceIT {
   private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
     try {
+      // AppRunRecord.status is a lowercase enum (see appRunRecord.json: started, running,
+      // completed, failed, success, activeError, stopped, ...). Comparing with case-insensitive
+      // matchers — using uppercase here matches none of the real values and silently makes the
+      // wait a no-op. 5-minute ceiling covers an in-flight reindex from another test class
+      // (e.g. SearchIndexingFieldsParityIT triggers an "all entities" reindex that can take
+      // minutes); a 30s ceiling fell through to the catch and let the trigger Awaitility below
+      // hit its own 2-minute "already running" wall.
       Awaitility.await("Wait for app job completion: " + appName)
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofMinutes(5))
           .pollDelay(Duration.ofMillis(500))
           .pollInterval(Duration.ofSeconds(2))
           .ignoreExceptions()
@@ -98,9 +105,7 @@ public class AppsResourceIT {
                   return true;
                 }
                 String status = latestRun.getStatus().value();
-                return "SUCCESS".equals(status)
-                    || "FAILED".equals(status)
-                    || "COMPLETED".equals(status);
+                return !"running".equalsIgnoreCase(status) && !"started".equalsIgnoreCase(status);
               });
     } catch (org.awaitility.core.ConditionTimeoutException e) {
       // Best-effort wait — the app may be continuously running under parallel test load.

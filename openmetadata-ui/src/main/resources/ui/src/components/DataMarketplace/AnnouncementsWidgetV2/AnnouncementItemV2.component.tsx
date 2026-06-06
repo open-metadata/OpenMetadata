@@ -72,8 +72,10 @@ const AnnouncementItemV2 = ({
         }
       }}>
       <AnnouncementCardV1Content
+        backgroundColor="var(--tw-color-utility-blue-dark-50)"
+        borderColor="var(--tw-color-utility-blue-dark-500)"
         columnName={columnName}
-        currentBackgroundColor="var(--color-utility-blue-100)"
+        currentBackgroundColor="var(--tw-color-utility-blue-dark-600)"
         description={description}
         entityFQN={entityFQN}
         entityIcon={entityIcon}

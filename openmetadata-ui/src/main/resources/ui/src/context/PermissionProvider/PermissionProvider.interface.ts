@@ -71,6 +71,7 @@ export enum ResourceEntity {
   WEBHOOK = 'webhook',
   STORAGE_SERVICE = 'storageService',
   CONTAINER = 'container',
+  KNOWLEDGE_PAGE = 'page',
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',
@@ -93,6 +94,7 @@ export enum ResourceEntity {
   AUDIT_LOG = 'auditLog',
   TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
+  TASK = 'task',
 }
 
 export interface PermissionContextType {

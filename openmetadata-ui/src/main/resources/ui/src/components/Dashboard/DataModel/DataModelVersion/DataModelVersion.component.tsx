@@ -27,13 +27,13 @@ import {
 } from '../../../../generated/entity/data/dashboardDataModel';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
-import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -59,9 +59,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   tier,
   slashedDataModelName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -265,12 +262,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </div>
   );
