@@ -121,7 +121,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     } catch (SecretsManagerException e) {
       throw e;
     } catch (RuntimeException e) {
-      throw storeFailure(secretName, e);
+      throw upsertFailure(secretName, e);
     }
   }
 
@@ -142,10 +142,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     }
   }
 
-  private SecretsManagerException storeFailure(String secretName, RuntimeException cause) {
+  private SecretsManagerException upsertFailure(String secretName, RuntimeException cause) {
+    // The write may be a create or an update, so the message must not claim "store" specifically.
     return new SecretsManagerException(
         String.format(
-            "Failed to store secret [%s] in %s: %s",
+            "Failed to store or update secret [%s] in %s: %s",
             secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
         cause);
   }

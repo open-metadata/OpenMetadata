@@ -227,9 +227,9 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
 
     assertTrue(
         thrown.getMessage().contains(leafSecretId),
-        "Store failure must name the exact leaf secret being written");
+        "Upsert failure must name the exact leaf secret being written");
     assertTrue(
-        thrown.getMessage().contains("Failed to store secret"),
-        "Store failure must be labelled as a store operation");
+        thrown.getMessage().contains("Failed to store or update secret"),
+        "Upsert failure must reflect the create-or-update operation");
   }
 }

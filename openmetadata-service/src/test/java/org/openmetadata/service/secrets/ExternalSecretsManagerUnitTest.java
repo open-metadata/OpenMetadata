@@ -112,7 +112,7 @@ class ExternalSecretsManagerUnitTest {
   }
 
   @Test
-  void storeFailureNamesTheSecretBeingWritten() {
+  void upsertFailureNamesTheSecretBeingWritten() {
     RecordingExternalSecretsManager manager =
         new RecordingExternalSecretsManager(recordingLimiter) {
           @Override
@@ -125,10 +125,10 @@ class ExternalSecretsManagerUnitTest {
         assertThrows(SecretsManagerException.class, () -> manager.upsertSecret(SECRET_NAME, "v"));
 
     assertTrue(
-        thrown.getMessage().contains(SECRET_NAME), "must name the exact secret being stored");
+        thrown.getMessage().contains(SECRET_NAME), "must name the exact secret being written");
     assertTrue(
-        thrown.getMessage().contains("Failed to store secret"),
-        "must be labelled as a store operation");
+        thrown.getMessage().contains("Failed to store or update secret"),
+        "must reflect the upsert (create-or-update) operation");
   }
 
   @Test
