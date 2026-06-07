@@ -466,17 +466,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
+  protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    EntityInterface entity =
+        entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
+    return entity != null
+        ? entity.getEntityReference()
+        : Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+  }
+
   protected final EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) {
     if (nullOrEmpty(fqn)) {
       return null;
     }
-    EntityInterface entity = getEntityByName(entityType, fqn);
-    if (entity == null) {
+    try {
+      return getEntityReferenceByName(entityType, fqn);
+    } catch (EntityNotFoundException ex) {
       deferredFailure(csvRecord, entityNotFound(fieldNumber, entityType, fqn));
       return null;
     }
-    return entity.getEntityReference();
   }
 
   protected final List<EntityReference> getEntityReferences(

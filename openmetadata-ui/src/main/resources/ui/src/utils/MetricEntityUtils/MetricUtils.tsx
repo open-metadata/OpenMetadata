@@ -83,10 +83,6 @@ export const getMetricExpressionLanguageName = (language?: Language) => {
     return CSMode.CLIKE;
   }
 
-  if (language === Language.Dax) {
-    return CSMode.SQL;
-  }
-
   return language.toLowerCase() as CSMode;
 };
 

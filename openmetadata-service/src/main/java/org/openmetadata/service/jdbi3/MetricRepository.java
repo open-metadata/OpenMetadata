@@ -22,6 +22,7 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TEAM;
@@ -50,9 +51,6 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
-import org.openmetadata.schema.type.MetricSource;
-import org.openmetadata.schema.type.MetricSourceSyncStatus;
-import org.openmetadata.schema.type.MetricSourceType;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.Relationship;
@@ -100,7 +98,6 @@ public class MetricRepository extends EntityRepository<Metric> {
   public void prepare(Metric metric, boolean update) {
     validateRelatedTerms(metric, metric.getRelatedMetrics());
     validateCustomUnitOfMeasurement(metric);
-    normalizeMetricSource(metric);
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -117,28 +114,6 @@ public class MetricRepository extends EntityRepository<Metric> {
     } else {
       // Clear custom unit if not OTHER to maintain consistency
       metric.setCustomUnitOfMeasurement(null);
-    }
-  }
-
-  private void normalizeMetricSource(Metric metric) {
-    MetricSource metricSource = metric.getMetricSource();
-    if (metricSource == null) {
-      metric.setMetricSource(
-          new MetricSource()
-              .withSourceType(MetricSourceType.OPENMETADATA)
-              .withSyncEnabled(false)
-              .withSyncStatus(MetricSourceSyncStatus.DISABLED));
-      return;
-    }
-    if (metricSource.getSourceType() == null) {
-      metricSource.setSourceType(MetricSourceType.OPENMETADATA);
-    }
-    if (metricSource.getSyncEnabled() == null) {
-      metricSource.setSyncEnabled(false);
-    }
-    if (metricSource.getSyncStatus() == null
-        && Boolean.FALSE.equals(metricSource.getSyncEnabled())) {
-      metricSource.setSyncStatus(MetricSourceSyncStatus.DISABLED);
     }
   }
 
@@ -282,21 +257,21 @@ public class MetricRepository extends EntityRepository<Metric> {
               .withCustomUnitOfMeasurement(csvRecord.get(5))
               .withGranularity(getGranularity(printer, csvRecord, 6))
               .withMetricExpression(getMetricExpression(printer, csvRecord))
-              .withMetricSource(getMetricSource(printer, csvRecord))
-              .withRelatedMetrics(getEntityReferences(printer, csvRecord, 17, METRIC))
+              .withRelatedMetrics(getEntityReferences(printer, csvRecord, 9, METRIC))
               .withTags(
                   getTagLabels(
                       printer,
                       csvRecord,
                       List.of(
-                          Pair.of(18, TagLabel.TagSource.CLASSIFICATION),
-                          Pair.of(19, TagLabel.TagSource.GLOSSARY))))
-              .withOwners(getOwners(printer, csvRecord, 20))
-              .withReviewers(getReviewers(printer, csvRecord, 21))
-              .withDomains(getDomains(printer, csvRecord, 22))
-              .withDataProducts(getEntityReferences(printer, csvRecord, 23, Entity.DATA_PRODUCT))
-              .withEntityStatus(getEntityStatus(printer, csvRecord, 24))
-              .withExtension(getExtension(printer, csvRecord, 25));
+                          Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                          Pair.of(11, TagLabel.TagSource.GLOSSARY),
+                          Pair.of(12, TagLabel.TagSource.CLASSIFICATION))))
+              .withOwners(getOwners(printer, csvRecord, 13))
+              .withReviewers(getReviewers(printer, csvRecord, 14))
+              .withDomains(getDomains(printer, csvRecord, 15))
+              .withDataProducts(getEntityReferences(printer, csvRecord, 16, Entity.DATA_PRODUCT))
+              .withEntityStatus(getEntityStatus(printer, csvRecord, 17))
+              .withExtension(getExtension(printer, csvRecord, 18));
 
       if (processRecord) {
         createEntity(printer, csvRecord, metric);
@@ -307,7 +282,6 @@ public class MetricRepository extends EntityRepository<Metric> {
     protected void addRecord(CsvFile csvFile, Metric entity) {
       List<String> recordList = new ArrayList<>();
       MetricExpression expression = entity.getMetricExpression();
-      MetricSource source = entity.getMetricSource();
 
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
@@ -325,21 +299,10 @@ public class MetricRepository extends EntityRepository<Metric> {
               ? null
               : expression.getLanguage().value());
       addField(recordList, expression == null ? null : expression.getCode());
-      addField(
-          recordList,
-          source == null || source.getSourceType() == null ? null : source.getSourceType().value());
-      addField(recordList, source == null ? null : source.getSourceEntityLink());
-      addField(recordList, source == null ? null : source.getSourceId());
-      addField(recordList, source == null ? null : source.getSourceName());
-      addField(recordList, source == null ? null : source.getSourceUrl());
-      addField(recordList, source == null ? null : source.getSourceHash());
-      addField(recordList, source == null ? null : source.getSyncEnabled());
-      addField(
-          recordList,
-          source == null || source.getSyncStatus() == null ? null : source.getSyncStatus().value());
       addEntityReferences(recordList, entity.getRelatedMetrics());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
       addOwners(recordList, entity.getOwners());
       addReviewers(recordList, entity.getReviewers());
       addEntityReferences(recordList, entity.getDomains());
@@ -358,38 +321,6 @@ public class MetricRepository extends EntityRepository<Metric> {
         return null;
       }
       return new MetricExpression().withLanguage(language).withCode(code);
-    }
-
-    private MetricSource getMetricSource(CSVPrinter printer, CSVRecord csvRecord)
-        throws IOException {
-      MetricSourceType sourceType = getSourceType(printer, csvRecord, 9);
-      Boolean syncEnabled = getBoolean(printer, csvRecord, 15);
-      MetricSourceSyncStatus syncStatus = getSyncStatus(printer, csvRecord, 16);
-
-      if (sourceType == null
-          && nullOrEmpty(csvRecord.get(10))
-          && nullOrEmpty(csvRecord.get(11))
-          && nullOrEmpty(csvRecord.get(12))
-          && nullOrEmpty(csvRecord.get(13))
-          && nullOrEmpty(csvRecord.get(14))
-          && syncEnabled == null
-          && syncStatus == null) {
-        return null;
-      }
-
-      return new MetricSource()
-          .withSourceType(sourceType)
-          .withSourceEntityLink(emptyToNull(csvRecord.get(10)))
-          .withSourceId(emptyToNull(csvRecord.get(11)))
-          .withSourceName(emptyToNull(csvRecord.get(12)))
-          .withSourceUrl(emptyToNull(csvRecord.get(13)))
-          .withSourceHash(emptyToNull(csvRecord.get(14)))
-          .withSyncEnabled(syncEnabled)
-          .withSyncStatus(syncStatus);
-    }
-
-    private String emptyToNull(String value) {
-      return nullOrEmpty(value) ? null : value;
     }
 
     private MetricType getMetricType(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
@@ -465,42 +396,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
     }
 
-    private MetricSourceType getSourceType(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
-        throws IOException {
-      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
-        return null;
-      }
-      try {
-        return MetricSourceType.fromValue(csvRecord.get(fieldNumber));
-      } catch (Exception ex) {
-        importFailure(
-            printer,
-            invalidField(
-                fieldNumber, "Metric source type " + csvRecord.get(fieldNumber) + " is invalid"),
-            csvRecord);
-        processRecord = false;
-        return null;
-      }
-    }
-
-    private MetricSourceSyncStatus getSyncStatus(
-        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
-      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
-        return null;
-      }
-      try {
-        return MetricSourceSyncStatus.fromValue(csvRecord.get(fieldNumber));
-      } catch (Exception ex) {
-        importFailure(
-            printer,
-            invalidField(
-                fieldNumber, "Metric sync status " + csvRecord.get(fieldNumber) + " is invalid"),
-            csvRecord);
-        processRecord = false;
-        return null;
-      }
-    }
-
     private EntityStatus getEntityStatus(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
         throws IOException {
       if (nullOrEmpty(csvRecord.get(fieldNumber))) {
@@ -569,10 +464,6 @@ public class MetricRepository extends EntityRepository<Metric> {
                   updated.getMetricExpression());
             }
           });
-      compareAndUpdate(
-          "metricSource",
-          () ->
-              recordChange("metricSource", original.getMetricSource(), updated.getMetricSource()));
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
     }
 

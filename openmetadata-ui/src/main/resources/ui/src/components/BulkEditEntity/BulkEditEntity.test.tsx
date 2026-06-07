@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
@@ -77,6 +77,14 @@ jest.mock('react-data-grid', () => {
     <div data-testid="data-grid">
       <span data-testid="row-count">{rows?.length ?? 0}</span>
       <span data-testid="column-count">{columns?.length ?? 0}</span>
+      {columns?.map((column: Column<Record<string, string>>) => (
+        <span
+          data-frozen={String(Boolean(column.frozen))}
+          data-testid={`column-${column.key}`}
+          data-width={String(column.width ?? '')}
+          key={column.key}
+        />
+      ))}
     </div>
   ));
 
@@ -160,7 +168,7 @@ const mockValidateCSVData = {
 const defaultProps: BulkEditEntityProps = {
   dataSource: mockDataSource,
   initialDataSource: mockDataSource,
-  columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+  columns: mockColumns,
   breadcrumbList: mockBreadcrumbList,
   activeStep: VALIDATION_STEP.EDIT_VALIDATE,
   changedCellCount: 0,
@@ -169,6 +177,7 @@ const defaultProps: BulkEditEntityProps = {
   isValidating: false,
   handleBack: jest.fn(),
   handleValidate: jest.fn().mockResolvedValue(undefined),
+  handleRevertChanges: jest.fn(),
   onCSVReadComplete: jest.fn(),
   setGridContainer: jest.fn(),
   handleCopy: jest.fn(),
@@ -269,6 +278,25 @@ describe('BulkEditEntity', () => {
       expect(
         screen.getByRole('button', { name: 'label.next' })
       ).toBeInTheDocument();
+    });
+
+    it('should disable next button when there are no bulk edit changes', () => {
+      renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
+
+      expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
+    });
+
+    it('should allow metric import preview validation without additional edits', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        isExportHydrationRequired: false,
+        isNextDisabled: false,
+        workflowMode: 'import',
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'label.next' })
+      ).not.toBeDisabled();
     });
 
     it('should show update button at step 2', () => {
@@ -456,6 +484,12 @@ describe('BulkEditEntity', () => {
       );
     });
 
+    it('should not trigger export when source data is hydrated by parent', () => {
+      renderComponent({ isExportHydrationRequired: false });
+
+      expect(mockTriggerExportForBulkEdit).not.toHaveBeenCalled();
+    });
+
     it('should call clearCSVExportData on unmount', () => {
       const { unmount } = renderComponent();
 
@@ -635,7 +669,7 @@ describe('BulkEditEntity', () => {
       renderComponent({
         dataSource: mockDataSource,
         initialDataSource: mockDataSource,
-        columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+        columns: mockColumns,
       });
 
       expect(screen.getByTestId('row-count')).toHaveTextContent('2');
@@ -654,6 +688,64 @@ describe('BulkEditEntity', () => {
         screen.getByTestId('bulk-edit-operation-summary')
       ).toBeInTheDocument();
       expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should freeze operation and metric name columns in the edit grid', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'displayName', name: 'Display Name' },
+        ] as Column<Record<string, string>>[],
+      });
+
+      expect(screen.getByTestId('column-__bulkEditOperation')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-width',
+        '200'
+      );
+      expect(screen.getByTestId('column-displayName')).toHaveAttribute(
+        'data-frozen',
+        'false'
+      );
+    });
+
+    it('should classify a blank new metric row as skip and show an error pill', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        dataSource: [
+          {
+            id: 'new-1',
+            __bulkEditNewRow: 'true',
+            'name*': '',
+            metricType: 'COUNT',
+          },
+        ],
+        initialDataSource: [],
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'metricType', name: 'Metric Type' },
+        ] as Column<Record<string, string>>[],
+        changedCellCount: 1,
+        changedCellKeysByRowId: { 'new-1': ['metricType'] },
+        changedRowCount: 1,
+      });
+
+      const operationSummary = within(
+        screen.getByTestId('bulk-edit-operation-summary')
+      );
+
+      expect(operationSummary.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('1 label.error')).toBeInTheDocument();
     });
   });
 
@@ -686,6 +778,15 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    it('should show loader while parent-hydrated source data is loading', () => {
+      renderComponent({
+        isExportHydrationRequired: false,
+        isLoadingSourceData: true,
+      });
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
   });
 

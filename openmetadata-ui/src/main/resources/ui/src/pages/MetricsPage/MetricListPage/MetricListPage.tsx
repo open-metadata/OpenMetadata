@@ -40,21 +40,29 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ChangeEvent,
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { CsvJobsTray } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import {
+  CsvJobsTray,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/TableV2';
-import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
-import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -84,6 +92,10 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  MetricBulkEditListFilters,
+  MetricBulkEditScope,
+} from '../../EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import './metric-list-page.less';
 
 type MetricColumnId =
@@ -133,10 +145,12 @@ const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
   EntityStatus.Draft,
 ];
 
+const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
+  typeof value === 'string' ? value : value.target.value;
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { showModal } = useEntityExportModalProvider();
 
   const {
     pageSize,
@@ -160,6 +174,8 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
   const [selectedMetricIds, setSelectedMetricIds] = useState<Key[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<MetricColumnId[]>(() => {
     try {
       const storedColumns = localStorage.getItem(METRIC_COLUMN_STORAGE_KEY);
@@ -298,21 +314,23 @@ const MetricListPage = () => {
     [t]
   );
 
-  const handleImport = useCallback(
-    () => navigate(getEntityImportPath(EntityType.METRIC, WILD_CARD_CHAR)),
-    [navigate]
-  );
+  const handleImport = useCallback(() => {
+    setIsMetricActionsOpen(false);
+    navigate(getEntityImportPath(EntityType.METRIC, WILD_CARD_CHAR));
+  }, [navigate]);
 
-  const handleExport = useCallback(
-    () =>
-      showModal({
-        name: WILD_CARD_CHAR,
-        title: t('label.metric-plural'),
-        exportTypes: [ExportTypes.CSV],
-        onExport: (name) => exportMetricDetailsInCSV(name),
-      }),
-    [showModal, t]
-  );
+  const handleExport = useCallback(async () => {
+    try {
+      setIsMetricActionsOpen(false);
+      setIsExporting(true);
+      await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
 
   const getOwnerInitials = useCallback(
     (owner: NonNullable<Metric['owners']>[number]) =>
@@ -378,20 +396,39 @@ const MetricListPage = () => {
   );
 
   const handleBulkEdit = useCallback(() => {
-    const metricsToEdit = selectedMetrics.length
-      ? selectedMetrics
-      : searchText.trim() || statusFilter
-      ? filteredMetrics
-      : [];
-
+    const filters: MetricBulkEditListFilters = {
+      searchText: searchText.trim(),
+      statusFilter,
+    };
+    const metricBulkEditScope: MetricBulkEditScope = selectedMetricIds.length
+      ? {
+          mode: 'selected',
+          metricIds: selectedMetricIds.map(String),
+          metricNames: selectedMetrics.map((metric) => metric.name),
+          filters,
+        }
+      : {
+          mode: 'filtered',
+          filters,
+        };
     navigate(getEntityBulkEditPath(EntityType.METRIC, WILD_CARD_CHAR), {
-      state: metricsToEdit.length
-        ? {
-            selectedMetricNames: metricsToEdit.map((metric) => metric.name),
-          }
-        : undefined,
+      state: {
+        metricBulkEditScope,
+      },
     });
-  }, [filteredMetrics, navigate, searchText, selectedMetrics, statusFilter]);
+  }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
+
+  const handleSearchTextChange = useCallback(
+    (value: string | ChangeEvent<HTMLInputElement>) =>
+      setSearchText(getInputChangeValue(value)),
+    []
+  );
+
+  const handleDeleteConfirmationChange = useCallback(
+    (value: string | ChangeEvent<HTMLInputElement>) =>
+      setDeleteConfirmation(getInputChangeValue(value)),
+    []
+  );
 
   const handleBulkDelete = useCallback(async () => {
     try {
@@ -651,7 +688,9 @@ const MetricListPage = () => {
                 </LimitWrapper>
               )}
               {permission.EditAll && (
-                <Dropdown.Root>
+                <Dropdown.Root
+                  isOpen={isMetricActionsOpen}
+                  onOpenChange={setIsMetricActionsOpen}>
                   <Dropdown.DotsButton
                     className="metric-list-kebab"
                     data-testid="metric-actions"
@@ -659,7 +698,9 @@ const MetricListPage = () => {
                   <Dropdown.Popover className="metric-actions-menu">
                     <div className="metric-actions-menu-content">
                       <button
+                        aria-busy={isExporting}
                         className="metric-actions-menu-item"
+                        disabled={isExporting}
                         type="button"
                         onClick={handleExport}>
                         <span className="metric-actions-icon">
@@ -778,7 +819,7 @@ const MetricListPage = () => {
                   })}
                   value={searchText}
                   wrapperClassName="metric-list-search-wrapper"
-                  onChange={(event) => setSearchText(event.target.value)}
+                  onChange={handleSearchTextChange}
                 />
                 <div className="metric-list-toolbar-actions">
                   <Dropdown.Root>
@@ -965,9 +1006,7 @@ const MetricListPage = () => {
                       count: selectedMetricIds.length,
                     })}
                     value={deleteConfirmation}
-                    onChange={(event) =>
-                      setDeleteConfirmation(event.target.value)
-                    }
+                    onChange={handleDeleteConfirmationChange}
                   />
                   <div className="metric-delete-actions">
                     <Button

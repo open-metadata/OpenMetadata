@@ -17,10 +17,20 @@ import { CSVImportResult } from '../../generated/type/csvImportResult';
 import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
+export interface BulkEditWorkflowHeaderConfig {
+  currentLabel: string;
+  description: string;
+  steps: {
+    name: string;
+    step: VALIDATION_STEP;
+  }[];
+  title: string;
+}
+
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
   initialDataSource: Record<string, string>[];
-  columns: Column<Record<string, string>[]>[];
+  columns: Column<Record<string, string>>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
   activeAsyncImportJob?: CSVImportJobType;
@@ -33,9 +43,15 @@ export interface BulkEditEntityProps {
   changedCellCount: number;
   changedCellKeysByRowId: Record<string, string[]>;
   changedRowCount: number;
+  isExportHydrationRequired?: boolean;
+  isLoadingSourceData?: boolean;
+  isNextDisabled?: boolean;
   sourceEntityType?: EntityType;
+  workflowHeaderConfig?: BulkEditWorkflowHeaderConfig;
+  workflowMode?: 'bulkEdit' | 'import';
   handleBack: () => void;
   handleValidate: () => Promise<void>;
+  handleRevertChanges: () => void;
   onCSVReadComplete: (results: { data: string[][] }) => void;
   setGridContainer: (container: HTMLElement | null) => void;
   handleCopy: (event: CopyEvent<Record<string, string>>) => void;

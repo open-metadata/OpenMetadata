@@ -24,7 +24,15 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { FC, SVGProps, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  SVGProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
@@ -76,6 +84,8 @@ const getJobPercent = (job: CsvAsyncJob) => {
   return total > 0 ? Math.round((progress / total) * 100) : 0;
 };
 
+export const CSV_JOBS_REFRESH_EVENT = 'csv-jobs-refresh';
+
 export const CsvJobsTray = () => {
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();
@@ -85,10 +95,29 @@ export const CsvJobsTray = () => {
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
+  const hasLoadedInitialJobs = useRef(false);
 
   const fetchJobs = useCallback(async () => {
     try {
       const response = await getCsvAsyncJobs();
+
+      if (!hasLoadedInitialJobs.current) {
+        const initialTerminalJobIds = response
+          .filter((job) => TERMINAL_STATUSES.includes(job.status))
+          .map((job) => job.jobId);
+
+        if (!isEmpty(initialTerminalJobIds)) {
+          setDismissedJobIds((current) => {
+            const next = new Set(current);
+            initialTerminalJobIds.forEach((jobId) => next.add(jobId));
+
+            return next;
+          });
+        }
+
+        hasLoadedInitialJobs.current = true;
+      }
+
       setJobs(response);
     } catch (error) {
       if ((error as AxiosError).response?.status !== 404) {
@@ -159,6 +188,15 @@ export const CsvJobsTray = () => {
       socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, fetchJobs);
     };
   }, [fetchJobs, socket]);
+
+  useEffect(() => {
+    fetchJobs();
+    window.addEventListener(CSV_JOBS_REFRESH_EVENT, fetchJobs);
+
+    return () => {
+      window.removeEventListener(CSV_JOBS_REFRESH_EVENT, fetchJobs);
+    };
+  }, [fetchJobs]);
 
   const handleOpen = useCallback(() => {
     setOpen(true);

@@ -26,11 +26,68 @@
   min-width: 12rem;
 }
 
+.bulk-edit-enum-select-dropdown.ant-select-dropdown,
+.bulk-edit-custom-property-select-dropdown.ant-select-dropdown {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14);
+  isolation: isolate;
+  opacity: 1 !important;
+  overflow: hidden;
+  padding: 6px;
+  transform: none !important;
+  z-index: 1500;
+
+  &::before {
+    background: @white;
+    border-radius: inherit;
+    content: '';
+    inset: 0;
+    position: absolute;
+    z-index: 0;
+  }
+
+  .rc-virtual-list {
+    background: @white;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ant-select-item {
+    align-items: center;
+    background: @white;
+    border-radius: 6px;
+    color: @grey-900;
+    display: flex;
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 13px;
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .ant-select-item-option-content {
+    line-height: 20px;
+  }
+
+  .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: @primary-50;
+    color: @grey-900;
+    font-weight: @font-medium;
+  }
+
+  .ant-select-item-option-state {
+    color: @primary-6;
+  }
+}
+
 .csv-import-page-stack {
   display: flex;
   flex-direction: column;
   font-family: @font-family;
   gap: 20px;
+  min-height: calc(100vh - @om-navbar-height);
 }
 
 .csv-workflow-header {
@@ -195,6 +252,181 @@
   max-width: 720px;
 }
 
+.csv-selected-file-card {
+  align-items: center;
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  box-shadow: @box-shadow-card-subtle;
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  width: 100%;
+}
+
+.csv-selected-file-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 10px;
+  color: @primary-6;
+  display: flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.csv-selected-file-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.csv-selected-file-name {
+  color: @grey-900;
+  font-size: 15px;
+  font-weight: @font-semibold;
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-selected-file-meta {
+  color: @grey-600;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.csv-selected-file-remove {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: @grey-500;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+
+  &:hover {
+    background: @grey-26;
+    color: @grey-700;
+  }
+}
+
+.csv-import-processing-wrap {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: calc(100vh - 360px);
+  padding: 48px 0;
+}
+
+.csv-import-processing-card {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 14px;
+  box-shadow: @box-shadow-card-subtle;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 520px;
+  padding: 44px 48px;
+  width: 100%;
+}
+
+.csv-import-processing-card .csv-import-copy p {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.csv-import-processing-file-name {
+  color: @grey-700;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+.csv-processing-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.csv-processing-stage {
+  align-items: center;
+  color: @grey-600;
+  display: flex;
+  font-size: 14px;
+  font-weight: @font-medium;
+  gap: 12px;
+  line-height: 20px;
+}
+
+.csv-processing-stage-done,
+.csv-processing-stage-active {
+  color: @grey-800;
+}
+
+.csv-processing-stage-icon {
+  align-items: center;
+  background: @grey-26;
+  border-radius: 50%;
+  color: @grey-500;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.csv-processing-stage-done .csv-processing-stage-icon {
+  background: @green-9;
+  color: @green-10;
+}
+
+.csv-processing-stage-active .csv-processing-stage-icon {
+  background: @primary-50;
+  color: @primary-6;
+}
+
+.csv-processing-stage-dot {
+  background: @grey-400;
+  border-radius: 50%;
+  display: block;
+  height: 6px;
+  width: 6px;
+}
+
+.csv-import-wizard-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  bottom: 0;
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin: auto -24px 0;
+  padding: 16px 24px;
+  position: sticky;
+  z-index: 5;
+
+  button {
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: @font-semibold !important;
+    min-height: 40px !important;
+    padding: 9px 16px !important;
+  }
+}
+
 .csv-import-copy h2 {
   color: @grey-900;
   font-size: 18px;
@@ -314,6 +546,12 @@
   min-height: 220px;
   padding: 24px;
   text-align: center;
+
+  p {
+    max-width: 960px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
 }
 
 .csv-import-grid-toolbar {
@@ -429,6 +667,7 @@
   border-radius: 10px;
   display: flex;
   gap: 12px;
+  justify-content: space-between;
   margin: 14px 20px 0;
   padding: 12px 14px;
 
@@ -444,18 +683,27 @@
   }
 }
 
+.bulk-edit-add-row-content {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+}
+
 .bulk-edit-add-row-hint {
   color: @grey-600;
   font-size: 12px;
   line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.bulk-edit-empty-state {
-  display: block;
-  font-size: @font-size-base;
-  line-height: 20px;
-  padding: 18px 20px 22px;
-  text-align: center;
+.bulk-edit-add-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
 }
 
 .bulk-edit-rdg {
@@ -492,7 +740,101 @@
     font-size: 13px;
     font-weight: @font-regular;
     line-height: 20px;
+    min-width: 0;
     padding: 0 12px;
+  }
+
+  .rdg-cell-select {
+    cursor: pointer;
+  }
+
+  .bulk-edit-select-cell {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bulk-edit-select-cell-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bulk-edit-select-cell-icon {
+    color: @grey-400;
+    flex-shrink: 0;
+  }
+
+  .bulk-edit-enum-select {
+    min-width: 0;
+    width: 100%;
+
+    &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
+        .ant-select-customize-input
+      )
+      .ant-select-selector {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .ant-select-selector {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      height: 24px;
+      padding: 0;
+    }
+
+    .ant-select-selection-item {
+      color: @grey-900;
+      font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 24px;
+      padding-right: 20px;
+    }
+
+    .ant-select-arrow {
+      color: @grey-400;
+      margin-top: -7px;
+      right: 0;
+    }
+  }
+
+  .bulk-edit-text-cell-editor {
+    background: transparent;
+    border: none;
+    box-sizing: border-box;
+    color: @grey-900;
+    font: inherit;
+    height: 100%;
+    line-height: 20px;
+    min-width: 0;
+    outline: none;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .bulk-edit-custom-property-cell-trigger {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .bulk-edit-custom-property-placeholder {
+    color: @grey-500;
+    font-size: 13px;
+    line-height: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   // Identifier + enum cells read as code (monospace); everything else is sans.
@@ -501,7 +843,6 @@
   .rdg-cell-unitOfMeasurement,
   .rdg-cell-granularity,
   .rdg-cell-expressionLanguage,
-  .rdg-cell-sourceType,
   .rdg-cell-entityStatus {
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
     font-size: 12.5px;
@@ -522,6 +863,18 @@
     box-shadow: inset 0 0 0 2px @primary-4;
   }
 
+  .rdg-cell-select[aria-selected='true'],
+  .rdg-cell-select.rdg-cell-selected {
+    box-shadow: none !important;
+    outline: none;
+  }
+
+  .rdg-cell-select:focus,
+  .rdg-cell-select:focus-within {
+    box-shadow: none !important;
+    outline: none;
+  }
+
   // Cells clip their content by default so long text (e.g. Description) never
   // overlaps the neighbouring column. Only the actively-edited cell is allowed
   // to overflow so its inline editor / dropdown can escape.
@@ -531,8 +884,13 @@
   }
 
   .rdg-cell-description {
-    &[aria-selected='true'],
-    &.rdg-cell-selected {
+    align-items: flex-start;
+    overflow-wrap: anywhere;
+    padding-top: 8px;
+    white-space: normal;
+    word-break: break-word;
+
+    &:has(.bulk-edit-description-editor) {
       box-shadow: none;
       overflow: visible;
       z-index: 6;
@@ -597,6 +955,30 @@
     box-shadow: inset 0 0 0 2px @primary-4;
   }
 
+  .rdg-cell-required-error,
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-required-error {
+    box-shadow: inset 0 0 0 2px @red-14 !important;
+    position: relative;
+
+    &::after {
+      align-items: center;
+      background: @red-14;
+      border-radius: 50%;
+      color: @white;
+      content: '!';
+      display: flex;
+      font-size: 12px;
+      font-weight: @font-bold;
+      height: 28px;
+      justify-content: center;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+    }
+  }
+
   .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-locked {
     background: @grey-26;
   }
@@ -608,12 +990,554 @@
   }
 }
 
+.bulk-edit-picker-editor,
+.bulk-edit-custom-property-editor {
+  background: @white;
+  background-clip: padding-box;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16);
+  color: @grey-900;
+  display: flex;
+  flex-direction: column;
+  font-family: @font-family;
+  isolation: isolate;
+  max-height: 340px;
+  min-width: min(340px, calc(100vw - 16px));
+  overflow: hidden;
+  position: fixed;
+  width: min(340px, calc(100vw - 16px));
+  z-index: 1050;
+
+  &::before {
+    background: @white;
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.bulk-edit-picker-label {
+  background: @white;
+  color: @grey-700;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  padding: 6px 2px 4px;
+  text-transform: uppercase;
+}
+
+.bulk-edit-picker-trigger-value {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-body-card {
+  background: @white;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.bulk-edit-picker-search {
+  align-items: center;
+  border-bottom: 1px solid @grey-15;
+  color: @grey-500;
+  display: flex;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+
+  input {
+    background: transparent;
+    border: none;
+    color: @grey-900;
+    flex: 1;
+    font-size: 13px;
+    line-height: 20px;
+    outline: none;
+
+    &::placeholder {
+      color: @grey-500;
+    }
+  }
+}
+
+.bulk-edit-picker-content {
+  display: flex;
+  flex: 1;
+  min-height: 150px;
+}
+
+.bulk-edit-picker-loading {
+  align-self: center;
+  color: @grey-500;
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0 auto;
+}
+
+.bulk-edit-picker-option-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-height: 224px;
+  overflow: auto;
+  padding: 4px;
+}
+
+.bulk-edit-picker-option {
+  align-items: center;
+  background: @white;
+  border: none;
+  border-radius: 8px;
+  color: @grey-900;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+
+  &.selected,
+  &:hover {
+    background: @primary-50;
+  }
+
+  > svg {
+    color: @primary-6;
+    flex-shrink: 0;
+  }
+}
+
+.bulk-edit-picker-option-meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bulk-edit-picker-option-swatch {
+  background: @grey-400;
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
+
+  &.tag {
+    background: #5925dc;
+  }
+
+  &.glossary {
+    background: @primary-6;
+  }
+
+  &.domain,
+  &.dataProduct,
+  &.metric {
+    background: @primary-6;
+  }
+}
+
+.bulk-edit-picker-option-avatar {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: @font-semibold;
+  height: 32px;
+  justify-content: center;
+  letter-spacing: -0.01em;
+  width: 32px;
+
+  &.team {
+    border-radius: 8px;
+  }
+}
+
+.bulk-edit-picker-option-label {
+  display: block;
+  font-size: 14px;
+  font-weight: @font-semibold;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-option-value {
+  color: @grey-600;
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-empty-state {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 16px 20px;
+  text-align: center;
+}
+
+.bulk-edit-picker-empty-icon,
+.bulk-edit-custom-property-empty-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 50%;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  margin-bottom: 10px;
+  width: 36px;
+}
+
+.bulk-edit-picker-empty-icon.secondary,
+.bulk-edit-custom-property-empty-icon {
+  color: @grey-600;
+}
+
+.bulk-edit-picker-empty-icon.primary {
+  color: @primary-6;
+}
+
+.bulk-edit-picker-empty-title,
+.bulk-edit-custom-property-empty-title {
+  color: @grey-900;
+  font-size: 15px;
+  font-weight: @font-semibold;
+  line-height: 22px;
+  margin-bottom: 6px;
+}
+
+.bulk-edit-picker-empty-description,
+.bulk-edit-custom-property-empty-description {
+  color: @grey-700;
+  font-size: 13px;
+  line-height: 18px;
+  margin-bottom: 14px;
+  max-width: 260px;
+}
+
+.bulk-edit-picker-empty-action,
+.bulk-edit-custom-property-empty-action {
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  justify-content: center;
+  line-height: 18px;
+  min-height: 34px;
+  padding: 7px 12px;
+  width: 100%;
+}
+
+.bulk-edit-picker-empty-action.secondary,
+.bulk-edit-custom-property-empty-action {
+  background: @white;
+  border: 1px solid @grey-15;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.08);
+  color: @grey-800;
+}
+
+.bulk-edit-picker-empty-action.primary {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.12);
+  color: @white;
+}
+
+.bulk-edit-picker-empty-secondary-action {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: @primary-6;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  line-height: 18px;
+  margin-top: 10px;
+}
+
+.bulk-edit-picker-empty-hint,
+.bulk-edit-custom-property-empty-hint {
+  color: @grey-500;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 10px;
+}
+
+.bulk-edit-picker-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.bulk-edit-picker-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bulk-edit-picker-clear,
+.bulk-edit-picker-cancel,
+.bulk-edit-picker-update {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  min-height: 34px;
+  padding: 7px 12px;
+}
+
+.bulk-edit-picker-clear {
+  background: transparent;
+  border: none;
+  color: @grey-700;
+  padding-left: 0;
+
+  &:disabled {
+    color: @grey-400;
+    cursor: default;
+  }
+}
+
+.bulk-edit-picker-cancel {
+  background: @white;
+  border: 1px solid @grey-15;
+  color: @grey-900;
+}
+
+.bulk-edit-picker-update {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  color: @white;
+}
+
+.bulk-edit-custom-property-editor-empty {
+  border-radius: 10px;
+  min-height: 280px;
+  padding: 0;
+}
+
+.bulk-edit-custom-property-editor {
+  overflow: hidden;
+}
+
+.bulk-edit-custom-property-empty-card {
+  align-items: center;
+  background: @white;
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  min-height: inherit;
+  padding: 32px 18px 24px;
+  text-align: center;
+}
+
+.bulk-edit-custom-property-editor-header {
+  align-items: center;
+  background: @white;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  font-size: 14px;
+  font-weight: @font-semibold;
+  justify-content: space-between;
+  line-height: 20px;
+  padding: 12px 14px;
+}
+
+.bulk-edit-custom-property-count {
+  color: @grey-600;
+  font-size: 12px;
+  font-weight: @font-medium;
+  line-height: 18px;
+}
+
+.bulk-edit-custom-property-editor-body {
+  background: @white;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 200px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.bulk-edit-custom-property-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-edit-custom-property-empty {
+  color: @grey-600;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.bulk-edit-custom-property-label {
+  align-items: center;
+  color: @grey-700;
+  display: flex;
+  font-size: 12px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.bulk-edit-custom-property-type {
+  background: @grey-36;
+  border-radius: 6px;
+  color: @grey-600;
+  font-size: 11px;
+  font-weight: @font-medium;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  padding: 2px 8px;
+}
+
+.bulk-edit-custom-property-input {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 6px;
+  color: @grey-900;
+  font-size: 13px;
+  line-height: 18px;
+  outline: none;
+  padding: 8px 10px;
+  resize: vertical;
+  width: 100%;
+
+  &:focus {
+    border-color: @primary-6;
+    box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.14);
+  }
+}
+
+.bulk-edit-custom-property-reference-select.ant-select,
+.bulk-edit-custom-property-enum-select.ant-select {
+  width: 100%;
+
+  .ant-select-selector {
+    border-color: @grey-15;
+    border-radius: 6px;
+    min-height: 36px;
+  }
+
+  &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
+      .ant-select-customize-input
+    )
+    .ant-select-selector {
+    border-color: @primary-6;
+    box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.14);
+  }
+}
+
+.bulk-edit-custom-property-time-interval {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bulk-edit-custom-property-time-interval {
+  flex-wrap: nowrap;
+}
+
+.bulk-edit-custom-property-editor-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 10px 14px;
+}
+
+.bulk-edit-custom-property-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bulk-edit-custom-property-clear,
+.bulk-edit-custom-property-cancel,
+.bulk-edit-custom-property-update {
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  padding: 7px 12px;
+}
+
+.bulk-edit-custom-property-clear {
+  background: transparent;
+  border: none;
+  color: @grey-700;
+  padding-left: 0;
+
+  &:disabled {
+    color: @grey-400;
+    cursor: not-allowed;
+  }
+}
+
+.bulk-edit-custom-property-cancel {
+  background: @white;
+  border: 1px solid @grey-15;
+  color: @grey-900;
+}
+
+.bulk-edit-custom-property-update {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  color: @white;
+}
+
 // "Remove" affordance shown in the Operation cell of an added (new) row.
 .bulk-edit-remove-row {
   align-items: center;
   background: transparent;
   border: none;
-  color: @red-6;
+  color: @red-10;
   cursor: pointer;
   display: inline-flex;
   font-size: 12px;
@@ -624,6 +1548,12 @@
   &:hover {
     text-decoration: underline;
   }
+}
+
+.bulk-edit-error-pill {
+  background: @red-9 !important;
+  border-color: @red-19 !important;
+  color: @red-10 !important;
 }
 
 .csv-import-results-header {
@@ -657,6 +1587,7 @@
 .bulk-edit-description-editor {
   background: @white;
   border: 2px solid @primary-6;
+  box-sizing: border-box;
   box-shadow: @box-shadow-card-subtle;
   color: @grey-900;
   display: flex;
@@ -664,12 +1595,13 @@
   font-family: @font-family;
   gap: 10px;
   left: 0;
+  max-width: 100%;
   min-height: 132px;
-  min-width: 100%;
+  min-width: 0;
   padding: 10px 14px 12px;
   position: absolute;
   top: 0;
-  width: max(100%, 520px);
+  width: 100%;
   z-index: 10;
 }
 
@@ -725,6 +1657,7 @@
 
 .bulk-edit-description-editor-textarea {
   border: 0;
+  box-sizing: border-box;
   color: @grey-900;
   font-family: @font-family;
   font-size: 14px;
@@ -732,9 +1665,14 @@
   line-height: 20px;
   min-height: 54px;
   outline: 0;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0;
   resize: none;
+  white-space: pre-wrap;
   width: 100%;
+  word-break: break-word;
 }
 
 .csv-import-muted-text {
@@ -792,6 +1730,12 @@
   flex-direction: column;
   gap: 16px;
   text-align: center;
+}
+
+.csv-import-progress-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 64px;
 }
 
 .csv-import-progress-icon {
@@ -901,14 +1845,15 @@
   align-items: center;
   background: @white;
   border-top: 1px solid @grey-15;
+  bottom: 0;
   display: flex;
   float: none !important;
+  flex-shrink: 0;
   gap: 10px;
-  justify-content: flex-end;
-  margin: 0 -24px;
+  justify-content: space-between;
+  margin: auto -24px 0;
   padding: 12px 32px;
   position: sticky;
-  bottom: 0;
   z-index: 5;
 
   button {
@@ -918,6 +1863,25 @@
     min-height: 38px !important;
     padding: 8px 14px !important;
   }
+}
+
+.csv-import-page-stack .csv-import-wizard-footer-end {
+  justify-content: flex-end;
+}
+
+.csv-import-page-stack + .csv-jobs-tray {
+  .csv-jobs-tray-launcher-wrap,
+  .csv-jobs-tray-popover {
+    bottom: 84px;
+  }
+}
+
+.csv-import-wizard-footer-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 @keyframes csv-import-spin {

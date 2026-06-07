@@ -34,9 +34,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
-import org.openmetadata.schema.type.MetricSource;
-import org.openmetadata.schema.type.MetricSourceSyncStatus;
-import org.openmetadata.schema.type.MetricSourceType;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
@@ -227,47 +224,14 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
-  void post_metricWithDaxExpressionAndPowerBiSource_200_OK(TestNamespace ns) {
-    CreateMetric request =
-        new CreateMetric()
-            .withName(ns.prefix("metric_dax"))
-            .withDescription("Metric with DAX source")
-            .withMetricExpression(
-                new MetricExpression()
-                    .withCode("SUM(Sales[Amount])")
-                    .withLanguage(MetricExpressionLanguage.DAX))
-            .withMetricSource(
-                new MetricSource()
-                    .withSourceType(MetricSourceType.POWERBI)
-                    .withSourceEntityLink(
-                        "<#E::dashboardDataModel::powerbi.dataset::columns::Sales.TotalSales>")
-                    .withSourceId("workspace:dataset:Sales:Total Sales")
-                    .withSourceName("Total Sales")
-                    .withSourceUrl("https://app.powerbi.com/groups/workspace/datasets/dataset")
-                    .withSourceHash("source-hash")
-                    .withSyncEnabled(true)
-                    .withSyncStatus(MetricSourceSyncStatus.SYNCED));
-
-    Metric metric = createEntity(request);
-    assertNotNull(metric.getMetricExpression());
-    assertEquals(MetricExpressionLanguage.DAX, metric.getMetricExpression().getLanguage());
-    assertNotNull(metric.getMetricSource());
-    assertEquals(MetricSourceType.POWERBI, metric.getMetricSource().getSourceType());
-    assertEquals("workspace:dataset:Sales:Total Sales", metric.getMetricSource().getSourceId());
-    assertTrue(metric.getMetricSource().getSyncEnabled());
-    assertEquals(MetricSourceSyncStatus.SYNCED, metric.getMetricSource().getSyncStatus());
-  }
-
-  @Test
   void put_metricCsvImportExport_200_OK(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String metricName = ns.prefix("metric_csv");
     String secondMetricName = ns.prefix("metric_csv_second");
     String header =
         "name*,displayName,description,metricType,unitOfMeasurement,customUnitOfMeasurement,"
-            + "granularity,expressionLanguage,expressionCode,sourceType,sourceEntityLink,sourceId,"
-            + "sourceName,sourceUrl,sourceHash,syncEnabled,syncStatus,relatedMetrics,tags,"
-            + "glossaryTerms,owners,reviewers,domains,dataProducts,entityStatus,extension";
+            + "granularity,expressionLanguage,expressionCode,relatedMetrics,tags,glossaryTerms,"
+            + "tiers,owners,reviewers,domains,dataProducts,entityStatus,extension";
     String row =
         String.join(
             ",",
@@ -278,16 +242,9 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             "DOLLARS",
             "",
             "DAY",
-            "DAX",
-            "SUM(Sales[Amount])",
-            "POWERBI",
-            "<#E::dashboardDataModel::powerbi.dataset::columns::Sales.TotalSales>",
-            "workspace:dataset:Sales:Total Sales",
-            "Total Sales",
-            "https://app.powerbi.com/groups/workspace/datasets/dataset",
-            "source-hash",
-            "true",
-            "SYNCED",
+            "SQL",
+            "SUM(sales.amount)",
+            "",
             "",
             "",
             "",
@@ -307,16 +264,9 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             "DOLLARS",
             "",
             "DAY",
-            "DAX",
-            "SUM(Sales[NetAmount])",
-            "POWERBI",
-            "<#E::dashboardDataModel::powerbi.dataset::columns::Sales.NetAmount>",
-            "workspace:dataset:Sales:Net Amount",
-            "Net Amount",
-            "https://app.powerbi.com/groups/workspace/datasets/dataset",
-            "source-hash-2",
-            "true",
-            "SYNCED",
+            "SQL",
+            "SUM(sales.net_amount)",
+            "",
             "",
             "",
             "",
@@ -335,17 +285,16 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     Metric imported = getEntityByName(metricName);
     assertNotNull(imported);
-    assertEquals(MetricExpressionLanguage.DAX, imported.getMetricExpression().getLanguage());
-    assertEquals(MetricSourceType.POWERBI, imported.getMetricSource().getSourceType());
-    assertEquals(MetricSourceSyncStatus.SYNCED, imported.getMetricSource().getSyncStatus());
+    assertEquals(MetricExpressionLanguage.SQL, imported.getMetricExpression().getLanguage());
     Metric secondImported = getEntityByName(secondMetricName);
     assertNotNull(secondImported);
-    assertEquals(MetricExpressionLanguage.DAX, secondImported.getMetricExpression().getLanguage());
+    assertEquals(MetricExpressionLanguage.SQL, secondImported.getMetricExpression().getLanguage());
 
     String exportedCsv = client.metrics().exportCsv("*");
     assertTrue(exportedCsv.contains(metricName));
     assertTrue(exportedCsv.contains(secondMetricName));
-    assertTrue(exportedCsv.contains("sourceType"));
+    assertTrue(exportedCsv.contains("expressionCode"));
+    assertTrue(exportedCsv.contains("tiers"));
   }
 
   @Test

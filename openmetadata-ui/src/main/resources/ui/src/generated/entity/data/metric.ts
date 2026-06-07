@@ -95,10 +95,6 @@ export interface Metric {
      */
     metricType?: MetricType;
     /**
-     * Source metadata that maps an external metric definition into the OpenMetadata Metric entity.
-     */
-    metricSource?: MetricSource;
-    /**
      * Name that identifies this Metric instance uniquely.
      */
     name: string;
@@ -529,81 +525,11 @@ export interface MetricExpression {
  * This schema defines the type of the language used for Metric Expression Code.
  */
 export enum Language {
-    Dax = "DAX",
     External = "External",
     Java = "Java",
     JavaScript = "JavaScript",
     Python = "Python",
     SQL = "SQL",
-}
-
-/**
- * Source metadata that maps an external metric definition into the OpenMetadata Metric entity.
- */
-export interface MetricSource {
-    /**
-     * Timestamp of the last successful source synchronization.
-     */
-    lastSyncedAt?: number;
-    /**
-     * Entity link to the source definition, such as a PowerBI DAX measure on a DashboardDataModel
-     * column.
-     */
-    sourceEntityLink?: string;
-    /**
-     * Hash of the source definition used to detect source drift.
-     */
-    sourceHash?: string;
-    /**
-     * Stable source-system identifier for the metric definition.
-     */
-    sourceId?: string;
-    /**
-     * Source-system display name for the metric definition.
-     */
-    sourceName?: string;
-    /**
-     * Source system where the metric definition originated.
-     */
-    sourceType?: MetricSourceType;
-    /**
-     * URL to the metric definition in the source system.
-     */
-    sourceUrl?: string;
-    /**
-     * Whether source-to-OpenMetadata synchronization is enabled for this metric.
-     */
-    syncEnabled?: boolean;
-    /**
-     * Last synchronization error, if any.
-     */
-    syncError?: string;
-    /**
-     * Synchronization status for this source metric definition.
-     */
-    syncStatus?: MetricSourceSyncStatus;
-}
-
-/**
- * Synchronization status of the source metric definition.
- */
-export enum MetricSourceSyncStatus {
-    Disabled = "DISABLED",
-    Drifted = "DRIFTED",
-    Failed = "FAILED",
-    Synced = "SYNCED",
-}
-
-/**
- * Source system where the metric definition originated.
- */
-export enum MetricSourceType {
-    DBT = "DBT",
-    External = "EXTERNAL",
-    Omni = "OMNI",
-    Openmetadata = "OPENMETADATA",
-    Powerbi = "POWERBI",
-    SnowflakeOSI = "SNOWFLAKE_OSI",
 }
 
 /**

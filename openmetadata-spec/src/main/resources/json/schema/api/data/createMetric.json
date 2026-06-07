@@ -27,10 +27,6 @@
       "description": "Type of the metric.",
       "$ref": "../../entity/data/metric.json#/definitions/metricType"
     },
-    "metricSource": {
-      "description": "Source metadata that maps an external metric definition into the OpenMetadata Metric entity.",
-      "$ref": "../../entity/data/metric.json#/definitions/metricSource"
-    },
     "unitOfMeasurement": {
       "description": "Unit of measurement for the metric.",
       "$ref": "../../entity/data/metric.json#/definitions/unitOfMeasurement"

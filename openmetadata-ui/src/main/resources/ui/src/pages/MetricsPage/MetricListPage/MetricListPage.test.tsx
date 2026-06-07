@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { getEntityBulkEditPath } from '../../../utils/EntityUtils';
 
 import MetricListPage from './MetricListPage';
+
+const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: jest
@@ -26,9 +30,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <span>{children}</span>),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick, onPress }) => (
-      <button onClick={onPress ?? onClick}>{children}</button>
-    )),
+    .mockImplementation(
+      ({ children, onClick, onPress, 'data-testid': testId, isDisabled }) => (
+        <button
+          data-testid={testId}
+          disabled={isDisabled}
+          onClick={onPress ?? onClick}>
+          {children}
+        </button>
+      )
+    ),
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -70,7 +81,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn(() => mockNavigate),
 }));
 
 // Mock permission provider to simulate access rights
@@ -83,6 +94,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
       ViewAll: true,
       ViewBasic: true,
       Create: true,
+      Delete: true,
+      EditAll: true,
     }),
   }),
 }));
@@ -93,6 +106,8 @@ jest.mock('../../../rest/metricsAPI', () => ({
     data: [],
     paging: {},
   }),
+  exportMetricDetailsInCSV: jest.fn().mockResolvedValue({}),
+  deleteMetricAsync: jest.fn().mockResolvedValue({}),
 }));
 
 // Mock the empty state placeholder to render a docs link
@@ -112,10 +127,41 @@ jest.mock(
 
 jest.mock('../../../components/common/Table/TableV2', () => ({
   __esModule: true,
-  default: ({ locale }: { locale: { emptyText: React.ReactNode } }) => (
-    <div>{locale.emptyText}</div>
+  default: ({
+    dataSource,
+    locale,
+    rowSelection,
+  }: {
+    dataSource: Array<{ id: string; name: string }>;
+    locale: { emptyText: React.ReactNode };
+    rowSelection?: { onChange: (keys: string[]) => void };
+  }) => (
+    <div>
+      {dataSource.length ? (
+        <>
+          <button
+            data-testid="select-first-metric"
+            onClick={() => rowSelection?.onChange([dataSource[0].id])}>
+            select
+          </button>
+          {dataSource.map((metric) => (
+            <span key={metric.id}>{metric.name}</span>
+          ))}
+        </>
+      ) : (
+        locale.emptyText
+      )}
+    </div>
   ),
 }));
+
+jest.mock(
+  '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component',
+  () => ({
+    CSV_JOBS_REFRESH_EVENT: 'csv-jobs-refresh',
+    CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
+  })
+);
 
 // Mock PageLayoutV1 to simply render children without layout logic
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
@@ -125,7 +171,28 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   ),
 }));
 
+jest.mock('../../../components/PageHeader/PageHeader.component', () => ({
+  __esModule: true,
+  default: ({ data }: { data: { header: string; subHeader: string } }) => (
+    <div data-testid="page-header">{data.header}</div>
+  ),
+}));
+
+jest.mock('../../../hoc/LimitWrapper', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 describe('MetricListPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { getMetrics } = require('../../../rest/metricsAPI');
+    getMetrics.mockResolvedValue({
+      data: [],
+      paging: {},
+    });
+  });
+
   it('renders the docs link with correct URL when empty state is shown', async () => {
     render(
       <MemoryRouter>
@@ -139,5 +206,99 @@ describe('MetricListPage', () => {
     expect(link).toHaveAttribute('href', METRICS_DOCS);
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('passes filtered metric scope when bulk edit is clicked without selection', async () => {
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    const searchInput = await screen.findByPlaceholderText(
+      'label.search-entity'
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'sales' } });
+    fireEvent.click(screen.getByTestId('bulk-edit-metric'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      getEntityBulkEditPath(EntityType.METRIC, '*'),
+      {
+        state: {
+          metricBulkEditScope: {
+            mode: 'filtered',
+            filters: {
+              searchText: 'sales',
+              statusFilter: undefined,
+            },
+          },
+        },
+      }
+    );
+  });
+
+  it('passes selected metric scope when selected rows are bulk edited', async () => {
+    const { getMetrics } = require('../../../rest/metricsAPI');
+    getMetrics.mockResolvedValue({
+      data: [
+        {
+          id: 'metric-id',
+          name: 'net_sales',
+          displayName: 'Net Sales',
+        },
+      ],
+      paging: {},
+    });
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('select-first-metric'));
+    fireEvent.click(screen.getByTestId('bulk-edit-metric'));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        getEntityBulkEditPath(EntityType.METRIC, '*'),
+        {
+          state: {
+            metricBulkEditScope: {
+              mode: 'selected',
+              metricIds: ['metric-id'],
+              metricNames: ['net_sales'],
+              filters: {
+                searchText: '',
+                statusFilter: undefined,
+              },
+            },
+          },
+        }
+      );
+    });
+  });
+
+  it('starts async export directly from the listing action menu', async () => {
+    const { exportMetricDetailsInCSV } = require('../../../rest/metricsAPI');
+    const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByText('label.export'));
+
+    await waitFor(() => {
+      expect(exportMetricDetailsInCSV).toHaveBeenCalledWith('*');
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'csv-jobs-refresh' })
+      );
+    });
+
+    dispatchEventSpy.mockRestore();
   });
 });

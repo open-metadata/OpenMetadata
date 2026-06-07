@@ -50,7 +50,6 @@ describe('ExpressionCodeCell', () => {
       Language.Python,
       Language.JavaScript,
       Language.Java,
-      Language.Dax,
       Language.External,
     ].forEach((lang) => {
       expect(

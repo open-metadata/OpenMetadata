@@ -47,61 +47,13 @@
       "name": "expressionLanguage",
       "required": false,
       "description": "Language used by the canonical metric expression.",
-      "examples": ["SQL", "DAX"]
+      "examples": ["SQL", "Python"]
     },
     {
       "name": "expressionCode",
       "required": false,
       "description": "Canonical expression used to compute the metric.",
       "examples": ["SUM(fact_sales[net_sales])"]
-    },
-    {
-      "name": "sourceType",
-      "required": false,
-      "description": "Source system where the metric definition originated.",
-      "examples": ["OPENMETADATA", "POWERBI"]
-    },
-    {
-      "name": "sourceEntityLink",
-      "required": false,
-      "description": "OpenMetadata entity link to the source metric definition.",
-      "examples": ["<#E::dashboardDataModel::service.dataset::columns::net_sales>"]
-    },
-    {
-      "name": "sourceId",
-      "required": false,
-      "description": "Stable source-system identifier for the metric definition.",
-      "examples": ["workspace:dataset:table:measure"]
-    },
-    {
-      "name": "sourceName",
-      "required": false,
-      "description": "Source-system name for the metric definition.",
-      "examples": ["Net Sales"]
-    },
-    {
-      "name": "sourceUrl",
-      "required": false,
-      "description": "URL to the metric definition in the source system.",
-      "examples": ["https://app.powerbi.com/groups/workspace/datasets/dataset"]
-    },
-    {
-      "name": "sourceHash",
-      "required": false,
-      "description": "Hash of the source expression used to detect source drift.",
-      "examples": ["5f4dcc3b5aa765d61d8327deb882cf99"]
-    },
-    {
-      "name": "syncEnabled",
-      "required": false,
-      "description": "Whether source-to-OpenMetadata sync is enabled.",
-      "examples": ["true", "false"]
-    },
-    {
-      "name": "syncStatus",
-      "required": false,
-      "description": "Current source sync status.",
-      "examples": ["SYNCED", "DRIFTED"]
     },
     {
       "name": "relatedMetrics",
@@ -120,6 +72,12 @@
       "required": false,
       "description": "Glossary term FQNs separated by ';'.",
       "examples": ["KPI.NetSales"]
+    },
+    {
+      "name": "tiers",
+      "required": false,
+      "description": "Tier tag FQNs separated by ';'.",
+      "examples": ["Tier.Tier1"]
     },
     {
       "name": "owners",

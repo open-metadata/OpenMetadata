@@ -20,6 +20,8 @@ import {
   ProgressBar,
 } from '@openmetadata/ui-core-components';
 import {
+  CheckCircle,
+  ChevronRight,
   Download01,
   File06,
   FilterLines,
@@ -27,7 +29,9 @@ import {
   RefreshCcw01,
   RefreshCw01,
   StopCircle,
+  XClose,
 } from '@untitledui/icons';
+import type { RcFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
@@ -63,7 +67,9 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES, SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { Metric } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { Include } from '../../../generated/type/include';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
@@ -74,13 +80,16 @@ import {
   getCsvAsyncJobs,
   getCsvDocumentation,
 } from '../../../rest/csvAPI';
+import { getMetrics } from '../../../rest/metricsAPI';
 import {
   COLUMNS_WIDTH,
+  getCsvHeaderKey,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
   getImportOperation,
   getImportOperationRowClass,
   getImportOperationSummary,
+  getMetricColumnsAndDataSourceFromMetrics,
   IMPORT_OPERATIONS,
   IMPORT_OPERATION_COLUMN_KEY,
   isMetricBulkEditHiddenColumn,
@@ -108,13 +117,66 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
+  BulkEntityImportLocationState,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
+  MetricBulkEditScope,
 } from './BulkEntityImportPage.interface';
 
-interface BulkEntityImportLocationState {
-  selectedMetricNames?: string[];
+const METRIC_BULK_EDIT_PAGE_SIZE = 1000;
+
+interface SelectedCsvFile {
+  content: string;
+  name: string;
+  rowCount: number;
+  sizeLabel: string;
 }
+
+type CsvProcessingStage = 'done' | 'active' | 'pending';
+
+const CSV_FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB'];
+
+const getCsvRowCount = (content: string) =>
+  content.split(/\r\n|\n|\r/).filter((line, index) => index > 0 && line.trim())
+    .length;
+
+const getCsvFileSizeLabel = (bytes = 0) => {
+  if (!bytes) {
+    return `0 ${CSV_FILE_SIZE_UNITS[0]}`;
+  }
+
+  const unitIndex = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    CSV_FILE_SIZE_UNITS.length - 1
+  );
+  const normalizedSize = bytes / 1024 ** unitIndex;
+
+  return `${normalizedSize.toFixed(unitIndex === 0 ? 0 : 1)} ${
+    CSV_FILE_SIZE_UNITS[unitIndex]
+  }`;
+};
+
+const matchesMetricBulkEditFilters = (
+  metric: Metric,
+  filters: MetricBulkEditScope['filters']
+) => {
+  const searchValue = filters.searchText?.trim().toLowerCase();
+  const matchesSearch = searchValue
+    ? [
+        metric.name,
+        metric.displayName,
+        metric.fullyQualifiedName,
+        metric.description,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(searchValue))
+    : true;
+  const matchesStatus = filters.statusFilter
+    ? metric.entityStatus === filters.statusFilter
+    : true;
+
+  return matchesSearch && matchesStatus;
+};
 
 const BulkEntityImportPage = () => {
   const location = useLocation();
@@ -141,11 +203,13 @@ const BulkEntityImportPage = () => {
       : undefined;
   }, [location.search]);
 
-  const selectedMetricNamesForBulkEdit = useMemo(() => {
-    const routeState = location.state as BulkEntityImportLocationState | null;
+  const routeState = useMemo(
+    () => location.state as BulkEntityImportLocationState | null,
+    [location.state]
+  );
 
-    return routeState?.selectedMetricNames ?? [];
-  }, [location.state]);
+  const metricBulkEditScope = routeState?.metricBulkEditScope;
+  const selectedMetricNamesForBulkEdit = routeState?.selectedMetricNames ?? [];
 
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
@@ -156,6 +220,8 @@ const BulkEntityImportPage = () => {
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const { entityRules } = useEntityRules(entityType);
+  const canAddMultipleUserOwners = entityRules.canAddMultipleUserOwners;
+  const canAddMultipleTeamOwner = entityRules.canAddMultipleTeamOwner;
 
   const translatedSteps = useMemo(
     () =>
@@ -166,9 +232,7 @@ const BulkEntityImportPage = () => {
     [t]
   );
   const [validationData, setValidationData] = useState<CSVImportResult>();
-  const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
-    []
-  );
+  const [columns, setColumns] = useState<Column<Record<string, string>>[]>([]);
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
   const navigate = useNavigate();
   const { readString } = usePapaParse();
@@ -187,6 +251,15 @@ const BulkEntityImportPage = () => {
   >([]);
   const [csvJobs, setCsvJobs] = useState<CsvAsyncJob[]>([]);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
+  const [selectedCsvFile, setSelectedCsvFile] = useState<SelectedCsvFile>();
+  const [activeImportLogLines, setActiveImportLogLines] = useState<string[]>(
+    []
+  );
+  const [metricBulkEditLoadState, setMetricBulkEditLoadState] = useState({
+    isLoading: Boolean(metricBulkEditScope),
+    loadedCount: 0,
+    matchedCount: 0,
+  });
 
   const effectiveSourceEntityType = useMemo(() => {
     return sourceEntityType ?? sourceEntityTypeFromURL;
@@ -195,6 +268,38 @@ const BulkEntityImportPage = () => {
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
+  );
+  const isMetricImport = !isBulkEdit && entityType === EntityType.METRIC;
+  const shouldUseMetricEditorGrid = isBulkEdit || isMetricImport;
+
+  const effectiveMetricBulkEditScope = useMemo<
+    MetricBulkEditScope | undefined
+  >(() => {
+    if (metricBulkEditScope) {
+      return metricBulkEditScope;
+    }
+
+    if (
+      isBulkEdit &&
+      entityType === EntityType.METRIC &&
+      fqn === WILD_CARD_CHAR
+    ) {
+      return {
+        mode: 'filtered',
+        filters: {},
+      };
+    }
+
+    return undefined;
+  }, [entityType, fqn, isBulkEdit, metricBulkEditScope]);
+
+  const isMetricListingBulkEdit = useMemo(
+    () =>
+      isBulkEdit &&
+      entityType === EntityType.METRIC &&
+      fqn === WILD_CARD_CHAR &&
+      Boolean(effectiveMetricBulkEditScope),
+    [effectiveMetricBulkEditScope, entityType, fqn, isBulkEdit]
   );
 
   const importedEntityType = useMemo(
@@ -205,8 +310,12 @@ const BulkEntityImportPage = () => {
   const shouldShowCsvColumn = useCallback(
     (columnKey: string) =>
       !csvUtilsClassBase.hideImportsColumnList().includes(columnKey) &&
-      !isMetricBulkEditHiddenColumn(columnKey, importedEntityType, isBulkEdit),
-    [importedEntityType, isBulkEdit]
+      !isMetricBulkEditHiddenColumn(
+        columnKey,
+        importedEntityType,
+        shouldUseMetricEditorGrid
+      ),
+    [importedEntityType, shouldUseMetricEditorGrid]
   );
 
   const filterColumns = useMemo(
@@ -426,6 +535,22 @@ const BulkEntityImportPage = () => {
     activeAsyncImportJobRef.current = undefined;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
+  const appendActiveImportLogLine = useCallback((message?: string) => {
+    const trimmedMessage = message?.trim();
+
+    if (!trimmedMessage) {
+      return;
+    }
+
+    setActiveImportLogLines((logs) => {
+      if (logs[0] === trimmedMessage) {
+        return logs;
+      }
+
+      return [trimmedMessage, ...logs].slice(0, 200);
+    });
+  }, []);
+
   const fetchCsvJobs = useCallback(async () => {
     try {
       const jobs = await getCsvAsyncJobs();
@@ -437,15 +562,136 @@ const BulkEntityImportPage = () => {
     }
   }, []);
 
+  const hydrateMetricBulkEditFromListing = useCallback(
+    async (signal: AbortSignal) => {
+      if (!effectiveMetricBulkEditScope || !csvDocumentation?.headers.length) {
+        return;
+      }
+
+      const selectedMetricIds =
+        effectiveMetricBulkEditScope.mode === 'selected'
+          ? new Set(effectiveMetricBulkEditScope.metricIds)
+          : new Set<string>();
+      const selectedMetricNames =
+        effectiveMetricBulkEditScope.mode === 'selected'
+          ? new Set(effectiveMetricBulkEditScope.metricNames)
+          : new Set<string>();
+      const foundMetricIds = new Set<string>();
+      const foundMetricNames = new Set<string>();
+      const matchedMetrics: Metric[] = [];
+      let after: string | undefined;
+      let loadedCount = 0;
+      let shouldContinue = true;
+
+      setMetricBulkEditLoadState({
+        isLoading: true,
+        loadedCount: 0,
+        matchedCount: 0,
+      });
+
+      while (shouldContinue && !signal.aborted) {
+        const metricResponse = await getMetrics(
+          {
+            after,
+            fields: '*',
+            limit: METRIC_BULK_EDIT_PAGE_SIZE,
+            include: Include.All,
+          },
+          { signal }
+        );
+
+        loadedCount += metricResponse.data.length;
+
+        metricResponse.data.forEach((metric) => {
+          const isSelectedScope =
+            effectiveMetricBulkEditScope.mode === 'selected';
+          const isSelectedMetric =
+            selectedMetricIds.has(metric.id) ||
+            selectedMetricNames.has(metric.name);
+          const shouldIncludeMetric = isSelectedScope
+            ? isSelectedMetric
+            : matchesMetricBulkEditFilters(
+                metric,
+                effectiveMetricBulkEditScope.filters
+              );
+
+          if (!shouldIncludeMetric) {
+            return;
+          }
+
+          matchedMetrics.push(metric);
+
+          if (selectedMetricIds.has(metric.id)) {
+            foundMetricIds.add(metric.id);
+          }
+
+          if (selectedMetricNames.has(metric.name)) {
+            foundMetricNames.add(metric.name);
+          }
+        });
+
+        setMetricBulkEditLoadState({
+          isLoading: true,
+          loadedCount,
+          matchedCount: matchedMetrics.length,
+        });
+
+        const hasFoundSelectedMetrics =
+          effectiveMetricBulkEditScope.mode === 'selected' &&
+          (selectedMetricIds.size
+            ? [...selectedMetricIds].every((id) => foundMetricIds.has(id))
+            : [...selectedMetricNames].every((name) =>
+                foundMetricNames.has(name)
+              ));
+
+        after = metricResponse.paging.after;
+        shouldContinue = Boolean(after) && !hasFoundSelectedMetrics;
+      }
+
+      if (signal.aborted) {
+        return;
+      }
+
+      const { columns, dataSource } = getMetricColumnsAndDataSourceFromMetrics(
+        matchedMetrics,
+        csvDocumentation.headers,
+        {
+          user: canAddMultipleUserOwners,
+          team: canAddMultipleTeamOwner,
+        },
+        true,
+        isBulkEdit
+      );
+
+      setColumns(columns);
+      setDataSource(dataSource);
+      setInitialDataSource(dataSource.map((row) => ({ ...row })));
+      setMetricBulkEditLoadState({
+        isLoading: false,
+        loadedCount,
+        matchedCount: matchedMetrics.length,
+      });
+      handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
+    },
+    [
+      csvDocumentation,
+      canAddMultipleTeamOwner,
+      canAddMultipleUserOwners,
+      handleActiveStepChange,
+      isBulkEdit,
+      effectiveMetricBulkEditScope,
+    ]
+  );
+
   const handleDownloadTemplate = useCallback(() => {
     if (!csvDocumentation?.headers?.length) {
       return;
     }
 
-    const fields = csvDocumentation.headers.map((header) => header.name);
+    const fields = csvDocumentation.headers.map(getCsvHeaderKey);
     const exampleRow = csvDocumentation.headers.reduce<Record<string, string>>(
       (acc, header) => {
-        acc[header.name] = header.examples?.[0] ?? '';
+        acc[getCsvHeaderKey(header)] = header.examples?.[0] ?? '';
 
         return acc;
       },
@@ -456,7 +702,7 @@ const BulkEntityImportPage = () => {
   }, [csvDocumentation, entityType]);
 
   const handleRevertChanges = useCallback(() => {
-    setDataSource(initialDataSource);
+    setDataSource(initialDataSource.map((row) => ({ ...row })));
   }, [initialDataSource]);
 
   const handleRunInBackground = useCallback(() => {
@@ -506,7 +752,8 @@ const BulkEntityImportPage = () => {
           team: entityRules.canAddMultipleTeamOwner,
         },
         cellEditable,
-        isBulkEdit
+        isBulkEdit,
+        shouldUseMetricEditorGrid
       );
 
       const filteredDataSource =
@@ -514,7 +761,7 @@ const BulkEntityImportPage = () => {
         entityType === EntityType.METRIC &&
         selectedMetricNamesForBulkEdit.length
           ? dataSource.filter((row) =>
-              selectedMetricNamesForBulkEdit.includes(row.name)
+              selectedMetricNamesForBulkEdit.includes(row.name ?? row['name*'])
             )
           : dataSource;
 
@@ -533,39 +780,71 @@ const BulkEntityImportPage = () => {
       selectedMetricNamesForBulkEdit,
       setColumns,
       setDataSource,
+      shouldUseMetricEditorGrid,
     ]
   );
 
   const handleLoadData = useCallback(
-    async (e: ProgressEvent<FileReader>) => {
-      try {
-        isBulkActionProcessingRef.current = {
-          isProcessing: true,
-          entityType,
-        };
-        const result = e.target?.result as string;
+    (e: ProgressEvent<FileReader>, file?: RcFile) => {
+      const result = String(e.target?.result ?? '');
 
-        const initialLoadJobData: CSVImportJobType = {
-          type: 'initialLoad',
-          initialResult: result,
-        };
-
-        setActiveAsyncImportJob(initialLoadJobData);
-        activeAsyncImportJobRef.current = initialLoadJobData;
-
-        await validateCsvString(
-          result,
-          entityType,
-          fqn,
-          isBulkEdit,
-          effectiveSourceEntityType
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
+      setSelectedCsvFile({
+        content: result,
+        name: file?.name ?? t('label.csv'),
+        rowCount: getCsvRowCount(result),
+        sizeLabel: getCsvFileSizeLabel(file?.size),
+      });
+      setValidationData(undefined);
+      setValidateCSVData(undefined);
+      setActiveImportLogLines([]);
+      handleResetImportJob();
     },
-    [entityType, fqn, isBulkEdit, effectiveSourceEntityType]
+    [handleResetImportJob, t]
   );
+
+  const handleStartPreview = useCallback(async () => {
+    if (!selectedCsvFile) {
+      return;
+    }
+
+    try {
+      setIsValidating(true);
+      setActiveImportLogLines([t('message.import-csv-reading-file')]);
+      isBulkActionProcessingRef.current = {
+        isProcessing: true,
+        entityType,
+      };
+
+      const initialLoadJobData: CSVImportJobType = {
+        type: 'initialLoad',
+        initialResult: selectedCsvFile.content,
+        message: t('message.import-csv-reading-file'),
+      };
+
+      setActiveAsyncImportJob(initialLoadJobData);
+      activeAsyncImportJobRef.current = initialLoadJobData;
+
+      await validateCsvString(
+        selectedCsvFile.content,
+        entityType,
+        fqn,
+        isBulkEdit,
+        effectiveSourceEntityType
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsValidating(false);
+      handleResetImportJob();
+    }
+  }, [
+    effectiveSourceEntityType,
+    entityType,
+    fqn,
+    handleResetImportJob,
+    isBulkEdit,
+    selectedCsvFile,
+    t,
+  ]);
 
   const handleBack = () => {
     if (activeStep === VALIDATION_STEP.UPDATE) {
@@ -590,6 +869,8 @@ const BulkEntityImportPage = () => {
         columns,
         isBulkEdit ? bulkEditChangeSummary.changedDataSource : dataSource
       );
+      const isMetricImportApply =
+        isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
 
       const api = getImportValidateAPIEntityType(entityType);
 
@@ -604,23 +885,35 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(validateLoadData);
       activeAsyncImportJobRef.current = validateLoadData;
+      setActiveImportLogLines([t('message.import-csv-connecting-service')]);
+
+      if (isMetricImportApply) {
+        handleActiveStepChange(VALIDATION_STEP.UPDATE);
+      }
 
       await api({
         entityType,
         name: fqn,
         data: csvData,
-        dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+        dryRun:
+          activeStep === VALIDATION_STEP.EDIT_VALIDATE && !isMetricImportApply,
         recursive: !isBulkEdit,
         targetEntityType: effectiveSourceEntityType,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
+      if (isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
+        handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
+      }
     }
   };
 
   const handleRetryCsvUpload = () => {
     setValidationData(undefined);
+    setSelectedCsvFile(undefined);
+    setActiveImportLogLines([]);
+    handleResetImportJob();
 
     handleActiveStepChange(VALIDATION_STEP.UPLOAD);
   };
@@ -635,7 +928,8 @@ const BulkEntityImportPage = () => {
           team: entityRules.canAddMultipleTeamOwner,
         },
         false,
-        isBulkEdit
+        isBulkEdit,
+        shouldUseMetricEditorGrid
       );
 
       return {
@@ -645,7 +939,13 @@ const BulkEntityImportPage = () => {
         ),
       };
     },
-    [entityRules, importedEntityType, isBulkEdit, shouldShowCsvColumn]
+    [
+      entityRules,
+      importedEntityType,
+      isBulkEdit,
+      shouldShowCsvColumn,
+      shouldUseMetricEditorGrid,
+    ]
   );
 
   const handleImportWebsocketResponseWithActiveStep = useCallback(
@@ -666,6 +966,20 @@ const BulkEntityImportPage = () => {
             },
           });
           handleActiveStepChange(VALIDATION_STEP.UPDATE);
+          setIsValidating(false);
+        } else if (isMetricImport) {
+          setValidationData(importResults);
+          readString(importResults?.importResultsCsv ?? '', {
+            worker: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              // results.data is returning data with unknown type
+              setValidateCSVData(
+                getVisibleCsvGridData(results.data as string[][])
+              );
+            },
+          });
+          handleResetImportJob();
           setIsValidating(false);
         } else {
           showSuccessToast(
@@ -709,6 +1023,7 @@ const BulkEntityImportPage = () => {
       fqn,
       handleResetImportJob,
       handleActiveStepChange,
+      isMetricImport,
       effectiveSourceEntityType,
       getVisibleCsvGridData,
       navigate,
@@ -750,6 +1065,7 @@ const BulkEntityImportPage = () => {
           ...(activeAsyncImportJobRef.current as CSVImportJobType),
           ...processedStartedResponse,
         };
+        appendActiveImportLogLine(processedStartedResponse.message);
 
         isBulkActionProcessingRef.current = {
           isProcessing: false,
@@ -760,6 +1076,7 @@ const BulkEntityImportPage = () => {
       }
       const activeImportJob = activeAsyncImportJobRef.current;
       if (websocketResponse.jobId === activeImportJob?.jobId) {
+        appendActiveImportLogLine(websocketResponse.message);
         setActiveAsyncImportJob((job) => {
           if (!job) {
             return;
@@ -772,6 +1089,7 @@ const BulkEntityImportPage = () => {
         });
 
         if (websocketResponse.status === 'COMPLETED') {
+          appendActiveImportLogLine(t('message.import-csv-job-completed'));
           const importResults = websocketResponse.result;
           setValidationData(importResults);
           fetchCsvJobs();
@@ -803,7 +1121,10 @@ const BulkEntityImportPage = () => {
             readString(activeImportJob.initialResult, {
               worker: true,
               skipEmptyLines: true,
-              complete: onCSVReadComplete,
+              complete: (results) => {
+                onCSVReadComplete(results as { data: string[][] });
+                setIsValidating(false);
+              },
             });
 
             handleResetImportJob();
@@ -817,6 +1138,9 @@ const BulkEntityImportPage = () => {
         }
 
         if (websocketResponse.status === 'FAILED') {
+          appendActiveImportLogLine(
+            websocketResponse.error ?? t('message.import-csv-job-failed')
+          );
           fetchCsvJobs();
           setIsValidating(false);
         }
@@ -831,12 +1155,38 @@ const BulkEntityImportPage = () => {
       fetchCsvJobs,
       handleActiveStepChange,
       handleImportWebsocketResponseWithActiveStep,
+      appendActiveImportLogLine,
+      t,
     ]
   );
 
   useEffect(() => {
     fetchEntityData();
   }, [fetchEntityData]);
+
+  useEffect(() => {
+    if (!isMetricListingBulkEdit || !csvDocumentation?.headers.length) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    hydrateMetricBulkEditFromListing(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) {
+        setMetricBulkEditLoadState((state) => ({
+          ...state,
+          isLoading: false,
+        }));
+        showErrorToast(error as AxiosError);
+      }
+    });
+
+    return () => controller.abort();
+  }, [
+    csvDocumentation,
+    hydrateMetricBulkEditFromListing,
+    isMetricListingBulkEdit,
+  ]);
 
   useEffect(() => {
     const fetchDocumentation = async () => {
@@ -959,6 +1309,203 @@ const BulkEntityImportPage = () => {
     return total > 0 ? Math.round((progress / total) * 100) : 0;
   }, [activeAsyncImportJob, activePersistedJob]);
 
+  const activeImportLogItems = useMemo(() => {
+    if (activeImportLogLines.length) {
+      return activeImportLogLines.map((message, index) => ({
+        key: `${index}-${message}`,
+        level: 'info',
+        message,
+      }));
+    }
+
+    return (
+      activePersistedJob?.logs?.map((log) => ({
+        key: log.logId,
+        level: log.level.toLowerCase(),
+        message: log.message,
+      })) ?? []
+    );
+  }, [activeImportLogLines, activePersistedJob?.logs]);
+
+  const isCsvPreviewProcessing =
+    activeAsyncImportJob?.type === 'initialLoad' && isValidating;
+
+  const previewProcessingProgress = useMemo(() => {
+    if (activeJobProgress > 0) {
+      return activeJobProgress;
+    }
+
+    if (!activeAsyncImportJob?.jobId) {
+      return 45;
+    }
+
+    if (activeAsyncImportJob.status === 'IN_PROGRESS') {
+      return 78;
+    }
+
+    return 62;
+  }, [
+    activeAsyncImportJob?.jobId,
+    activeAsyncImportJob?.status,
+    activeJobProgress,
+  ]);
+
+  const csvPreviewProcessingStages = useMemo<
+    {
+      key: string;
+      label: string;
+      state: CsvProcessingStage;
+    }[]
+  >(
+    () => [
+      {
+        key: 'reading',
+        label: t('message.import-csv-reading-file'),
+        state: 'done',
+      },
+      {
+        key: 'parsing',
+        label: t('message.import-csv-parsing-rows'),
+        state: activeAsyncImportJob?.jobId ? 'done' : 'active',
+      },
+      {
+        key: 'validating',
+        label: t('message.import-csv-validating-catalog'),
+        state: activeAsyncImportJob?.jobId ? 'active' : 'pending',
+      },
+      {
+        key: 'preview',
+        label: t('message.import-csv-building-preview'),
+        state:
+          activeAsyncImportJob?.status === 'COMPLETED' ? 'active' : 'pending',
+      },
+    ],
+    [activeAsyncImportJob?.jobId, activeAsyncImportJob?.status, t]
+  );
+
+  const getCsvRowCountLabel = (rowCount: number) =>
+    `${rowCount} ${t(rowCount === 1 ? 'label.row' : 'label.row-plural')
+      .toLowerCase()
+      .trim()}`;
+
+  const renderCsvProcessingStage = ({
+    key,
+    label,
+    state,
+  }: {
+    key: string;
+    label: string;
+    state: CsvProcessingStage;
+  }) => (
+    <div
+      className={`csv-processing-stage csv-processing-stage-${state}`}
+      key={key}>
+      <span className="csv-processing-stage-icon">
+        {state === 'done' ? (
+          <CheckCircle size={16} />
+        ) : state === 'active' ? (
+          <RefreshCw01 className="csv-import-spin" size={16} />
+        ) : (
+          <span className="csv-processing-stage-dot" />
+        )}
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+
+  const renderSelectedCsvFile = () => {
+    if (!selectedCsvFile) {
+      return (
+        <UploadFile
+          acceptedFileDescription={t('message.accepts-file-up-to-size', {
+            fileType: '.csv',
+            size: '10 MB',
+          })}
+          disabled={Boolean(
+            activeAsyncImportJob?.jobId && isEmpty(activeAsyncImportJob.error)
+          )}
+          fileType=".csv"
+          variant={entityType === EntityType.METRIC ? 'compact' : 'default'}
+          onCSVUploaded={handleLoadData}
+        />
+      );
+    }
+
+    return (
+      <div className="csv-selected-file-card">
+        <div className="csv-selected-file-icon">
+          <File06 size={22} />
+        </div>
+        <div className="csv-selected-file-body">
+          <span className="csv-selected-file-name">{selectedCsvFile.name}</span>
+          <span className="csv-selected-file-meta">
+            {`${selectedCsvFile.sizeLabel} · ${getCsvRowCountLabel(
+              selectedCsvFile.rowCount
+            )}`}
+          </span>
+        </div>
+        <button
+          aria-label={t('label.remove')}
+          className="csv-selected-file-remove"
+          type="button"
+          onClick={() => setSelectedCsvFile(undefined)}>
+          <XClose size={18} />
+        </button>
+      </div>
+    );
+  };
+
+  const renderProcessingCsvPreview = () => (
+    <div className="csv-import-processing-wrap">
+      <div className="csv-import-processing-card">
+        <div className="csv-import-progress-icon">
+          <RefreshCw01 className="csv-import-spin" />
+        </div>
+        <div className="csv-import-copy text-center">
+          <h2>{t('message.import-csv-processing-title')}</h2>
+          <p>
+            <File06 size={14} />
+            <span className="csv-import-processing-file-name">
+              {selectedCsvFile?.name ?? t('label.csv')}
+            </span>
+            <span>{getCsvRowCountLabel(selectedCsvFile?.rowCount ?? 0)}</span>
+          </p>
+        </div>
+        <ProgressBar value={previewProcessingProgress} />
+        <div className="csv-processing-stage-list">
+          {csvPreviewProcessingStages.map(renderCsvProcessingStage)}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderUploadFooter = () => (
+    <div className="csv-import-wizard-footer csv-import-wizard-footer-end import-footer">
+      <div className="csv-import-wizard-footer-actions">
+        <Button
+          color="secondary"
+          isDisabled={isCsvPreviewProcessing && !activeAsyncImportJob?.jobId}
+          isLoading={isCsvPreviewProcessing && isCancellingJob}
+          onPress={
+            isCsvPreviewProcessing
+              ? handleCancelActiveJob
+              : handleRunInBackground
+          }>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          iconTrailing={isCsvPreviewProcessing ? undefined : ChevronRight}
+          isDisabled={!selectedCsvFile || isCsvPreviewProcessing}
+          onPress={handleStartPreview}>
+          {isCsvPreviewProcessing
+            ? t('message.import-csv-parsing')
+            : `${t('label.next')}: ${t('label.preview')}`}
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderUploadStep = () => (
     <div className="csv-import-card csv-import-upload-card">
       <div className="csv-import-stack">
@@ -979,7 +1526,7 @@ const BulkEntityImportPage = () => {
           </p>
         </div>
 
-        {!isEmpty(requiredCsvHeaders) && (
+        {entityType !== EntityType.METRIC && !isEmpty(requiredCsvHeaders) && (
           <div className="csv-import-required">
             <span>{`${t('label.required')}:`}</span>
             {requiredCsvHeaders.map((header) => (
@@ -1006,13 +1553,7 @@ const BulkEntityImportPage = () => {
           </Button>
         </div>
 
-        <UploadFile
-          disabled={Boolean(
-            activeAsyncImportJob?.jobId && isEmpty(activeAsyncImportJob.error)
-          )}
-          fileType=".csv"
-          onCSVUploaded={handleLoadData}
-        />
+        {renderSelectedCsvFile()}
 
         <Alert title={t('label.tip')} variant="brand">
           {t('message.import-metrics-csv-tip')}
@@ -1066,7 +1607,9 @@ const BulkEntityImportPage = () => {
         <span>
           {`${
             activeAsyncImportJob?.progress ?? activePersistedJob?.progress ?? 0
-          } / ${activeAsyncImportJob?.total ?? activePersistedJob?.total ?? 0}`}
+          } ${t('label.of-lowercase')} ${
+            activeAsyncImportJob?.total ?? activePersistedJob?.total ?? 0
+          }`}
         </span>
         <span>{`${activeJobProgress}%`}</span>
       </div>
@@ -1095,31 +1638,52 @@ const BulkEntityImportPage = () => {
         {renderProgressMessage()}
 
         <div className="csv-import-action-row justify-center">
+          <Button isDisabled color="secondary">
+            {t('label.pause')}
+          </Button>
           <Button color="secondary" onPress={handleRunInBackground}>
             {t('label.run-in-background')}
           </Button>
-          <Button
-            color="secondary-destructive"
-            iconLeading={StopCircle}
-            isLoading={isCancellingJob}
-            onPress={handleCancelActiveJob}>
-            {t('label.cancel-entity', { entity: t('label.import') })}
-          </Button>
         </div>
 
-        {!isEmpty(activePersistedJob?.logs) && (
+        {!isEmpty(activeImportLogItems) && (
           <div className="csv-import-log">
-            {activePersistedJob?.logs?.map((log) => (
+            {activeImportLogItems.map((log) => (
               <span
-                className={`csv-import-log-line csv-import-log-line-${log.level.toLowerCase()}`}
-                key={log.logId}>
+                className={`csv-import-log-line csv-import-log-line-${log.level}`}
+                key={log.key}>
                 {log.message}
               </span>
             ))}
           </div>
         )}
       </div>
+      <div className="csv-import-progress-footer">
+        <Button
+          color="secondary-destructive"
+          iconLeading={StopCircle}
+          isDisabled={!activeAsyncImportJob?.jobId}
+          isLoading={isCancellingJob}
+          onPress={handleCancelActiveJob}>
+          {t('label.cancel-entity', { entity: t('label.import') })}
+        </Button>
+      </div>
     </div>
+  );
+
+  const shouldRenderMetricImportEditor =
+    isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
+
+  const metricImportWorkflowHeaderConfig = useMemo(
+    () => ({
+      currentLabel: t('label.import'),
+      description: t('message.import-entity-workflow-help'),
+      steps: translatedSteps,
+      title: t('label.import-entity', {
+        entity: entityPluralDisplayName.toLowerCase(),
+      }),
+    }),
+    [entityPluralDisplayName, t, translatedSteps]
   );
 
   return (
@@ -1128,7 +1692,7 @@ const BulkEntityImportPage = () => {
         entity: entityType,
       })}>
       <div className="p-x-lg csv-import-page-stack">
-        {isBulkEdit ? (
+        {isBulkEdit || shouldRenderMetricImportEditor ? (
           <BulkEditEntity
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
@@ -1144,14 +1708,32 @@ const BulkEntityImportPage = () => {
             handleCopy={handleCopy}
             handleOnRowsChange={handleOnRowsChange}
             handlePaste={handlePaste}
+            handleRevertChanges={handleRevertChanges}
             handleValidate={handleValidate}
             initialDataSource={initialDataSource}
+            isExportHydrationRequired={
+              isBulkEdit ? !isMetricListingBulkEdit : false
+            }
+            isLoadingSourceData={metricBulkEditLoadState.isLoading}
+            isNextDisabled={
+              isBulkEdit
+                ? bulkEditChangeSummary.changedCellCount === 0
+                : dataSource.length === 0
+            }
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
             setGridContainer={setGridContainer}
             sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
+            workflowHeaderConfig={
+              shouldRenderMetricImportEditor
+                ? metricImportWorkflowHeaderConfig
+                : undefined
+            }
+            workflowMode={
+              shouldRenderMetricImportEditor ? 'import' : 'bulkEdit'
+            }
             onCSVReadComplete={onCSVReadComplete}
           />
         ) : (
@@ -1167,49 +1749,53 @@ const BulkEntityImportPage = () => {
               })}
             />
             <div>
-              {activeAsyncImportJob?.jobId && (
-                <div className="csv-import-banner-stack">
-                  <Banner
-                    className="border-radius"
-                    isLoading={
-                      isEmpty(activeAsyncImportJob.error) &&
-                      activeAsyncImportJob.status !== 'IN_PROGRESS'
-                    }
-                    message={
-                      activeAsyncImportJob.error ??
-                      activeAsyncImportJob.message ??
-                      ''
-                    }
-                    type={
-                      activeAsyncImportJob.error
-                        ? 'error'
-                        : activeAsyncImportJob.status === 'IN_PROGRESS'
-                        ? 'info'
-                        : 'success'
-                    }
-                  />
-                  {activeAsyncImportJob.status === 'IN_PROGRESS' &&
-                    activeAsyncImportJob.total !== undefined &&
-                    activeAsyncImportJob.total > 0 && (
-                      <ProgressBar
-                        value={
-                          activeAsyncImportJob.total > 0
-                            ? Math.round(
-                                ((activeAsyncImportJob.progress ?? 0) /
-                                  activeAsyncImportJob.total) *
-                                  100
-                              )
-                            : 0
-                        }
-                      />
-                    )}
-                </div>
-              )}
+              {activeAsyncImportJob?.jobId &&
+                !isCsvPreviewProcessing &&
+                activeStep !== VALIDATION_STEP.UPDATE && (
+                  <div className="csv-import-banner-stack">
+                    <Banner
+                      className="border-radius"
+                      isLoading={
+                        isEmpty(activeAsyncImportJob.error) &&
+                        activeAsyncImportJob.status !== 'IN_PROGRESS'
+                      }
+                      message={
+                        activeAsyncImportJob.error ??
+                        activeAsyncImportJob.message ??
+                        ''
+                      }
+                      type={
+                        activeAsyncImportJob.error
+                          ? 'error'
+                          : activeAsyncImportJob.status === 'IN_PROGRESS'
+                          ? 'info'
+                          : 'success'
+                      }
+                    />
+                    {activeAsyncImportJob.status === 'IN_PROGRESS' &&
+                      activeAsyncImportJob.total !== undefined &&
+                      activeAsyncImportJob.total > 0 && (
+                        <ProgressBar
+                          value={
+                            activeAsyncImportJob.total > 0
+                              ? Math.round(
+                                  ((activeAsyncImportJob.progress ?? 0) /
+                                    activeAsyncImportJob.total) *
+                                    100
+                                )
+                              : 0
+                          }
+                        />
+                      )}
+                  </div>
+                )}
             </div>
             <div>
               {activeStep === 0 && (
                 <>
-                  {validationData?.abortReason ? (
+                  {isCsvPreviewProcessing ? (
+                    renderProcessingCsvPreview()
+                  ) : validationData?.abortReason ? (
                     <div className="csv-import-card m-t-lg">
                       <div className="csv-import-abort-state">
                         <p className="text-center" data-testid="abort-reason">
@@ -1272,7 +1858,7 @@ const BulkEntityImportPage = () => {
               )}
               {activeStep === 2 && validationData && (
                 <>
-                  {isValidating && activeAsyncImportJob?.jobId ? (
+                  {isValidating && activeAsyncImportJob ? (
                     renderImportProgress()
                   ) : (
                     <div className="csv-import-card">
@@ -1306,9 +1892,27 @@ const BulkEntityImportPage = () => {
               )}
             </div>
 
-            {activeStep > 0 && (
-              <div>
-                <div className="float-right import-footer">
+            {activeStep === 0 &&
+              !validationData?.abortReason &&
+              renderUploadFooter()}
+
+            {isMetricImport &&
+              activeStep === VALIDATION_STEP.UPDATE &&
+              !isValidating && (
+                <div className="csv-import-wizard-footer import-footer">
+                  <Button color="secondary" onPress={handleRetryCsvUpload}>
+                    {t('label.import-more')}
+                  </Button>
+                  <Button color="primary" onPress={handleRunInBackground}>
+                    {t('label.done')}
+                  </Button>
+                </div>
+              )}
+
+            {activeStep > 0 &&
+              !(isValidating && activeAsyncImportJob) &&
+              !(isMetricImport && activeStep === VALIDATION_STEP.UPDATE) && (
+                <div className="csv-import-wizard-footer import-footer">
                   {activeStep > 0 && (
                     <Button
                       color="secondary"
@@ -1317,18 +1921,27 @@ const BulkEntityImportPage = () => {
                       {t('label.previous')}
                     </Button>
                   )}
-                  {activeStep < 3 && (
+                  <div className="csv-import-wizard-footer-actions">
                     <Button
-                      className="m-l-sm"
+                      color="secondary"
+                      isDisabled={isValidating}
+                      onPress={handleRunInBackground}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
                       color="primary"
                       isDisabled={isValidating}
                       onPress={handleValidate}>
-                      {activeStep === 2 ? t('label.update') : t('label.next')}
+                      {activeStep === VALIDATION_STEP.EDIT_VALIDATE &&
+                      isMetricImport
+                        ? `${t('label.start')} ${t('label.import')}`
+                        : activeStep === VALIDATION_STEP.UPDATE
+                        ? t('label.update')
+                        : t('label.next')}
                     </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {isColumnReferenceOpen && (
               <ModalOverlay
                 isOpen={isColumnReferenceOpen}

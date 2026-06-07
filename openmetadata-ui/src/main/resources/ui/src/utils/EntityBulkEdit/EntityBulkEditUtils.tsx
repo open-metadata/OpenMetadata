@@ -92,6 +92,10 @@ export const getBulkEntityNavigationPath = (
   fqn: string,
   sourceEntityType?: EntityType
 ): string => {
+  if (entityType === EntityType.METRIC && fqn === WILD_CARD_CHAR) {
+    return ROUTES.METRICS;
+  }
+
   if (entityType === EntityType.TEST_CASE) {
     if (fqn === WILD_CARD_CHAR) {
       return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);

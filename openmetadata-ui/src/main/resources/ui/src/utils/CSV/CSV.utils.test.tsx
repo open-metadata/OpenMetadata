@@ -14,6 +14,17 @@ import { render, screen } from '@testing-library/react';
 import { Column } from 'react-data-grid';
 import { ExtensionDataProps } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../enums/entity.enum';
+import {
+  EntityStatus,
+  LabelType,
+  Language,
+  Metric,
+  MetricGranularity,
+  MetricType,
+  State,
+  TagSource,
+  UnitOfMeasurement,
+} from '../../generated/entity/data/metric';
 import { Type } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
 import {
@@ -25,12 +36,16 @@ import {
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
+  CSV_CELL_STYLE_METADATA_KEY,
   getColumnConfig,
+  getCsvHeaderKey,
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
   getImportOperation,
   getImportOperationRowClass,
   getImportOperationSummary,
+  getMetricColumnsAndDataSourceFromMetrics,
+  getMetricCsvRowsFromMetrics,
   IMPORT_OPERATIONS,
   isMetricBulkEditHiddenColumn,
   renderColumnDataEditor,
@@ -59,6 +74,13 @@ jest.mock(
 );
 
 describe('CSVUtils', () => {
+  describe('getCsvHeaderKey', () => {
+    it('should keep required CSV headers aligned with backend validation', () => {
+      expect(getCsvHeaderKey({ name: 'name', required: true })).toBe('name*');
+      expect(getCsvHeaderKey({ name: 'description' })).toBe('description');
+    });
+  });
+
   describe('getColumnConfig', () => {
     it('should return the column configuration object', () => {
       const column = 'description';
@@ -91,6 +113,180 @@ describe('CSVUtils', () => {
 
       expect(columns).toHaveLength(2);
       expect(dataSource).toHaveLength(1);
+    });
+  });
+
+  describe('getMetricCsvRowsFromMetrics', () => {
+    const metricHeaders = [
+      { name: 'name', required: true },
+      { name: 'displayName' },
+      { name: 'description' },
+      { name: 'metricType' },
+      { name: 'unitOfMeasurement' },
+      { name: 'customUnitOfMeasurement' },
+      { name: 'granularity' },
+      { name: 'expressionLanguage' },
+      { name: 'expressionCode' },
+      { name: 'relatedMetrics' },
+      { name: 'tags' },
+      { name: 'glossaryTerms' },
+      { name: 'tiers' },
+      { name: 'owners' },
+      { name: 'reviewers' },
+      { name: 'domains' },
+      { name: 'dataProducts' },
+      { name: 'entityStatus' },
+      { name: 'extension' },
+    ];
+    const metric: Metric = {
+      id: 'metric-id',
+      name: 'net_sales',
+      displayName: 'Net Sales',
+      description: 'Net sales after discounts',
+      metricType: MetricType.Sum,
+      unitOfMeasurement: UnitOfMeasurement.Dollars,
+      customUnitOfMeasurement: 'USD',
+      granularity: MetricGranularity.Day,
+      metricExpression: {
+        language: Language.SQL,
+        code: 'SUM(net_sales)',
+      },
+      relatedMetrics: [
+        {
+          id: 'related-2',
+          name: 'gross_sales',
+          type: 'metric',
+          fullyQualifiedName: 'gross_sales',
+        },
+        {
+          id: 'related-1',
+          name: 'discounted_sales',
+          type: 'metric',
+          fullyQualifiedName: 'discounted_sales',
+        },
+      ],
+      tags: [
+        {
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          style: { color: '#5925dc' },
+          tagFQN: 'Business.Critical',
+        },
+        {
+          labelType: LabelType.Manual,
+          source: TagSource.Glossary,
+          state: State.Confirmed,
+          style: { color: '#1570ef' },
+          tagFQN: 'KPI.NetSales',
+        },
+        {
+          labelType: LabelType.Derived,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          tagFQN: 'Business.Derived',
+        },
+        {
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          style: { color: '#7a5af8' },
+          tagFQN: 'Tier.Tier1',
+        },
+        {
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          style: { color: '#f79009' },
+          tagFQN: 'Certification.Gold',
+        },
+      ],
+      owners: [
+        {
+          id: 'owner-id',
+          name: 'data.owner',
+          type: 'user',
+        },
+      ],
+      reviewers: [
+        {
+          id: 'reviewer-id',
+          name: 'Finance',
+          type: 'team',
+        },
+      ],
+      domains: [
+        {
+          id: 'domain-id',
+          name: 'Marketing',
+          type: 'domain',
+          fullyQualifiedName: 'Marketing',
+        },
+      ],
+      dataProducts: [
+        {
+          id: 'data-product-id',
+          name: 'Customer360',
+          type: 'dataProduct',
+          fullyQualifiedName: 'Customer360',
+        },
+      ],
+      entityStatus: EntityStatus.Approved,
+      extension: {
+        aliases: ['net', 'sales'],
+        externalId: '12345',
+        steward: {
+          type: 'user',
+          fullyQualifiedName: 'jane.doe',
+        },
+      },
+    };
+
+    it('should map metrics to the server metric CSV row shape', () => {
+      const [row] = getMetricCsvRowsFromMetrics([metric], metricHeaders);
+
+      expect(row).toMatchObject({
+        id: 'metric-id',
+        'name*': 'net_sales',
+        displayName: 'Net Sales',
+        description: 'Net sales after discounts',
+        metricType: 'SUM',
+        unitOfMeasurement: 'DOLLARS',
+        customUnitOfMeasurement: 'USD',
+        granularity: 'DAY',
+        expressionLanguage: 'SQL',
+        expressionCode: 'SUM(net_sales)',
+        relatedMetrics: 'discounted_sales;gross_sales',
+        tags: 'Business.Critical',
+        glossaryTerms: 'KPI.NetSales',
+        tiers: 'Tier.Tier1',
+        owners: 'user:data.owner',
+        reviewers: 'team:Finance',
+        domains: 'Marketing',
+        dataProducts: 'Customer360',
+        entityStatus: 'Approved',
+      });
+      expect(row.extension).toContain('aliases:net|sales');
+      expect(row.extension).toContain('externalId:12345');
+      expect(row.extension).toContain('steward:user:jane.doe');
+      expect(JSON.parse(row[CSV_CELL_STYLE_METADATA_KEY])).toEqual({
+        glossaryTerms: { 'KPI.NetSales': '#1570ef' },
+        tags: { 'Business.Critical': '#5925dc' },
+        tiers: { 'Tier.Tier1': '#7a5af8' },
+      });
+    });
+
+    it('should create editable metric columns with required header keys', () => {
+      const { columns, dataSource } = getMetricColumnsAndDataSourceFromMetrics(
+        [metric],
+        metricHeaders,
+        { user: true, team: true },
+        true,
+        true
+      );
+
+      expect(columns[0].key).toBe('name*');
+      expect(dataSource[0]['name*']).toBe('net_sales');
     });
   });
 
@@ -1097,6 +1293,24 @@ describe('CSVUtils', () => {
       expect(result).toBe(description);
     });
 
+    it('should render select affordance for metric enum bulk edit cells', () => {
+      const result = renderColumnDataEditor(
+        'metricType',
+        {
+          value: MetricType.Sum,
+          data: { details: '', glossaryStatus: '' },
+        },
+        { showSelectAffordance: true }
+      );
+
+      const { container } = render(<div>{result}</div>);
+
+      expect(screen.getByText(MetricType.Sum)).toBeInTheDocument();
+      expect(
+        container.querySelector('.bulk-edit-select-cell-icon')
+      ).toBeInTheDocument();
+    });
+
     it('should render truncated text with tooltip for parameterValues column', () => {
       const paramValue =
         '{"name":"accepted_values","value":"placed,shipped,completed"}';
@@ -1215,9 +1429,32 @@ describe('CSVUtils', () => {
         user: true,
         team: false,
       });
+      const glossaryTermsColumn = getColumnConfig(
+        'glossaryTerms',
+        EntityType.TABLE,
+        {
+          user: true,
+          team: false,
+        }
+      );
+      const domainsColumn = getColumnConfig('domains', EntityType.TABLE, {
+        user: true,
+        team: false,
+      });
+      const expressionCodeColumn = getColumnConfig(
+        'expressionCode',
+        EntityType.METRIC,
+        {
+          user: true,
+          team: false,
+        }
+      );
 
       expect(descColumn.minWidth).toBe(300);
-      expect(tagsColumn.minWidth).toBe(280);
+      expect(tagsColumn.minWidth).toBe(200);
+      expect(glossaryTermsColumn.minWidth).toBe(220);
+      expect(domainsColumn.minWidth).toBe(200);
+      expect(expressionCodeColumn.minWidth).toBe(420);
     });
 
     it('should set default minimum width for unknown columns', () => {
@@ -1228,15 +1465,56 @@ describe('CSVUtils', () => {
 
       expect(customColumn.minWidth).toBe(180);
     });
+
+    it('should mark metric enum bulk edit columns as select cells', () => {
+      const columnConfig = getColumnConfig(
+        'metricType',
+        EntityType.METRIC,
+        { user: true, team: false },
+        true,
+        true
+      );
+
+      expect((columnConfig.cellClass as () => string)()).toContain(
+        'rdg-cell-select'
+      );
+    });
+
+    it('should use rich metric cells for metric import without locking name', () => {
+      const metricTypeColumn = getColumnConfig(
+        'metricType',
+        EntityType.METRIC,
+        { user: true, team: false },
+        true,
+        false,
+        true
+      );
+      const nameColumn = getColumnConfig(
+        'name',
+        EntityType.METRIC,
+        { user: true, team: false },
+        true,
+        false,
+        true
+      );
+
+      expect((metricTypeColumn.cellClass as () => string)()).toContain(
+        'rdg-cell-select'
+      );
+      expect(nameColumn.editable).toBe(true);
+      expect((nameColumn.cellClass as () => string)()).not.toContain(
+        'rdg-cell-locked'
+      );
+    });
   });
 
   describe('isMetricBulkEditHiddenColumn', () => {
-    it('should hide system-managed metric bulk edit columns', () => {
+    it('should hide non-editable metric bulk edit columns', () => {
       expect(
-        isMetricBulkEditHiddenColumn('sourceHash', EntityType.METRIC, true)
+        isMetricBulkEditHiddenColumn('relatedMetrics', EntityType.METRIC, true)
       ).toBe(true);
       expect(
-        isMetricBulkEditHiddenColumn('syncStatus', EntityType.METRIC, true)
+        isMetricBulkEditHiddenColumn('entityStatus', EntityType.METRIC, true)
       ).toBe(true);
     });
 
@@ -1245,13 +1523,22 @@ describe('CSVUtils', () => {
         isMetricBulkEditHiddenColumn('operation', EntityType.METRIC, true)
       ).toBe(false);
       expect(
+        isMetricBulkEditHiddenColumn('tags', EntityType.METRIC, true)
+      ).toBe(false);
+      expect(
+        isMetricBulkEditHiddenColumn('glossaryTerms', EntityType.METRIC, true)
+      ).toBe(false);
+      expect(
+        isMetricBulkEditHiddenColumn('tiers', EntityType.METRIC, true)
+      ).toBe(false);
+      expect(
         isMetricBulkEditHiddenColumn('description', EntityType.METRIC, true)
       ).toBe(false);
       expect(
-        isMetricBulkEditHiddenColumn('sourceHash', EntityType.METRIC, false)
+        isMetricBulkEditHiddenColumn('owners', EntityType.METRIC, true)
       ).toBe(false);
       expect(
-        isMetricBulkEditHiddenColumn('sourceHash', EntityType.TABLE, true)
+        isMetricBulkEditHiddenColumn('metricType', EntityType.METRIC, true)
       ).toBe(false);
     });
   });

@@ -18,6 +18,7 @@ import {
   RefreshCcw01,
   SearchLg,
   Trash01,
+  XCircle,
 } from '@untitledui/icons';
 import { isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,7 +55,7 @@ import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
 const BULK_EDIT_COLUMN_WIDTHS: Record<string, number> = {
   operation: 170,
-  name: 300,
+  name: 200,
   displayName: 220,
   description: 420,
   metricType: 140,
@@ -70,13 +71,25 @@ const getBulkEditRowName = (row?: Record<string, string>) =>
 
 const BULK_EDIT_NEW_ROW_KEY = '__bulkEditNewRow';
 
+const isNewMetricRowMissingName = (row: Record<string, string>) =>
+  Boolean(row[BULK_EDIT_NEW_ROW_KEY]) && !getBulkEditRowName(row).trim();
+
 const getBulkEditOperation = (
   row: Record<string, string>,
   originalRow: Record<string, string> | undefined,
-  changedKeys: string[]
+  changedKeys: string[],
+  workflowMode: BulkEditEntityProps['workflowMode']
 ): BulkActionOperation => {
   if (row.status === 'failure') {
     return 'SKIP';
+  }
+
+  if (isNewMetricRowMissingName(row)) {
+    return 'SKIP';
+  }
+
+  if (workflowMode === 'import') {
+    return getBulkEditRowName(row).trim() ? 'CREATE' : 'SKIP';
   }
 
   if (row[BULK_EDIT_NEW_ROW_KEY]) {
@@ -106,13 +119,18 @@ const BulkEditEntity = ({
   activeAsyncImportJob,
   changedCellCount,
   changedCellKeysByRowId,
-  changedRowCount,
+  isExportHydrationRequired = true,
+  isLoadingSourceData = false,
+  isNextDisabled,
   onCSVReadComplete,
   setGridContainer,
   handleCopy,
   handlePaste,
   handleOnRowsChange,
+  handleRevertChanges,
   sourceEntityType,
+  workflowHeaderConfig,
+  workflowMode = 'bulkEdit',
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -148,22 +166,17 @@ const BulkEditEntity = ({
   );
 
   const handleCancel = () => {
-    clearCSVExportData();
-    navigate(getBulkEntityNavigationPath(entityType, fqn, sourceEntityType));
-  };
-
-  const handleRevertChanges = () => {
-    if (csvExportData) {
-      readString(csvExportData, {
-        worker: true,
-        skipEmptyLines: true,
-        complete: onCSVReadComplete,
-      });
+    if (isExportHydrationRequired) {
+      clearCSVExportData();
     }
+    navigate(getBulkEntityNavigationPath(entityType, fqn, sourceEntityType));
   };
 
   const newRowSeqRef = useRef(0);
   const isMetricEntity = entityType === EntityType.METRIC;
+  const isImportWorkflow = workflowMode === 'import';
+  const shouldDisableNext =
+    isValidating || (isNextDisabled ?? changedCellCount === 0);
 
   const handleAddMetric = useCallback(() => {
     const blankRow: Record<string, string> = {};
@@ -209,30 +222,34 @@ const BulkEditEntity = ({
   );
 
   useEffect(() => {
-    // Loads the grid via a synchronous export (no Jobs-tray job is created).
+    if (!isExportHydrationRequired) {
+      return;
+    }
+
     triggerExportForBulkEdit({
       name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
       exportTypes: [ExportTypes.CSV],
     });
-  }, []);
+  }, [entityType, fqn, isExportHydrationRequired, triggerExportForBulkEdit]);
 
   useEffect(() => {
-    if (csvExportData) {
+    if (isExportHydrationRequired && csvExportData) {
       readString(csvExportData, {
         worker: true,
         skipEmptyLines: true,
         complete: onCSVReadComplete,
       });
     }
-  }, [csvExportData]);
+  }, [csvExportData, isExportHydrationRequired, onCSVReadComplete]);
 
   useEffect(() => {
-    // clear the csvExportData data from the state
     return () => {
-      clearCSVExportData();
+      if (isExportHydrationRequired) {
+        clearCSVExportData();
+      }
     };
-  }, []);
+  }, [clearCSVExportData, isExportHydrationRequired]);
 
   const filteredDataSource = useMemo(() => {
     const search = searchText.trim().toLowerCase();
@@ -276,7 +293,8 @@ const BulkEditEntity = ({
         const operation = getBulkEditOperation(
           row,
           originalRow,
-          changedCellKeysByRowId[rowId] ?? []
+          changedCellKeysByRowId[rowId] ?? [],
+          workflowMode
         );
 
         return {
@@ -329,20 +347,19 @@ const BulkEditEntity = ({
       const baseRenderCell = column.renderCell;
       const columnKey = column.key.replace('*', '');
       const columnWidth = BULK_EDIT_COLUMN_WIDTHS[columnKey];
-      // The Name column is locked for existing metrics but editable for rows
-      // added via "Add metric" (you're creating the record).
       const isNameColumn = columnKey === 'name';
+      const shouldLockNameColumn =
+        isMetricEntity && !isImportWorkflow && isNameColumn;
 
       return {
         ...column,
         minWidth: columnWidth ?? column.minWidth,
         width: columnWidth ?? column.width,
-        editable: isNameColumn
+        frozen: isNameColumn ? true : column.frozen,
+        editable: shouldLockNameColumn
           ? (row: Record<string, string>) => Boolean(row[BULK_EDIT_NEW_ROW_KEY])
           : column.editable,
-        // Locked existing-metric Name cells show a lock icon (design parity);
-        // "Add metric" rows keep the plain editable name renderer.
-        renderCell: isNameColumn
+        renderCell: shouldLockNameColumn
           ? (props: RenderCellProps<Record<string, string>>) =>
               props.row[BULK_EDIT_NEW_ROW_KEY] ? (
                 baseRenderCell?.(props)
@@ -362,11 +379,10 @@ const BulkEditEntity = ({
               : baseCellClass;
           const rowId = row.id ?? '';
           const isEdited = changedCellKeysByRowId[rowId]?.includes(column.key);
-          // Existing metric Name cells are locked (greyed) — their name is the
-          // identity and can't change; only "Add metric" rows unlock the Name.
-          // (The base cellClass omits rdg-cell-locked because the CSV header is
-          // "name*", so add/strip it explicitly here.)
-          const isNameLocked = isNameColumn && !row[BULK_EDIT_NEW_ROW_KEY];
+          const isNameLocked =
+            shouldLockNameColumn && !row[BULK_EDIT_NEW_ROW_KEY];
+          const isRequiredNameMissing =
+            isNameColumn && isNewMetricRowMissingName(row);
           const baseClassName = String(defaultClass ?? '').replace(
             'rdg-cell-locked',
             ''
@@ -375,7 +391,11 @@ const BulkEditEntity = ({
             ? `${baseClassName} rdg-cell-locked`
             : baseClassName;
 
-          return [resolvedClass, isEdited ? 'rdg-cell-edited' : '']
+          return [
+            resolvedClass,
+            isEdited ? 'rdg-cell-edited' : '',
+            isRequiredNameMissing ? 'rdg-cell-required-error' : '',
+          ]
             .filter(Boolean)
             .join(' ');
         },
@@ -399,7 +419,11 @@ const BulkEditEntity = ({
             ).toLowerCase()}`;
 
             return row.id === highlightedRowId
-              ? `${operationClass} bulk-edit-row-highlight`
+              ? `${operationClass}${
+                  isNewMetricRowMissingName(row)
+                    ? ''
+                    : ' bulk-edit-row-highlight'
+                }`
               : operationClass;
           }}
           rowHeight={52}
@@ -423,8 +447,11 @@ const BulkEditEntity = ({
     handleRemoveRow,
     highlightedRowId,
     initialRowById,
+    isImportWorkflow,
+    isMetricEntity,
     setGridRef,
     t,
+    workflowMode,
   ]);
 
   const operationSummary = useMemo(() => {
@@ -434,7 +461,8 @@ const BulkEditEntity = ({
         const operation = getBulkEditOperation(
           row,
           initialRowById.get(row.id),
-          changedCellKeysByRowId[rowId] ?? []
+          changedCellKeysByRowId[rowId] ?? [],
+          workflowMode
         );
 
         return {
@@ -449,19 +477,32 @@ const BulkEditEntity = ({
         SKIP: 0,
       } as Record<BulkActionOperation, number>
     );
-  }, [changedCellKeysByRowId, dataSource, initialRowById]);
+  }, [changedCellKeysByRowId, dataSource, initialRowById, workflowMode]);
+
+  const invalidNewMetricRowCount = useMemo(
+    () => dataSource.filter(isNewMetricRowMissingName).length,
+    [dataSource]
+  );
 
   return (
     <>
       <CsvWorkflowHeader
         activeStep={activeStep}
         breadcrumbList={breadcrumbList}
-        currentLabel={t('label.bulk-edit')}
-        description={t('message.bulk-edit-inline-help')}
-        steps={translatedSteps}
-        title={`${t('label.edit')} ${
-          dataSource.length
-        } ${entityPluralDisplayName.toLowerCase()}`}
+        currentLabel={
+          workflowHeaderConfig?.currentLabel ?? t('label.bulk-edit')
+        }
+        description={
+          workflowHeaderConfig?.description ??
+          t('message.bulk-edit-inline-help')
+        }
+        steps={workflowHeaderConfig?.steps ?? translatedSteps}
+        title={
+          workflowHeaderConfig?.title ??
+          `${t('label.edit')} ${
+            dataSource.length
+          } ${entityPluralDisplayName.toLowerCase()}`
+        }
       />
 
       <div>
@@ -477,7 +518,8 @@ const BulkEditEntity = ({
         )}
       </div>
 
-      {isEmpty(csvExportData) ? (
+      {(isExportHydrationRequired && isEmpty(csvExportData)) ||
+      isLoadingSourceData ? (
         <Loader />
       ) : (
         <>
@@ -486,7 +528,25 @@ const BulkEditEntity = ({
               <div className="csv-import-card bulk-edit-card">
                 <div className="csv-import-stack bulk-edit-stack">
                   <div className="bulk-edit-toolbar">
-                    <OperationSummary summary={operationSummary} />
+                    {isImportWorkflow && validationData ? (
+                      <ImportStatus csvImportResult={validationData} />
+                    ) : (
+                      <OperationSummary summary={operationSummary} />
+                    )}
+                    {invalidNewMetricRowCount > 0 && (
+                      <BadgeWithIcon
+                        className="bulk-edit-error-pill"
+                        color="error"
+                        iconLeading={XCircle}
+                        size="sm"
+                        type="pill-color">
+                        {`${invalidNewMetricRowCount} ${t(
+                          invalidNewMetricRowCount === 1
+                            ? 'label.error'
+                            : 'label.error-plural'
+                        ).toLowerCase()}`}
+                      </BadgeWithIcon>
+                    )}
                     {changedCellCount > 0 && (
                       <BadgeWithIcon
                         className="bulk-edit-edited-pill"
@@ -524,31 +584,42 @@ const BulkEditEntity = ({
                   <div className="bulk-edit-grid-shell">{editDataGrid}</div>
                   {isMetricEntity && (
                     <div className="bulk-edit-add-row-bar">
-                      <Button
-                        className="bulk-edit-add-row-btn"
-                        color="secondary"
-                        data-testid="bulk-edit-add-metric"
-                        iconLeading={Plus}
-                        onPress={handleAddMetric}>
-                        {t('label.add-entity', {
-                          entity: t('label.metric'),
-                        })}
-                      </Button>
-                      <span className="bulk-edit-add-row-hint">
-                        {t('message.bulk-edit-add-metric-hint')}
-                      </span>
+                      <div className="bulk-edit-add-row-content">
+                        <Button
+                          className="bulk-edit-add-row-btn"
+                          color="secondary"
+                          data-testid="bulk-edit-add-metric"
+                          iconLeading={Plus}
+                          onPress={handleAddMetric}>
+                          {isImportWorkflow
+                            ? t('label.add-row')
+                            : t('label.add-entity', {
+                                entity: t('label.metric'),
+                              })}
+                        </Button>
+                        {!isImportWorkflow && (
+                          <span className="bulk-edit-add-row-hint">
+                            {t('message.bulk-edit-add-metric-hint')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="bulk-edit-add-row-actions">
+                        <Button
+                          color="secondary"
+                          isDisabled={isValidating}
+                          onPress={handleCancel}>
+                          {t('label.cancel')}
+                        </Button>
+                        <Button
+                          color="primary"
+                          isDisabled={shouldDisableNext}
+                          onPress={handleValidate}>
+                          {isImportWorkflow
+                            ? `${t('label.start')} ${t('label.import')}`
+                            : t('label.next')}
+                        </Button>
+                      </div>
                     </div>
-                  )}
-                  {changedCellCount === 0 ? (
-                    <span className="bulk-edit-empty-state csv-import-muted-text">
-                      {t('label.no-bulk-edit-changes-yet')}
-                    </span>
-                  ) : (
-                    <span className="bulk-edit-empty-state csv-import-muted-text">
-                      {`${changedRowCount} ${entityPluralDisplayName.toLowerCase()} ${t(
-                        'label.edited'
-                      ).toLowerCase()}`}
-                    </span>
                   )}
                 </div>
               </div>
@@ -578,7 +649,7 @@ const BulkEditEntity = ({
               </div>
             )}
           </div>
-          {activeStep > 0 && (
+          {activeStep > 0 && !(activeStep === 1 && isMetricEntity) && (
             <div>
               <div className="float-right import-footer">
                 {activeStep === 1 && (
@@ -603,8 +674,7 @@ const BulkEditEntity = ({
                     className="m-l-sm"
                     color="primary"
                     isDisabled={
-                      isValidating ||
-                      (activeStep === 1 && changedCellCount === 0)
+                      isValidating || (activeStep === 1 && shouldDisableNext)
                     }
                     onPress={handleValidate}>
                     {activeStep === 2 ? t('label.update') : t('label.next')}

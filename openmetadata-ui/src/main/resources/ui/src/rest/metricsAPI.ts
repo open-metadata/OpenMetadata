@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
@@ -24,11 +24,15 @@ import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
-export const getMetrics = async (params: ListParams) => {
+export const getMetrics = async (
+  params: ListParams,
+  config?: Pick<AxiosRequestConfig, 'signal'>
+) => {
   const response = await APIClient.get<PagingResponse<Metric[]>>(`/metrics`, {
     params: {
       ...params,
     },
+    signal: config?.signal,
   });
 
   return response.data;

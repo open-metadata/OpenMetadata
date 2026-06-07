@@ -10,18 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { startCase } from 'lodash';
+import type { CSSProperties } from 'react';
+import { SEMICOLON_SPLITTER } from '../../../../constants/regex.constants';
+import { reduceColorOpacity } from '../../../../utils/ColorUtils';
+import Fqn from '../../../../utils/Fqn';
+import { removeOuterEscapes } from '../../../../utils/StringUtils';
 import './csv-cell-preview.less';
 
 const CHIP_VARIANT_BY_COLUMN: Record<string, string> = {
   tags: 'tag',
   glossaryTerms: 'glossary',
+  tiers: 'tier',
   relatedTerms: 'glossary',
   domains: 'domain',
   dataProducts: 'product',
+  extension: 'prop',
   relatedMetrics: 'metric',
 };
 
+const CHIP_FALLBACK_COLORS: Record<string, string> = {
+  tags: '#5925dc',
+  glossaryTerms: '#1570ef',
+  relatedTerms: '#1570ef',
+  domains: '#1570ef',
+  dataProducts: '#1570ef',
+  tiers: '#5925dc',
+};
+
 const AVATAR_COLUMNS = ['owners', 'owner', 'reviewers'];
+const HIERARCHY_SEPARATOR = ' / ';
 
 const AVATAR_PALETTE = [
   'avatar-0',
@@ -41,6 +59,41 @@ const getAvatarClass = (seed: string) => {
   return AVATAR_PALETTE[hash];
 };
 
+const getInitials = (label: string) => {
+  const parts = label.replace(/[_-]/g, ' ').split(/\s+/).filter(Boolean);
+
+  if (parts.length > 1) {
+    return parts
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  return label.slice(0, 2).toUpperCase();
+};
+
+const isHexColor = (color: string) =>
+  /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color);
+
+const getChipStyle = (
+  column: string,
+  item: string,
+  itemStyles?: Record<string, string>
+): CSSProperties | undefined => {
+  const color = itemStyles?.[item] ?? CHIP_FALLBACK_COLORS[column];
+
+  if (!color) {
+    return undefined;
+  }
+
+  return {
+    backgroundColor: isHexColor(color)
+      ? reduceColorOpacity(color, 0.08)
+      : undefined,
+    color,
+  };
+};
+
 // Owner/reviewer values are serialized as "type:name" (e.g. "user:admin",
 // "team:Finance"); show the readable name with an initial avatar.
 const parseEntity = (raw: string) => {
@@ -50,20 +103,66 @@ const parseEntity = (raw: string) => {
   return { type: name ? type : 'user', label };
 };
 
+const getGlossaryTermLabel = (item: string) => {
+  try {
+    const hierarchy = Fqn.split(item).filter(Boolean);
+
+    return hierarchy.length > 1 ? hierarchy.join(HIERARCHY_SEPARATOR) : item;
+  } catch {
+    return item;
+  }
+};
+
+const parseCustomPropertyItems = (value: string) =>
+  (value ?? '')
+    .split(SEMICOLON_SPLITTER)
+    .map(removeOuterEscapes)
+    .map((item) => {
+      const [key, ...valueParts] = item.split(':');
+      const customPropertyValue = removeOuterEscapes(
+        valueParts.join(':').trim()
+      );
+
+      return {
+        key: key.trim(),
+        label: startCase(key.trim()),
+        value: customPropertyValue,
+      };
+    })
+    .filter(({ key, value }) => key && value);
+
 export interface CsvCellPreviewProps {
   column: string;
+  itemStyles?: Record<string, string>;
   value: string;
 }
 
-const CsvCellPreview = ({ column, value }: CsvCellPreviewProps) => {
+const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
   const items = (value ?? '')
     .split(';')
-    .map((item) => item.trim())
+    .map((item) => removeOuterEscapes(item.trim()))
     .filter(Boolean);
 
   let content = <span className="csv-cell-empty">—</span>;
 
-  if (items.length && AVATAR_COLUMNS.includes(column)) {
+  if (column === 'extension') {
+    const customPropertyItems = parseCustomPropertyItems(value);
+
+    if (customPropertyItems.length) {
+      content = (
+        <div className="csv-cell-chips csv-cell-chips-custom-properties">
+          {customPropertyItems.map((item) => (
+            <span
+              className="csv-chip csv-chip-prop"
+              key={item.key}
+              title={`${item.label}: ${item.value}`}>
+              {item.label}: <span className="csv-chip-value">{item.value}</span>
+            </span>
+          ))}
+        </div>
+      );
+    }
+  } else if (items.length && AVATAR_COLUMNS.includes(column)) {
     content = (
       <div className="csv-cell-chips">
         {items.map((item) => {
@@ -72,7 +171,7 @@ const CsvCellPreview = ({ column, value }: CsvCellPreviewProps) => {
           return (
             <span className="csv-owner-chip" key={item} title={label}>
               <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
-                {label.charAt(0).toUpperCase()}
+                {getInitials(label)}
               </span>
               <span className="csv-owner-name">{label}</span>
             </span>
@@ -84,14 +183,20 @@ const CsvCellPreview = ({ column, value }: CsvCellPreviewProps) => {
     const variant = CHIP_VARIANT_BY_COLUMN[column] ?? 'default';
     content = (
       <div className="csv-cell-chips">
-        {items.map((item) => (
-          <span
-            className={`csv-chip csv-chip-${variant}`}
-            key={item}
-            title={item}>
-            {item}
-          </span>
-        ))}
+        {items.map((item) => {
+          const label =
+            column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item;
+
+          return (
+            <span
+              className={`csv-chip csv-chip-${variant}`}
+              key={item}
+              style={getChipStyle(column, item, itemStyles)}
+              title={item}>
+              {label}
+            </span>
+          );
+        })}
       </div>
     );
   }

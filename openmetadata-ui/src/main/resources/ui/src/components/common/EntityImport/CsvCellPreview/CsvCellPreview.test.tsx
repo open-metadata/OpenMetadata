@@ -18,7 +18,7 @@ describe('CsvCellPreview', () => {
     render(<CsvCellPreview column="owners" value="user:admin" />);
 
     expect(screen.getByText('admin')).toBeInTheDocument();
-    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByText('AD')).toBeInTheDocument();
   });
 
   it('should render a chip per owner/team', () => {
@@ -33,6 +33,61 @@ describe('CsvCellPreview', () => {
 
     expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
     expect(screen.getByText('Tier1')).toBeInTheDocument();
+  });
+
+  it('should render glossary term chips as hierarchy paths', () => {
+    render(
+      <CsvCellPreview
+        column="glossaryTerms"
+        value="BusinessGlossary.Revenue.NetSales"
+      />
+    );
+
+    expect(
+      screen.getByText('BusinessGlossary / Revenue / NetSales')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTitle('BusinessGlossary.Revenue.NetSales')
+    ).toBeInTheDocument();
+  });
+
+  it('should apply item style colors to chips', () => {
+    render(
+      <CsvCellPreview
+        column="tags"
+        itemStyles={{ 'PII.Sensitive': '#5925dc' }}
+        value="PII.Sensitive"
+      />
+    );
+
+    expect(screen.getByText('PII.Sensitive')).toHaveStyle({
+      color: '#5925dc',
+    });
+  });
+
+  it('should render tier chips', () => {
+    render(<CsvCellPreview column="tiers" value="Tier.Tier1" />);
+
+    expect(screen.getByText('Tier.Tier1')).toBeInTheDocument();
+  });
+
+  it('should render quoted domain values as clean chips', () => {
+    render(<CsvCellPreview column="domains" value='"Finance";"Marketing"' />);
+
+    expect(screen.getByText('Finance')).toBeInTheDocument();
+    expect(screen.getByText('Marketing')).toBeInTheDocument();
+  });
+
+  it('should render custom properties as label/value chips', () => {
+    render(
+      <CsvCellPreview
+        column="extension"
+        value="costCenter:FIN-204;reviewCadence:Quarterly"
+      />
+    );
+
+    expect(screen.getByTitle('Cost Center: FIN-204')).toBeInTheDocument();
+    expect(screen.getByTitle('Review Cadence: Quarterly')).toBeInTheDocument();
   });
 
   it('should render an em-dash when empty', () => {

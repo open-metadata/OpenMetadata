@@ -12,7 +12,6 @@ public class MetricMapper implements EntityMapper<Metric, CreateMetric> {
   public Metric createToEntity(CreateMetric create, String user) {
     return copy(new Metric(), create, user)
         .withMetricExpression(create.getMetricExpression())
-        .withMetricSource(create.getMetricSource())
         .withGranularity(create.getGranularity())
         .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
         .withMetricType(create.getMetricType())

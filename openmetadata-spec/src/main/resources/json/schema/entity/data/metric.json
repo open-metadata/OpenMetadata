@@ -20,7 +20,6 @@
             "Java",
             "JavaScript",
             "Python",
-            "DAX",
             "External"
           ],
           "javaEnums": [
@@ -35,9 +34,6 @@
             },
             {
               "name": "Python"
-            },
-            {
-              "name": "DAX"
             },
             {
               "name": "External"
@@ -101,79 +97,6 @@
         "QUARTER",
         "YEAR"
       ]
-    },
-    "metricSourceType": {
-      "javaType": "org.openmetadata.schema.type.MetricSourceType",
-      "description": "Source system where the metric definition originated.",
-      "type": "string",
-      "enum": [
-        "OPENMETADATA",
-        "POWERBI",
-        "DBT",
-        "SNOWFLAKE_OSI",
-        "OMNI",
-        "EXTERNAL"
-      ]
-    },
-    "metricSourceSyncStatus": {
-      "javaType": "org.openmetadata.schema.type.MetricSourceSyncStatus",
-      "description": "Synchronization status of the source metric definition.",
-      "type": "string",
-      "enum": [
-        "SYNCED",
-        "DRIFTED",
-        "FAILED",
-        "DISABLED"
-      ]
-    },
-    "metricSource": {
-      "javaType": "org.openmetadata.schema.type.MetricSource",
-      "description": "Source metadata that maps an external metric definition into the OpenMetadata Metric entity.",
-      "type": "object",
-      "properties": {
-        "sourceType": {
-          "description": "Source system where the metric definition originated.",
-          "$ref": "#/definitions/metricSourceType"
-        },
-        "sourceEntityLink": {
-          "description": "Entity link to the source definition, such as a PowerBI DAX measure on a DashboardDataModel column.",
-          "$ref": "../../type/basic.json#/definitions/entityLink"
-        },
-        "sourceId": {
-          "description": "Stable source-system identifier for the metric definition.",
-          "type": "string"
-        },
-        "sourceName": {
-          "description": "Source-system display name for the metric definition.",
-          "type": "string"
-        },
-        "sourceUrl": {
-          "description": "URL to the metric definition in the source system.",
-          "$ref": "../../type/basic.json#/definitions/sourceUrl"
-        },
-        "sourceHash": {
-          "description": "Hash of the source definition used to detect source drift.",
-          "type": "string"
-        },
-        "syncEnabled": {
-          "description": "Whether source-to-OpenMetadata synchronization is enabled for this metric.",
-          "type": "boolean",
-          "default": false
-        },
-        "lastSyncedAt": {
-          "description": "Timestamp of the last successful source synchronization.",
-          "$ref": "../../type/basic.json#/definitions/timestamp"
-        },
-        "syncStatus": {
-          "description": "Synchronization status for this source metric definition.",
-          "$ref": "#/definitions/metricSourceSyncStatus"
-        },
-        "syncError": {
-          "description": "Last synchronization error, if any.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -204,10 +127,6 @@
     "metricType": {
       "description": "Type of the metric.",
       "$ref": "#/definitions/metricType"
-    },
-    "metricSource": {
-      "description": "Source metadata that maps an external metric definition into the OpenMetadata Metric entity.",
-      "$ref": "#/definitions/metricSource"
     },
     "unitOfMeasurement": {
       "description": "Unit of measurement for the metric.",
