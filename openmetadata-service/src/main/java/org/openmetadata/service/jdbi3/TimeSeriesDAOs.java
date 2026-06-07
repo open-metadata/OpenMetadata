@@ -1251,16 +1251,20 @@ public interface TimeSeriesDAOs {
       return "report_data_time_series";
     }
 
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
-        connectionType = POSTGRES)
+    // Half-open UTC millis range [startTs, endTs) over the indexed `timestamp` column. The previous
+    // Postgres form recomputed DATE(TO_TIMESTAMP(json->>'timestamp'/1000)) per row (non-sargable,
+    // full
+    // scan); this seeks idx_report_data_ts_keyset on both engines. Callers derive the bounds from
+    // the
+    // yyyy-MM-dd date in UTC (TimestampUtils), matching how the date string + the ES cleanup are
+    // built.
+    @SqlUpdate(
+        "DELETE FROM report_data_time_series "
+            + "WHERE entityFQNHash = :reportDataType AND timestamp >= :startTs AND timestamp < :endTs")
     void deleteReportDataTypeAtDate(
-        @BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+        @BindFQN("reportDataType") String reportDataType,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs);
 
     @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType")
     void deletePreviousReportData(@BindFQN("reportDataType") String reportDataType);
