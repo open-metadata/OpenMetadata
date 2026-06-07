@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "UI에서 직접 SSO 구성",
     "sso-configuration-test-failed-description": "유효성 검사에 실패했습니다. 구성을 검토한 후 다시 시도하세요.",
     "sso-configuration-test-failed-with-count": "{{count}}개의 오류로 유효성 검사에 실패했습니다. 아래 강조 표시된 필드를 검토한 후 다시 시도하세요.",
-    "sso-configuration-test-success": "SSO 구성이 유효하며 연결 가능합니다. 저장하기 전에 로그인 테스트를 실행하여 전체 로그인을 확인하세요.",
+    "sso-configuration-test-success": "SSO 구성이 유효하며 연결 가능합니다. 준비되면 저장할 수 있습니다.",
     "sso-new-config-save-warning": "새 SSO 구성을 저장하면 로그아웃되어 로그인 페이지로 이동합니다. 잠기는 것을 방지하려면 먼저 구성을 테스트하세요.",
     "sso-provider-not-supported": "SSO 제공자 {{provider}}는 지원되지 않습니다.",
     "stage-file-location-message": "처리 전 쿼리 로그를 저장할 임시 파일 이름입니다. 절대 파일 경로가 필요합니다.",

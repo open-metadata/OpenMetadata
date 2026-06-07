@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "SSO-Konfiguration direkt über die Benutzeroberfläche",
     "sso-configuration-test-failed-description": "Die Validierung ist fehlgeschlagen. Bitte überprüfen Sie Ihre Konfiguration und versuchen Sie es erneut.",
     "sso-configuration-test-failed-with-count": "Die Validierung ist mit {{count}} Fehler(n) fehlgeschlagen. Überprüfen Sie die unten hervorgehobenen Felder und versuchen Sie es erneut.",
-    "sso-configuration-test-success": "Ihre SSO-Konfiguration ist gültig und erreichbar. Führen Sie den Anmeldetest aus, um vor dem Speichern eine vollständige Anmeldung zu bestätigen.",
+    "sso-configuration-test-success": "Ihre SSO-Konfiguration ist gültig und erreichbar. Sie können sie speichern, wenn Sie bereit sind.",
     "sso-new-config-save-warning": "Beim Speichern einer neuen SSO-Konfiguration werden Sie abgemeldet und zur Anmeldeseite weitergeleitet. Testen Sie Ihre Konfiguration zuerst, um eine Aussperrung zu vermeiden.",
     "sso-provider-not-supported": "SSO-Provider {{provider}} wird nicht unterstützt.",
     "stage-file-location-message": "Temporärer Dateiname zum Speichern der Abfrageprotokolle vor der Verarbeitung. Es wird ein absoluter Dateipfad benötigt.",

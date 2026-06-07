@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "UIから直接SSO設定",
     "sso-configuration-test-failed-description": "検証に失敗しました。設定を確認して、もう一度お試しください。",
     "sso-configuration-test-failed-with-count": "{{count}} 件のエラーで検証に失敗しました。下記のハイライトされた項目を確認して、もう一度お試しください。",
-    "sso-configuration-test-success": "SSO設定は有効で到達可能です。保存する前に、ログインテストを実行してエンドツーエンドのサインインを確認してください。",
+    "sso-configuration-test-success": "SSO設定は有効で到達可能です。準備ができたら保存できます。",
     "sso-new-config-save-warning": "新しいSSO設定を保存すると、サインアウトしてログインページにリダイレクトされます。ロックアウトを避けるため、先に設定をテストしてください。",
     "sso-provider-not-supported": "SSOプロバイダー{{provider}}はサポートされていません。",
     "stage-file-location-message": "処理前のクエリログを保存する一時ファイルの場所を指定します。絶対パスでなければなりません。",

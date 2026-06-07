@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "تكوين SSO مباشرةً من واجهة المستخدم",
     "sso-configuration-test-failed-description": "فشل التحقق. يرجى مراجعة الإعدادات والمحاولة مرة أخرى.",
     "sso-configuration-test-failed-with-count": "فشل التحقق مع {{count}} خطأ. راجع الحقول المميّزة أدناه وحاول مرة أخرى.",
-    "sso-configuration-test-success": "إعدادات SSO الخاصة بك صالحة ويمكن الوصول إليها. شغّل اختبار تسجيل الدخول للتأكد من تسجيل دخول كامل قبل الحفظ.",
+    "sso-configuration-test-success": "إعدادات SSO الخاصة بك صالحة ويمكن الوصول إليها. يمكنك حفظها عندما تكون جاهزًا.",
     "sso-new-config-save-warning": "سيؤدي حفظ إعداد SSO جديد إلى تسجيل خروجك وإعادة توجيهك إلى صفحة تسجيل الدخول. اختبر الإعدادات أولاً لتجنب فقدان الوصول.",
     "sso-provider-not-supported": "مزود SSO {{provider}} غير مدعوم.",
     "stage-file-location-message": "اسم ملف مؤقت لتخزين سجلات الاستعلام قبل المعالجة. مطلوب مسار ملف مطلق.",

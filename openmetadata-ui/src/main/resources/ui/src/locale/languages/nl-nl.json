@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "SSO-configuratie rechtstreeks vanuit de UI",
     "sso-configuration-test-failed-description": "Validatie mislukt. Controleer uw configuratie en probeer het opnieuw.",
     "sso-configuration-test-failed-with-count": "Validatie mislukt met {{count}} fout(en). Controleer de gemarkeerde velden hieronder en probeer het opnieuw.",
-    "sso-configuration-test-success": "Uw SSO-configuratie is geldig en bereikbaar. Voer de aanmeldingstest uit om een volledige aanmelding te bevestigen voordat u opslaat.",
+    "sso-configuration-test-success": "Uw SSO-configuratie is geldig en bereikbaar. U kunt deze opslaan wanneer u klaar bent.",
     "sso-new-config-save-warning": "Als u een nieuwe SSO-configuratie opslaat, wordt u afgemeld en doorgestuurd naar de aanmeldpagina. Test eerst uw configuratie om te voorkomen dat u buitengesloten raakt.",
     "sso-provider-not-supported": "SSO-provider {{provider}} wordt niet ondersteund.",
     "stage-file-location-message": "Tijdelijke bestandsnaam om de querylogs op te slaan voordat ze worden verwerkt. Absoluut bestandspad vereist.",

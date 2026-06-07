@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "Configuración SSO directamente desde a interface",
     "sso-configuration-test-failed-description": "A validación fallou. Revise a súa configuración e ténteo de novo.",
     "sso-configuration-test-failed-with-count": "A validación fallou con {{count}} erro(s). Revise os campos resaltados a continuación e ténteo de novo.",
-    "sso-configuration-test-success": "A súa configuración de SSO é válida e accesible. Execute a proba de inicio de sesión para confirmar un inicio de sesión completo antes de gardar.",
+    "sso-configuration-test-success": "A súa configuración de SSO é válida e accesible. Pode gardala cando estea listo.",
     "sso-new-config-save-warning": "Ao gardar unha nova configuración de SSO pecharase a súa sesión e redirixiráselle á páxina de inicio de sesión. Probe primeiro a súa configuración para evitar quedar bloqueado.",
     "sso-provider-not-supported": "O Provedor de SSO {{provider}} non é compatible.",
     "stage-file-location-message": "Nome de ficheiro temporal para almacenar os rexistros de consultas antes de procesalos. É necesaria unha ruta de ficheiro absoluta.",

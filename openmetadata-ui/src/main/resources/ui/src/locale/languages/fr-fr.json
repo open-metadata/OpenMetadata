@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "Configuration SSO directement depuis l'interface utilisateur",
     "sso-configuration-test-failed-description": "La validation a échoué. Veuillez vérifier votre configuration et réessayer.",
     "sso-configuration-test-failed-with-count": "La validation a échoué avec {{count}} erreur(s). Vérifiez les champs surlignés ci-dessous et réessayez.",
-    "sso-configuration-test-success": "Votre configuration SSO est valide et accessible. Lancez le test de connexion pour confirmer une connexion de bout en bout avant d'enregistrer.",
+    "sso-configuration-test-success": "Votre configuration SSO est valide et accessible. Vous pouvez l'enregistrer quand vous êtes prêt.",
     "sso-new-config-save-warning": "L'enregistrement d'une nouvelle configuration SSO vous déconnectera et vous redirigera vers la page de connexion. Testez d'abord votre configuration pour éviter d'être verrouillé.",
     "sso-provider-not-supported": "Le fournisseur SSO {{provider}} n'est pas pris en charge.",
     "stage-file-location-message": "Nom du fichier temporaire pour stocker les journaux de requête avant le traitement. Chemin de fichier absolu requis.",

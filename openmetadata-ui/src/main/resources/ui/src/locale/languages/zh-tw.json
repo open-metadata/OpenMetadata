@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "直接從UI進行SSO配置",
     "sso-configuration-test-failed-description": "驗證失敗。請檢查您的設定並重試。",
     "sso-configuration-test-failed-with-count": "驗證失敗，共有 {{count}} 個錯誤。請檢查下方反白顯示的欄位並重試。",
-    "sso-configuration-test-success": "您的 SSO 設定有效且可連線。儲存前請執行登入測試以確認端對端登入。",
+    "sso-configuration-test-success": "您的 SSO 設定有效且可連線。準備就緒後即可儲存。",
     "sso-new-config-save-warning": "儲存新的 SSO 設定將使您登出並重新導向至登入頁面。請先測試您的設定，以免遭到鎖定。",
     "sso-provider-not-supported": "不支援 SSO 提供者 {{provider}}。",
     "stage-file-location-message": "處理前儲存查詢日誌的暫存檔案名稱。需要絕對檔案路徑。",

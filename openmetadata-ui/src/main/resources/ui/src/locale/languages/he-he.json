@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "תצורת SSO ישירות מהממשק",
     "sso-configuration-test-failed-description": "האימות נכשל. אנא בדוק את התצורה ונסה שוב.",
     "sso-configuration-test-failed-with-count": "האימות נכשל עם {{count}} שגיאות. בדוק את השדות המסומנים מטה ונסה שוב.",
-    "sso-configuration-test-success": "תצורת ה-SSO שלך תקפה ונגישה. הפעל את בדיקת ההתחברות כדי לאמת התחברות מקצה לקצה לפני השמירה.",
+    "sso-configuration-test-success": "תצורת ה-SSO שלך תקפה ונגישה. תוכל לשמור אותה כשתהיה מוכן.",
     "sso-new-config-save-warning": "שמירת תצורת SSO חדשה תנתק אותך ותפנה אותך לדף ההתחברות. בדוק תחילה את התצורה כדי להימנע מנעילה.",
     "sso-provider-not-supported": "ספק SSO {{provider}} אינו נתמך.",
     "stage-file-location-message": "שם זמני של הקובץ לאחסון לוגיי השאילתות לפני העיבוד. דרוש נתיב קובץ מוחלט.",

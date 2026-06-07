@@ -913,8 +913,8 @@ const SSOConfigurationFormRJSF = ({
         setTestResult({ status: 'failed', errorCount: errors.length });
       }
     } catch (error) {
+      // handleApiError already surfaces the failure (toast or per-field errors)
       handleApiError(error);
-      setTestResult({ status: 'failed', errorCount: 0 });
     } finally {
       setIsTesting(false);
     }

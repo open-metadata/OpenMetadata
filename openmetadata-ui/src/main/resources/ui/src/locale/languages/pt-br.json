@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "Configuração SSO diretamente da interface",
     "sso-configuration-test-failed-description": "A validação falhou. Revise sua configuração e tente novamente.",
     "sso-configuration-test-failed-with-count": "A validação falhou com {{count}} erro(s). Revise os campos destacados abaixo e tente novamente.",
-    "sso-configuration-test-success": "Sua configuração de SSO é válida e acessível. Execute o teste de login para confirmar um login completo antes de salvar.",
+    "sso-configuration-test-success": "Sua configuração de SSO é válida e acessível. Você pode salvá-la quando estiver pronto.",
     "sso-new-config-save-warning": "Salvar uma nova configuração de SSO irá desconectá-lo e redirecioná-lo para a página de login. Teste sua configuração primeiro para evitar ficar bloqueado.",
     "sso-provider-not-supported": "O Provedor de SSO {{provider}} não é suportado.",
     "stage-file-location-message": "Nome temporário do arquivo para armazenar os registros de consulta antes do processamento. Caminho absoluto do arquivo é necessário.",

@@ -3422,7 +3422,7 @@
     "sso-configuration-directly-from-the-ui": "Kullanıcı arayüzünden doğrudan SSO yapılandırması",
     "sso-configuration-test-failed-description": "Doğrulama başarısız oldu. Lütfen yapılandırmanızı gözden geçirip tekrar deneyin.",
     "sso-configuration-test-failed-with-count": "Doğrulama {{count}} hatayla başarısız oldu. Aşağıda vurgulanan alanları gözden geçirip tekrar deneyin.",
-    "sso-configuration-test-success": "SSO yapılandırmanız geçerli ve erişilebilir. Kaydetmeden önce uçtan uca oturum açmayı doğrulamak için oturum açma testini çalıştırın.",
+    "sso-configuration-test-success": "SSO yapılandırmanız geçerli ve erişilebilir. Hazır olduğunuzda kaydedebilirsiniz.",
     "sso-new-config-save-warning": "Yeni bir SSO yapılandırmasını kaydetmek oturumunuzu kapatır ve sizi oturum açma sayfasına yönlendirir. Kilitlenmemek için önce yapılandırmanızı test edin.",
     "sso-provider-not-supported": "SSO Sağlayıcısı {{provider}} desteklenmiyor.",
     "stage-file-location-message": "İşlemeden önce sorgu günlüklerini saklamak için geçici dosya adı. Mutlak dosya yolu gerekli.",
