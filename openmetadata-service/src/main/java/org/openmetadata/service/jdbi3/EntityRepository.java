@@ -1224,6 +1224,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Batch-resolve EntityReferences for a homogeneous set of ids in one lookup, returning a map keyed
+   * by id (unresolved ids are absent). Used by bulk field fetchers to avoid per-row {@link
+   * Entity#getEntityReferenceById} calls.
+   */
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+    }
+    return refsById;
+  }
+
+  /**
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   public final T find(UUID id, Include include) throws EntityNotFoundException {

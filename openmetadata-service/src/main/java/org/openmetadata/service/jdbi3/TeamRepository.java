@@ -194,13 +194,16 @@ public class TeamRepository extends EntityRepository<Team> {
             .relationshipDAO()
             .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.USER);
 
+    Map<UUID, EntityReference> userRefsById =
+        batchResolveRefs(
+            Entity.USER, userRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, List<EntityReference>> teamToUsers = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : userRecords) {
       UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference userRef =
-          Entity.getEntityReferenceById(
-              Entity.USER, UUID.fromString(record.getToId()), Include.ALL);
-      teamToUsers.computeIfAbsent(teamId, k -> new ArrayList<>()).add(userRef);
+      EntityReference userRef = userRefsById.get(UUID.fromString(record.getToId()));
+      if (userRef != null) {
+        teamToUsers.computeIfAbsent(teamId, k -> new ArrayList<>()).add(userRef);
+      }
     }
 
     for (Team team : teams) {
@@ -221,13 +224,16 @@ public class TeamRepository extends EntityRepository<Team> {
             .relationshipDAO()
             .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.ROLE);
 
+    Map<UUID, EntityReference> roleRefsById =
+        batchResolveRefs(
+            Entity.ROLE, roleRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, List<EntityReference>> teamToRoles = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
       UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference roleRef =
-          Entity.getEntityReferenceById(
-              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
-      teamToRoles.computeIfAbsent(teamId, k -> new ArrayList<>()).add(roleRef);
+      EntityReference roleRef = roleRefsById.get(UUID.fromString(record.getToId()));
+      if (roleRef != null) {
+        teamToRoles.computeIfAbsent(teamId, k -> new ArrayList<>()).add(roleRef);
+      }
     }
 
     for (Team team : teams) {
@@ -248,13 +254,15 @@ public class TeamRepository extends EntityRepository<Team> {
             .relationshipDAO()
             .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.PERSONA);
 
+    Map<UUID, EntityReference> personaRefsById =
+        batchResolveRefs(
+            Entity.PERSONA,
+            personaRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, EntityReference> teamToPersona = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : personaRecords) {
       UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference personaRef =
-          Entity.getEntityReferenceById(
-              Entity.PERSONA, UUID.fromString(record.getToId()), Include.ALL);
-      if (!Boolean.TRUE.equals(personaRef.getDeleted())) {
+      EntityReference personaRef = personaRefsById.get(UUID.fromString(record.getToId()));
+      if (personaRef != null && !Boolean.TRUE.equals(personaRef.getDeleted())) {
         teamToPersona.put(teamId, personaRef);
       }
     }
@@ -276,12 +284,16 @@ public class TeamRepository extends EntityRepository<Team> {
             .relationshipDAO()
             .findFromBatch(teamIds, Relationship.PARENT_OF.ordinal(), TEAM, TEAM);
 
+    Map<UUID, EntityReference> parentRefsById =
+        batchResolveRefs(
+            TEAM, parentRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
     Map<UUID, List<EntityReference>> teamToParents = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : parentRecords) {
       UUID teamId = UUID.fromString(record.getToId());
-      EntityReference parentRef =
-          Entity.getEntityReferenceById(TEAM, UUID.fromString(record.getFromId()), Include.ALL);
-      teamToParents.computeIfAbsent(teamId, k -> new ArrayList<>()).add(parentRef);
+      EntityReference parentRef = parentRefsById.get(UUID.fromString(record.getFromId()));
+      if (parentRef != null) {
+        teamToParents.computeIfAbsent(teamId, k -> new ArrayList<>()).add(parentRef);
+      }
     }
 
     for (Team team : teams) {
@@ -310,12 +322,16 @@ public class TeamRepository extends EntityRepository<Team> {
             .relationshipDAO()
             .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, POLICY);
 
+    Map<UUID, EntityReference> policyRefsById =
+        batchResolveRefs(
+            POLICY, policyRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, List<EntityReference>> teamToPolicies = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : policyRecords) {
       UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference policyRef =
-          Entity.getEntityReferenceById(POLICY, UUID.fromString(record.getToId()), Include.ALL);
-      teamToPolicies.computeIfAbsent(teamId, k -> new ArrayList<>()).add(policyRef);
+      EntityReference policyRef = policyRefsById.get(UUID.fromString(record.getToId()));
+      if (policyRef != null) {
+        teamToPolicies.computeIfAbsent(teamId, k -> new ArrayList<>()).add(policyRef);
+      }
     }
 
     for (Team team : teams) {
