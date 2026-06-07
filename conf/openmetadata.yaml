@@ -179,11 +179,17 @@ logging:
           archivedFileCount: 7
           timeZone: UTC
           maxFileSize: 50MB
+    org.openmetadata.service.audit.AuditLogRepository:
+      # Audit entries are logged at INFO with the AUDIT marker (see AuditLogger) and routed to
+      # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
+      level: INFO
   appenders:
     - type: console
       threshold: TRACE
       logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       timeZone: UTC
+      filterFactories:
+        - type: audit-exclude-filter-factory
     - type: file
       layout:
         type: json
