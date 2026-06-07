@@ -64,6 +64,11 @@ on:
         required: false
         type: string
         default: '5000'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
 
 permissions:
   contents: read
@@ -261,7 +266,8 @@ jobs:
             -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
             -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
             -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
-            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}"
           # Opt-in for SSO bootstrap UIITs (second OM lifecycle); default off.
           if [ "${{ github.event.inputs.includeSsoBootstrap }}" = "true" ]; then
             SSO_PROPS="-Dui.it.excludedGroups="
@@ -380,7 +386,7 @@ jobs:
       - name: Run isolated search ITs (postgres + opensearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch
+        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}

@@ -78,6 +78,11 @@ on:
         required: false
         type: string
         default: '300'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
       entityLoaderMaxWorkers:
         description: 'Cap on EntityLoader create concurrency (keep low for a shared/proxied cluster to avoid 504s)'
         required: false
@@ -186,6 +191,7 @@ jobs:
           fi
           mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
             -Dui.it.excludedGroups="${{ github.event.inputs.excludedGroups || 'sso-bootstrap,search-direct' }}"
 
       - name: Upload Playwright traces
@@ -319,7 +325,8 @@ jobs:
           OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
         run: |
           mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
-            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
