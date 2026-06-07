@@ -12,11 +12,12 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Avatar,
   Button as CoreButton,
   Tooltip as CoreTooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -29,6 +30,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -69,7 +72,10 @@ import {
   getActiveAnnouncements,
 } from '../../../rest/announcementsAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  exportDataProductToODPSYaml,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
@@ -88,6 +94,7 @@ import {
   hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -105,6 +112,8 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -128,6 +137,8 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { DataProductMetadataModal } from '../DataProductMetadataModal';
+import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -150,7 +161,8 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions: resourcePermissions } =
+    usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
@@ -166,6 +178,8 @@ const DataProductsDetailsPage = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isOdpsImportOpen, setIsOdpsImportOpen] = useState(false);
+  const [isMetadataEditing, setIsMetadataEditing] = useState(false);
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [previewAsset, setPreviewAsset] =
@@ -182,11 +196,16 @@ const DataProductsDetailsPage = ({
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled } = useDataAccessRequest({
-    entityFqn: dataProduct.fullyQualifiedName,
-    enabled: dataProductClassBase.getShowRequestDataAccess(),
-    listenForEvents: true,
-  });
+  const { isDarDisabled, isDarGranted, isDarAwaitingGrant } =
+    useDataAccessRequest({
+      entityFqn: dataProduct.fullyQualifiedName,
+      enabled: dataProductClassBase.getShowRequestDataAccess(),
+      listenForEvents: true,
+    });
+
+  const canCreateTask = Boolean(
+    resourcePermissions?.[ResourceEntity.TASK]?.Create
+  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -511,6 +530,22 @@ const DataProductsDetailsPage = ({
               setShowActions(false);
             },
           },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-metadata-description')}
+                icon={EditIcon}
+                id="edit-metadata-button"
+                name={t('label.edit-metadata')}
+              />
+            ),
+            key: 'edit-metadata-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsMetadataEditing(true);
+              setShowActions(false);
+            },
+          },
         ] as ItemType[])
       : []),
     ...(deleteDataProductPermission
@@ -533,6 +568,51 @@ const DataProductsDetailsPage = ({
             onClick: (e) => {
               e.domEvent.stopPropagation();
               setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-as-odps-description')}
+          icon={ExportIcon}
+          id="export-odps-button"
+          name={t('label.export-as-odps')}
+        />
+      ),
+      key: 'export-odps-button',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        try {
+          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
+          downloadFile(
+            yaml,
+            `${dataProduct.name}.odps.yaml`,
+            'application/yaml'
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      },
+    },
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-odps-description')}
+                icon={ImportIcon}
+                id="import-odps-button"
+                name={t('label.import-from-odps')}
+              />
+            ),
+            key: 'import-odps-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOdpsImportOpen(true);
               setShowActions(false);
             },
           },
@@ -743,11 +823,27 @@ const DataProductsDetailsPage = ({
       'entityStatus' in dataProduct
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
+    const { lifecycleStage } = dataProduct;
 
-    return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
-    ) : null;
-  }, [dataProduct]);
+    if (!shouldShowStatus && !lifecycleStage) {
+      return null;
+    }
+
+    return (
+      <Space size={8}>
+        {shouldShowStatus && entityStatus && (
+          <EntityStatusBadge showDivider={false} status={entityStatus} />
+        )}
+        {lifecycleStage && (
+          <Tag
+            className="tw:rounded-full tw:font-medium"
+            data-testid="lifecycle-stage-badge">
+            {t('label.lifecycle-stage')}: {lifecycleStage}
+          </Tag>
+        )}
+      </Space>
+    );
+  }, [dataProduct, t]);
 
   if (isCustomPageLoading) {
     return <Loader />;
@@ -800,10 +896,17 @@ const DataProductsDetailsPage = ({
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
                 !isOwner &&
+                !currentUser?.isAdmin &&
+                canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip
                     isDisabled={!isDarDisabled}
-                    title={t('message.data-access-request-already-exists')}>
+                    title={getDarButtonTooltip(
+                      isDarDisabled,
+                      isDarGranted,
+                      isDarAwaitingGrant,
+                      t
+                    )}>
                     <CoreButton
                       color="primary"
                       data-testid="request-data-access-button"
@@ -904,6 +1007,17 @@ const DataProductsDetailsPage = ({
           </div>
         </div>
 
+        {isDarAwaitingGrant && (
+          <div className="tw:px-5">
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </div>
+        )}
+
         <GenericProvider<DataProduct>
           muiTags
           currentVersionData={dataProduct}
@@ -998,6 +1112,36 @@ const DataProductsDetailsPage = ({
         entityType={EntityType.DATA_PRODUCT}
         open={isAnnouncementDrawerOpen}
         onClose={handleCloseAnnouncementDrawer}
+      />
+
+      <ODPSImportModal
+        domainFqn={dataProduct.domains?.[0]?.fullyQualifiedName}
+        existingDataProduct={dataProduct}
+        open={isOdpsImportOpen}
+        onClose={() => setIsOdpsImportOpen(false)}
+        onSuccess={() => {
+          // The ODPS import endpoint already persists the entity; use the
+          // refetch hook rather than feeding the returned object back through
+          // onUpdate, which would compute a JSON patch against stale local
+          // state and resubmit the import's diff as a regular PATCH.
+          setIsOdpsImportOpen(false);
+          onRefresh?.();
+        }}
+      />
+
+      <DataProductMetadataModal
+        dataProduct={dataProduct}
+        open={isMetadataEditing}
+        onCancel={() => setIsMetadataEditing(false)}
+        onSubmit={async (values) => {
+          await onUpdate({
+            ...dataProduct,
+            dataProductType: values.dataProductType,
+            visibility: values.visibility,
+            portfolioPriority: values.portfolioPriority,
+          });
+          setIsMetadataEditing(false);
+        }}
       />
 
       {dataProductClassBase.getRequestDataAccessDrawer(

@@ -48,7 +48,7 @@ import {
   API_ENDPOINT_DEFAULT_FIELDS,
 } from '../../rest/queries/apiEndpointQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

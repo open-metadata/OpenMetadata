@@ -57,7 +57,7 @@ const TreeRoot = <T extends object>({
     <AriaTree
       {...props}
       className={cx(
-        'tw:outline-none tw:w-full tw:flex tw:flex-col tw:gap-0.5',
+        'tw:outline-hidden tw:w-full tw:flex tw:flex-col tw:gap-0.5',
         className
       )}>
       {children as AriaTreeProps<T>['children']}
@@ -85,7 +85,7 @@ const TreeItemComponent = <T extends object>({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/tree-item tw:outline-none tw:rounded-md',
+          'tw:group/tree-item tw:outline-hidden tw:rounded-md',
           'tw:cursor-pointer tw:select-none',
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
           state.isFocusVisible && 'tw:ring-2 tw:ring-inset tw:ring-brand-300',
@@ -260,7 +260,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
       className={(state) =>
         cx(
           'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
-          'tw:rounded tw:outline-none tw:text-fg-quaternary',
+          'tw:rounded tw:outline-hidden tw:text-fg-quaternary',
           'tw:transition-transform tw:duration-200 tw:ease-in-out',
           state.isFocusVisible && 'tw:ring-2 tw:ring-brand-300',
           className

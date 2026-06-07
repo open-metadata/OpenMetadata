@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.SneakyThrows;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -72,6 +74,47 @@ public interface EntityDAO<T extends EntityInterface> {
    * smaller constant if it ever is.)
    */
   int MAX_IN_LIST_CHUNK_SIZE = 30_000;
+
+  /**
+   * Run a SQL IN-list query in {@link #MAX_IN_LIST_CHUNK_SIZE}-sized chunks and concatenate the
+   * results, keeping each statement under the database parameter ceiling. For inputs at or below
+   * the chunk size the list is passed straight through, preserving the single-query behavior (and
+   * the caller's empty-list handling) exactly. When chunking is required the ids are de-duplicated
+   * first (encounter order preserved) so a value split across two chunks is not queried twice and
+   * cannot duplicate result rows — matching the semantics of a single {@code IN (...)}, which
+   * ignores duplicate values.
+   */
+  static <I, R> List<R> queryInChunks(List<I> ids, Function<List<I>, List<R>> query) {
+    List<R> result;
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      result = new ArrayList<>(distinctIds.size());
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        result.addAll(query.apply(distinctIds.subList(i, end)));
+      }
+    } else {
+      result = query.apply(ids);
+    }
+    return result;
+  }
+
+  /**
+   * Void counterpart of {@link #queryInChunks} for chunked IN-list updates/deletes. De-duplicates
+   * before chunking for the same reason: a value split across chunks would otherwise issue a
+   * redundant statement, whereas a single {@code WHERE id IN (...)} affects each row once.
+   */
+  static <I> void updateInChunks(List<I> ids, Consumer<List<I>> update) {
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        update.accept(distinctIds.subList(i, end));
+      }
+    } else {
+      update.accept(ids);
+    }
+  }
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
@@ -193,10 +236,47 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
     if (!getNameHashColumn().equals("fqnHash")) {
-      return java.util.Collections.emptyList();
+      return List.of();
     }
     String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
     return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  /**
+   * Like {@link #listIdFqnByPrefixHash} but excludes soft-deleted rows. Used by the bulk
+   * stale-deletion path which only considers currently-live entities when deciding what the
+   * connector no longer reports.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (JSON_EXTRACT(json, '$.deleted') IS NULL "
+              + "OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.deleted')) = 'false')",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (json->>'deleted' IS NULL OR json->>'deleted' = 'false')",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityIdFqnPairMapper.class)
+  List<EntityIdFqnPair> listIdFqnByPrefixHashNonDeleted(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix);
+
+  /**
+   * List (id, fullyQualifiedName) pairs for all non-deleted descendants of {@code scopeFqn}.
+   * Returns an empty list for entity types whose name-hash column is not {@code fqnHash} - those
+   * types do not participate in scope-based stale deletion.
+   */
+  default List<EntityIdFqnPair> listDescendantIdFqnByPrefixNonDeleted(String scopeFqn) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return List.of();
+    }
+    String prefixPattern = FullyQualifiedName.buildHash(scopeFqn) + ".%";
+    return listIdFqnByPrefixHashNonDeleted(getTableName(), getNameHashColumn(), prefixPattern);
   }
 
   final class EntityIdFqnPair {

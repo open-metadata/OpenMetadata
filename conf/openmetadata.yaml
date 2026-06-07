@@ -41,6 +41,9 @@ server:
     #            removes the h1 6-connections-per-origin cap, which materially helps cold
     #            first-paint on SPAs that load 30+ chunks.
     #
+    # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file —
+    # that path requires a keystore and isn't env-var-driven from here.
+    #
     # Requires the dropwizard-http2 module (already pulled in by openmetadata-service).
     - type: ${SERVER_PROTOCOL:-http}
       bindHost: ${SERVER_HOST:-0.0.0.0}
@@ -81,7 +84,10 @@ server:
       acceptorThreads: 1  # Admin endpoint needs minimal resources
       selectorThreads: 1
 
-  # Response compression disabled for maximum throughput
+  # Response compression for entity GETs / list endpoints — Dropwizard delegates to Jetty's
+  # GzipHandler. Default min size is ~256 bytes; below that the CPU cost outweighs the wire
+  # savings. Pre-compressed UI assets (.gz / .br produced at vite build time) are served by
+  # OpenMetadataAssetServlet's content negotiation, not by this handler.
   gzip:
     enabled: true
 
@@ -170,6 +176,50 @@ server:
   #    supportedCipherSuites: [TLS_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256]
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
+
+# HTTP/2 support — opt-in. The dropwizard-http2 module is on the classpath, so the
+# `type: h2` (TLS) and `type: h2c` (cleartext) connector types are available out of the
+# box. Both are backward-compatible: HTTP/1.1 clients still work on the same port (h2c
+# negotiates via the HTTP/1.1 Upgrade header; h2 negotiates via TLS ALPN), so flipping
+# from `type: http` to `type: h2c` does not break the SDK or browser.
+#
+# When to enable at Jetty:
+#   * Self-hosted single-node deploys with no LB in front (Jetty IS the edge).
+#   * Production deploys that want end-to-end HTTP/2 — multiplexing all the way through
+#     instead of LB↔pod fanning out to many HTTP/1.1 connections under high parallelism.
+#   * Behind h2c-aware proxies (envoy, nginx with `proxy_http_version 2`).
+#
+# When to leave HTTP/2 to the LB and keep `type: http` here:
+#   * Production deploys behind nginx-ingress / ALB / Traefik that already terminate
+#     HTTP/2 from clients. The LB↔pod hop in HTTP/1.1 is "fine" intra-VPC, and not
+#     worth the cert-management cost for marginal multiplexing gains.
+#
+# HTTP/2 cleartext (h2c) on the existing port — most common opt-in shape:
+#server:
+#  applicationConnectors:
+#    - type: h2c
+#      port: 8585
+#      maxConcurrentStreams: 1024
+#      initialStreamRecvWindow: 65535
+#  adminConnectors:
+#    - type: http      # admin endpoint stays HTTP/1.1; ops scrapers don't need HTTP/2
+#      port: 8586
+#
+# HTTP/2 over TLS (h2) for browser-direct deploys — replaces the https sample above:
+#server:
+#  applicationConnectors:
+#    - type: h2
+#      port: 8585
+#      keyStorePath: ./conf/keystore.jks
+#      keyStorePassword: changeit
+#      keyStoreType: JKS
+#      supportedProtocols: [TLSv1.2, TLSv1.3]
+#      # h2 mandates the cipher list include AEAD suites (RFC 7540 §9.2.2):
+#      supportedCipherSuites:
+#        - TLS_AES_256_GCM_SHA384
+#        - TLS_AES_128_GCM_SHA256
+#        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+#        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 
 qos:
   # Virtual threads remove Jetty's natural back-pressure. Keep request admission below the DB
@@ -382,6 +432,8 @@ authenticationConfiguration:
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
+  sessionExpiry: ${AUTHENTICATION_SESSION_EXPIRY:-"604800"} # 7 days; applies to all auth providers
+  maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
   oidcConfiguration:
     # REQUIRED for SSO: OAuth client ID from your identity provider
     id: ${OIDC_CLIENT_ID:-""}
@@ -405,7 +457,7 @@ authenticationConfiguration:
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
     prompt: ${OIDC_PROMPT_TYPE:-"consent"}
-    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -735,13 +787,21 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
+  requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
+  writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}
+  writeRetryInitialBackoffMs: ${RDF_WRITE_RETRY_INITIAL_BACKOFF_MS:-250}
+  writeRetryMaxBackoffMs: ${RDF_WRITE_RETRY_MAX_BACKOFF_MS:-2000}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-50}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-25}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
-# Default: Disabled (uses NoopCacheProvider)
+# Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
+# Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

@@ -25,7 +25,7 @@ import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/ColorUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderIcon } from '../../../utils/IconUtils';
 import {
   getClassificationTagPath,

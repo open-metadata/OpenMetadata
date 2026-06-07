@@ -45,7 +45,7 @@ import {
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,

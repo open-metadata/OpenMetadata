@@ -83,10 +83,10 @@ import {
   getMetrics,
 } from '../../../rest/metricsAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getEntityBulkEditPath,
   getEntityImportPath,
-  getEntityName,
 } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';

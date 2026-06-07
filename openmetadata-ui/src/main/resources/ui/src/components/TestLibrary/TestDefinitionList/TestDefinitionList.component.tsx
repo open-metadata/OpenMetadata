@@ -61,7 +61,7 @@ import {
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,

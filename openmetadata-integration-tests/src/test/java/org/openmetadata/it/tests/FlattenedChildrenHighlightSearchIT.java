@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -50,15 +51,18 @@ import org.openmetadata.service.migration.utils.v1130.MigrationUtil;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
- * End-to-end reproduction of the container search 500 ("Field
- * [dataModel.columns.children.name] has no associated analyzer") that surfaces on OpenSearch after
- * an upgrade carries the stale highlight field forward in the DB-stored SearchSettings, and proof
- * that the v1130 scrub migration ({@link MigrationUtil#removeFlattenedChildrenHighlightFields()})
- * resolves it.
+ * Verifies that the stale {@code dataModel.columns.children.name} highlight field carried forward in
+ * a cluster's DB-stored SearchSettings is now inert, and that the v1130 scrub migration ({@link
+ * MigrationUtil#removeFlattenedChildrenSearchSettings()}) removes it.
  *
- * <p>OpenSearch only: Elasticsearch silently degrades the bad highlight to an HTTP 200, so the test
- * is skipped unless the suite runs with {@code -DsearchType=opensearch}. It mutates the global
- * SearchSettings, so it is marked {@link Isolated}.
+ * <p>When {@code dataModel.columns.children} was mapped {@code flattened}, highlighting this field
+ * failed container search on OpenSearch with a 500 ("Field [dataModel.columns.children.name] has no
+ * associated analyzer"). Mapping the recursive children as {@code object}/{@code "enabled": false}
+ * leaves the field unmapped, so the highlighter skips it and the search succeeds (HTTP 200) even
+ * before the scrub runs — the scrub then removes the dead entry from the stored settings.
+ *
+ * <p>OpenSearch only: the original 500 never manifested on Elasticsearch (it degraded the bad
+ * highlight to a 200). The test mutates the global SearchSettings, so it is marked {@link Isolated}.
  */
 @Slf4j
 @Isolated
@@ -71,17 +75,17 @@ public class FlattenedChildrenHighlightSearchIT {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
   @Test
-  void containerHighlight500IsReproducedAndFixedByScrub(TestNamespace ns) throws Exception {
+  void staleContainerChildrenHighlightIsInertAndScrubbed(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
-        "Highlight analyzer 500 only manifests on OpenSearch");
+        "The flattened-children highlight 500 only ever manifested on OpenSearch");
 
     OpenMetadataClient client = SdkClients.adminClient();
     String originalSettings = getSearchSettingsJson();
     String token = ns.prefix("reprohl").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     // Hyphenated term forces the query_string parse path (like the incident's pw\-container\-...),
     // where per-field match attribution breaks down and the highlighter attempts every configured
-    // highlight field - including the flattened children field.
+    // highlight field - including the (now unmapped) flattened children field.
     String searchTerm = "repro-hl-" + token;
 
     try {
@@ -106,31 +110,29 @@ public class FlattenedChildrenHighlightSearchIT {
 
       injectStaleContainerHighlightField();
 
-      HttpResponse<String> poisoned = searchContainers(searchTerm);
+      // object/enabled:false leaves dataModel.columns.children.name unmapped, so the highlighter
+      // skips it and the search succeeds - whereas the flattened mapping returned a 500 here.
+      HttpResponse<String> withStaleField = searchContainers(searchTerm);
       log.info(
-          "Poisoned container search -> status={} body={}",
-          poisoned.statusCode(),
-          truncate(poisoned.body()));
-      assertEquals(
-          500,
-          poisoned.statusCode(),
-          "With the stale flattened-children highlight field, OpenSearch must fail the search");
-      assertTrue(
-          poisoned.body().contains("analyzer") || poisoned.body().contains("all shards failed"),
-          "500 must be the 'no associated analyzer' shard failure, body="
-              + truncate(poisoned.body()));
-
-      MigrationUtil.removeFlattenedChildrenHighlightFields();
-      SettingsCache.invalidateSettings(SettingsType.SEARCH_SETTINGS.value());
-
-      HttpResponse<String> healed = searchContainers(searchTerm);
-      log.info("Post-scrub container search -> status={}", healed.statusCode());
+          "Container search with stale highlight field -> status={}", withStaleField.statusCode());
       assertEquals(
           200,
-          healed.statusCode(),
-          "After the v1130 scrub removes the stale highlight field, the search must succeed");
+          withStaleField.statusCode(),
+          "object/enabled:false leaves the children highlight field unmapped, so the search must not 500");
       assertTrue(
-          healed.body().contains(token), "Healed search should still return the indexed container");
+          withStaleField.body().contains(token), "Search should return the indexed container");
+
+      MigrationUtil.removeFlattenedChildrenSearchSettings();
+      SettingsCache.invalidateSettings(SettingsType.SEARCH_SETTINGS.value());
+
+      assertFalse(
+          containerHighlightFields().contains(STALE_HIGHLIGHT_FIELD),
+          "Scrub must remove the stale children highlight field from the stored settings");
+
+      HttpResponse<String> afterScrub = searchContainers(searchTerm);
+      assertEquals(200, afterScrub.statusCode(), "Search must still succeed after the scrub");
+      assertTrue(
+          afterScrub.body().contains(token), "Scrubbed search should still return the container");
     } finally {
       restoreSearchSettings(originalSettings);
     }
@@ -147,6 +149,16 @@ public class FlattenedChildrenHighlightSearchIT {
     }
     settings.setConfigValue(config);
     putSearchSettings(JsonUtils.pojoToJson(settings));
+  }
+
+  private List<String> containerHighlightFields() throws Exception {
+    Settings settings = JsonUtils.readValue(getSearchSettingsJson(), Settings.class);
+    SearchSettings config = JsonUtils.convertValue(settings.getConfigValue(), SearchSettings.class);
+    return config.getAssetTypeConfigurations().stream()
+        .filter(c -> CONTAINER_ASSET_TYPE.equalsIgnoreCase(c.getAssetType()))
+        .findFirst()
+        .map(AssetTypeConfiguration::getHighlightFields)
+        .orElse(List.of());
   }
 
   private void awaitContainerSearchable(String token) {
@@ -206,13 +218,5 @@ public class FlattenedChildrenHighlightSearchIT {
         .header("Content-Type", "application/json")
         .header("Accept", accept)
         .timeout(Duration.ofSeconds(30));
-  }
-
-  private static String truncate(String body) {
-    String result = body;
-    if (body != null && body.length() > 400) {
-      result = body.substring(0, 400);
-    }
-    return result;
   }
 }
