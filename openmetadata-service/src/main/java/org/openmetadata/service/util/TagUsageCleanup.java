@@ -33,6 +33,11 @@ import org.openmetadata.service.jdbi3.TagRepository;
 @Slf4j
 public class TagUsageCleanup {
 
+  // Malformed tag_usage rows have NULL hash columns that cannot be keyset-paginated; they are swept
+  // in one bounded query. Expected to be empty (no write path produces NULL hashes), so a generous
+  // cap is safe; exceeding it is logged so an operator can investigate a pathological table.
+  private static final int MAX_NULL_HASH_ROWS = 10_000;
+
   private final CollectionDAO collectionDAO;
   private final TagRepository tagRepository;
   private final GlossaryTermRepository glossaryTermRepository;
@@ -91,7 +96,7 @@ public class TagUsageCleanup {
       int lastSource = -1;
       String lastTagFQNHash = "";
       String lastTargetFQNHash = "";
-      int processedCount = 0;
+      int processedCount = sweepNullHashTagUsages(result);
       int batchNumber = 1;
       boolean hasMore = true;
 
@@ -111,14 +116,8 @@ public class TagUsageCleanup {
           LOG.info("No more tag usages to process");
           hasMore = false;
         } else {
-          for (CollectionDAO.TagUsageObject tagUsage : tagUsageBatch) {
-            OrphanedTagUsage orphan = validateTagUsage(tagUsage);
-            if (orphan != null) {
-              result.getOrphanedTagUsages().add(orphan);
-              result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
-            }
-            processedCount++;
-          }
+          tagUsageBatch.forEach(tagUsage -> processTagUsage(tagUsage, result));
+          processedCount += tagUsageBatch.size();
 
           CollectionDAO.TagUsageObject lastRow = tagUsageBatch.getLast();
           lastSource = lastRow.getSource();
@@ -161,6 +160,26 @@ public class TagUsageCleanup {
     }
 
     return result;
+  }
+
+  private int sweepNullHashTagUsages(TagCleanupResult result) {
+    List<CollectionDAO.TagUsageObject> nullHashRows =
+        collectionDAO.tagUsageDAO().getTagUsagesWithNullHash(MAX_NULL_HASH_ROWS);
+    nullHashRows.forEach(tagUsage -> processTagUsage(tagUsage, result));
+    if (nullHashRows.size() == MAX_NULL_HASH_ROWS) {
+      LOG.warn(
+          "Reached the {}-row cap while sweeping tag_usage rows with NULL hashes; some malformed rows may remain. Investigate and re-run cleanup.",
+          MAX_NULL_HASH_ROWS);
+    }
+    return nullHashRows.size();
+  }
+
+  private void processTagUsage(CollectionDAO.TagUsageObject tagUsage, TagCleanupResult result) {
+    OrphanedTagUsage orphan = validateTagUsage(tagUsage);
+    if (orphan != null) {
+      result.getOrphanedTagUsages().add(orphan);
+      result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
+    }
   }
 
   private OrphanedTagUsage validateTagUsage(CollectionDAO.TagUsageObject tagUsage) {
