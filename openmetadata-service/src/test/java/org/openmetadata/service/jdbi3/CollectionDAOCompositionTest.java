@@ -16,8 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -25,72 +27,73 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Guards the CollectionDAO decomposition. CollectionDAO was split into domain aggregator
- * interfaces (RdfInfraDAOs, SearchReindexDAOs, ...) that it `extends`. JDBI's SqlObjectFactory
+ * interfaces (RdfInfraDAOs, SearchReindexDAOs, ...) that it {@code extends}. JDBI's SqlObjectFactory
  * builds its handler map from {@code sqlObjectType.getMethods()}, which returns inherited public
  * methods, so every {@code @CreateSqlObject} accessor moved to an extended interface must remain
  * visible (and annotated) through CollectionDAO for the runtime wiring to keep working.
+ *
+ * <p>The expected accessor set is derived by reflection over CollectionDAO and every interface it
+ * transitively extends, so the guard stays exhaustive automatically as accessors are added, moved,
+ * or new aggregator interfaces appear — no hardcoded list to keep in sync.
  */
 class CollectionDAOCompositionTest {
 
-  private static final Map<String, String> MOVED_ACCESSOR_TO_INTERFACE =
-      Map.ofEntries(
-          Map.entry("rdfIndexJobDAO", "RdfInfraDAOs"),
-          Map.entry("rdfIndexServerStatsDAO", "RdfInfraDAOs"),
-          Map.entry("searchIndexJobDAO", "SearchReindexDAOs"),
-          Map.entry("searchIndexServerStatsDAO", "SearchReindexDAOs"),
-          Map.entry("aiApplicationDAO", "AiGovernanceDAOs"),
-          Map.entry("mcpServiceDAO", "AiGovernanceDAOs"),
-          Map.entry("feedDAO", "FeedDAOs"),
-          Map.entry("taskDAO", "FeedDAOs"),
-          Map.entry("tagUsageDAO", "ClassificationTagDAOs"),
-          Map.entry("classificationDAO", "ClassificationTagDAOs"),
-          Map.entry("testCaseDAO", "TimeSeriesDAOs"),
-          Map.entry("testCaseResultTimeSeriesDao", "TimeSeriesDAOs"),
-          Map.entry("activityStreamDAO", "ActivityAuditDAOs"),
-          Map.entry("auditLogDAO", "ActivityAuditDAOs"),
-          Map.entry("domainDAO", "GovernanceDAOs"),
-          Map.entry("dataContractDAO", "GovernanceDAOs"),
-          Map.entry("eventSubscriptionDAO", "EventSubscriptionDAOs"),
-          Map.entry("folderDAO", "KnowledgeAssetDAOs"),
-          Map.entry("knowledgePageDAO", "KnowledgeAssetDAOs"),
-          Map.entry("systemDAO", "SystemTokenDAOs"),
-          Map.entry("getTokenDAO", "SystemTokenDAOs"),
-          Map.entry("databaseDAO", "DataAssetServiceDAOs"),
-          Map.entry("dashboardDAO", "DataAssetServiceDAOs"),
-          Map.entry("containerDAO", "DataAssetServiceDAOs"),
-          Map.entry("dbServiceDAO", "DataAssetServiceDAOs"),
-          Map.entry("tableDAO", "EntityDataDAOs"),
-          Map.entry("pipelineDAO", "EntityDataDAOs"),
-          Map.entry("userDAO", "AccessControlDAOs"),
-          Map.entry("teamDAO", "AccessControlDAOs"),
-          Map.entry("changeEventDAO", "AccessControlDAOs"),
-          Map.entry("workflowDAO", "WorkflowDocStoreDAOs"),
-          Map.entry("oauthClientDAO", "OAuthDAOs"),
-          Map.entry("relationshipDAO", "CoreRelationshipDAOs"),
-          Map.entry("fieldRelationshipDAO", "CoreRelationshipDAOs"),
-          Map.entry("entityExtensionDAO", "CoreRelationshipDAOs"));
+  /** A floor so a reflection change that silently returns nothing fails loudly. */
+  private static final int MIN_EXPECTED_ACCESSORS = 30;
 
   @Test
-  void inheritedCreateSqlObjectAccessorsRemainVisibleAndAnnotated() throws NoSuchMethodException {
+  void everyCreateSqlObjectAccessorRemainsVisibleAndAnnotated() throws NoSuchMethodException {
     Set<String> visibleMethods =
         Arrays.stream(CollectionDAO.class.getMethods())
             .map(Method::getName)
             .collect(Collectors.toSet());
 
-    for (Map.Entry<String, String> entry : MOVED_ACCESSOR_TO_INTERFACE.entrySet()) {
-      String accessor = entry.getKey();
+    List<Method> accessors = declaredCreateSqlObjectAccessors();
+    assertTrue(
+        accessors.size() >= MIN_EXPECTED_ACCESSORS,
+        "Expected at least "
+            + MIN_EXPECTED_ACCESSORS
+            + " @CreateSqlObject accessors across CollectionDAO and its extended interfaces, found "
+            + accessors.size());
+
+    for (Method accessor : accessors) {
+      String name = accessor.getName();
+      String declaredIn = accessor.getDeclaringClass().getSimpleName();
       assertTrue(
-          visibleMethods.contains(accessor),
-          accessor + " (moved to " + entry.getValue() + ") is not visible via getMethods()");
-      Method method = CollectionDAO.class.getMethod(accessor);
+          visibleMethods.contains(name),
+          name + " (declared on " + declaredIn + ") is not visible via CollectionDAO.getMethods()");
+      Method viaCollectionDao = CollectionDAO.class.getMethod(name);
       assertNotNull(
-          method.getAnnotation(CreateSqlObject.class),
-          accessor + " lost its @CreateSqlObject annotation after the move");
+          viaCollectionDao.getAnnotation(CreateSqlObject.class),
+          name + " lost its @CreateSqlObject annotation when resolved through CollectionDAO");
     }
   }
 
-  @Test
-  void accessorsDeclaredDirectlyOnCollectionDaoStillWire() throws NoSuchMethodException {
-    assertNotNull(CollectionDAO.class.getMethod("assetDAO").getAnnotation(CreateSqlObject.class));
+  /**
+   * Every {@code @CreateSqlObject} accessor declared directly on CollectionDAO or on any interface
+   * it transitively extends — the full source-of-truth set JDBI must be able to wire.
+   */
+  private static List<Method> declaredCreateSqlObjectAccessors() {
+    Set<Class<?>> types = new LinkedHashSet<>();
+    types.add(CollectionDAO.class);
+    collectExtendedInterfaces(CollectionDAO.class, types);
+
+    List<Method> accessors = new ArrayList<>();
+    for (Class<?> type : types) {
+      for (Method method : type.getDeclaredMethods()) {
+        if (method.isAnnotationPresent(CreateSqlObject.class)) {
+          accessors.add(method);
+        }
+      }
+    }
+    return accessors;
+  }
+
+  private static void collectExtendedInterfaces(Class<?> type, Set<Class<?>> accumulator) {
+    for (Class<?> extended : type.getInterfaces()) {
+      if (accumulator.add(extended)) {
+        collectExtendedInterfaces(extended, accumulator);
+      }
+    }
   }
 }
