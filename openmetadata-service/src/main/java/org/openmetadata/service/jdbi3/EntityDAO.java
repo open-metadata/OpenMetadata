@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.SneakyThrows;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -72,6 +74,47 @@ public interface EntityDAO<T extends EntityInterface> {
    * is.)
    */
   int MAX_IN_LIST_CHUNK_SIZE = 30_000;
+
+  /**
+   * Run a SQL IN-list query in {@link #MAX_IN_LIST_CHUNK_SIZE}-sized chunks and concatenate the
+   * results, keeping each statement under the database parameter ceiling. For inputs at or below
+   * the chunk size the list is passed straight through, preserving the single-query behavior (and
+   * the caller's empty-list handling) exactly. When chunking is required the ids are de-duplicated
+   * first (encounter order preserved) so a value split across two chunks is not queried twice and
+   * cannot duplicate result rows — matching the semantics of a single {@code IN (...)}, which
+   * ignores duplicate values.
+   */
+  static <I, R> List<R> queryInChunks(List<I> ids, Function<List<I>, List<R>> query) {
+    List<R> result;
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      result = new ArrayList<>(distinctIds.size());
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        result.addAll(query.apply(distinctIds.subList(i, end)));
+      }
+    } else {
+      result = query.apply(ids);
+    }
+    return result;
+  }
+
+  /**
+   * Void counterpart of {@link #queryInChunks} for chunked IN-list updates/deletes. De-duplicates
+   * before chunking for the same reason: a value split across chunks would otherwise issue a
+   * redundant statement, whereas a single {@code WHERE id IN (...)} affects each row once.
+   */
+  static <I> void updateInChunks(List<I> ids, Consumer<List<I>> update) {
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        update.accept(distinctIds.subList(i, end));
+      }
+    } else {
+      update.accept(ids);
+    }
+  }
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
@@ -169,6 +212,30 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("id") String id,
       @Bind("json") String json,
       @Bind("version") String version);
+
+  /**
+   * Optimistic content-based compare-and-swap. Rewrites the row only when its stored json still
+   * equals {@code expectedJson} (the snapshot last read). Returns the number of rows updated (0
+   * when another writer changed the row in the meantime, 1 on success). Lets background rewrites
+   * detect lost-update races without bumping the entity version or writing version history.
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = CAST(:expectedJson AS JSON)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = (:expectedJson :: jsonb)",
+      connectionType = POSTGRES)
+  int updateIfMatches(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("expectedJson") String expectedJson);
 
   /**
    * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
@@ -430,6 +497,10 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
+      @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
+  String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
@@ -758,6 +829,16 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
+  default int updateIfMatches(EntityInterface entity, String expectedJson) {
+    return updateIfMatches(
+        getTableName(),
+        getNameHashColumn(),
+        entity.getFullyQualifiedName(),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity),
+        expectedJson);
+  }
+
   default String getCondition(Include include) {
     if (!supportsSoftDelete()) {
       return "";
@@ -767,6 +848,16 @@ public interface EntityDAO<T extends EntityInterface> {
       return "AND deleted = FALSE";
     }
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
+  }
+
+  /**
+   * Fetch the raw json for a row while taking a {@code FOR UPDATE} row lock. Background rewrites use
+   * this so that, inside an enclosing transaction, the re-read sees the latest committed row (a
+   * plain consistent read would return the transaction's stale snapshot under MySQL REPEATABLE
+   * READ) and concurrent writers on the same row are serialized.
+   */
+  default String findJsonByIdForUpdate(UUID id, Include include) {
+    return findByIdForUpdate(getTableName(), id, getCondition(include));
   }
 
   default T findEntityById(UUID id, Include include) {
