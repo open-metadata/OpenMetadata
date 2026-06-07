@@ -17,7 +17,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
 import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';

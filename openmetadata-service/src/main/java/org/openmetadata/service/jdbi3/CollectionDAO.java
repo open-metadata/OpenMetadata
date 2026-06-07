@@ -58,6 +58,7 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -132,6 +133,7 @@ import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
+import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
@@ -186,6 +188,7 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindConcat;
@@ -324,6 +327,9 @@ public interface CollectionDAO {
   DataContractDAO dataContractDAO();
 
   @CreateSqlObject
+  IntakeFormDAO intakeFormDAO();
+
+  @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
 
   @CreateSqlObject
@@ -445,6 +451,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TokenDAO getTokenDAO();
+
+  @CreateSqlObject
+  UserSessionDAO getUserSessionDAO();
 
   @CreateSqlObject
   KpiDAO kpiDAO();
@@ -1563,12 +1572,18 @@ public interface CollectionDAO {
             + "WHERE id IN (<ids>) AND extension LIKE :extension "
             + "ORDER BY id, extension")
     @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
-    List<ExtensionRecordWithId> getExtensionsBatch(
+    List<ExtensionRecordWithId> getExtensionsBatchInternal(
         @BindList("ids") List<String> ids,
         @BindConcat(
                 value = "extension",
                 parts = {":extensionPrefix", ".%"})
             String extensionPrefix);
+
+    default List<ExtensionRecordWithId> getExtensionsBatch(
+        List<String> ids, String extensionPrefix) {
+      return EntityDAO.queryInChunks(
+          ids, chunk -> getExtensionsBatchInternal(chunk, extensionPrefix));
+    }
 
     @SqlQuery(
         "SELECT id, extension, json "
@@ -1576,8 +1591,12 @@ public interface CollectionDAO {
             + "WHERE id IN (<ids>) AND extension = :extension "
             + "ORDER BY id, extension")
     @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
-    List<ExtensionRecordWithId> getExtensionBatch(
+    List<ExtensionRecordWithId> getExtensionBatchInternal(
         @BindList("ids") List<String> ids, @Bind("extension") String extension);
+
+    default List<ExtensionRecordWithId> getExtensionBatch(List<String> ids, String extension) {
+      return EntityDAO.queryInChunks(ids, chunk -> getExtensionBatchInternal(chunk, extension));
+    }
 
     @SqlQuery(
         "SELECT id, extension, json, jsonschema "
@@ -1704,7 +1723,11 @@ public interface CollectionDAO {
     void deleteAll(@BindUUID("id") UUID id);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>)")
-    void deleteAllBatch(@BindList("ids") List<String> ids);
+    void deleteAllBatchInternal(@BindList("ids") List<String> ids);
+
+    default void deleteAllBatch(List<String> ids) {
+      EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
+    }
   }
 
   class EntityVersionPair {
@@ -1809,6 +1832,17 @@ public interface CollectionDAO {
   }
 
   interface EntityRelationshipDAO {
+    /** Map an {@link Include} filter to the trailing {@code deleted} SQL clause. */
+    private static String deletedCondition(Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return condition;
+    }
+
     default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
       insert(fromId, toId, fromEntity, toEntity, relation, "", null);
     }
@@ -1841,14 +1875,16 @@ public interface CollectionDAO {
         UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
 
       List<String> toIdsAsString = toIds.stream().map(UUID::toString).toList();
-      bulkRemoveTo(fromId, toIdsAsString, fromEntity, toEntity, relation);
+      EntityDAO.updateInChunks(
+          toIdsAsString, chunk -> bulkRemoveTo(fromId, chunk, fromEntity, toEntity, relation));
     }
 
     default void bulkRemoveFromRelationship(
         List<UUID> fromIds, UUID toId, String fromEntity, String toEntity, int relation) {
 
       List<String> fromIdsAsString = fromIds.stream().map(UUID::toString).toList();
-      bulkRemoveFrom(fromIdsAsString, toId, fromEntity, toEntity, relation);
+      EntityDAO.updateInChunks(
+          fromIdsAsString, chunk -> bulkRemoveFrom(chunk, toId, fromEntity, toEntity, relation));
     }
 
     @ConnectionAwareSqlUpdate(
@@ -1964,13 +2000,27 @@ public interface CollectionDAO {
             + "AND toEntity = :toEntity "
             + "AND relation = :relation "
             + "AND toId IN (<toIds>)")
-    void bulkUpdateFromId(
+    void bulkUpdateFromIdInternal(
         @BindUUID("oldFromId") UUID oldFromId,
         @BindUUID("newFromId") UUID newFromId,
         @BindList("toIds") List<String> toIds,
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    default void bulkUpdateFromId(
+        UUID oldFromId,
+        UUID newFromId,
+        List<String> toIds,
+        String fromEntity,
+        String toEntity,
+        int relation) {
+      EntityDAO.updateInChunks(
+          toIds,
+          chunk ->
+              bulkUpdateFromIdInternal(
+                  oldFromId, newFromId, chunk, fromEntity, toEntity, relation));
+    }
 
     //
     // Find to operations
@@ -2032,11 +2082,19 @@ public interface CollectionDAO {
             + "AND toEntity = :toEntityType "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findToBatch(
+    List<EntityRelationshipObject> findToBatchByFromAndToEntityInternal(
         @BindList("fromIds") List<String> fromIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType,
         @Bind("toEntityType") String toEntityType);
+
+    default List<EntityRelationshipObject> findToBatch(
+        List<String> fromIds, int relation, String fromEntityType, String toEntityType) {
+      return EntityDAO.queryInChunks(
+          fromIds,
+          chunk ->
+              findToBatchByFromAndToEntityInternal(chunk, relation, fromEntityType, toEntityType));
+    }
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -2046,10 +2104,16 @@ public interface CollectionDAO {
             + "AND toEntity = :toEntityType "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findToBatch(
+    List<EntityRelationshipObject> findToBatchByToEntityInternal(
         @BindList("fromIds") List<String> fromIds,
         @Bind("relation") int relation,
         @Bind("toEntityType") String toEntityType);
+
+    default List<EntityRelationshipObject> findToBatch(
+        List<String> fromIds, int relation, String toEntityType) {
+      return EntityDAO.queryInChunks(
+          fromIds, chunk -> findToBatchByToEntityInternal(chunk, relation, toEntityType));
+    }
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -2067,13 +2131,9 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findToBatch(
         List<String> fromIds, int relation, String toEntityType, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findToBatchWithCondition(fromIds, relation, toEntityType, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds, chunk -> findToBatchWithCondition(chunk, relation, toEntityType, condition));
     }
 
     @SqlQuery(
@@ -2098,13 +2158,11 @@ public interface CollectionDAO {
         String toEntityType,
         int relation,
         Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findToBatchWithCondition(fromIds, relation, fromEntityType, toEntityType, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds,
+          chunk ->
+              findToBatchWithCondition(chunk, relation, fromEntityType, toEntityType, condition));
     }
 
     @SqlQuery(
@@ -2121,13 +2179,9 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findToBatchAllTypes(
         List<String> fromIds, int relation, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findToBatchAllTypesWithCondition(fromIds, relation, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds, chunk -> findToBatchAllTypesWithCondition(chunk, relation, condition));
     }
 
     @SqlQuery(
@@ -2144,13 +2198,9 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findToBatchAllTypes(
         List<String> fromIds, List<Integer> relations, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findToBatchAllTypesWithRelationsCondition(fromIds, relations, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds, chunk -> findToBatchAllTypesWithRelationsCondition(chunk, relations, condition));
     }
 
     @SqlQuery(
@@ -2169,13 +2219,10 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findToBatchWithRelations(
         List<String> fromIds, String fromEntity, List<Integer> relations, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findToBatchWithRelationsAndCondition(fromIds, fromEntity, relations, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds,
+          chunk -> findToBatchWithRelationsAndCondition(chunk, fromEntity, relations, condition));
     }
 
     default List<EntityRelationshipObject> findToBatchWithRelations(
@@ -2300,8 +2347,13 @@ public interface CollectionDAO {
             + "AND relation = :relation "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatchByRelationInternal(
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
+
+    default List<EntityRelationshipObject> findFromBatch(List<String> toIds, int relation) {
+      return EntityDAO.queryInChunks(
+          toIds, chunk -> findFromBatchByRelationInternal(chunk, relation));
+    }
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -2317,13 +2369,9 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findFromBatch(
         List<String> toIds, int relation, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findFromBatchWithCondition(toIds, relation, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          toIds, chunk -> findFromBatchWithCondition(chunk, relation, condition));
     }
 
     @SqlQuery(
@@ -2342,13 +2390,11 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findFromBatch(
         List<String> toIds, int relation, String fromEntityType, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findFromBatchWithEntityTypeAndCondition(toIds, relation, fromEntityType, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          toIds,
+          chunk ->
+              findFromBatchWithEntityTypeAndCondition(chunk, relation, fromEntityType, condition));
     }
 
     @SqlQuery(
@@ -2367,13 +2413,11 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findFromBatchWithRelations(
         List<String> toIds, String toEntityType, List<Integer> relations, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
-      return findFromBatchWithRelationsAndCondition(toIds, toEntityType, relations, condition);
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          toIds,
+          chunk ->
+              findFromBatchWithRelationsAndCondition(chunk, toEntityType, relations, condition));
     }
 
     default List<EntityRelationshipObject> findFromBatchWithRelations(
@@ -2389,10 +2433,16 @@ public interface CollectionDAO {
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatchByFromEntityInternal(
         @BindList("toIds") List<String> toIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType);
+
+    default List<EntityRelationshipObject> findFromBatch(
+        List<String> toIds, int relation, String fromEntityType) {
+      return EntityDAO.queryInChunks(
+          toIds, chunk -> findFromBatchByFromEntityInternal(chunk, relation, fromEntityType));
+    }
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -2402,10 +2452,16 @@ public interface CollectionDAO {
             + "AND toEntity = :toEntityType "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatchByToEntityInternal(
         @BindList("toIds") List<String> toIds,
         @Bind("toEntityType") String toEntityType,
         @Bind("relation") int relation);
+
+    default List<EntityRelationshipObject> findFromBatch(
+        List<String> toIds, String toEntityType, int relation) {
+      return EntityDAO.queryInChunks(
+          toIds, chunk -> findFromBatchByToEntityInternal(chunk, toEntityType, relation));
+    }
 
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
@@ -2433,12 +2489,7 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findToRelationshipsForEntity(
         UUID entityId, String entityType, List<Integer> relations, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
+      String condition = deletedCondition(include);
       return findToRelationshipsForEntityWithCondition(entityId, entityType, relations, condition);
     }
 
@@ -2464,12 +2515,7 @@ public interface CollectionDAO {
 
     default List<EntityRelationshipObject> findFromRelationshipsForEntity(
         UUID entityId, String entityType, List<Integer> relations, Include include) {
-      String condition = "";
-      if (include == null || include == Include.NON_DELETED) {
-        condition = "AND deleted = FALSE";
-      } else if (include == Include.DELETED) {
-        condition = "AND deleted = TRUE";
-      }
+      String condition = deletedCondition(include);
       return findFromRelationshipsForEntityWithCondition(
           entityId, entityType, relations, condition);
     }
@@ -2488,11 +2534,20 @@ public interface CollectionDAO {
             + "AND toEntity = :toEntityType "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatchByFromAndToEntityInternal(
         @BindList("toIds") List<String> toIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType,
         @Bind("toEntityType") String toEntityType);
+
+    default List<EntityRelationshipObject> findFromBatch(
+        List<String> toIds, int relation, String fromEntityType, String toEntityType) {
+      return EntityDAO.queryInChunks(
+          toIds,
+          chunk ->
+              findFromBatchByFromAndToEntityInternal(
+                  chunk, relation, fromEntityType, toEntityType));
+    }
 
     @ConnectionAwareSqlQuery(
         value =
@@ -5170,6 +5225,38 @@ public interface CollectionDAO {
         @Bind("entityId") String entityId, @Bind("entityType") String entityType);
   }
 
+  interface IntakeFormDAO extends EntityDAO<IntakeForm> {
+    @Override
+    default String getTableName() {
+      return "intake_form_entity";
+    }
+
+    @Override
+    default Class<IntakeForm> getEntityClass() {
+      return IntakeForm.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM intake_form_entity WHERE JSON_EXTRACT(json, '$.entityType') = :entityType LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM intake_form_entity WHERE json->>'entityType' = :entityType LIMIT 1",
+        connectionType = POSTGRES)
+    String findByEntityType(@Bind("entityType") String entityType);
+  }
+
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
     @Override
     default String getTableName() {
@@ -6572,8 +6659,12 @@ public interface CollectionDAO {
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
-    List<TagLabelWithFQNHash> getTagsInternalBatch(
+    List<TagLabelWithFQNHash> getTagsInternalBatchInternal(
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
+
+    default List<TagLabelWithFQNHash> getTagsInternalBatch(List<String> targetFQNHashes) {
+      return EntityDAO.queryInChunks(targetFQNHashes, this::getTagsInternalBatchInternal);
+    }
 
     @SqlQuery(
         "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
@@ -6583,10 +6674,17 @@ public interface CollectionDAO {
             + "AND tagFQNHash LIKE :tagFQNHashPrefix "
             + "ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
-    List<TagLabelWithFQNHash> getCertTagsInternalBatch(
+    List<TagLabelWithFQNHash> getCertTagsInternalBatchInternal(
         @Bind("source") int source,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes,
         @Bind("tagFQNHashPrefix") String tagFQNHashPrefix);
+
+    default List<TagLabelWithFQNHash> getCertTagsInternalBatch(
+        int source, List<String> targetFQNHashes, String tagFQNHashPrefix) {
+      return EntityDAO.queryInChunks(
+          targetFQNHashes,
+          chunk -> getCertTagsInternalBatchInternal(source, chunk, tagFQNHashPrefix));
+    }
 
     /**
      * Batch fetch derived tags for multiple glossary term FQNs. Returns a map from glossary term
@@ -6764,7 +6862,11 @@ public interface CollectionDAO {
         @BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlUpdate("DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>)")
-    void deleteTagsByTargets(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+    void deleteTagsByTargetsInternal(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    default void deleteTagsByTargets(List<String> targetFQNs) {
+      EntityDAO.updateInChunks(targetFQNs, this::deleteTagsByTargetsInternal);
+    }
 
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQN LIKE :tagFQNPrefix AND targetFQNHash IN (<targetFQNHashes>)")
@@ -7761,7 +7863,11 @@ public interface CollectionDAO {
             + "u1.percentile1, u1.percentile7, u1.percentile30 FROM entity_usage u1 "
             + "INNER JOIN (SELECT id, MAX(usageDate) as maxDate FROM entity_usage WHERE id IN (<ids>) GROUP BY id) u2 "
             + "ON u1.id = u2.id AND u1.usageDate = u2.maxDate")
-    List<UsageDetailsWithId> getLatestUsageBatch(@BindList("ids") List<String> ids);
+    List<UsageDetailsWithId> getLatestUsageBatchInternal(@BindList("ids") List<String> ids);
+
+    default List<UsageDetailsWithId> getLatestUsageBatch(List<String> ids) {
+      return EntityDAO.queryInChunks(ids, this::getLatestUsageBatchInternal);
+    }
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
@@ -9807,8 +9913,12 @@ public interface CollectionDAO {
             + "FROM data_quality_data_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
             + "GROUP BY entityFQNHash) t2 "
             + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
-    List<LatestRecordWithFQNHash> getLatestRecordBatch(
+    List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
+
+    default List<LatestRecordWithFQNHash> getLatestRecordBatch(List<String> entityFQNs) {
+      return EntityDAO.queryInChunks(entityFQNs, this::getLatestRecordBatchInternal);
+    }
 
     @SqlUpdate(
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
@@ -10233,8 +10343,12 @@ public interface CollectionDAO {
             """,
         connectionType = POSTGRES)
     @UseRowMapper(ResultSummaryRowMapper.class)
-    List<ResultSummaryRow> listResultSummariesForTestSuites(
+    List<ResultSummaryRow> listResultSummariesForTestSuitesInternal(
         @BindList("testSuiteIds") List<String> testSuiteIds);
+
+    default List<ResultSummaryRow> listResultSummariesForTestSuites(List<String> testSuiteIds) {
+      return EntityDAO.queryInChunks(testSuiteIds, this::listResultSummariesForTestSuitesInternal);
+    }
 
     record SuiteMaxTimestamp(String testSuiteId, long maxTimestamp) {}
 
@@ -10522,6 +10636,13 @@ public interface CollectionDAO {
     }
   }
 
+  class UserSessionRowMapper implements RowMapper<UserSession> {
+    @Override
+    public UserSession map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return JsonUtils.readValue(rs.getString("json"), UserSession.class);
+    }
+  }
+
   // OAuth 2.0 Row Mappers
   class OAuthClientRowMapper implements RowMapper<OAuthRecords.OAuthClientRecord> {
     @Override
@@ -10625,6 +10746,79 @@ public interface CollectionDAO {
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(
         @BindUUID("userid") UUID userid, @Bind("tokenType") String tokenType);
+  }
+
+  interface UserSessionDAO {
+    @SqlQuery("SELECT json FROM user_session WHERE id = :id")
+    @RegisterRowMapper(UserSessionRowMapper.class)
+    UserSession findById(@Bind("id") String id) throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM user_session WHERE userId = :userId AND status = :status "
+            + "ORDER BY COALESCE(lastAccessedAt, 0) ASC LIMIT :limit")
+    @RegisterRowMapper(UserSessionRowMapper.class)
+    List<UserSession> findByUserIdAndStatus(
+        @Bind("userId") String userId, @Bind("status") String status, @Bind("limit") int limit)
+        throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM user_session "
+            + "WHERE status IN (<statuses>) AND expiresAt <= :now "
+            + "ORDER BY updatedAt ASC LIMIT :limit")
+    @RegisterRowMapper(UserSessionRowMapper.class)
+    List<UserSession> findSessionsExpiredByAbsoluteTimeout(
+        @BindList("statuses") List<String> statuses,
+        @Bind("now") long now,
+        @Bind("limit") int limit)
+        throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM user_session "
+            + "WHERE status IN (<statuses>) AND idleExpiresAt <= :now "
+            + "ORDER BY updatedAt ASC LIMIT :limit")
+    @RegisterRowMapper(UserSessionRowMapper.class)
+    List<UserSession> findSessionsExpiredByIdleTimeout(
+        @BindList("statuses") List<String> statuses,
+        @Bind("now") long now,
+        @Bind("limit") int limit)
+        throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM user_session WHERE status IN (<statuses>) AND updatedAt <= :cutoff "
+            + "ORDER BY updatedAt ASC LIMIT :limit")
+    @RegisterRowMapper(UserSessionRowMapper.class)
+    List<UserSession> findSessionsToPrune(
+        @BindList("statuses") List<String> statuses,
+        @Bind("cutoff") long cutoff,
+        @Bind("limit") int limit)
+        throws StatementException;
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO user_session (json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO user_session (json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_session SET json = :json WHERE id = :id AND version = :expectedVersion",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_session SET json = (:json :: jsonb) WHERE id = :id AND version = :expectedVersion",
+        connectionType = POSTGRES)
+    int updateIfVersion(
+        @Bind("id") String id,
+        @Bind("expectedVersion") long expectedVersion,
+        @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM user_session WHERE id = :id")
+    void delete(@Bind("id") String id);
+
+    @SqlUpdate("DELETE FROM user_session WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
   }
 
   interface KpiDAO extends EntityDAO<Kpi> {
@@ -13379,6 +13573,25 @@ public interface CollectionDAO {
     }
   }
 
+  @Builder
+  record ActivityStreamRow(
+      String id,
+      String eventType,
+      String entityType,
+      String entityId,
+      String entityFqnHash,
+      String about,
+      String aboutFqnHash,
+      String actorId,
+      String actorName,
+      Long timestamp,
+      String summary,
+      String fieldName,
+      String oldValue,
+      String newValue,
+      String domains,
+      String json) {}
+
   interface ActivityStreamDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -13411,6 +13624,24 @@ public interface CollectionDAO {
         @Bind("newValue") String newValue,
         @Bind("domains") String domains,
         @Bind("json") String json);
+
+    // Batch insert for activity events - one round-trip per change event instead of one per row
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO activity_stream(id, eventType, entityType, entityId, entityFqnHash, "
+                + "about, aboutFqnHash, actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO activity_stream(id, eventtype, entitytype, entityid, entityfqnhash, "
+                + "about, aboutfqnhash, actorid, actorname, timestamp, summary, fieldname, oldvalue, newvalue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains::jsonb, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertBatch(@BindMethods List<ActivityStreamRow> rows);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -14491,7 +14722,7 @@ public interface CollectionDAO {
                 + ":actorType, :impersonatedBy, :serviceName, "
                 + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :searchText, :createdAt)",
         connectionType = MYSQL)
-    void insert(@BindBean AuditLogRecord record);
+    int insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
         "SELECT id, change_event_id, event_ts, event_type, user_name, "

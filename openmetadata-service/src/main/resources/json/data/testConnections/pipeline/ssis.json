@@ -5,40 +5,45 @@
     "steps": [
         {
             "name": "CheckAccess",
-            "description":  "Check if the database is reachable to fetch the DAG details.",
-            "errorMessage": "Failed to connect to ssis, please validate the credentials",
-            "shortCircuit": true,
-            "mandatory": true
+            "description": "Check if the database is reachable to fetch the DAG details. Skipped in file-only mode (no databaseConnection configured).",
+            "errorMessage": "Failed to connect to SSIS database. If running in file-only mode, databaseConnection is not required.",
+            "shortCircuit": false,
+            "mandatory": false
         },
         {
             "name": "SSISDBExist",
-            "description":  "Check if the SSISDB database exists and is accessible.",
+            "description": "Check if the SSISDB database exists and is accessible. Skipped in file-only mode (no databaseConnection configured).",
             "errorMessage": "SSISDB database does not exist or is not accessible.",
-            "shortCircuit": true,
-            "mandatory": true
+            "shortCircuit": false,
+            "mandatory": false
         },
         {
             "name": "SSISDBProjectsExist",
-            "description":  "Check if there are any projects present in the SSISDB database.",
+            "description": "Check if there are any projects present in the SSISDB database. Skipped in file-only mode.",
             "errorMessage": "No projects found in SSISDB database.",
-            "shortCircuit": true,
-            "mandatory": true
+            "shortCircuit": false,
+            "mandatory": false
         },
         {
             "name": "SSISDBPackagesExist",
-            "description":  "Check if there are any packages present in the SSISDB database.",
+            "description": "Check if there are any packages present in the SSISDB database. Skipped in file-only mode.",
             "errorMessage": "No packages found in SSISDB database.",
-            "shortCircuit": true,
-            "mandatory": true
+            "shortCircuit": false,
+            "mandatory": false
+        },
+        {
+            "name": "CheckLocalPath",
+            "description": "Check that the local projects path exists and contains at least one .dtsx package file. Only applies when packageConnection is a local path.",
+            "errorMessage": "Local projects path is missing or contains no .dtsx package files.",
+            "shortCircuit": false,
+            "mandatory": false
         },
         {
             "name": "CheckS3Access",
-            "description":  "Check storage access",
+            "description": "Check storage access",
             "errorMessage": "Unable to connect to storage service",
-            "shortCircuit": true,
+            "shortCircuit": false,
             "mandatory": false
         }
-
-
     ]
 }
