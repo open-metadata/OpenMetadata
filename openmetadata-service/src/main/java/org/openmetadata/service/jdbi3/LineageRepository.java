@@ -1091,7 +1091,7 @@ public class LineageRepository {
   }
 
   @Transaction
-  public void deleteLineageBySource(UUID toId, String toEntity, String source) {
+  public void deleteLineageBySource(UUID toId, String toEntity, String source, String deletedBy) {
     List<CollectionDAO.EntityRelationshipObject> relations;
     if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())
         || source.equals(LineageDetails.Source.OPEN_LINEAGE.value())) {
@@ -1110,6 +1110,20 @@ public class LineageRepository {
           .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
     }
     deleteLineageFromSearch(relations);
+    emitLineageDeletedEvents(relations, deletedBy);
+  }
+
+  private void emitLineageDeletedEvents(
+      List<CollectionDAO.EntityRelationshipObject> relations, String deletedBy) {
+    for (CollectionDAO.EntityRelationshipObject relation : relations) {
+      LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
+      emitLineageChangeEvent(
+          EventType.ENTITY_LINEAGE_DELETED,
+          resolveRefForCacheInvalidation(relation.getFromEntity(), relation.getFromId()),
+          resolveRefForCacheInvalidation(relation.getToEntity(), relation.getToId()),
+          lineageDetails,
+          deletedBy);
+    }
   }
 
   @Transaction
