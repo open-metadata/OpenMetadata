@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -1641,39 +1642,41 @@ public class SystemResourceIT {
     assertFalse(retrievedEntityTypes.contains("test"));
   }
 
+  private SecurityConfiguration buildBasicSecurityConfig() {
+    return new SecurityConfiguration()
+        .withAuthenticationConfiguration(
+            new AuthenticationConfiguration()
+                .withClientType(ClientType.PUBLIC)
+                .withProvider(AuthProvider.BASIC)
+                .withResponseType(ResponseType.ID_TOKEN)
+                .withProviderName("OpenMetadata")
+                .withPublicKeyUrls(Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
+                .withAuthority("http://localhost:8585")
+                .withClientId("open-metadata")
+                .withCallbackUrl("http://localhost:8585/callback")
+                .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
+                .withJwtPrincipalClaimsMapping(new ArrayList<>())
+                .withEnableSelfSignup(true))
+        .withAuthorizerConfiguration(
+            new AuthorizerConfiguration()
+                .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
+                .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
+                .withAdminPrincipals(Set.of("admin"))
+                .withAllowedEmailRegistrationDomains(Set.of("all"))
+                .withPrincipalDomain("open-metadata.org")
+                .withAllowedDomains(new HashSet<>())
+                .withEnforcePrincipalDomain(false)
+                .withEnableSecureSocketConnection(false)
+                .withUseRolesFromProvider(false));
+  }
+
   @Test
   void test_updateSecurityConfig() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    SecurityConfiguration securityConfig =
-        new SecurityConfiguration()
-            .withAuthenticationConfiguration(
-                new AuthenticationConfiguration()
-                    .withClientType(ClientType.PUBLIC)
-                    .withProvider(AuthProvider.BASIC)
-                    .withResponseType(ResponseType.ID_TOKEN)
-                    .withProviderName("OpenMetadata")
-                    .withPublicKeyUrls(
-                        Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
-                    .withTokenValidationAlgorithm(
-                        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
-                    .withAuthority("http://localhost:8585")
-                    .withClientId("open-metadata")
-                    .withCallbackUrl("http://localhost:8585/callback")
-                    .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
-                    .withJwtPrincipalClaimsMapping(new ArrayList<>())
-                    .withEnableSelfSignup(true))
-            .withAuthorizerConfiguration(
-                new AuthorizerConfiguration()
-                    .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
-                    .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
-                    .withAdminPrincipals(Set.of("admin"))
-                    .withAllowedEmailRegistrationDomains(Set.of("all"))
-                    .withPrincipalDomain("open-metadata.org")
-                    .withAllowedDomains(new HashSet<>())
-                    .withEnforcePrincipalDomain(false)
-                    .withEnableSecureSocketConnection(false)
-                    .withUseRolesFromProvider(false));
+    SecurityConfiguration securityConfig = buildBasicSecurityConfig();
 
     String securityConfigJson = MAPPER.writeValueAsString(securityConfig);
     String updatedJson =
@@ -1695,6 +1698,53 @@ public class SystemResourceIT {
     assertEquals(
         securityConfig.getAuthorizerConfiguration().getClassName(),
         updated.getAuthorizerConfiguration().getClassName());
+  }
+
+  @Test
+  void test_validateSecurityConfig_adminCanValidate() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    String responseJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
+                securityConfigJson,
+                RequestOptions.builder().build());
+
+    assertNotNull(responseJson);
+    assertTrue(
+        MAPPER.readTree(responseJson).has("status"),
+        "Validate response should contain a status field");
+  }
+
+  @Test
+  void test_validateSecurityConfig_nonAdminForbidden() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/validate",
+                        securityConfigJson,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to test/validate the SSO configuration");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
   }
 
   @Test
