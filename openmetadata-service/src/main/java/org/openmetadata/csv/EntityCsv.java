@@ -107,6 +107,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CustomPropertyValidator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -848,7 +849,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String propertyConfig) {
     List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
     try {
-      EntityRepository.validateEnumKeys(fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
+      CustomPropertyValidator.validateEnumKeys(
+          fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
     } catch (Exception e) {
       deferredFailure(
           csvRecord,

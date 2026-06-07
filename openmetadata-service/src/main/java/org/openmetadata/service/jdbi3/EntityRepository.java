@@ -78,8 +78,6 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
-import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
-import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
@@ -93,11 +91,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.networknt.schema.Error;
-import com.networknt.schema.Schema;
 import io.micrometer.core.instrument.Metrics;
 import jakarta.json.JsonPatch;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -105,12 +100,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.Period;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -119,7 +110,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -191,8 +181,6 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customProperties.EnumConfig;
-import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -234,6 +222,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.CustomPropertyValidator;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -4502,218 +4491,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * This method can be used by other repositories that need to validate extensions
    * without extending EntityRepository.
    */
-  public static void validateExtension(Object extension, String entityTypeName) {
-    if (extension == null) {
-      return;
-    }
-
-    JsonNode jsonNode = JsonUtils.valueToTree(extension);
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      // Validate that the custom property exists for this entity type
-      Schema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
-      if (jsonSchema == null) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
-      }
-
-      // Validate against JSON schema - this handles all validation including type-specific rules
-      List<Error> validationMessages = jsonSchema.validate(fieldValue);
-      if (!validationMessages.isEmpty()) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
-      }
-    }
-  }
-
-  public static Object validateAndTransformExtension(Object extension, String entityTypeName) {
-    if (extension == null) {
-      return null;
-    }
-
-    // Validate custom properties existence and schema compliance
-    validateExtension(extension, entityTypeName);
-
-    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
-    JsonNode extensionNode = JsonUtils.valueToTree(extension);
-    if (!extensionNode.isObject()) {
-      return null;
-    }
-    ObjectNode jsonNode = (ObjectNode) extensionNode;
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityTypeName, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityTypeName, fieldName);
-
-      switch (customPropertyType) {
-        case "date-cp", "dateTime-cp", "time-cp" -> {
-          String formattedValue =
-              getFormattedDateTimeField(
-                  fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-          jsonNode.put(fieldName, formattedValue);
-        }
-        case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-        case "enum" -> {
-          validateEnumKeys(fieldName, fieldValue, propertyConfig);
-          List<String> enumValues =
-              StreamSupport.stream(fieldValue.spliterator(), false)
-                  .map(JsonNode::asText)
-                  .sorted()
-                  .collect(Collectors.toList());
-          jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        }
-        case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
-        case "entityReference" -> validateCustomPropertyEntityReference(fieldValue, fieldName);
-        case "entityReferenceList" -> validateCustomPropertyEntityReferenceList(
-            fieldValue, fieldName);
-        default -> {}
-      }
-    }
-
-    return JsonUtils.treeToValue(jsonNode, Object.class);
-  }
-
   private void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
       return;
     }
 
-    Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
+    Object transformedExtension =
+        CustomPropertyValidator.validateAndTransformExtension(entity.getExtension(), entityType);
     entity.setExtension(transformedExtension);
-  }
-
-  private static void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
-    if (fieldValue == null || fieldValue.isNull()) {
-      return;
-    }
-    JsonNode urlNode = fieldValue.get("url");
-    if (urlNode == null || urlNode.isNull() || urlNode.asText().isEmpty()) {
-      return;
-    }
-    String url = urlNode.asText();
-    try {
-      java.net.URI uri = new java.net.URI(url);
-      String scheme = uri.getScheme();
-      if (scheme == null
-          || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Invalid URL protocol for field '%s': URL must use http or https protocol",
-                fieldName));
-      }
-    } catch (java.net.URISyntaxException e) {
-      throw new IllegalArgumentException(
-          String.format("Invalid URL format for field '%s': %s", fieldName, e.getMessage()));
-    }
-  }
-
-  private static String getFormattedDateTimeField(
-      String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
-    DateTimeFormatter formatter;
-
-    try {
-      return switch (customPropertyType) {
-        case "date-cp" -> {
-          DateTimeFormatter inputFormatter =
-              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-          TemporalAccessor date = inputFormatter.parse(fieldValue);
-          DateTimeFormatter outputFormatter =
-              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
-          yield outputFormatter.format(date);
-        }
-        case "dateTime-cp" -> {
-          formatter = DateTimeFormatter.ofPattern(propertyConfig);
-          LocalDateTime dateTime = LocalDateTime.parse(fieldValue, formatter);
-          yield dateTime.format(formatter);
-        }
-        case "time-cp" -> {
-          formatter = DateTimeFormatter.ofPattern(propertyConfig);
-          LocalTime time = LocalTime.parse(fieldValue, formatter);
-          yield time.format(formatter);
-        }
-        default -> throw new IllegalArgumentException(
-            "Unsupported customPropertyType: " + customPropertyType);
-      };
-    } catch (DateTimeParseException e) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
-    }
-  }
-
-  private static void validateTableType(
-      JsonNode fieldValue, String propertyConfig, String fieldName) {
-    TableConfig tableConfig =
-        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
-    org.openmetadata.schema.type.customProperties.Table tableValue =
-        JsonUtils.convertValue(
-            JsonUtils.readTree(String.valueOf(fieldValue)),
-            org.openmetadata.schema.type.customProperties.Table.class);
-    Set<String> configColumns = tableConfig.getColumns();
-
-    try {
-      JsonUtils.validateJsonSchema(
-          tableValue, org.openmetadata.schema.type.customProperties.Table.class);
-
-      Set<String> fieldColumns = new HashSet<>();
-      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
-
-      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
-      undefinedColumns.removeAll(configColumns);
-      if (!undefinedColumns.isEmpty()) {
-        throw new IllegalArgumentException(
-            "Expected columns: "
-                + configColumns
-                + ", but found undefined columns: "
-                + undefinedColumns);
-      }
-
-      Set<String> rowFieldNames = new HashSet<>();
-      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
-
-      undefinedColumns = new HashSet<>(rowFieldNames);
-      undefinedColumns.removeAll(configColumns);
-      if (!undefinedColumns.isEmpty()) {
-        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
-      }
-    } catch (ConstraintViolationException e) {
-      String validationErrors =
-          e.getConstraintViolations().stream()
-              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
-              .collect(Collectors.joining(", "));
-
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
-    }
-  }
-
-  public static void validateEnumKeys(
-      String fieldName, JsonNode fieldValue, String propertyConfig) {
-    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
-    EnumConfig config = JsonUtils.treeToValue(propertyConfigNode, EnumConfig.class);
-
-    if (!config.getMultiSelect() && fieldValue.size() > 1) {
-      throw new IllegalArgumentException(
-          String.format("Only one value allowed for non-multiSelect %s property", fieldName));
-    }
-    Set<String> validValues = new HashSet<>(config.getValues());
-    Set<String> fieldValues = new HashSet<>();
-    fieldValue.forEach(value -> fieldValues.add(value.asText()));
-
-    if (!validValues.containsAll(fieldValues)) {
-      fieldValues.removeAll(validValues);
-      throw new IllegalArgumentException(
-          String.format("Values '%s' not supported for property %s", fieldValues, fieldName));
-    }
   }
 
   public final void storeExtension(EntityInterface entity) {
@@ -8338,7 +8124,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                       singleField.put(
                           field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
                       Object transformedField =
-                          validateAndTransformExtension(singleField, entityType);
+                          CustomPropertyValidator.validateAndTransformExtension(
+                              singleField, entityType);
                       JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
                       if (transformedNode.isObject()) {
                         extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
