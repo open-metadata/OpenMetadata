@@ -55,8 +55,7 @@ public class DataQualityWorkflow {
   Processor entityProcessor;
   Sink searchIndexSink;
 
-  @Getter
-  private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
 
   public DataQualityWorkflow(
       DataQualityConfig dataQualityConfig,
