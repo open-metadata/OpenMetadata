@@ -130,7 +130,7 @@ jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseVersions: jest.fn(() => mockGetDatabaseVersions()),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 

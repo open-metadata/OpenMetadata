@@ -35,12 +35,12 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
 }));
 
 jest.mock('../../utils/EntityDisplayUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayUtils'),
   getEntityMissingError: jest.fn(),
-}));
-jest.mock('../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../utils/EntityUtils'),
-  getEntityName: jest.fn().mockReturnValue('test-api-collection'),
   getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
+}));
+jest.mock('../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('test-api-collection'),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),

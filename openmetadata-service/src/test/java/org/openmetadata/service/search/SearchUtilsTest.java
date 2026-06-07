@@ -15,6 +15,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import java.io.StringReader;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -172,6 +173,83 @@ class SearchUtilsTest {
         SearchUtils.paginateUpstreamEntityRelationships(relationships, 0, 1));
     assertTrue(SearchUtils.paginateUpstreamEntityRelationships(relationships, 2, 1).isEmpty());
     assertTrue(SearchUtils.getUpstreamEntityRelationshipListIfExist(Map.of()).isEmpty());
+  }
+
+  @Test
+  void timeWindowedLineageFilterOnlyBypassesLegacyEdgesWithoutTimestamps() {
+    EsLineageData overlappingManualEdge =
+        new EsLineageData()
+            .withDocId("overlapping-manual")
+            .withSource("manual")
+            .withCreatedAt(500L)
+            .withUpdatedAt(1_500L);
+    EsLineageData futureManualEdge =
+        new EsLineageData()
+            .withDocId("future-manual")
+            .withSource("manual")
+            .withCreatedAt(3_000L)
+            .withUpdatedAt(4_000L);
+    EsLineageData legacyManualEdge =
+        new EsLineageData().withDocId("legacy-manual").withSource("manual");
+    Map<String, Object> lineageDoc =
+        Map.of(
+            SearchClient.UPSTREAM_LINEAGE_FIELD,
+            List.of(overlappingManualEdge, futureManualEdge, legacyManualEdge));
+
+    List<EsLineageData> lineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+
+    assertEquals(
+        List.of("overlapping-manual", "legacy-manual"),
+        lineage.stream().map(EsLineageData::getDocId).toList());
+  }
+
+  @Test
+  void timeWindowedLineageFilterBoundsEdgesWithOneTimestamp() {
+    EsLineageData createdOnlyPastEdge =
+        new EsLineageData().withDocId("created-only-past").withCreatedAt(500L);
+    EsLineageData updatedOnlyPastEdge =
+        new EsLineageData().withDocId("updated-only-past").withUpdatedAt(500L);
+    EsLineageData createdOnlyCurrentEdge =
+        new EsLineageData().withDocId("created-only-current").withCreatedAt(1_500L);
+    EsLineageData updatedOnlyCurrentEdge =
+        new EsLineageData().withDocId("updated-only-current").withUpdatedAt(1_500L);
+    Map<String, Object> lineageDoc =
+        Map.of(
+            SearchClient.UPSTREAM_LINEAGE_FIELD,
+            List.of(
+                createdOnlyPastEdge,
+                updatedOnlyPastEdge,
+                createdOnlyCurrentEdge,
+                updatedOnlyCurrentEdge));
+
+    List<EsLineageData> lineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+
+    assertEquals(
+        List.of("created-only-current", "updated-only-current"),
+        lineage.stream().map(EsLineageData::getDocId).toList());
+  }
+
+  @Test
+  void timeWindowedLineageFilterRemovesNullEdges() {
+    EsLineageData matchingEdge =
+        new EsLineageData().withDocId("matching-edge").withCreatedAt(1_500L);
+    EsLineageData legacyEdge = new EsLineageData().withDocId("legacy-edge");
+    Map<String, Object> lineageDoc =
+        Map.of(SearchClient.UPSTREAM_LINEAGE_FIELD, Arrays.asList(matchingEdge, null, legacyEdge));
+
+    List<EsLineageData> filteredLineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, 1_000L, 2_000L);
+    List<EsLineageData> unboundedLineage =
+        SearchUtils.getUpstreamLineageListIfExist(lineageDoc, null, null);
+
+    assertEquals(
+        List.of("matching-edge", "legacy-edge"),
+        filteredLineage.stream().map(EsLineageData::getDocId).toList());
+    assertEquals(
+        List.of("matching-edge", "legacy-edge"),
+        unboundedLineage.stream().map(EsLineageData::getDocId).toList());
   }
 
   @Test
