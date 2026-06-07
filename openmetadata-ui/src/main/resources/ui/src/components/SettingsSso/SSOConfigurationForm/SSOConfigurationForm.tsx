@@ -85,6 +85,7 @@ import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTem
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -104,6 +105,11 @@ interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;
   onChangeFile: () => void;
+}
+
+interface SsoTestResult {
+  status: 'success' | 'failed';
+  errorCount: number;
 }
 
 const MetadataUploadStatusCard = ({
@@ -187,6 +193,8 @@ const SSOConfigurationFormRJSF = ({
   >(null);
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -838,29 +846,95 @@ const SSOConfigurationFormRJSF = ({
     [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
   );
 
+  // Helper: Build the cleaned form data + security configuration payload
+  const buildPayload = useCallback(():
+    | { cleanedFormData: FormData; payload: SecurityConfiguration }
+    | undefined => {
+    const cleanedFormData = cleanupProviderSpecificFields(
+      internalData,
+      internalData?.authenticationConfiguration?.provider as string
+    );
+
+    if (!cleanedFormData) {
+      return undefined;
+    }
+
+    const payload: SecurityConfiguration = {
+      authenticationConfiguration: cleanedFormData.authenticationConfiguration,
+      authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+    };
+
+    return { cleanedFormData, payload };
+  }, [internalData]);
+
+  const getTestResultDescription = useCallback(
+    (result: SsoTestResult): string => {
+      if (result.status === 'success') {
+        return t('message.sso-configuration-test-success');
+      }
+
+      if (result.errorCount > 0) {
+        return t('message.sso-configuration-test-failed-with-count', {
+          count: result.errorCount,
+        });
+      }
+
+      return t('message.sso-configuration-test-failed-description');
+    },
+    [t]
+  );
+
+  // Run the existing backend validation without persisting the configuration
+  const handleTestConfiguration = async () => {
+    setIsTesting(true);
+    setTestResult(undefined);
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
+
+    const built = buildPayload();
+    if (!built) {
+      setIsTesting(false);
+
+      return;
+    }
+
+    try {
+      const response = await validateSecurityConfiguration(built.payload);
+      const validationResult = response.data;
+      const errors = validationResult.errors ?? [];
+      const isSuccess =
+        errors.length === 0 &&
+        validationResult.status === VALIDATION_STATUS.SUCCESS;
+
+      if (isSuccess) {
+        setTestResult({ status: 'success', errorCount: 0 });
+      } else {
+        handleValidationErrors(validationResult);
+        setTestResult({ status: 'failed', errorCount: errors.length });
+      }
+    } catch (error) {
+      handleApiError(error);
+      setTestResult({ status: 'failed', errorCount: 0 });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
     setErrorClearTrigger(0);
+    setTestResult(undefined);
 
     try {
-      // Prepare payload
-      const cleanedFormData = cleanupProviderSpecificFields(
-        internalData,
-        internalData?.authenticationConfiguration?.provider as string
-      );
-
-      if (!cleanedFormData) {
+      const built = buildPayload();
+      if (!built) {
         updateLoadingState(isModalSave, setIsLoading, false);
 
         return;
       }
 
-      const payload: SecurityConfiguration = {
-        authenticationConfiguration:
-          cleanedFormData.authenticationConfiguration,
-        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
-      };
+      const { cleanedFormData, payload } = built;
 
       // Save configuration (PATCH for existing, PUT with validation for new)
       try {
@@ -973,6 +1047,59 @@ const SSOConfigurationFormRJSF = ({
     const freshFormData = createFreshFormData(provider);
     setInternalData(freshFormData);
   };
+
+  const renderFormActions = () =>
+    isEditMode ? (
+      <>
+        {!hasExistingConfig && (
+          <InlineAlert
+            alertClassName="m-b-md sso-save-warning"
+            description={t('message.sso-new-config-save-warning')}
+            heading={t('label.warning')}
+            type="warning"
+          />
+        )}
+        {testResult && (
+          <InlineAlert
+            alertClassName="m-b-md sso-test-result"
+            description={getTestResultDescription(testResult)}
+            heading={
+              testResult.status === 'success'
+                ? t('label.success')
+                : t('label.failed')
+            }
+            type={testResult.status === 'success' ? 'success' : 'error'}
+            onClose={() => setTestResult(undefined)}
+          />
+        )}
+        <div className="form-actions-bottom">
+          <Button
+            className="cancel-sso-configuration text-md"
+            data-testid="cancel-sso-configuration"
+            type="link"
+            onClick={handleCancelClick}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            className="test-sso-configuration text-md"
+            data-testid="test-sso-configuration"
+            disabled={isLoading || isTesting || !currentProvider}
+            loading={isTesting}
+            onClick={handleTestConfiguration}>
+            {t('label.test-entity', { entity: t('label.configuration') })}
+          </Button>
+          <Button
+            className="save-sso-configuration text-md"
+            data-testid="save-sso-configuration"
+            disabled={isLoading}
+            loading={isLoading}
+            type="primary"
+            onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+        </div>
+      </>
+    ) : null;
 
   if (isInitializing) {
     return <Loader data-testid="loader" />;
@@ -1111,26 +1238,7 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
-                {isEditMode && (
-                  <div className="form-actions-bottom">
-                    <Button
-                      className="cancel-sso-configuration text-md"
-                      data-testid="cancel-sso-configuration"
-                      type="link"
-                      onClick={handleCancelClick}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      className="save-sso-configuration text-md"
-                      data-testid="save-sso-configuration"
-                      disabled={isLoading}
-                      loading={isLoading}
-                      type="primary"
-                      onClick={handleSave}>
-                      {t('label.save')}
-                    </Button>
-                  </div>
-                )}
+                {renderFormActions()}
               </>
             ),
             minWidth: 400,
@@ -1211,26 +1319,7 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
-              {isEditMode && (
-                <div className="form-actions-bottom">
-                  <Button
-                    className="cancel-sso-configuration text-md"
-                    data-testid="cancel-sso-configuration"
-                    type="link"
-                    onClick={handleCancelClick}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    className="save-sso-configuration text-md"
-                    data-testid="save-sso-configuration"
-                    disabled={isLoading}
-                    loading={isLoading}
-                    type="primary"
-                    onClick={handleSave}>
-                    {t('label.save')}
-                  </Button>
-                </div>
-              )}
+              {renderFormActions()}
             </>
           ),
           minWidth: 700,

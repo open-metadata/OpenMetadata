@@ -16,6 +16,7 @@ import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
 } from '../constants/SSO.constant';
+import { FieldError } from '../generated/system/securityValidationResponse';
 import APIClient from './index';
 
 export interface SecurityConfiguration {
@@ -23,17 +24,9 @@ export interface SecurityConfiguration {
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
-export interface ValidationResult {
-  component: string;
-  status?: string;
-  message?: string;
-  error?: boolean;
-}
-
 export interface SecurityValidationResponse {
-  status: string;
-  message: string;
-  results: ValidationResult[];
+  status: 'success' | 'failed';
+  errors?: FieldError[];
 }
 
 /**
@@ -72,20 +65,6 @@ export const getSecurityConfiguration = async (): Promise<
   AxiosResponse<SecurityConfiguration>
 > => {
   return APIClient.get<SecurityConfiguration>('/system/security/config');
-};
-
-/**
- * Test security configuration connection
- * @param data - Security configuration data
- * @returns Promise with test result
- */
-export const testSecurityConfiguration = async (
-  data: SecurityConfiguration
-): Promise<AxiosResponse<ValidationResult>> => {
-  return APIClient.post<SecurityConfiguration, AxiosResponse<ValidationResult>>(
-    '/security/config/test',
-    data
-  );
 };
 
 /**
