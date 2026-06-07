@@ -1117,6 +1117,7 @@ describe('DataQualityUtils', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: baseTestCase,
         value: { ...baseValue, displayName: 'New name' },
+        createTestCaseObject: {},
         isComputeRowCountFieldVisible: false,
       });
 
@@ -1136,6 +1137,7 @@ describe('DataQualityUtils', () => {
           displayName: 'New name',
           tags: [classificationTag],
         },
+        createTestCaseObject: {},
         isComputeRowCountFieldVisible: false,
       });
 
@@ -1151,6 +1153,7 @@ describe('DataQualityUtils', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: { ...baseTestCase, tags: [classificationTag] },
         value: { ...baseValue, tags: [], glossaryTerms: [] },
+        createTestCaseObject: {},
         isComputeRowCountFieldVisible: false,
       });
 
@@ -1161,11 +1164,53 @@ describe('DataQualityUtils', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: { ...baseTestCase, tags: [classificationTag] },
         value: baseValue,
+        createTestCaseObject: {},
         showOnlyParameter: true,
         isComputeRowCountFieldVisible: false,
       });
 
       expect(hasTagsOp(patch)).toBe(false);
+    });
+
+    it('should include fields returned by createTestCaseObject (e.g. Collate useDynamicAssertion)', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: baseValue,
+        createTestCaseObject: {
+          parameterValues: [],
+          useDynamicAssertion: true,
+        },
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch).toContainEqual({
+        op: 'add',
+        path: '/useDynamicAssertion',
+        value: true,
+      });
+    });
+
+    it('should preserve existing dimension fields when only parameters are edited', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dimensionColumns: ['col_a'],
+          topDimensions: 5,
+        } as TestCase,
+        value: baseValue,
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(
+        patch.some(
+          (op) =>
+            op.path === '/dimensionColumns' ||
+            op.path.startsWith('/dimensionColumns/')
+        )
+      ).toBe(false);
+      expect(patch.some((op) => op.path === '/topDimensions')).toBe(false);
     });
   });
 });

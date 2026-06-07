@@ -2,6 +2,7 @@ package org.openmetadata.it.knowledge;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -27,6 +29,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.teams.TeamService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
@@ -372,5 +375,38 @@ public class KnowledgeCenterIT {
           response.getStatus(),
           "sortBy combined with cursor should be 400, got " + response.getStatus());
     }
+  }
+
+  // Regression: the search index stores `followers` as a flat UUID-string list (see
+  // SearchIndexUtils.parseFollowers), while the Page schema types it as
+  // List<EntityReference>. Without excluding the field from `_source`, listing pages
+  // through the sort-by-search path 400s on Jackson deserialization.
+  @Test
+  void testListPagesSortByDoesNotFailWhenPageHasFollowers(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    UserService userSvc = new UserService(adminClient.getHttpClient());
+    User admin = userSvc.getByName("admin", null);
+    EntityReference orgRef = getOrganizationRef();
+
+    Page page = createPage(rest, buildCreateRequest(ns.prefix("followed-sort"), orgRef));
+    try (Response addResp =
+        rest.rawPut(KC_PATH + "/" + page.getId() + "/followers", admin.getId())) {
+      assertEquals(200, addResp.getStatus(), "Adding follower failed: " + addResp.getStatus());
+    }
+
+    awaitPageIndexed(rest, page.getId());
+
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
+              boolean found =
+                  result.getData().stream().anyMatch(p -> page.getId().equals(p.getId()));
+              assertTrue(found, "Followed page should appear in sorted list");
+            });
   }
 }

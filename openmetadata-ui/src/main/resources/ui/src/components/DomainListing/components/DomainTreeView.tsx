@@ -41,7 +41,7 @@ import {
   searchDomains,
 } from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   escapeESReservedCharacters,
