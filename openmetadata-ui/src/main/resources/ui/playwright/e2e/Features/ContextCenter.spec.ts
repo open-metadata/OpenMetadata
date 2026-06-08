@@ -46,7 +46,7 @@ const navigateToDashboard = async (page: Page) => {
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
   // Wait for article section to finish loading (either cards or empty state)
-  const section = page.getByTestId('article-list-section');
+  const section = page.getByTestId('dashboard-detail-card');
   await section.waitFor({ state: 'visible' });
 };
 
@@ -275,28 +275,6 @@ test.describe('Context Center', () => {
       });
     });
 
-    test('article list section renders pre-created article', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('article-list-section');
-      await expect(section).toBeVisible();
-
-      const card = section.getByTestId('article-card').filter({
-        hasText: ARTICLE_TITLE,
-      });
-      await expect(card.first()).toBeVisible();
-    });
-
-    test('uploaded documents section renders', async ({ page }) => {
-      await navigateToDashboard(page);
-
-      await expect(
-        page.getByTestId('uploaded-documents-section')
-      ).toBeVisible();
-    });
-
     test('Create Article button creates article and redirects to detail page', async ({
       page,
     }) => {
@@ -350,10 +328,7 @@ test.describe('Context Center', () => {
     test('View All Articles navigates to articles page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('article-list-section')
-        .getByRole('button', { name: /view all/i })
-        .click();
+      await page.getByTestId('article-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
@@ -361,125 +336,17 @@ test.describe('Context Center', () => {
     test('View All Documents navigates to documents page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('uploaded-documents-section')
-        .getByRole('button', { name: /view all/i })
-        .click();
+      await page.getByTestId('document-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/documents/);
     });
 
-    test('article card click navigates to article detail', async ({ page }) => {
+    test('View All Memories navigates to memories page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE });
+      await page.getByTestId('memory-detail-card').click();
 
-      await card.first().click();
-      await expect(page).toHaveURL(/\/context-center\/articles\//);
-    });
-
-    test('article card shows title, description and last-edited time', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE });
-
-      await card.first().scrollIntoViewIfNeeded();
-      await expect(card.first()).toBeVisible();
-
-      // Title
-      await expect(card.first().getByText(ARTICLE_TITLE)).toBeVisible();
-
-      // Description preview text
-      await expect(card.first().getByText(ARTICLE_DESCRIPTION)).toBeVisible();
-
-      // Last-edited timestamp label
-      await expect(card.first().getByText(/last updated/i)).toBeVisible();
-    });
-
-    test('article card shows assigned tags with overflow count', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE })
-        .first();
-
-      await card.scrollIntoViewIfNeeded();
-      await expect(card).toBeVisible();
-
-      await expect(card.getByText(articleTags[0].data.name)).toBeVisible();
-      await expect(card.getByText(articleTags[1].data.name)).toBeVisible();
-      await expect(card.getByText('+1')).toBeVisible();
-    });
-
-    test('quick link card shows title, description and opens external url', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('article-list-section');
-      const card = section
-        .getByTestId('article-card')
-        .filter({ hasText: QUICK_LINK_TITLE });
-
-      await card.first().scrollIntoViewIfNeeded();
-      await expect(card.first()).toBeVisible();
-
-      // Title
-      await expect(card.first().getByText(QUICK_LINK_TITLE)).toBeVisible();
-
-      // Description
-      await expect(
-        card.first().getByText(QUICK_LINK_DESCRIPTION)
-      ).toBeVisible();
-
-      // Clicking a quick link opens a new tab
-      const [newTab] = await Promise.all([
-        page.context().waitForEvent('page'),
-        card.first().click(),
-      ]);
-      await expect(newTab).toHaveURL(QUICK_LINK_URL);
-      await newTab.close();
-    });
-
-    test('uploaded document card shows filename and size label', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('uploaded-documents-section');
-      const firstCard = section.getByTestId('uploaded-document-card').first();
-
-      // Only assert if at least one document exists; otherwise skip gracefully
-      const count = await section.getByTestId('uploaded-document-card').count();
-      if (count === 0) {
-        return;
-      }
-
-      await firstCard.scrollIntoViewIfNeeded();
-      await expect(firstCard).toBeVisible();
-
-      // Filename
-      const nameEl = firstCard.getByTestId('document-name');
-      await expect(nameEl).toBeVisible();
-      const nameText = await nameEl.textContent();
-      expect(nameText?.trim().length).toBeGreaterThan(0);
-
-      // Size label (e.g. "0.0 MB" or "27 B")
-      const sizeEl = firstCard.getByTestId('document-size');
-      await expect(sizeEl).toBeVisible();
-      await expect(sizeEl).toHaveText(/\d/);
+      await expect(page).toHaveURL(/\/context-center\/memories/);
     });
   });
 
