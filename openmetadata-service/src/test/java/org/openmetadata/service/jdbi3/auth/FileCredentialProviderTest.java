@@ -1,4 +1,4 @@
-package org.openmetadata.service.util.jdbi;
+package org.openmetadata.service.jdbi3.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderException;
 
 class FileCredentialProviderTest {
 

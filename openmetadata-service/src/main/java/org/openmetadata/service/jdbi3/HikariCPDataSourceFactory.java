@@ -12,8 +12,6 @@
  */
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,20 +21,12 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.db.ManagedDataSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Logger;
-import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.util.jdbi.AwsRdsDatabaseAuthenticationProvider;
-import org.openmetadata.service.util.jdbi.FileCredentialProvider;
+import org.openmetadata.service.jdbi3.auth.DatabaseAuthStrategy;
 
 @Slf4j
 @Getter
@@ -86,17 +76,9 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   @JsonProperty private String dbPasswordFile;
 
   @JsonIgnore private HikariDataSource hikariDataSource;
-  @JsonIgnore private boolean isAwsRdsIamAuth = false;
-  @JsonIgnore private AwsRdsDatabaseAuthenticationProvider awsRdsAuthProvider;
-  @JsonIgnore private boolean isFileCredentialAuth = false;
-  @JsonIgnore private FileCredentialProvider fileCredentialProvider;
 
   @Override
   public ManagedDataSource build(MetricRegistry metricRegistry, String name) {
-    // Initialize AWS RDS IAM authentication if configured
-    initializeAwsRdsIamAuth();
-    initializeFileCredentialAuth();
-
     HikariConfig config = buildHikariConfig(name);
 
     if (metricRegistry != null) {
@@ -220,77 +202,11 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       }
     }
 
-    configureAuthentication(config, dataSourceProperties);
+    DatabaseAuthStrategy.Context authContext =
+        new DatabaseAuthStrategy.Context(getUrl(), getUser(), getPassword(), dbPasswordFile);
+    DatabaseAuthStrategy.select(authContext).apply(config, dataSourceProperties, authContext);
 
     return config;
-  }
-
-  private void configureAuthentication(HikariConfig config, Properties dataSourceProperties) {
-    if (isFileCredentialAuth) {
-      // Password is read from a file and re-read per connection (externally-rotated credential)
-      LOG.debug("Setting RotatingFileCredentialDataSource for file-based credential");
-      config.setDataSource(
-          new RotatingFileCredentialDataSource(
-              getUrl(), getUser(), fileCredentialProvider, dataSourceProperties));
-    } else if (isAwsRdsIamAuth) {
-      // For AWS RDS IAM, use custom DataSource that generates fresh tokens per connection
-      LOG.debug("Setting custom AwsRdsIamAwareDataSource for dynamic token generation");
-      config.setDataSource(
-          new AwsRdsIamAwareDataSource(
-              getUrl(), getUser(), awsRdsAuthProvider, dataSourceProperties));
-    } else {
-      configureStandardAuth(config, dataSourceProperties);
-    }
-  }
-
-  private void configureStandardAuth(HikariConfig config, Properties dataSourceProperties) {
-    if (getUser() != null) {
-      config.setUsername(getUser());
-    }
-    String password = getPassword();
-    if (password != null) {
-      config.setPassword(password);
-    }
-    if (!dataSourceProperties.isEmpty()) {
-      config.setDataSourceProperties(dataSourceProperties);
-    }
-  }
-
-  private void initializeAwsRdsIamAuth() {
-    // AWS RDS IAM is detected when URL contains both required parameters:
-    // - awsRegion: required for IAM token generation
-    // - allowPublicKeyRetrieval: required for MySQL IAM auth
-    // Note: A dummy password may still be configured per documentation
-    String url = getUrl();
-    boolean hasAwsRegion = url != null && url.contains("awsRegion");
-    boolean hasAllowPublicKeyRetrieval = url != null && url.contains("allowPublicKeyRetrieval");
-
-    this.isAwsRdsIamAuth = hasAwsRegion && hasAllowPublicKeyRetrieval;
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(
-          "IAM detection: hasAwsRegion={}, hasAllowPublicKeyRetrieval={}, isAwsRdsIamAuth={}",
-          hasAwsRegion,
-          hasAllowPublicKeyRetrieval,
-          isAwsRdsIamAuth);
-    }
-
-    if (isAwsRdsIamAuth) {
-      this.awsRdsAuthProvider = new AwsRdsDatabaseAuthenticationProvider();
-      LOG.info("AWS RDS IAM authentication enabled - tokens will be generated per connection");
-    }
-  }
-
-  private void initializeFileCredentialAuth() {
-    this.isFileCredentialAuth = !nullOrEmpty(dbPasswordFile);
-    if (isFileCredentialAuth) {
-      this.fileCredentialProvider = new FileCredentialProvider(dbPasswordFile);
-      // Read once up front so a misconfigured path fails fast at startup.
-      fileCredentialProvider.authenticate(getUrl(), getUser(), null);
-      LOG.info(
-          "File-based rotating DB credential enabled - password re-read per connection from {}",
-          dbPasswordFile);
-    }
   }
 
   private void configurePostgreSQLProperties(Properties props) {
@@ -402,174 +318,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       if (!this.isClosed()) {
         this.close();
       }
-    }
-  }
-
-  private static class AwsRdsIamAwareDataSource implements DataSource {
-    private final String jdbcUrl;
-    private final String username;
-    private final AwsRdsDatabaseAuthenticationProvider authProvider;
-    private final Properties connectionProperties;
-
-    public AwsRdsIamAwareDataSource(
-        String jdbcUrl,
-        String username,
-        AwsRdsDatabaseAuthenticationProvider authProvider,
-        Properties connectionProperties) {
-      this.jdbcUrl = jdbcUrl;
-      this.username = username;
-      this.authProvider = authProvider;
-      this.connectionProperties =
-          connectionProperties != null ? connectionProperties : new Properties();
-    }
-
-    @Override
-    public Connection getConnection() throws SQLException {
-      try {
-        String freshToken = authProvider.authenticate(jdbcUrl, username, null);
-        LOG.debug("Generated fresh AWS RDS IAM token for new connection");
-
-        // Build connection properties with fresh token
-        Properties props = new Properties();
-        props.putAll(connectionProperties);
-        props.setProperty("user", username);
-        props.setProperty("password", freshToken);
-
-        return DriverManager.getConnection(jdbcUrl, props);
-      } catch (Exception e) {
-        LOG.error("Failed to generate AWS RDS IAM token: {}", e.getMessage(), e);
-        throw new SQLException("Failed to authenticate with AWS RDS IAM", e);
-      }
-    }
-
-    @Override
-    public Connection getConnection(String username, String password) throws SQLException {
-      // Ignore provided credentials and use IAM token
-      return getConnection();
-    }
-
-    // Required DataSource interface methods (minimal implementation)
-    @Override
-    public PrintWriter getLogWriter() {
-      return null;
-    }
-
-    @Override
-    public void setLogWriter(PrintWriter out) {}
-
-    @Override
-    public int getLoginTimeout() {
-      return 0;
-    }
-
-    @Override
-    public void setLoginTimeout(int seconds) {}
-
-    @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-      throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-      throw new SQLException("Cannot unwrap to " + iface.getName());
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) {
-      return false;
-    }
-  }
-
-  // Package-private so RotatingFileCredentialDataSourceTest can exercise the per-connection
-  // re-read and the auth-failure retry directly via a stub JDBC driver.
-  static class RotatingFileCredentialDataSource implements DataSource {
-    private final String jdbcUrl;
-    private final String username;
-    private final FileCredentialProvider provider;
-    private final Properties connectionProperties;
-
-    public RotatingFileCredentialDataSource(
-        String jdbcUrl,
-        String username,
-        FileCredentialProvider provider,
-        Properties connectionProperties) {
-      this.jdbcUrl = jdbcUrl;
-      this.username = username;
-      this.provider = provider;
-      this.connectionProperties =
-          connectionProperties != null ? connectionProperties : new Properties();
-    }
-
-    @Override
-    public Connection getConnection() throws SQLException {
-      Connection connection;
-      try {
-        connection = connect();
-      } catch (SQLException | RuntimeException first) {
-        // The credential may have just rotated; force a re-read and retry once.
-        provider.invalidate();
-        connection = retryConnect(first);
-      }
-      return connection;
-    }
-
-    private Connection connect() throws SQLException {
-      String password = provider.authenticate(jdbcUrl, username, null);
-      Properties props = new Properties();
-      props.putAll(connectionProperties);
-      props.setProperty("user", username);
-      props.setProperty("password", password);
-      return DriverManager.getConnection(jdbcUrl, props);
-    }
-
-    private Connection retryConnect(Exception first) throws SQLException {
-      Connection connection;
-      try {
-        connection = connect();
-      } catch (SQLException | RuntimeException retryFailure) {
-        LOG.error("File-based credential DB connection failed: {}", retryFailure.getMessage());
-        throw new SQLException("Failed to authenticate with file-based DB credential", first);
-      }
-      return connection;
-    }
-
-    @Override
-    public Connection getConnection(String username, String password) throws SQLException {
-      // Ignore provided credentials and use the file-based credential
-      return getConnection();
-    }
-
-    // Required DataSource interface methods (minimal implementation)
-    @Override
-    public PrintWriter getLogWriter() {
-      return null;
-    }
-
-    @Override
-    public void setLogWriter(PrintWriter out) {}
-
-    @Override
-    public int getLoginTimeout() {
-      return 0;
-    }
-
-    @Override
-    public void setLoginTimeout(int seconds) {}
-
-    @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-      throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-      throw new SQLException("Cannot unwrap to " + iface.getName());
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) {
-      return false;
     }
   }
 }

@@ -1,4 +1,4 @@
-package org.openmetadata.service.util.jdbi;
+package org.openmetadata.service.jdbi3.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -9,13 +9,15 @@ import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProvider;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderException;
 
 /**
  * Reads a database password from a file and re-reads it on a short TTL so an externally-rotated
  * value (for example a token an external process writes into a mounted Kubernetes Secret) is picked
  * up by new connections without restarting the service.
  */
-public class FileCredentialProvider implements DatabaseAuthenticationProvider {
+class FileCredentialProvider implements DatabaseAuthenticationProvider {
 
   static final long DEFAULT_TTL_NANOS = TimeUnit.SECONDS.toNanos(30);
 
@@ -26,7 +28,7 @@ public class FileCredentialProvider implements DatabaseAuthenticationProvider {
 
   private record CachedToken(String token, long readAtNanos) {}
 
-  public FileCredentialProvider(String filePath) {
+  FileCredentialProvider(String filePath) {
     this(filePath, DEFAULT_TTL_NANOS, System::nanoTime);
   }
 
@@ -50,7 +52,7 @@ public class FileCredentialProvider implements DatabaseAuthenticationProvider {
   }
 
   /** Forces the next {@link #authenticate} to re-read the file; used after an auth failure. */
-  public void invalidate() {
+  void invalidate() {
     cache.set(null);
   }
 

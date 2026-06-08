@@ -1,4 +1,4 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.service.jdbi3.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,8 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.RotatingFileCredentialDataSource;
-import org.openmetadata.service.util.jdbi.FileCredentialProvider;
+import org.openmetadata.service.jdbi3.auth.FileCredentialAuthStrategy.RotatingFileCredentialDataSource;
 
 class RotatingFileCredentialDataSourceTest {
 
