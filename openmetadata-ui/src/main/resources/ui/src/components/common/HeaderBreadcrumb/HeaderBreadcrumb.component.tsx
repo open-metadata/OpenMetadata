@@ -14,40 +14,16 @@
 import {
   BreadcrumbItemType,
   Breadcrumbs,
-  BreadcrumbsDivider,
-  BreadcrumbsSize,
-  BreadcrumbsType,
 } from '@openmetadata/ui-core-components';
 import { HomeLine } from '@untitledui/icons';
 import { FC, Key, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-
-export interface BreadcrumbProps {
-  /**
-   * Ordered list of crumb items. Each item needs `label` and optionally `href`
-   * and `icon`. The `id` is assigned automatically based on index.
-   * The last item is treated as the current page (no href needed).
-   */
-  items: Omit<BreadcrumbItemType, 'id'>[];
-  /**
-   * When true, prepends a home crumb that navigates to ROUTES.HOME.
-   * Defaults to false.
-   */
-  showHome?: boolean;
-  /** Visual style of the crumbs. Defaults to 'text'. */
-  type?: BreadcrumbsType;
-  /** Separator between crumbs. Defaults to 'chevron'. */
-  divider?: BreadcrumbsDivider;
-  /** Size of the crumbs. Defaults to 'sm'. */
-  size?: BreadcrumbsSize;
-  /** Optional class name applied to the root nav element. */
-  className?: string;
-}
+import { HeaderBreadcrumbProps } from './HeaderBreadcrumb.interface';
 
 const HOME_CRUMB_ID = '__breadcrumb_home__';
 
-const Breadcrumb: FC<BreadcrumbProps> = ({
+const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   items,
   showHome = false,
   type,
@@ -100,4 +76,4 @@ const Breadcrumb: FC<BreadcrumbProps> = ({
   );
 };
 
-export default Breadcrumb;
+export default HeaderBreadcrumb;

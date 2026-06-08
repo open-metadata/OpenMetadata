@@ -21,7 +21,7 @@ import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import Breadcrumb from '../../common/Breadcrumb/Breadcrumb.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
 const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
@@ -65,7 +65,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   const breadcrumbEl = (
-    <Breadcrumb
+    <HeaderBreadcrumb
       showHome
       className={contextCenterClassBase.getBreadcrumbClassName()}
       items={breadcrumbs}
@@ -79,9 +79,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">{breadcrumbEl}</div>
-        )}
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>
             <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">

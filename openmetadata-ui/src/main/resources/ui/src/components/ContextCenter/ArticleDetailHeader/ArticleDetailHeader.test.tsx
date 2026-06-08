@@ -90,11 +90,9 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
 );
 
 jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(
-    ({ owners }: { owners: Array<{ name?: string }> }) => (
-      <span>{owners.map((o) => o.name).join(', ')}</span>
-    )
-  ),
+  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners.map((o) => o.name).join(', ')}</span>
+  )),
 }));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>

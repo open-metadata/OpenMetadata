@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePageUtils';
-import Breadcrumb from '../../common/Breadcrumb/Breadcrumb.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -61,7 +61,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const breadcrumbEl = (
-    <Breadcrumb
+    <HeaderBreadcrumb
       showHome
       className={breadcrumbClassName}
       items={breadcrumbItems}
@@ -75,9 +75,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">{breadcrumbEl}</div>
-        )}
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
           <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
             <File06

@@ -70,7 +70,7 @@ import {
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Breadcrumb from '../../common/Breadcrumb/Breadcrumb.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
@@ -277,7 +277,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const breadcrumbEl = (
-    <Breadcrumb
+    <HeaderBreadcrumb
       showHome
       className={breadcrumbClassName}
       items={breadcrumbItems}
@@ -312,9 +312,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">{breadcrumbEl}</div>
-        )}
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">

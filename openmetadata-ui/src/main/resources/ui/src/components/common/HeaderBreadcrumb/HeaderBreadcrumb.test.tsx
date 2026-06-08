@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import Breadcrumb from './Breadcrumb.component';
+import { render, screen } from '@testing-library/react';
+import Breadcrumb from './HeaderBreadcrumb.component';
 
 const mockNavigate = jest.fn();
 
@@ -71,10 +71,7 @@ describe('Breadcrumb', () => {
   it('renders provided items without a home crumb by default', () => {
     render(
       <Breadcrumb
-        items={[
-          { label: 'Section', href: '/section' },
-          { label: 'Current' },
-        ]}
+        items={[{ label: 'Section', href: '/section' }, { label: 'Current' }]}
       />
     );
 
@@ -86,10 +83,7 @@ describe('Breadcrumb', () => {
   it('assigns sequential string ids to items', () => {
     render(
       <Breadcrumb
-        items={[
-          { label: 'First', href: '/first' },
-          { label: 'Second' },
-        ]}
+        items={[{ label: 'First', href: '/first' }, { label: 'Second' }]}
       />
     );
 
@@ -99,10 +93,7 @@ describe('Breadcrumb', () => {
 
   it('prepends a home crumb when showHome is true', () => {
     render(
-      <Breadcrumb
-        showHome
-        items={[{ label: 'Section', href: '/section' }]}
-      />
+      <Breadcrumb showHome items={[{ label: 'Section', href: '/section' }]} />
     );
 
     expect(capturedItems).toHaveLength(2);
@@ -128,10 +119,7 @@ describe('Breadcrumb', () => {
   it('navigates when a crumb with href is activated', () => {
     render(
       <Breadcrumb
-        items={[
-          { label: 'Section', href: '/section' },
-          { label: 'Current' },
-        ]}
+        items={[{ label: 'Section', href: '/section' }, { label: 'Current' }]}
       />
     );
 

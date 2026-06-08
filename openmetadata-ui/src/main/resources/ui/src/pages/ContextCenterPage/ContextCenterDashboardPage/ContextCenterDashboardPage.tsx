@@ -12,12 +12,7 @@
  */
 
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  File05,
-  Sun,
-  UploadCloud02,
-} from '@untitledui/icons';
+import { ChevronDown, File05, Sun, UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
