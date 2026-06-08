@@ -106,7 +106,7 @@ jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: (value: number) => value.toString(),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { name?: string }) => entity.name ?? '',
 }));
 

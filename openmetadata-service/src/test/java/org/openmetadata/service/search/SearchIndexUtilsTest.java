@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -25,6 +26,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
@@ -61,6 +64,41 @@ class SearchIndexUtilsTest {
     assertFalse(column1.containsKey("description"));
     assertFalse(column2.containsKey("description"));
     assertFalse(doc.containsKey("simple"));
+  }
+
+  @Test
+  void testNormalizeFollowersExpandsIdStringsIntoEntityReferences() {
+    UUID followerId = UUID.randomUUID();
+    Map<String, Object> source = new HashMap<>();
+    source.put("id", UUID.randomUUID().toString());
+    source.put("name", "test-page");
+    source.put("pageType", "Article");
+    source.put("followers", new ArrayList<>(List.of(followerId.toString())));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonUtils.readOrConvertValueLenient(source, Page.class));
+
+    SearchIndexUtils.normalizeFollowers(source);
+    Page page = JsonUtils.readOrConvertValueLenient(source, Page.class);
+
+    assertEquals(1, page.getFollowers().size());
+    EntityReference follower = page.getFollowers().getFirst();
+    assertEquals(followerId, follower.getId());
+    assertEquals(Entity.USER, follower.getType());
+  }
+
+  @Test
+  void testNormalizeFollowersLeavesEmptyOrMissingFollowersUntouched() {
+    Map<String, Object> missing = new HashMap<>();
+    missing.put("name", "no-followers");
+    SearchIndexUtils.normalizeFollowers(missing);
+    assertFalse(missing.containsKey("followers"));
+
+    Map<String, Object> empty = new HashMap<>();
+    empty.put("followers", new ArrayList<>());
+    SearchIndexUtils.normalizeFollowers(empty);
+    assertEquals(List.of(), empty.get("followers"));
   }
 
   @Test

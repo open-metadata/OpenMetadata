@@ -40,7 +40,6 @@ import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
 
 const SignInPage = () => {
@@ -55,7 +54,7 @@ const SignInPage = () => {
 
   const { t } = useTranslation();
 
-  const brandName = brandClassBase.getPageTitle();
+  const brandName = t('label.brand-name');
 
   const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {

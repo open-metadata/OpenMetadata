@@ -109,7 +109,7 @@ public class TopicIndex implements DataAssetIndex {
     fields.put(ES_MESSAGE_SCHEMA_FIELD, 7.0f);
     fields.put("messageSchema.schemaFields.name.keyword", 5.0f);
     fields.put("messageSchema.schemaFields.description", 1.0f);
-    fields.put("messageSchema.schemaFields.children.name", 7.0f);
+    fields.put("fieldNamesFuzzy", 7.0f);
     return fields;
   }
 }

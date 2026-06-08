@@ -23,7 +23,10 @@ import {
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../../mocks/TestSuite.mock';
-import { getTestDefinitionById } from '../../../../rest/testAPI';
+import {
+  getTestDefinitionById,
+  updateTestCaseById,
+} from '../../../../rest/testAPI';
 import { EditTestCaseModalProps } from './EditTestCaseModal.interface';
 import EditTestCaseModalV1 from './EditTestCaseModalV1';
 
@@ -35,7 +38,12 @@ const mockProps: EditTestCaseModalProps = {
 };
 
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
+  const actual = jest.requireActual(
+    '../../../../utils/DataQuality/DataQualityUtils'
+  );
+
   return {
+    ...actual,
     createTestCaseParameters: jest.fn().mockImplementation(() => []),
   };
 });
@@ -290,6 +298,45 @@ describe('EditTestCaseModalV1 Component', () => {
       },
       { timeout: 3000 }
     );
+  });
+
+  it('should not emit a phantom add /tags op when editing display name of a tagless test case', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} testCase={MOCK_TEST_CASE[0]} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const displayNameField = document.querySelector(
+      'input[id="root/displayName"]'
+    ) as HTMLInputElement;
+
+    await act(async () => {
+      fireEvent.change(displayNameField, {
+        target: { value: 'Table test case display name' },
+      });
+    });
+
+    const updateBtn = await screen.findByTestId('update-btn');
+
+    await act(async () => {
+      fireEvent.click(updateBtn);
+    });
+
+    await waitFor(() => {
+      expect(updateTestCaseById).toHaveBeenCalled();
+    });
+
+    const patch = (updateTestCaseById as jest.Mock).mock.calls[0][1];
+
+    expect(patch).not.toContainEqual(
+      expect.objectContaining({ path: '/tags' })
+    );
+    expect(patch).toContainEqual({
+      op: 'replace',
+      path: '/displayName',
+      value: 'Table test case display name',
+    });
   });
 
   it('should handle column test case correctly', async () => {

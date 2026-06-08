@@ -64,6 +64,10 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.ownership import (
+    DatabricksOwnerResolver,
+)
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -72,7 +76,6 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import (
     get_connection,
     get_sqlalchemy_connection,
@@ -131,14 +134,17 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         self._state_lock = RLock()
         self.external_location_map = {}
         self.client = get_connection(self.service_connection)
-        self.api_client = UnityCatalogClient(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[tuple[str, str], Any] = {}
-        self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}  # noqa: UP045
+        self.owner_resolver = DatabricksOwnerResolver(
+            api_client=DatabricksClient(self.service_connection),
+            metadata=self.metadata,
+            include_owners=self.source_config.includeOwners,
+        )
 
         self.incremental = incremental_configuration
         self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = None
@@ -792,22 +798,9 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
     def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Method to process the table owners.
-        Results are cached to avoid repeated API lookups for the same owner.
         """
-        if self.source_config.includeOwners is False:
-            return None
         try:
-            if not owner or not isinstance(owner, str):
-                return None
-            with self._state_lock:
-                if owner in self._owner_cache:
-                    return self._owner_cache[owner]
-            owner_ref = self.metadata.get_reference_by_email(email=owner)
-            if not owner_ref:
-                owner_name = owner.split("@")[0]
-                owner_ref = self.metadata.get_reference_by_name(name=owner_name)
-            with self._state_lock:
-                return self._owner_cache.setdefault(owner, owner_ref)
+            return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner {owner}: {exc}")
