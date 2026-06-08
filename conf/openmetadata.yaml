@@ -281,6 +281,10 @@ logging:
           archivedFileCount: 7
           timeZone: UTC
           maxFileSize: 50MB
+    org.openmetadata.service.audit.AuditLogRepository:
+      # Audit entries are logged at INFO with the AUDIT marker (see AuditLogger) and routed to
+      # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
+      level: INFO
   appenders:
     - type: console
       threshold: TRACE
@@ -290,6 +294,8 @@ logging:
         format: ${LOG_FORMAT:-text}
         pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
         appendLineSeparator: true
+      filterFactories:
+        - type: audit-exclude-filter-factory
     - type: file
       layout:
         type: om-event-layout
@@ -800,7 +806,8 @@ rdf:
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
-# Default: Disabled (uses NoopCacheProvider)
+# Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
+# Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

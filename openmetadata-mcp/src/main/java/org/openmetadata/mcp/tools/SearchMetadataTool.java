@@ -49,7 +49,20 @@ public class SearchMetadataTool implements McpTool {
           "tier",
           "tableType",
           "columnNames",
-          "deleted");
+          "deleted",
+          "entityFQN",
+          "originEntityFQN",
+          "testCaseStatus",
+          "testCaseType",
+          "dataQualityDimension",
+          "testPlatforms",
+          "basic",
+          "lastResultTimestamp");
+
+  // Latest-result subset kept in test case search results; the full testCaseResult object
+  // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.
+  private static final List<String> TEST_CASE_RESULT_SLIM_FIELDS =
+      List.of("testCaseStatus", "timestamp", "result");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
       List.of(
@@ -408,6 +421,8 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
+    addSlimTestCaseResult(source, result);
+
     // Truncate long descriptions to optimize LLM context usage
     if (result.containsKey("description")) {
       Object descObj = result.get("description");
@@ -416,6 +431,23 @@ public class SearchMetadataTool implements McpTool {
       }
     }
     return result;
+  }
+
+  private static void addSlimTestCaseResult(
+      Map<String, Object> source, Map<String, Object> result) {
+    if (result.containsKey("testCaseResult")
+        || !(source.get("testCaseResult") instanceof Map<?, ?> testCaseResult)) {
+      return;
+    }
+    Map<String, Object> slim = new HashMap<>();
+    for (String field : TEST_CASE_RESULT_SLIM_FIELDS) {
+      if (testCaseResult.containsKey(field)) {
+        slim.put(field, testCaseResult.get(field));
+      }
+    }
+    if (!slim.isEmpty()) {
+      result.put("testCaseResult", slim);
+    }
   }
 
   public static Map<String, Object> createEmptyResponse() {

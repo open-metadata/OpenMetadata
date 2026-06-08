@@ -339,6 +339,13 @@ describe('Lineage Component', () => {
       expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
     });
 
+    it('should keep lineage graph mounted when controls are hidden', () => {
+      render(<Lineage {...defaultProps} showControls={false} />);
+
+      expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
+    });
+
     it('should apply edit mode class when isEditMode is true', () => {
       (useLineageStore as unknown as jest.Mock).mockReturnValue({
         ...mockLineageStore,
