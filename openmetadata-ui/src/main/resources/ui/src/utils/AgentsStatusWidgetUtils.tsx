@@ -10,6 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+  getAgentStatusSummary,
+} from './AgentsStatusWidgetPureUtils';
+
+import {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+} from './AgentsStatusWidgetPureUtils';
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
@@ -24,31 +35,23 @@ import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-qualit
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
 import { Skeleton, Typography } from 'antd';
-import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';
+import { isEmpty, isUndefined, reduce } from 'lodash';
 import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
-import {
-  AUTOPILOT_AGENTS_ORDERED_LIST,
-  AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
-} from '../constants/AgentsStatusWidget.constant';
+import { AUTOPILOT_AGENTS_ORDERED_LIST } from '../constants/AgentsStatusWidget.constant';
 import {
   COLLATE_AUTO_TIER_APP_NAME,
   COLLATE_DATA_QUALITY_APP_NAME,
   COLLATE_DOCUMENTATION_APP_NAME,
 } from '../constants/Applications.constant';
-import { NO_RUNS_STATUS } from '../constants/ServiceInsightsTab.constants';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
 import { App } from '../generated/entity/applications/app';
-import {
-  AppRunRecord,
-  Status,
-} from '../generated/entity/applications/appRunRecord';
+import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
-  PipelineState,
   PipelineType,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -57,29 +60,6 @@ import {
   WorkflowStatus,
 } from '../generated/governance/workflows/workflowInstance';
 import { t } from './i18next/LocalUtil';
-
-export const getAgentLabelFromType = (agentType: string) => {
-  switch (agentType) {
-    case PipelineType.Metadata:
-      return t('label.metadata');
-    case PipelineType.Lineage:
-      return t('label.lineage');
-    case PipelineType.Usage:
-      return t('label.usage');
-    case PipelineType.AutoClassification:
-      return t('label.auto-classification');
-    case PipelineType.Profiler:
-      return t('label.profiler');
-    case COLLATE_DOCUMENTATION_APP_NAME:
-      return t('label.documentation');
-    case COLLATE_DATA_QUALITY_APP_NAME:
-      return t('label.data-quality');
-    case COLLATE_AUTO_TIER_APP_NAME:
-      return t('label.auto-tier');
-    default:
-      return '';
-  }
-};
 
 export const getAgentIconFromType = (agentType: string) => {
   let Icon: SvgComponent = () => null;
@@ -128,32 +108,6 @@ export const getAgentIconFromType = (agentType: string) => {
       <Icon className={className} height={20} width={20} />
     </div>
   );
-};
-
-export const getAgentStatusLabelFromStatus = (
-  status?: PipelineState | Status | typeof NO_RUNS_STATUS
-) => {
-  switch (status) {
-    case PipelineState.Success:
-    case PipelineState.PartialSuccess:
-    case Status.Active:
-    case Status.ActiveError:
-    case Status.Completed:
-      return AgentStatus.Successful;
-    case PipelineState.Failed:
-    case Status.Failed:
-      return AgentStatus.Failed;
-    case PipelineState.Running:
-    case Status.Running:
-    case Status.Started:
-    case Status.StopInProgress:
-      return AgentStatus.Running;
-    case PipelineState.Queued:
-    case Status.Pending:
-    case NO_RUNS_STATUS:
-    default:
-      return AgentStatus.Pending;
-  }
 };
 
 export const getFormattedAgentsList = (
@@ -247,27 +201,6 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
   );
 
   return orderedAgentsList;
-};
-
-export const getAgentStatusSummary = (agentsList: AgentsInfo[]) => {
-  const newList = groupBy(agentsList, 'status');
-
-  const orderedStatusList = reduce(
-    AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
-    (acc, status) => {
-      if (isEmpty(newList[status])) {
-        return acc;
-      }
-
-      return {
-        ...acc,
-        [status]: newList[status].length,
-      };
-    },
-    {} as Record<string, number>
-  );
-
-  return orderedStatusList;
 };
 
 export const getIconFromStatus = (status?: string) => {
