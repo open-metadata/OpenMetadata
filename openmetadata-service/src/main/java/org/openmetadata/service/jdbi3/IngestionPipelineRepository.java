@@ -361,10 +361,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ServiceEntityInterface service =
         Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
 
-    if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
-      decrypted.setEnableStreamableLogs(true);
-    }
-
     PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
 
     if (deployResponse.getCode() != 200) {
@@ -1317,8 +1313,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
+
+  // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
+  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
+  // runner (service / test-suite / application) and derive the flag from it.
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation
