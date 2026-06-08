@@ -15,11 +15,22 @@ name: PR Metadata Validation
 # description and (b) is tracked in the "Shipping" project with the Status,
 # Source, Priority, Domain and Release fields set.
 #
+# Linked issues are resolved from two sources:
+#   * Same-repo: GitHub's native `closingIssuesReferences` (the PR "Development"
+#     section + same-repo closing keywords). This is authoritative and also
+#     catches issues linked via the sidebar without a body keyword.
+#   * Cross-repo (same org only): parsed from the PR body, because GitHub cannot
+#     represent a cross-repo link in `closingIssuesReferences`. This path is
+#     restricted to trusted authors and an explicit repo allowlist so the
+#     privileged PROJECTS_TOKEN is never pointed at attacker-chosen repositories
+#     under pull_request_target, and the public PR comment never echoes private
+#     issue content (only numbers and field names).
+#
 # Projects v2 data is only available via GraphQL and the default GITHUB_TOKEN
-# cannot read org-level projects, so a PROJECTS_TOKEN secret (a PAT or GitHub
-# App token with `read:project`) is required for the project checks. Only PR /
-# issue / project metadata is read through the API — no untrusted checkout —
-# so pull_request_target is safe here.
+# cannot read org-level projects (nor private same-org repos), so a PROJECTS_TOKEN
+# secret (a PAT or GitHub App token with `read:project` and read access to the
+# allowlisted repos) is required. Only PR / issue / project metadata is read
+# through the API — no untrusted checkout — so pull_request_target is safe here.
 on:
   pull_request_target:
     types: [opened, edited, reopened, synchronize, ready_for_review]
@@ -57,27 +68,32 @@ jobs:
 
             const { owner, repo } = context.repo;
 
-            function escapeRegExp(value) {
-              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            }
-
-            // ---- Linked issue + description ------------------------------------
+            // ---- Policy --------------------------------------------------------
             const REQUIRE_LINKED_ISSUE = true;
             const MIN_DESCRIPTION_WORDS = 25;
-            const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
-            const ISSUE_REF_REGEX = new RegExp(`\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*#(\\d+)`, 'gi');
-            // Only same-repo issue URLs count; a cross-repo URL would otherwise be validated
-            // against this repository (wrong issue), so such links are intentionally ignored.
-            const ISSUE_URL_REGEX = new RegExp(
-              `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*https?://github\\.com/` +
-              `${escapeRegExp(owner)}/${escapeRegExp(repo)}/issues/(\\d+)`,
-              'gi'
-            );
-
-            // ---- Shipping project (Projects v2) on the linked issue ------------
             const PROJECT_NAME = 'Shipping';
             const REQUIRED_PROJECT_FIELDS = ['Status', 'Source', 'Priority', 'Domain', 'Release'];
             const FAIL_WHEN_PROJECT_UNVERIFIABLE = true;
+
+            // ---- Cross-repo policy (security-sensitive) ------------------------
+            // closingIssuesReferences is same-repo only, so a cross-repo link can
+            // only live in the PR body. Honor it ONLY for trusted authors and ONLY
+            // for these same-org repos, so untrusted fork PRs can never drive the
+            // privileged token at arbitrary repositories or probe private issues.
+            const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
+            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate']);
+            const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+
+            const PR_LINKS_QUERY = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 25) {
+                      nodes { number repository { name owner { login } } }
+                    }
+                  }
+                }
+              }`;
 
             const ISSUE_PROJECT_QUERY = `
               query($owner: String!, $repo: String!, $number: Int!) {
@@ -102,6 +118,16 @@ jobs:
                 }
               }`;
 
+            function elevatedClient() {
+              const token = process.env.PROJECTS_TOKEN;
+              return token ? new github.constructor({ auth: token }) : null;
+            }
+
+            const isSameRepo = (ref) => ref.owner === owner && ref.repo === repo;
+            const refKey = (ref) => `${ref.owner}/${ref.repo}#${ref.number}`;
+            const refLabel = (ref) => (isSameRepo(ref) ? `#${ref.number}` : refKey(ref));
+            const dedupeRefs = (refs) => [...new Map(refs.map((r) => [refKey(r), r])).values()];
+
             async function loadPullRequest() {
               if (context.payload.pull_request) {
                 return context.payload.pull_request;
@@ -111,15 +137,48 @@ jobs:
               return data;
             }
 
-            function extractIssueNumbers(text) {
-              const numbers = new Set();
-              for (const regex of [ISSUE_REF_REGEX, ISSUE_URL_REGEX]) {
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                  numbers.add(Number(match[1]));
-                }
+            // Same-repo links: authoritative, includes sidebar-linked issues.
+            async function nativeLinkedRefs(prNumber) {
+              const data = await github.graphql(PR_LINKS_QUERY, { owner, repo, number: prNumber });
+              const nodes =
+                (data.repository &&
+                  data.repository.pullRequest &&
+                  data.repository.pullRequest.closingIssuesReferences.nodes) ||
+                [];
+              return nodes.map((node) => ({
+                owner: node.repository.owner.login,
+                repo: node.repository.name,
+                number: node.number,
+              }));
+            }
+
+            // Cross-repo links: body-parsed, trusted authors + allowlisted repos only.
+            function crossRepoRefsFromBody(text, association) {
+              if (!TRUSTED_ASSOCIATIONS.has(association)) {
+                return [];
               }
-              return [...numbers];
+              const refs = [];
+              const add = (refOwner, refRepo, number) => {
+                if (refOwner === owner && ALLOWED_CROSS_REPOS.has(refRepo)) {
+                  refs.push({ owner: refOwner, repo: refRepo, number: Number(number) });
+                }
+              };
+              const shorthand = new RegExp(
+                `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*([\\w.-]+)/([\\w.-]+)#(\\d+)`,
+                'gi'
+              );
+              const url = new RegExp(
+                `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*https?://github\\.com/([\\w.-]+)/([\\w.-]+)/issues/(\\d+)`,
+                'gi'
+              );
+              let match;
+              while ((match = shorthand.exec(text)) !== null) {
+                add(match[1], match[2], match[3]);
+              }
+              while ((match = url.exec(text)) !== null) {
+                add(match[1], match[2], match[3]);
+              }
+              return refs;
             }
 
             function hasProperDescription(body) {
@@ -131,17 +190,33 @@ jobs:
               return wordCount >= MIN_DESCRIPTION_WORDS;
             }
 
-            async function loadIssueProjectItems(issueNumber) {
-              const token = process.env.PROJECTS_TOKEN;
-              if (!token) {
+            async function loadIssue(ref) {
+              const client = isSameRepo(ref) ? github : elevatedClient();
+              if (!client) {
                 return { error: 'missing-token' };
               }
               try {
-                const projectsClient = new github.constructor({ auth: token });
-                const data = await projectsClient.graphql(ISSUE_PROJECT_QUERY, {
-                  owner,
-                  repo,
-                  number: issueNumber,
+                const { data } = await client.rest.issues.get({
+                  owner: ref.owner,
+                  repo: ref.repo,
+                  issue_number: ref.number,
+                });
+                return { issue: data };
+              } catch (error) {
+                return { error: error.status === 404 ? 'not-found' : error.message };
+              }
+            }
+
+            async function loadIssueProjectItems(ref) {
+              const client = elevatedClient();
+              if (!client) {
+                return { error: 'missing-token' };
+              }
+              try {
+                const data = await client.graphql(ISSUE_PROJECT_QUERY, {
+                  owner: ref.owner,
+                  repo: ref.repo,
+                  number: ref.number,
                 });
                 return { items: data.repository.issue.projectItems.nodes };
               } catch (error) {
@@ -170,69 +245,74 @@ jobs:
               return setFields;
             }
 
-            async function collectProjectProblems(issueNumber) {
-              const result = await loadIssueProjectItems(issueNumber);
+            async function collectProjectProblems(ref) {
+              const result = await loadIssueProjectItems(ref);
               if (result.error) {
                 if (!FAIL_WHEN_PROJECT_UNVERIFIABLE) {
-                  core.warning(`Skipping project validation for #${issueNumber}: ${result.error}`);
+                  core.warning(`Skipping project validation for ${refLabel(ref)}: ${result.error}`);
                   return [];
                 }
-                core.warning(`Project verification failed for #${issueNumber}: ${result.error}`);
+                core.warning(`Project verification failed for ${refLabel(ref)}: ${result.error}`);
                 const detail = result.error === 'missing-token'
-                  ? 'the `PROJECTS_TOKEN` secret (a token with `read:project`) is not configured'
+                  ? 'the `PROJECTS_TOKEN` secret (a token with `read:project` and access to the linked repo) is not configured'
                   : 'the project query could not be completed (see the workflow run logs)';
-                return [`Could not verify the **${PROJECT_NAME}** project on issue #${issueNumber}: ${detail}.`];
+                return [`Could not verify the **${PROJECT_NAME}** project on issue ${refLabel(ref)}: ${detail}.`];
               }
               const projectItem = (result.items || []).find(
                 (item) => item.project && item.project.title === PROJECT_NAME
               );
               if (!projectItem) {
-                return [`Linked issue #${issueNumber} is not added to the **${PROJECT_NAME}** project.`];
+                return [`Linked issue ${refLabel(ref)} is not added to the **${PROJECT_NAME}** project.`];
               }
               const setFields = collectSetFields(projectItem);
               const problems = [];
               for (const field of REQUIRED_PROJECT_FIELDS) {
                 if (!setFields.has(field)) {
-                  problems.push(`Issue #${issueNumber} is missing **${PROJECT_NAME} → ${field}**.`);
+                  problems.push(`Issue ${refLabel(ref)} is missing **${PROJECT_NAME} → ${field}**.`);
                 }
               }
               return problems;
             }
 
-            async function validateIssue(issueNumber) {
-              let issue;
-              try {
-                const response = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
-                issue = response.data;
-              } catch (error) {
-                if (error.status === 404) {
-                  return { issueNumber, problems: [`Linked issue #${issueNumber} does not exist.`] };
-                }
-                throw error;
+            async function validateIssue(ref) {
+              const loaded = await loadIssue(ref);
+              if (loaded.error === 'not-found') {
+                return { ref, problems: [`Linked issue ${refLabel(ref)} does not exist or is not accessible.`] };
               }
+              if (loaded.error) {
+                const detail = loaded.error === 'missing-token'
+                  ? 'the `PROJECTS_TOKEN` secret is not configured'
+                  : 'the issue lookup could not be completed (see the workflow run logs)';
+                core.warning(`Issue lookup failed for ${refLabel(ref)}: ${loaded.error}`);
+                return { ref, problems: [`Could not read linked issue ${refLabel(ref)}: ${detail}.`] };
+              }
+              const issue = loaded.issue;
               if (issue.pull_request) {
-                return { issueNumber, problems: [`#${issueNumber} is a pull request, not an issue.`] };
+                return { ref, problems: [`${refLabel(ref)} is a pull request, not an issue.`] };
               }
               const problems = [];
               if (!hasProperDescription(issue.body)) {
                 problems.push(
-                  `Linked issue #${issueNumber} needs a real description ` +
+                  `Linked issue ${refLabel(ref)} needs a real description ` +
                   `(at least ${MIN_DESCRIPTION_WORDS} words covering the problem, repro, and expected behavior).`
                 );
               }
-              problems.push(...(await collectProjectProblems(issueNumber)));
-              return { issueNumber, problems };
+              problems.push(...(await collectProjectProblems(ref)));
+              return { ref, problems };
             }
 
             async function collectIssueProblems(pr) {
-              const issueNumbers = extractIssueNumbers(`${pr.title || ''}\n${pr.body || ''}`);
-              if (issueNumbers.length === 0) {
+              const native = await nativeLinkedRefs(pr.number);
+              const cross = crossRepoRefsFromBody(`${pr.title || ''}\n${pr.body || ''}`, pr.author_association);
+              const refs = dedupeRefs([...native, ...cross]);
+              if (refs.length === 0) {
                 return [
-                  'No GitHub issue is linked. Add a closing reference such as `Fixes #12345` to the PR description ' +
-                  '(accepted keywords: `Fixes`, `Closes`, `Resolves`).',
+                  'No GitHub issue is linked. Link an issue in the **Development** section of the PR ' +
+                  '(or add `Fixes #12345` to the description). For a same-org cross-repo issue, add ' +
+                  '`Fixes open-metadata/<repo>#123` to the description.',
                 ];
               }
-              const validations = await Promise.all(issueNumbers.map(validateIssue));
+              const validations = await Promise.all(refs.map(validateIssue));
               const validIssues = validations.filter((validation) => validation.problems.length === 0);
               const problems = [];
               if (validIssues.length === 0) {

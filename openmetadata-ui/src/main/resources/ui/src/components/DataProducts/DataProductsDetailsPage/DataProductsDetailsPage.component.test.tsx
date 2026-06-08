@@ -97,12 +97,10 @@ jest.mock('../../../hooks/useCustomPages', () => ({
     .mockReturnValue({ customizedPage: null, isLoading: false }),
 }));
 jest.mock('../../../hooks/useMarketplaceStore', () => ({
-  useMarketplaceStore: jest
-    .fn()
-    .mockReturnValue({
-      isMarketplace: false,
-      dataProductBasePath: '/data-product',
-    }),
+  useMarketplaceStore: jest.fn().mockReturnValue({
+    isMarketplace: false,
+    dataProductBasePath: '/data-product',
+  }),
 }));
 jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn().mockResolvedValue({ data: [] }),
@@ -163,17 +161,19 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not render for an admin even when the feature flag is on', () => {
+  it('renders and is enabled for an admin when the feature flag is on', () => {
     enableRequestDataAccess();
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
     });
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermission: jest.fn().mockResolvedValue({}),
+      permissions: { task: { Create: false } },
+    });
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
-    expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
   });
 
   it('does not render for the entity owner', () => {
