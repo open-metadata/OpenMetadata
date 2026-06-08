@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.mcp.tools;
+package org.openmetadata.mcp.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -20,6 +20,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.security.Principal;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
