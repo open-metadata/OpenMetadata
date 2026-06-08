@@ -649,3 +649,58 @@ END $$"""
         self.assertEqual(parser.source_tables, [])
         self.assertEqual(parser.target_tables, [])
         self.assertEqual(parser.column_lineage, [])
+
+
+    def test_clean_raw_query_starrocks_mv_basic(self):
+        """StarRocks MV DDL with column list, DISTRIBUTED BY, REFRESH, PROPERTIES → CREATE VIEW"""
+        query = (
+            "CREATE MATERIALIZED VIEW `mv_order_enriched` (`order_id`, `order_date`, `total_amount`) "
+            "DISTRIBUTED BY HASH(`order_id`) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+        result = LineageParser.clean_raw_query(query)
+        assert result == (
+            "CREATE VIEW `mv_order_enriched` AS "
+            "SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+
+    def test_clean_raw_query_starrocks_mv_without_columns(self):
+        """StarRocks MV DDL without explicit column list"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv_daily_sales "
+            "DISTRIBUTED BY HASH(order_date) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+        result = LineageParser.clean_raw_query(query)
+        assert result == (
+            "CREATE VIEW mv_daily_sales AS "
+            "SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+
+    def test_clean_raw_query_starrocks_mv_complex_join(self):
+        """StarRocks MV DDL with complex JOIN in AS SELECT"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv_enriched "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "REFRESH ASYNC "
+            "AS SELECT o.order_id, c.name AS customer_name, p.product_name "
+            "FROM clean_orders o "
+            "JOIN clean_customers c ON o.customer_id = c.customer_id "
+            "JOIN product_catalog p ON o.product_id = p.product_id"
+        )
+        result = LineageParser.clean_raw_query(query)
+        assert result == (
+            "CREATE VIEW mv_enriched AS "
+            "SELECT o.order_id, c.name AS customer_name, p.product_name "
+            "FROM clean_orders o "
+            "JOIN clean_customers c ON o.customer_id = c.customer_id "
+            "JOIN product_catalog p ON o.product_id = p.product_id"
+        )
+
+    def test_clean_raw_query_starrocks_mv_preserves_regular_view(self):
+        """Regular CREATE VIEW should NOT be affected by MV preprocessing"""
+        query = "CREATE VIEW my_view AS SELECT * FROM my_table"
+        result = LineageParser.clean_raw_query(query)
+        assert result == "CREATE VIEW my_view AS SELECT * FROM my_table"

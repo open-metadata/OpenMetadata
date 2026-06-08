@@ -37,6 +37,7 @@ class StarRocksLineageSource(StarRocksQueryParserSource, LineageSource):
         AND (
             stmt LIKE '%CREATE%TABLE%AS%SELECT%'
             OR stmt LIKE '%CREATE%VIEW%AS%SELECT%'
+            OR stmt LIKE '%CREATE%MATERIALIZED%VIEW%AS%SELECT%'
             OR stmt LIKE '%INSERT%INTO%SELECT%'
             OR stmt LIKE '%INSERT%OVERWRITE%SELECT%'
         )

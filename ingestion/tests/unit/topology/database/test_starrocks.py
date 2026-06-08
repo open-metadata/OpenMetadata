@@ -171,3 +171,10 @@ class TestStarRocksIcebergMapping(TestCase):
         from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
 
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+
+class TestStarRocksLineageFilters:
+    def test_lineage_source_filters_include_mv(self):
+        from metadata.ingestion.source.database.starrocks.lineage import StarRocksLineageSource
+
+        assert "CREATE%MATERIALIZED%VIEW%AS%SELECT" in StarRocksLineageSource.filters

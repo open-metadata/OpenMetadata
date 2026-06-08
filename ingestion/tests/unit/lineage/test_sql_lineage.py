@@ -432,3 +432,54 @@ class SqlLineageTest(TestCase):
                 len(parser.target_tables) > 0,
                 f"Expected target tables for query: {query}",
             )
+
+
+    def test_starrocks_mv_table_lineage(self):
+        """
+        Validate that a preprocessed StarRocks MV DDL produces correct
+        table-level lineage (source_tables and target_tables).
+        """
+        raw_ddl = (
+            "CREATE MATERIALIZED VIEW mv_order_enriched "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT o.order_id, c.name "
+            "FROM clean_orders o "
+            "JOIN clean_customers c ON o.customer_id = c.customer_id"
+        )
+        cleaned = LineageParser.clean_raw_query(raw_ddl)
+        parser = LineageParser(cleaned, dialect=Dialect.MYSQL)
+
+        source_names = sorted(t.raw_name for t in parser.source_tables)
+        target_names = [t.raw_name for t in parser.target_tables]
+
+        self.assertEqual(source_names, ["clean_customers", "clean_orders"])
+        self.assertEqual(target_names, ["mv_order_enriched"])
+
+    def test_starrocks_mv_column_lineage(self):
+        """
+        Validate column-level lineage extraction from a preprocessed
+        StarRocks MV DDL with JOIN and aliases.
+        """
+        raw_ddl = (
+            "CREATE MATERIALIZED VIEW `mv_enriched` (`order_id`, `customer_name`) "
+            "DISTRIBUTED BY HASH(`order_id`) BUCKETS 4 "
+            "REFRESH ASYNC "
+            "AS SELECT o.order_id, c.name AS customer_name "
+            "FROM clean_orders o "
+            "JOIN clean_customers c ON o.customer_id = c.customer_id"
+        )
+        cleaned = LineageParser.clean_raw_query(raw_ddl)
+        parser = LineageParser(cleaned, dialect=Dialect.MYSQL)
+
+        lineage_map = populate_column_lineage_map(parser.column_lineage)
+
+        # Target table should have mappings from both source tables
+        target_key = "<default>.mv_enriched"
+        self.assertIn(target_key, lineage_map)
+
+        target_map = lineage_map[target_key]
+        # order_id comes from clean_orders
+        self.assertIn("<default>.clean_orders", target_map)
+        # customer_name comes from clean_customers.name
+        self.assertIn("<default>.clean_customers", target_map)
