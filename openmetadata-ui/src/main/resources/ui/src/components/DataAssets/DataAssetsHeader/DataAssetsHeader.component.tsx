@@ -882,19 +882,17 @@ export const DataAssetsHeader = ({
                     : t('label.copy-item', { item: t('label.url-uppercase') })
                 }>
                 <TooltipTrigger className="tw:flex tw:items-center">
-                  <button
+                  <Button
                     aria-label={t('label.copy-item', {
                       item: t('label.url-uppercase'),
                     })}
-                    className={classNames(
-                      'tw:inline-flex tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center',
-                      'tw:text-fg-quaternary tw:transition-colors tw:hover:text-fg-secondary'
-                    )}
+                    color="tertiary"
                     data-testid="entity-header-copy-button"
+                    iconLeading={Copy01}
+                    size="xs"
                     type="button"
-                    onClick={handleCopyEntityUrl}>
-                    <Copy01 className="tw:size-4" />
-                  </button>
+                    onClick={handleCopyEntityUrl}
+                  />
                 </TooltipTrigger>
               </Tooltip>
               <LearningIcon pageId={entityType} />
