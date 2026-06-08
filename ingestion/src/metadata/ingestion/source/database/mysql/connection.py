@@ -14,6 +14,7 @@ Source connection handler
 """
 
 from typing import Any, Dict, Optional, cast  # noqa: UP035
+from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
@@ -106,7 +107,7 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
             aws_config=auth_type.awsConfig,
         )
         scheme = connection.scheme.value if connection.scheme else "mysql+pymysql"
-        base_url = f"{scheme}://{connection.username}@{connection.hostPort}"
+        base_url = f"{scheme}://{quote_plus(connection.username)}@{connection.hostPort}"
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=lambda _: base_url,

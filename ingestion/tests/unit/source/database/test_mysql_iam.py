@@ -18,6 +18,9 @@ later in a long ingestion still authenticate successfully.
 """
 
 import datetime
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -76,6 +79,24 @@ class TestMySQLIamEngine:
         url = url_fn(mysql_conn.service_connection)
         assert "FRESH_TOKEN" not in url
         assert url == f"mysql+pymysql://{USERNAME}@{HOST}:{PORT}"
+
+    @patch.object(connection_module, "RdsIamAuthTokenManager")
+    @patch.object(connection_module, "listen")
+    @patch.object(connection_module, "create_generic_db_connection")
+    def test_username_is_url_encoded(self, mock_create, mock_listen, mock_token_manager):
+        connection = MysqlConnection(
+            username="iam@user/db",
+            hostPort=f"{HOST}:{PORT}",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
+        )
+        mysql_conn = _make_mysql_connection(connection)
+
+        mysql_conn._get_iam_engine(connection)
+
+        url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
+        url = url_fn(connection)
+        assert "iam%40user%2Fdb" in url
+        assert "iam@user/db@" not in url
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
@@ -215,3 +236,32 @@ class TestRdsIamAuthTokenManager:
         manager.get_token()
 
         assert manager._expires_at is not None
+
+    def test_concurrent_get_token_refreshes_only_once(self, mock_rds):
+        """Many threads hitting a cold manager must trigger a single refresh.
+
+        Each worker thread calls engine.connect() -> the shared do_connect listener
+        -> the shared manager's get_token(). Without locking, threads racing on a
+        cold/expired token each call generate_db_auth_token. A slow token generator
+        widens the race window so the assertion is meaningful.
+        """
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        def slow_generate(**_kwargs):
+            time.sleep(0.05)
+            return _presigned_token(now)
+
+        mock_rds.generate_db_auth_token.side_effect = slow_generate
+        manager = self._manager()
+
+        barrier = threading.Barrier(10)
+
+        def call():
+            barrier.wait()
+            return manager.get_token()
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            tokens = [future.result() for future in [executor.submit(call) for _ in range(10)]]
+
+        assert mock_rds.generate_db_auth_token.call_count == 1
+        assert all(token == _presigned_token(now) for token in tokens)

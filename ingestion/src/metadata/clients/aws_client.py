@@ -13,6 +13,7 @@ Module containing AWS Client
 """
 
 import datetime
+import threading
 from enum import Enum
 from functools import partial
 from typing import Any, Callable, Dict, Optional, Type, TypeVar  # noqa: UP035
@@ -296,13 +297,22 @@ class RdsIamAuthTokenManager:
         self.refresh_threshold = refresh_threshold
         self._token: Optional[str] = None  # noqa: UP045
         self._expires_at: Optional[datetime.datetime] = None  # noqa: UP045
+        self._lock = threading.Lock()
 
     def get_token(self) -> str:
-        if self._needs_refresh():
-            self._refresh_token()
-        if self._token is None:
-            raise RuntimeError("Failed to generate RDS IAM authentication token")
-        return self._token
+        """Return a valid token, refreshing if needed.
+
+        The check-and-refresh is serialized: the engine shares one manager across
+        all worker threads (each calls ``engine.connect()`` from the ``do_connect``
+        listener), so without the lock multiple threads could refresh concurrently
+        and observe a token paired with a stale expiry.
+        """
+        with self._lock:
+            if self._needs_refresh():
+                self._refresh_token()
+            if self._token is None:
+                raise RuntimeError("Failed to generate RDS IAM authentication token")
+            return self._token
 
     def _needs_refresh(self) -> bool:
         needs_refresh = True
