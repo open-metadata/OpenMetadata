@@ -276,12 +276,13 @@ export function FilterSectionCard({
             <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
               {t('label.what-to-scan')}
             </div>
-            <div className="tw:inline-grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
+            <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
               <button
                 className={classNames(
-                  'tw:rounded-[7px] tw:border tw:border-transparent tw:bg-transparent tw:px-4 tw:py-2 tw:font-medium tw:leading-[18px] tw:text-tertiary tw:cursor-pointer',
-                  !filter.restrict &&
-                    'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
+                  'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                  !filter.restrict
+                    ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-testid={`${section.fieldName}-scan-all-button`}
                 type="button"
@@ -294,9 +295,10 @@ export function FilterSectionCard({
               </button>
               <button
                 className={classNames(
-                  'tw:rounded-[7px] tw:border tw:border-transparent tw:bg-transparent tw:px-4 tw:py-2 tw:font-medium tw:leading-[18px] tw:text-tertiary tw:cursor-pointer',
-                  filter.restrict &&
-                    'tw:border-primary tw:bg-primary tw:shadow-xs tw:text-primary tw:font-semibold'
+                  'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                  filter.restrict
+                    ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-testid={`${section.fieldName}-only-specific-button`}
                 type="button"
