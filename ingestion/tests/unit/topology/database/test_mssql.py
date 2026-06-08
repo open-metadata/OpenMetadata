@@ -48,13 +48,18 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
     MSSQL_GET_DATABASE,
+    MSSQL_QUERY_STORE_SQL_STATEMENT,
+    MSSQL_SQL_STATEMENT,
     MSSQL_TEST_GET_QUERIES,
 )
+from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
+from metadata.ingestion.source.database.mssql.utils import should_use_query_store
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
@@ -495,3 +500,118 @@ class TestUpdateMssqlIschemaNames:
         result = self.mssql._get_encrypted_procedures("test_db", "dbo")
 
         assert result == set()
+
+
+class TestMssqlQueryStore:
+    """
+    Query Store auto-detection and lineage/usage statement selection.
+
+    Query Store (SQL Server 2016+, opt-in per database) is a durable query
+    history that survives restarts and plan-cache eviction. When enabled,
+    lineage/usage read it instead of the volatile dm_exec_* plan cache; on
+    older servers or when it is off, they fall back to the plan-cache statement.
+    """
+
+    @staticmethod
+    def _mock_engine_returning(fetchone_value=None, raise_error=False):
+        """Build an engine whose probe returns one (actual_state, capture_mode) row."""
+        engine = MagicMock()
+        conn = MagicMock()
+        if raise_error:
+            conn.execute.side_effect = Exception("Invalid object name 'sys.database_query_store_options'")
+        else:
+            conn.execute.return_value.fetchone.return_value = fetchone_value
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        return engine
+
+    def test_use_query_store_when_read_write_and_all(self):
+        # actual_state=2 (READ_WRITE), capture_mode=1 (ALL)
+        assert should_use_query_store(self._mock_engine_returning((2, 1))) is True
+
+    def test_use_query_store_when_read_only_and_all(self):
+        # actual_state=1 (READ_ONLY), capture_mode=1 (ALL)
+        assert should_use_query_store(self._mock_engine_returning((1, 1))) is True
+
+    def test_plan_cache_when_capture_mode_auto(self):
+        # AUTO (capture_mode=2) skips ad-hoc queries -> prefer the plan cache
+        assert should_use_query_store(self._mock_engine_returning((2, 2))) is False
+
+    def test_plan_cache_when_off(self):
+        # actual_state=0 (OFF)
+        assert should_use_query_store(self._mock_engine_returning((0, 1))) is False
+
+    def test_plan_cache_when_no_row(self):
+        assert should_use_query_store(self._mock_engine_returning(None)) is False
+
+    def test_plan_cache_on_detection_error(self):
+        # < SQL Server 2016: sys.database_query_store_options does not exist
+        assert should_use_query_store(self._mock_engine_returning(raise_error=True)) is False
+
+    @staticmethod
+    def _make_parser_source(source_class, ingest_all_databases=False, use_query_store=True):
+        """Bare parser source without the heavy __init__ (no real engine)."""
+        source = object.__new__(source_class)
+        source.engine = MagicMock()
+        source.service_connection = MagicMock(ingestAllDatabases=ingest_all_databases, useQueryStore=use_query_store)
+        source._use_query_store = None
+        return source
+
+    def test_statement_is_plan_cache_by_default(self):
+        for source_class in (MssqlLineageSource, MssqlUsageSource):
+            source = self._make_parser_source(source_class)
+            source._use_query_store = False
+            assert source.get_query_log_statement() == MSSQL_SQL_STATEMENT
+
+    def test_statement_is_query_store_when_enabled(self):
+        for source_class in (MssqlLineageSource, MssqlUsageSource):
+            source = self._make_parser_source(source_class)
+            source._use_query_store = True
+            assert source.get_query_log_statement() == MSSQL_QUERY_STORE_SQL_STATEMENT
+
+    def test_detection_runs_once_and_is_cached(self):
+        source = self._make_parser_source(MssqlLineageSource)
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.should_use_query_store",
+            return_value=True,
+        ) as mock_detect:
+            assert source.use_query_store() is True
+            assert source.use_query_store() is True
+            mock_detect.assert_called_once()
+
+    def test_plan_cache_when_ingest_all_databases(self):
+        # Query Store views are per-database; for multi-database services fall
+        # back to the server-wide plan cache so other databases are not dropped.
+        source = self._make_parser_source(MssqlLineageSource, ingest_all_databases=True)
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.should_use_query_store",
+            return_value=True,
+        ):
+            assert source.use_query_store() is False
+
+    def test_plan_cache_when_toggle_off(self):
+        # With the useQueryStore toggle off, behave exactly as the plan-cache
+        # flow and do not probe Query Store at all.
+        source = self._make_parser_source(MssqlLineageSource, use_query_store=False)
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.should_use_query_store",
+            return_value=True,
+        ) as mock_detect:
+            assert source.use_query_store() is False
+            mock_detect.assert_not_called()
+
+    def test_query_store_statement_renders_for_lineage_and_usage(self):
+        # The class filters reference t.text; the Query Store statement exposes a
+        # `text` column so the same filters apply to both query sources unchanged.
+        for source_class in (MssqlLineageSource, MssqlUsageSource):
+            rendered = MSSQL_QUERY_STORE_SQL_STATEMENT.format(
+                result_limit=1000,
+                start_time="2020-01-01 00:00:00",
+                end_time="2020-01-02 00:00:00",
+                filters=source_class.filters,
+            )
+            assert "sys.query_store_runtime_stats" in rendered
+            assert "lower(t.text)" in rendered
+            # internal/parameterized queries excluded (mirrors DMV objtype != 'Prepared')
+            assert "q.is_internal_query = 0" in rendered
+            assert "q.query_parameterization_type <> 1" in rendered
