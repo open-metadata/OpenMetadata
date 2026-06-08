@@ -406,14 +406,23 @@ public class ElasticSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
     if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   @Override
