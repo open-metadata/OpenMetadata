@@ -52,6 +52,12 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * (RBAC isOwner), term filters for tags/tier/certification/domains (Explore facets, RBAC, Data
  * Quality), a terms aggregation for {@code testCaseResult.testCaseStatus} (the Data Quality
  * execution summary), and a keyword term on {@code fqnParts} (hierarchical search / autocomplete).
+ *
+ * <p>Coverage spans the Explore/RBAC fields on a data-asset index (topic) plus the Data Quality
+ * test-case index — status aggregation, the nested {@code testSuites.id} filter, the {@code
+ * entityLink.nonNormalized} per-entity summary aggregation, and the dimension/platform filters — and
+ * the Incident Manager resolution-status index — status type, assignee, and the {@code
+ * testCase.fullyQualifiedName.keyword}/{@code testCase.entityFQN.keyword} filters.
  */
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -77,6 +83,16 @@ class SearchConsumerFieldBehaviorIT {
   private static final String TEST_CASE_ID = "44444444-4444-4444-4444-444444444444";
   private static final String TEST_CASE_FQN = "svc.ns.orders.columns.amount.notNull";
   private static final String TEST_CASE_STATUS = "Success";
+  private static final String ENTITY_FQN = "svc.ns.orders";
+  private static final String ENTITY_LINK = "<#E::table::svc.ns.orders>";
+  private static final String DQ_DIMENSION = "Completeness";
+  private static final String TEST_PLATFORM = "DBT";
+  private static final String TEST_SUITE_ID = "55555555-5555-5555-5555-555555555555";
+  private static final String RESOLUTION_ID = "66666666-6666-6666-6666-666666666666";
+  private static final String RESOLUTION_STATUS_TYPE = "Assigned";
+  private static final String ASSIGNEE_ID = "77777777-7777-7777-7777-777777777777";
+  private static final String ASSIGNEE_NAME = "john";
+  private static final String STATE_ID = "88888888-8888-8888-8888-888888888888";
 
   @Container
   static OpensearchContainer<?> opensearch =
@@ -108,6 +124,10 @@ class SearchConsumerFieldBehaviorIT {
       createIndex(
           testCaseIndex(language), "/elasticsearch/" + language + "/test_case_index_mapping.json");
       indexDocument(testCaseIndex(language), TEST_CASE_ID, testCaseDocument());
+      createIndex(
+          resolutionIndex(language),
+          "/elasticsearch/" + language + "/test_case_resolution_status_index_mapping.json");
+      indexDocument(resolutionIndex(language), RESOLUTION_ID, resolutionStatusDocument());
     }
   }
 
@@ -178,6 +198,86 @@ class SearchConsumerFieldBehaviorIT {
                 termsAggregation("status", "testCaseResult.testCaseStatus"),
                 "status",
                 TEST_CASE_STATUS));
+  }
+
+  @Test
+  void testSuiteNestedFilterReturnsTestCaseInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Test suite filter (Data Quality test list + execution summary; nested testSuites.id)",
+        language ->
+            hits(
+                    testCaseIndex(language),
+                    nestedTermQuery("testSuites", "testSuites.id", TEST_SUITE_ID))
+                == 1);
+  }
+
+  @Test
+  void entityLinkSummaryAggregationHasBucketInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Data Quality per-entity execution summary (entityLink.nonNormalized aggregation)",
+        language ->
+            aggregationHasBucket(
+                testCaseIndex(language),
+                termsAggregation("links", "entityLink.nonNormalized"),
+                "links",
+                ENTITY_LINK));
+  }
+
+  @Test
+  void dataQualityDimensionFilterReturnsTestCaseInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Data Quality dimension filter (test list + DQ report by dimension)",
+        language ->
+            hits(testCaseIndex(language), termQuery("dataQualityDimension", DQ_DIMENSION)) == 1);
+  }
+
+  @Test
+  void testPlatformFilterReturnsTestCaseInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Test platform filter (Data Quality test list)",
+        language -> hits(testCaseIndex(language), termQuery("testPlatforms", TEST_PLATFORM)) == 1);
+  }
+
+  @Test
+  void incidentStatusFilterReturnsIncidentInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Incident Manager status filter (testCaseResolutionStatusType)",
+        language ->
+            hits(
+                    resolutionIndex(language),
+                    termQuery("testCaseResolutionStatusType", RESOLUTION_STATUS_TYPE))
+                == 1);
+  }
+
+  @Test
+  void incidentAssigneeFilterReturnsIncidentInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Incident Manager assignee filter (testCaseResolutionStatusDetails.assignee.name)",
+        language ->
+            hits(
+                    resolutionIndex(language),
+                    termQuery("testCaseResolutionStatusDetails.assignee.name", ASSIGNEE_NAME))
+                == 1);
+  }
+
+  @Test
+  void incidentTestCaseFqnFilterReturnsIncidentInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Incident Manager test-case filter (testCase.fullyQualifiedName.keyword)",
+        language ->
+            hits(
+                    resolutionIndex(language),
+                    termQuery("testCase.fullyQualifiedName.keyword", TEST_CASE_FQN))
+                == 1);
+  }
+
+  @Test
+  void incidentOriginEntityFilterReturnsIncidentInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Incident Manager origin-entity filter (testCase.entityFQN.keyword)",
+        language ->
+            hits(resolutionIndex(language), termQuery("testCase.entityFQN.keyword", ENTITY_FQN))
+                == 1);
   }
 
   @Test
@@ -336,19 +436,55 @@ class SearchConsumerFieldBehaviorIT {
 
   private String testCaseDocument() throws Exception {
     Map<String, Object> document =
-        Map.of(
-            "id",
-            TEST_CASE_ID,
-            "name",
-            "amount_not_null",
-            "fullyQualifiedName",
-            TEST_CASE_FQN,
-            "deleted",
-            false,
-            "entityType",
-            "testCase",
-            "testCaseResult",
-            Map.of("testCaseStatus", TEST_CASE_STATUS, "timestamp", 1700000000000L));
+        Map.ofEntries(
+            Map.entry("id", TEST_CASE_ID),
+            Map.entry("name", "amount_not_null"),
+            Map.entry("fullyQualifiedName", TEST_CASE_FQN),
+            Map.entry("deleted", false),
+            Map.entry("entityType", "testCase"),
+            Map.entry("entityFQN", ENTITY_FQN),
+            Map.entry("originEntityFQN", ENTITY_FQN),
+            Map.entry("entityLink", ENTITY_LINK),
+            Map.entry("dataQualityDimension", DQ_DIMENSION),
+            Map.entry("testPlatforms", List.of(TEST_PLATFORM)),
+            Map.entry(
+                "testSuites",
+                List.of(
+                    Map.of(
+                        "id",
+                        TEST_SUITE_ID,
+                        "name",
+                        "suite",
+                        "fullyQualifiedName",
+                        TEST_CASE_FQN + ".suite"))),
+            Map.entry(
+                "testCaseResult",
+                Map.of("testCaseStatus", TEST_CASE_STATUS, "timestamp", 1700000000000L)));
+    return mapper.writeValueAsString(document);
+  }
+
+  private String resolutionStatusDocument() throws Exception {
+    Map<String, Object> document =
+        Map.ofEntries(
+            Map.entry("id", RESOLUTION_ID),
+            Map.entry("entityType", "testCaseResolutionStatus"),
+            Map.entry("testCaseResolutionStatusType", RESOLUTION_STATUS_TYPE),
+            Map.entry(
+                "testCaseResolutionStatusDetails",
+                Map.of(
+                    "assignee", Map.of("id", ASSIGNEE_ID, "type", "user", "name", ASSIGNEE_NAME))),
+            Map.entry(
+                "testCase",
+                Map.of(
+                    "name",
+                    "amount_not_null",
+                    "fullyQualifiedName",
+                    TEST_CASE_FQN,
+                    "entityFQN",
+                    ENTITY_FQN)),
+            Map.entry("stateId", STATE_ID),
+            Map.entry("@timestamp", 1700000000000L),
+            Map.entry("timestamp", 1700000000000L));
     return mapper.writeValueAsString(document);
   }
 
@@ -382,5 +518,9 @@ class SearchConsumerFieldBehaviorIT {
 
   private String testCaseIndex(String language) {
     return "behavior_testcase_" + language;
+  }
+
+  private String resolutionIndex(String language) {
+    return "behavior_resolution_" + language;
   }
 }
