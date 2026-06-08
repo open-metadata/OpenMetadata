@@ -1165,7 +1165,9 @@ describe('KnowledgeGraph', () => {
         expect(screen.getByTestId('slideout-menu')).toBeInTheDocument()
       );
 
-      expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('entity-summary-panel')
+      ).toBeInTheDocument();
     });
 
     it('handleClosePanel hides the slideout when close button is clicked', async () => {

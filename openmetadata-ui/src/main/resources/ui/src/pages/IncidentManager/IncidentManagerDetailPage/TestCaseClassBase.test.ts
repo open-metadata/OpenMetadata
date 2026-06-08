@@ -66,7 +66,8 @@ describe('TestCaseClassBase', () => {
 
     result.forEach((tab, i) => {
       const { Tab, ...rest } = tab;
-      const { Tab: expectedTab, ...expectedRest } = expectedTabs[i];
+      const { Tab: _expectedTab, ...expectedRest } = expectedTabs[i];
+
       expect(rest).toEqual(expectedRest);
       expect(Tab).toBeDefined();
     });

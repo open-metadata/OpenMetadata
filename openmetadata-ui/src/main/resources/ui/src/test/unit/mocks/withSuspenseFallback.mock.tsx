@@ -11,25 +11,23 @@
  *  limitations under the License.
  */
 
-import { ComponentType, Suspense } from 'react';
+import { ComponentType, forwardRef, Suspense } from 'react';
 
 /**
  * Test mock for withSuspenseFallback.
- * Keeps Suspense so React.lazy resolves via act() microtask flushing,
- * but uses null fallback so no loader appears during resolution.
+ * Mirrors production: uses forwardRef so ref-dependent components behave
+ * correctly in tests. Uses null fallback so no loader appears during resolution.
  */
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>
 ) {
-  return function DefaultFallback(
-    props: T & JSX.IntrinsicAttributes & { children?: React.ReactNode }
-  ) {
+  return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
     return (
       <Suspense fallback={null}>
-        <Component {...props} />
+        <Component {...(props as T)} ref={ref} />
       </Suspense>
     );
-  };
+  });
 }
 
 export default withSuspenseFallback;

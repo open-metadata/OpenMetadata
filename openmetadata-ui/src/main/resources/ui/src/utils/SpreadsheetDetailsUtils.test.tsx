@@ -288,9 +288,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(
-        await screen.findByTestId('workflows-table')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId('workflows-table')).toBeInTheDocument();
     });
 
     it('should return WorkflowsTable for widget key starting with worksheets', () => {
