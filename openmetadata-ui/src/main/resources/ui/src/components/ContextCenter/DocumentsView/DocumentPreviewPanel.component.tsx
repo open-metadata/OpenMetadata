@@ -19,7 +19,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link04, XClose } from '@untitledui/icons';
+import { ArrowNarrowRight, Link04, XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -33,10 +33,7 @@ interface MetaRowProps {
 }
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
-  <Box
-    align="center"
-    className="tw:py-1.5 tw:border-b tw:border-secondary"
-    justify="between">
+  <Box align="center" className="tw:py-1.5" justify="between">
     <Typography className="tw:text-gray-500" size="text-sm">
       {label}
     </Typography>
@@ -69,7 +66,8 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       <Box
         align="center"
         className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
-        gap={3} justify="between">
+        gap={3}
+        justify="between">
         <Box align="center" gap={2}>
           <FileIcon
             className="tw:size-6 tw:shrink-0"
@@ -150,7 +148,11 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
                 values={{ count: 0 }}
               />
             </Typography>
-            <Button color="link-color" size="xs" type="text">
+            <Button
+              color="link-color"
+              iconTrailing={<ArrowNarrowRight size={13} strokeWidth={2} />}
+              size="xs"
+              type="text">
               {t('label.view-citations')}
             </Button>
           </Box>

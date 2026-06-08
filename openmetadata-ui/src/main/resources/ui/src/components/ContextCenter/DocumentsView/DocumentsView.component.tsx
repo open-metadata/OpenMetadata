@@ -253,8 +253,18 @@ const FileRowSkeleton: FC = () => (
     align="center"
     className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
     gap={4}>
-    <Skeleton className="tw:shrink-0" height="16px" variant="rounded" width="16px" />
-    <Skeleton className="tw:shrink-0" height="40px" variant="rounded" width="40px" />
+    <Skeleton
+      className="tw:shrink-0"
+      height="16px"
+      variant="rounded"
+      width="16px"
+    />
+    <Skeleton
+      className="tw:shrink-0"
+      height="40px"
+      variant="rounded"
+      width="40px"
+    />
     <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
       <Skeleton height="14px" variant="rounded" width="45%" />
       <Box align="center" gap={2}>
@@ -573,9 +583,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       )}
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
-        <Box
-          className="tw:flex-1 tw:overflow-y-auto"
-          direction="col">
+        <Box className="tw:flex-1 tw:overflow-y-auto" direction="col">
           {!isLoading && (
             <ListHeader
               count={data.length}
@@ -609,10 +617,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
           )}
         </Box>
       ) : (
-        <Box
-          align="center"
-          className="tw:flex-1 tw:p-12"
-          justify="center">
+        <Box align="center" className="tw:flex-1 tw:p-12" justify="center">
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
         </Box>
       )}

@@ -52,6 +52,12 @@ jest.mock('react-aria-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  )),
+  Button: jest.fn(({ children, onClick, 'data-testid': testId }: { children: React.ReactNode; onClick?: () => void; 'data-testid'?: string }) => (
+    <button data-testid={testId} onClick={onClick}>{children}</button>
+  )),
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -95,6 +101,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button data-testid={`dropdown-item-${id}`}>{label}</button>
     )),
   },
+  Checkbox: jest.fn(({ onChange, 'aria-label': ariaLabel }: { onChange?: () => void; 'aria-label'?: string }) => (
+    <input aria-label={ariaLabel} type="checkbox" onChange={onChange} />
+  )),
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
@@ -115,7 +124,6 @@ const mockFiles: DocFile[] = [
     id: 'file-1',
     name: 'report.pdf',
     fileExtension: 'pdf',
-    fileType: 'pdf',
     sizeLabel: '2 MB',
     updatedBy: 'alice',
     updatedAt: 1778756959299,
@@ -124,7 +132,6 @@ const mockFiles: DocFile[] = [
     id: 'file-2',
     name: 'data.csv',
     fileExtension: 'csv',
-    fileType: 'csv',
     sizeLabel: '500 KB',
   },
 ];
