@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BreadcrumbItemType, BreadcrumbsDivider, BreadcrumbsSize, BreadcrumbsType } from '@openmetadata/ui-core-components';
+import {
+  BreadcrumbItemType,
+  BreadcrumbsDivider,
+  BreadcrumbsSize,
+  BreadcrumbsType,
+} from '@openmetadata/ui-core-components';
 
 export interface HeaderBreadcrumbProps {
   /**
