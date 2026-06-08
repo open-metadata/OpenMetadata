@@ -24,6 +24,12 @@ class HikariCPDataSourceFactoryAzureAuthTest {
     assertFalse(
         HikariCPDataSourceFactory.hasAzureAuthMarker(
             "jdbc:postgresql://h.postgres.database.azure.com:5432/db?sslmode=require"));
+    assertFalse(
+        HikariCPDataSourceFactory.hasAzureAuthMarker(
+            "jdbc:postgresql://h.postgres.database.azure.com:5432/db?azure=truefoo"));
+    assertFalse(
+        HikariCPDataSourceFactory.hasAzureAuthMarker(
+            "jdbc:postgresql://h.postgres.database.azure.com:5432/db?azure=truefoo&sslmode=require"));
     assertFalse(HikariCPDataSourceFactory.hasAzureAuthMarker(null));
   }
 

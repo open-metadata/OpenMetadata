@@ -29,6 +29,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.Setter;
@@ -48,6 +49,11 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   static final String MYSQL_AUTH_PLUGINS_PROPERTY = "authenticationPlugins";
   static final String AZURE_MYSQL_AUTH_PLUGIN =
       "com.azure.identity.extensions.jdbc.mysql.AzureMysqlAuthenticationPlugin";
+
+  // Matches azure=true only as a whole query parameter: bounded by ?/& on the left and &/end on the
+  // right, so values like azure=truefoo do not match.
+  private static final Pattern AZURE_AUTH_MARKER_PATTERN =
+      Pattern.compile("[?&]" + Pattern.quote(AZURE_AUTH_URL_MARKER) + "(&|$)");
 
   @JsonProperty
   @Min(1)
@@ -283,8 +289,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   }
 
   static boolean hasAzureAuthMarker(String url) {
-    return url != null
-        && (url.contains("?" + AZURE_AUTH_URL_MARKER) || url.contains("&" + AZURE_AUTH_URL_MARKER));
+    return url != null && AZURE_AUTH_MARKER_PATTERN.matcher(url).find();
   }
 
   static void applyAzureEntraAuthProperties(Properties props, String driverClass) {
