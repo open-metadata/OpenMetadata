@@ -164,7 +164,32 @@ class TestMySQLIamEngine:
         cparams = {}
         listener(None, None, None, cparams)
         assert "ssl" in cparams
-        assert cparams["ssl"] == {}
+        # Must be truthy so PyMySQL treats TLS as required (not PREFERRED).
+        assert cparams["ssl"]
+
+    @patch.object(connection_module, "RdsIamAuthTokenManager")
+    @patch.object(connection_module, "listen")
+    @patch.object(connection_module, "create_generic_db_connection")
+    def test_injected_ssl_makes_pymysql_require_tls(self, mock_create, mock_listen, mock_token_manager):
+        """Assert real PyMySQL behavior: the injected ssl value enables required TLS.
+
+        An empty dict only yields PREFERRED mode (_ssl_required=False), which can
+        fall back to plaintext; the injected value must produce _ssl_required=True.
+        """
+        import pymysql
+
+        mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
+        mysql_conn = _make_mysql_connection(_iam_connection())
+        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        listener = mock_listen.call_args.args[2]
+
+        cparams = {}
+        listener(None, None, None, cparams)
+
+        with patch.object(pymysql.connections.Connection, "connect", lambda self: None):
+            conn = pymysql.connections.Connection(host="h", user="u", ssl=cparams["ssl"])
+        assert conn.ssl is True
+        assert conn._ssl_required is True
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")

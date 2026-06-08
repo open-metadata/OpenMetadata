@@ -113,9 +113,12 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
 
         def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: Dict[str, Any]):  # noqa: UP006
             cparams["password"] = token_manager.get_token()
-            # PyMySQL requires SSL for RDS IAM auth; preserve any explicit SSL config.
+            # RDS IAM auth requires TLS. A truthy ssl dict makes PyMySQL treat SSL
+            # as required (an empty dict only yields PREFERRED, which can silently
+            # fall back to plaintext). check_hostname also verifies the RDS cert.
+            # Any explicitly provided ssl config is preserved.
             if "ssl" not in cparams:
-                cparams["ssl"] = {}
+                cparams["ssl"] = {"check_hostname": True}
 
         listen(engine, "do_connect", inject_iam_token)
         return engine
