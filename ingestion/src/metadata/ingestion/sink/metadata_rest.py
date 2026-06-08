@@ -454,12 +454,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         first_failure = None
         for failed in result.failedRequest or []:
+            query_ref = failed.request or "unknown"
             if is_duplicate_query_conflict(failed.message):
-                self.status.warning("Query", f"Skipped already-present query: {failed.message}")
+                self.status.warning("Query", f"Skipped already-present query [{query_ref}]: {failed.message}")
             else:
                 failure = StackTraceError(
                     name="Query Buffer",
-                    error=f"Failed to flush query to bulk API: {failed.message}",
+                    error=f"Failed to flush query [{query_ref}] to bulk API: {failed.message}",
                     stackTrace=None,
                 )
                 self.status.failed(failure)

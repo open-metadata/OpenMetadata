@@ -63,6 +63,7 @@ def test_already_present_queries_become_warnings_not_failures(sink):
     assert len(sink.status.warnings) == 3
     assert len(sink.status.failures) == 0
     assert out.left is None
+    assert "svc.0" in sink.status.warnings[0]["Query"]
 
 
 def test_real_failures_are_still_recorded(sink):
@@ -71,6 +72,7 @@ def test_real_failures_are_still_recorded(sink):
     assert len(sink.status.warnings) == 1
     assert len(sink.status.failures) == 1
     assert REAL_ERROR in sink.status.failures[0].error
+    assert "svc.1" in sink.status.failures[0].error
     assert out.left is not None
 
 
