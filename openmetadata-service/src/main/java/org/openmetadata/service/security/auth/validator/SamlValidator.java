@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -281,6 +282,7 @@ public class SamlValidator {
   }
 
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+    HttpURLConnection conn = null;
     try {
       String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
       LOG.debug("Testing IdP SSO URL with SAML request: {}", ssoUrl);
@@ -293,7 +295,7 @@ public class SamlValidator {
           ssoUrl + (ssoUrl.contains("?") ? "&" : "?") + "SAMLRequest=" + samlRequest;
 
       URL url = new URL(urlWithParams);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("GET");
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
@@ -340,6 +342,10 @@ public class SamlValidator {
       // Warning case - treat as success since URL format might be valid
       LOG.warn("SSO URL validation warning: {}", e.getMessage());
       return null;
+    } finally {
+      if (conn != null) {
+        conn.disconnect();
+      }
     }
   }
 
@@ -395,15 +401,17 @@ public class SamlValidator {
 
   private String readResponseSnippet(HttpURLConnection conn) {
     try {
-      java.io.InputStream inputStream = conn.getErrorStream();
+      InputStream inputStream = conn.getErrorStream();
       if (inputStream == null) {
         inputStream = conn.getInputStream();
       }
       if (inputStream != null) {
-        byte[] buffer = new byte[500];
-        int bytesRead = inputStream.read(buffer);
-        if (bytesRead > 0) {
-          return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+        try (InputStream responseStream = inputStream) {
+          byte[] buffer = new byte[500];
+          int bytesRead = responseStream.read(buffer);
+          if (bytesRead > 0) {
+            return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+          }
         }
       }
     } catch (Exception e) {
