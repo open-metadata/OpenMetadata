@@ -260,7 +260,11 @@ public class RunAppImpl {
             Entity.getEntity(
                 ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
     if (status.getCode() == 200) {
-      repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
+      // Persist only the runner-derived flag; the deploy-time appConfig injected above
+      // must not leak into the stored pipeline, so re-read the clean entity first.
+      IngestionPipeline stored = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+      stored.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+      repository.createOrUpdate(null, stored, stored.getUpdatedBy());
     }
 
     return ingestionPipeline;
