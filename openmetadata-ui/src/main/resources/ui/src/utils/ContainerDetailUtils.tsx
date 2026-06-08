@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export {
+  ContainerFields,
+  extractContainerColumns,
+  updateContainerColumnDescription,
+  updateContainerColumnTags,
+} from './ContainerDetailPureUtils';
+
 import { Col, Row } from 'antd';
-import { get, isEmpty, omit } from 'lodash';
-import { EntityTags } from 'Models';
-import { lazy, Suspense } from 'react';
+import { get } from 'lodash';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -29,15 +35,8 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  Column,
-  Container,
-  ContainerDataModel as ContainerDataModelType,
-} from '../generated/entity/data/container';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
-import { EntityReference } from '../generated/type/entityReference';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
 import { t } from './i18next/LocalUtil';
@@ -86,89 +85,6 @@ const SampleDataTableComponent = withSuspenseFallback(
       import('../components/Database/SampleDataTable/SampleDataTable.component')
   )
 );
-
-const getUpdatedContainerColumnTags = (
-  containerColumn: Column,
-  newContainerColumnTags: EntityTags[] = []
-) => {
-  const newTagsFqnList = newContainerColumnTags.map((newTag) => newTag.tagFQN);
-
-  const prevTags = containerColumn?.tags?.filter((tag) =>
-    newTagsFqnList.includes(tag.tagFQN)
-  );
-
-  const prevTagsFqnList = prevTags?.map((prevTag) => prevTag.tagFQN);
-
-  const newTags: EntityTags[] = newContainerColumnTags.reduce((prev, curr) => {
-    const isExistingTag = prevTagsFqnList?.includes(curr.tagFQN);
-
-    return isExistingTag
-      ? prev
-      : [
-          ...prev,
-          {
-            ...omit(curr, 'isRemovable'),
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ];
-  }, [] as EntityTags[]);
-
-  return [...(prevTags as TagLabel[]), ...newTags];
-};
-
-export const updateContainerColumnTags = (
-  containerColumns: ContainerDataModelType['columns'] = [],
-  changedColumnFQN: string,
-  newColumnTags: EntityTags[] = []
-) => {
-  containerColumns.forEach((containerColumn) => {
-    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
-      containerColumn.tags = getUpdatedContainerColumnTags(
-        containerColumn,
-        newColumnTags
-      );
-    } else {
-      const hasChildren = !isEmpty(containerColumn.children);
-
-      // stop condition
-      if (hasChildren) {
-        updateContainerColumnTags(
-          containerColumn.children,
-          changedColumnFQN,
-          newColumnTags
-        );
-      }
-    }
-  });
-};
-
-export const updateContainerColumnDescription = (
-  containerColumns: ContainerDataModelType['columns'] = [],
-  changedColumnFQN: string,
-  description: string
-) => {
-  containerColumns.forEach((containerColumn) => {
-    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
-      containerColumn.description = description;
-    } else {
-      const hasChildren = !isEmpty(containerColumn.children);
-
-      // stop condition
-      if (hasChildren) {
-        updateContainerColumnDescription(
-          containerColumn.children,
-          changedColumnFQN,
-          description
-        );
-      }
-    }
-  });
-};
-
-// eslint-disable-next-line max-len
-export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
-
 export const getContainerDetailPageTabs = ({
   isDataModelEmpty,
   decodedContainerName,
@@ -353,21 +269,5 @@ export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.CONTAINER}
       widgetConfig={widgetConfig}
     />
-  );
-};
-
-export const extractContainerColumns = <
-  T extends Omit<EntityReference, 'type'>
->(
-  data: T
-): Column[] => {
-  const container = data as Partial<Container>;
-
-  return (container.dataModel?.columns ?? []).map(
-    (column) =>
-      ({
-        ...column,
-        tags: column.tags ?? [],
-      } as Column)
   );
 };
