@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -89,22 +90,34 @@ public class IndexMappingVersionTracker {
   }
 
   public void updateMappingVersions() throws IOException {
+    stamp(computeCurrentMappings());
+  }
+
+  public void updateMappingVersions(Collection<String> entityTypes) throws IOException {
     Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Map<String, MappingEntry> subset = new HashMap<>();
+    for (String entityType : entityTypes) {
+      MappingEntry mappingEntry = currentMappings.get(entityType);
+      if (mappingEntry != null) {
+        subset.put(entityType, mappingEntry);
+      }
+    }
+    stamp(subset);
+  }
+
+  private void stamp(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
-
-    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
-      String entityType = entry.getKey();
+    for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
       MappingEntry mappingEntry = entry.getValue();
-
       indexMappingVersionDAO.upsertIndexMappingVersion(
-          entityType,
+          entry.getKey(),
           mappingEntry.hash(),
           JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
+    LOG.info("Updated index mapping versions for {} entities", mappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {

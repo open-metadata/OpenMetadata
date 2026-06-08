@@ -460,6 +460,32 @@ class IndexMappingVersionTrackerTest {
     }
   }
 
+  @Test
+  void updateMappingVersionsForSubsetStampsOnlyGivenEntities() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester")
+          .updateMappingVersions(List.of("table", "domain"));
+
+      verify(indexMappingVersionDAO, times(2))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              anyString(),
+              anyString(),
+              eq("1.2.3"),
+              anyLong(),
+              eq("tester"));
+      assertEquals(Set.of("domain", "table"), new TreeSet<>(entityTypeCaptor.getAllValues()));
+    }
+  }
+
   private static Set<String> diff(Set<String> expected, Set<String> actual) {
     Set<String> missing = new TreeSet<>(expected);
     missing.removeAll(actual);
