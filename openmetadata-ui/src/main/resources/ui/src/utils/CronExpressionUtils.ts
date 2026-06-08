@@ -13,8 +13,8 @@
 
 import { isUndefined, toNumber, toString } from 'lodash';
 
-import { RuleObject } from 'rc-field-form/es/interface';
-import {
+import type { RuleObject } from 'rc-field-form/es/interface';
+import type {
   Combination,
   StateValue,
   WorkflowExtraConfig,

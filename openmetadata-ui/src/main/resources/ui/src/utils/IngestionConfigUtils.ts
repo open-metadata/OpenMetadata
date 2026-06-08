@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import type { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -28,14 +28,14 @@ import { EntityTabs } from '../enums/entity.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../enums/service.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
+import type { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
 import {
-  IngestionPipeline,
   PipelineState,
-  StepSummary,
+  type IngestionPipeline,
+  type StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { SearchSourceAlias } from '../interface/search.interface';
-import { DataObj, ServicesType } from '../interface/service.interface';
+import type { SearchSourceAlias } from '../interface/search.interface';
+import type { DataObj, ServicesType } from '../interface/service.interface';
 import { getDayCron } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
