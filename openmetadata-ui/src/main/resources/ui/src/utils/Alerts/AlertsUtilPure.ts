@@ -23,7 +23,10 @@ import {
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
-import type { ChangeEvent, TypedEvent } from '../../generated/events/api/typedEvent';
+import type {
+  ChangeEvent,
+  TypedEvent,
+} from '../../generated/events/api/typedEvent';
 import { Status } from '../../generated/events/api/typedEvent';
 import {
   Destination,

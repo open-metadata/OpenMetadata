@@ -17,16 +17,16 @@ export {
   getAgentStatusSummary,
 } from './AgentsStatusWidgetPureUtils';
 
-import {
-  getAgentLabelFromType,
-  getAgentStatusLabelFromStatus,
-} from './AgentsStatusWidgetPureUtils';
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
 import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
+import {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+} from './AgentsStatusWidgetPureUtils';
 
 import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
 import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';

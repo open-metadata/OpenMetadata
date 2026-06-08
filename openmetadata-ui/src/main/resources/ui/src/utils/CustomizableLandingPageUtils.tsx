@@ -108,4 +108,3 @@ export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
     onClick={props.onClick}
   />
 );
-

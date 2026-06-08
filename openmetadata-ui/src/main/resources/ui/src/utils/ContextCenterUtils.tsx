@@ -19,10 +19,10 @@ import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 
 export {
   assetToDocumentItem,
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  CONTEXT_CENTER_DOCUMENTS_FQN,
   contextFileToDocumentItem,
   contextFileToUploadedDocumentItem,
+  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  CONTEXT_CENTER_DOCUMENTS_FQN,
   createArticleKnowledgePage,
   fetchContextCenterDocuments,
   formatBytes,

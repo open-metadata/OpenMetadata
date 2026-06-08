@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
 export {
   getTableFieldsFromTableDetails,
   getUsageData,
 } from './DataAssetSummaryPanelPureUtils';
+export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
 
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
@@ -55,6 +55,11 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
+import {
+  ColumnSearchResult,
+  getTableFieldsFromTableDetails,
+  getUsageData,
+} from './DataAssetSummaryPanelPureUtils';
 import { DRAWER_NAVIGATION_OPTIONS, getEntityName } from './EntityUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
@@ -63,11 +68,6 @@ import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TableUtils';
-import {
-  ColumnSearchResult,
-  getTableFieldsFromTableDetails,
-  getUsageData,
-} from './DataAssetSummaryPanelPureUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (

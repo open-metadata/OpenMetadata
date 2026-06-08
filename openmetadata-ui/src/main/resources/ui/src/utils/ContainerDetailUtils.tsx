@@ -233,4 +233,3 @@ export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     />
   );
 };
-

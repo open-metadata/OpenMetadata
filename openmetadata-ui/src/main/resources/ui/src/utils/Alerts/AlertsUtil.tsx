@@ -83,9 +83,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
-import {
-  Status,
-} from '../../generated/events/api/typedEvent';
+import { Status } from '../../generated/events/api/typedEvent';
 import {
   EventFilterRule,
   HTTPMethod,
@@ -105,12 +103,12 @@ import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchUtils';
 import { showErrorToast } from '../ToastUtils';
+import './alerts-util.less';
 import {
   getAlertEventsFilterLabels,
   getMessageFromArgumentName,
   getSelectOptionsFromEnum,
 } from './AlertsUtilPure';
-import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -234,7 +232,6 @@ const getUserBotOptions = async (searchText: string) => {
 const getTeamOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
 };
-
 
 export const getSupportedFilterOptions = (
   selectedFilters: EventFilterRule[],
@@ -1192,7 +1189,6 @@ export const getConditionalField = (
   );
 };
 
-
 export const getSourceOptionsFromResourceList = (
   resources: Array<string>,
   showCheckbox?: boolean,
@@ -1320,4 +1316,3 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     alertIcon,
   };
 };
-

@@ -29,8 +29,8 @@ export {
   getExploreURLWithFilters,
   getModifiedQueryFilterWithSelectedAssets,
   getSimpleExploreURLForAssetTypes,
-  isValidElasticsearchQuery,
   getTotalResourceCount,
+  isValidElasticsearchQuery,
 } from './CuratedAssetsPureUtils';
 
 export interface CuratedAssetsFormSelectedAssetsInfo {
