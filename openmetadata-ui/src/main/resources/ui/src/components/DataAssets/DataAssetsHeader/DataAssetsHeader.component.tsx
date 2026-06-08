@@ -611,7 +611,7 @@ export const DataAssetsHeader = ({
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
-      !canCreateTask
+      (!canCreateTask && !currentUser?.isAdmin)
     ) {
       return null;
     }
@@ -642,6 +642,7 @@ export const DataAssetsHeader = ({
     isDarAwaitingGrant,
     isDarGranted,
     canCreateTask,
+    currentUser,
     t,
   ]);
 

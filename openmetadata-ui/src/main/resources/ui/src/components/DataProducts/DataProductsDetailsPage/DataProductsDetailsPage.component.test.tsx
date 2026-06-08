@@ -166,6 +166,10 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
     });
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermission: jest.fn().mockResolvedValue({}),
+      permissions: { task: { Create: false } },
+    });
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
