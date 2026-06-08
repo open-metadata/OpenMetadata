@@ -255,6 +255,28 @@ class TestStarRocksMvDdlNormalization:
             "WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
 
+    def test_literal_as_select_in_comment(self):
+        """A literal 'AS SELECT' inside a COMMENT must not be taken as the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "COMMENT 'generated AS SELECT rollup' "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+    def test_literal_as_with_in_properties(self):
+        """A literal 'AS WITH' inside a PROPERTIES value must not be taken as the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "PROPERTIES ('note'='generated AS WITH rollup') "
+            "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv AS "
+            "WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+
 
 class TestStarRocksViewLineageProducer:
     """The view-lineage path parses ``view_definition`` directly, so the
@@ -297,3 +319,39 @@ class TestStarRocksViewLineageProducer:
         assert produced[0].view_definition == "CREATE VIEW mv AS SELECT id FROM t"
         assert produced[1].view_definition == "SELECT a FROM t"
         assert produced[2].view_definition is None
+
+
+class TestStarRocksQueryLogHook:
+    """The query-log path must actually invoke prepare_lineage_query. Unit tests
+    that call normalize_mv_ddl() directly would still pass if the hook wiring
+    broke, so exercise the inherited yield_table_queries_from_logs() end to end."""
+
+    def test_yield_from_logs_normalizes_mv_ddl(self, tmp_path):
+        import csv
+        from types import SimpleNamespace
+
+        from metadata.ingestion.source.database.starrocks.lineage import (
+            StarRocksLineageSource,
+        )
+
+        mv_ddl = (
+            "CREATE MATERIALIZED VIEW mv "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        log_file = tmp_path / "query_log.csv"
+        with open(log_file, "w", encoding="utf-8", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["query_text"])
+            writer.writerow([mv_ddl])
+
+        source = StarRocksLineageSource.__new__(StarRocksLineageSource)
+        source.source_config = SimpleNamespace(queryLogFilePath=str(log_file))
+        source.config = SimpleNamespace(serviceName="svc")
+        source.get_database_name = lambda query_dict: "db"
+        source.get_schema_name = lambda query_dict: "s"
+
+        queries = list(source.yield_table_queries_from_logs())
+
+        assert len(queries) == 1
+        assert queries[0].query == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"

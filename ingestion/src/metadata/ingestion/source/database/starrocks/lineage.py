@@ -31,6 +31,18 @@ MV_NAME_PATTERN = re.compile(
     r"(?:IF\s+NOT\s+EXISTS\s+)?((?:`[^`]+`|\w+)(?:\.(?:`[^`]+`|\w+))*)",
     re.IGNORECASE,
 )
+QUOTED_STRING_PATTERN = re.compile(r"'(?:[^'\\]|\\.|'')*'|\"(?:[^\"\\]|\\.|\"\")*\"")
+
+
+def _mask_quoted_strings(query: str) -> str:
+    """Replace the contents of single/double-quoted string literals with
+    same-length filler. Length-preserving, so offsets into the result map 1:1
+    onto the original query. Used so a literal ``AS SELECT``/``AS WITH`` inside
+    a COMMENT or PROPERTIES value is not mistaken for the query body.
+    """
+    return QUOTED_STRING_PATTERN.sub(
+        lambda m: m.group()[0] + "x" * (len(m.group()) - 2) + m.group()[-1], query
+    )
 
 
 def normalize_mv_ddl(query: str) -> str:
@@ -40,12 +52,13 @@ def normalize_mv_ddl(query: str) -> str:
     Discards every clause between the MV name and the query body (column list,
     COMMENT, PARTITION BY, DISTRIBUTED BY, BUCKETS, ORDER BY, REFRESH,
     PROPERTIES). Anchors on the ``AS`` that introduces the body (``AS SELECT``
-    / ``AS WITH``) so a stray ``as`` inside a COMMENT or PROPERTIES value is not
-    mistaken for it. Non-MV queries are returned unchanged.
+    / ``AS WITH``); quoted strings are masked first so an ``AS SELECT`` inside a
+    COMMENT or PROPERTIES value is not mistaken for it. Non-MV queries are
+    returned unchanged.
     """
     result = query
     if MV_DDL_PATTERN.match(query):
-        body_match = MV_BODY_PATTERN.search(query)
+        body_match = MV_BODY_PATTERN.search(_mask_quoted_strings(query))
         name_match = MV_NAME_PATTERN.match(query)
         if body_match and name_match:
             body = query[body_match.end() :].strip()
