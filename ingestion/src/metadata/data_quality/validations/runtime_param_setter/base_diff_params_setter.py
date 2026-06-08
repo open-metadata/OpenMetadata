@@ -66,13 +66,7 @@ class ServiceSpecPatch:
 
 @runtime_checkable
 class SupportsConnectionDict(Protocol):
-    """Capability a connection opts into when it can produce a data-diff
-    connection dict (e.g. when a plain SQLAlchemy URL cannot express its auth).
-
-    This is structural: a connection satisfies it simply by defining
-    ``get_connection_dict`` and does not import this Protocol. Only the data-diff
-    layer that consumes the dict depends on it.
-    """
+    """A connection that can expose its config as a data-diff connection dict."""
 
     def get_connection_dict(self) -> dict: ...
 
@@ -144,9 +138,7 @@ class BaseTableParameter:
         cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
-        """
-        Get the connection dictionary for the service.
-        """
+        """Return the service connection for data diff, as a dict or URL string."""
         if not service_connection_config:
             return None
 
