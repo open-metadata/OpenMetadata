@@ -1,0 +1,2 @@
+-- Post data migration script for OpenMetadata 2.0.2
+-- Backfill for glossaryTermRelationSettings cardinality runs in the Java migration step.

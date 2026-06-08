@@ -102,6 +102,9 @@ public class GlossaryTermRelationSettingsIT {
       assertNotNull(relationType.get("category"), "category should exist for " + name);
       assertNotNull(relationType.get("isSymmetric"), "isSymmetric should exist for " + name);
       assertNotNull(relationType.get("isTransitive"), "isTransitive should exist for " + name);
+      JsonNode cardinalityNode = relationType.get("cardinality");
+      assertNotNull(cardinalityNode, "cardinality should exist for " + name);
+      assertFalse(cardinalityNode.isNull(), "cardinality should not be null for " + name);
     }
 
     assertTrue(hasRelatedTo, "Should have 'relatedTo' relation type");
