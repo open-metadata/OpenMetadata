@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.server.SearchTestImages;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -54,7 +57,13 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SearchConsumerFieldBehaviorIT {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  // Discovered from the schema-defined language registry (IndexMappingLanguage) that the loader
+  // itself uses to pick a per-language mapping file, so a newly added language is exercised
+  // automatically — and a declared language with no mapping files fails fast in createIndex.
+  private static final List<String> LANGUAGES =
+      Arrays.stream(IndexMappingLanguage.values())
+          .map(language -> language.toString().toLowerCase(Locale.ROOT))
+          .toList();
 
   private static final String TAG_FQN = "PII.Sensitive";
   private static final String TIER_FQN = "Tier.Tier1";
