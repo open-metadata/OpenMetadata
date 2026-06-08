@@ -449,8 +449,13 @@ describe('transformDomainFormData', () => {
     glossaryTerms: [],
     owners: [],
     experts: [],
+    reviewers: [],
     domainType: null,
     domains: undefined,
+    dataProductType: null,
+    visibility: null,
+    portfolioPriority: null,
+    extension: {},
   };
 
   it('maps a populated DOMAIN form into a CreateDomain payload', () => {
@@ -578,5 +583,57 @@ describe('transformDomainFormData', () => {
     expect(result.displayName).toBe('Marketing');
     expect(result.description).toBe('Marketing domain');
     expect(result.coverImage).toBe(coverImage);
+  });
+
+  it('unwraps a single entityReference extension picker item to its EntityReference', () => {
+    // USER_TEAM_SELECT_INPUT with multiple=false stores a single
+    // DomainFormSelectItem ({ id, label, value }), but the API expects the
+    // bare EntityReference. Regression guard for the intake-form entity-ref
+    // create flow returning 400.
+    const stewardRef: EntityReference = {
+      id: 'user-1',
+      type: 'user',
+      name: 'admin',
+    };
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        steward: { id: 'user-1', label: 'admin', value: stewardRef },
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.steward).toEqual(stewardRef);
+  });
+
+  it('unwraps entityReferenceList + enum extension items, leaving scalars intact', () => {
+    const userA: EntityReference = { id: 'a', type: 'user', name: 'a' };
+    const userB: EntityReference = { id: 'b', type: 'user', name: 'b' };
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        stewards: [
+          { id: 'a', label: 'a', value: userA },
+          { id: 'b', label: 'b', value: userB },
+        ],
+        tier: { id: 'Gold', label: 'Gold', value: 'Gold' },
+        notes: 'plain text stays as-is',
+        count: 7,
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.stewards).toEqual([userA, userB]);
+    expect(result.extension?.tier).toBe('Gold');
+    expect(result.extension?.notes).toBe('plain text stays as-is');
+    expect(result.extension?.count).toBe(7);
   });
 });
