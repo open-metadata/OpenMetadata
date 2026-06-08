@@ -16,16 +16,22 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -334,6 +340,84 @@ class AbstractEventConsumerTest {
         1,
         testEventConsumer.getCollectedSuccessfulEvents().size(),
         "Only successful events should be collected");
+  }
+
+  @Test
+  void testEventRecordedOncePerSubscriptionAcrossDestinationTypes() throws Exception {
+    RealPublishConsumer consumer = new RealPublishConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+
+    UUID webhookId = UUID.randomUUID();
+    UUID emailId = UUID.randomUUID();
+    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
+    destinations.put(webhookId, mockDestination(SubscriptionType.WEBHOOK));
+    destinations.put(emailId, mockDestination(SubscriptionType.EMAIL));
+    consumer.destinationMap = destinations;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, emailId));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    List<?> recorded = (List<?>) getField(consumer, "successfulEvents");
+    assertEquals(
+        1,
+        recorded.size(),
+        "Event delivered to two destination types must be recorded once: "
+            + "successful_sent_change_events is keyed by (change_event_id, event_subscription_id)");
+    assertSame(event, recorded.getFirst());
+
+    AlertMetrics metrics = (AlertMetrics) getField(consumer, "alertMetrics");
+    assertEquals(
+        2,
+        metrics.getSuccessEvents(),
+        "Per-destination-type success metric is intentionally preserved");
+  }
+
+  @SuppressWarnings("unchecked")
+  private Destination<ChangeEvent> mockDestination(SubscriptionType type) {
+    Destination<ChangeEvent> destination = mock(Destination.class);
+    SubscriptionDestination subscriptionDestination = mock(SubscriptionDestination.class);
+    lenient().when(subscriptionDestination.getType()).thenReturn(type);
+    lenient().when(destination.getEnabled()).thenReturn(true);
+    lenient().when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
+    lenient().when(destination.requiresRecipients()).thenReturn(false);
+    return destination;
+  }
+
+  private static void setField(Object target, String name, Object value) throws Exception {
+    Field field = AbstractEventConsumer.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
+
+  private static Object getField(Object target, String name) throws Exception {
+    Field field = AbstractEventConsumer.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
+  static class RealPublishConsumer extends AbstractEventConsumer {
+    RealPublishConsumer(DIContainer dependencies) {
+      super(dependencies);
+    }
+
+    @Override
+    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
+      return true;
+    }
+
+    @Override
+    public boolean getEnabled() {
+      return true;
+    }
   }
 
   private ChangeEvent createMockChangeEvent() {
