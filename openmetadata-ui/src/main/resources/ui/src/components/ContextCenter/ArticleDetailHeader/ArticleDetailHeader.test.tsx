@@ -81,7 +81,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../common/Breadcrumb/Breadcrumb.component', () =>
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
 
