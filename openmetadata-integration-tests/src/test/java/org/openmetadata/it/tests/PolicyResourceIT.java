@@ -23,6 +23,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -840,6 +845,90 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     Policy fetched = getEntity(policyId);
     String updatedCondition = fetched.getRules().get(0).getCondition();
     assertEquals("matchAnyTag('" + newFqn + "')", updatedCondition);
+  }
+
+  /**
+   * Regression for the lost-update race in PolicyConditionUpdater (issue #28718): two tags
+   * referenced by the same policy rule are renamed at the same moment. Both rewrites must survive —
+   * a blind full-row write would let one rename clobber the other. Repeated to raise the odds of
+   * hitting the race; with the optimistic compare-and-swap retry it passes deterministically.
+   */
+  @Test
+  void test_concurrentTagRenamesBothUpdatePolicyCondition(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (int iteration = 0; iteration < 3; iteration++) {
+      Tag tagA = createTagInNewClassification(client, ns, "ConcurrentA" + iteration);
+      Tag tagB = createTagInNewClassification(client, ns, "ConcurrentB" + iteration);
+
+      Rule rule =
+          new Rule()
+              .withName("concurrentRenameRule")
+              .withResources(List.of(ALL_RESOURCES))
+              .withOperations(List.of(MetadataOperation.VIEW_ALL))
+              .withEffect(Effect.ALLOW)
+              .withCondition(
+                  "matchAnyTag('"
+                      + tagA.getFullyQualifiedName()
+                      + "', '"
+                      + tagB.getFullyQualifiedName()
+                      + "')");
+
+      Policy policy =
+          createEntity(
+              new CreatePolicy()
+                  .withName(ns.prefix("concurrentRenamePolicy" + iteration))
+                  .withRules(List.of(rule))
+                  .withDescription("Policy referencing two tags renamed concurrently"));
+
+      List<String> newFqns = renameTagsConcurrently(client, tagA, tagB);
+
+      String condition = getEntity(policy.getId().toString()).getRules().get(0).getCondition();
+      assertTrue(
+          condition.contains(newFqns.get(0)),
+          "Rename of tag A was lost from policy condition: " + condition);
+      assertTrue(
+          condition.contains(newFqns.get(1)),
+          "Rename of tag B was lost from policy condition: " + condition);
+    }
+  }
+
+  private Tag createTagInNewClassification(
+      OpenMetadataClient client, TestNamespace ns, String tagName) {
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix(tagName + "Classification"))
+                    .withDescription("Classification for concurrent rename test"));
+    return client
+        .tags()
+        .create(
+            new CreateTag()
+                .withName(tagName)
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag renamed concurrently"));
+  }
+
+  private List<String> renameTagsConcurrently(OpenMetadataClient client, Tag tagA, Tag tagB)
+      throws Exception {
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<String> renameA = executor.submit(() -> renameTag(client, barrier, tagA));
+      Future<String> renameB = executor.submit(() -> renameTag(client, barrier, tagB));
+      return List.of(renameA.get(60, TimeUnit.SECONDS), renameB.get(60, TimeUnit.SECONDS));
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private String renameTag(OpenMetadataClient client, CyclicBarrier barrier, Tag tag)
+      throws Exception {
+    tag.setName(tag.getName() + "Renamed");
+    barrier.await(30, TimeUnit.SECONDS);
+    return client.tags().update(tag.getId().toString(), tag).getFullyQualifiedName();
   }
 
   @Test
