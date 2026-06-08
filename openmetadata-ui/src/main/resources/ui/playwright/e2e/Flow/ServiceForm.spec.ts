@@ -289,7 +289,7 @@ test.describe(
         if (await page.getByTestId('next-button').isVisible()) {
           await page.getByTestId('next-button').click();
 
-          await expect(page.getByTestId('field-hint')).toContainText(
+          await expect(page.locator('[slot="errorMessage"]')).toContainText(
             'Name is required'
           );
         }
@@ -313,7 +313,7 @@ test.describe(
         await page.locator('#service-name').fill(`${SERVICE_NAMES.service1}`);
 
         await expect(
-          page.getByTestId('service-name-card').getByTestId('field-hint')
+          page.getByTestId('service-name-card').locator('[slot="errorMessage"]')
         ).toContainText(
           `A database service named ${SERVICE_NAMES.service1} already exists. `
         );

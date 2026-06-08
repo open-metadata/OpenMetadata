@@ -39,7 +39,8 @@ export const PasswordInput = ({
   inputClassName,
   wrapperClassName,
   tooltipClassName,
-  // AriaTextField props go into ...props so they reach TextField/AriaTextField
+  // Everything else (value, onChange, isRequired, isDisabled, isInvalid, id, etc.)
+  // goes into ...props so they reach TextField/AriaTextField
   ...props
 }: PasswordInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -61,6 +62,8 @@ export const PasswordInput = ({
     </button>
   );
 
+  // labelRow is rendered OUTSIDE TextField so FileTrigger's hidden <input type="file">
+  // never enters AriaTextField's InputContext and doesn't receive the controlled value.
   const labelRow =
     label || allowUpload ? (
       <div className="tw:flex tw:w-full tw:items-baseline tw:justify-between tw:gap-2">
@@ -90,9 +93,12 @@ export const PasswordInput = ({
     ) : null;
 
   return (
-    <TextField aria-label={label ?? placeholder} {...props} value={value ?? ''}>
-      <>
-        {labelRow}
+    <div className="tw:flex tw:h-max tw:w-full tw:flex-col tw:items-start tw:justify-start tw:gap-1.5">
+      {labelRow}
+      <TextField
+        aria-label={label ? undefined : placeholder}
+        {...props}
+        value={value ?? ''}>
         <InputBase
           fontSize={fontSize}
           groupRef={groupRef}
@@ -109,9 +115,9 @@ export const PasswordInput = ({
           type={showPassword ? 'text' : 'password'}
           wrapperClassName={wrapperClassName}
         />
-        {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
-      </>
-    </TextField>
+      </TextField>
+      {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+    </div>
   );
 };
 

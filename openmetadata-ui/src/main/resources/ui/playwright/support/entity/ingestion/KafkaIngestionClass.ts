@@ -70,10 +70,12 @@ class KafkaIngestionClass extends ServiceBaseClass {
     await page
       .getByTestId('filter-section-topicFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.entityName);
     await page
       .getByTestId('filter-section-topicFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

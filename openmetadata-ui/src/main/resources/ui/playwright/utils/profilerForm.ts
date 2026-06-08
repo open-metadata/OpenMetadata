@@ -27,12 +27,12 @@ export type ProfileSampleConfig =
     };
 
 export const expandAdvancedConfig = async (page: Page) => {
-  const collapseHeader = page
-    .locator('.advanced-properties-collapse .ant-collapse-header')
-    .first();
+  const collapseHeader = page.getByTestId('ingestion-section-advanced');
   await collapseHeader.waitFor();
   const isExpanded =
-    (await collapseHeader.getAttribute('aria-expanded')) === 'true';
+    (await collapseHeader
+      .getByTestId('connection-advanced-section-fields')
+      .isVisible()) === true;
   if (!isExpanded) {
     await collapseHeader.click();
   }

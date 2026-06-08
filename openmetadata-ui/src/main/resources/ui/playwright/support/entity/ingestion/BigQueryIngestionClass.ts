@@ -120,10 +120,12 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     await page
       .getByTestId('filter-section-schemaFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.filterPattern);
     await page
       .getByTestId('filter-section-schemaFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

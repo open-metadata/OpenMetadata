@@ -66,11 +66,13 @@ class MlFlowIngestionClass extends ServiceBaseClass {
     await page
       .getByTestId('filter-section-mlModelFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.entityName);
 
     await page
       .getByTestId('filter-section-mlModelFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

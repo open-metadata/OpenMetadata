@@ -361,7 +361,9 @@ const SectionFields = ({
     );
 
     return (
-      <div className="connection-advanced-section-fields tw:flex tw:flex-col tw:gap-4">
+      <div
+        className="connection-advanced-section-fields tw:flex tw:flex-col tw:gap-4"
+        data-testid="connection-advanced-section-fields">
         {hiddenProperties.map((element, index) =>
           renderProperty(element, index, 'tw:hidden')
         )}

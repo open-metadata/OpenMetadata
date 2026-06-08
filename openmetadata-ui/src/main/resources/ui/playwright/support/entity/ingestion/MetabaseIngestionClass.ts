@@ -78,11 +78,13 @@ class MetabaseIngestionClass extends ServiceBaseClass {
     await page
       .getByTestId('filter-section-dashboardFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.tableName);
 
     await page
       .getByTestId('filter-section-dashboardFilterPattern')
       .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 
