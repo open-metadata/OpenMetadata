@@ -18,6 +18,7 @@ import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +80,7 @@ import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
 import org.openmetadata.service.search.SearchConsumerFields;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -845,6 +847,46 @@ public class SystemRepository {
           .withPassed(Boolean.FALSE)
           .withMessage("Search instance is not reachable or available");
     }
+  }
+
+  public record ReindexStatus(List<String> stalePending, int untrackedCount) {}
+
+  static ReindexStatus classifyReindexStatus(
+      Map<String, MappingDriftState> drift, Set<String> existingIndexes) {
+    List<String> stalePending = new ArrayList<>();
+    int untrackedCount = 0;
+    for (Map.Entry<String, MappingDriftState> entry : drift.entrySet()) {
+      if (existingIndexes.contains(entry.getKey())) {
+        if (entry.getValue() == MappingDriftState.STALE) {
+          stalePending.add(entry.getKey());
+        } else if (entry.getValue() == MappingDriftState.UNTRACKED) {
+          untrackedCount++;
+        }
+      }
+    }
+    Collections.sort(stalePending);
+    return new ReindexStatus(stalePending, untrackedCount);
+  }
+
+  static String buildReindexStatusMessage(ReindexStatus status) {
+    String message;
+    if (status.stalePending().isEmpty()) {
+      message = "All deployed indexes were built from the current code mappings.";
+      if (status.untrackedCount() > 0) {
+        message +=
+            String.format(
+                " %d index(es) are not yet version-tracked; run a reindex to enable drift "
+                    + "detection.",
+                status.untrackedCount());
+      }
+    } else {
+      message =
+          String.format(
+              "WARNING: %d deployed index(es) were built from an older code mapping and need a "
+                  + "reindex: %s",
+              status.stalePending().size(), status.stalePending());
+    }
+    return message;
   }
 
   @VisibleForTesting
