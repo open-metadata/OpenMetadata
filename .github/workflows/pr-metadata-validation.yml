@@ -152,11 +152,26 @@ jobs:
               }));
             }
 
-            // Cross-repo links: body-parsed, trusted authors + allowlisted repos only.
-            function crossRepoRefsFromBody(text, association) {
-              if (!TRUSTED_ASSOCIATIONS.has(association)) {
-                return [];
+            // Trust the author for cross-repo refs if their PR association is already a trusted
+            // value, or — since the default GITHUB_TOKEN cannot see *private* org membership and
+            // reports such authors as CONTRIBUTOR — by confirming org membership with the elevated
+            // token. Fork PRs from non-members still resolve to untrusted.
+            async function isTrustedAuthor(pr) {
+              let trusted = TRUSTED_ASSOCIATIONS.has(pr.author_association);
+              const client = elevatedClient();
+              if (!trusted && client && pr.user && pr.user.login) {
+                try {
+                  await client.rest.orgs.checkMembershipForUser({ org: owner, username: pr.user.login });
+                  trusted = true; // 204 => org member (including private membership)
+                } catch (error) {
+                  trusted = false; // 404 => not a member
+                }
               }
+              return trusted;
+            }
+
+            // Cross-repo links: body-parsed, allowlisted repos only (caller gates on author trust).
+            function crossRepoRefsFromBody(text) {
               const refs = [];
               const add = (refOwner, refRepo, number) => {
                 if (refOwner === owner && ALLOWED_CROSS_REPOS.has(refRepo)) {
@@ -303,7 +318,9 @@ jobs:
 
             async function collectIssueProblems(pr) {
               const native = await nativeLinkedRefs(pr.number);
-              const cross = crossRepoRefsFromBody(`${pr.title || ''}\n${pr.body || ''}`, pr.author_association);
+              const cross = (await isTrustedAuthor(pr))
+                ? crossRepoRefsFromBody(`${pr.title || ''}\n${pr.body || ''}`)
+                : [];
               const refs = dedupeRefs([...native, ...cross]);
               if (refs.length === 0) {
                 return [
