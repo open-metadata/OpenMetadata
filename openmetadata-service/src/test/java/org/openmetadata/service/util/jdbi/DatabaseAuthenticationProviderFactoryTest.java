@@ -10,17 +10,15 @@ import org.junit.jupiter.api.Test;
 class DatabaseAuthenticationProviderFactoryTest {
 
   @Test
-  void testGet_withAzureTrueInJdbcUrl_returnsAzureDatabaseAuthenticationProvider() {
+  void testGet_withAzureTrueInJdbcUrl_returnsEmptyOptional() {
+    // Azure Entra ID auth is now handled per-connection by the Azure JDBC authentication plugin,
+    // so the factory returns no static-token provider for azure=true.
     String jdbcURL =
         "jdbc:postgresql://your-database.postgres.database.azure.com:5432/testdb?azure=true&sslmode=require";
 
     Optional<DatabaseAuthenticationProvider> provider =
         DatabaseAuthenticationProviderFactory.get(jdbcURL);
-    assertTrue(provider.isPresent(), "Expected AzureDatabaseAuthenticationProvider to be present");
-    assertInstanceOf(
-        AzureDatabaseAuthenticationProvider.class,
-        provider.get(),
-        "Expected instance of AzureDatabaseAuthenticationProvider");
+    assertFalse(provider.isPresent(), "Expected no static-token provider for Azure Entra ID");
   }
 
   @Test

@@ -40,6 +40,15 @@ import org.openmetadata.service.util.jdbi.AwsRdsDatabaseAuthenticationProvider;
 @Setter
 public class HikariCPDataSourceFactory extends DataSourceFactory {
 
+  static final String AZURE_AUTH_URL_MARKER = "azure=true";
+  static final String POSTGRESQL_AUTH_PLUGIN_PROPERTY = "authenticationPluginClassName";
+  static final String AZURE_POSTGRESQL_AUTH_PLUGIN =
+      "com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin";
+  static final String MYSQL_DEFAULT_AUTH_PLUGIN_PROPERTY = "defaultAuthenticationPlugin";
+  static final String MYSQL_AUTH_PLUGINS_PROPERTY = "authenticationPlugins";
+  static final String AZURE_MYSQL_AUTH_PLUGIN =
+      "com.azure.identity.extensions.jdbc.mysql.AzureMysqlAuthenticationPlugin";
+
   @JsonProperty
   @Min(1)
   private int minimumIdle = 10;
@@ -81,11 +90,13 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   @JsonIgnore private HikariDataSource hikariDataSource;
   @JsonIgnore private boolean isAwsRdsIamAuth = false;
   @JsonIgnore private AwsRdsDatabaseAuthenticationProvider awsRdsAuthProvider;
+  @JsonIgnore private boolean isAzureEntraAuth = false;
 
   @Override
   public ManagedDataSource build(MetricRegistry metricRegistry, String name) {
     // Initialize AWS RDS IAM authentication if configured
     initializeAwsRdsIamAuth();
+    initializeAzureEntraAuth();
 
     HikariConfig config = buildHikariConfig(name);
 
@@ -210,6 +221,10 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       }
     }
 
+    if (isAzureEntraAuth) {
+      applyAzureEntraAuthProperties(dataSourceProperties, driverClassName);
+    }
+
     // Configure authentication
     if (isAwsRdsIamAuth) {
       // For AWS RDS IAM, use custom DataSource that generates fresh tokens per connection
@@ -256,6 +271,31 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     if (isAwsRdsIamAuth) {
       this.awsRdsAuthProvider = new AwsRdsDatabaseAuthenticationProvider();
       LOG.info("AWS RDS IAM authentication enabled - tokens will be generated per connection");
+    }
+  }
+
+  private void initializeAzureEntraAuth() {
+    this.isAzureEntraAuth = hasAzureAuthMarker(getUrl());
+    if (isAzureEntraAuth) {
+      LOG.info(
+          "Azure Entra ID authentication enabled - access tokens are refreshed per connection by the Azure JDBC authentication plugin");
+    }
+  }
+
+  static boolean hasAzureAuthMarker(String url) {
+    return url != null
+        && (url.contains("?" + AZURE_AUTH_URL_MARKER) || url.contains("&" + AZURE_AUTH_URL_MARKER));
+  }
+
+  static void applyAzureEntraAuthProperties(Properties props, String driverClass) {
+    boolean isPostgres = driverClass != null && driverClass.contains("postgresql");
+    boolean isMysql =
+        driverClass != null && (driverClass.contains("mysql") || driverClass.contains("mariadb"));
+    if (isPostgres) {
+      props.put(POSTGRESQL_AUTH_PLUGIN_PROPERTY, AZURE_POSTGRESQL_AUTH_PLUGIN);
+    } else if (isMysql) {
+      props.put(MYSQL_DEFAULT_AUTH_PLUGIN_PROPERTY, AZURE_MYSQL_AUTH_PLUGIN);
+      props.put(MYSQL_AUTH_PLUGINS_PROPERTY, AZURE_MYSQL_AUTH_PLUGIN);
     }
   }
 
