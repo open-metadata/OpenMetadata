@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils.v200;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -1133,7 +1135,10 @@ public class MigrationUtil {
             ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
             : null;
     String aboutFqnHash =
-        event.getAbout() != null ? FullyQualifiedName.buildHash(event.getAbout()) : null;
+        nullOrEmpty(event.getAbout())
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
     String domains =
         event.getDomains() == null || event.getDomains().isEmpty()
             ? null

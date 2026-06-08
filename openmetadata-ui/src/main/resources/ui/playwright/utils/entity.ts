@@ -2242,6 +2242,7 @@ export const checkExploreSearchFilter = async (
     await page.fill('[data-testid="search-input"]', entityTypeId);
     await page.getByTestId(entityTypeId).click();
     await entitySearchResponse;
+    await page.getByTestId('update-btn').click();
   }
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(

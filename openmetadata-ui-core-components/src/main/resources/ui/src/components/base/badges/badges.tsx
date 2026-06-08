@@ -163,14 +163,16 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
   const colors = withPillTypes[type];
 
   const pillSizes = {
-    sm: 'tw:py-0.5 tw:px-2 tw:text-xs tw:font-medium',
-    md: 'tw:py-0.5 tw:px-2.5 tw:text-sm tw:font-medium',
-    lg: 'tw:py-1 tw:px-3 tw:text-sm tw:font-medium',
+    xs: 'tw:py-0.5 tw:px-1.5 tw:text-[10px] tw:leading-4',
+    sm: 'tw:py-0.5 tw:px-2 tw:text-xs',
+    md: 'tw:py-0.5 tw:px-2.5 tw:text-sm',
+    lg: 'tw:py-1 tw:px-3 tw:text-sm',
   };
   const badgeSizes = {
-    sm: 'tw:py-0.5 tw:px-1.5 tw:text-xs tw:font-medium',
-    md: 'tw:py-0.5 tw:px-2 tw:text-sm tw:font-medium',
-    lg: 'tw:py-1 tw:px-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
+    xs: 'tw:py-0.5 tw:px-1 tw:text-[10px] tw:leading-4',
+    sm: 'tw:py-0.5 tw:px-1.5 tw:text-xs',
+    md: 'tw:py-0.5 tw:px-2 tw:text-sm',
+    lg: 'tw:py-1 tw:px-2.5 tw:text-sm tw:rounded-lg',
   };
 
   const sizes = {
@@ -214,15 +216,17 @@ export const BadgeWithDot = <T extends BadgeTypes>(
   const colors = withBadgeTypes[type];
 
   const pillSizes = {
-    sm: 'tw:gap-1 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-xs tw:font-medium',
-    md: 'tw:gap-1.5 tw:py-0.5 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium',
-    lg: 'tw:gap-1.5 tw:py-1 tw:pl-2.5 tw:pr-3 tw:text-sm tw:font-medium',
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-[10px] tw:leading-4',
+    sm: 'tw:gap-1 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-xs',
+    md: 'tw:gap-1.5 tw:py-0.5 tw:pl-2 tw:pr-2.5 tw:text-sm',
+    lg: 'tw:gap-1.5 tw:py-1 tw:pl-2.5 tw:pr-3 tw:text-sm',
   };
 
   const badgeSizes = {
-    sm: 'tw:gap-1 tw:py-0.5 tw:px-1.5 tw:text-xs tw:font-medium',
-    md: 'tw:gap-1.5 tw:py-0.5 tw:px-2 tw:text-sm tw:font-medium',
-    lg: 'tw:gap-1.5 tw:py-1 tw:px-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:px-1 tw:text-[10px] tw:leading-4',
+    sm: 'tw:gap-1 tw:py-0.5 tw:px-1.5 tw:text-xs',
+    md: 'tw:gap-1.5 tw:py-0.5 tw:px-2 tw:text-sm',
+    lg: 'tw:gap-1.5 tw:py-1 tw:px-2.5 tw:text-sm tw:rounded-lg',
   };
 
   const sizes = {
@@ -273,6 +277,12 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
   const icon = IconLeading ? 'leading' : 'trailing';
 
   const pillSizes = {
+    xs: {
+      trailing:
+        'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+      leading:
+        'tw:gap-0.5 tw:py-0.5 tw:pr-1.5 tw:pl-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+    },
     sm: {
       trailing:
         'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1.5 tw:text-xs tw:font-medium',
@@ -290,6 +300,12 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
     },
   };
   const badgeSizes = {
+    xs: {
+      trailing:
+        'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+      leading:
+        'tw:gap-0.5 tw:py-0.5 tw:pr-1.5 tw:pl-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+    },
     sm: {
       trailing:
         'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1.5 tw:text-xs tw:font-medium',
@@ -360,11 +376,13 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-0.75 tw:pr-2 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1 tw:pr-2.5 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-1.5 tw:pr-3 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -415,11 +433,13 @@ export const BadgeWithImage = <T extends BadgeTypes>(
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-0.75 tw:pr-2 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1 tw:pr-2.5 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-1.5 tw:pr-3 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -489,11 +509,13 @@ export const BadgeWithButton = <T extends BadgeTypes>(
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-0.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-0.75 tw:text-xs tw:font-medium',
     md: 'tw:gap-0.5 tw:py-0.5 tw:pl-2.5 tw:pr-1 tw:text-sm tw:font-medium',
     lg: 'tw:gap-0.5 tw:py-1 tw:pl-3 tw:pr-1.5 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1 tw:pr-0.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-0.75 tw:text-xs tw:font-medium',
     md: 'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1 tw:text-sm tw:font-medium',
     lg: 'tw:gap-0.5 tw:py-1 tw:pl-2.5 tw:pr-1.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -552,12 +574,14 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:p-1',
     sm: 'tw:p-1.25',
     md: 'tw:p-1.5',
     lg: 'tw:p-2',
   };
 
   const badgeSizes = {
+    xs: 'tw:p-1',
     sm: 'tw:p-1.25',
     md: 'tw:p-1.5',
     lg: 'tw:p-2 tw:rounded-lg',

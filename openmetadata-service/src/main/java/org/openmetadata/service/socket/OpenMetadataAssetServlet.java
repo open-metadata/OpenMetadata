@@ -26,6 +26,10 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -233,26 +237,56 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   /**
-   * Check if the Accept-Encoding header supports the given encoding with non-zero quality value.
-   * Handles q-values properly (e.g., "br;q=0" means encoding is explicitly disabled).
+   * Check whether {@code Accept-Encoding} accepts {@code encoding} with a positive q-value.
+   *
+   * <p>RFC 7231 §5.3.4: a coding with {@code q=0} (or {@code q=0.0}, {@code q=0.000}) is
+   * explicitly refused by the client; any positive q (default {@code 1.0}) means accepted. The
+   * previous implementation matched {@code q=0.5} as "disabled" because it did a substring
+   * search for {@code "q=0"} — fixed here by parsing the q-value as a double.
+   *
+   * <p>Coding name match is exact, not prefix — {@code "brand"} no longer matches {@code "br"}.
+   * Wildcard ({@code "*"}) is honored as a fallback if no explicit match is present.
    */
   private boolean supportsEncoding(String acceptEncoding, String encoding) {
     if (acceptEncoding == null || acceptEncoding.isEmpty()) {
       return false;
     }
+    String target = encoding.toLowerCase(Locale.ROOT);
+    boolean wildcardEnabled = false;
+    for (String enc : acceptEncoding.toLowerCase(Locale.ROOT).split(",")) {
+      String[] parts = enc.trim().split(";");
+      String name = parts[0].trim();
+      boolean isTarget = name.equals(target);
+      boolean isWildcard = name.equals("*");
+      if (!isTarget && !isWildcard) {
+        continue;
+      }
+      boolean enabled = parseQValue(parts) > 0.0;
+      if (isTarget) {
+        return enabled;
+      }
+      wildcardEnabled = enabled;
+    }
+    return wildcardEnabled;
+  }
 
-    // Split by comma to handle multiple encodings
-    String[] encodings = acceptEncoding.toLowerCase().split(",");
-    for (String enc : encodings) {
-      enc = enc.trim();
-
-      // Check if this encoding matches
-      if (enc.startsWith(encoding)) {
-        // Check for q=0 which explicitly disables the encoding
-        return !enc.contains("q=0");
+  /**
+   * Parse the {@code q=} parameter from a split {@code Accept-Encoding} entry. Defaults to
+   * {@code 1.0} when no q is present and when q is malformed (RFC 7231 says: ignore the
+   * parameter, default applies).
+   */
+  private static double parseQValue(String[] parts) {
+    for (int i = 1; i < parts.length; i++) {
+      String param = parts[i].trim();
+      if (param.startsWith("q=")) {
+        try {
+          return Double.parseDouble(param.substring(2).trim());
+        } catch (NumberFormatException ignored) {
+          // Malformed q — fall through to default 1.0.
+        }
       }
     }
-    return false;
+    return 1.0;
   }
 
   private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
@@ -303,6 +337,16 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       String extension)
       throws ServletException, IOException {
     resp.setHeader("Content-Encoding", contentEncoding);
+    // Tell intermediate caches the response body varies by Accept-Encoding. Without this a
+    // shared cache (CDN, corporate proxy) may serve a brotli body to a client that only sent
+    // `Accept-Encoding: gzip` (or vice versa) because it doesn't know the negotiated encoding
+    // is request-dependent.
+    //
+    // Merge rather than overwrite — another filter (CORS, security headers) may have already
+    // set `Vary: Origin` or similar. Browsers and shared caches concatenate multiple Vary
+    // headers OR a single comma-separated value. We deliberately use the comma-separated
+    // form because it's the more conservative choice for older intermediaries.
+    appendVaryHeader(resp, "Accept-Encoding");
     String mimeType = req.getServletContext().getMimeType(requestUri);
 
     HttpServletRequestWrapper compressedReq =
@@ -332,6 +376,37 @@ public class OpenMetadataAssetServlet extends AssetServlet {
         };
 
     super.doGet(compressedReq, compressedResp);
+  }
+
+  /**
+   * Append a value to the {@code Vary} response header without clobbering any existing one.
+   *
+   * <p>Browsers and shared caches treat {@code Vary} as a comma-separated list (RFC 7231
+   * §7.1.4). Reading one header and then calling {@code setHeader} would discard a {@code Vary:
+   * Origin} that an upstream CORS filter may already have set; we instead merge all header lines.
+   * Dedupe is per-token (split on comma, trim, case-insensitive equals) — a substring check would
+   * falsely match {@code Accept} against {@code Accept-Encoding} and would also miss duplicates
+   * separated by inconsistent whitespace.
+   */
+  private static void appendVaryHeader(HttpServletResponse resp, String value) {
+    String target = value.trim();
+    Map<String, String> tokens = new LinkedHashMap<>();
+    Collection<String> existingHeaders = resp.getHeaders("Vary");
+    if (existingHeaders != null) {
+      for (String header : existingHeaders) {
+        if (header == null || header.isBlank()) {
+          continue;
+        }
+        for (String token : header.split(",")) {
+          String trimmed = token.trim();
+          if (!trimmed.isEmpty()) {
+            tokens.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+          }
+        }
+      }
+    }
+    tokens.putIfAbsent(target.toLowerCase(Locale.ROOT), target);
+    resp.setHeader("Vary", String.join(", ", tokens.values()));
   }
 
   /**
@@ -374,7 +449,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       return true;
     }
 
-    String extension = fileName.substring(dotIndex + 1).toLowerCase();
+    String extension = fileName.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
     return !STATIC_FILE_EXTENSIONS.contains(extension);
   }
 }

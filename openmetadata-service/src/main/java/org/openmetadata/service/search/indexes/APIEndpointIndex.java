@@ -126,10 +126,10 @@ public class APIEndpointIndex implements DataAssetIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("requestSchema.schemaFields.name.keyword", 5.0f);
     fields.put("requestSchema.schemaFields.description", 1.0f);
-    fields.put("requestSchema.schemaFields.children.name", 7.0f);
+    fields.put("request_field_namesFuzzy", 7.0f);
     fields.put("responseSchema.schemaFields.name.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.description", 1.0f);
-    fields.put("responseSchema.schemaFields.children.name", 7.0f);
+    fields.put("response_field_namesFuzzy", 7.0f);
     return fields;
   }
 }

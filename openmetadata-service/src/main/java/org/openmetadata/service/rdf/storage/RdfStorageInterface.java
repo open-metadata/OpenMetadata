@@ -23,10 +23,9 @@ public interface RdfStorageInterface {
    * <p>The default loops over {@link #storeEntity(String, UUID, Model)} per
    * entity — backward-compatible for backends that don't expose a batch path.
    * Backends with a streaming/transactional protocol (e.g. Fuseki's SPARQL
-   * UPDATE) SHOULD override this to issue one combined DELETE+LOAD per batch:
-   * the per-entity path costs ~2 HTTP round trips per entity (DELETE-scope +
-   * GSP POST) and dominated re-index throughput at ~6.7 entities/s before
-   * batching, even on localhost.
+   * UPDATE) SHOULD override this to issue one combined DELETE+INSERT per
+   * batch, reducing both request count and Fuseki transaction overhead during
+   * re-indexing.
    *
    * <p>Failure semantics: a batch is all-or-nothing — if the combined update
    * fails, the caller MUST fall back to per-entity {@link #storeEntity} to

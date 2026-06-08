@@ -32,6 +32,12 @@ export const DynamicHeightWidget = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(widget.h);
 
+  // Sync local height state when the layout is reset externally (e.g. persona switch).
+  // This causes the ResizeObserver effect to re-run and re-measure actual content height.
+  useEffect(() => {
+    setHeight(widget.h);
+  }, [widget.h]);
+
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
