@@ -20,7 +20,7 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import {
   getTaskDetailPathFromTask,

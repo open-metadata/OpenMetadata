@@ -10,39 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  ButtonUtility,
+  Card,
+  Dot,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
-import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-
-import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
-import { DisplayType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
-import { ReactComponent as BookMarkIcon } from '../../../assets/svg/ic-bookmark.svg';
-import { ReactComponent as BookMarkedIcon } from '../../../assets/svg/ic-bookmarked.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
-import { ReactComponent as UpdatedAtIcon } from '../../../assets/svg/ic-updated.svg';
-import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   KnowledgePage,
   PageType,
@@ -50,8 +38,7 @@ import {
   RecentlyViewedQuickLinks,
   RecentViewedKnowledgePage,
 } from '../../../interface/knowledge-center.interface';
-import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -59,16 +46,18 @@ import {
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
+import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import './knowledge-card.less';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 export interface KnowledgeCardProps {
   knowledgeItem: KnowledgePage;
@@ -82,16 +71,11 @@ export interface KnowledgeCardProps {
 
 const KnowledgeCard: FC<KnowledgeCardProps> = ({
   knowledgeItem,
-  onUpdateVote,
-  onFollow,
-  onUnFollow,
   onDelete,
   onRefreshTagsCategory,
   readonly = false,
 }) => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { currentUser } = useApplicationStore();
-  const USERId = currentUser?.id ?? '';
 
   const [knowledgePage, setKnowledgePage] = useState(knowledgeItem);
   const [permissions, setPermissions] = useState<OperationPermission>(
@@ -104,23 +88,11 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     owners = [],
     updatedAt,
     description = '',
-    votes,
-    updatedBy,
-    followers = [],
   } = knowledgePage;
 
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [votesLoading, setVotesLoading] = useState<{
-    votedUp: boolean;
-    votedDown: boolean;
-  }>({
-    votedUp: false,
-    votedDown: false,
-  });
-
-  const [isBookmaking, setIsBookmaking] = useState(false);
   const {
     preferences: { recentlyViewedQuickLinks },
   } = useCurrentUserPreferences();
@@ -139,66 +111,16 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     }
   };
 
-  const voteStatus = useMemo(() => {
-    if (isUndefined(votes)) {
-      return QueryVoteType.unVoted;
-    }
-
-    const upVoters = votes.upVoters || [];
-    const downVoters = votes.downVoters || [];
-
-    if (upVoters.some((user) => user.id === USERId)) {
-      return QueryVoteType.votedUp;
-    } else if (downVoters.some((user) => user.id === USERId)) {
-      return QueryVoteType.votedDown;
-    } else {
-      return QueryVoteType.unVoted;
-    }
-  }, [votes, USERId]);
-
-  const isVoteUp = voteStatus === QueryVoteType.votedUp;
-  const isVoteDown = voteStatus === QueryVoteType.votedDown;
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
-  const isFollowing = Boolean(followers?.some(({ id }) => id === USERId));
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
     : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
-  const handleVoteChange = async (type: QueryVoteType) => {
-    let updatedVoteType;
+  const { firstDomain } = useMemo(() => {
+    const domains = knowledgePage.domains ?? [];
 
-    // current vote is same as selected vote, it means user is removing vote, else up/down voting
-    if (voteStatus === type) {
-      updatedVoteType = QueryVoteType.unVoted;
-    } else {
-      updatedVoteType = type;
-    }
-
-    setVotesLoading((prev) => ({
-      ...prev,
-      [type]: true,
-    }));
-
-    await onUpdateVote?.({ updatedVoteType }, knowledgePage.id);
-
-    setVotesLoading((prev) => ({
-      ...prev,
-      [type]: false,
-    }));
-  };
-
-  const handleBookmarkChange = useCallback(
-    async (id: string) => {
-      setIsBookmaking(true);
-      if (isFollowing) {
-        await onUnFollow?.(id);
-      } else {
-        await onFollow?.(id);
-      }
-      setIsBookmaking(false);
-    },
-    [isFollowing, onUnFollow, onFollow]
-  );
+    return { firstDomain: domains[0] };
+  }, [knowledgePage]);
 
   const handleQuickLinkUpdate = async (
     formData: QuickLinkFormModalFormData
@@ -225,6 +147,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       return { ...prev, deleted: !prev?.deleted };
     });
   };
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => {
       updateKnowledgeCenterRecentViewed(
@@ -244,14 +167,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       permissions?.EditTags;
 
     return (
-      <>
+      <Box align="center" gap={1}>
         {editPermission && (
-          <EditIcon
+          <ButtonUtility
+            color="tertiary"
             data-testid="edit-quick-link-btn"
-            height={16}
-            style={{ verticalAlign: 'middle' }}
-            width={16}
-            onClick={(e) => {
+            icon={<EditIcon height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setShowAddLinkModal(true);
@@ -259,19 +181,18 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           />
         )}
         {permissions?.Delete && (
-          <IconDelete
+          <ButtonUtility
+            color="tertiary"
             data-testid="delete-quick-link-btn"
-            height={14}
-            style={{ verticalAlign: 'middle', color: DE_ACTIVE_COLOR }}
-            width={14}
-            onClick={(e) => {
+            icon={<Trash01 height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
               setIsDelete(true);
             }}
           />
         )}
-      </>
+      </Box>
     );
   }, [permissions]);
 
@@ -291,174 +212,120 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   }, [knowledgeItem]);
 
   return (
-    <Row
-      className="knowledge-card p-box global-border-radius"
-      data-testid={displayName || name}
-      gutter={[12, 12]}>
-      <Col data-testid="date-owner-col" span={24}>
-        <Space size={12}>
-          <div className="d-flex">
-            <OwnerLabel hasPermission={false} owners={owners} />
+    <Card
+      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      data-testid={`knowledge-card-${displayName || name}`}>
+      <Link
+        className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
+        data-testid={isQuickLink ? 'knowledge-link' : 'knowledge-page-link'}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+        target={isQuickLink ? '_blank' : '_self'}
+        to={path}
+        onClick={handleQuickLinkRecentView}>
+        {/* Row 1: title + timestamp */}
+        <Box align="center" justify="between">
+          <Box align="center" className="tw:max-w-[70%]" gap={2}>
+            <Typography
+              ellipsis
+              data-testid="knowledge-card-title"
+              size="text-lg"
+              weight="semibold">
+              {getKnowledgePageName(knowledgePage, t)}
+            </Typography>
+            {isQuickLink && !readonly && quickLinkActions}
+          </Box>
+          <Typography
+            className="tw:text-gray-500"
+            data-testid="updated-at"
+            size="text-xs">
+            {t('label.last-edited-time', {
+              time: getShortRelativeTime(updatedAt),
+            })}
+          </Typography>
+        </Box>
+
+        {/* Row 3: plain-text description */}
+        {description.trim() ? (
+          <Typography
+            className="tw:text-gray-600 tw:line-clamp-2 tw:leading-[1.55]"
+            data-testid="knowledge-card-description"
+            size="text-sm">
+            {stripMarkdown(description)}
+          </Typography>
+        ) : (
+          <Typography
+            className="tw:text-gray-400"
+            data-testid="no-description"
+            size="text-sm">
+            {t('label.no-description')}
+          </Typography>
+        )}
+
+        {/* Row 4: owner · dot · domain · spacer → tags */}
+        <Box
+          align="center"
+          className="tw:pt-2"
+          data-testid="knowledge-footer"
+          gap={3}>
+          {owners?.[0] ? (
+            <UserPopOverCard
+              showUserName
+              className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
+              displayName={getEntityName(owners?.[0])}
+              profileWidth={20}
+              userName={getEntityName(owners?.[0])}
+            />
+          ) : (
+            <Typography
+              className="tw:text-gray-400"
+              data-testid="owner-name"
+              size="text-xs"
+              weight="medium">
+              {t('label.no-entity', { entity: t('label.owner') })}
+            </Typography>
+          )}
+
+          <Dot className="tw:text-gray-400" size="micro" />
+          <div className="tw:max-w-40">
+            <Typography
+              ellipsis
+              className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
+              data-testid="domain-name"
+              size="text-xs">
+              {firstDomain?.displayName ??
+                firstDomain?.name ??
+                t('label.no-entity', { entity: t('label.domain') })}
+            </Typography>
           </div>
-          <p className="d-flex">
-            <UpdatedAtIcon className="self-center" height={16} width={16} />
-            <span
-              className="self-center m-l-xs text-grey-muted"
-              data-testid="updated-at">
-              {formatDate(updatedAt)}
-            </span>
-          </p>
-        </Space>
-      </Col>
 
-      <Col data-testid="knowledge-title-description" span={24}>
-        <Link
-          className="no-underline w-full d-block"
-          data-testid={isQuickLink ? 'knowledge-link' : 'knowledge-page-link'}
-          target={isQuickLink ? '_blank' : '_self'}
-          to={path}
-          onClick={handleQuickLinkRecentView}>
-          <Space className="tw:w-full" direction="vertical" size={8}>
-            <div className="flex items-center gap-2">
-              {isQuickLink ? (
-                <LinkIcon
-                  height={20}
-                  style={{ verticalAlign: 'middle' }}
-                  width={20}
-                />
-              ) : (
-                <IconArticle
-                  height={20}
-                  style={{ verticalAlign: 'middle' }}
-                  width={20}
-                />
-              )}
-              <Typography.Text
-                className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
-                data-testid="entity-header-display-name"
-                ellipsis={{ tooltip: true }}>
-                {getKnowledgePageName(knowledgePage, t)}
-              </Typography.Text>
-              {isQuickLink && !readonly && quickLinkActions}
-            </div>
+          <span className="tw:flex-1" />
 
-            {description.trim() ? (
-              <RichTextEditorPreviewerV1
-                showReadMoreBtn
-                className="max-two-lines"
-                markdown={getFrontEndFormat(description)}
-              />
-            ) : (
-              <span className="text-grey-muted" data-testid="no-description">
-                {t('label.no-description')}
-              </span>
-            )}
-          </Space>
-        </Link>
-      </Col>
-      {(knowledgePage.tags ?? []).length > 0 && (
-        <Col data-testid="knowledge-tags" span={24}>
-          <TagsViewer
-            displayType={DisplayType.POPOVER}
-            showNoDataPlaceholder={false}
-            tags={knowledgePage.tags ?? []}
-          />
-        </Col>
-      )}
-      <Col data-testid="knowledge-metadata" span={24}>
-        <Row gutter={[8, 8]}>
-          {!readonly && (
-            <Col>
-              <Space data-testid="votes-section">
-                <div
-                  className="cursor-pointer"
-                  data-testid="up-vote-btn"
-                  onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-                  <Space>
-                    {votesLoading.votedUp ? (
-                      <Loader size="x-small" />
-                    ) : (
-                      <Icon
-                        className="text-grey-muted"
-                        component={isVoteUp ? ThumbsUpFilled : ThumbsUpOutline}
-                        style={{
-                          fontSize: '16px',
-                          color: isVoteUp ? '#008376' : '',
-                        }}
-                      />
-                    )}
-
-                    <span
-                      className="text-grey-muted"
-                      data-testid="up-vote-count">
-                      {votes?.upVotes ?? 0}
-                    </span>
-                  </Space>
-                </div>
-                <div
-                  className="cursor-pointer"
-                  data-testid="down-vote-btn"
-                  onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-                  <Space>
-                    {votesLoading.votedDown ? (
-                      <Loader size="x-small" />
-                    ) : (
-                      <Icon
-                        className="rotate-inverse text-grey-muted"
-                        component={
-                          isVoteDown ? ThumbsUpFilled : ThumbsUpOutline
-                        }
-                        style={{
-                          fontSize: '16px',
-                          color: isVoteDown ? '#E7B85D' : '',
-                        }}
-                      />
-                    )}
-                    <span
-                      className="text-grey-muted"
-                      data-testid="down-vote-count">
-                      {votes?.downVotes ?? 0}
-                    </span>
-                  </Space>
-                </div>
-              </Space>
-              <Divider className="self-center m-x-sm" type="vertical" />
-            </Col>
+          {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
+            <Badge
+              className="tw:max-w-30"
+              key={String(tag.tagFQN ?? '')}
+              size="md"
+              type="modern">
+              <Typography
+                ellipsis
+                className="tw:font-mono tw:text-gray-700"
+                size="text-xs">
+                {getEntityName(tag)}
+              </Typography>
+            </Badge>
+          ))}
+          {(knowledgePage.tags ?? []).length > 2 && (
+            <Badge size="md" type="modern">
+              <Typography
+                className="tw:font-mono tw:text-gray-700"
+                size="text-xs">
+                +{(knowledgePage.tags ?? []).length - 2}
+              </Typography>
+            </Badge>
           )}
-          <Col>
-            <Space className="updated-by-container text-grey-muted">
-              <span>{`${t('label.last-edited-by')}:`}</span>
-              <UserPopOverCard profileWidth={22} userName={updatedBy} />
-            </Space>
-            <Divider className="self-center m-x-sm" type="vertical" />
-          </Col>
-          <Col>
-            <Space className="text-grey-muted">
-              <span>{`${t('label.last-updated')}:`}</span>
-              <span data-testid="updated-at-metadata">
-                {formatDate(updatedAt)}
-              </span>
-            </Space>
-          </Col>
-          {!readonly && (
-            <Col data-testid="bookmark-section">
-              <Divider className="self-center m-x-sm" type="vertical" />
-              {isBookmaking ? (
-                <Loader size="x-small" style={{ marginTop: '4px' }} />
-              ) : (
-                <Icon
-                  className="text-grey-muted cursor-pointer"
-                  component={isFollowing ? BookMarkedIcon : BookMarkIcon}
-                  data-isfollowing={isFollowing}
-                  data-testid="bookmark-btn"
-                  style={{ fontSize: '20px' }}
-                  onClick={() => handleBookmarkChange(knowledgePage.id)}
-                />
-              )}
-            </Col>
-          )}
-        </Row>
-      </Col>
+        </Box>
+      </Link>
+
       {showAddLinkModal && (
         <QuickLinkFormModal
           isOpen={showAddLinkModal}
@@ -492,7 +359,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           }
         }}
       />
-    </Row>
+    </Card>
   );
 };
 

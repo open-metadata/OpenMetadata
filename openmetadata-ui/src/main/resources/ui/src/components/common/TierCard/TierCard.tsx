@@ -30,7 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import Loader from '../Loader/Loader';
