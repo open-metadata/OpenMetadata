@@ -43,6 +43,7 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ARTICLE_FILTER_TABS } from 'src/constants/ContextCenter.constants';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -91,16 +92,8 @@ import {
 } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import './knowledge-pages-hierarchy.less';
 
 type ArticleFilterTab = 'all' | 'published' | 'draft' | 'sensitive';
-
-const ARTICLE_FILTER_TABS = [
-  { id: 'all', labelKey: 'label.all' },
-  { id: 'published', labelKey: 'label.published' },
-  { id: 'draft', labelKey: 'label.draft' },
-  { id: 'sensitive', labelKey: 'label.sensitive' },
-] as const;
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -497,7 +490,7 @@ const KnowledgePagesHierarchy = forwardRef<
               hasChildItems={hasChildren}>
               {() => (
                 <Link
-                  className="knowledge-hierarchy-node-link tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2"
+                  className="knowledge-hierarchy-node-link tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
                   data-isactive={isActive}
                   data-testid={`page-node-${displayName}`}
                   to={contextCenterClassBase.getArticlePath(
@@ -658,28 +651,6 @@ const KnowledgePagesHierarchy = forwardRef<
           }
         }}
         onScroll={handleScroll}>
-        {/* <Box align="center" className="tw:p-4 tw:pb-2" gap={3}>
-          <Box
-            align="center"
-            className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-none"
-            justify="center">
-            <File06
-              className="tw:text-gray-600"
-              height={20}
-              strokeWidth={1.2}
-              width={20}
-            />
-          </Box>
-          <div>
-            <Typography size="text-md" weight="semibold">
-              {t('label.article-plural')}
-            </Typography>
-            <Typography className="tw:text-gray-500" size="text-xs">
-              {paginationState.paging.total} {t('label.article-plural')}
-            </Typography>
-          </div>
-        </Box> */}
-
         <div className="tw:px-1.5 tw:pb-2.5">
           <Tabs
             className="tw:w-full"
