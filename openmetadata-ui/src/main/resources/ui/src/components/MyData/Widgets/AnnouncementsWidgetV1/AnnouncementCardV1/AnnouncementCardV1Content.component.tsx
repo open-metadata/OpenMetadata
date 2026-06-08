@@ -37,6 +37,7 @@ interface AnnouncementCardV1ContentProps {
   entityName: string;
   entityType: string;
   fieldOperation?: FieldOperation;
+  hideEntityName?: boolean;
   timestamp?: number;
   title: string;
   userName: string;
@@ -74,6 +75,7 @@ const AnnouncementCardV1Content = ({
   entityName,
   entityType,
   fieldOperation,
+  hideEntityName = false,
   timestamp,
   title,
   userName,
@@ -153,55 +155,59 @@ const AnnouncementCardV1Content = ({
                   {getFieldOperationText(fieldOperation)}
                 </Typography.Text>
               )}
-              <span
-                className={classNames(
-                  'announcement-card-entity-icon tw:flex tw:items-center',
-                  variantConfig.iconSize
-                )}
-                style={{ color }}>
-                {entityIcon}
-              </span>
-              {entityFQN && entityType ? (
-                <Typography.Text
-                  ellipsis={{
-                    tooltip: (
-                      <div className="announcement-entity-name-tooltip">
-                        {entityName}
-                      </div>
-                    ),
-                  }}
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  <Link
+              {!hideEntityName && (
+                <>
+                  <span
                     className={classNames(
-                      'announcement-entity-name',
-                      variantConfig.entityName
+                      'announcement-card-entity-icon tw:flex tw:items-center',
+                      variantConfig.iconSize
                     )}
-                    data-testid="announcement-entity-link"
-                    style={{
-                      color: currentBackgroundColor ?? 'inherit',
-                    }}
-                    to={entityUtilClassBase.getEntityLink(
-                      entityType,
-                      entityFQN
-                    )}
-                    onClick={handleEntityClick}>
-                    {entityName}
-                  </Link>
-                </Typography.Text>
-              ) : (
-                <Typography.Text
-                  className={classNames(
-                    'announcement-entity-name',
-                    variantConfig.entityName
+                    style={{ color }}>
+                    {entityIcon}
+                  </span>
+                  {entityFQN && entityType ? (
+                    <Typography.Text
+                      ellipsis={{
+                        tooltip: (
+                          <div className="announcement-entity-name-tooltip">
+                            {entityName}
+                          </div>
+                        ),
+                      }}
+                      style={{
+                        color: currentBackgroundColor ?? 'inherit',
+                      }}>
+                      <Link
+                        className={classNames(
+                          'announcement-entity-name',
+                          variantConfig.entityName
+                        )}
+                        data-testid="announcement-entity-link"
+                        style={{
+                          color: currentBackgroundColor ?? 'inherit',
+                        }}
+                        to={entityUtilClassBase.getEntityLink(
+                          entityType,
+                          entityFQN
+                        )}
+                        onClick={handleEntityClick}>
+                        {entityName}
+                      </Link>
+                    </Typography.Text>
+                  ) : (
+                    <Typography.Text
+                      className={classNames(
+                        'announcement-entity-name',
+                        variantConfig.entityName
+                      )}
+                      ellipsis={{ tooltip: true }}
+                      style={{
+                        color: currentBackgroundColor ?? 'inherit',
+                      }}>
+                      {entityName}
+                    </Typography.Text>
                   )}
-                  ellipsis={{ tooltip: true }}
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  {entityName}
-                </Typography.Text>
+                </>
               )}
             </div>
           ) : (

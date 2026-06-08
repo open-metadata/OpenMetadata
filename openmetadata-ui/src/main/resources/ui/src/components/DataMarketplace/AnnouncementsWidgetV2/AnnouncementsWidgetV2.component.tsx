@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Announcement02, ChevronDown } from '@untitledui/icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -27,10 +24,7 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../../utils/FeedUtils';
-import Loader from '../../common/Loader/Loader';
-import AnnouncementItemV2 from './AnnouncementItemV2.component';
-
-const DISPLAY_COUNT = 4;
+import AnnouncementsWidgetV2Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV2Body.component';
 
 const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
   {
@@ -63,13 +57,11 @@ const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
 ];
 
 const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>(
     isEditView ? DUMMY_ANNOUNCEMENTS : []
   );
   const [loading, setLoading] = useState(!isEditView);
-  const [showAll, setShowAll] = useState(false);
 
   const fetchAnnouncements = useCallback(async () => {
     if (isEditView) {
@@ -95,11 +87,6 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
-  const displayedAnnouncements = useMemo(
-    () => (showAll ? announcements : announcements.slice(0, DISPLAY_COUNT)),
-    [announcements, showAll]
-  );
-
   const handleAnnouncementClick = useCallback(
     (announcement: AnnouncementEntity) => {
       if (isEditView) {
@@ -115,70 +102,13 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
     [navigate, isEditView]
   );
 
-  if (loading) {
-    return (
-      <div
-        className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1"
-        data-testid="announcements-widget-v2">
-        <Loader size="small" />
-      </div>
-    );
-  }
-
-  if (announcements.length === 0) {
-    return null;
-  }
-
   return (
-    <div
-      className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1 tw:mb-5"
-      data-testid="announcements-widget-v2">
-      <div className="tw:flex tw:items-center tw:justify-between tw:mb-2 tw:px-3">
-        <div className="tw:flex tw:items-center tw:gap-2">
-          <Announcement02 className="tw:size-5 tw:text-fg-brand-primary" />
-          <Typography
-            as="span"
-            className="tw:text-text-primary"
-            size="text-sm"
-            weight="semibold">
-            {t('label.announcement-plural')}
-          </Typography>
-          <Typography
-            as="span"
-            className="tw:rounded-md tw:bg-bg-primary tw:px-2 tw:py-0.5 tw:text-text-tertiary"
-            size="text-sm"
-            weight="medium">
-            {announcements.length}
-          </Typography>
-        </div>
-      </div>
-
-      <div className="tw:rounded-lg tw:bg-bg-primary tw:px-4 tw:py-1">
-        <div className="tw:divide-y tw:divide-border-primary">
-          {displayedAnnouncements.map((announcement) => (
-            <AnnouncementItemV2
-              announcement={announcement}
-              key={announcement.id}
-              onClick={() => handleAnnouncementClick(announcement)}
-            />
-          ))}
-        </div>
-
-        {announcements.length > DISPLAY_COUNT && (
-          <button
-            className="tw:flex tw:items-center tw:gap-1 tw:py-3 tw:text-sm tw:font-medium tw:text-fg-brand-primary tw:cursor-pointer tw:border-none tw:bg-transparent"
-            data-testid="view-all-btn"
-            onClick={() => setShowAll((prev) => !prev)}>
-            {showAll ? t('label.show-less') : t('label.view-all')}
-            <ChevronDown
-              className={`tw:size-4 tw:transition-transform ${
-                showAll ? 'tw:rotate-180' : ''
-              }`}
-            />
-          </button>
-        )}
-      </div>
-    </div>
+    <AnnouncementsWidgetV2Body
+      announcements={announcements}
+      className="tw:mb-5"
+      loading={loading}
+      onItemClick={handleAnnouncementClick}
+    />
   );
 };
 
