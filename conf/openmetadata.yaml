@@ -331,6 +331,11 @@ database:
   # the username and password
   user: ${DB_USER:-openmetadata_user}
   password: ${DB_USER_PASSWORD:-openmetadata_password}
+  # Optional: read the DB password from a file and re-read it per connection. Use this for an
+  # externally-rotated credential (e.g. a token written into a mounted Secret volume). When set,
+  # the `password` above is ignored. Mount the Secret as a plain volume (not subPath) so updates
+  # propagate, and rotate the value with overlap before expiry.
+  dbPasswordFile: ${DB_USER_PASSWORD_FILE:-}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
 
