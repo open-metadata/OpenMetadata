@@ -10,16 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { SUPPORTED_BULK_IMPORT_EDIT_ENTITY } from '../../constants/BulkImport.constant';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useFqn } from '../../hooks/useFqn';
-import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import withSuspenseFallback from './withSuspenseFallback';
+
+const BulkEntityImportPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage'
+      )
+  )
+);
 
 const EntityImportRouter = () => {
   const navigate = useNavigate();
