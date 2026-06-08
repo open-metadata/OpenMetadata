@@ -121,6 +121,14 @@ class JSONDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
+    def _is_iceberg_delta_shape(obj: Any) -> bool:
+        return (
+            isinstance(obj, dict)
+            and isinstance(obj.get("schema"), dict)
+            and isinstance(obj["schema"].get("fields"), list)
+        )
+
+    @staticmethod
     def _read_json_object(
         content: bytes,
     ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:
@@ -133,7 +141,8 @@ class JSONDataFrameReader(DataFrameReader):
             else content
         )
         data = json.loads(content)
-        raw_data = content if isinstance(data, dict) and data.get("$schema") else None
+        is_json_schema = isinstance(data, dict) and data.get("$schema")
+        raw_data = content if (is_json_schema or JSONDataFrameReader._is_iceberg_delta_shape(data)) else None
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
@@ -153,7 +162,11 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
+                return False
+            return True  # noqa:TRY300
         except json.JSONDecodeError:
             return False
 
