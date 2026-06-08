@@ -15,7 +15,6 @@ import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   File05,
-  Home02,
   Sun,
   UploadCloud02,
 } from '@untitledui/icons';
@@ -303,19 +302,11 @@ const ContextCenterDashboardPage: FC = () => {
         }
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.dashboard'),
-            url: '',
+            label: t('label.dashboard'),
           },
         ]}
         hasPermission={hasCreatePermission}
