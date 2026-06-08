@@ -121,7 +121,7 @@ const ContextCenterDocumentsPage: FC = () => {
           )
         );
       } else {
-        const files = await listContextFiles();
+        const { data: files } = await listContextFiles();
         setAllDocuments(files.map(contextFileToDocumentItem));
       }
     } catch (err) {
