@@ -132,6 +132,7 @@ const buildContextMock = (
   canSave: false,
   canDelete: false,
   canDragNodes: false,
+  canDragNodesInViewMode: false,
   canAccessSidebar: false,
   isFormDisabled: true,
   isInputDisabled: true,
