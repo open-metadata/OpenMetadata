@@ -240,6 +240,7 @@ export const Breadcrumbs = ({
         sizes[size].text,
         className
       )}
+      data-testid="breadcrumb"
       items={displayItems}>
       {(item) => (
         <AriaBreadcrumb
