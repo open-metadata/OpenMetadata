@@ -78,7 +78,8 @@ class TestMySQLIamEngine:
         url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
         url = url_fn(mysql_conn.service_connection)
         assert "FRESH_TOKEN" not in url
-        assert url == f"mysql+pymysql://{USERNAME}@{HOST}:{PORT}"
+        assert "Action=connect" not in url
+        assert url.startswith(f"mysql+pymysql://{USERNAME}:@{HOST}:{PORT}")
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
@@ -97,6 +98,27 @@ class TestMySQLIamEngine:
         url = url_fn(connection)
         assert "iam%40user%2Fdb" in url
         assert "iam@user/db@" not in url
+
+    @patch.object(connection_module, "RdsIamAuthTokenManager")
+    @patch.object(connection_module, "listen")
+    @patch.object(connection_module, "create_generic_db_connection")
+    def test_url_preserves_database_schema_and_options(self, mock_create, mock_listen, mock_token_manager):
+        connection = MysqlConnection(
+            username=USERNAME,
+            hostPort=f"{HOST}:{PORT}",
+            databaseSchema="analytics",
+            connectionOptions={"charset": "utf8mb4"},
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
+        )
+        mysql_conn = _make_mysql_connection(connection)
+
+        mysql_conn._get_iam_engine(connection)
+
+        url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
+        url = url_fn(connection)
+        assert "/analytics" in url
+        assert "charset=utf8mb4" in url
+        assert "Action=connect" not in url
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
@@ -141,7 +163,8 @@ class TestMySQLIamEngine:
 
         cparams = {}
         listener(None, None, None, cparams)
-        assert cparams["ssl"]
+        assert "ssl" in cparams
+        assert cparams["ssl"] == {}
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
@@ -153,10 +176,25 @@ class TestMySQLIamEngine:
         mysql_conn._get_iam_engine(mysql_conn.service_connection)
         listener = mock_listen.call_args.args[2]
 
-        existing_ssl = {"ca": "/path/to/ca.pem"}
+        existing_ssl = {"ssl_ca": "/path/to/ca.pem"}
         cparams = {"ssl": existing_ssl}
         listener(None, None, None, cparams)
         assert cparams["ssl"] == existing_ssl
+
+    @patch.object(connection_module, "RdsIamAuthTokenManager")
+    @patch.object(connection_module, "listen")
+    @patch.object(connection_module, "create_generic_db_connection")
+    def test_listener_does_not_overwrite_explicit_empty_ssl(self, mock_create, mock_listen, mock_token_manager):
+        mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
+        mysql_conn = _make_mysql_connection(_iam_connection())
+
+        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        listener = mock_listen.call_args.args[2]
+
+        sentinel_ssl = {}
+        cparams = {"ssl": sentinel_ssl}
+        listener(None, None, None, cparams)
+        assert cparams["ssl"] is sentinel_ssl
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")

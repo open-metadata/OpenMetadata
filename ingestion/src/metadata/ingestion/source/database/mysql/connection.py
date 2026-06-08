@@ -14,7 +14,6 @@ Source connection handler
 """
 
 from typing import Any, Dict, Optional, cast  # noqa: UP035
-from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
@@ -106,20 +105,31 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
             username=connection.username,
             aws_config=auth_type.awsConfig,
         )
-        scheme = connection.scheme.value if connection.scheme else "mysql+pymysql"
-        base_url = f"{scheme}://{quote_plus(connection.username)}@{connection.hostPort}"
         engine = create_generic_db_connection(
             connection=connection,
-            get_connection_url_fn=lambda _: base_url,
+            get_connection_url_fn=self._build_iam_url,
             get_connection_args_fn=get_connection_args_common,
         )
 
         def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: Dict[str, Any]):  # noqa: UP006
             cparams["password"] = token_manager.get_token()
-            cparams["ssl"] = cparams.get("ssl") or {"ssl": True}
+            # PyMySQL requires SSL for RDS IAM auth; preserve any explicit SSL config.
+            if "ssl" not in cparams:
+                cparams["ssl"] = {}
 
         listen(engine, "do_connect", inject_iam_token)
         return engine
+
+    @staticmethod
+    def _build_iam_url(connection: MySQLConnectionConfig) -> str:
+        """Build the connection URL exactly like ``get_connection_url_common`` but
+        without a password/token: the ``do_connect`` listener injects a fresh RDS
+        IAM token per connection. Reusing the common helper with the IAM auth
+        neutralized keeps databaseSchema and connectionOptions handling in sync.
+        """
+        url_connection = connection.model_copy()
+        url_connection.authType = BasicAuth(password="")  # type: ignore
+        return get_connection_url_common(url_connection)
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
