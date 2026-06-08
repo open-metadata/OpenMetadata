@@ -32,6 +32,10 @@ final class FileCredentialAuthStrategy implements DatabaseAuthStrategy {
 
   @Override
   public void apply(HikariConfig config, Properties dataSourceProperties, Context context) {
+    if (nullOrEmpty(context.username())) {
+      throw new IllegalArgumentException(
+          "A database user (DB_USER) is required when dbPasswordFile is configured.");
+    }
     FileCredentialProvider provider = new FileCredentialProvider(context.dbPasswordFile());
     // Read once up front so a misconfigured path fails fast at startup.
     provider.authenticate(context.jdbcUrl(), context.username(), null);
@@ -96,8 +100,14 @@ final class FileCredentialAuthStrategy implements DatabaseAuthStrategy {
         LOG.error(
             "File-based credential DB connection failed after re-read: {}",
             retryFailure.getMessage());
-        throw new SQLException(
-            "Failed to authenticate with file-based DB credential after token re-read", first);
+        // Preserve the second attempt's SQLState/cause; keep the original as suppressed.
+        SQLException wrapped =
+            new SQLException(
+                "Failed to authenticate with file-based DB credential after token re-read",
+                retryFailure.getSQLState(),
+                retryFailure);
+        wrapped.addSuppressed(first);
+        throw wrapped;
       }
       return connection;
     }

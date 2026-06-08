@@ -75,7 +75,10 @@ class RotatingFileCredentialDataSourceTest {
     writeQuietly(file, "bad-token");
     driver.rejectWith("bad-token", AUTH_FAILURE);
 
-    assertThrows(SQLException.class, () -> newDataSource(file).getConnection());
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> newDataSource(file).getConnection());
+    // The second attempt's SQLState is preserved on the wrapper (not nulled out).
+    assertEquals(AUTH_FAILURE, thrown.getSQLState());
     assertEquals(2, driver.connectCount.get());
   }
 
