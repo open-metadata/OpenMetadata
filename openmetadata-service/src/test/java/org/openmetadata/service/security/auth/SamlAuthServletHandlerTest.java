@@ -16,10 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.onelogin.saml2.Auth;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -227,6 +231,73 @@ class SamlAuthServletHandlerTest {
     verify(sessionService)
         .createPendingSession(
             request, response, "saml", "https://saml.example.com/callback", null, null, null);
+  }
+
+  @Test
+  void handleLogin_carriesPendingSessionIdInRelayState() throws Exception {
+    when(request.getParameter("callback")).thenReturn("https://example.com/callback");
+    UserSession pending = UserSession.builder().id("pending-session-id").build();
+    when(sessionService.createPendingSession(
+            eq(request),
+            eq(response),
+            eq("saml"),
+            eq("https://example.com/callback"),
+            any(),
+            any(),
+            any()))
+        .thenReturn(pending);
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+            mockStatic(SamlSettingsHolder.class);
+        MockedConstruction<Auth> authConstruction = mockConstruction(Auth.class)) {
+      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+
+      handler.handleLogin(request, response);
+
+      verify(authConstruction.constructed().get(0)).login("pending-session-id");
+    }
+  }
+
+  @Test
+  void resolvePendingSession_prefersRelayStateOverCookie() {
+    UserSession relaySession =
+        UserSession.builder().id("relay-session-id").status(SessionStatus.PENDING).build();
+    when(request.getParameter("RelayState")).thenReturn("relay-session-id");
+    when(sessionService.getPendingSessionById("relay-session-id"))
+        .thenReturn(Optional.of(relaySession));
+
+    UserSession resolved = handler.resolvePendingSession(request, response);
+
+    assertEquals(relaySession, resolved);
+    verify(sessionService, never()).getPendingSession(any(), any());
+  }
+
+  @Test
+  void resolvePendingSession_fallsBackToCookieWhenRelayStateMissing() {
+    UserSession cookieSession =
+        UserSession.builder().id("cookie-session-id").status(SessionStatus.PENDING).build();
+    when(request.getParameter("RelayState")).thenReturn(null);
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(cookieSession));
+
+    UserSession resolved = handler.resolvePendingSession(request, response);
+
+    assertEquals(cookieSession, resolved);
+    verify(sessionService, never()).getPendingSessionById(any());
+  }
+
+  @Test
+  void resolvePendingSession_fallsBackToCookieWhenRelayStateNotPending() {
+    UserSession cookieSession =
+        UserSession.builder().id("cookie-session-id").status(SessionStatus.PENDING).build();
+    when(request.getParameter("RelayState")).thenReturn("stale-or-unknown-id");
+    when(sessionService.getPendingSessionById("stale-or-unknown-id")).thenReturn(Optional.empty());
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(cookieSession));
+
+    UserSession resolved = handler.resolvePendingSession(request, response);
+
+    assertEquals(cookieSession, resolved);
   }
 
   @Test

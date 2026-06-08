@@ -721,6 +721,63 @@ class SessionServiceTest {
     verify(repository).deleteByIds(List.of("pruned-session"));
   }
 
+  @Test
+  void getPendingSessionById_resolvesPendingSessionByIdAlone() {
+    String id = validSessionId('p');
+    when(repository.findById(id))
+        .thenReturn(Optional.of(pendingSession(id, System.currentTimeMillis() + 60_000)));
+
+    assertTrue(sessionService.getPendingSessionById(id).isPresent());
+  }
+
+  @Test
+  void getPendingSessionById_rejectsActiveSession() {
+    String id = validSessionId('a');
+    UserSession active =
+        pendingSession(id, System.currentTimeMillis() + 60_000).toBuilder()
+            .status(SessionStatus.ACTIVE)
+            .build();
+    when(repository.findById(id)).thenReturn(Optional.of(active));
+
+    assertFalse(sessionService.getPendingSessionById(id).isPresent());
+  }
+
+  @Test
+  void getPendingSessionById_rejectsExpiredSession() {
+    String id = validSessionId('e');
+    when(repository.findById(id))
+        .thenReturn(Optional.of(pendingSession(id, System.currentTimeMillis() - 60_000)));
+
+    assertFalse(sessionService.getPendingSessionById(id).isPresent());
+  }
+
+  @Test
+  void getPendingSessionById_rejectsUnknownSession() {
+    String id = validSessionId('u');
+    when(repository.findById(id)).thenReturn(Optional.empty());
+
+    assertFalse(sessionService.getPendingSessionById(id).isPresent());
+  }
+
+  @Test
+  void getPendingSessionById_rejectsMalformedIdWithoutHittingStore() {
+    assertFalse(sessionService.getPendingSessionById("not-a-valid-session-id").isPresent());
+
+    verify(repository, never()).findById(any());
+  }
+
+  private UserSession pendingSession(String id, long expiresAt) {
+    return UserSession.builder()
+        .id(id)
+        .type(SessionType.AUTH)
+        .provider("saml")
+        .status(SessionStatus.PENDING)
+        .version(0L)
+        .expiresAt(expiresAt)
+        .idleExpiresAt(expiresAt)
+        .build();
+  }
+
   private UserSession activeSession(String id, User user, long version, long lastAccessedAt) {
     return UserSession.builder()
         .id(id)
