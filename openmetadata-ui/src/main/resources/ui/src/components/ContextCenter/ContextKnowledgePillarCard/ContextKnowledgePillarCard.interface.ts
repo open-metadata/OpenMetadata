@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { HELP_ITEMS } from '../constants/Navbar.constants';
 
-class NavbarUtilClassBase {
-  public getHelpItems() {
-    return HELP_ITEMS;
-  }
+import { FC } from 'react';
 
-  public getUserProfileExtraItems(): ItemType[] {
-    return [];
-  }
+export type PillarTone = 'info' | 'warning' | 'success';
+
+export interface PillarRecentItem {
+  title: string;
+  meta: string;
 }
 
-const navbarUtilClassBase = new NavbarUtilClassBase();
-
-export default navbarUtilClassBase;
-export { NavbarUtilClassBase };
+export interface ContextKnowledgePillarCardProps {
+  icon: FC<{ className?: string }>;
+  title: string;
+  subtitle: string;
+  stat: string;
+  statSub: string;
+  statSubSecondary?: string;
+  trend: string;
+  tone: PillarTone;
+  recent: PillarRecentItem[];
+  cta: string;
+  isLoading?: boolean;
+  onClick: () => void;
+  dataTestId?: string;
+}

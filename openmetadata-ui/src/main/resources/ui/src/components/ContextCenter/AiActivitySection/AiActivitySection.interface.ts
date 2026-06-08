@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { HELP_ITEMS } from '../constants/Navbar.constants';
 
-class NavbarUtilClassBase {
-  public getHelpItems() {
-    return HELP_ITEMS;
-  }
+export type ActivityKind = 'memory' | 'article' | 'document';
 
-  public getUserProfileExtraItems(): ItemType[] {
-    return [];
-  }
+export interface ActivityItem {
+  id: string;
+  kind: ActivityKind;
+  count: number;
+  title: string;
+  surface: string;
+  who: string;
+  when: string;
 }
 
-const navbarUtilClassBase = new NavbarUtilClassBase();
-
-export default navbarUtilClassBase;
-export { NavbarUtilClassBase };
+export interface AiActivitySectionProps {
+  items: ActivityItem[];
+  isLoading?: boolean;
+}
