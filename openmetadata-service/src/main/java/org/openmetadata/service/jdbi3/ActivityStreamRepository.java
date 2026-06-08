@@ -96,7 +96,6 @@ public class ActivityStreamRepository {
       // No field-level changes, create a single event
       ActivityEvent event = convertChangeEventToActivityEvent(changeEvent, entity);
       if (event != null) {
-        insert(event);
         events.add(event);
       }
       return events;
@@ -117,9 +116,7 @@ public class ActivityStreamRepository {
     for (FieldChange fieldChange : allChanges) {
       ActivityEventType eventType = mapFieldToEventType(fieldChange.getName());
       if (eventType != null) {
-        ActivityEvent event = buildActivityEvent(changeEvent, entity, eventType, fieldChange);
-        insert(event);
-        events.add(event);
+        events.add(buildActivityEvent(changeEvent, entity, eventType, fieldChange));
       }
     }
 
@@ -127,7 +124,6 @@ public class ActivityStreamRepository {
     if (events.isEmpty()) {
       ActivityEvent event = convertChangeEventToActivityEvent(changeEvent, entity);
       if (event != null) {
-        insert(event);
         events.add(event);
       }
     }
@@ -135,47 +131,67 @@ public class ActivityStreamRepository {
     return events;
   }
 
-  /** Insert an ActivityEvent into the database. */
+  /** Insert a single ActivityEvent into the database. */
   public void insert(ActivityEvent event) {
     if (event == null) {
       return;
     }
+    insertBatch(List.of(event));
+  }
 
-    String domainsJson = null;
-    if (event.getDomains() != null && !event.getDomains().isEmpty()) {
-      List<String> domainIds =
-          event.getDomains().stream().map(ref -> ref.getId().toString()).toList();
-      domainsJson = JsonUtils.pojoToJson(domainIds);
+  /** Batch-insert ActivityEvents in a single round-trip instead of one per row. */
+  public void insertBatch(List<ActivityEvent> events) {
+    if (nullOrEmpty(events)) {
+      return;
     }
+    List<CollectionDAO.ActivityStreamRow> rows =
+        events.stream().filter(event -> event != null).map(this::toRow).toList();
+    if (!rows.isEmpty()) {
+      activityStreamDAO.insertBatch(rows);
+    }
+  }
 
-    // about is an EntityLink, not an FQN — parse first, then hash the FQN portion.
-    String aboutFqnHash =
-        nullOrEmpty(event.getAbout())
-            ? null
-            : FullyQualifiedName.buildHash(
-                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
+  private CollectionDAO.ActivityStreamRow toRow(ActivityEvent event) {
+    return CollectionDAO.ActivityStreamRow.builder()
+        .id(event.getId().toString())
+        .eventType(event.getEventType().value())
+        .entityType(event.getEntity().getType())
+        .entityId(event.getEntity().getId().toString())
+        .entityFqnHash(
+            event.getEntity().getFullyQualifiedName() != null
+                ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
+                : null)
+        .about(event.getAbout())
+        .aboutFqnHash(buildAboutFqnHash(event.getAbout()))
+        .actorId(
+            event.getActor() != null && event.getActor().getId() != null
+                ? event.getActor().getId().toString()
+                : null)
+        .actorName(event.getActor() != null ? event.getActor().getName() : null)
+        .timestamp(event.getTimestamp())
+        .summary(truncateSummaryForStorage(event.getSummary()))
+        .fieldName(event.getFieldName())
+        .oldValue(event.getOldValue())
+        .newValue(event.getNewValue())
+        .domains(buildDomainsJson(event))
+        .json(JsonUtils.pojoToJson(event))
+        .build();
+  }
 
-    activityStreamDAO.insert(
-        event.getId().toString(),
-        event.getEventType().value(),
-        event.getEntity().getType(),
-        event.getEntity().getId().toString(),
-        event.getEntity().getFullyQualifiedName() != null
-            ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
-            : null,
-        event.getAbout(),
-        aboutFqnHash,
-        event.getActor() != null && event.getActor().getId() != null
-            ? event.getActor().getId().toString()
-            : null,
-        event.getActor() != null ? event.getActor().getName() : null,
-        event.getTimestamp(),
-        truncateSummaryForStorage(event.getSummary()),
-        event.getFieldName(),
-        event.getOldValue(),
-        event.getNewValue(),
-        domainsJson,
-        JsonUtils.pojoToJson(event));
+  private static String buildDomainsJson(ActivityEvent event) {
+    if (event.getDomains() == null || event.getDomains().isEmpty()) {
+      return null;
+    }
+    List<String> domainIds =
+        event.getDomains().stream().map(ref -> ref.getId().toString()).toList();
+    return JsonUtils.pojoToJson(domainIds);
+  }
+
+  // about is an EntityLink, not an FQN — parse first, then hash the FQN portion.
+  private static String buildAboutFqnHash(String about) {
+    return nullOrEmpty(about)
+        ? null
+        : FullyQualifiedName.buildHash(MessageParser.EntityLink.parse(about).getEntityFQN());
   }
 
   /** List recent activity events. */

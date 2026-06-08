@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.AuditLogger;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.AsyncService;
@@ -37,11 +38,16 @@ public class AuditLogRepository {
           EventType.ENTITY_SOFT_DELETED,
           EventType.ENTITY_DELETED,
           EventType.ENTITY_RESTORED,
+          EventType.ENTITY_LINEAGE_ADDED,
+          EventType.ENTITY_LINEAGE_DELETED,
+          EventType.ENTITY_LINEAGE_UPDATED,
           EventType.USER_LOGIN,
           EventType.USER_LOGOUT);
 
   private static final Set<String> AGENT_INDICATORS =
       Set.of("agent", "documentation", "classification", "automator");
+
+  private static final AuditLogger AUDIT_LOGGER = AuditLogger.getLogger(AuditLogRepository.class);
 
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
@@ -106,11 +112,27 @@ public class AuditLogRepository {
           record.getActorType(),
           record.getEntityType(),
           record.getEntityId());
-      auditLogDAO.insert(record);
+      int inserted = auditLogDAO.insert(record);
+      if (inserted > 0) {
+        logAuditTrail(record);
+      }
       LOG.debug("Successfully inserted audit log for change event {}", changeEvent.getId());
     } catch (Exception ex) {
       LOG.warn("Failed to persist audit log for change event {}", changeEvent.getId(), ex);
     }
+  }
+
+  private void logAuditTrail(AuditLogRecord record) {
+    AUDIT_LOGGER.log(
+        "eventType={} user={} actorType={} entityType={} entityFQN={} entityId={} service={} ts={}",
+        record.getEventType(),
+        record.getUserName(),
+        record.getActorType(),
+        record.getEntityType(),
+        record.getEntityFQN(),
+        record.getEntityId(),
+        record.getServiceName(),
+        record.getEventTs());
   }
 
   public static final EventType AUTH_EVENT_LOGIN = EventType.USER_LOGIN;
