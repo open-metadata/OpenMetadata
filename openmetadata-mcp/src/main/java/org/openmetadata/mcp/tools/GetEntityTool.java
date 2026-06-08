@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -42,8 +43,7 @@ public class GetEntityTool implements McpTool {
           "tagSources",
           "descriptionSources",
           "columnDescriptionStatus",
-          "descriptionStatus",
-          "embeddings");
+          "descriptionStatus");
 
   @Override
   public Map<String, Object> execute(
@@ -74,6 +74,7 @@ public class GetEntityTool implements McpTool {
     }
     Map<String, Object> cleaned = new HashMap<>(entityData);
     EXCLUDE_FIELDS.forEach(cleaned::remove);
+    McpResponseTrim.VECTOR_NOISE_FIELDS.forEach(cleaned::remove);
     return cleaned;
   }
 
