@@ -80,6 +80,14 @@ class LineageSource(QueryParserSource, ABC):
 
     dialect: Dialect
 
+    def prepare_lineage_query(self, query: str) -> str:
+        """
+        Hook for connectors to normalize a raw query before lineage parsing.
+        Defaults to returning the query unchanged; override in connectors that
+        emit non-standard DDL the SQL parser cannot handle as-is.
+        """
+        return query
+
     @staticmethod
     def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
@@ -296,7 +304,7 @@ class LineageSource(QueryParserSource, ABC):
                     for row in csv.DictReader(file):
                         query_dict = dict(row)
                         yield TableQuery(
-                            query=query_dict["query_text"],
+                            query=self.prepare_lineage_query(query_dict["query_text"]),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
@@ -326,7 +334,7 @@ class LineageSource(QueryParserSource, ABC):
                         query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
                             dialect=self.dialect.value,
-                            query=query_dict["query_text"],
+                            query=self.prepare_lineage_query(query_dict["query_text"]),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),

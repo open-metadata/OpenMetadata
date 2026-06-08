@@ -29,6 +29,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_table_fqn_from_query_name,
     populate_column_lineage_map,
 )
+from metadata.ingestion.source.database.starrocks.lineage import normalize_mv_ddl
 from metadata.utils.logger import Loggers
 
 QUERY = [
@@ -433,10 +434,9 @@ class SqlLineageTest(TestCase):
                 f"Expected target tables for query: {query}",
             )
 
-
     def test_starrocks_mv_table_lineage(self):
         """
-        Validate that a preprocessed StarRocks MV DDL produces correct
+        Validate that a normalized StarRocks MV DDL produces correct
         table-level lineage (source_tables and target_tables).
         """
         raw_ddl = (
@@ -447,7 +447,7 @@ class SqlLineageTest(TestCase):
             "FROM clean_orders o "
             "JOIN clean_customers c ON o.customer_id = c.customer_id"
         )
-        cleaned = LineageParser.clean_raw_query(raw_ddl)
+        cleaned = normalize_mv_ddl(raw_ddl)
         parser = LineageParser(cleaned, dialect=Dialect.MYSQL)
 
         source_names = sorted(t.raw_name for t in parser.source_tables)
@@ -458,7 +458,7 @@ class SqlLineageTest(TestCase):
 
     def test_starrocks_mv_column_lineage(self):
         """
-        Validate column-level lineage extraction from a preprocessed
+        Validate column-level lineage extraction from a normalized
         StarRocks MV DDL with JOIN and aliases.
         """
         raw_ddl = (
@@ -469,7 +469,7 @@ class SqlLineageTest(TestCase):
             "FROM clean_orders o "
             "JOIN clean_customers c ON o.customer_id = c.customer_id"
         )
-        cleaned = LineageParser.clean_raw_query(raw_ddl)
+        cleaned = normalize_mv_ddl(raw_ddl)
         parser = LineageParser(cleaned, dialect=Dialect.MYSQL)
 
         lineage_map = populate_column_lineage_map(parser.column_lineage)

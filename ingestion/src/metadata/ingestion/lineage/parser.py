@@ -13,7 +13,6 @@ Lineage Parser configuration
 """
 
 import hashlib
-import re
 import time
 import traceback
 from collections import defaultdict
@@ -478,37 +477,7 @@ class LineageParser:
         if insensitive_match(clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+"):
             return None
 
-        # StarRocks/Doris: Normalize CREATE MATERIALIZED VIEW DDL by stripping
-        # non-standard clauses (column list, DISTRIBUTED BY, BUCKETS, REFRESH,
-        # PROPERTIES) so that sqlglot can parse the AS SELECT portion.
-        if insensitive_match(clean_query, r"^\s*CREATE\s+MATERIALIZED\s+VIEW\s+"):
-            clean_query = cls._clean_starrocks_mv_ddl(clean_query)
-
         return clean_query.strip()
-
-    @classmethod
-    def _clean_starrocks_mv_ddl(cls, query: str) -> str:
-        """Normalize StarRocks/Doris CREATE MATERIALIZED VIEW DDL to a form
-        that sqlglot can parse (CREATE VIEW ... AS SELECT ...).
-
-        Strips: column list after MV name, DISTRIBUTED BY, BUCKETS, REFRESH,
-        PROPERTIES, ORDER BY (before AS), COMMENT, PARTITION BY clauses.
-        """
-        as_match = re.search(r"\bAS\b", query, re.IGNORECASE)
-        if not as_match:
-            return query
-
-        select_part = query[as_match.end():].strip()
-
-        # Extract MV name (possibly backtick-quoted or schema-qualified)
-        name_match = re.match(
-            r"^\s*CREATE\s+MATERIALIZED\s+VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)",
-            query,
-            re.IGNORECASE,
-        )
-        mv_name = name_match.group(1) if name_match else "unknown_mv"
-
-        return f"CREATE VIEW {mv_name} AS {select_part}"
 
     def _evaluate_best_parser(
         self,

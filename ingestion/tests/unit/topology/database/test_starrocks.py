@@ -22,6 +22,7 @@ from sqlalchemy import types as sqltypes
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.source.database.starrocks.lineage import normalize_mv_ddl
 from metadata.ingestion.source.database.starrocks.metadata import (
     StarRocksSource,
     _get_sqlalchemy_type,
@@ -178,3 +179,121 @@ class TestStarRocksLineageFilters:
         from metadata.ingestion.source.database.starrocks.lineage import StarRocksLineageSource
 
         assert "CREATE%MATERIALIZED%VIEW%AS%SELECT" in StarRocksLineageSource.filters
+
+
+class TestStarRocksMvDdlNormalization:
+    """Normalization of StarRocks/Doris CREATE MATERIALIZED VIEW DDL into a
+    CREATE VIEW form that the SQL lineage parser can handle."""
+
+    def test_basic_with_column_list(self):
+        query = (
+            "CREATE MATERIALIZED VIEW `mv_order_enriched` (`order_id`, `order_date`, `total_amount`) "
+            "DISTRIBUTED BY HASH(`order_id`) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW `mv_order_enriched` AS "
+            "SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+
+    def test_without_column_list(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv_daily_sales "
+            "DISTRIBUTED BY HASH(order_date) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv_daily_sales AS "
+            "SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+
+    def test_regular_view_is_untouched(self):
+        query = "CREATE VIEW my_view AS SELECT * FROM my_table"
+        assert normalize_mv_ddl(query) == query
+
+    def test_non_mv_query_is_untouched(self):
+        query = "INSERT INTO target SELECT * FROM source"
+        assert normalize_mv_ddl(query) == query
+
+    def test_or_replace(self):
+        query = (
+            "CREATE OR REPLACE MATERIALIZED VIEW mv_daily "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv_daily AS SELECT order_id FROM clean_orders"
+
+    def test_backtick_name_with_hyphen(self):
+        query = (
+            "CREATE MATERIALIZED VIEW `my-view` "
+            "DISTRIBUTED BY HASH(`order-id`) BUCKETS 4 "
+            "AS SELECT `order-id` FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW `my-view` AS SELECT `order-id` FROM clean_orders"
+        )
+
+    def test_stray_as_in_comment_and_properties(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "COMMENT 'rolls up as needed' "
+            "PROPERTIES ('note'='run as batch') "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+    def test_cte_body_is_preserved(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv AS "
+            "WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+
+
+class TestStarRocksViewLineageProducer:
+    """The view-lineage path parses ``view_definition`` directly, so the
+    StarRocks source must normalize MV definitions there too (not only on the
+    query-log path)."""
+
+    def _make_view(self, view_definition):
+        from metadata.ingestion.source.models import TableView
+
+        return TableView(
+            table_name="mv",
+            schema_name="s",
+            db_name="d",
+            view_definition=view_definition,
+        )
+
+    def test_view_definitions_are_normalized(self):
+        from unittest.mock import patch
+
+        from metadata.ingestion.source.database.lineage_source import LineageSource
+        from metadata.ingestion.source.database.starrocks.lineage import (
+            StarRocksLineageSource,
+        )
+
+        mv = self._make_view(
+            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(id) BUCKETS 4 "
+            "REFRESH ASYNC AS SELECT id FROM t"
+        )
+        plain = self._make_view("SELECT a FROM t")
+        empty = self._make_view(None)
+
+        source = StarRocksLineageSource.__new__(StarRocksLineageSource)
+        with patch.object(
+            LineageSource,
+            "view_lineage_producer",
+            lambda self: iter([mv, plain, empty]),
+        ):
+            produced = list(source.view_lineage_producer())
+
+        assert produced[0].view_definition == "CREATE VIEW mv AS SELECT id FROM t"
+        assert produced[1].view_definition == "SELECT a FROM t"
+        assert produced[2].view_definition is None

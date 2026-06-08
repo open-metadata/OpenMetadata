@@ -12,11 +12,45 @@
 StarRocks lineage module
 """
 
+import re
+from typing import Iterable
+
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.starrocks.queries import STARROCKS_SQL_STATEMENT
 from metadata.ingestion.source.database.starrocks.query_parser import (
     StarRocksQueryParserSource,
 )
+from metadata.ingestion.source.models import TableView
+
+MV_DDL_PATTERN = re.compile(
+    r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\s+", re.IGNORECASE
+)
+MV_BODY_PATTERN = re.compile(r"\bAS\s+(?=SELECT\b|WITH\b)", re.IGNORECASE)
+MV_NAME_PATTERN = re.compile(
+    r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\s+"
+    r"(?:IF\s+NOT\s+EXISTS\s+)?((?:`[^`]+`|\w+)(?:\.(?:`[^`]+`|\w+))*)",
+    re.IGNORECASE,
+)
+
+
+def normalize_mv_ddl(query: str) -> str:
+    """Normalize StarRocks/Doris CREATE MATERIALIZED VIEW DDL to a form that
+    sqlglot can parse (CREATE VIEW ... AS SELECT ...).
+
+    Discards every clause between the MV name and the query body (column list,
+    COMMENT, PARTITION BY, DISTRIBUTED BY, BUCKETS, ORDER BY, REFRESH,
+    PROPERTIES). Anchors on the ``AS`` that introduces the body (``AS SELECT``
+    / ``AS WITH``) so a stray ``as`` inside a COMMENT or PROPERTIES value is not
+    mistaken for it. Non-MV queries are returned unchanged.
+    """
+    result = query
+    if MV_DDL_PATTERN.match(query):
+        body_match = MV_BODY_PATTERN.search(query)
+        name_match = MV_NAME_PATTERN.match(query)
+        if body_match and name_match:
+            body = query[body_match.end() :].strip()
+            result = f"CREATE VIEW {name_match.group(1)} AS {body}"
+    return result
 
 
 class StarRocksLineageSource(StarRocksQueryParserSource, LineageSource):
@@ -27,6 +61,7 @@ class StarRocksLineageSource(StarRocksQueryParserSource, LineageSource):
     Extracts lineage from:
     - CREATE TABLE AS SELECT
     - CREATE VIEW AS SELECT
+    - CREATE MATERIALIZED VIEW AS SELECT
     - INSERT INTO ... SELECT
     - INSERT OVERWRITE ... SELECT
     """
@@ -46,3 +81,17 @@ class StarRocksLineageSource(StarRocksQueryParserSource, LineageSource):
     database_field = "database_name"
 
     schema_field = "schema_name"
+
+    def prepare_lineage_query(self, query: str) -> str:
+        return normalize_mv_ddl(query)
+
+    def view_lineage_producer(self) -> Iterable[TableView]:
+        """
+        Normalize materialized-view definitions so the view-lineage path
+        (which parses ``view_definition`` directly) handles StarRocks MV DDL
+        the same way as the query-log path.
+        """
+        for view in super().view_lineage_producer():
+            if view.view_definition:
+                view.view_definition = normalize_mv_ddl(view.view_definition)
+            yield view
