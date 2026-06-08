@@ -13,7 +13,7 @@ StarRocks lineage module
 """
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.starrocks.queries import STARROCKS_SQL_STATEMENT
@@ -22,9 +22,7 @@ from metadata.ingestion.source.database.starrocks.query_parser import (
 )
 from metadata.ingestion.source.models import TableView
 
-MV_DDL_PATTERN = re.compile(
-    r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\s+", re.IGNORECASE
-)
+MV_DDL_PATTERN = re.compile(r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\s+", re.IGNORECASE)
 MV_BODY_PATTERN = re.compile(r"\bAS\s+(?=SELECT\b|WITH\b)", re.IGNORECASE)
 MV_NAME_PATTERN = re.compile(
     r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\s+"
@@ -40,9 +38,7 @@ def _mask_quoted_strings(query: str) -> str:
     onto the original query. Used so a literal ``AS SELECT``/``AS WITH`` inside
     a COMMENT or PROPERTIES value is not mistaken for the query body.
     """
-    return QUOTED_STRING_PATTERN.sub(
-        lambda m: m.group()[0] + "x" * (len(m.group()) - 2) + m.group()[-1], query
-    )
+    return QUOTED_STRING_PATTERN.sub(lambda m: m.group()[0] + "x" * (len(m.group()) - 2) + m.group()[-1], query)
 
 
 def normalize_mv_ddl(query: str) -> str:

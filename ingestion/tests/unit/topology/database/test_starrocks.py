@@ -193,8 +193,7 @@ class TestStarRocksMvDdlNormalization:
             "AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
         )
         assert normalize_mv_ddl(query) == (
-            "CREATE VIEW `mv_order_enriched` AS "
-            "SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+            "CREATE VIEW `mv_order_enriched` AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
         )
 
     def test_without_column_list(self):
@@ -205,8 +204,7 @@ class TestStarRocksMvDdlNormalization:
             "AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
         )
         assert normalize_mv_ddl(query) == (
-            "CREATE VIEW mv_daily_sales AS "
-            "SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+            "CREATE VIEW mv_daily_sales AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
         )
 
     def test_regular_view_is_untouched(self):
@@ -231,9 +229,7 @@ class TestStarRocksMvDdlNormalization:
             "DISTRIBUTED BY HASH(`order-id`) BUCKETS 4 "
             "AS SELECT `order-id` FROM clean_orders"
         )
-        assert normalize_mv_ddl(query) == (
-            "CREATE VIEW `my-view` AS SELECT `order-id` FROM clean_orders"
-        )
+        assert normalize_mv_ddl(query) == ("CREATE VIEW `my-view` AS SELECT `order-id` FROM clean_orders")
 
     def test_stray_as_in_comment_and_properties(self):
         query = (
@@ -251,8 +247,7 @@ class TestStarRocksMvDdlNormalization:
             "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
         assert normalize_mv_ddl(query) == (
-            "CREATE VIEW mv AS "
-            "WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+            "CREATE VIEW mv AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
 
     def test_literal_as_select_in_comment(self):
@@ -273,8 +268,7 @@ class TestStarRocksMvDdlNormalization:
             "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
         assert normalize_mv_ddl(query) == (
-            "CREATE VIEW mv AS "
-            "WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+            "CREATE VIEW mv AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
 
 
@@ -302,8 +296,7 @@ class TestStarRocksViewLineageProducer:
         )
 
         mv = self._make_view(
-            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(id) BUCKETS 4 "
-            "REFRESH ASYNC AS SELECT id FROM t"
+            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(id) BUCKETS 4 REFRESH ASYNC AS SELECT id FROM t"
         )
         plain = self._make_view("SELECT a FROM t")
         empty = self._make_view(None)
@@ -340,7 +333,7 @@ class TestStarRocksQueryLogHook:
             "AS SELECT order_id FROM clean_orders"
         )
         log_file = tmp_path / "query_log.csv"
-        with open(log_file, "w", encoding="utf-8", newline="") as handle:
+        with log_file.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(["query_text"])
             writer.writerow([mv_ddl])
