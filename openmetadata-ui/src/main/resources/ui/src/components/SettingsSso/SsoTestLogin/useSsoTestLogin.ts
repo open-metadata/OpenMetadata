@@ -77,6 +77,7 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
       const candidate = {
         authority: authConfig.authority,
         clientId: authConfig.clientId,
+        callbackUrl: authConfig.callbackUrl,
         scope: DEFAULT_SCOPE,
       } as AuthenticationConfigurationWithScope;
 

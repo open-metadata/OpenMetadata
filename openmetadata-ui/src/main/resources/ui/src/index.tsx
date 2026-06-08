@@ -16,15 +16,18 @@ import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
 import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
+import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Failed to find the root element');
 }
 
-// The SSO "Test Login" popup lands here. Handle the OIDC handshake in isolation
-// and NEVER mount the app, so the test can't touch the admin's real session.
-if (window.location.pathname.endsWith('/sso-test-callback')) {
+// The SSO "Test Login" popup returns to the configured callback URL. When this
+// document is that isolated popup, handle the OIDC handshake separately and
+// NEVER mount the app, so the test can't touch the admin's real session. A real
+// login on the same callback URL is not diverted (see isSsoTestLoginPopup).
+if (isSsoTestLoginPopup()) {
   import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap').then(
     (module) => module.runSsoTestCallback()
   );

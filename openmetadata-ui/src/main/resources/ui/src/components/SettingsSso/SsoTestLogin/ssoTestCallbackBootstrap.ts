@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import { UserManager } from 'oidc-client';
-import {
-  getCandidateUserManagerConfig,
-  SSO_TEST_LOGIN_STORE_PREFIX,
-} from '../../../utils/AuthProvider.util';
+import { getCandidateUserManagerConfig } from '../../../utils/AuthProvider.util';
+import { SSO_TEST_LOGIN_STORE_PREFIX } from '../../../utils/SsoTestLoginPopup';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 
 export const SSO_TEST_LOGIN_CANDIDATE_KEY = `${SSO_TEST_LOGIN_STORE_PREFIX}candidate`;
 
 /**
- * Runs INSIDE the Test Login popup at the dedicated `/sso-test-callback` route.
+ * Runs INSIDE the Test Login popup when it returns from the identity provider to
+ * the configured callback URL (the index.tsx guard routes here via
+ * isSsoTestLoginPopup instead of mounting the app).
  *
  * It completes the OIDC popup handshake against the candidate configuration and
  * hands the resulting token back to the opener. It deliberately does NOT mount
- * the application (the index.tsx guard prevents that), so it cannot touch the
- * admin's real session, token storage, or auth context.
+ * the application, so it cannot touch the admin's real session, token storage,
+ * or auth context.
  */
 export const runSsoTestCallback = async (): Promise<void> => {
   try {

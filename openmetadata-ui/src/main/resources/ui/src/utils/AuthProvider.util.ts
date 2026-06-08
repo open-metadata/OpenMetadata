@@ -33,6 +33,7 @@ import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
+import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
@@ -76,27 +77,18 @@ export const getUserManagerConfig = (
   };
 };
 
-export const getSsoTestCallbackUri = () => {
-  return isDev()
-    ? `http://localhost:3000${subPath}/sso-test-callback`
-    : `${globalThis.location.origin}${subPath}/sso-test-callback`;
-};
-
-// Dedicated, prefixed store so the Test Login popup never reads or writes the
-// app's real auth state (oidcTokenStorage), while still being shareable between
-// the opener and the same-origin popup so the OIDC state handshake completes.
-export const SSO_TEST_LOGIN_STORE_PREFIX = 'omSsoTestLogin.';
-
 /**
  * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
- * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage)
- * and the popup redirects to a dedicated, inert callback route, so the test can
- * never affect the admin's real session.
+ * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
+ * but the popup uses the SAME configured callback URL the real login uses — so
+ * the test exercises the actual registered redirect URI and never requires the
+ * admin to register an extra one. Isolation is achieved by diverting the popup
+ * at the callback (see isSsoTestLoginPopup), not by using a separate route.
  */
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', scope } = authClient;
+  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
   const testStore = new WebStorageStateStore({
     store: globalThis.localStorage,
     prefix: SSO_TEST_LOGIN_STORE_PREFIX,
@@ -105,7 +97,7 @@ export const getCandidateUserManagerConfig = (
   return {
     authority,
     client_id: clientId,
-    redirect_uri: getSsoTestCallbackUri(),
+    redirect_uri: getRedirectUri(callbackUrl),
     response_type: 'id_token',
     scope: scope || 'openid email profile',
     loadUserInfo: false,
