@@ -10,17 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
-import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityImportRouter from './EntityImportRouter';
+import withSuspenseFallback from './withSuspenseFallback';
+
+const EntityVersionPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/EntityVersionPage/EntityVersionPage.component')
+  )
+);
 
 const EntityRouter = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
