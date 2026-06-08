@@ -114,7 +114,9 @@ public final class IncidentManagerPage extends PageObject {
     page.waitForResponse(
         r -> r.url().contains("/api/v1/search/query") && r.url().contains("index=user"),
         () -> page.locator("[data-testid='assignee-search-input'] input").fill(userDisplayName));
-    page.locator("[data-testid='" + userName.toLowerCase() + "']").click();
+    final Locator userOption = page.locator("[data-testid='" + userName.toLowerCase() + "']");
+    userOption.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    userOption.click();
     page.waitForResponse(
         r -> r.url().matches(API_INCIDENT_STATUS_REGEX) || r.url().matches(API_TASK_RESOLVE_REGEX),
         () -> byTestId("submit-assignee-popover-button").click());
@@ -203,7 +205,7 @@ public final class IncidentManagerPage extends PageObject {
 
   /** Open page size dropdown, click the {@code 50 / Page} option, await list with limit=50. */
   public IncidentManagerPage selectPageSize50() {
-    byTestId("page-size-selection-dropdown").click();
+    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
     page.waitForResponse(
         r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"),
         () ->

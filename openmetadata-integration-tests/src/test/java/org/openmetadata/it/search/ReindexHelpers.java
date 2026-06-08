@@ -9,6 +9,8 @@ import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Drives the SearchIndexingApplication via the SDK and waits for run completion.
@@ -22,10 +24,13 @@ public final class ReindexHelpers {
 
   public static final String SEARCH_INDEX_APP = "SearchIndexingApplication";
 
+  private static final Logger LOG = LoggerFactory.getLogger(ReindexHelpers.class);
   private static final Set<String> TERMINAL_STATUSES =
       Set.of("success", "failed", "completed", "stopped", "activeError");
+  private static final Set<String> SUCCESS_STATUSES = Set.of("success", "completed");
   private static final String REINDEX_TIMEOUT_MIN_PROP = "jpw.reindex.timeoutMin";
   private static final int DEFAULT_TIMEOUT_MINUTES = 60;
+  private static final int BASELINE_RECREATE_ATTEMPTS = 3;
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   private ReindexHelpers() {}
@@ -139,7 +144,9 @@ public final class ReindexHelpers {
     waitForLatestRunTerminal(server, SEARCH_INDEX_APP, reindexTimeout());
     final long triggeredAtMillis = System.currentTimeMillis();
     triggerWhenAccepted(server, reindexTimeout());
-    return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    final AppRunRecord run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    logIfNotSuccess(run);
+    return run;
   }
 
   /**
@@ -170,13 +177,28 @@ public final class ReindexHelpers {
    * run). Used by {@code SearchClusterResetExtension}.
    */
   public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
-    final long triggeredAtMillis = System.currentTimeMillis();
-    // Trigger via the idle-aware path: the SearchIndexApp single-run lock can linger briefly after
-    // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
-    // running" (notably at class transitions in the serial search-it suite). This waits for the
-    // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
-    triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
-    return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    AppRunRecord run = null;
+    for (int attempt = 1; attempt <= BASELINE_RECREATE_ATTEMPTS && !isSuccess(run); attempt++) {
+      final long triggeredAtMillis = System.currentTimeMillis();
+      // Trigger via the idle-aware path: the SearchIndexApp single-run lock can linger briefly
+      // after
+      // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
+      // running" (notably at class transitions in the serial search-it suite). This waits for the
+      // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
+      triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
+      run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+      if (!isSuccess(run)) {
+        LOG.warn(
+            "Baseline recreate attempt {}/{} ended in status '{}'{} — a prior test (e.g. a stopped"
+                + " reindex or a 504 on a large cleanup) can leave indices half-dropped; retrying to"
+                + " restore a clean baseline.",
+            attempt,
+            BASELINE_RECREATE_ATTEMPTS,
+            statusOf(run),
+            failureSummary(run));
+      }
+    }
+    return run;
   }
 
   /** Triggers a per-entity reindex via {@code POST /v1/search/reindex?entityType=...}. */
@@ -220,6 +242,32 @@ public final class ReindexHelpers {
         .getHttpClient()
         .execute(
             HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
+  }
+
+  private static boolean isSuccess(final AppRunRecord run) {
+    return run != null && run.getStatus() != null && SUCCESS_STATUSES.contains(statusOf(run));
+  }
+
+  private static String statusOf(final AppRunRecord run) {
+    return (run == null || run.getStatus() == null) ? "none" : run.getStatus().value();
+  }
+
+  private static void logIfNotSuccess(final AppRunRecord run) {
+    if (!isSuccess(run)) {
+      LOG.warn(
+          "SearchIndexApp run did not succeed: status='{}'{}", statusOf(run), failureSummary(run));
+    }
+  }
+
+  /** A short, log-safe rendering of the run's failure context, or empty when there is none. */
+  private static String failureSummary(final AppRunRecord run) {
+    final String summary;
+    if (run == null || run.getFailureContext() == null) {
+      summary = "";
+    } else {
+      summary = " failureContext=" + run.getFailureContext();
+    }
+    return summary;
   }
 
   private static boolean isTerminal(final AppRunRecord run) {

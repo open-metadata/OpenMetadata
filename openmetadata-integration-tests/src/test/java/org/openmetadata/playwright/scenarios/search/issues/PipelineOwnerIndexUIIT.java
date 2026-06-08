@@ -52,7 +52,7 @@ class PipelineOwnerIndexUIIT {
         new CreatePipeline()
             .withName(ns.prefix("owned_pipeline"))
             .withService(service.getFullyQualifiedName())
-            .withOwners(List.of(owner.getEntityReference()));
+            .withOwners(List.of(owner.getEntityReference().withType(Entity.USER)));
     final Pipeline pipeline = SdkClients.adminClient().pipelines().create(request);
 
     final String index = new IndexAliasInspector(ui.server()).indexNameFor(Entity.PIPELINE);

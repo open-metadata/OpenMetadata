@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.Map;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +61,17 @@ class ReindexStopUnderLoadIT {
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
     tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
+  }
+
+  /**
+   * Stopping a recreate mid-flight can leave indices half-dropped or aliases unswapped, and a 504
+   * on the large-cohort cleanup can leak docs. Restore a clean, queryable baseline after this class
+   * so neither the next search IT nor the next run on a shared cluster inherits broken state. The
+   * recreate self-heals (retries until a run succeeds).
+   */
+  @AfterAll
+  static void restoreBaseline() {
+    ReindexHelpers.recreateAllAndWait(server, ReindexHelpers.reindexTimeout());
   }
 
   @Test
