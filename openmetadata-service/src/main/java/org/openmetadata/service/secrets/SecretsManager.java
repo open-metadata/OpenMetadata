@@ -462,13 +462,18 @@ public abstract class SecretsManager {
                             fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value
-                    ReflectionUtil.setValueInMethod(
-                        toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
-                            ? newFieldValue
-                            : store ? fernet.encrypt(newFieldValue) : newFieldValue,
-                        toSet);
+                    // Issue #21259: storeValue returns null when the user clears the
+                    // password field. Propagate that null through instead of attempting
+                    // to fernet-encrypt it.
+                    String finalValue;
+                    if (newFieldValue == null) {
+                      finalValue = null;
+                    } else if (Fernet.isTokenized(newFieldValue)) {
+                      finalValue = newFieldValue;
+                    } else {
+                      finalValue = store ? fernet.encrypt(newFieldValue) : newFieldValue;
+                    }
+                    ReflectionUtil.setValueInMethod(toEncryptObject, finalValue, toSet);
                   }
                 });
       }

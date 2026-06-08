@@ -33,6 +33,16 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   @Override
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    // Issue #21259: a null/empty value means "no credential". Handle this case BEFORE
+    // calling isSecret() — isSecret() invokes startsWith() on the value and would NPE
+    // on null. Returning null here ensures the entity does not carry a stale secret:/
+    // reference to a deleted secret.
+    if (Objects.isNull(value) || value.isEmpty()) {
+      if (store) {
+        upsertSecret(fieldSecretId, value);
+      }
+      return null;
+    }
     // check if value does not start with 'config:' only String can have password annotation
     if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
@@ -45,12 +55,22 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public void upsertSecret(String secretName, String secretValue) {
-    String sanitizedValue = cleanNullOrEmpty(secretValue);
+    // Issue #21259: when the value is null/empty, the user's intent is "remove this
+    // credential" — delete the backing secret instead of storing the literal string
+    // "null". This also satisfies the GCP/Kubernetes empty-string rejection constraint
+    // (PR #25224) by simply not calling upsert with an empty value.
+    if (Objects.isNull(secretValue) || secretValue.isEmpty()) {
+      if (existSecret(secretName)) {
+        deleteSecretInternal(secretName);
+        sleep();
+      }
+      return;
+    }
     if (existSecret(secretName)) {
-      updateSecret(secretName, sanitizedValue);
+      updateSecret(secretName, secretValue);
       sleep();
     } else {
-      storeSecret(secretName, sanitizedValue);
+      storeSecret(secretName, secretValue);
       sleep();
     }
   }
