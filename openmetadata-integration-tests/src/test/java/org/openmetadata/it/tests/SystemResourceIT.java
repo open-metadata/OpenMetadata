@@ -66,6 +66,7 @@ import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -1735,6 +1736,62 @@ public class SystemResourceIT {
                         securityConfigJson,
                         RequestOptions.builder().build()),
             "Non-admin must not be able to test/validate the SSO configuration");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
+  }
+
+  @Test
+  void test_testLoginValidateToken_adminGetsResultWithoutCredentials() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/test-login/validate-token",
+                MAPPER.writeValueAsString(request),
+                RequestOptions.builder().build());
+
+    assertNotNull(json);
+    JsonNode node = MAPPER.readTree(json);
+    assertTrue(node.has("status"), "Test login result should contain a status field");
+    assertFalse(node.has("accessToken"), "Test login must not return an access token");
+    assertFalse(node.has("refreshToken"), "Test login must not return a refresh token");
+    assertFalse(node.has("jwtToken"), "Test login must not return a JWT token");
+  }
+
+  @Test
+  void test_testLoginValidateToken_nonAdminForbidden() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+    String body = MAPPER.writeValueAsString(request);
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/test-login/validate-token",
+                        body,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to run a test login");
 
     String message = exception.getMessage();
     assertTrue(
