@@ -271,6 +271,22 @@ class TestStarRocksMvDdlNormalization:
             "CREATE VIEW mv AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
         )
 
+    def test_parenthesized_select_body(self):
+        """An 'AS (SELECT ...)' body is anchored and kept balanced"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(order_id) BUCKETS 4 AS (SELECT order_id FROM clean_orders)"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS (SELECT order_id FROM clean_orders)"
+
+    def test_inline_comment_between_as_and_select(self):
+        """An inline /* ... */ comment between AS and SELECT is not mistaken for the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS /* build immediate */ SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
 
 class TestStarRocksViewLineageProducer:
     """The view-lineage path parses ``view_definition`` directly, so the
@@ -314,12 +330,19 @@ class TestStarRocksViewLineageProducer:
         assert produced[2].view_definition is None
 
 
-class TestStarRocksQueryLogHook:
-    """The query-log path must actually invoke prepare_lineage_query. Unit tests
-    that call normalize_mv_ddl() directly would still pass if the hook wiring
-    broke, so exercise the inherited yield_table_queries_from_logs() end to end."""
+MV_DDL = (
+    "CREATE MATERIALIZED VIEW mv "
+    "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
+    "AS SELECT order_id FROM clean_orders"
+)
+NORMALIZED_MV = "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
 
-    def test_yield_from_logs_normalizes_mv_ddl(self, tmp_path):
+
+class TestStarRocksQueryLogProducer:
+    """The query-log producer must keep the ORIGINAL statement on TableQuery.query
+    so the persisted Query entity is the real MV DDL, not the normalized shim."""
+
+    def test_producer_preserves_original_mv_ddl(self, tmp_path):
         import csv
         from types import SimpleNamespace
 
@@ -327,16 +350,11 @@ class TestStarRocksQueryLogHook:
             StarRocksLineageSource,
         )
 
-        mv_ddl = (
-            "CREATE MATERIALIZED VIEW mv "
-            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
-            "AS SELECT order_id FROM clean_orders"
-        )
         log_file = tmp_path / "query_log.csv"
         with log_file.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(["query_text"])
-            writer.writerow([mv_ddl])
+            writer.writerow([MV_DDL])
 
         source = StarRocksLineageSource.__new__(StarRocksLineageSource)
         source.source_config = SimpleNamespace(queryLogFilePath=str(log_file))
@@ -347,4 +365,57 @@ class TestStarRocksQueryLogHook:
         queries = list(source.yield_table_queries_from_logs())
 
         assert len(queries) == 1
-        assert queries[0].query == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+        assert queries[0].query == MV_DDL
+
+
+class TestStarRocksQueryLogHook:
+    """The processor must parse the NORMALIZED query (via prepare_query) while
+    persisting the ORIGINAL — regression guard for the 'persisted shim' bug."""
+
+    def test_processor_parses_normalized_persists_original(self):
+        from unittest.mock import MagicMock
+
+        from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+        from metadata.generated.schema.type.tableQuery import TableQuery
+        from metadata.ingestion.api.models import Either
+        from metadata.ingestion.source.database import lineage_processors
+        from metadata.ingestion.source.database.starrocks.lineage import normalize_mv_ddl
+
+        captured = {}
+
+        def fake_get_lineage_by_query(metadata, query, **kwargs):
+            captured["query"] = query
+            return [Either(right=MagicMock())]
+
+        class FakeQueue:
+            def __init__(self):
+                self.items = []
+
+            def put(self, item):
+                self.items.append(item)
+
+        table_query = TableQuery(query=MV_DDL, serviceName="svc")
+        queue = FakeQueue()
+
+        with (
+            patch.object(lineage_processors, "get_lineage_by_query", fake_get_lineage_by_query),
+            patch.object(lineage_processors, "_query_already_processed", return_value=False),
+        ):
+            lineage_processors.query_lineage_processor(
+                [table_query],
+                queue,
+                MagicMock(),
+                None,
+                None,
+                False,
+                [],
+                30,
+                "svc",
+                None,
+                normalize_mv_ddl,
+            )
+
+        assert captured["query"] == NORMALIZED_MV
+        persisted = [i.right for i in queue.items if isinstance(i.right, CreateQueryRequest)]
+        assert len(persisted) == 1
+        assert persisted[0].query.root == MV_DDL

@@ -82,9 +82,10 @@ class LineageSource(QueryParserSource, ABC):
 
     def prepare_lineage_query(self, query: str) -> str:
         """
-        Hook for connectors to normalize a raw query before lineage parsing.
-        Defaults to returning the query unchanged; override in connectors that
-        emit non-standard DDL the SQL parser cannot handle as-is.
+        Hook for connectors to normalize a query just before it is parsed for
+        lineage. Applied only on the parse path (not when persisting the query),
+        so the original statement is still stored. Defaults to identity;
+        override in connectors that emit non-standard DDL the parser can't read.
         """
         return query
 
@@ -304,7 +305,7 @@ class LineageSource(QueryParserSource, ABC):
                     for row in csv.DictReader(file):
                         query_dict = dict(row)
                         yield TableQuery(
-                            query=self.prepare_lineage_query(query_dict["query_text"]),
+                            query=query_dict["query_text"],
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
@@ -334,7 +335,7 @@ class LineageSource(QueryParserSource, ABC):
                         query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
                             dialect=self.dialect.value,
-                            query=self.prepare_lineage_query(query_dict["query_text"]),
+                            query=query_dict["query_text"],
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
@@ -383,6 +384,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.config.serviceName,
             self.get_query_parser_type(),
+            self.prepare_lineage_query,
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
