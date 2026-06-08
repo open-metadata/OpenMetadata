@@ -97,12 +97,10 @@ jest.mock('../../../hooks/useCustomPages', () => ({
     .mockReturnValue({ customizedPage: null, isLoading: false }),
 }));
 jest.mock('../../../hooks/useMarketplaceStore', () => ({
-  useMarketplaceStore: jest
-    .fn()
-    .mockReturnValue({
-      isMarketplace: false,
-      dataProductBasePath: '/data-product',
-    }),
+  useMarketplaceStore: jest.fn().mockReturnValue({
+    isMarketplace: false,
+    dataProductBasePath: '/data-product',
+  }),
 }));
 jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn().mockResolvedValue({ data: [] }),
