@@ -14,6 +14,36 @@
       "enum": ["IDEATION", "DESIGN", "DEVELOPMENT", "TESTING", "PRODUCTION", "DEPRECATED", "RETIRED"],
       "default": "DEVELOPMENT"
     },
+    "dataProductType": {
+      "description": "Type of the data product, aligned with the Open Data Product Standard (ODPS) v4.1 type taxonomy.",
+      "type": "string",
+      "enum": [
+        "RAW_DATA",
+        "DERIVED_DATA",
+        "DATASET",
+        "REPORTS",
+        "ANALYTIC_VIEW",
+        "VISUALISATION_3D",
+        "ALGORITHM",
+        "DECISION_SUPPORT",
+        "AUTOMATED_DECISION_MAKING",
+        "DATA_ENHANCED_PRODUCT",
+        "DATA_DRIVEN_SERVICE",
+        "DATA_ENABLED_PERFORMANCE",
+        "BI_DIRECTIONAL"
+      ]
+    },
+    "visibility": {
+      "description": "Visibility level of the data product. Controls who can discover and access this data product. Promotion to more open levels (e.g., ORGANISATION, PUBLIC) should go through the governance workflow.",
+      "type": "string",
+      "enum": ["PRIVATE", "INVITATION", "ORGANISATION", "DATASPACE", "PUBLIC"],
+      "default": "PRIVATE"
+    },
+    "portfolioPriority": {
+      "description": "Portfolio-level priority of this data product, indicating its importance in the organization's data product portfolio.",
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+    },
     "portType": {
       "description": "Type of the data product port",
       "type": "string",
@@ -169,8 +199,20 @@
       "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "lifecycleStage": {
-      "description": "Current lifecycle stage of the data product",
+      "description": "Current lifecycle stage of the data product. Driven by the governance workflow — not directly user-editable.",
       "$ref": "#/definitions/lifecycleStage"
+    },
+    "dataProductType": {
+      "description": "Type of the data product (ODPS-aligned taxonomy).",
+      "$ref": "#/definitions/dataProductType"
+    },
+    "visibility": {
+      "description": "Visibility level of the data product in the marketplace.",
+      "$ref": "#/definitions/visibility"
+    },
+    "portfolioPriority": {
+      "description": "Portfolio-level priority of this data product.",
+      "$ref": "#/definitions/portfolioPriority"
     },
     "sla": {
       "description": "Service Level Agreement for this data product",

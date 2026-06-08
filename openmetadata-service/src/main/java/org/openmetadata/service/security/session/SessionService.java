@@ -264,6 +264,27 @@ public class SessionService implements Managed {
     return Optional.of(userSession);
   }
 
+  /**
+   * Resolves a {@code PENDING} session directly by its id, independent of the {@code OM_SESSION}
+   * cookie. The SAML callback uses this because the pending-session id arrives in the SAML {@code
+   * RelayState} (POST body) — the cross-site IdP POST drops a {@code SameSite=Lax} cookie. Returns
+   * empty for malformed ids and for unknown, non-pending, or expired sessions.
+   */
+  public Optional<UserSession> getPendingSessionById(String sessionId) {
+    Optional<UserSession> result = Optional.empty();
+    if (SessionCookieUtil.isValidSessionId(sessionId)) {
+      UserSession userSession = getSessionById(sessionId).orElse(null);
+      if (userSession != null) {
+        if (userSession.getStatus() == SessionStatus.PENDING && !userSession.isExpired(now())) {
+          result = Optional.of(userSession);
+        } else {
+          expireIfNecessary(userSession);
+        }
+      }
+    }
+    return result;
+  }
+
   public Optional<UserSession> getActiveSession(
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
