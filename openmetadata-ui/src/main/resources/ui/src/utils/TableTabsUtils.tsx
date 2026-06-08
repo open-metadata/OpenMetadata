@@ -14,7 +14,7 @@
 import { Divider, Space, Typography } from 'antd';
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
-import type { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
