@@ -205,7 +205,9 @@ const DocumentFolderView = ({
                         id={file.id}
                         key={file.id}
                         textValue={file.name}>
-                        <Tree.ItemContent className='tw:ml-7!' showExpandIcon={false}>
+                        <Tree.ItemContent
+                          className="tw:ml-7!"
+                          showExpandIcon={false}>
                           <FileIcon
                             className="tw:size-5"
                             theme="light"
