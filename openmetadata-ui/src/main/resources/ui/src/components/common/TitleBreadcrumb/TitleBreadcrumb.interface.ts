@@ -28,5 +28,4 @@ export type TitleBreadcrumbProps = {
   loading?: boolean;
   widthDeductions?: number;
   useCustomArrow?: boolean;
-  separator?: React.ReactNode;
 };

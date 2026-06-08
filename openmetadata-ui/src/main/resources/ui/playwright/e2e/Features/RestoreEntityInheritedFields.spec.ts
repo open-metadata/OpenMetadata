@@ -365,13 +365,16 @@ entities.forEach((EntityClass) => {
         'Store Procedure',
       ].includes(entity.getType());
 
-      await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
-        is3Breadcrumb ? 4 : 2
-      );
+      // The core Breadcrumbs renders the current entity as a non-link
+      // aria-current span, so the navigable crumb count is (total - 1).
+      await expect(
+        page.getByTestId('breadcrumb').getByRole('link')
+      ).toHaveCount(is3Breadcrumb ? 3 : 1);
 
       // Navigate to the parent and assign domain.
       await page
-        .getByTestId('breadcrumb-link')
+        .getByTestId('breadcrumb')
+        .getByRole('link')
         .nth(is3Breadcrumb ? 1 : 0)
         .click();
 

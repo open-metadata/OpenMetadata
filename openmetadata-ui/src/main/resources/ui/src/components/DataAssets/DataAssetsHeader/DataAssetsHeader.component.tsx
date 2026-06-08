@@ -12,13 +12,13 @@
  */
 import {
   Alert,
+  Breadcrumbs,
   Button,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ChevronRight,
   Copy01,
   File02,
   RefreshCcw01,
@@ -104,7 +104,7 @@ import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/Anno
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -735,18 +735,34 @@ export const DataAssetsHeader = ({
             { 'tw:pl-1': isCustomizedView }
           )}>
           <div className="tw:min-w-0 tw:flex-1">
-            <TitleBreadcrumb
-              loading={isBreadcrumbLoading}
-              separator={
-                <ChevronRight className="tw:size-4 tw:text-fg-quaternary" />
-              }
-              titleLinks={[
-                ...breadcrumbs.map((link) =>
-                  isCustomizedView ? { ...link, url: '', noLink: true } : link
-                ),
-                { name: entityName, url: '', activeTitle: true },
-              ]}
-            />
+            <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
+              <div data-testid="breadcrumb">
+                <Breadcrumbs
+                  items={[
+                    ...breadcrumbs.map((link, index) => ({
+                      id: index,
+                      label: link.name,
+                      href:
+                        !isCustomizedView && link.url
+                          ? String(link.url)
+                          : undefined,
+                    })),
+                    { id: breadcrumbs.length, label: entityName },
+                  ]}
+                  size="sm"
+                  onAction={
+                    isCustomizedView
+                      ? undefined
+                      : (id) => {
+                          const link = breadcrumbs[Number(id)];
+                          if (link?.url) {
+                            navigate(String(link.url), link.options);
+                          }
+                        }
+                  }
+                />
+              </div>
+            </TitleBreadcrumbSkeleton>
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
             {!excludeEntityService &&

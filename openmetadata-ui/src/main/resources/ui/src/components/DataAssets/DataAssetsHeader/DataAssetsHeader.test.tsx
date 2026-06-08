@@ -138,14 +138,14 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
   return jest.fn().mockImplementation(() => <div>CertificationTag</div>);
 });
 
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
-  }
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="breadcrumb">Breadcrumbs.component</div>
+    )),
+}));
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
   () => {

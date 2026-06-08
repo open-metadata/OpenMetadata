@@ -33,13 +33,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   loading = false,
   widthDeductions,
   useCustomArrow = false,
-  separator,
 }: TitleBreadcrumbProps) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-
-  const customSeparator = separator ? (
-    <span className="breadcrumb-separator">{separator}</span>
-  ) : null;
 
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
@@ -90,14 +85,13 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         </span>
         {noLink &&
           index < titleLinks.length - 1 &&
-          (customSeparator ??
-            (useCustomArrow ? (
-              <span className="custom-separator">
-                <RightArrowIcon />
-              </span>
-            ) : (
-              <span className="text-xss text-grey-muted">{'>'}</span>
-            )))}
+          (useCustomArrow ? (
+            <span className="custom-separator">
+              <RightArrowIcon />
+            </span>
+          ) : (
+            <span className="text-xss text-grey-muted">{'>'}</span>
+          ))}
       </>
     );
   };
@@ -137,16 +131,15 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.icon}
                       {link.name}
                     </Link>
-                    {customSeparator ??
-                      (useCustomArrow ? (
-                        <span className="custom-separator">
-                          <RightArrowIcon />
-                        </span>
-                      ) : (
-                        <span className="text-sm font-regular p-x-xs text-grey-muted">
-                          {BREADCRUMB_SEPARATOR}
-                        </span>
-                      ))}
+                    {useCustomArrow ? (
+                      <span className="custom-separator">
+                        <RightArrowIcon />
+                      </span>
+                    ) : (
+                      <span className="text-sm font-regular p-x-xs text-grey-muted">
+                        {BREADCRUMB_SEPARATOR}
+                      </span>
+                    )}
                   </>
                 ) : (
                   renderBreadcrumb(index, link, classes)

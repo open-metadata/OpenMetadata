@@ -96,28 +96,4 @@ describe('Test Breadcrumb Component', () => {
 
     expect(serviceLink).toHaveAttribute('href', '/services');
   });
-
-  it('Should render the custom separator when separator prop is provided', () => {
-    const { container } = render(
-      <TitleBreadcrumb
-        separator={<span data-testid="custom-separator-icon">›</span>}
-        titleLinks={links}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const separators = getAllByTestId(container, 'custom-separator-icon');
-
-    expect(separators).toHaveLength(2);
-  });
-
-  it('Should render the default slash separator when separator prop is absent', () => {
-    render(<TitleBreadcrumb titleLinks={links} />, {
-      wrapper: MemoryRouter,
-    });
-
-    expect(screen.getAllByText('/')).toHaveLength(2);
-  });
 });
