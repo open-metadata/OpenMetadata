@@ -748,6 +748,12 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
   }
 
+  public DataInsightCustomChartResultList getPreviewData(
+      DataInsightCustomChart chart, long startTimestamp, long endTimestamp, boolean live)
+      throws IOException {
+    return searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
+  }
+
   public Map<String, DataInsightCustomChartResultList> listChartData(
       String chartNames,
       long startTimestamp,

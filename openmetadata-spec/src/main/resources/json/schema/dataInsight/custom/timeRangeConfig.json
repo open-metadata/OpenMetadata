@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/custom/timeRangeConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TimeRangeConfig",
+  "description": "Structured time-range intent for a Data Insight chart. Resolved into (startMillis, endMillis, live) by the server-side resolver (org.openmetadata.service.jdbi3.TimeRangeConfigResolver) for both chart preview and scheduled refresh. One of four variants discriminated by the `type` field. `existingJavaType` binds every reference to the handwritten sealed interface (with record variants and Jackson @JsonTypeInfo / @JsonSubTypes) instead of generating one, so callers get the typed value directly.",
+  "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig",
+  "oneOf": [
+    { "$ref": "#/definitions/liveSnapshot" },
+    { "$ref": "#/definitions/rollingWindow" },
+    { "$ref": "#/definitions/completedPeriod" },
+    { "$ref": "#/definitions/fixedWindow" }
+  ],
+  "definitions": {
+    "timeUnit": {
+      "description": "Calendar unit for rolling and completed time windows. All boundary math is performed in UTC.",
+      "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig$CalendarUnit",
+      "type": "string",
+      "enum": ["day", "week", "month", "quarter", "year"]
+    },
+    "liveSnapshot": {
+      "description": "Current state with no historical window. Resolves to (0, runStart, live=true); the executor reads the live data-asset search index rather than the time-series Data Insights index. Use for current-state KPIs and inventories (e.g. 'how many tables right now').",
+      "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig$LiveSnapshot",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Discriminator field.",
+          "type": "string",
+          "enum": ["LiveSnapshot"],
+          "default": "LiveSnapshot"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "rollingWindow": {
+      "description": "Sliding trailing window. Resolves to (runStart - value*unit, runStart, live=false). The window moves on every refresh, so a 'last 7 days' chart updates daily. Use for trends (e.g. 'last 30 days', 'trailing year').",
+      "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig$RollingWindow",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Discriminator field.",
+          "type": "string",
+          "enum": ["RollingWindow"],
+          "default": "RollingWindow"
+        },
+        "value": {
+          "description": "Number of units in the trailing window. Must be at least 1.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "$ref": "#/definitions/timeUnit"
+        }
+      },
+      "required": ["type", "value", "unit"],
+      "additionalProperties": false
+    },
+    "completedPeriod": {
+      "description": "Last N complete calendar periods, aligned to UTC boundaries. Resolves to (startOf(N units ago, unit), startOf(current unit), live=false). The window snaps to calendar boundaries and only changes when the next boundary crosses. Use for recurring reports (e.g. 'last completed quarter', 'prior year').",
+      "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig$CompletedPeriod",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Discriminator field.",
+          "type": "string",
+          "enum": ["CompletedPeriod"],
+          "default": "CompletedPeriod"
+        },
+        "value": {
+          "description": "Number of complete periods to include. Must be at least 1.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "$ref": "#/definitions/timeUnit"
+        }
+      },
+      "required": ["type", "value", "unit"],
+      "additionalProperties": false
+    },
+    "fixedWindow": {
+      "description": "Frozen absolute range in epoch milliseconds (UTC). Resolves to (startTimestamp, endTimestamp, live=false) — never changes on refresh. Use for retrospective reports and named periods (e.g. 'Q1 2026', 'Jan-Mar 2025'). startTimestamp must be less than endTimestamp.",
+      "existingJavaType": "org.openmetadata.schema.dataInsight.custom.TimeRangeConfig$FixedWindow",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Discriminator field.",
+          "type": "string",
+          "enum": ["FixedWindow"],
+          "default": "FixedWindow"
+        },
+        "startTimestamp": {
+          "description": "Window start in epoch milliseconds (UTC).",
+          "type": "integer",
+          "format": "int64"
+        },
+        "endTimestamp": {
+          "description": "Window end in epoch milliseconds (UTC).",
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": ["type", "startTimestamp", "endTimestamp"],
+      "additionalProperties": false
+    }
+  }
+}
