@@ -83,11 +83,16 @@ export const visitEntityPage = async (data: {
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
 
-  await page.getByTestId(dataTestId).getByTestId('data-name').click();
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
+  // A tooltip over the option can cause Playwright click failures:
+  // 1) Hover over the option to move the mouse away from the tooltip trigger element.
+  // 2) If the tooltip is still present, force-click the option.
+  await page.getByTestId(dataTestId).getByTestId('data-name').hover();
+  await page
+    .getByTestId(dataTestId)
+    .getByTestId('data-name')
+    .click({ force: true });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
 
