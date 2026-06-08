@@ -24,8 +24,7 @@ import withSuspenseFallback from './withSuspenseFallback';
 
 const EntityVersionPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/EntityVersionPage/EntityVersionPage.component')
+    () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
   )
 );
 

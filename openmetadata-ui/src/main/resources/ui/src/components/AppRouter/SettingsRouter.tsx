@@ -72,8 +72,7 @@ const ColumnBulkOperations = withSuspenseFallback(
 
 const DataAssetRulesPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
+    () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
   )
 );
 
@@ -107,24 +106,13 @@ const LoginConfigurationPage = withSuspenseFallback(
 const UrlConfigurationPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage'
-      )
-  )
-);
-
-const CustomPageSettings = withSuspenseFallback(
-  React.lazy(() =>
-    import('../../pages/CustomPageSettings/CustomPageSettings').then((m) => ({
-      default: m.CustomPageSettings,
-    }))
+      import('../../pages/Configuration/UrlConfiguration/UrlConfigurationPage')
   )
 );
 
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
+    () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 
@@ -154,9 +142,7 @@ const GlobalSettingCategoryPage = withSuspenseFallback(
 );
 
 const GlobalSettingPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/GlobalSettingPage/GlobalSettingPage')
-  )
+  React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
 const GlossaryTermRelationSettingsPage = withSuspenseFallback(
@@ -182,8 +168,7 @@ const LineageConfigPage = withSuspenseFallback(
 
 const NotificationListPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/NotificationListPage/NotificationListPage')
+    () => import('../../pages/NotificationListPage/NotificationListPage')
   )
 );
 
@@ -219,47 +204,38 @@ const AddPolicyPage = withSuspenseFallback(
 
 const AddRulePage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
   )
 );
 
 const EditRulePage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
   )
 );
 
 const PoliciesDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        '../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage'
-      )
+      import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
   )
 );
 
 const PoliciesListPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+    () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
   )
 );
 
 const ProfilerConfigurationPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        '../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage'
-      )
+      import('../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage')
   )
 );
 
 const AddRolePage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/RolesPage/AddRolePage/AddRolePage')
-  )
+  React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
 
 const RolesDetailPage = withSuspenseFallback(
@@ -269,15 +245,11 @@ const RolesDetailPage = withSuspenseFallback(
 );
 
 const RolesListPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/RolesPage/RolesListPage/RolesListPage')
-  )
+  React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
 
 const SearchSettingsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/SearchSettingsPage/SearchSettingsPage')
-  )
+  React.lazy(() => import('../../pages/SearchSettingsPage/SearchSettingsPage'))
 );
 
 const ServicesPage = withSuspenseFallback(
@@ -290,10 +262,13 @@ const TaskFormSettingsPage = withSuspenseFallback(
   )
 );
 
+const IntakeFormsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/IntakeForms/IntakeFormsPage'))
+);
+
 const ImportTeamsPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
+    () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
   )
 );
 
@@ -314,26 +289,19 @@ const WorkflowBuilderPage = withSuspenseFallback(
 
 const WorkflowsListPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
+    () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
   )
 );
 
 const EntitySearchSettings = withSuspenseFallback(
   React.lazy(
-    () =>
-      import(
-        '../SearchSettings/EntitySeachSettings/EntitySearchSettings'
-      )
+    () => import('../SearchSettings/EntitySeachSettings/EntitySearchSettings')
   )
 );
 
 const AppDetails = withSuspenseFallback(
   React.lazy(
-    () =>
-      import(
-        '../Settings/Applications/AppDetails/AppDetails.component'
-      )
+    () => import('../Settings/Applications/AppDetails/AppDetails.component')
   )
 );
 
@@ -880,22 +848,6 @@ const SettingsRouter = () => {
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
-              Operation.EditAll,
-              ResourceEntity.PERSONA,
-              permissions
-            )}>
-            <CustomPageSettings />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
-        )}
-      />
 
       <Route
         element={<ServicesPage />}
@@ -980,6 +932,17 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.WORKFLOW_DEFINITIONS,
           true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <IntakeFormsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.INTAKE_FORMS
         )}
       />
       <Route
