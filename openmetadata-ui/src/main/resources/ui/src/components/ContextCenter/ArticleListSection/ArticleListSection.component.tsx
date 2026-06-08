@@ -92,15 +92,15 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
 
   return (
     <Card
-      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(50vh-138px)]"
+      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(100vh-532px)] tw:min-h-75 article-list-section"
       data-testid="article-list-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
-          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50">
+          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
             <File06 className="tw:text-gray-600" height={20} width={20} />
           </div>
           <div className="tw:flex tw:flex-col">
-            <Typography size="text-md" weight="bold">
+            <Typography size="text-md" weight="semibold">
               {title}
             </Typography>
             {subtitle && (
@@ -122,7 +122,7 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
       </div>
 
       {articles.length > 0 || isLoading ? (
-        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,320px)]  tw:gap-4">
+        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] tw:gap-4">
           {isLoading ? (
             <ArticleLoading />
           ) : (

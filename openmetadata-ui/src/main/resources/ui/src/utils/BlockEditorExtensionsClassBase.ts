@@ -21,7 +21,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Text from '@tiptap/extension-text';
-import { Extensions } from '@tiptap/react';
+import type { Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
   ExtensionOptions,

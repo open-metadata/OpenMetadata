@@ -55,9 +55,6 @@ public class PartitionWorker {
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key used by search sinks to write into staged indexes. */
-  private static final String STAGED_WRITE_KEY = "recreateIndex";
-
   /** Context key for staged index context. */
   private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
@@ -693,6 +690,7 @@ public class PartitionWorker {
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
@@ -712,7 +710,6 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
-    contextData.put(STAGED_WRITE_KEY, true);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);

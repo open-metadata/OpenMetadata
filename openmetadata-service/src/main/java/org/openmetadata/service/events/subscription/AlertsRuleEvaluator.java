@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -359,8 +360,12 @@ public class AlertsRuleEvaluator {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
-    User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
-    return user.getIsBot();
+    try {
+      User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
+      return Boolean.TRUE.equals(user.getIsBot());
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
   }
 
   @Function(

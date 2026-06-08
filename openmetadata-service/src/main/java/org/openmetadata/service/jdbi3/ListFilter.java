@@ -977,10 +977,49 @@ public class ListFilter extends Filter<ListFilter> {
     return name.replace("'", "''");
   }
 
+  /**
+   * Defence-in-depth: when a value is embedded inside a single-quoted SQL string literal,
+   * escape backslashes before apostrophes (MySQL treats {@code \} as a string-literal escape
+   * by default, and Postgres does too when {@code standard_conforming_strings = off}). Run
+   * this BEFORE {@link #escapeApostrophe} so the {@code \\} we just inserted isn't itself
+   * re-doubled.
+   */
+  public static String escapeBackslashAndApostrophe(String name) {
+    return escapeApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
+   * Escape a string for use as the <em>replacement</em> argument to MySQL's
+   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
+   * <ol>
+   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
+   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
+   *       Each literal backslash in the input needs to become {@code \\} for the regex
+   *       engine to emit a single {@code \}.</li>
+   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
+   *       single-quoted SQL string, so each remaining {@code \} doubles again
+   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
+   * </ol>
+   * Net effect: one input backslash → four backslashes in the SQL statement text, which
+   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
+   * folds to one literal backslash in the replacement output. Apostrophes just double
+   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   *
+   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
+   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
+   * re-escape the apostrophes we already doubled.
+   */
+  public static String escapeForMySqlRegexReplacement(String name) {
+    // Step 1: double backslashes for the regex replacement layer.
+    String regexEscaped = name.replace("\\", "\\\\");
+    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
+    return escapeBackslashAndApostrophe(regexEscaped);
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
-    name = escapeApostrophe(name);
+    name = escapeBackslashAndApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }

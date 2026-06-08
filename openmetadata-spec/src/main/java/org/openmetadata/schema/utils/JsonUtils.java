@@ -335,6 +335,8 @@ public final class JsonUtils {
         continue;
       }
 
+      validateJsonPointer(path, "path");
+
       // Skip operations on read-only auto-generated fields
       if (isReadOnlyPatchPath(path)) {
         continue;
@@ -343,6 +345,9 @@ public final class JsonUtils {
       // For copy/move operations, also check the 'from' field if present
       if (jsonObject.containsKey("from")) {
         String from = jsonObject.getString("from", null);
+        if (from != null) {
+          validateJsonPointer(from, "from");
+        }
         if (isReadOnlyPatchPath(from)) {
           continue;
         }
@@ -364,6 +369,15 @@ public final class JsonUtils {
       currentJson = singlePatch.apply(currentJson);
     }
     return currentJson;
+  }
+
+  private static void validateJsonPointer(String pointer, String fieldName) {
+    if (!pointer.isEmpty() && pointer.charAt(0) != '/') {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid JSON Patch '%s' value '%s' - non-empty JSON Pointer must begin with '/' (RFC 6901)",
+              fieldName, pointer));
+    }
   }
 
   private static boolean isReadOnlyPatchPath(String path) {

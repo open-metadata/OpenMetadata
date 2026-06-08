@@ -34,7 +34,7 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;
@@ -47,7 +47,12 @@ type TagWidgetKeys =
   | DetailPageWidgetKeys.DOMAIN;
 
 class TagClassBase {
+  static filterClassification: string[] = [];
   defaultWidgetHeight: Record<TagWidgetKeys, number>;
+
+  public setFilterClassification(value: string[]) {
+    TagClassBase.filterClassification = value;
+  }
 
   constructor() {
     this.defaultWidgetHeight = {

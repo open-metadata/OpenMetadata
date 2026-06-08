@@ -32,18 +32,15 @@ import {
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
+import type { Connection, Edge, Node, ReactFlowInstance } from 'reactflow';
 import {
-  Connection,
-  Edge,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
   isNode,
   MarkerType,
-  Node,
   Position,
-  ReactFlowInstance,
 } from 'reactflow';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -112,12 +109,13 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import entityUtilClassBase from '../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getNodeHeight } from './CanvasUtils';
-import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
+import { isDeleted } from './EntityStatusUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
-import { jsonToCSV } from './StringsUtils';
+import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 interface LayoutedElements {
@@ -138,7 +136,7 @@ export const centerNodePosition = (
 ) => {
   const { position, width } = node;
   reactFlowInstance?.setCenter(
-    position.x + (width ?? 1 / 2),
+    position.x + (width ?? 1) / 2,
     position.y + NODE_HEIGHT / 2,
     {
       zoom: zoomValue ?? ZOOM_VALUE,

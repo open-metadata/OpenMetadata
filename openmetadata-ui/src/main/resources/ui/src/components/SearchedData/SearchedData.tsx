@@ -18,7 +18,7 @@ import { useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { pluralize } from '../../utils/CommonUtils';
+import { pluralize } from '../../utils/StringUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -83,8 +83,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     selectedEntityId,
   ]);
 
-  const ResultCount = () => {
-    if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
+  const resultCount = useMemo(() => {
+    if (isFilterSelected || filter?.quickFilter) {
       if (MAX_RESULT_HITS === totalValue) {
         return <div>{`About ${totalValue} results`}</div>;
       } else {
@@ -93,7 +93,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     } else {
       return null;
     }
-  };
+  }, [isFilterSelected, filter, totalValue]);
 
   const { page = 1, size = globalPageSize } = useMemo(
     () =>
@@ -114,11 +114,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
-              <ResultCount />
+              {showResultCount ? resultCount : null}
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
-                  className="text-center p-b-box"
+                  className="text-center p-y-sm tw:sticky"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size))

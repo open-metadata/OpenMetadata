@@ -13,7 +13,7 @@
 
 import { expect } from '@playwright/test';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToExplorePage } from '../../utils/common';
+import { clickOutside, redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   countCsvResponseRows,
@@ -52,10 +52,12 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     page,
   }) => {
     await test.step('Export button is visible', async () => {
-      const exportButton = page.getByTestId('export-search-results-button');
+      await page.getByRole('button', { name: 'Tools' }).click();
+      const exportButton = page.getByRole('menuitemradio', { name: 'Export' });
 
       await expect(exportButton).toBeVisible();
       await expect(exportButton).toContainText('Export');
+      await clickOutside(page); // Close the dropdown after assertion
     });
 
     await test.step('Clicking Export opens scope modal with title and scope label', async () => {

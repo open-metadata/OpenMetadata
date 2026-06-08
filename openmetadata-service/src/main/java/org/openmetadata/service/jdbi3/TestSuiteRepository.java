@@ -73,6 +73,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
@@ -136,6 +137,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    TestSuiteBodyTextContributor.INSTANCE.register();
     EntityLifecycleEventDispatcher.getInstance()
         .registerHandler(new TestSuitePipelineStatusHandler());
     fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
@@ -700,7 +702,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
-      cleanup(updated);
+      cleanup(updatedBy, updated);
       changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());

@@ -18,11 +18,13 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -485,6 +487,31 @@ public class AlertsRuleEvaluatorResourceIT {
 
     assertTrue(evaluateExpression("matchUpdatedBy('testUser')", evaluationContext));
     assertFalse(evaluateExpression("matchUpdatedBy('otherUser')", evaluationContext));
+  }
+
+  @Test
+  void test_isBot_returnsFalseWhenActorUserDeleted(TestNamespace ns) {
+    String userName = ns.uniqueShortId();
+    CreateUser createUser =
+        new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+    User createdUser = SdkClients.adminClient().users().create(createUser);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setUserName(createdUser.getName());
+
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(evaluateExpression("isBot()", evaluationContext));
+
+    SdkClients.adminClient().users().delete(createdUser.getId());
+
+    assertFalse(evaluateExpression("isBot()", evaluationContext));
   }
 
   @Test

@@ -31,7 +31,88 @@ import { Type as SecurityServiceType } from '../generated/entity/services/securi
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
-export const getConnectionSchemas = ({
+export type ConnectionSchemaResult = {
+  connSch: {
+    schema: Record<string, unknown>;
+    uiSchema: Record<string, unknown>;
+  };
+  validConfig: ConfigData;
+};
+
+export const EMPTY_CONNECTION_SCHEMA: ConnectionSchemaResult['connSch'] = {
+  schema: {},
+  uiSchema: {},
+};
+
+export const buildValidConfig = (data?: ServicesType): ConfigData => {
+  const config = isNil(data)
+    ? ({} as ConfigData)
+    : (data.connection?.config as ConfigData);
+  const validConfig = cloneDeep(config || {});
+  for (const [key, value] of Object.entries(validConfig)) {
+    if (isNil(value)) {
+      delete validConfig[key as keyof ConfigData];
+    }
+  }
+
+  return validConfig;
+};
+
+export const loadConnectionSchema = async (
+  serviceCategory: ServiceCategory,
+  serviceType: string
+): Promise<ConnectionSchemaResult['connSch']> => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return serviceUtilClassBase.getDatabaseServiceConfig(
+        serviceType as DatabaseServiceType
+      );
+    case ServiceCategory.MESSAGING_SERVICES:
+      return serviceUtilClassBase.getMessagingServiceConfig(
+        serviceType as MessagingServiceType
+      );
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return serviceUtilClassBase.getDashboardServiceConfig(
+        serviceType as DashboardServiceType
+      );
+    case ServiceCategory.PIPELINE_SERVICES:
+      return serviceUtilClassBase.getPipelineServiceConfig(
+        serviceType as PipelineServiceType
+      );
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return serviceUtilClassBase.getMlModelServiceConfig(
+        serviceType as MlModelServiceType
+      );
+    case ServiceCategory.METADATA_SERVICES:
+      return serviceUtilClassBase.getMetadataServiceConfig(
+        serviceType as MetadataServiceType
+      );
+    case ServiceCategory.STORAGE_SERVICES:
+      return serviceUtilClassBase.getStorageServiceConfig(
+        serviceType as StorageServiceType
+      );
+    case ServiceCategory.SEARCH_SERVICES:
+      return serviceUtilClassBase.getSearchServiceConfig(
+        serviceType as SearchServiceType
+      );
+    case ServiceCategory.API_SERVICES:
+      return serviceUtilClassBase.getAPIServiceConfig(
+        serviceType as APIServiceType
+      );
+    case ServiceCategory.SECURITY_SERVICES:
+      return serviceUtilClassBase.getSecurityServiceConfig(
+        serviceType as SecurityServiceType
+      );
+    case ServiceCategory.DRIVE_SERVICES:
+      return serviceUtilClassBase.getDriveServiceConfig(
+        serviceType as DriveServiceType
+      );
+    default:
+      return EMPTY_CONNECTION_SCHEMA;
+  }
+};
+
+export const getConnectionSchemas = async ({
   data,
   serviceCategory,
   serviceType,
@@ -39,106 +120,9 @@ export const getConnectionSchemas = ({
   data?: ServicesType;
   serviceType: string;
   serviceCategory: ServiceCategory;
-}) => {
-  const config = isNil(data)
-    ? ({} as ConfigData)
-    : (data.connection?.config as ConfigData);
-
-  let connSch = {
-    schema: {} as Record<string, unknown>,
-    uiSchema: {} as Record<string, unknown>,
-  };
-
-  const validConfig = cloneDeep(config || {});
-
-  for (const [key, value] of Object.entries(validConfig)) {
-    if (isNil(value)) {
-      delete validConfig[key as keyof ConfigData];
-    }
-  }
-
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES: {
-      connSch = serviceUtilClassBase.getDatabaseServiceConfig(
-        serviceType as DatabaseServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.MESSAGING_SERVICES: {
-      connSch = serviceUtilClassBase.getMessagingServiceConfig(
-        serviceType as MessagingServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.DASHBOARD_SERVICES: {
-      connSch = serviceUtilClassBase.getDashboardServiceConfig(
-        serviceType as DashboardServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.PIPELINE_SERVICES: {
-      connSch = serviceUtilClassBase.getPipelineServiceConfig(
-        serviceType as PipelineServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.ML_MODEL_SERVICES: {
-      connSch = serviceUtilClassBase.getMlModelServiceConfig(
-        serviceType as MlModelServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.METADATA_SERVICES: {
-      connSch = serviceUtilClassBase.getMetadataServiceConfig(
-        serviceType as MetadataServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.STORAGE_SERVICES: {
-      connSch = serviceUtilClassBase.getStorageServiceConfig(
-        serviceType as StorageServiceType
-      );
-
-      break;
-    }
-    case ServiceCategory.SEARCH_SERVICES: {
-      connSch = serviceUtilClassBase.getSearchServiceConfig(
-        serviceType as SearchServiceType
-      );
-
-      break;
-    }
-
-    case ServiceCategory.API_SERVICES: {
-      connSch = serviceUtilClassBase.getAPIServiceConfig(
-        serviceType as APIServiceType
-      );
-
-      break;
-    }
-
-    case ServiceCategory.SECURITY_SERVICES: {
-      connSch = serviceUtilClassBase.getSecurityServiceConfig(
-        serviceType as SecurityServiceType
-      );
-
-      break;
-    }
-
-    case ServiceCategory.DRIVE_SERVICES: {
-      connSch = serviceUtilClassBase.getDriveServiceConfig(
-        serviceType as DriveServiceType
-      );
-
-      break;
-    }
-  }
+}): Promise<ConnectionSchemaResult> => {
+  const validConfig = buildValidConfig(data);
+  const connSch = await loadConnectionSchema(serviceCategory, serviceType);
 
   return { connSch, validConfig };
 };
@@ -173,7 +157,6 @@ export const getFilteredSchema = (
 export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
   uiSchema: Record<string, unknown>
 ) => {
-  // object with all the default filter fields hidden
   const uiSchemaWithAllDefaultFilterFieldsHidden = reduce(
     SERVICE_FILTER_PATTERN_FIELDS,
     (acc, field) => {
@@ -187,12 +170,11 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
     {} as Record<string, unknown>
   );
 
-  // object with all the default filter fields hidden nested under all the ServiceNestedConnectionFields
   const uiSchemaWithNestedDefaultFilterFieldsHidden = reduce(
     Object.values(ServiceNestedConnectionFields),
     (acc, field) => {
       acc[field] = {
-        ...uiSchema[field],
+        ...(uiSchema[field] as Record<string, unknown> | undefined),
         ...uiSchemaWithAllDefaultFilterFieldsHidden,
       };
 

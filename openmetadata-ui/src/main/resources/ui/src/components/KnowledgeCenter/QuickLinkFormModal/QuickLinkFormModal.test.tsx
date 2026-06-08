@@ -11,11 +11,59 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import React from 'react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalProps,
 } from './QuickLinkFormModal';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockDialogContent = jest.fn(
+    ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dialog-content">{children}</div>
+    )
+  );
+  const MockDialogFooter = jest.fn(
+    ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dialog-footer">{children}</div>
+    )
+  );
+  const MockDialogHeader = jest.fn(({ title }: { title: string }) => (
+    <div data-testid="dialog-header">{title}</div>
+  ));
+  const MockDialog = jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div data-testid="dialog">{children}</div>
+  )) as jest.Mock & {
+    Content: typeof MockDialogContent;
+    Footer: typeof MockDialogFooter;
+    Header: typeof MockDialogHeader;
+  };
+
+  MockDialog.Content = MockDialogContent;
+  MockDialog.Footer = MockDialogFooter;
+  MockDialog.Header = MockDialogHeader;
+
+  return {
+    ModalOverlay: jest.fn(
+      ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
+        isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+    ),
+    Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="modal">{children}</div>
+    )),
+    Dialog: MockDialog,
+    Button: jest.fn(
+      ({
+        children,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        onClick: () => void;
+      }) => <button onClick={onClick}>{children}</button>
+    ),
+  };
+});
 
 jest.mock(
   'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
@@ -39,10 +87,14 @@ jest.mock('utils/TableTags/TableTags.utils', () => ({
 
 jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('pages/TasksPage/shared/DescriptionTask');
 jest.mock('pages/TasksPage/shared/DescriptionTaskNew');
+jest.mock('pages/TasksPage/shared/TagSuggestion', () =>
+  jest.fn(() => <div data-testid="tag-selector" />)
+);
 
 const mockProps: QuickLinkFormModalProps = {
   isOpen: true,
@@ -102,7 +154,7 @@ describe('QuickLinkFormModal', () => {
   it('onCancel should work', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
-    const cancelBtn = screen.getByText('label.back');
+    const cancelBtn = screen.getByText('label.cancel');
 
     await act(async () => {
       fireEvent.click(cancelBtn);

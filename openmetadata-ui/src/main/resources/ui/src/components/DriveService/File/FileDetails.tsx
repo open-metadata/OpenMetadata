@@ -37,7 +37,6 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -47,6 +46,11 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import fileClassBase from '../../../utils/FileClassBase';
 import {
   getPrioritizedEditPermission,
@@ -245,6 +249,22 @@ function FileDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityTaskCountsInto(decodedFileFQN, setFeedCount);
+    }
+  }, [decodedFileFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.FILE,
+        decodedFileFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedFileFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -293,7 +313,8 @@ function FileDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {

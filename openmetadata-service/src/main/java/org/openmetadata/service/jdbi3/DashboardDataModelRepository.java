@@ -166,6 +166,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+    return entity.getColumns();
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();
@@ -403,6 +408,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     String after = toIndex < total ? String.valueOf(toIndex) : null;
 
     return new ResultList<>(paginatedColumns, before, after, total);
+  }
+
+  public Column enrichSingleColumnFields(
+      DashboardDataModel dataModel, Column column, String fieldsParam) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+    }
+    return column;
   }
 
   public ResultList<Column> searchDataModelColumnsById(
