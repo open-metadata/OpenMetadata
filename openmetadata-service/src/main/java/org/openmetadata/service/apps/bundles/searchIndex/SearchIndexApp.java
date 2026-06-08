@@ -1,8 +1,12 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.core.Response;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
@@ -15,6 +19,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -63,6 +68,24 @@ public class SearchIndexApp extends AbstractNativeApplication {
     this.orchestrator = orch;
     orch.run(jobData);
     this.jobData = orch.getJobData();
+    stampReindexedMappings(this.jobData);
+  }
+
+  private void stampReindexedMappings(EventPublisherJob job) {
+    if (job != null && job.getStatus() == EventPublisherJob.Status.COMPLETED) {
+      Set<String> targeted = job.getEntities();
+      Collection<String> toStamp =
+          (nullOrEmpty(targeted) || targeted.contains(SearchIndexEntityTypes.ALL))
+              ? searchRepository.getEntityIndexMap().keySet()
+              : targeted;
+      try {
+        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
+        new IndexMappingVersionTracker(collectionDAO, version, "system")
+            .updateMappingVersions(toStamp);
+      } catch (Exception e) {
+        LOG.warn("Failed to stamp index mapping versions after reindex", e);
+      }
+    }
   }
 
   @Override
