@@ -30,15 +30,7 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import {
-  FC,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -129,85 +121,7 @@ import {
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
-
-type StatItemProps = {
-  icon?: FC<{ className?: string }>;
-  iconNode?: ReactNode;
-  iconClassName?: string;
-  count?: string | number;
-  tooltip: string;
-  testId: string;
-  countTestId?: string;
-  onClick?: () => void;
-  loading?: boolean;
-  disabled?: boolean;
-  isActive?: boolean;
-  srLabel?: string;
-};
-
-const StatItem = ({
-  icon: Icon,
-  iconNode,
-  iconClassName = 'tw:size-5',
-  count,
-  tooltip,
-  testId,
-  countTestId,
-  onClick,
-  loading,
-  disabled,
-  isActive,
-  srLabel,
-}: StatItemProps) => {
-  const isDisabled = disabled || loading;
-  const labelClassName = classNames(
-    'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
-    isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
-    onClick && !isDisabled
-      ? 'tw:cursor-pointer tw:hover:text-secondary'
-      : 'tw:cursor-default'
-  );
-
-  const label = (
-    <>
-      {iconNode ??
-        (Icon && (
-          <Icon className={classNames(iconClassName, 'tw:text-current')} />
-        ))}
-      {count !== undefined && (
-        <span
-          className="tw:text-quaternary tw:text-sm"
-          data-testid={countTestId}>
-          {count}
-        </span>
-      )}
-      {srLabel && <span className="tw:sr-only">{srLabel}</span>}
-    </>
-  );
-
-  const interactive = onClick ? (
-    <button
-      aria-busy={loading || undefined}
-      aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-      data-testid={testId}
-      disabled={isDisabled}
-      type="button"
-      onClick={onClick}>
-      <span className={labelClassName}>{label}</span>
-    </button>
-  ) : (
-    <span className={labelClassName} data-testid={testId}>
-      {label}
-    </span>
-  );
-
-  return (
-    <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger>{interactive}</TooltipTrigger>
-    </Tooltip>
-  );
-};
+import { StatItem } from './StatItem.component';
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -260,9 +174,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [upVoteLoading, setUpVoteLoading] = useState(false);
   const [downVoteLoading, setDownVoteLoading] = useState(false);
-  const [copyTooltip, setCopyTooltip] = useState<string>();
-  const copyTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const { onCopyToClipBoard } = useClipboard('');
+  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
@@ -517,15 +429,6 @@ export const DataAssetsHeader = ({
     []
   );
 
-  useEffect(
-    () => () => {
-      if (copyTooltipTimeoutRef.current) {
-        clearTimeout(copyTooltipTimeoutRef.current);
-      }
-    },
-    []
-  );
-
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     try {
@@ -537,15 +440,7 @@ export const DataAssetsHeader = ({
 
   const handleCopyEntityUrl = useCallback(async () => {
     await onCopyToClipBoard(globalThis.location.href);
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    if (copyTooltipTimeoutRef.current) {
-      clearTimeout(copyTooltipTimeoutRef.current);
-    }
-    copyTooltipTimeoutRef.current = setTimeout(
-      () => setCopyTooltip(undefined),
-      2000
-    );
-  }, [onCopyToClipBoard, t]);
+  }, [onCopyToClipBoard]);
 
   const {
     editDomainPermission,
@@ -976,8 +871,9 @@ export const DataAssetsHeader = ({
               <Tooltip
                 placement="top"
                 title={
-                  copyTooltip ??
-                  t('label.copy-item', { item: t('label.url-uppercase') })
+                  hasCopied
+                    ? t('message.link-copy-to-clipboard')
+                    : t('label.copy-item', { item: t('label.url-uppercase') })
                 }>
                 <TooltipTrigger className="tw:flex tw:items-center">
                   <button
