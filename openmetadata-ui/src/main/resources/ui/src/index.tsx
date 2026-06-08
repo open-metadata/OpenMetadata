@@ -21,13 +21,22 @@ const container = document.getElementById('root');
 if (!container) {
   throw new Error('Failed to find the root element');
 }
-const root = createRoot(container);
 
-root.render(
-  <React.StrictMode>
-    <AppRoot />
-  </React.StrictMode>
-);
+// The SSO "Test Login" popup lands here. Handle the OIDC handshake in isolation
+// and NEVER mount the app, so the test can't touch the admin's real session.
+if (window.location.pathname.endsWith('/sso-test-callback')) {
+  import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap').then(
+    (module) => module.runSsoTestCallback()
+  );
+} else {
+  const root = createRoot(container);
+
+  root.render(
+    <React.StrictMode>
+      <AppRoot />
+    </React.StrictMode>
+  );
+}
 
 if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
   window.addEventListener('load', () => {

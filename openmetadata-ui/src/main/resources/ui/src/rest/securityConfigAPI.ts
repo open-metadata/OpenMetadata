@@ -29,6 +29,29 @@ export interface SecurityValidationResponse {
   errors?: FieldError[];
 }
 
+export interface TestLoginDomainCheck {
+  enforced?: boolean;
+  principalDomain?: string;
+  resolvedDomain?: string;
+  passed?: boolean;
+}
+
+export interface TestLoginResult {
+  status: 'success' | 'failed';
+  stage?: string;
+  resolvedPrincipal?: string;
+  resolvedEmail?: string;
+  mappedRoles?: string[];
+  mappedTeams?: string[];
+  domainCheck?: TestLoginDomainCheck;
+  errors?: string[];
+}
+
+export interface TestLoginTokenRequest {
+  securityConfiguration: SecurityConfiguration;
+  idToken: string;
+}
+
 /**
  * Validate security configuration
  * @param data - Security configuration data
@@ -41,6 +64,21 @@ export const validateSecurityConfiguration = async (
     SecurityConfiguration,
     AxiosResponse<SecurityValidationResponse>
   >('/system/security/validate', data);
+};
+
+/**
+ * Validate a browser-obtained OIDC id_token against a candidate (unsaved)
+ * security configuration. Admin-only. Performs no side effects on the server.
+ * @param data - Candidate security configuration and the obtained id_token
+ * @returns Promise with the dry-run test login result
+ */
+export const testLoginValidateToken = async (
+  data: TestLoginTokenRequest
+): Promise<AxiosResponse<TestLoginResult>> => {
+  return APIClient.post<TestLoginTokenRequest, AxiosResponse<TestLoginResult>>(
+    '/system/security/test-login/validate-token',
+    data
+  );
 };
 
 /**

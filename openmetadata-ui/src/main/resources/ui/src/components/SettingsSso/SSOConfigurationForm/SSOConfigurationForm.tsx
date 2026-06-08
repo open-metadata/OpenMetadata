@@ -92,6 +92,8 @@ import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedCha
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
+import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -162,6 +164,17 @@ const widgets = {
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
+// Providers whose public-client login can be exercised end-to-end in the browser
+// for an interactive Test Login (the browser obtains an id_token directly).
+const OIDC_TEST_LOGIN_PROVIDERS: AuthProvider[] = [
+  AuthProvider.Google,
+  AuthProvider.Okta,
+  AuthProvider.Azure,
+  AuthProvider.Auth0,
+  AuthProvider.AwsCognito,
+  AuthProvider.CustomOidc,
+];
+
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -195,6 +208,14 @@ const SSOConfigurationFormRJSF = ({
     useState<string>('');
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
+  const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
+  const {
+    isTesting: isTestingLogin,
+    result: testLoginResult,
+    error: testLoginError,
+    runTestLogin,
+    reset: resetTestLogin,
+  } = useSsoTestLogin();
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -920,6 +941,19 @@ const SSOConfigurationFormRJSF = ({
     }
   };
 
+  // Interactive round-trip: sign in via the IdP in an isolated popup and confirm
+  // the resolved identity, without ever touching the admin's current session.
+  const handleTestLogin = () => {
+    const built = buildPayload();
+    if (!built) {
+      return;
+    }
+
+    resetTestLogin();
+    setShowTestLoginModal(true);
+    runTestLogin(built.payload);
+  };
+
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
@@ -1048,6 +1082,11 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
+  const isOidcPublicClientProvider =
+    !!currentProvider &&
+    OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
+    internalData?.authenticationConfiguration?.clientType === ClientType.Public;
+
   const renderFormActions = () =>
     isEditMode ? (
       <>
@@ -1088,6 +1127,16 @@ const SSOConfigurationFormRJSF = ({
             onClick={handleTestConfiguration}>
             {t('label.test-entity', { entity: t('label.configuration') })}
           </Button>
+          {isOidcPublicClientProvider && (
+            <Button
+              className="test-login-sso-configuration text-md"
+              data-testid="test-login-sso-configuration"
+              disabled={isLoading || isTestingLogin || !currentProvider}
+              loading={isTestingLogin}
+              onClick={handleTestLogin}>
+              {t('label.test-login')}
+            </Button>
+          )}
           <Button
             className="save-sso-configuration text-md"
             data-testid="save-sso-configuration"
@@ -1098,6 +1147,13 @@ const SSOConfigurationFormRJSF = ({
             {t('label.save')}
           </Button>
         </div>
+        <SsoTestLoginModal
+          error={testLoginError}
+          isTesting={isTestingLogin}
+          open={showTestLoginModal}
+          result={testLoginResult}
+          onClose={() => setShowTestLoginModal(false)}
+        />
       </>
     ) : null;
 

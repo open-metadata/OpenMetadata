@@ -76,6 +76,44 @@ export const getUserManagerConfig = (
   };
 };
 
+export const getSsoTestCallbackUri = () => {
+  return isDev()
+    ? `http://localhost:3000${subPath}/sso-test-callback`
+    : `${globalThis.location.origin}${subPath}/sso-test-callback`;
+};
+
+// Dedicated, prefixed store so the Test Login popup never reads or writes the
+// app's real auth state (oidcTokenStorage), while still being shareable between
+// the opener and the same-origin popup so the OIDC state handshake completes.
+export const SSO_TEST_LOGIN_STORE_PREFIX = 'omSsoTestLogin.';
+
+/**
+ * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
+ * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage)
+ * and the popup redirects to a dedicated, inert callback route, so the test can
+ * never affect the admin's real session.
+ */
+export const getCandidateUserManagerConfig = (
+  authClient: AuthenticationConfigurationWithScope
+): Record<string, string | boolean | WebStorageStateStore> => {
+  const { authority = '', clientId = '', scope } = authClient;
+  const testStore = new WebStorageStateStore({
+    store: globalThis.localStorage,
+    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
+  });
+
+  return {
+    authority,
+    client_id: clientId,
+    redirect_uri: getSsoTestCallbackUri(),
+    response_type: 'id_token',
+    scope: scope || 'openid email profile',
+    loadUserInfo: false,
+    userStore: testStore,
+    stateStore: testStore,
+  };
+};
+
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
 ): AuthenticationConfigurationWithScope => {
