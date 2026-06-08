@@ -162,6 +162,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 allowsMultiple
                 clickToUploadLabel={t('label.click-to-upload')}
                 hint={t('message.upload-document-hint')}
+                input-data-testid="file-upload-input"
                 maxSize={DOCUMENT_MAX_FILE_SIZE}
                 orDragAndDropLabel={t('label.or-drag-and-drop')}
                 onDropFiles={handleDropFiles}
