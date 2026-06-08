@@ -54,11 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: React.ReactNode;
     title?: string;
-  }) => (
-    <div data-title={title}>
-      {children}
-    </div>
-  ),
+  }) => <div data-title={title}>{children}</div>,
   Input: ({ label }: { label?: string }) => <input aria-label={label} />,
   Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   ModalOverlay: ({
@@ -74,7 +70,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: React.ReactNode;
     title?: string;
-  }) => <div data-testid="tooltip" data-title={title}>{children}</div>,
+  }) => (
+    <div data-testid="tooltip" data-title={title}>
+      {children}
+    </div>
+  ),
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
@@ -186,6 +186,7 @@ describe('WorkflowHeader — System badge', () => {
     render(<WorkflowHeader {...defaultProps} />);
 
     const tooltip = screen.getByTestId('tooltip');
+
     expect(tooltip).toBeInTheDocument();
     expect(tooltip).toHaveAttribute(
       'data-title',
@@ -227,7 +228,9 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
-    expect(screen.getByTestId('edit-workflow-title-button')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('edit-workflow-title-button')
+    ).toBeInTheDocument();
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {
