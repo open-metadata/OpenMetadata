@@ -28,7 +28,6 @@ import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/Airf
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
@@ -343,7 +342,7 @@ const EmbeddedConnectionConfigForm = ({
                 <Transi18next
                   i18nKey="message.airflow-host-ip-address"
                   renderElement={<strong />}
-                  values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+                  values={{ hostIp }}
                 />
               }
               type="info"

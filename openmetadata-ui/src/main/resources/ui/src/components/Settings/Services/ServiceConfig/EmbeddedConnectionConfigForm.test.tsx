@@ -148,11 +148,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
     )
 );
 
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: { getPageTitle: jest.fn().mockReturnValue('OpenMetadata') },
-}));
-
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
   const React = jest.requireActual<typeof import('react')>('react');
 

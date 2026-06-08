@@ -782,15 +782,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
     if (searchRepository != null) {
-      try {
-        searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to update search indexes for data product rename from {} to {}: {}",
-            oldFqn,
-            newFqn,
-            e.getMessage());
-      }
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn),
+          "updateDataProductReferences",
+          null,
+          newFqn,
+          DATA_PRODUCT);
     }
   }
 
@@ -803,6 +800,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+      domainChangeProcessed = false;
+      capturedOriginalDomains = null;
+      capturedUpdatedDomains = null;
     }
 
     @Override

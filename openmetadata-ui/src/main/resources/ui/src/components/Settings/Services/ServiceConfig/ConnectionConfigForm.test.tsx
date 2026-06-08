@@ -191,13 +191,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
     jest
@@ -662,7 +655,7 @@ describe('ServiceConfig', () => {
   });
 
   it('should not display host ip if unable to fetch', async () => {
-    (getPipelineServiceHostIp as jest.Mock).mockRejectedValue(new Error());
+    (getPipelineServiceHostIp as jest.Mock).mockRejectedValueOnce(new Error());
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
       expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
@@ -682,11 +675,10 @@ describe('ServiceConfig', () => {
     });
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+  it('should render with correct brandName keys', async () => {
     const mockTransi18next = jest.fn(({ values }) => (
       <div data-testid="transi18next-mock">
         {values?.hostIp && `Host IP: ${values.hostIp}`}
-        {values?.brandName && ` Brand: ${values.brandName}`}
       </div>
     ));
 
@@ -700,14 +692,11 @@ describe('ServiceConfig', () => {
 
     expect(ipAddress).toBeInTheDocument();
 
-    expect(ipAddress.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(ipAddress.textContent).not.toContain('{{brandName}}');
-
     expect(mockTransi18next).toHaveBeenCalledWith(
       expect.objectContaining({
         i18nKey: 'message.airflow-host-ip-address',
         values: expect.objectContaining({
-          brandName: 'OpenMetadata',
+          hostIp: '192.168.0.1',
         }),
       }),
       expect.anything()

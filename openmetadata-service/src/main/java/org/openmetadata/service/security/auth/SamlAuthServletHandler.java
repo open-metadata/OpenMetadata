@@ -13,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -625,7 +627,27 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private Set<String> trustedSamlRedirects() {
     return org.openmetadata.service.security.SecurityUtil.trustedRedirects(
-        authConfig.getCallbackUrl(), samlSpCallback());
+        authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+  }
+
+  private String samlAuthCallback() {
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    String acs =
+        (samlConfig == null || samlConfig.getSp() == null) ? null : samlConfig.getSp().getAcs();
+    String authCallback = null;
+    if (!nullOrEmpty(acs)) {
+      try {
+        URI uri = new URI(acs);
+        if (uri.getScheme() != null && uri.getHost() != null) {
+          URI origin =
+              new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+          authCallback = origin + "/auth/callback";
+        }
+      } catch (URISyntaxException e) {
+        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
+      }
+    }
+    return authCallback;
   }
 
   private String defaultSamlRedirectUri() {
