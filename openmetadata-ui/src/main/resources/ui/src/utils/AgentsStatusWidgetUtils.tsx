@@ -51,13 +51,13 @@ import { AgentStatus } from '../enums/ServiceInsights.enum';
 import type { App } from '../generated/entity/applications/app';
 import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  type IngestionPipeline,
   PipelineType,
   ProviderType,
+  type IngestionPipeline,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  type WorkflowInstance,
   WorkflowStatus,
+  type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
 import { t } from './i18next/LocalUtil';
 
