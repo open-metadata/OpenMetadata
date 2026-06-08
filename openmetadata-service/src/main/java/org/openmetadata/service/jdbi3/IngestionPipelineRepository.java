@@ -652,7 +652,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
-      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+      allPipelineStatusList.addAll(
+          pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline));
     }
     allPipelineStatusList.addAll(pipelineStatusList);
     allPipelineStatusList.sort(

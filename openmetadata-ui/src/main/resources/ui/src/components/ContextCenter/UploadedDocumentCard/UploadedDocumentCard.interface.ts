@@ -17,8 +17,9 @@ export type DocumentProcessingStatus = 'processed' | 'analyzing' | 'failed';
 
 export interface UploadedDocumentItem {
   id: string;
+  driveFileId?: string;
   name: string;
-  fileType: DocumentFileType;
+  fileExtension: string;
   sizeLabel: string;
   status: DocumentProcessingStatus;
   updatedBy: string;

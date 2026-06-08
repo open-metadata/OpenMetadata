@@ -18,6 +18,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
@@ -38,6 +39,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -52,7 +54,7 @@ import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
@@ -62,6 +64,7 @@ const ContextCenterArticlesPage = () => {
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
   const { currentUser } = useApplicationStore();
+  const { alert } = useAlertStore();
   const USERId = currentUser?.id ?? '';
   const { getResourcePermission } = usePermissionProvider();
   const { getResourceLimit } = useLimitStore();
@@ -79,6 +82,7 @@ const ContextCenterArticlesPage = () => {
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [articleSearchQuery, setArticleSearchQuery] = useState('');
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -140,6 +144,11 @@ const ContextCenterArticlesPage = () => {
       };
       const response = await postKnowledgePage(data);
       knowledgeCenterPageRef.current?.addKnowledgePage(response);
+      showSuccessToast(
+        t('message.entity-saved-successfully', {
+          entity: t('label.quick-link'),
+        })
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -173,7 +182,6 @@ const ContextCenterArticlesPage = () => {
           onSave={page.handlers?.onSave}
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
-          onToggleDelete={page.handlers?.onToggleDelete ?? (() => undefined)}
           onToggleRightPanel={handleToggleRightPanel}
           onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />
@@ -192,7 +200,7 @@ const ContextCenterArticlesPage = () => {
                 {t('label.create')}
               </Button>
 
-              <Dropdown.Popover placement="bottom start">
+              <Dropdown.Popover className="tw:w-30">
                 <Dropdown.Menu aria-label="create knowledge page">
                   <Dropdown.Item
                     data-testid="create-article-btn"
@@ -216,7 +224,7 @@ const ContextCenterArticlesPage = () => {
           {
             name: '',
             icon: <Home02 size={14} />,
-            url: '/',
+            url: contextCenterClassBase.getHomePath(),
             activeTitle: true,
           },
           {
@@ -226,8 +234,13 @@ const ContextCenterArticlesPage = () => {
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
         hasPermission={permissions?.Create}
+        searchPlaceholder={t('label.search-entity', {
+          entity: t('label.article-plural'),
+        })}
+        searchQuery={articleSearchQuery}
         subtitle={t('message.internal-knowledge-base-agent-training')}
         title={t('label.article-plural')}
+        onSearch={setArticleSearchQuery}
       />
     );
   };
@@ -295,6 +308,7 @@ const ContextCenterArticlesPage = () => {
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
+        searchQuery={articleSearchQuery}
         onPageChange={handlePageChange}
       />
     );
@@ -303,6 +317,7 @@ const ContextCenterArticlesPage = () => {
     fqn,
     isRightPanelOpen,
     permissions,
+    articleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
@@ -312,6 +327,7 @@ const ContextCenterArticlesPage = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       {renderHeader()}
 
       <KnowledgeCenterLayout

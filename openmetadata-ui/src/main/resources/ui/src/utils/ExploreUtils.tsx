@@ -50,10 +50,10 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './CommonUtils';
+import { getCountBadge } from './EntityDisplayUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { t, translateWithNestedKeys } from './i18next/LocalUtil';
-import { escapeESReservedCharacters } from './StringsUtils';
+import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 /**
@@ -571,6 +571,7 @@ export const fetchEntityData = async ({
   setSearchResults,
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
+  onNlqAppliedFilters,
 }: {
   searchQueryParam: string;
   tabsInfo: Record<ExploreSearchIndex, TabsInfoData>;
@@ -590,6 +591,7 @@ export const fetchEntityData = async ({
   setSearchResults: (results: SearchResponse<ExploreSearchIndex>) => void;
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
+  onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
     updatedQuickFilters,
@@ -664,6 +666,15 @@ export const fetchEntityData = async ({
           const searchRes = await searchRequest(updatedSearchPayload);
           setSearchResults(searchRes as SearchResponse<ExploreSearchIndex>);
           setUpdatedAggregations(searchRes.aggregations);
+
+          // For NLQ searches, surface the backend-detected filters so the Explore
+          // filters tab can mark them. Non-NLQ responses omit applied_quick_filters.
+          if (searchRequest === nlqSearch) {
+            onNlqAppliedFilters?.(
+              (searchRes as SearchResponse<ExploreSearchIndex>)
+                .applied_quick_filters
+            );
+          }
         } catch (error) {
           if (isElasticsearchError(error)) {
             setShowIndexNotFoundAlert(true);

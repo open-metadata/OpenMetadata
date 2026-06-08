@@ -15,20 +15,9 @@ import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import {
-  get,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  omit,
-  toString,
-  uniqBy,
-  uniqueId,
-  upperCase,
-} from 'lodash';
-import { EntityTags } from 'Models';
-import { CSSProperties, Fragment, lazy, Suspense } from 'react';
-import { NavigateFunction } from 'react-router-dom';
+import { get, isUndefined, uniqBy } from 'lodash';
+import { Fragment, lazy, Suspense, type CSSProperties } from 'react';
+import type { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -134,72 +123,86 @@ import Loader from '../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { MlFeature } from '../generated/entity/data/mlmodel';
-import { Task } from '../generated/entity/data/pipeline';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { ConstraintTypes } from '../enums/table.enum';
 import {
-  Column,
   ConstraintType,
   DataType,
-  JoinedWith,
-  Table,
   TableConstraint,
-  TableJoins,
 } from '../generated/entity/data/table';
-import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/uiCustomization';
-import { Field } from '../generated/type/schema';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  FrequentlyJoinedTables,
-  Joined,
-} from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { FrequentlyJoinedTables } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
-import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
-import { extractContainerColumns } from './ContainerDetailUtils';
-import { extractDataModelColumns } from './DashboardDataModelUtils';
-import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { extractMlModelFeatures } from './MlModelDetailsUtils';
-import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
-import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
-import { TableDetailPageTabProps } from './TableClassBase';
-import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
-import { extractTopicFields } from './TopicDetailsUtils';
+import type { TableDetailPageTabProps } from './TableClassBase';
+
+// Re-exports from TablePureUtils (backward compat)
+export {
+  buildColumnBreadcrumbPath,
+  createTableConstraintObject,
+  extractColumnsFromData,
+  extractTableColumns,
+  fieldExistsByFQN,
+  findColumnByEntityLink,
+  findFieldByFQN,
+  findOriginalColumnIndex,
+  findParentColumn,
+  flattenColumns,
+  generateEntityLink,
+  getAllRowKeysByKeyName,
+  getCertificationTag,
+  getColumnOptionsFromTableColumn,
+  getDataTypeDisplay,
+  getDataTypeString,
+  getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  getJoinsFromTableJoins,
+  getNestedSectionTitle,
+  getParentKeysToExpand,
+  getSafeExpandAllKeys,
+  getSchemaDepth,
+  getSchemaFieldCount,
+  getTagsWithoutCertification,
+  getTagsWithoutTier,
+  getTierTags,
+  getUpdatedTags,
+  getUsagePercentile,
+  isCertificationTag,
+  isLargeSchema,
+  isTierTag,
+  makeData,
+  mergeTagsWithGlossary,
+  normalizeTags,
+  pruneEmptyChildren,
+  searchInFields,
+  shouldCollapseSchema,
+  updateColumnInNestedStructure,
+  updateFieldDescription,
+  updateFieldDisplayName,
+  updateFieldExtension,
+  updateFieldTags,
+} from './TablePureUtils';
 
 const SampleDataTableComponent = withSuspenseFallback(
   lazy(
@@ -247,42 +250,6 @@ const TableConstraints = withSuspenseFallback(
 const KnowledgeGraph = withSuspenseFallback(
   lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
 );
-
-export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
-  const percentile = Math.round(pctRank * 10) / 10;
-  const ordinalPercentile = ordinalize(percentile);
-  const usagePercentile = `${
-    isLiteral ? t('label.usage') : ''
-  } ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
-
-  return usagePercentile;
-};
-
-export const isTierTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
-
-export const isCertificationTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
-
-export const getTierTags = (tags: Array<TagLabel>) => {
-  return tags.find((item) => isTierTag(item.tagFQN));
-};
-
-export const getTagsWithoutTier = (
-  tags: Array<EntityTags>
-): Array<EntityTags> => {
-  return tags.filter((item) => !isTierTag(item.tagFQN));
-};
-
-export const getCertificationTag = (tags: Array<TagLabel>) => {
-  return tags.find((item) => isCertificationTag(item.tagFQN));
-};
-
-export const getTagsWithoutCertification = (
-  tags: Array<EntityTags>
-): Array<EntityTags> => {
-  return tags.filter((item) => !isCertificationTag(item.tagFQN));
-};
 
 export const getConstraintIcon = ({
   constraint = '',
@@ -565,58 +532,6 @@ export const getServiceIcon = (source: {
   }
 };
 
-export const makeData = <T extends Column | SearchIndexField>(
-  columns: T[] = []
-): Array<T & { id: string }> => {
-  return columns.map((column) => ({
-    ...column,
-    id: uniqueId(column.name),
-    children: column.children ? makeData<T>(column.children as T[]) : undefined,
-  }));
-};
-
-export const getDataTypeString = (dataType: string): string => {
-  switch (upperCase(dataType)) {
-    case DataType.String:
-    case DataType.Char:
-    case DataType.Text:
-    case DataType.Varchar:
-    case DataType.Mediumtext:
-    case DataType.Mediumblob:
-    case DataType.Blob:
-      return PrimaryTableDataTypes.VARCHAR;
-    case DataType.Timestamp:
-    case DataType.Time:
-      return PrimaryTableDataTypes.TIMESTAMP;
-    case DataType.Date:
-      return PrimaryTableDataTypes.DATE;
-    case DataType.Int:
-    case DataType.Float:
-    case DataType.Smallint:
-    case DataType.Bigint:
-    case DataType.Numeric:
-    case DataType.Tinyint:
-    case DataType.Decimal:
-      return PrimaryTableDataTypes.NUMERIC;
-    case DataType.Boolean:
-    case DataType.Enum:
-      return PrimaryTableDataTypes.BOOLEAN;
-    default:
-      return dataType;
-  }
-};
-
-export const generateEntityLink = (fqn: string, includeColumn = false) => {
-  if (includeColumn) {
-    const tableFqn = getTableFQNFromColumnFQN(fqn);
-    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
-
-    return EntityLink.getTableEntityLink(tableFqn, columnName);
-  }
-
-  return EntityLink.getTableEntityLink(fqn);
-};
-
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
   expandIconClass?: string
@@ -707,148 +622,6 @@ export const prepareConstraintIcon = ({
       {columnConstraintEl} {tableConstraintEl}
     </span>
   );
-};
-
-export const getAllRowKeysByKeyName = <
-  T extends Column | Field | SearchIndexField
->(
-  data: T[],
-  keyName: keyof T
-) => {
-  let keys: string[] = [];
-
-  data.forEach((item) => {
-    if (item.children && item.children.length > 0) {
-      keys.push(toString(item[keyName]));
-      keys = [
-        ...keys,
-        ...getAllRowKeysByKeyName(item.children as T[], keyName),
-      ];
-    }
-  });
-
-  return keys;
-};
-
-export const searchInFields = <T extends SearchIndexField | Column>(
-  searchIndex: Array<T>,
-  searchText: string
-): Array<T> => {
-  const searchedValue: Array<T> = searchIndex.reduce(
-    (searchedFields, field) => {
-      const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedFields, field];
-      } else if (!isUndefined(field.children)) {
-        const searchedChildren = searchInFields(
-          field.children as T[],
-          searchText
-        );
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedFields,
-            {
-              ...field,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedFields;
-    },
-    [] as Array<T>
-  );
-
-  return searchedValue;
-};
-
-export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
-  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source ?? 'Classification',
-    tagFQN: tag.tagFQN,
-  }));
-
-  return mappedNewTags;
-};
-
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags(newFieldTags);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  description: string,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.description = description;
-    } else {
-      updateFieldDescription(
-        changedFieldFQN,
-        description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldDisplayName = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  displayName: string,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.displayName = displayName;
-    } else {
-      updateFieldDisplayName(
-        changedFieldFQN,
-        displayName,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  extension: Record<string, unknown>,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.extension = extension;
-    } else {
-      updateFieldExtension(
-        changedFieldFQN,
-        extension,
-        field?.children as Array<T>
-      );
-    }
-  });
 };
 
 export const getTableDetailPageBaseTabs = ({
@@ -1150,49 +923,6 @@ export const getTableDetailPageBaseTabs = ({
   ];
 };
 
-export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
-  const tableFQNGrouping = [
-    ...(joins?.columnJoins?.flatMap(
-      (cjs) =>
-        cjs.joinedWith?.map<JoinedWith>((jw) => ({
-          fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
-          joinCount: jw.joinCount,
-        })) ?? []
-    ) ?? []),
-    ...(joins?.directTableJoins ?? []),
-  ].reduce(
-    (result, jw) => ({
-      ...result,
-      [jw.fullyQualifiedName]:
-        (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-    }),
-    {} as Record<string, number>
-  );
-
-  return Object.entries(tableFQNGrouping)
-    .map<JoinedWith & { name: string }>(([fullyQualifiedName, joinCount]) => ({
-      fullyQualifiedName,
-      joinCount,
-      name: getPartialNameFromTableFQN(
-        fullyQualifiedName,
-        [FqnPart.Database, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    }))
-    .sort((a, b) => b.joinCount - a.joinCount);
-};
-
-/**
- * @param constraints contains column names for constraints which
- * @param type constraint type
- * @returns constraint object with columns and constraint type or empty array if constraints are empty
- */
-export const createTableConstraintObject = (
-  constraints: string[],
-  type: ConstraintType
-) =>
-  isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
-
 export const tableConstraintRendererBasedOnType = (
   constraintType: ConstraintType,
   columns?: string[]
@@ -1229,41 +959,6 @@ export const tableConstraintRendererBasedOnType = (
       </Space>
     </div>
   );
-};
-
-/**
- * Recursive function to get all columns from table column and its children
- * @param columns Table Columns for creating options in table constraint form
- * @returns column options with label and value
- */
-export const getColumnOptionsFromTableColumn = (
-  columns: Column[],
-  useFullyQualifiedName = false
-) => {
-  const options: {
-    label: string;
-    value: string;
-  }[] = [];
-
-  columns.forEach((item) => {
-    options.push({
-      label: item.name,
-      value: useFullyQualifiedName
-        ? item.fullyQualifiedName ?? item.name
-        : item.name,
-    });
-
-    if (!isEmpty(item.children)) {
-      options.push(
-        ...getColumnOptionsFromTableColumn(
-          item.children ?? [],
-          useFullyQualifiedName
-        )
-      );
-    }
-  });
-
-  return options;
 };
 
 export const ExtraTableDropdownOptions = (
@@ -1346,546 +1041,5 @@ export const getTableWidgetFromKey = (
         widgetConfig={widgetConfig}
       />
     );
-  }
-};
-
-/**
- * Helper function to find a column by entity link in a nested structure
- * Recursively searches through the column hierarchy to find a matching column
- *
- * @param tableFqn - The fully qualified name of the table
- * @param columns - Array of columns to search through
- * @param entityLink - The entity link to match against
- * @returns The matching column or null if not found
- */
-export const findColumnByEntityLink = (
-  tableFqn: string,
-  columns: Column[],
-  entityLink: string
-): Column | null => {
-  for (const column of columns) {
-    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
-      column.fullyQualifiedName ?? '',
-      false
-    );
-
-    // Generate the entity link for this column and compare with the target entity link
-    const columnEntityLink = EntityLink.getTableEntityLink(
-      tableFqn,
-      columnName
-    );
-    if (columnEntityLink === entityLink) {
-      return column;
-    }
-
-    // If this column has children, recursively search them
-    if (column.children && column.children.length > 0) {
-      const found = findColumnByEntityLink(
-        tableFqn,
-        column.children,
-        entityLink
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
-/**
- * Helper function to update a column in a nested structure
- * Recursively traverses the column hierarchy to find and update the target column
- *
- * @param columns - Array of columns to search through
- * @param targetFqn - The fully qualified name of the column to update
- * @param update - The properties to update on the matching column
- * @returns Updated array of columns with the target column modified
- */
-export const updateColumnInNestedStructure = (
-  columns: Column[],
-  targetFqn: string,
-  update: Partial<Column>,
-  field?: string
-): Column[] => {
-  return columns.map((column: Column) => {
-    if (column.fullyQualifiedName === targetFqn) {
-      const newCol = omit(column, field ?? '');
-
-      return {
-        ...(newCol as Column),
-        ...update,
-      };
-    }
-    // If this column has children, recursively search them
-    else if (column.children && column.children.length > 0) {
-      return {
-        ...column,
-        children: updateColumnInNestedStructure(
-          column.children,
-          targetFqn,
-          update,
-          field
-        ),
-      };
-    } else {
-      return column;
-    }
-  });
-};
-
-export const pruneEmptyChildren = (columns: Column[]): Column[] => {
-  return columns.map((column) => {
-    // If column has no children or empty children array, remove children property
-    if (!column.children || column.children.length === 0) {
-      return omit(column, 'children');
-    }
-
-    // If column has children, recursively prune them
-    const prunedChildren = pruneEmptyChildren(column.children);
-
-    // If after pruning, children array becomes empty, remove children property
-    if (prunedChildren.length === 0) {
-      return omit(column, 'children');
-    }
-
-    return {
-      ...column,
-      children: prunedChildren,
-    };
-  });
-};
-
-export const getSchemaFieldCount = <T extends { children?: T[] }>(
-  fields: T[]
-): number => {
-  let count = 0;
-
-  const countFields = (items: T[]): void => {
-    items.forEach((item) => {
-      count++;
-      if (item.children && item.children.length > 0) {
-        countFields(item.children);
-      }
-    });
-  };
-
-  countFields(fields);
-
-  return count;
-};
-
-export const getSchemaDepth = <T extends { children?: T[] }>(
-  fields: T[]
-): number => {
-  if (!fields || fields.length === 0) {
-    return 0;
-  }
-
-  let maxDepth = 1;
-
-  const calculateDepth = (items: T[], currentDepth: number): void => {
-    items.forEach((item) => {
-      maxDepth = Math.max(maxDepth, currentDepth);
-      if (item.children && item.children.length > 0) {
-        calculateDepth(item.children, currentDepth + 1);
-      }
-    });
-  };
-
-  calculateDepth(fields, 1);
-
-  return maxDepth;
-};
-
-export const isLargeSchema = <T extends { children?: T[] }>(
-  fields: T[],
-  threshold = 500
-): boolean => {
-  return getSchemaFieldCount(fields) > threshold;
-};
-
-export const shouldCollapseSchema = <T extends { children?: T[] }>(
-  fields: T[],
-  threshold = 50
-): boolean => {
-  return getSchemaFieldCount(fields) > threshold;
-};
-
-export const getExpandAllKeysToDepth = <
-  T extends { children?: T[]; fullyQualifiedName?: string }
->(
-  fields: T[],
-  maxDepth = 3
-): string[] => {
-  const keys: string[] = [];
-
-  const collectKeys = (items: T[], currentDepth = 0): void => {
-    if (currentDepth >= maxDepth) {
-      return;
-    }
-
-    items.forEach((item) => {
-      if (item.children && item.children.length > 0) {
-        if (item.fullyQualifiedName) {
-          keys.push(item.fullyQualifiedName);
-        }
-        // Continue collecting keys from children up to maxDepth
-        collectKeys(item.children, currentDepth + 1);
-      }
-    });
-  };
-
-  collectKeys(fields);
-
-  return keys;
-};
-
-export const getSafeExpandAllKeys = <
-  T extends { children?: T[]; fullyQualifiedName?: string }
->(
-  fields: T[],
-  isLargeSchema: boolean,
-  allKeys: string[]
-): string[] => {
-  if (!isLargeSchema) {
-    return allKeys;
-  }
-
-  // For large schemas, expand to exactly 2 levels deep
-  return getExpandAllKeysToDepth(fields, 2);
-};
-
-/**
- * Flattens a nested structure of columns/fields into a single array
- * Recursively includes all children in the flattened result
- */
-export const flattenColumns = <T extends { children?: T[] }>(
-  items: T[]
-): T[] => {
-  const result: T[] = [];
-  items.forEach((item) => {
-    result.push(item);
-    if (item.children && item.children.length > 0) {
-      result.push(...flattenColumns(item.children));
-    }
-  });
-
-  return result;
-};
-
-/**
- * Finds a field/column by fullyQualifiedName in a nested structure
- * Recursively searches through children
- */
-export const findFieldByFQN = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  items: T[],
-  targetFqn: string
-): T | undefined => {
-  for (const item of items) {
-    if (item.fullyQualifiedName === targetFqn) {
-      return item;
-    }
-    if (item.children && item.children.length > 0) {
-      const found = findFieldByFQN(item.children, targetFqn);
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return undefined;
-};
-
-/**
- * Checks if a field exists in a nested structure by FQN
- * Recursively searches through children, including partial matches
- */
-export const fieldExistsByFQN = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  items: T[],
-  targetFqn: string
-): boolean => {
-  for (const item of items) {
-    if (
-      item.fullyQualifiedName === targetFqn ||
-      targetFqn.startsWith((item.fullyQualifiedName ?? '') + '.')
-    ) {
-      return true;
-    }
-    if (item.children?.length && fieldExistsByFQN(item.children, targetFqn)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-/**
- * Gets all parent keys that need to be expanded to show a target field
- * Returns an array of FQNs representing the path to the target field
- */
-export const getParentKeysToExpand = <
-  T extends { fullyQualifiedName?: string; children?: T[]; name?: string }
->(
-  items: T[],
-  targetFqn: string,
-  parentKeys: string[] = []
-): string[] => {
-  for (const item of items) {
-    if (item.fullyQualifiedName === targetFqn) {
-      return parentKeys;
-    }
-
-    // Check if we should explore children
-    const shouldExploreChildren =
-      item.children?.length &&
-      (item.fullyQualifiedName
-        ? targetFqn.startsWith(item.fullyQualifiedName + '.')
-        : true); // If no FQN, always check children
-
-    if (shouldExploreChildren) {
-      const newParentKeys = [
-        ...parentKeys,
-        item.fullyQualifiedName ?? item.name ?? '',
-      ];
-      const result = getParentKeysToExpand(
-        item.children!,
-        targetFqn,
-        newParentKeys
-      );
-      if (result.length > 0) {
-        return result;
-      }
-    }
-  }
-
-  return [];
-};
-
-/**
- * Gets the data type display value for a column/field
- * Returns dataTypeDisplay if available, otherwise falls back to dataType
- */
-export const getDataTypeDisplay = (
-  column: { dataTypeDisplay?: string; dataType?: string } | null
-): string | undefined => {
-  if (!column) {
-    return undefined;
-  }
-
-  return column.dataTypeDisplay || String(column.dataType || '');
-};
-
-/**
- * Normalize tags to ensure glossary terms don't have style property
- * This prevents backend JSON patch errors when trying to remove non-existent style properties
- * @param tags Array of tags to normalize
- * @returns Normalized tags array
- */
-export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
-  // Handle empty array case
-  if (!tags || tags.length === 0) {
-    return [];
-  }
-
-  return tags.map((tag) => {
-    if (tag.source === TagSource.Glossary) {
-      // Remove style property from glossary terms to avoid backend patch errors
-      return omit(tag, 'style') as TagLabel;
-    }
-
-    // Keep style property for classification tags
-    return tag;
-  });
-};
-
-/**
- * Merge tags with glossary terms, preserving existing glossary terms
- * Used when updating classification tags to ensure glossary terms are not lost
- * @param columnTags Existing tags from the column
- * @param updatedTags New tags to merge (classification tags)
- * @returns Merged tags array with glossary terms preserved
- */
-export const mergeTagsWithGlossary = (
-  columnTags: Column['tags'],
-  updatedTags: Column['tags']
-): Column['tags'] => {
-  const existingGlossaryTags =
-    columnTags?.filter((tag) => tag.source === TagSource.Glossary) || [];
-  const updatedTagsWithoutGlossary =
-    updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize existing glossary tags to remove style property before merging
-  const normalizedExistingGlossaryTags = normalizeTags(existingGlossaryTags);
-  const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
-
-  return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Find the original index of a column in the allColumns array
- * @param column Column to find
- * @param allColumns Array of all columns
- * @returns Index of the column in allColumns, or -1 if not found
- */
-export const findOriginalColumnIndex = <
-  T extends { fullyQualifiedName?: string }
->(
-  column: T,
-  allColumns: T[]
-): number => {
-  return allColumns.findIndex(
-    (col) => col.fullyQualifiedName === column.fullyQualifiedName
-  );
-};
-
-/**
- * Finds the parent column of a target column in a nested structure
- * @param targetColumn The column to find the parent for
- * @param columns Array of columns to search through
- * @param parent Current parent column (used internally for recursion)
- * @returns The parent column, null if no parent found, or undefined if column not found
- */
-export const findParentColumn = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  targetColumn: T,
-  columns: T[],
-  parent?: T | null
-): T | null | undefined => {
-  for (const col of columns) {
-    if (col.fullyQualifiedName === targetColumn.fullyQualifiedName) {
-      return parent ?? null;
-    }
-    if (col.children && col.children.length > 0) {
-      const found = findParentColumn(targetColumn, col.children, col);
-      if (found !== undefined) {
-        return found;
-      }
-    }
-  }
-
-  return undefined;
-};
-
-/**
- * Builds a breadcrumb path from a column to its root parent
- * Returns an array of columns representing the path from root to the target column
- * @param column The column to build the breadcrumb path for
- * @param allColumns Array of all columns to search through
- * @returns Array of columns from root to target column
- */
-export const buildColumnBreadcrumbPath = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  column: T | null,
-  allColumns: T[]
-): T[] => {
-  if (!column?.fullyQualifiedName) {
-    return [];
-  }
-
-  const breadcrumbs: T[] = [column];
-  let currentColumn: T | null = column;
-  const visited = new Set<string>();
-  visited.add(column.fullyQualifiedName);
-
-  while (currentColumn) {
-    const parent: T | null | undefined = findParentColumn(
-      currentColumn,
-      allColumns
-    );
-    if (parent === undefined || parent === null) {
-      break;
-    }
-
-    // Prevent infinite loops by checking if we've already visited this parent
-    if (parent.fullyQualifiedName && visited.has(parent.fullyQualifiedName)) {
-      break;
-    }
-
-    breadcrumbs.unshift(parent);
-    if (parent.fullyQualifiedName) {
-      visited.add(parent.fullyQualifiedName);
-    }
-    currentColumn = parent;
-  }
-
-  return breadcrumbs;
-};
-
-export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Column[] => {
-  const table = data as Partial<Table>;
-
-  return (table.columns ?? []).map(
-    (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-  );
-};
-
-/**
- * Extract columns/fields from entity data based on entity type
- * @param data Entity data
- * @param entityType Type of entity
- * @returns Array of columns/fields/tasks/features
- */
-export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
-  data: T,
-  entityType: EntityType
-): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return extractTableColumns(data);
-    case EntityType.API_ENDPOINT:
-      return extractApiEndpointFields(data);
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return extractDataModelColumns(data);
-    case EntityType.MLMODEL:
-      return extractMlModelFeatures(data);
-    case EntityType.PIPELINE:
-      return extractPipelineTasks(data);
-    case EntityType.TOPIC:
-      return extractTopicFields(data);
-    case EntityType.CONTAINER:
-      return extractContainerColumns(data);
-    case EntityType.SEARCH_INDEX:
-      return extractSearchIndexFields(data);
-    case EntityType.WORKSHEET:
-      return extractTableColumns(data);
-    default:
-      return [];
-  }
-};
-
-export const getHighlightedRowClassName = <
-  T extends { fullyQualifiedName?: string }
->(
-  record: T,
-  highlightedFqn?: string
-): string => {
-  if (highlightedFqn && record.fullyQualifiedName === highlightedFqn) {
-    return 'highlighted-row';
-  }
-
-  return '';
-};
-
-export const getNestedSectionTitle = (
-  entityType: EntityType | undefined
-): string => {
-  switch (entityType) {
-    case EntityType.TOPIC:
-    case EntityType.API_ENDPOINT:
-      return 'label.schema-field-plural';
-    case EntityType.SEARCH_INDEX:
-      return 'label.field-plural';
-    default:
-      return 'label.nested-column-plural';
   }
 };

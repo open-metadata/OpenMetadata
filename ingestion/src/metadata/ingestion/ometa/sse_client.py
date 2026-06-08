@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
 from typing import Any, Generator  # noqa: UP035
 
-import httpx
+import requests
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
@@ -36,12 +36,25 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
+    def stream(
+        self,
+        method: str,
+        path: str,
+        data: None | dict[str, Any] = None,
+        timeout: None | float | tuple[float, float] = None,
+    ) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
             method (str): The HTTP method to use.
             path (str): The path to the SSE stream.
+            data (dict | None): Request body sent as JSON for non-GET methods, or as
+                query parameters for GET. Defaults to None (no body / no params).
+            timeout (float | tuple[float, float] | None): Per-call timeout passed to
+                ``requests``. ``None`` (the default) disables timeouts, which matches
+                SSE semantics where streams can have long idle periods between events.
+                Pass a single float to set both connect and read timeouts, or a
+                ``(connect, read)`` tuple to set them independently.
 
         Returns:
             Generator[Any, Any, None]: A generator of events.
@@ -87,35 +100,43 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                with httpx.Client(timeout=None) as client:  # noqa: SIM117
-                    with client.stream(
-                        method,
-                        url,
-                        headers=headers,
-                        json=opts.get("json"),
-                        params=opts.get("params"),
-                    ) as response:
-                        response.raise_for_status()
-                        self.logger.info("Connected to SSE stream")
+                request_kwargs = {
+                    "method": method,
+                    "url": str(url),
+                    "headers": headers,
+                    "json": opts.get("json"),
+                    "params": opts.get("params"),
+                    "stream": True,
+                    "timeout": timeout,
+                    "verify": (self.config.verify if self.config.verify is not None else True),
+                    "allow_redirects": (
+                        self.config.allow_redirects if self.config.allow_redirects is not None else True
+                    ),
+                    "cookies": self.config.cookies,
+                    "cert": self.config.cert,
+                }
+                with requests.Session() as session, session.request(**request_kwargs) as response:
+                    response.raise_for_status()
+                    self.logger.info("Connected to SSE stream")
 
-                        event_buffer = []
-                        for line in response.iter_lines():
-                            if not line:
-                                if event_buffer:
-                                    parsed_event = self._parse_sse_event(event_buffer)
-                                    yield parsed_event
-                                    event_buffer = []
+                    event_buffer = []
+                    for line in response.iter_lines(decode_unicode=True):
+                        if not line:
+                            if event_buffer:
+                                parsed_event = self._parse_sse_event(event_buffer)
+                                yield parsed_event
+                                event_buffer = []
 
-                                    if self.stream_completed:
-                                        self.logger.info(
-                                            f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
-                                        )
-                                        return
-                            else:  # noqa: PLR5501
-                                if not line.startswith(":"):
-                                    event_buffer.append(line)
+                                if self.stream_completed:
+                                    self.logger.info(
+                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
+                                    )
+                                    return
+                        else:  # noqa: PLR5501
+                            if not line.startswith(":"):
+                                event_buffer.append(line)
 
-            except httpx.HTTPStatusError as e:
+            except requests.exceptions.HTTPError as e:
                 self.logger.error(f"HTTP error: {e.response.status_code}")
                 raise
             except Exception as e:

@@ -791,8 +791,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Authentication is not set to basic. User creation is not supported.");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password user creation.",
+            authProvider);
         return 1;
       }
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -1007,8 +1009,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
-      if (!authProvider.equals(AuthProvider.BASIC)) {
-        LOG.error("Auth Provider is Not Basic. Cannot apply Password");
+      if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
+        LOG.error(
+            "Authentication provider {} does not support native password reset.", authProvider);
         return 1;
       }
 
@@ -1304,11 +1307,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
-              names = {"--recreate-indexes"},
-              defaultValue = "true",
-              description = "Flag to determine if indexes should be recreated.")
-          boolean recreateIndexes,
-      @Option(
               names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
@@ -1371,11 +1369,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String slackChannel) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1394,6 +1391,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
 
       // Prepare search repository for reindexing (e.g., initialize vector services)
       searchRepository.prepareForReindex();
@@ -1410,7 +1408,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           entities,
           batchSize,
           payloadSize,
-          recreateIndexes,
           producerThreads,
           consumerThreads,
           queueSize,
@@ -1778,7 +1775,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       Set<String> entities,
       int batchSize,
       long payloadSize,
-      boolean recreateIndexes,
       int producerThreads,
       int consumerThreads,
       int queueSize,
@@ -1797,8 +1793,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     IndexMappingVersionTracker versionTracker = null;
     boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
+    boolean shouldReindex = true;
 
-    if (!force && recreateIndexes) {
+    if (!force) {
       try {
         String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
         versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
@@ -1807,7 +1804,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
         if (changedMappings.isEmpty()) {
           LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
-          recreateIndexes = false;
+          shouldReindex = false;
 
           // Send Slack notification if configured
           if (slackBotToken != null
@@ -1836,7 +1833,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             if (requestedAndChanged.isEmpty()) {
               LOG.info(
                   "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
-              recreateIndexes = false;
+              shouldReindex = false;
               shouldUpdateVersions = false;
 
               // Send Slack notification if configured
@@ -1859,7 +1856,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
 
           // Initialize progress monitor for entities that will be reindexed
-          if (recreateIndexes) {
+          if (shouldReindex) {
             progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
             progressMonitor.printInitialSummary();
           }
@@ -1871,7 +1868,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     // Initialize progress monitor for force mode as well to get clean output
-    if (progressMonitor == null && recreateIndexes && force) {
+    if (progressMonitor == null && force) {
       progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
       LOG.info("");
       LOG.info("🔄 Force Reindexing");
@@ -1881,8 +1878,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("");
     }
 
-    // If recreateIndexes is false, we should not proceed with reindexing
-    if (!recreateIndexes) {
+    // If no mapping changes were detected, we should not proceed with reindexing
+    if (!shouldReindex) {
       LOG.info("Reindexing skipped - no changes detected");
       return 0; // Success - no reindexing needed
     }
@@ -1892,7 +1889,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
-            .withRecreateIndex(recreateIndexes)
             .withProducerThreads(producerThreads)
             .withConsumerThreads(consumerThreads)
             .withQueueSize(queueSize)
@@ -1916,8 +1912,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
     }
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
@@ -1974,6 +1972,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      AppScheduler.getInstance().start();
       return executeDataInsightsReindexApp(
           batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
     } catch (Exception e) {
@@ -2008,8 +2007,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);
 
-    // Trigger Application
+    // Trigger Application. Clear any on-demand job left behind by a previous run that died
+    // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
     return waitAndReturnReindexingAppStatus(app, currentTime);
   }

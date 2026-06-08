@@ -68,7 +68,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "contextMemories")
 public class ContextMemoryResource extends EntityResource<ContextMemory, ContextMemoryRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
-  public static final String FIELDS = "owners,tags,domains";
+  public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
 
@@ -135,16 +135,23 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return addHref(
-        uriInfo,
-        listInternal(
+    ResultList<ContextMemory> memories =
+        addHref(
             uriInfo,
-            securityContext,
-            fieldsParam,
-            new ListFilter(include),
-            limitParam,
-            before,
-            after));
+            listInternal(
+                uriInfo,
+                securityContext,
+                fieldsParam,
+                new ListFilter(include),
+                limitParam,
+                before,
+                after));
+    List<ContextMemory> visible =
+        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
+    if (visible.size() == memories.getData().size()) {
+      return memories;
+    }
+    return new ResultList<>(visible);
   }
 
   @GET
@@ -175,7 +182,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ContextMemory memory = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ContextMemoryVisibility.enforceVisibility(memory, securityContext);
+    return memory;
   }
 
   @GET
@@ -205,7 +214,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    ContextMemory memory = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    ContextMemoryVisibility.enforceVisibility(memory, securityContext);
+    return memory;
   }
 
   @GET

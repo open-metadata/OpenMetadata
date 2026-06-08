@@ -44,6 +44,8 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 public class RdfRepository {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+  static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
+  static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
 
   // Fallback predicate URIs for clearAllGlossaryTermRelations when
   // GlossaryTermRelationSettings can't be loaded (e.g. DB blip during startup).
@@ -118,6 +120,26 @@ public class RdfRepository {
       this.translator = null;
       LOG.info("RDF Repository disabled");
     }
+  }
+
+  RdfRepository(
+      RdfConfiguration config, RdfStorageInterface storageService, JsonLdTranslator translator) {
+    this.config = config;
+    this.storageService = storageService;
+    this.translator = translator;
+  }
+
+  static int resolveBulkEntityBatchSize(RdfConfiguration config) {
+    return positiveInt(config.getBulkEntityBatchSize(), DEFAULT_BULK_ENTITY_BATCH_SIZE);
+  }
+
+  static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
+    return positiveInt(
+        config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
+  }
+
+  private static int positiveInt(Integer value, int defaultValue) {
+    return value != null && value > 0 ? value : defaultValue;
   }
 
   private void loadOntologies() {
@@ -239,14 +261,12 @@ public class RdfRepository {
    *
    * <p>Implementation note: {@link
    * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
-   * runs the batch as a SINGLE SPARQL UPDATE containing both the combined
-   * per-entity DELETE statements and an {@code INSERT DATA} block with the
-   * unioned N-Triples body. Fuseki executes multi-statement UPDATEs in one
-   * transaction, so the write is atomic at the storage side — either the
-   * whole batch lands or nothing does. The per-entity fallback in
-   * {@code RdfBatchProcessor.processEntities} therefore only runs on
-   * payload-shape failures (a single bad RDF model the writer can't
-   * serialise), not on partial-commit recovery.
+   * runs each configured repository chunk as a SINGLE SPARQL UPDATE containing
+   * both the combined per-entity DELETE statements and an {@code INSERT DATA}
+   * block with the unioned N-Triples body. Fuseki executes multi-statement
+   * UPDATEs in one transaction, so each chunk is atomic at the storage side.
+   * The per-entity fallback in {@code RdfBatchProcessor.processEntities} keeps
+   * row-level failure attribution when a chunk fails.
    */
   public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
@@ -260,11 +280,22 @@ public class RdfRepository {
           new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
     }
     try {
-      storageService.bulkStoreEntities(requests);
+      bulkStoreEntityRequests(requests);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
+    }
+  }
+
+  void bulkStoreEntityRequests(List<RdfStorageInterface.EntityWriteRequest> requests) {
+    if (requests == null || requests.isEmpty()) {
+      return;
+    }
+    int chunkSize = resolveBulkEntityBatchSize(config);
+    for (int start = 0; start < requests.size(); start += chunkSize) {
+      int end = Math.min(start + chunkSize, requests.size());
+      storageService.bulkStoreEntities(requests.subList(start, end));
     }
   }
 
@@ -542,20 +573,81 @@ public class RdfRepository {
         tempModel.close();
       }
       if (reconcileSources != null) {
-        String base = config.getBaseUri().toString();
         Set<String> sourceUris = new LinkedHashSet<>();
         for (EntitySourceRef ref : reconcileSources) {
-          sourceUris.add(base + "entity/" + ref.entityType() + "/" + ref.entityId());
+          sourceUris.add(
+              storageService.buildEntityUri(ref.entityType(), ref.entityId().toString()));
         }
-        storageService.bulkStoreRelationships(relationshipDataList, sourceUris);
+        bulkStoreRelationshipData(relationshipDataList, sourceUris);
       } else {
-        storageService.bulkStoreRelationships(relationshipDataList);
+        Set<String> sourceUris = new LinkedHashSet<>();
+        for (RdfStorageInterface.RelationshipData relationshipData : relationshipDataList) {
+          sourceUris.add(
+              storageService.buildEntityUri(
+                  relationshipData.getFromType(), relationshipData.getFromId().toString()));
+        }
+        bulkStoreRelationshipData(relationshipDataList, sourceUris);
       }
       LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk add relationships to RDF", e);
       throw new RuntimeException("Failed to bulk add relationships to RDF", e);
     }
+  }
+
+  void bulkStoreRelationshipData(
+      List<RdfStorageInterface.RelationshipData> relationships, Set<String> sourceUris) {
+    Set<String> effectiveSources = sourceUris != null ? sourceUris : Set.of();
+    if (relationships.isEmpty() && effectiveSources.isEmpty()) {
+      return;
+    }
+    if (effectiveSources.isEmpty()) {
+      storageService.bulkStoreRelationships(relationships, Set.of());
+      return;
+    }
+
+    Map<String, List<RdfStorageInterface.RelationshipData>> relationshipsBySource =
+        new LinkedHashMap<>();
+    List<RdfStorageInterface.RelationshipData> outsideSourceRelationships = new ArrayList<>();
+    for (RdfStorageInterface.RelationshipData relationship : relationships) {
+      String relationshipSourceUri =
+          storageService.buildEntityUri(
+              relationship.getFromType(), relationship.getFromId().toString());
+      if (effectiveSources.contains(relationshipSourceUri)) {
+        relationshipsBySource
+            .computeIfAbsent(relationshipSourceUri, ignored -> new ArrayList<>())
+            .add(relationship);
+      } else {
+        outsideSourceRelationships.add(relationship);
+      }
+    }
+
+    int chunkSize = resolveBulkRelationshipSourceBatchSize(config);
+    List<String> sourceChunk = new ArrayList<>(chunkSize);
+    for (String sourceUri : effectiveSources) {
+      sourceChunk.add(sourceUri);
+      if (sourceChunk.size() == chunkSize) {
+        bulkStoreRelationshipSourceChunk(sourceChunk, relationshipsBySource);
+        sourceChunk.clear();
+      }
+    }
+    if (!sourceChunk.isEmpty()) {
+      bulkStoreRelationshipSourceChunk(sourceChunk, relationshipsBySource);
+    }
+    if (!outsideSourceRelationships.isEmpty()) {
+      storageService.bulkStoreRelationships(outsideSourceRelationships, Set.of());
+    }
+  }
+
+  private void bulkStoreRelationshipSourceChunk(
+      List<String> sourceChunk,
+      Map<String, List<RdfStorageInterface.RelationshipData>> relationshipsBySource) {
+    Set<String> chunkSources = new LinkedHashSet<>(sourceChunk);
+    List<RdfStorageInterface.RelationshipData> chunkRelationships = new ArrayList<>();
+    for (String sourceUri : sourceChunk) {
+      chunkRelationships.addAll(relationshipsBySource.getOrDefault(sourceUri, List.of()));
+    }
+    storageService.bulkStoreRelationships(chunkRelationships, chunkSources);
   }
 
   /**

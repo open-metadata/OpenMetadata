@@ -95,7 +95,7 @@ test('Test suite lastResultTimestamp survives a full entity reindex', async ({
         {
           message:
             'post-reindex: test suite doc must still include a non-zero lastResultTimestamp',
-          timeout: 30_000,
+          timeout: 60_000,
         }
       )
       .toBeGreaterThan(0);

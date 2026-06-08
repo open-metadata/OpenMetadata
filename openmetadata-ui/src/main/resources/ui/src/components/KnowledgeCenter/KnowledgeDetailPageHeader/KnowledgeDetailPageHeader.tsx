@@ -61,6 +61,7 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
+  getKnowledgePageName,
   getKnowledgeVersionsPath,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
@@ -116,7 +117,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
         url: ROUTES.KNOWLEDGE_CENTER,
       },
       {
-        name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+        name: getKnowledgePageName(knowledgePage, t),
         url: '',
         activeTitle: false,
       },
@@ -420,9 +421,8 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
                 deleted={knowledgePage?.deleted}
                 entityFQN={knowledgePage?.fullyQualifiedName}
                 entityId={knowledgePage?.id}
-                entityName={knowledgePage?.displayName ?? t('label.untitled')}
+                entityName={getKnowledgePageName(knowledgePage, t)}
                 entityType={EntityType.KNOWLEDGE_CENTER}
-                prepareType={false}
                 successMessage={t('server.entity-deleted-successfully', {
                   entity: entityType,
                 })}

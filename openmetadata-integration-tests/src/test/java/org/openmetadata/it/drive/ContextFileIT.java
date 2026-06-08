@@ -32,8 +32,8 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 class ContextFileIT {
 
-  private static final String FILE_PATH = "v1/drive/files";
-  private static final String FOLDER_PATH = "v1/drive/folders";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
+  private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {

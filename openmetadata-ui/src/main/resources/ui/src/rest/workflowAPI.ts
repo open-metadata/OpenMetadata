@@ -17,7 +17,7 @@ import { Workflow } from '../generated/entity/automations/workflow';
 import { TestConnectionDefinition } from '../generated/entity/services/connections/testConnectionDefinition';
 import { WorkflowInstance } from '../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import {
   WorkflowInstanceFromApplicationParams,

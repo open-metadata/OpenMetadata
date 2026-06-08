@@ -6,9 +6,11 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.Relationship.EDITED_BY;
 import static org.openmetadata.schema.type.Relationship.HAS;
 import static org.openmetadata.schema.type.Relationship.RELATED_TO;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.getEntityReferencesByIds;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -21,9 +23,11 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +63,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -70,9 +75,15 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Repository
 public class KnowledgePageRepository extends EntityRepository<Page> {
   public static final String KNOWLEDGE_PAGE_ENTITY = "page";
+
+  static {
+    PageBodyTextContributor.INSTANCE.register();
+  }
+
   private static final String KNOWLEDGE_PATCH_FIELDS = "page,relatedEntities,parent,children";
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
   public static final String RELATED_ENTITIES = "relatedEntities";
+  public static final String EDITORS = "editors";
   public static final String KNOWLEDGE_PAGE_TERM_SEARCH_INDEX = "page";
   private final CollectionDAO.KnowledgePageDAO daoExtension;
   private final CollectionDAO.AssetDAO assetDAO;
@@ -114,9 +125,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             ? getRelatedEntities(knowledgePage)
             : knowledgePage.getRelatedEntities());
     knowledgePage.setEditors(
-        fields.contains("editors") ? getEditors(knowledgePage) : knowledgePage.getEditors());
+        fields.contains(EDITORS) ? getEditors(knowledgePage) : knowledgePage.getEditors());
     knowledgePage.setParent(
-        fields.contains("parent") ? getParent(knowledgePage) : knowledgePage.getParent());
+        fields.contains(FIELD_PARENT) ? getParent(knowledgePage) : knowledgePage.getParent());
     knowledgePage.setChildren(
         fields.contains("children") ? getChildren(knowledgePage) : knowledgePage.getChildren());
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
@@ -134,6 +145,161 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
               ? getAttachments(knowledgePage)
               : knowledgePage.getAttachments());
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Page> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetParents(entities, fields);
+    fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetEditors(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Page entity : entities) {
+      setArticleFields(entity, fields);
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_PARENT)) {
+      return;
+    }
+    Map<UUID, EntityReference> parentByPageId = batchFetchParents(entities);
+    entities.forEach(page -> page.setParent(parentByPageId.get(page.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Page> entities) {
+    Map<UUID, EntityReference> parentByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.CONTAINS.ordinal(),
+                KNOWLEDGE_PAGE_ENTITY,
+                Include.NON_DELETED);
+    Map<UUID, EntityReference> refById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID pageId = UUID.fromString(record.getToId());
+      UUID parentId = UUID.fromString(record.getFromId());
+      EntityReference ref =
+          refById.computeIfAbsent(
+              parentId,
+              id -> Entity.getEntityReferenceById(KNOWLEDGE_PAGE_ENTITY, id, Include.NON_DELETED));
+      parentByPageId.put(pageId, ref);
+    }
+    return parentByPageId;
+  }
+
+  private void fetchAndSetRelatedEntities(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(RELATED_ENTITIES)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> relatedByPageId = batchFetchRelatedEntities(entities);
+    entities.forEach(
+        page ->
+            page.setRelatedEntities(
+                relatedByPageId.getOrDefault(page.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<Page> entities) {
+    Map<UUID, List<EntityReference>> relatedByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(entities), HAS.ordinal(), Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref == null || isDomainOrDataProduct(ref)) {
+        continue;
+      }
+      relatedByPageId
+          .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+          .add(ref);
+    }
+    relatedByPageId.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    return relatedByPageId;
+  }
+
+  private Map<String, EntityReference> resolveReferencesByType(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      idsByType
+          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .add(UUID.fromString(record.getFromId()));
+    }
+    Map<String, EntityReference> refById = new HashMap<>();
+    idsByType.forEach(
+        (type, ids) ->
+            getEntityReferencesByIds(type, new ArrayList<>(ids), Include.NON_DELETED)
+                .forEach(ref -> refById.put(ref.getId().toString(), ref)));
+    return refById;
+  }
+
+  private boolean isDomainOrDataProduct(EntityReference ref) {
+    return Entity.DOMAIN.equals(ref.getType()) || Entity.DATA_PRODUCT.equals(ref.getType());
+  }
+
+  private void fetchAndSetEditors(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(EDITORS)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> editorsByPageId = batchFetchEditors(entities);
+    entities.forEach(
+        page ->
+            page.setEditors(editorsByPageId.getOrDefault(page.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchEditors(List<Page> entities) {
+    Map<UUID, List<EntityReference>> editorsByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(entities),
+                KNOWLEDGE_PAGE_ENTITY,
+                USER,
+                EDITED_BY.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = new HashMap<>();
+    getEntityReferencesByIds(
+            USER,
+            records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList(),
+            Include.NON_DELETED)
+        .forEach(ref -> refById.put(ref.getId().toString(), ref));
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getToId());
+      if (ref != null) {
+        editorsByPageId
+            .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    return editorsByPageId;
+  }
+
+  private void setArticleFields(Page knowledgePage, EntityUtil.Fields fields) {
+    if (!PageType.ARTICLE.equals(knowledgePage.getPageType())) {
+      return;
+    }
+    Article article = new Article();
+    if (knowledgePage.getPage() != null) {
+      article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
+    }
+    article.setRelatedArticles(
+        fields.contains(RELATED_ENTITIES)
+            ? getRelatedArticles(knowledgePage)
+            : article.getRelatedArticles());
+    knowledgePage.setPage(article);
+    knowledgePage.setAttachments(
+        fields.contains("attachments")
+            ? getAttachments(knowledgePage)
+            : knowledgePage.getAttachments());
   }
 
   @Override
@@ -206,8 +372,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public void clearFields(Page entity, EntityUtil.Fields fields) {
     entity.withRelatedEntities(
         fields.contains(RELATED_ENTITIES) ? entity.getRelatedEntities() : null);
-    entity.withEditors(fields.contains("editors") ? entity.getEditors() : null);
-    entity.setParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withEditors(fields.contains(EDITORS) ? entity.getEditors() : null);
+    entity.setParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();

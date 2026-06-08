@@ -20,7 +20,7 @@ export const QUICK_LINK_MOCK_DATA = {
   version: 0.2,
   updatedAt: 1695188836184,
   updatedBy: 'admin',
-  href: 'http://localhost:8585/api/v1/knowledgeCenter/1e62e2f6-7441-4c1b-bd15-15a23af23181',
+  href: 'http://localhost:8585/api/v1/contextCenter/pages/1e62e2f6-7441-4c1b-bd15-15a23af23181',
   changeDescription: {
     fieldsAdded: [],
     fieldsUpdated: [

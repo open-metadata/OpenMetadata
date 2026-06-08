@@ -61,6 +61,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -2151,6 +2152,17 @@ class PowerbiSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def yield_dashboard_lineage(
+        self,
+        dashboard_details: Any,
+    ) -> Iterable[Either]:
+        """Flush the sink before lineage resolution so that target lookups in
+        super().yield_dashboard_lineage see this workspace's just-flushed entities.
+        """
+        ws_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
+        yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))  # pyright: ignore[reportCallIssue]
+        yield from super().yield_dashboard_lineage(dashboard_details)
 
     def yield_datamodel_dashboard_lineage(
         self,

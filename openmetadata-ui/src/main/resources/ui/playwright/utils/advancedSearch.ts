@@ -162,7 +162,8 @@ export const NULL_CONDITIONS = {
 };
 
 export const showAdvancedSearchDialog = async (page: Page) => {
-  await page.getByTestId('advance-search-button').click();
+  await page.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };

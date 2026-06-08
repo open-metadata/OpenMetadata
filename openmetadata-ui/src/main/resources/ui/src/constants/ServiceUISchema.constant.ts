@@ -33,6 +33,7 @@ export const DEF_UI_SCHEMA = {
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
+  policyAgentConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {

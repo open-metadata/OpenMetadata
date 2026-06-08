@@ -17,7 +17,7 @@ import { includes, startCase, toLower } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/CommonUtils';
+import { entityChartColor } from '../../utils/ColorUtils';
 import { sortEntityByValue } from '../../utils/DataInsightUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
