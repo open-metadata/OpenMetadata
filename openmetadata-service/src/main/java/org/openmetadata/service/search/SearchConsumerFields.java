@@ -22,13 +22,10 @@ import java.util.Set;
  * breaks those consumers (empty facets, wrong access-control results, zeroed Data Quality widgets)
  * with no compile-time or boot-time failure.
  *
- * <p>Two guards reference this class so the contract lives in one place:
- *
- * <ul>
- *   <li>{@code SearchConsumerFieldContractTest} fails CI when a shipped mapping file violates it.
- *   <li>{@code SystemRepository}'s "Index Mapping Consistency" health check warns when a deployed
- *       index is missing these fields (e.g. left stale after an upgrade without a reindex).
- * </ul>
+ * <p>{@code SearchConsumerFieldContractTest} references this class so the contract lives in one
+ * place: it fails CI when a shipped mapping file renames, retypes, or drops one of these fields.
+ * (Deployed-index staleness is covered separately by {@code SystemRepository}'s "Search Reindex
+ * Status" check, which compares mapping hashes rather than these specific fields.)
  */
 public final class SearchConsumerFields {
   private SearchConsumerFields() {}
