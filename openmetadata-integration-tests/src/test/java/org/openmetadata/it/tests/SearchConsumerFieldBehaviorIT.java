@@ -18,11 +18,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -37,15 +37,21 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * reported as a broken <em>feature</em> in a specific language (e.g. "Domain filter is broken in
  * [jp]"), which is what an operator can act on — not "index is missing a mapping".
  *
- * <p>This is the test that would have caught the {@code jp/topic} mapping dropping top-level {@code
- * domains}: the domain-filter assertion below returns zero hits for {@code jp} until the mapping is
- * fixed. The earlier structural unit test could not, because it only knew which fields to look for
- * from a hand-maintained list.
+ * <p>This is the search-side coverage the suite lacked for non-English languages — without the need
+ * to run the whole integration-test suite once per language. The container is built with the
+ * language-analysis plugins ({@link SearchTestImages}), so en, ru and jp index with their
+ * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer}); creating the real jp mapping here
+ * therefore also catches analyzer drift (fields referencing analyzers the mapping never defined).
+ * zh uses the third-party {@code analysis-ik} plugin, which is not installed, so zh alone has its
+ * analysis stripped and is validated structurally — the consumer fields are {@code keyword}/{@code
+ * nested} and analyzer-independent, so every assertion still holds.
  *
- * <p>The query types mirror real consumers: a nested query for {@code owners} (RBAC isOwner), term
- * filters for tags/tier/certification/domains (Explore facets, RBAC, Data Quality), a terms
- * aggregation for {@code testCaseResult.testCaseStatus} (the Data Quality execution summary), and a
- * keyword term on {@code fqnParts} (hierarchical search / autocomplete).
+ * <p>It would have caught the {@code jp/topic} mapping dropping top-level {@code domains} (the
+ * domain-filter assertion returns zero hits for {@code jp}) and the jp analyzer references that made
+ * jp indexes uncreatable. The query types mirror real consumers: a nested query for {@code owners}
+ * (RBAC isOwner), term filters for tags/tier/certification/domains (Explore facets, RBAC, Data
+ * Quality), a terms aggregation for {@code testCaseResult.testCaseStatus} (the Data Quality
+ * execution summary), and a keyword term on {@code fqnParts} (hierarchical search / autocomplete).
  */
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -68,7 +74,8 @@ class SearchConsumerFieldBehaviorIT {
 
   @Container
   static OpensearchContainer<?> opensearch =
-      new OpensearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:3.4.0"))
+      new OpensearchContainer<>(
+              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
           .withStartupTimeout(Duration.ofMinutes(5))
           .withEnv("discovery.type", "single-node")
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
@@ -90,10 +97,16 @@ class SearchConsumerFieldBehaviorIT {
     mapper = new ObjectMapper();
 
     for (String language : LANGUAGES) {
-      createIndex(topicIndex(language), "/elasticsearch/" + language + "/topic_index_mapping.json");
+      boolean stripAnalysis = needsAnalysisStrip(language);
+      createIndex(
+          topicIndex(language),
+          "/elasticsearch/" + language + "/topic_index_mapping.json",
+          stripAnalysis);
       indexDocument(topicIndex(language), TOPIC_ID, topicDocument());
       createIndex(
-          testCaseIndex(language), "/elasticsearch/" + language + "/test_case_index_mapping.json");
+          testCaseIndex(language),
+          "/elasticsearch/" + language + "/test_case_index_mapping.json",
+          stripAnalysis);
       indexDocument(testCaseIndex(language), TEST_CASE_ID, testCaseDocument());
     }
   }
@@ -117,8 +130,8 @@ class SearchConsumerFieldBehaviorIT {
     assertFeatureWorksInAllLanguages(
         "Tier aggregation (Explore tier facet, Data Quality tier widget)",
         language ->
-            bucketKeys(topicIndex(language), termsAggregation("tier", "tier.tagFQN"), "tier")
-                .contains(TIER_FQN));
+            aggregationHasBucket(
+                topicIndex(language), termsAggregation("tier", "tier.tagFQN"), "tier", TIER_FQN));
   }
 
   @Test
@@ -160,11 +173,26 @@ class SearchConsumerFieldBehaviorIT {
     assertFeatureWorksInAllLanguages(
         "Data Quality status aggregation (Test Suite execution summary, DQ status filter)",
         language ->
-            bucketKeys(
-                    testCaseIndex(language),
-                    termsAggregation("status", "testCaseResult.testCaseStatus"),
-                    "status")
-                .contains(TEST_CASE_STATUS));
+            aggregationHasBucket(
+                testCaseIndex(language),
+                termsAggregation("status", "testCaseResult.testCaseStatus"),
+                "status",
+                TEST_CASE_STATUS));
+  }
+
+  @Test
+  void japaneseAnalysisPluginIsInstalled() throws Exception {
+    try (var response =
+        openSearchClient
+            .generic()
+            .execute(Requests.builder().method("GET").endpoint("/_cat/plugins").build())) {
+      String plugins = response.getBody().map(b -> b.bodyAsString()).orElse("");
+      assertTrue(
+          plugins.contains("analysis-kuromoji"),
+          "The integration-test OpenSearch image must ship analysis-kuromoji so jp mappings index "
+              + "with their real kuromoji analyzer instead of a stripped fallback. Installed: "
+              + plugins);
+    }
   }
 
   @FunctionalInterface
@@ -194,6 +222,23 @@ class SearchConsumerFieldBehaviorIT {
     return runSearch(index, queryBody).path("hits").path("hits").size();
   }
 
+  /**
+   * Whether an aggregation produced a bucket for {@code expected}, compared case-insensitively. A
+   * keyword field may carry {@code lowercase_normalizer} (e.g. {@code testCaseResult.testCaseStatus}
+   * in every language, {@code tier.tagFQN} in en only), which lowercases the stored value and hence
+   * the bucket key; the feature still works — a bucket exists for our asset — so either case passes.
+   * A missing field or value produces no bucket at all and still fails the assertion.
+   */
+  private boolean aggregationHasBucket(
+      String index, String aggBody, String aggName, String expected) throws Exception {
+    for (String key : bucketKeys(index, aggBody, aggName)) {
+      if (key.equalsIgnoreCase(expected)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private List<String> bucketKeys(String index, String aggBody, String aggName) throws Exception {
     List<String> keys = new ArrayList<>();
     JsonNode buckets = runSearch(index, aggBody).path("aggregations").path(aggName).path("buckets");
@@ -218,13 +263,17 @@ class SearchConsumerFieldBehaviorIT {
     }
   }
 
-  private void createIndex(String index, String mappingResource) throws Exception {
+  private void createIndex(String index, String mappingResource, boolean stripAnalysis)
+      throws Exception {
     String rawMapping;
     try (InputStream in = getClass().getResourceAsStream(mappingResource)) {
       assertNotNull(in, "Mapping resource not found on classpath: " + mappingResource);
       rawMapping = new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
-    String enriched = stripLanguageAnalysis(OsUtils.enrichIndexMappingForOpenSearch(rawMapping));
+    String enriched = OsUtils.enrichIndexMappingForOpenSearch(rawMapping);
+    if (stripAnalysis) {
+      enriched = stripLanguageAnalysis(enriched);
+    }
     try (var response =
         openSearchClient
             .generic()
@@ -340,13 +389,21 @@ class SearchConsumerFieldBehaviorIT {
   }
 
   /**
+   * Languages whose analyzers are available in the IT image keep their real analysis (en/ru are
+   * built-in, jp uses the installed {@code analysis-kuromoji}). Only zh — which needs the
+   * uninstalled third-party {@code analysis-ik} — has its analysis stripped, so its index is still
+   * creatable for structural validation. The consumer fields asserted here are {@code keyword}/{@code
+   * nested} and analyzer-independent, so stripping zh does not weaken any assertion.
+   */
+  private boolean needsAnalysisStrip(String language) {
+    return "zh".equals(language);
+  }
+
+  /**
    * Remove every analysis setting and field-level {@code analyzer}/{@code search_analyzer}/{@code
-   * normalizer} reference so each language's index is creatable on a vanilla OpenSearch image. The
-   * denormalized consumer fields validated here are all {@code keyword}/{@code nested} and therefore
-   * analyzer-independent; per-language text analyzers (en stemmer, jp kuromoji, ...) are a separate
-   * concern, intentionally out of scope. What remains per language is the real field structure, so
-   * structural drift between languages — e.g. {@code jp/topic} dropping top-level {@code domains} —
-   * is still caught.
+   * normalizer} reference so an index is creatable without its language-analysis plugin (used only
+   * for zh). What remains is the real field structure, so structural drift — e.g. a language mapping
+   * dropping a top-level field — is still caught.
    */
   private String stripLanguageAnalysis(String mappingJson) throws Exception {
     JsonNode root = mapper.readTree(mappingJson);
