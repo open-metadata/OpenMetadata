@@ -165,7 +165,9 @@ export const getEntityBreadcrumbs = (
       );
     }
     case EntityType.CLASSIFICATION:
-      return getBreadcrumbForClassification(getEntityName(entity as never));
+      return getBreadcrumbForClassification(
+        getEntityName(entity as { name?: string; displayName?: string })
+      );
     case EntityType.DATABASE:
       return getBreadcrumbForDatabase(entity as Database);
     case EntityType.DATABASE_SCHEMA:
@@ -266,22 +268,22 @@ export const getEntityBreadcrumbs = (
       return getBreadcrumbForTeam(entity as Team);
     case EntityType.APPLICATION:
       return getBreadcrumbForApplication(
-        getEntityName(entity as never),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.PERSONA:
       return getBreadcrumbForPersona(
-        getEntityName(entity as never),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.ROLE:
       return getBreadcrumbForRole(
-        getEntityName(entity as never),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.POLICY:
       return getBreadcrumbForPolicy(
-        getEntityName(entity as never),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.API_COLLECTION:
@@ -294,7 +296,7 @@ export const getEntityBreadcrumbs = (
       return getBreadCrumbForKpi(entity as Kpi);
     case EntityType.KNOWLEDGE_PAGE:
       return getBreadcrumbForKnowledgePage(
-        getEntityName(entity as never),
+        getEntityName(entity as { name?: string; displayName?: string }),
         includeCurrent
       );
     case EntityType.TABLE_COLUMN: {
