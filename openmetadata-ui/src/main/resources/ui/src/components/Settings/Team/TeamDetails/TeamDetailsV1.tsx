@@ -30,7 +30,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
@@ -82,6 +82,7 @@ import {
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -91,7 +92,6 @@ import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useEntityExportModalProvider } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -110,6 +110,13 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const TeamDetailsV1 = ({
   assetsCount,

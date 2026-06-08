@@ -13,27 +13,24 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Typography } from 'antd';
 import { noop } from 'lodash';
+import { lazy } from 'react';
 import {
   ReactComponent as DataProductIcon,
   ReactComponent as DefaultDataProductIcon,
 } from '../assets/svg/ic-data-product.svg';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
-import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
-import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
-import AssetsTabs, {
-  AssetsTabRef,
-} from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -51,6 +48,69 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedProvider = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider'
+      )
+  )
+);
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const AssetsTabs = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component')
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
+
+const InputOutputPortsTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataProducts/InputOutputPortsTab').then((module) => ({
+      default: module.InputOutputPortsTab,
+    }))
+  )
+);
+
+const ResizablePanels = withSuspenseFallback(
+  lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
+);
 
 export interface DataProductDetailPageTabProps {
   dataProduct: DataProduct;

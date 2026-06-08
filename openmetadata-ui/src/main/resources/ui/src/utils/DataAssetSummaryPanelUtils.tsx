@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
+import { lazy } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -57,6 +58,14 @@ import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags, getUsagePercentile } from './TableUtils';
+
+const OwnerLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/OwnerLabel/OwnerLabel.component').then(
+      (m) => ({ default: m.OwnerLabel })
+    )
+  )
+);
 
 interface ColumnSearchResult {
   dataType?: string;

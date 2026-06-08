@@ -13,7 +13,11 @@
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -33,6 +37,17 @@ import { PageType } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { MetricDetailPageTabProps } from './MetricDetailsClassBase';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
 const EntityLineageTab = lazy(() =>
   import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
     (module) => ({ default: module.EntityLineageTab })

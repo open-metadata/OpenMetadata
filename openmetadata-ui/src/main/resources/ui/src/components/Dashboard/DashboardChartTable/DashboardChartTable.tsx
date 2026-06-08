@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
@@ -45,6 +45,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
@@ -52,8 +53,15 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 export const DashboardChartTable = ({
   isCustomizationPage = false,

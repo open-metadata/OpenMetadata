@@ -21,6 +21,7 @@ import QueryString from 'qs';
 import {
   createContext,
   DragEvent,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -42,6 +43,7 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -53,7 +55,6 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -141,6 +142,15 @@ import {
 
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 const parseEpochParam = (value: string | null): number | undefined => {
   if (!value) {

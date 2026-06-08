@@ -24,9 +24,10 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -36,7 +37,6 @@ import { useGenericContext } from '../../../components/Customization/GenericProv
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -80,6 +80,14 @@ import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
 } from './SearchIndexFieldsTable.interface';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,

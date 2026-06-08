@@ -15,7 +15,15 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -56,6 +64,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -65,7 +74,14 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 interface APIEndpointSchemaProps {
   isVersionView?: boolean;

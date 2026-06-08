@@ -22,7 +22,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
@@ -50,6 +50,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../../utils/TableUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,7 +59,14 @@ import { useGenericContext } from '../../../Customization/GenericProvider/Generi
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 function WorksheetColumnsTable() {
   const { t } = useTranslation();

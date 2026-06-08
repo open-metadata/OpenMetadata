@@ -32,6 +32,7 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, last, orderBy } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -70,8 +71,6 @@ import {
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
-import FeedbackApprovalTask from '../../../../pages/TasksPage/shared/FeedbackApprovalTask';
-import TaskPayloadSchemaFields from '../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
 import {
   Option,
   TaskAction,
@@ -125,8 +124,19 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
+
+const FeedbackApprovalTask = withSuspenseFallback(
+  lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
+);
+
+const TaskPayloadSchemaFields = withSuspenseFallback(
+  lazy(
+    () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
+  )
+);
 
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';

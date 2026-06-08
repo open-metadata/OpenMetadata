@@ -23,6 +23,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
+  lazy,
   RefObject,
   useCallback,
   useEffect,
@@ -69,9 +70,9 @@ import { getEntityUserLink } from '../../../utils/EntityUtils';
 import { getFeedCounts } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
-import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import TaskListV1 from '../ActivityFeedList/TaskListV1.component';
@@ -83,6 +84,14 @@ import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
+
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 const componentsVisibility = {
   showThreadIcon: false,

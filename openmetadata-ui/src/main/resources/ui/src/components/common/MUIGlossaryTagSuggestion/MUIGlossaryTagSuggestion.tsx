@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { FC, ReactNode, useCallback, useMemo } from 'react';
+import { FC, lazy, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -26,14 +26,18 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';
-import MUIAsyncTreeSelect from '../MUIAsyncTreeSelect/MUIAsyncTreeSelect';
 import {
   convertGlossaryTermsToTreeOptionsWithNames,
   convertToTreeNodes,
 } from './GlossaryTagSuggestionUtils';
 import { useGlossaryMutualExclusivity } from './useGlossaryMutualExclusivity';
+
+const MUIAsyncTreeSelect = withSuspenseFallback(
+  lazy(() => import('../MUIAsyncTreeSelect/MUIAsyncTreeSelect'))
+);
 
 interface HierarchicalGlossary extends Glossary {
   children?: ModifiedGlossaryTerm[];

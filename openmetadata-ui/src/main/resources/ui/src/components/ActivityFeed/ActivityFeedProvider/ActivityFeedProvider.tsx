@@ -16,6 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
 import {
   createContext,
+  lazy,
   ReactNode,
   useCallback,
   useContext,
@@ -76,8 +77,12 @@ import {
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
+
+const ActivityFeedDrawer = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
+);
 
 interface Props {
   children: ReactNode;
