@@ -19,6 +19,21 @@ import {
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
+export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
+
+export const PILLAR_TONE_TEXT_CLASS: Record<string, string> = {
+  info: 'tw:text-utility-brand-700',
+  warning: 'tw:text-utility-warning-700',
+  success: 'tw:text-utility-success-700',
+};
+
+export const ATTENTION_SEVERITY_BADGE_COLOR = {
+  error: 'error',
+  warning: 'warning',
+  info: 'blue',
+} as const;
+
 export const MEMORY_TYPE_OPTIONS = [
   { id: MemoryType.FAQ, labelKey: 'label.faq' },
   { id: MemoryType.Note, labelKey: 'label.note' },

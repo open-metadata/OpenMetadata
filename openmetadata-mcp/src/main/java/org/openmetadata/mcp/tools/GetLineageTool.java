@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -43,13 +45,6 @@ public class GetLineageTool implements McpTool {
   private static final int DEFAULT_DEPTH = 3;
   // Maximum depth to prevent exponential response growth (lineage graphs can explode)
   private static final int MAX_DEPTH = 10;
-  // SQL is the single heaviest field; keep the gist of the transform, cap the size
-  private static final int SQL_MAX_LENGTH = 500;
-  // Free-text markdown (pipeline / edge descriptions) is capped for the same reason as SQL:
-  // a single long pipeline doc string can be shared across many edges and reintroduce bloat
-  private static final int TEXT_MAX_LENGTH = 500;
-  // Final safety net mirroring SearchMetadataTool: even slimmed, a wide graph can blow the limit
-  private static final int MAX_RESPONSE_CHARS = 100_000;
   private static final String RELATIONSHIP_SQL = "sql";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -94,9 +89,9 @@ public class GetLineageTool implements McpTool {
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(entityType));
-    int upstreamDepth = parseDepthParameter(params.get("upstreamDepth"), DEFAULT_DEPTH);
-    int downstreamDepth = parseDepthParameter(params.get("downstreamDepth"), DEFAULT_DEPTH);
-    boolean includeColumnLineage = parseBooleanParameter(params.get("includeColumnLineage"));
+    int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
+    int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
+    boolean includeColumnLineage = McpParams.getBoolean(params, "includeColumnLineage", false);
     LOG.info(
         "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}, "
             + "includeColumnLineage: {}",
@@ -212,11 +207,7 @@ public class GetLineageTool implements McpTool {
   }
 
   private static String truncateText(String text) {
-    String result = text;
-    if (text != null && text.length() > TEXT_MAX_LENGTH) {
-      result = text.substring(0, TEXT_MAX_LENGTH) + "...";
-    }
-    return result;
+    return McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH);
   }
 
   private static String sourceValue(LineageDetails details) {
@@ -227,8 +218,8 @@ public class GetLineageTool implements McpTool {
     String sql = details != null ? details.getSqlQuery() : null;
     SqlText result = new SqlText(null, null);
     if (sql != null) {
-      boolean tooLong = sql.length() > SQL_MAX_LENGTH;
-      String value = tooLong ? sql.substring(0, SQL_MAX_LENGTH) + "..." : sql;
+      boolean tooLong = sql.length() > McpResponseTrim.SQL_MAX_LENGTH;
+      String value = McpResponseTrim.truncate(sql, McpResponseTrim.SQL_MAX_LENGTH);
       result = new SqlText(value, tooLong ? Boolean.TRUE : null);
     }
     return result;
@@ -253,9 +244,9 @@ public class GetLineageTool implements McpTool {
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
     Map<String, Object> response = JsonUtils.getMap(slim);
-    int responseSize = JsonUtils.pojoToJson(response).length();
+    int responseSize = McpResponseTrim.serializedLength(response);
     Map<String, Object> result = response;
-    if (responseSize > MAX_RESPONSE_CHARS) {
+    if (responseSize > McpResponseTrim.MAX_RESPONSE_CHARS) {
       result = oversizedHint(slim, responseSize);
     }
     return result;
@@ -276,42 +267,17 @@ public class GetLineageTool implements McpTool {
         String.format(
             "Lineage response exceeded %d characters (was %d). Reduce upstreamDepth/downstreamDepth,"
                 + " or keep includeColumnLineage disabled, to get a smaller graph.",
-            MAX_RESPONSE_CHARS, size));
+            McpResponseTrim.MAX_RESPONSE_CHARS, size));
     return hint;
   }
 
-  private static boolean parseBooleanParameter(Object value) {
-    boolean result = false;
-    if (value instanceof Boolean bool) {
-      result = bool;
-    } else if (value instanceof String string) {
-      result = Boolean.parseBoolean(string);
-    }
-    return result;
-  }
-
   /**
-   * Parses depth parameter with default value and enforces maximum limit to prevent excessive
-   * response sizes that could overwhelm LLM context.
+   * Clamps a requested depth into {@code [1, MAX_DEPTH]} to prevent excessive response sizes that
+   * could overwhelm LLM context. Parsing is delegated to {@link McpParams}; the valid range is
+   * specific to this tool, so the clamp stays here.
    */
-  private static int parseDepthParameter(Object depthObj, int defaultValue) {
-    int depth = defaultValue;
-    if (depthObj instanceof Number number) {
-      depth = number.intValue();
-    } else if (depthObj instanceof String string) {
-      depth = parseDepthString(string, defaultValue);
-    }
+  private static int clampDepth(int depth) {
     return Math.min(Math.max(depth, 1), MAX_DEPTH);
-  }
-
-  private static int parseDepthString(String value, int defaultValue) {
-    int depth = defaultValue;
-    try {
-      depth = Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      depth = defaultValue;
-    }
-    return depth;
   }
 
   @Override
