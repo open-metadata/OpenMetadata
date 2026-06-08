@@ -94,6 +94,20 @@ class SearchConsumerFieldBehaviorIT {
   private static final String ASSIGNEE_NAME = "john";
   private static final String STATE_ID = "88888888-8888-8888-8888-888888888888";
 
+  // Native-script sample text per language plus a token its analyzer must produce.
+  // Keyword/identifier
+  // fields are language-neutral and never exercise the text analyzers; this is the only check that
+  // the per-language analyzers actually work — the reason the per-language mappings exist at all.
+  // jp/zh require kuromoji/IK to segment CJK (the plain standard analyzer splits it into single
+  // characters, never the 2-char tokens 東京 / 销售); ru requires the Russian stemmer (продажи ->
+  // продаж); en is the latin baseline.
+  private static final Map<String, String[]> LANGUAGE_SAMPLE_TEXT =
+      Map.of(
+          "en", new String[] {"Monthly revenue report", "revenue"},
+          "ru", new String[] {"Ежемесячные продажи", "продаж"},
+          "jp", new String[] {"東京タワーの売上", "東京"},
+          "zh", new String[] {"北京大学的销售报表", "销售"});
+
   @Container
   static OpensearchContainer<?> opensearch =
       new OpensearchContainer<>(
@@ -295,6 +309,25 @@ class SearchConsumerFieldBehaviorIT {
     }
   }
 
+  @Test
+  void languageAnalyzerSegmentsNativeTextInEachLanguage() throws Exception {
+    List<String> broken = new ArrayList<>();
+    for (Map.Entry<String, String[]> entry : LANGUAGE_SAMPLE_TEXT.entrySet()) {
+      String language = entry.getKey();
+      String text = entry.getValue()[0];
+      String expectedToken = entry.getValue()[1];
+      List<String> tokens = analyzeField(topicIndex(language), "description", text);
+      if (!tokens.contains(expectedToken)) {
+        broken.add(language + " expected token '" + expectedToken + "' but got " + tokens);
+      }
+    }
+    assertTrue(
+        broken.isEmpty(),
+        "The per-language text analyzer did not segment native-script text into the expected token "
+            + "— full-text search in that language is broken: "
+            + broken);
+  }
+
   @FunctionalInterface
   private interface LanguageProbe {
     boolean passes(String language) throws Exception;
@@ -346,6 +379,29 @@ class SearchConsumerFieldBehaviorIT {
       keys.add(bucket.path("key").asText());
     }
     return keys;
+  }
+
+  private List<String> analyzeField(String index, String field, String text) throws Exception {
+    String body = mapper.writeValueAsString(Map.of("field", field, "text", text));
+    try (var response =
+        openSearchClient
+            .generic()
+            .execute(
+                Requests.builder()
+                    .method("POST")
+                    .endpoint("/" + index + "/_analyze")
+                    .json(body)
+                    .build())) {
+      JsonNode tokens =
+          mapper
+              .readTree(response.getBody().map(b -> b.bodyAsString()).orElse("{}"))
+              .path("tokens");
+      List<String> result = new ArrayList<>();
+      for (JsonNode token : tokens) {
+        result.add(token.path("token").asText());
+      }
+      return result;
+    }
   }
 
   private JsonNode runSearch(String index, String body) throws Exception {
