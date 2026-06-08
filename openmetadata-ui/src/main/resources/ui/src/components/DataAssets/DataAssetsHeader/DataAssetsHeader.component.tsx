@@ -750,16 +750,6 @@ export const DataAssetsHeader = ({
                     { id: breadcrumbs.length, label: entityName },
                   ]}
                   size="sm"
-                  onAction={
-                    isCustomizedView
-                      ? undefined
-                      : (id) => {
-                          const link = breadcrumbs[Number(id)];
-                          if (link?.url) {
-                            navigate(String(link.url), link.options);
-                          }
-                        }
-                  }
                 />
               </div>
             </TitleBreadcrumbSkeleton>
