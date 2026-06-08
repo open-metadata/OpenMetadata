@@ -818,6 +818,116 @@ public class TeamDefaultPersonaIT {
     assertNull(afterDelete.getDefaultPersona());
   }
 
+  // ===================================================================
+  // PERSONA PRECEDENCE: User > Team > Org
+  // ===================================================================
+
+  @Test
+  void test_teamPersonaTakesPrecedenceOverSystemDefault(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Persona teamPersona = createPersona(ns, "precedenceTeamPersona");
+    Team team = createGroupTeam(ns, "precedenceTeam", teamPersona.getId());
+
+    User user = createTestUser(ns, "precedenceUser", List.of(team.getId()));
+
+    User fetched = client.users().get(user.getId().toString(), "defaultPersona,personas");
+
+    // defaultPersona should resolve to the team persona, not system default
+    assertNotNull(fetched.getDefaultPersona());
+    assertEquals(
+        teamPersona.getId(),
+        fetched.getDefaultPersona().getId(),
+        "Team persona must take precedence over org-level system default");
+  }
+
+  @Test
+  void test_explicitUserPersonaTakesPrecedenceOverTeamPersona(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Persona explicitPersona = createPersona(ns, "explicitPrecedencePersona");
+    Persona teamPersona = createPersona(ns, "teamPrecedencePersona");
+    Team team = createGroupTeam(ns, "explicitPrecedenceTeam", teamPersona.getId());
+
+    String userName = ns.prefix("explicitPrecedenceUser");
+    String email = toEmail(userName);
+    CreateUser userRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(email)
+            .withTeams(List.of(team.getId()))
+            .withPersonas(List.of(explicitPersona.getEntityReference()))
+            .withDefaultPersona(explicitPersona.getEntityReference())
+            .withDescription("User with explicit default persona + team membership");
+
+    User user = client.users().create(userRequest);
+
+    User fetched = client.users().get(user.getId().toString(), "defaultPersona,personas");
+
+    // Explicit user default must win over team persona
+    assertNotNull(fetched.getDefaultPersona());
+    assertEquals(
+        explicitPersona.getId(),
+        fetched.getDefaultPersona().getId(),
+        "Explicit user persona must take precedence over team persona");
+  }
+
+  // ===================================================================
+  // DETERMINISTIC ORDERING OF INHERITED PERSONAS
+  // ===================================================================
+
+  @Test
+  void test_inheritedPersonasAreSortedAlphabetically(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Use names with known alphabetical order: "aaa..." < "zzz..."
+    Persona personaZ = createPersona(ns, "zzz-sortLast");
+    Persona personaA = createPersona(ns, "aaa-sortFirst");
+
+    Team teamZ = createGroupTeam(ns, "sortTeamZ", personaZ.getId());
+    Team teamA = createGroupTeam(ns, "sortTeamA", personaA.getId());
+
+    User user = createTestUser(ns, "sortUser", List.of(teamZ.getId(), teamA.getId()));
+
+    User fetched = client.users().get(user.getId().toString(), "personas");
+
+    assertNotNull(fetched.getInheritedPersonas());
+    assertEquals(2, fetched.getInheritedPersonas().size());
+
+    String first = fetched.getInheritedPersonas().get(0).getName();
+    String second = fetched.getInheritedPersonas().get(1).getName();
+    assertTrue(
+        first.compareTo(second) < 0,
+        "inheritedPersonas must be sorted alphabetically by name, got: ["
+            + first
+            + ", "
+            + second
+            + "]");
+  }
+
+  @Test
+  void test_defaultPersonaFromMultipleTeamsIsAlphabeticallyFirst(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // "aaa-..." sorts before "zzz-..." — this is the expected defaultPersona
+    Persona personaZ = createPersona(ns, "zzz-multiDefault");
+    Persona personaA = createPersona(ns, "aaa-multiDefault");
+
+    Team teamZ = createGroupTeam(ns, "multiDefaultTeamZ", personaZ.getId());
+    Team teamA = createGroupTeam(ns, "multiDefaultTeamA", personaA.getId());
+
+    User user = createTestUser(ns, "multiDefaultUser", List.of(teamZ.getId(), teamA.getId()));
+
+    User fetched = client.users().get(user.getId().toString(), "defaultPersona,personas");
+
+    // defaultPersona should be deterministic — alphabetically first team persona
+    assertNotNull(fetched.getDefaultPersona());
+    assertEquals(
+        personaA.getId(),
+        fetched.getDefaultPersona().getId(),
+        "defaultPersona must resolve to the alphabetically-first team persona when no explicit user default is set");
+  }
+
   private String toEmail(String name) {
     String sanitized = name.replaceAll("[^a-zA-Z0-9._-]", "");
     if (sanitized.length() > 60) {

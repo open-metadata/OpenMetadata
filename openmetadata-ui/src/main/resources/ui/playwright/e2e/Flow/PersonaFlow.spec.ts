@@ -41,16 +41,22 @@ import {
   updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { visitUserProfilePage } from '../../utils/user';
+
+let CURATED_DESCRIPTION_TEXT;
+let WORD_TO_SEARCH: string;
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
   displayName: `persona ${uuid()}`,
   description: `Persona description ${uuid()}.`,
 };
-
 const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
+let curatedAdminUser = new UserClass();
+let curatedPersona = new PersonaClass();
+let curatedTable = new TableClass();
 
 // use the admin user to login
 test.use({
@@ -752,11 +758,142 @@ test.describe.serial('Team persona setting flow', () => {
   });
 });
 
-let CURATED_DESCRIPTION_TEXT: string;
-let WORD_TO_SEARCH: string;
-let curatedAdminUser: UserClass;
-let curatedPersona: PersonaClass;
-let curatedTable: TableClass;
+test.describe.serial('Persona precedence: User > Team > Org', () => {
+  const precedenceUser = new UserClass();
+  const orgDefaultPersona = new PersonaClass();
+  const teamPersonaForPrecedence = new PersonaClass();
+  const userExplicitPersona = new PersonaClass();
+  const precedenceTeam = new TeamClass();
+
+  test.beforeAll('Setup for precedence tests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await precedenceUser.create(apiContext);
+    await orgDefaultPersona.create(apiContext);
+    await teamPersonaForPrecedence.create(apiContext);
+    await userExplicitPersona.create(apiContext);
+
+    // Create group team with user, then patch in defaultPersona and user (API doesn't accept on POST)
+    await precedenceTeam.create(apiContext);
+    await precedenceTeam.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/defaultPersona',
+        value: {
+          id: teamPersonaForPrecedence.responseData.id,
+          type: 'persona',
+        },
+      },
+      {
+        op: 'add',
+        path: '/users',
+        value: [{ id: precedenceUser.responseData.id, type: 'user' }],
+      },
+    ]);
+
+    // Set org-level default persona
+    await orgDefaultPersona.patch(apiContext, [
+      { op: 'add', path: '/default', value: true },
+    ]);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup precedence tests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    // Unset org default before deletion to avoid side effects on other tests
+    await orgDefaultPersona.patch(apiContext, [
+      { op: 'replace', path: '/default', value: false },
+    ]);
+
+    await Promise.all([
+      precedenceUser.delete(apiContext),
+      orgDefaultPersona.delete(apiContext),
+      teamPersonaForPrecedence.delete(apiContext),
+      userExplicitPersona.delete(apiContext),
+      precedenceTeam.delete(apiContext),
+    ]);
+
+    await afterAction();
+  });
+
+  test('Team persona takes precedence over org-level default persona', async ({
+    adminPage,
+  }) => {
+    test.slow();
+
+    await test.step('Navigate to user profile and verify team persona is shown, not org default', async () => {
+      await redirectToHomePage(adminPage);
+      await visitUserProfilePage(adminPage, precedenceUser.responseData.name);
+      await waitForAllLoadersToDisappear(adminPage);
+
+      await adminPage.getByTestId('persona-details-card').waitFor();
+
+      await expect(
+        adminPage
+          .locator(
+            '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
+          )
+          .first()
+      ).toContainText(teamPersonaForPrecedence.responseData.displayName);
+
+      await expect(
+        adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
+      ).toBeVisible();
+    });
+  });
+
+  test('User-explicit persona takes precedence over team persona', async ({
+    adminPage,
+    browser,
+  }) => {
+    test.slow();
+
+    // API setup: assign explicit user-level default persona before UI verification.
+    // Must use a persona that is NOT the org system default to avoid backend no-op guard
+    // in UserUpdater.updateDefaultPersona() which skips applying system default as explicit choice.
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const patchResponse = await apiContext.patch(
+      `/api/v1/users/${precedenceUser.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/defaultPersona',
+            value: {
+              id: userExplicitPersona.responseData.id,
+              type: 'persona',
+            },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+    expect(patchResponse.status()).toBe(200);
+    await afterAction();
+
+    await test.step('Verify user-explicit persona overrides inherited team persona', async () => {
+      await redirectToHomePage(adminPage);
+      await visitUserProfilePage(adminPage, precedenceUser.responseData.name);
+      await waitForAllLoadersToDisappear(adminPage);
+
+      await adminPage.getByTestId('persona-details-card').waitFor();
+
+      await expect(
+        adminPage
+          .locator(
+            '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
+          )
+          .first()
+      ).toContainText(userExplicitPersona.responseData.displayName);
+
+      await expect(
+        adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
+      ).not.toBeVisible();
+    });
+  });
+});
 
 test.describe('Curated Assets – Description filter', () => {
   test.beforeAll('Setup', async ({ browser }) => {
