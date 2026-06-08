@@ -24,18 +24,15 @@ import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { Asset, AssetType } from '../generated/attachments/asset';
+import { AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
+import { ListParams } from '../interface/API.interface';
 import {
   CreateKnowledgePage,
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import {
-  downloadDriveFile,
-  listAssetsByFqn,
-  ListAssetsByFqnParams,
-} from '../rest/assetAPI';
+import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -153,9 +150,7 @@ export const knowledgePageToArticleItem = (
   title: getEntityName(data) || untitledLabel,
 });
 
-export const fetchContextCenterDocuments = async (
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
+export const fetchContextCenterDocuments = async (params?: ListParams) => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,
