@@ -127,6 +127,7 @@ import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 // Re-exports from TablePureUtils (backward compat)
+export { ExtraTableDropdownOptions } from './TableDropdownOptions';
 export {
   buildColumnBreadcrumbPath,
   createTableConstraintObject,
@@ -172,8 +173,6 @@ export {
   updateFieldExtension,
   updateFieldTags,
 } from './TablePureUtils';
-
-export { ExtraTableDropdownOptions } from './TableDropdownOptions';
 export {
   getTableDetailPageBaseTabs,
   getTableWidgetFromKey,
@@ -589,4 +588,3 @@ export const tableConstraintRendererBasedOnType = (
     </div>
   );
 };
-

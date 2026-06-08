@@ -200,4 +200,3 @@ export const getSuccessMessage = (
     </Typography.Text>
   );
 };
-

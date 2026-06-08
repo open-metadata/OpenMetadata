@@ -15,7 +15,6 @@ import { Select } from 'antd';
 import { CronOption } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
-import i18n from './i18next/LocalUtil';
 import {
   cronValidator,
   getCron,
@@ -35,6 +34,7 @@ import {
   getUpdatedStateFromFormState,
   getWeekCron,
 } from './CronExpressionUtils';
+import i18n from './i18next/LocalUtil';
 
 export {
   cronValidator,

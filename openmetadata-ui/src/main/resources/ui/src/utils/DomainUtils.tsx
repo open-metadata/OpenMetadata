@@ -136,7 +136,6 @@ export const renderDomainLink = (
   );
 };
 
-
 export const convertDomainsToTreeOptions = (
   options: EntityReference[] | Domain[] = [],
   level = 0,
@@ -194,7 +193,6 @@ export const convertDomainsToTreeOptions = (
 
   return treeData;
 };
-
 
 export const getDomainDetailTabs = ({
   domain,
@@ -425,4 +423,3 @@ export const getDomainIcon = (iconURL?: string) => {
   // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
 };
-

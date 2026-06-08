@@ -36,6 +36,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
+import { getDayCron } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
 import {
@@ -43,13 +44,12 @@ import {
   getSettingPath,
   getSettingsPathWithFqn,
 } from './RouterUtils';
-import { getDayCron } from './CronExpressionUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
-import serviceUtilClassBase from './ServiceUtilClassBase';
 import {
   getReadableCountString,
   getServiceRouteFromServiceType,
 } from './ServicePureUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -261,9 +261,7 @@ export const getDefaultFilterPropertyValues = ({
 }) => {
   if (isEditMode) {
     return getFilteredSchema(
-      ingestionData?.sourceConfig.config as
-        | Record<string, unknown>
-        | undefined,
+      ingestionData?.sourceConfig.config as Record<string, unknown> | undefined,
       false
     );
   } else {
