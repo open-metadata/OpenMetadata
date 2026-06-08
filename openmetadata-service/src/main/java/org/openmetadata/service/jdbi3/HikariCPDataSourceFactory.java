@@ -481,7 +481,9 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
   }
 
-  private static class RotatingFileCredentialDataSource implements DataSource {
+  // Package-private so RotatingFileCredentialDataSourceTest can exercise the per-connection
+  // re-read and the auth-failure retry directly via a stub JDBC driver.
+  static class RotatingFileCredentialDataSource implements DataSource {
     private final String jdbcUrl;
     private final String username;
     private final FileCredentialProvider provider;
