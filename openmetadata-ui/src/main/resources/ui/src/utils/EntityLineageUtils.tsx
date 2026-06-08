@@ -136,7 +136,7 @@ export const centerNodePosition = (
 ) => {
   const { position, width } = node;
   reactFlowInstance?.setCenter(
-    position.x + (width ?? 1 / 2),
+    position.x + (width ?? 1) / 2,
     position.y + NODE_HEIGHT / 2,
     {
       zoom: zoomValue ?? ZOOM_VALUE,

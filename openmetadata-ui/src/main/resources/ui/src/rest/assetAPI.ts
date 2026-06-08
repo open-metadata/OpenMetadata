@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { PagingResponse } from 'Models';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
+import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
 export interface CreateFolderRequest {
@@ -49,13 +51,13 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (limit = 100): Promise<ContextFile[]> => {
-  const response = await APIClient.get<{ data: ContextFile[] }>(
+export const listContextFiles = async (params: ListParams = {}) => {
+  const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { fields: 'folder', limit } }
+    { params: { fields: 'folder', limit: 100, ...params } }
   );
 
-  return response.data.data ?? [];
+  return response.data;
 };
 
 export const moveFileToFolder = async (
@@ -104,18 +106,12 @@ export const uploadAsset = async (
   return response.data;
 };
 
-export interface ListAssetsByFqnParams {
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  limit?: number;
-}
-
 export const listAssetsByFqn = async (
   fqn: string,
   assetType: AssetType = AssetType.External,
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
-  const response = await APIClient.get<Asset[]>(
+  params?: ListParams
+) => {
+  const response = await APIClient.get<PagingResponse<Asset[]>>(
     `/attachments/fqn/${encodeURIComponent(fqn)}/${assetType}`,
     { params }
   );

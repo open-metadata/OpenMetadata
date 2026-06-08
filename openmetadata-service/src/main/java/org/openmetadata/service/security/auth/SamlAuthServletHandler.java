@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -56,6 +57,7 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -175,14 +177,18 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       callbackUrl =
           org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
               callbackUrl, trustedSamlRedirects());
-      sessionService.createPendingSession(
-          req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
+      UserSession pendingSession =
+          sessionService.createPendingSession(
+              req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
 
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
-      auth.login();
+      // Carry the pending-session id in the SAML RelayState so the ACS callback can recover it from
+      // the POST body. The IdP callback is a cross-site POST that drops the SameSite=Lax OM_SESSION
+      // cookie, so RelayState — not the cookie — is the reliable correlation across the round-trip.
+      auth.login(pendingSession.getId());
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI", e);
@@ -289,7 +295,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         return;
       }
 
-      UserSession pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
+      UserSession pendingSession = resolvePendingSession(req, resp);
       if (pendingSession == null) {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
         return;
@@ -363,6 +369,25 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       sendError(
           resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML callback processing failed");
     }
+  }
+
+  /**
+   * Resolves the pending session for a SAML callback, preferring the SAML {@code RelayState} (set in
+   * {@link #handleLogin} to the pending-session id) over the {@code OM_SESSION} cookie. The IdP POST
+   * to the ACS is cross-site, so a {@code SameSite=Lax} cookie is not sent by the browser; RelayState
+   * rides in the POST body and is the reliable carrier. Falls back to the cookie for backward
+   * compatibility (same-site deployments, or logins started before this change).
+   */
+  UserSession resolvePendingSession(HttpServletRequest req, HttpServletResponse resp) {
+    UserSession pendingSession = null;
+    String relayState = req.getParameter("RelayState");
+    if (!nullOrEmpty(relayState)) {
+      pendingSession = sessionService.getPendingSessionById(relayState).orElse(null);
+    }
+    if (pendingSession == null) {
+      pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
+    }
+    return pendingSession;
   }
 
   @Override
@@ -630,10 +655,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
   }
 
-  private String samlAuthCallback() {
+  private ServiceProviderConfig samlSp() {
     SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
-    String acs =
-        (samlConfig == null || samlConfig.getSp() == null) ? null : samlConfig.getSp().getAcs();
+    return samlConfig == null ? null : samlConfig.getSp();
+  }
+
+  private String samlAuthCallback() {
+    ServiceProviderConfig sp = samlSp();
+    String acs = sp == null ? null : sp.getAcs();
     String authCallback = null;
     if (!nullOrEmpty(acs)) {
       try {
@@ -641,7 +670,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         if (uri.getScheme() != null && uri.getHost() != null) {
           URI origin =
               new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
-          authCallback = origin + "/auth/callback";
+          authCallback = origin + AUTH_CALLBACK_PATH;
         }
       } catch (URISyntaxException e) {
         LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
@@ -658,11 +687,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private String samlSpCallback() {
-    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
-    if (samlConfig == null || samlConfig.getSp() == null) {
-      return null;
-    }
-    return samlConfig.getSp().getCallback();
+    ServiceProviderConfig sp = samlSp();
+    return sp == null ? null : sp.getCallback();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {
