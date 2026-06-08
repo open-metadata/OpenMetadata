@@ -205,10 +205,15 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
     Handle the secret value in the model.
     """
     if not (info.context is not None and info.context.get("mask_secrets", False)):
+        # Serialization must preserve the raw stored value. For external secret
+        # references (`secret:<id>`) this keeps the reference intact instead of
+        # resolving it, so the payload sent to the server keeps the reference and
+        # is not silently turned into a plain secret. Resolution against the
+        # secrets manager happens at use-time through a direct get_secret_value()
+        # call (e.g. when building a connection).
         if info.mode == "json":
-            # short circuit the json serialization and return the actual value
-            return value.get_secret_value()
-        return handler(value.get_secret_value())
+            return value.get_secret_value(skip_secret_manager=True)
+        return handler(value.get_secret_value(skip_secret_manager=True))
     return str(value)  # use pydantic's logic to mask the secret
 
 
