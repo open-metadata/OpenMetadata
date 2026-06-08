@@ -174,12 +174,14 @@ describe('ConnectionObjectFieldTemplate', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows Authentication as its own required section', () => {
+  it('shows Authentication as its own section with dynamic required badge', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
     const auth = screen.getByTestId('connection-section-authentication');
 
-    expect(within(auth).getByText('1 required')).toBeInTheDocument();
+    // password/privateKey are not schema-required in the Snowflake test fixture,
+    // so the badge shows "optional" rather than a fixed "1 required"
+    expect(within(auth).getByText('label.optional')).toBeInTheDocument();
   });
 
   it('renders Authentication as Password / Key pair tabs and swaps fields', () => {

@@ -553,7 +553,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             {gatedCredentialFieldProperties.length > 0 && (
               <div
                 className={classNames(
-                  'core-object-field-template-credential-field-grid tw:grid tw:grid-flow-row-dense',
+                  'core-object-field-template-credential-field-grid tw:grid tw:grid-flow-row-dense tw:mt-4',
                   'tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
                 )}>
                 {gatedCredentialFieldProperties.map(renderProperty)}

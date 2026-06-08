@@ -327,7 +327,7 @@ const getRequiredFields = (schema: Record<string, unknown>): string[] => {
     : [];
 };
 
-const getMissingSchemaRequiredFieldsCount = (
+export const getMissingSchemaRequiredFieldsCount = (
   schema: Record<string, unknown>,
   formData?: Record<string, unknown>
 ): number => {
@@ -371,6 +371,100 @@ const getMissingSchemaRequiredFieldsCount = (
   }, 0);
 };
 
+export const getMissingSchemaRequiredFieldsCountForSelectedBranch = (
+  schema: Record<string, unknown>,
+  formData?: Record<string, unknown>
+): number => {
+  const oneOf = schema.oneOf;
+  if (Array.isArray(oneOf)) {
+    const branches = oneOf.filter(
+      (branch): branch is Record<string, unknown> =>
+        Boolean(branch) && typeof branch === 'object'
+    );
+    const dataKeys = Object.keys(formData ?? {}).filter(
+      (k) => (formData as Record<string, unknown>)[k] !== undefined
+    );
+    if (dataKeys.length > 0) {
+      const matchingBranch = branches.find((branch) => {
+        const branchProps = new Set(
+          Object.keys((branch.properties ?? {}) as Record<string, unknown>)
+        );
+
+        return dataKeys.every((k) => branchProps.has(k));
+      });
+      if (matchingBranch) {
+        return getMissingSchemaRequiredFieldsCountForSelectedBranch(
+          matchingBranch,
+          formData
+        );
+      }
+    }
+    const counts = branches.map((branch) =>
+      getMissingSchemaRequiredFieldsCountForSelectedBranch(branch, formData)
+    );
+
+    return counts.length > 0 ? Math.min(...counts) : 0;
+  }
+
+  const properties = (schema.properties ?? {}) as JsonObject;
+  const requiredFields = getRequiredFields(schema);
+
+  const requiredCount = requiredFields.reduce((count, key) => {
+    const value = formData?.[key];
+    const propertySchema = properties[key];
+
+    if (!isFilledValue(value)) {
+      return count + 1;
+    }
+
+    if (
+      propertySchema &&
+      typeof propertySchema === 'object' &&
+      !Array.isArray(value) &&
+      typeof value === 'object'
+    ) {
+      return (
+        count +
+        getMissingSchemaRequiredFieldsCountForSelectedBranch(
+          propertySchema as Record<string, unknown>,
+          value as Record<string, unknown>
+        )
+      );
+    }
+
+    return count;
+  }, 0);
+
+  const nestedCount = Object.keys(formData ?? {}).reduce((count, key) => {
+    if (requiredFields.includes(key)) {
+      return count;
+    }
+    const value = (formData as Record<string, unknown>)[key];
+    const propertySchema = properties[key];
+
+    if (
+      value !== null &&
+      value !== undefined &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      propertySchema &&
+      typeof propertySchema === 'object'
+    ) {
+      return (
+        count +
+        getMissingSchemaRequiredFieldsCountForSelectedBranch(
+          propertySchema as Record<string, unknown>,
+          value as Record<string, unknown>
+        )
+      );
+    }
+
+    return count;
+  }, 0);
+
+  return requiredCount + nestedCount;
+};
+
 export const hasMissingRequiredFlatCredential = (
   schema: Record<string, unknown>,
   formData: ConfigData
@@ -397,26 +491,9 @@ export const getMissingRequiredFieldsCount = (
   schema: Record<string, unknown>,
   formData: ConfigData
 ): number => {
-  const formDataRecord = formData as Record<string, unknown>;
-  const missingSchemaFields = getMissingSchemaRequiredFieldsCount(
+  return getMissingSchemaRequiredFieldsCount(
     schema,
-    formDataRecord
-  );
-  const credentialKeys = getFlatSecretKeys(schema).secretKeys.filter(
-    (key) => !PASSPHRASE_RE.test(key)
-  );
-  const requiredFields = getRequiredFields(schema);
-  const hasMissingFlatCredential = hasMissingRequiredFlatCredential(
-    schema,
-    formData
-  );
-
-  return (
-    missingSchemaFields +
-    (hasMissingFlatCredential &&
-    !credentialKeys.some((key) => requiredFields.includes(key))
-      ? 1
-      : 0)
+    formData as Record<string, unknown>
   );
 };
 

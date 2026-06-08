@@ -13,9 +13,8 @@
 
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
-import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -40,7 +39,6 @@ import {
   getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
-  hasMissingRequiredFlatCredential,
   loadConnectionSchema,
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
@@ -65,7 +63,6 @@ const EmbeddedConnectionConfigForm = ({
   onFocus,
   disableTestConnection = false,
   isSubmitDisabled: isSubmitDisabledFromParent = false,
-  requireTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
@@ -83,9 +80,6 @@ const EmbeddedConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
-  const [testedConnectionFormData, setTestedConnectionFormData] =
-    useState<ConfigData>();
-
   const rawValidConfig = useMemo(() => buildValidConfig(data), [data]);
 
   const fetchHostIp = async () => {
@@ -201,24 +195,8 @@ const EmbeddedConnectionConfigForm = ({
     [connSch.schema, disableTestConnection, serviceType]
   );
 
-  const shouldRequireSuccessfulTestConnection = useMemo(
-    () => requireTestConnection && shouldShowTestConnection,
-    [requireTestConnection, shouldShowTestConnection]
-  );
-
-  const isConnectionTestSuccessful = useMemo(
-    () =>
-      !isUndefined(testedConnectionFormData) &&
-      isEqual(testedConnectionFormData, currentFormData),
-    [currentFormData, testedConnectionFormData]
-  );
-
   const handleTestConnectionStatusChange = useCallback(
-    (isSuccessful: boolean) => {
-      setTestedConnectionFormData(
-        isSuccessful ? cloneDeep(currentFormDataRef.current) : undefined
-      );
-    },
+    (_isSuccessful: boolean) => {},
     []
   );
 
@@ -246,30 +224,8 @@ const EmbeddedConnectionConfigForm = ({
       return false;
     }
 
-    if (shouldRequireSuccessfulTestConnection) {
-      return missingRequiredFieldsCount > 0 || !isConnectionTestSuccessful;
-    }
-
-    return (
-      !validator.isValid(
-        schemaWithoutDefaultFilterPatternFields,
-        currentFormData,
-        schemaWithoutDefaultFilterPatternFields
-      ) ||
-      hasMissingRequiredFlatCredential(
-        schemaWithoutDefaultFilterPatternFields,
-        currentFormData
-      )
-    );
-  }, [
-    connSch.schema,
-    currentFormData,
-    isSubmitDisabledFromParent,
-    isConnectionTestSuccessful,
-    missingRequiredFieldsCount,
-    schemaWithoutDefaultFilterPatternFields,
-    shouldRequireSuccessfulTestConnection,
-  ]);
+    return missingRequiredFieldsCount > 0;
+  }, [connSch.schema, isSubmitDisabledFromParent, missingRequiredFieldsCount]);
 
   useEffect(() => {
     if (isEqual(currentFormDataRef.current, validConfig)) {
@@ -278,12 +234,7 @@ const EmbeddedConnectionConfigForm = ({
 
     currentFormDataRef.current = validConfig;
     setCurrentFormData(validConfig);
-    setTestedConnectionFormData(undefined);
   }, [validConfig]);
-
-  useEffect(() => {
-    setTestedConnectionFormData(undefined);
-  }, [serviceCategory, serviceType]);
 
   useEffect(() => {
     const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
@@ -316,7 +267,7 @@ const EmbeddedConnectionConfigForm = ({
         formContext={{ handleFocus: onFocus }}
         formData={validConfig}
         isSubmitDisabled={isSubmitDisabled}
-        noValidate={shouldRequireSuccessfulTestConnection}
+        noValidate={!isEmpty(connSch.schema)}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}

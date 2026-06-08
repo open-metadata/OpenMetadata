@@ -356,7 +356,11 @@ const AddServicePage = () => {
                   requireTestConnection
                   cancelText={t('label.back')}
                   data={serviceConfig as ServicesType}
-                  isSubmitDisabled={Boolean(nameError) || isServiceNameChecking}
+                  isSubmitDisabled={
+                    !serviceConfig.name.trim() ||
+                    Boolean(nameError) ||
+                    isServiceNameChecking
+                  }
                   okText={t('label.next-what-to-ingest')}
                   serviceCategory={serviceCategory}
                   serviceType={serviceConfig.serviceType}

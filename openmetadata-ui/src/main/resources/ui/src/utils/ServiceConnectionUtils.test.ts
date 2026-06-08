@@ -289,7 +289,7 @@ describe('getMissingRequiredFieldsCount', () => {
     ).toBe(1);
   });
 
-  it('counts a missing flat credential method as one required field', () => {
+  it('counts only schema-required fields, ignoring optional flat credentials', () => {
     expect(
       getMissingRequiredFieldsCount(
         {
@@ -304,7 +304,7 @@ describe('getMissingRequiredFieldsCount', () => {
         },
         {}
       )
-    ).toBe(4);
+    ).toBe(3);
   });
 
   it('counts the least expensive oneOf credential branch', () => {

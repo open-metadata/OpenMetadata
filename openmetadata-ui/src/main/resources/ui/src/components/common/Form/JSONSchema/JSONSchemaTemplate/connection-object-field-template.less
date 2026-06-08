@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../../../../styles/variables.less');
+
 .connection-grouped-form {
   .connection-section-header {
     &:focus,
@@ -358,6 +360,7 @@
       align-items: start;
       width: 100%;
       min-width: 0;
+      margin-top: @margin-sm;
     }
 
     [data-field-id$='/sampleDataStorageConfig/config']

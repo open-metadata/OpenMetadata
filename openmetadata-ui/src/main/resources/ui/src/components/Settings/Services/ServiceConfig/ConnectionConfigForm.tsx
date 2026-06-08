@@ -15,7 +15,7 @@ import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 
-import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import {
   Fragment,
   useCallback,
@@ -47,7 +47,6 @@ import {
   getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
-  hasMissingRequiredFlatCredential,
   loadConnectionSchema,
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
@@ -75,7 +74,6 @@ const ConnectionConfigForm = ({
   onFocus,
   disableTestConnection = false,
   isSubmitDisabled: isSubmitDisabledFromParent = false,
-  requireTestConnection = false,
 }: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
@@ -93,9 +91,6 @@ const ConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
-  const [testedConnectionFormData, setTestedConnectionFormData] =
-    useState<ConfigData>();
-
   const rawValidConfig = useMemo(() => buildValidConfig(data), [data]);
 
   const fetchHostIp = async () => {
@@ -217,24 +212,8 @@ const ConnectionConfigForm = ({
     [connSch.schema, disableTestConnection, serviceType]
   );
 
-  const shouldRequireSuccessfulTestConnection = useMemo(
-    () => requireTestConnection && shouldShowTestConnection,
-    [requireTestConnection, shouldShowTestConnection]
-  );
-
-  const isConnectionTestSuccessful = useMemo(
-    () =>
-      !isUndefined(testedConnectionFormData) &&
-      isEqual(testedConnectionFormData, currentFormData),
-    [currentFormData, testedConnectionFormData]
-  );
-
   const handleTestConnectionStatusChange = useCallback(
-    (isSuccessful: boolean) => {
-      setTestedConnectionFormData(
-        isSuccessful ? cloneDeep(currentFormDataRef.current) : undefined
-      );
-    },
+    (_isSuccessful: boolean) => {},
     []
   );
 
@@ -262,23 +241,8 @@ const ConnectionConfigForm = ({
       return false;
     }
 
-    if (shouldRequireSuccessfulTestConnection) {
-      return missingRequiredFieldsCount > 0 || !isConnectionTestSuccessful;
-    }
-
-    return hasMissingRequiredFlatCredential(
-      schemaWithoutDefaultFilterPatternFields,
-      currentFormData
-    );
-  }, [
-    connSch.schema,
-    currentFormData,
-    isSubmitDisabledFromParent,
-    isConnectionTestSuccessful,
-    missingRequiredFieldsCount,
-    schemaWithoutDefaultFilterPatternFields,
-    shouldRequireSuccessfulTestConnection,
-  ]);
+    return missingRequiredFieldsCount > 0;
+  }, [connSch.schema, isSubmitDisabledFromParent, missingRequiredFieldsCount]);
 
   useEffect(() => {
     if (isEqual(currentFormDataRef.current, validConfig)) {
@@ -287,12 +251,7 @@ const ConnectionConfigForm = ({
 
     currentFormDataRef.current = validConfig;
     setCurrentFormData(validConfig);
-    setTestedConnectionFormData(undefined);
   }, [validConfig]);
-
-  useEffect(() => {
-    setTestedConnectionFormData(undefined);
-  }, [serviceCategory, serviceType]);
 
   useEffect(() => {
     const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
@@ -367,7 +326,7 @@ const ConnectionConfigForm = ({
         fields={customFields}
         formData={validConfig}
         isSubmitDisabled={isSubmitDisabled}
-        noValidate={shouldRequireSuccessfulTestConnection}
+        noValidate={!isEmpty(connSch.schema)}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}

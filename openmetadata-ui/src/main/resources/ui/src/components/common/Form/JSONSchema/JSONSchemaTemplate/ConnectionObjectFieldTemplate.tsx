@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
+import { getMissingSchemaRequiredFieldsCountForSelectedBranch } from '../../../../../utils/ServiceConnectionUtils';
 import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreObjectFieldTemplate';
 import './connection-object-field-template.less';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
@@ -633,7 +634,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props) => {
   const { t } = useTranslation();
-  const { formContext, properties, schema } = props;
+  const { formContext, formData, properties, schema } = props;
   const connectionFormContext = formContext as
     | ConnectionFormContext
     | undefined;
@@ -720,9 +721,49 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     const hiddenUnsectionedProperties = [
       ...(!shouldRenderScopeSection ? scopeProperties : []),
     ].filter((property) => !isVisibleProperty(property));
-    const connectionRequiredCount = explicitConnectionProperties.filter(
-      (property) => !property.hidden && property.name !== SERVICE_TYPE_PROPERTY
-    ).length;
+    const rootFormData = formData as Record<string, unknown>;
+
+    const explicitConnectionPropertyNames = explicitConnectionProperties
+      .filter((p) => !p.hidden && p.name !== SERVICE_TYPE_PROPERTY)
+      .map((p) => p.name);
+
+    const connectionMissingCount =
+      getMissingSchemaRequiredFieldsCountForSelectedBranch(
+        {
+          type: 'object',
+          properties: Object.fromEntries(
+            explicitConnectionPropertyNames.map((name) => [
+              name,
+              schemaProperties[name] as Record<string, unknown>,
+            ])
+          ),
+          required: explicitConnectionPropertyNames,
+        },
+        rootFormData
+      );
+
+    const authRequiredKeys = requiredKeys.filter((k) => isAuth(k));
+    const effectiveAuthRequired = [
+      ...authRequiredKeys,
+      ...(rootFormData?.[AUTH_PROPERTY] !== undefined &&
+      !authRequiredKeys.includes(AUTH_PROPERTY)
+        ? [AUTH_PROPERTY]
+        : []),
+    ];
+    const authMissingCount =
+      getMissingSchemaRequiredFieldsCountForSelectedBranch(
+        {
+          type: 'object',
+          properties: Object.fromEntries(
+            authProperties.map((p) => [
+              p.name,
+              schemaProperties[p.name] as Record<string, unknown>,
+            ])
+          ),
+          required: effectiveAuthRequired,
+        },
+        rootFormData
+      );
 
     const rawSections: SectionConfig[] = [
       {
@@ -738,10 +779,10 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
         focusName: getFirstVisibleFieldName(connectionProperties, 'connection'),
         onFocus: connectionFormContext?.handleFocus,
         badge:
-          connectionRequiredCount > 0 ? (
+          connectionMissingCount > 0 ? (
             <ReqBadge tone="error">
               {t('message.field-count-required', {
-                count: connectionRequiredCount,
+                count: connectionMissingCount,
               })}
             </ReqBadge>
           ) : (
@@ -765,11 +806,16 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
                 ? AUTH_PROPERTY
                 : getFirstVisibleFieldName(authProperties, AUTH_PROPERTY),
               onFocus: connectionFormContext?.handleFocus,
-              badge: (
-                <ReqBadge tone="error">
-                  {t('message.field-count-required', { count: 1 })}
-                </ReqBadge>
-              ),
+              badge:
+                authMissingCount > 0 ? (
+                  <ReqBadge tone="error">
+                    {t('message.field-count-required', {
+                      count: authMissingCount,
+                    })}
+                  </ReqBadge>
+                ) : (
+                  <ReqBadge>{t('label.optional')}</ReqBadge>
+                ),
             } as SectionConfig,
           ]
         : []),

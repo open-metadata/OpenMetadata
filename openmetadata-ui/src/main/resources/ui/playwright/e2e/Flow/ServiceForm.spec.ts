@@ -246,7 +246,7 @@ test.describe(
 
         // Wait for file upload to complete
         await expect(
-          page.getByRole('textbox', { name: 'CA Certificate' })
+          page.locator('[id="root/connection/sslConfig/caCertificate"]')
         ).toHaveValue(CERT_FILE);
 
         // Verify the certificate content is sent correctly.

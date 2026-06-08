@@ -449,14 +449,14 @@ describe('EmbeddedConnectionConfigForm', () => {
     expect(await screen.findByTestId('submit-button')).toBeDisabled();
   });
 
-  it('disables next until the test connection succeeds when required', async () => {
+  it('does not gate the submit button on test connection results', async () => {
     await act(async () => {
       render(
         <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
       );
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 

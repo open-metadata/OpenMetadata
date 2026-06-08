@@ -23,8 +23,8 @@ import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
   getFilteredSchema,
+  getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
-  hasMissingRequiredFlatCredential,
   loadConnectionSchema,
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
@@ -303,6 +303,7 @@ describe('ServiceConfig', () => {
       isAirflowAvailable: true,
       platform: 'Argo',
     });
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -440,6 +441,7 @@ describe('ServiceConfig', () => {
   });
 
   it('should disable next until required schema fields are filled', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(1);
     (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
       schema: {
         type: 'object',
@@ -462,8 +464,11 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).toBeDisabled();
+    });
 
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
     fireEvent.click(screen.getByTestId('change-valid-form'));
 
     await waitFor(() => {
@@ -479,12 +484,12 @@ describe('ServiceConfig', () => {
     expect(await screen.findByTestId('submit-button')).toBeDisabled();
   });
 
-  it('should disable next until the test connection succeeds when required', async () => {
+  it('should not gate the submit button on test connection results', async () => {
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 
@@ -611,33 +616,16 @@ describe('ServiceConfig', () => {
     });
   });
 
-  it('should disable next when the form changes after test succeeds', async () => {
-    await act(async () => {
-      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
-    });
-
-    fireEvent.click(screen.getByTestId('change-valid-form'));
-    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
-    });
-
-    fireEvent.click(screen.getByTestId('change-edited-form'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).toBeDisabled();
-    });
-  });
-
-  it('should disable next until a flat credential method is filled', async () => {
-    (hasMissingRequiredFlatCredential as jest.Mock).mockReturnValueOnce(true);
+  it('should disable next when required fields are missing', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
 
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).toBeDisabled();
+    });
   });
 
   it('should render test connection even when airflow status is unavailable', async () => {
