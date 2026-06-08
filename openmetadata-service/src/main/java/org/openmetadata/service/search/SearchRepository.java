@@ -748,11 +748,6 @@ public class SearchRepository {
     return !searchClient.getIndicesByAlias(indexName).isEmpty();
   }
 
-  public Set<String> getIndexFieldNames(IndexMapping indexMapping) {
-    String indexName = indexMapping.getIndexName(clusterAlias);
-    return searchClient.getIndexFieldNames(indexName);
-  }
-
   public void createIndex(IndexMapping indexMapping) {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);

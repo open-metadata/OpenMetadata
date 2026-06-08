@@ -25,7 +25,6 @@ import os.org.opensearch.client.opensearch.indices.ForcemergeRequest;
 import os.org.opensearch.client.opensearch.indices.ForcemergeResponse;
 import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
 import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
-import os.org.opensearch.client.opensearch.indices.GetMappingResponse;
 import os.org.opensearch.client.opensearch.indices.IndexSettings;
 import os.org.opensearch.client.opensearch.indices.PutIndicesSettingsRequest;
 import os.org.opensearch.client.opensearch.indices.PutIndicesSettingsResponse;
@@ -65,29 +64,6 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
-  }
-
-  @Override
-  public Set<String> getIndexFieldNames(String indexName) {
-    Set<String> fieldNames = new HashSet<>();
-    if (isClientAvailable) {
-      try {
-        GetMappingResponse response = client.indices().getMapping(g -> g.index(indexName));
-        response
-            .result()
-            .values()
-            .forEach(
-                mappingRecord -> {
-                  if (mappingRecord.mappings() != null
-                      && mappingRecord.mappings().properties() != null) {
-                    fieldNames.addAll(mappingRecord.mappings().properties().keySet());
-                  }
-                });
-      } catch (Exception e) {
-        LOG.warn("Failed to get field names for index {}: {}", indexName, e.getMessage());
-      }
-    }
-    return fieldNames;
   }
 
   @Override

@@ -11,7 +11,6 @@ import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
 import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
-import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
@@ -62,29 +61,6 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
-  }
-
-  @Override
-  public Set<String> getIndexFieldNames(String indexName) {
-    Set<String> fieldNames = new HashSet<>();
-    if (isClientAvailable) {
-      try {
-        GetMappingResponse response = client.indices().getMapping(g -> g.index(indexName));
-        response
-            .mappings()
-            .values()
-            .forEach(
-                mappingRecord -> {
-                  if (mappingRecord.mappings() != null
-                      && mappingRecord.mappings().properties() != null) {
-                    fieldNames.addAll(mappingRecord.mappings().properties().keySet());
-                  }
-                });
-      } catch (Exception e) {
-        LOG.warn("Failed to get field names for index {}: {}", indexName, e.getMessage());
-      }
-    }
-    return fieldNames;
   }
 
   @Override

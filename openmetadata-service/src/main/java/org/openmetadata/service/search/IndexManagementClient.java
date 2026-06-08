@@ -207,17 +207,4 @@ public interface IndexManagementClient {
     }
     return 0;
   }
-
-  /**
-   * Get the top-level field (property) names declared in an index's live mapping. Used by the
-   * "Index Mapping Consistency" health check to detect deployed indexes missing the denormalized
-   * fields product features rely on (e.g. left stale after an upgrade without a reindex).
-   *
-   * @param indexName the index (or alias) name to inspect
-   * @return the set of top-level field names, or an empty set if the index is unreachable/missing
-   */
-  default Set<String> getIndexFieldNames(String indexName) {
-    throw new UnsupportedOperationException(
-        "getIndexFieldNames is not implemented for this search client");
-  }
 }
