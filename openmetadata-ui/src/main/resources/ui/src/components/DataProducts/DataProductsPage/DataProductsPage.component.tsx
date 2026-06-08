@@ -38,9 +38,9 @@ import {
   updateDataProductVotes,
 } from '../../../rest/dataProductAPI';
 import {
+  DATA_PRODUCT_DEFAULT_FIELDS,
   dataProductQueryFn,
   dataProductQueryKey,
-  DATA_PRODUCT_DEFAULT_FIELDS,
 } from '../../../rest/queries/dataProductQuery';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';

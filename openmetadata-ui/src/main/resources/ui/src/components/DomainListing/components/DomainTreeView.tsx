@@ -201,7 +201,7 @@ const DomainTreeView = ({
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
-    [updateExpansionForFqn, searchQuery]
+    [updateExpansionForFqn, searchQuery, loadDomains]
   );
 
   const searchDomain = useCallback(

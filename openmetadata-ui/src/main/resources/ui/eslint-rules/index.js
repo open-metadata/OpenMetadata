@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,11 @@
  *  limitations under the License.
  */
 
-export type ArchiveItemType = 'article' | 'document';
-
-export interface ArchiveItem {
-  id: string;
-  name: string;
-  startedAt: number;
-  endedAt: number;
-  tasks: string[];
-  variables: Record<string, unknown>;
-  type: ArchiveItemType;
-  updatedBy?: string;
-  updatedAt?: number;
-}
-
-export interface ArchiveViewProps {
-  data: ArchiveItem[];
-  isLoading: boolean;
-  onRestore: (item: ArchiveItem) => void;
-  onDelete: (item: ArchiveItem) => void;
-}
+/**
+ * Custom ESLint rules for OpenMetadata UI
+ */
+module.exports = {
+  rules: {
+    'no-duplicate-api-calls': require('./no-duplicate-api-calls'),
+  },
+};

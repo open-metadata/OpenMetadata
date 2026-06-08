@@ -51,7 +51,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
-  const selectRef = useRef<any>(null);
+  const selectRef = useRef<{ focus: () => void } | null>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
   const [searchValue, setSearchValue] = useState<string>('');

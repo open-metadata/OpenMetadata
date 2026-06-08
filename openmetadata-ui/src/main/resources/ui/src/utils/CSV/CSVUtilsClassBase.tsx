@@ -40,6 +40,9 @@ import { t } from '../i18next/LocalUtil';
 import { removeOuterEscapes } from '../StringUtils';
 import { getCustomPropertyEntityType } from './CSV.utils';
 
+type CSVRow = Record<string, unknown>;
+type EditCellProps = RenderEditCellProps<CSVRow, unknown>;
+
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
     return ['glossaryStatus', 'inspectionQuery'];
@@ -71,15 +74,10 @@ class CSVUtilsClassBase {
       user: boolean;
       team: boolean;
     }
-  ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
+  ): ((props: EditCellProps) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row?.[column.key];
           const owners = value?.split(';') ?? [];
           const ownerEntityRef = owners.map((owner: string) => {
@@ -119,12 +117,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'description':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleSave = async (description: string) => {
             onRowChange({ ...row, [column.key]: description }, true);
@@ -145,12 +138,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'tags':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -199,12 +187,7 @@ class CSVUtilsClassBase {
         };
       case 'glossaryTerms':
       case 'relatedTerms':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -250,12 +233,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'tiers':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -279,12 +257,7 @@ class CSVUtilsClassBase {
         };
 
       case 'certification':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -308,11 +281,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'domains':
-        return ({
-          row,
-          onRowChange,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, column }: EditCellProps) => {
           const value = row[column.key];
           const domains = value
             ? (value?.split(';') ?? []).map((domain: string) => {
@@ -372,12 +341,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'reviewers':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const reviewers = value?.split(';') ?? [];
           const reviewersEntityRef = reviewers.map((reviewer: string) => {
@@ -432,12 +396,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'extension':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleSave = async (extension?: string) => {
             onRowChange({ ...row, [column.key]: extension }, true);
@@ -458,12 +417,7 @@ class CSVUtilsClassBase {
           );
         };
       case 'entityType*':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
@@ -495,12 +449,7 @@ class CSVUtilsClassBase {
         };
 
       case 'code':
-        return ({
-          row,
-          onRowChange,
-          onClose,
-          column,
-        }: RenderEditCellProps<any, any>) => {
+        return ({ row, onRowChange, onClose, column }: EditCellProps) => {
           const value = row[column.key];
           const handleChange = (value: string) => {
             onRowChange({ ...row, [column.key]: value });

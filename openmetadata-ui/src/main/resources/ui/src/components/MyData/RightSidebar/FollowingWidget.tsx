@@ -155,7 +155,11 @@ function FollowingWidget({
     return extraInfo;
   };
 
-  const getEntityIcon = (item: any) => {
+  const getEntityIcon = (item: {
+    serviceType?: string;
+    name: string;
+    type?: string;
+  }) => {
     if (item.serviceType) {
       return (
         <img

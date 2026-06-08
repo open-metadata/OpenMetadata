@@ -26,7 +26,6 @@ const mockUpdateColumnsInCurrentPages = jest.fn();
 const mockGetTestCaseExecutionSummary =
   getTestCaseExecutionSummary as jest.Mock;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockNode: any = {
   id: 'test-id',
   entityType: EntityType.TABLE,
@@ -46,7 +45,6 @@ const mockNode: any = {
   ],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockNodeWithTestSuite: any = {
   ...mockNode,
   testSuite: {
@@ -335,7 +333,6 @@ describe('NodeChildren Component', () => {
 
   describe('Lineage Filter', () => {
     it('should show only columns with lineage when filter is active', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nodeWithMultipleColumns: any = {
         ...mockNode,
         columns: [
@@ -419,7 +416,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should apply search on filtered columns when lineage filter is active', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nodeWithMultipleColumns: any = {
         ...mockNode,
         columns: [
@@ -568,7 +564,6 @@ describe('NodeChildren Component', () => {
 
   describe('CSS Classes and Styling', () => {
     it('should apply "any-column-selected" class when a column is selected', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
 
       render(
@@ -601,7 +596,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should apply both classes when column is selected and creating edge', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
       mockLineageStoreState.isCreatingEdge = true;
 
@@ -622,7 +616,6 @@ describe('NodeChildren Component', () => {
 
   describe('Different Entity Types', () => {
     it('should render columns for DASHBOARD_DATA_MODEL entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dashboardDataModelNode: any = {
         ...mockNode,
         entityType: EntityType.DASHBOARD_DATA_MODEL,
@@ -640,7 +633,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should render fields for TOPIC entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const topicNode: any = {
         id: 'topic-id',
         entityType: EntityType.TOPIC,
@@ -669,7 +661,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should render features for MLMODEL entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mlModelNode: any = {
         id: 'mlmodel-id',
         entityType: EntityType.MLMODEL,
@@ -698,7 +689,6 @@ describe('NodeChildren Component', () => {
 
   describe('Edge Cases', () => {
     it('should handle nodes with empty column names', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nodeWithEmptyNames: any = {
         ...mockNode,
         columns: [
@@ -722,7 +712,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle search with special characters', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nodeWithSpecialChars: any = {
         ...mockNode,
         columns: [
@@ -756,7 +745,6 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle columns without fullyQualifiedName', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const nodeWithMissingFQN: any = {
         ...mockNode,
         columns: [{ name: 'column1', dataType: 'STRING' }],

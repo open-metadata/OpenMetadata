@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { Compass01, Home01 } from '@untitledui/icons';
+import { LeftSidebarItem } from 'components/MyData/LeftSidebar/LeftSidebar.interface';
+import { LeftSidebarItemExample } from 'components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import leftSidebarClassBase from '../LeftSidebarClassBase';
 import {
@@ -425,17 +428,17 @@ describe('CustomizeNavigation Utils', () => {
   });
 
   describe('mergePluginSidebarItems', () => {
-    const mockBaseItems = [
+    const mockBaseItems: LeftSidebarItem[] = [
       {
         key: 'home',
         title: 'Home',
-        icon: 'home-icon',
+        icon: Home01,
         dataTestId: 'home',
       },
       {
         key: 'explore',
         title: 'Explore',
-        icon: 'explore-icon',
+        icon: Compass01,
         dataTestId: 'explore',
       },
     ];
@@ -447,11 +450,11 @@ describe('CustomizeNavigation Utils', () => {
     });
 
     it('should append plugin items without index at the end', () => {
-      const pluginItems = [
+      const pluginItems: LeftSidebarItemExample[] = [
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
         },
       ];
@@ -467,7 +470,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -486,7 +489,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 0,
         },
@@ -505,21 +508,21 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin2',
           title: 'Plugin 2',
-          icon: 'plugin-icon-2',
+          icon: Compass01,
           dataTestId: 'plugin2',
           index: 2,
         },
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon-1',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 0,
         },
         {
           key: 'plugin3',
           title: 'Plugin 3',
-          icon: 'plugin-icon-3',
+          icon: Compass01,
           dataTestId: 'plugin3',
         },
       ];
@@ -539,7 +542,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 999,
         },
@@ -556,7 +559,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -586,7 +589,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -616,7 +619,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -633,7 +636,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: Compass01,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -706,7 +709,6 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = mergePluginSidebarItems(
         mockBaseItems,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         pluginItems as any,
         navItems
       );
@@ -742,7 +744,7 @@ describe('CustomizeNavigation Utils', () => {
             {
               key: 'plugin-item',
               title: 'Plugin Item',
-              icon: 'plugin-icon',
+              icon: Compass01,
               dataTestId: 'plugin-item',
               index: 1,
             },
