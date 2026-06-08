@@ -104,6 +104,7 @@ export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
   driveFileId: file.id,
   folderId: file.folder?.id,
   folderFqn: file.folder?.fullyQualifiedName,
+  folderName: getEntityName(file.folder),
   id: file.assetId ?? file.id,
   name: file.displayName ?? file.name,
   sizeLabel: formatBytes(file.fileSize),

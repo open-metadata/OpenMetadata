@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,6 +22,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
+import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import {
   DocFile,
@@ -55,12 +57,16 @@ const ContextCenterDocumentsPage: FC = () => {
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<DocFile>();
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [previewFile, setPreviewFile] = useState<DocFile | undefined>();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { hasCreatePermission, hasDeletePermission } = useMemo(
     () => ({
@@ -183,10 +189,74 @@ const ContextCenterDocumentsPage: FC = () => {
     []
   );
 
+  const handlePreview = useCallback((file: DocFile | undefined) => {
+    setPreviewFile(file);
+  }, []);
+
+  const handleSelectFile = useCallback((fileId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    setIsBulkDeleteModalOpen(true);
+  }, []);
+
+  const handleConfirmBulkDelete = useCallback(async () => {
+    const ids = [...selectedIds];
+    const filesToDelete = allDocuments.filter((d) => ids.includes(d.id));
+
+    try {
+      setIsBulkDeleting(true);
+      await Promise.all(
+        filesToDelete.map((f) =>
+          deleteDriveFile(f.driveFileId ?? f.id, false)
+        )
+      );
+      setAllDocuments((prev) => prev.filter((d) => !ids.includes(d.id)));
+      setSelectedIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      showSuccessToast(
+        t('server.entity-deleted-success', {
+          entity: t('label.document-plural'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [selectedIds, allDocuments, t]);
+
+  const handleBulkMove = useCallback(
+    (targetFolderId: string) => {
+      setAllDocuments((prev) =>
+        prev.map((d) =>
+          selectedIds.has(d.id) ? { ...d, folderId: targetFolderId } : d
+        )
+      );
+      setSelectedIds(new Set());
+    },
+    [selectedIds]
+  );
+
   return (
-    <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
-      data-testid="context-center-documents-page">
+    <Box
+      className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      data-testid="context-center-documents-page"
+      direction="col">
       {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
@@ -238,15 +308,30 @@ const ContextCenterDocumentsPage: FC = () => {
         </ReflexSplitter>
 
         <ReflexElement flex={0.75} minSize={400}>
-          <DocumentsView
-            canDelete={hasDeletePermission}
-            data={documents}
-            folders={folderOptions}
-            isLoading={isDocumentsLoading}
-            onDeleteFile={handleDeleteFile}
-            onDownload={handleAssetDownload}
-            onFileMoved={handleFileMoved}
-          />
+          <Box className="tw:h-full tw:overflow-hidden">
+            <DocumentsView
+              canDelete={hasDeletePermission}
+              data={documents}
+              folders={folderOptions}
+              isLoading={isDocumentsLoading}
+              previewFileId={previewFile?.id}
+              selectedIds={selectedIds}
+              onBulkDelete={handleBulkDelete}
+              onBulkDownload={handleClearSelection}
+              onBulkMove={handleBulkMove}
+              onDeleteFile={handleDeleteFile}
+              onDownload={handleAssetDownload}
+              onFileMoved={handleFileMoved}
+              onPreview={handlePreview}
+              onSelectFile={handleSelectFile}
+            />
+            {previewFile && (
+              <DocumentPreviewPanel
+                file={previewFile}
+                onClose={() => handlePreview(undefined)}
+              />
+            )}
+          </Box>
         </ReflexElement>
       </ReflexContainer>
 
@@ -274,7 +359,19 @@ const ContextCenterDocumentsPage: FC = () => {
           onDelete={handleConfirmDelete}
         />
       )}
-    </div>
+
+      <DeleteModal
+        entityTitle={`${selectedIds.size} ${t('label.document-plural').toLowerCase()}`}
+        isDeleting={isBulkDeleting}
+        message={t('message.are-you-sure-you-want-to-delete-these-entities', {
+          count: selectedIds.size,
+          entity: t('label.document').toLowerCase(),
+        })}
+        open={isBulkDeleteModalOpen}
+        onCancel={() => setIsBulkDeleteModalOpen(false)}
+        onDelete={handleConfirmBulkDelete}
+      />
+    </Box>
   );
 };
 

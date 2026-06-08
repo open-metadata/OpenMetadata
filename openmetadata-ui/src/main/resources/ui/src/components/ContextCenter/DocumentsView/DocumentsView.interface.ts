@@ -21,6 +21,7 @@ export interface DocFile {
   updatedAt?: number;
   folderId?: string;
   folderFqn?: string;
+  folderName?: string;
 }
 
 export interface DocFolder {
@@ -39,8 +40,15 @@ export interface DocumentsViewProps {
   data: DocFile[];
   folders?: FolderOption[];
   isLoading: boolean;
+  previewFileId?: string;
+  selectedIds?: Set<string>;
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
   onFileMoved?: (file: DocFile, targetFolderId: string) => void;
+  onPreview?: (file: DocFile | undefined) => void;
+  onSelectFile?: (fileId: string) => void;
+  onBulkDelete?: () => void;
+  onBulkMove?: (folderId: string) => void;
+  onBulkDownload?: () => void;
 }
