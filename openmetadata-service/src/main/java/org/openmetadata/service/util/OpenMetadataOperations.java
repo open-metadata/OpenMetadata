@@ -1790,7 +1790,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Check for index mapping changes only when running from CLI
     IndexMappingVersionTracker versionTracker = null;
-    boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
     boolean shouldReindex = true;
 
@@ -1820,8 +1819,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             }
           }
         } else {
-          shouldUpdateVersions = true;
-
           // If 'all' entities were requested, only reindex changed ones
           if (entities.contains("all")) {
             entities = new HashSet<>(changedMappings);
@@ -1833,7 +1830,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               LOG.info(
                   "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
               shouldReindex = false;
-              shouldUpdateVersions = false;
 
               // Send Slack notification if configured
               if (slackBotToken != null
@@ -1916,18 +1912,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
-
-    // Update mapping versions after successful reindexing
-    if (result == 0 && shouldUpdateVersions && versionTracker != null) {
-      try {
-        versionTracker.updateMappingVersions();
-        LOG.info(
-            "✅ Smart reindexing: Updated mapping versions in database for future change detection");
-      } catch (Exception e) {
-        LOG.warn("⚠️  Failed to update index mapping versions in database", e);
-        // Don't fail the operation if version update fails
-      }
-    }
 
     return result;
   }
